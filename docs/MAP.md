@@ -15,8 +15,8 @@ synchronous, no defer/async, no DOM-ready handlers.
 | v4 base | 15–334 | 370–8186 | yes | enrichState (~3602) | — |
 | v5 "Statecraft" | 8187–8266 | 8267–8880 | yes | pv5EnsureState (~8352) | `pv5*V4` |
 | v6 "The Long Republic" | 8881–9079 | 9080–11241 | yes | v6EnsureState (~9283) | `v6*V5`/`v6*Base` |
-| mobile layer | 11242–11465 | 11466–11587 | **no** (S1) | — | `v6m*Base` |
-| "The Clean Desk" (v7) | 11588–11734 | 11735–12172 | **no** (S1) | — | `v7*Base` |
+| mobile layer | 11242–11465 | 11466–11587 | yes (S1) | — | `v6m*Base` |
+| "The Clean Desk" (v7) | 11588–11734 | 11735–12172 | yes (S1) | — | `v7*Base` |
 | v8 "The Living Republic" | 12173–12306 | 12307–13868 | yes | v8EnsureState (~12343) | `v8*Base` |
 | v9 "The Deep State" | 13869–13903 | 13904–15714 | yes | v9EnsureState (~13923) | `v9*Base` |
 
@@ -49,7 +49,8 @@ Everything else is innerHTML-rendered into those ids.
 
 ## Orphaned bodies (dead code) — checks/dead-bodies.json is the ledger
 
-10 reassignment sites capture no alias; 9 bodies are truly unreachable:
+10 reassignment sites capture no alias; since S1's button rebind, all 10
+replaced bodies are unreachable — the 9 below plus v4 `helpDialog` (~8068):
 
 | dead body | killed by |
 |---|---|
@@ -66,21 +67,16 @@ Everything else is innerHTML-rendered into those ids.
 † alias absence verified at grep level only — S2 deletes a body only after a
 poison-proof (scratch copy, `throw` in the body, full playtest green).
 
-The 10th no-alias site is `helpDialog` (~11129): its victim, the v4 body
-(~8068), **survives** via the stale `#btnHelp` value binding — editing it
-changes only what the Guide button does. After S1 rebinds the button it becomes
-the 10th true orphan.
+The 10th no-alias site is `helpDialog` (~11129): since S1 rebound `#btnHelp`
+to call through the identifier, its victim — the v4 body (~8068) — is the 10th
+true orphan, deletable in S2 after poison-proof.
 
-## Stale value bindings (parse-time captures of later-reassigned names)
+## Stale value bindings — fixed in S1, ratchet at 0
 
-Three, all v4 toolbar lines (~8016–8019), all fixed in S1:
-- `#btnEnd` → v4 `confirmEndTurn` (~4407): keyboard `e` gets v8→v7→v4 (quickEnd,
-  close-checklist); the button gets the bare v4 confirm. Both converge on the
-  live `endTurn` chain after confirm (the sheet's handler calls it late-bound).
-- `#btnHelp` → v4 `helpDialog` (~8068): the button opens the original v4 field
-  guide, skipping four wrapper generations (v6 rewrite + v7/v8/v9 cards).
-- `#btnUndo` → v4 `undoLast` (~4352): single-level undo; v8's 8-deep
-  `UI.undoStack` is reachable only via the `u` key.
+The three v4 toolbar bindings (`#btnEnd`/`#btnHelp`/`#btnUndo`, ~8016–8021) now
+call through their identifiers, so button and keyboard run the same live chains
+(close-checklist and 8-deep undo included). The stale-binding check keeps the
+count at 0 — never bind a reassignable function name by value at top level.
 
 Benign at grep level (never reassigned, not proven exhaustively): `#btnSave` →
 `saveDialog`; document scroll → `v6HidePop`. Call-time value bindings (e.g.
@@ -99,11 +95,12 @@ the live chain — fine, but know they re-bind per sheet.
   `court`, `seats`…): a loadable blob must already be a full v4 shape; the
   import check is only `obj.ind && obj.pol` (~8106). Hazard: `st.powers` is
   re-seeded only in `newGame`; `shiftRel` (~2586) writes it unguarded.
-- Keys: `parliamentVale.autosave.v5` (written, ~4369, empty catch — quota
-  failure looks like success), `.v4` and `parliamentVale.autosave` (legacy
-  reads, ~4374 — falsy `||` chain: one corrupt `.v5` hides intact older saves
-  because the JSON.parse throw exits past them), `parliamentVale.hall`
-  (~13062–13063, cap 40). S1 makes the read path loud.
+- Keys: `parliamentVale.autosave.v5` (written; a failed write toasts once and
+  the flag resets on success — S1), `.v4` and `parliamentVale.autosave`
+  (legacy reads; since S1 each key parses independently, so a corrupt `.v5`
+  falls through to older intact saves, is left untouched, and surfaces as
+  `UI.saveReadError` → a warning line on the setup sheet), `parliamentVale.hall`
+  (~13062–13063, cap 40).
 - **The live autosave** is v6 render's debounce (~11093): `setTimeout(
   saveAutosave, 160)` after every render. The v4/v5 render debounces are dead.
   Game end does NOT clear the autosave; nothing guards resuming a finished
@@ -158,8 +155,8 @@ accumulates (v8 `[data-v8cmd]` ~13556, v9 `[data-v9cmd]` ~15596).
 ## Other known fragilities
 
 - `clamp` (~4426) passes NaN through (every comparison false → returns v).
-- `v6Sandbox` (~10712) swaps 9 globals and restores after the try/catch, not in
-  a `finally` (S1 fixes).
+- `v6Sandbox` (~10712) swaps 9 globals; since S1 the restore sits in a
+  `finally`.
 - `confirm()` is called exactly once (hall-of-fame clear ~13093) — the playtest
   harness stubs it.
 - 93 `Math.random()` sites; the only seeded PRNG is the sandbox's LCG (S3
