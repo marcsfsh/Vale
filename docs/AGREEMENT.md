@@ -148,3 +148,8 @@ bad, #6FAE8B good. Type: Marcellus (masthead/headlines), Archivo Narrow
 tabular). Reference boards: the "Ministry Precise · The Design" page of the
 mockup canvas (Overview desktop+phone, Drafting Desk, Election Night). S5
 implements this as vale.html's token system with measured font subsets.
+
+**Seat-map ruling (owner, 2026-08-23): "Must maintain individual circles for
+parliament seats."** The hemicycle is always drawn seat by seat — as the
+game's `hemiMap` already does — never smoothed into arc segments. Binds the
+S6 viz redesign and every future chamber/senate/court display.
