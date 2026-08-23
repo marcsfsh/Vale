@@ -39,7 +39,7 @@
   --font-n:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --party:#BFA14E;
   --party-soft:rgba(191,161,78,.3);
-  --party-ink:#0B0E0C;
+  --party-ink:#0E120F;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -290,7 +290,7 @@ textarea{width:100%;height:150px;background:rgba(0,0,0,.4);color:var(--ivory);bo
 .faction-card{border-top:3px solid rgba(191,161,78,.26)}
 .faction-card.leading{border-top-color:var(--party)}
 .axis{display:grid;grid-template-columns:1fr auto;gap:7px;font-family:var(--font-u);font-size:11px;color:var(--slate);margin-top:6px}
-.axis-line{height:5px;background:linear-gradient(90deg,#9D0000,#8b8071,#0000BC);position:relative;margin-top:6px}
+.axis-line{height:5px;background:linear-gradient(90deg,#9D0000,#97A099,#0000BC);position:relative;margin-top:6px}
 .axis-line i{position:absolute;top:-3px;width:2px;height:11px;background:var(--ivory);box-shadow:0 0 0 2px var(--ink)}
 .macro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .macro-tile{padding:10px;border:1px solid rgba(191,161,78,.18);background:rgba(0,0,0,.2)}
@@ -6878,7 +6878,7 @@ function applyTheme() {
   root.style.setProperty('--party', c);
   root.style.setProperty('--party-soft', 'rgba(' + parseInt(c.substr(1, 2), 16) + ',' +
     parseInt(c.substr(3, 2), 16) + ',' + parseInt(c.substr(5, 2), 16) + ',.16)');
-  root.style.setProperty('--party-ink', lum(c) > .5 ? '#0B0E0C' : '#F3EEDF');
+  root.style.setProperty('--party-ink', lum(c) > .5 ? '#0E120F' : '#EAE7DC');
 }
 
 function render() {
@@ -11033,7 +11033,7 @@ viewPolicy = function () { return v6ProgrammesPanel() + v6ViewPolicyV5(); };
 function v6HistoryChart() {
   var h = S.v6.history; if (h.length < 2) return '<div class="empty-state">Two closed sessions are needed before the record can be drawn.</div>';
   var w = 720, ht = 250, pad = 34, series = [
-    { k:'approval', name:'Approval', color:PARTY[playParty(S)].color }, { k:'unrest', name:'Unrest', color:'#c7583f' }, { k:'economy', name:'Economy', color:'#c9a227' }, { k:'liberties', name:'Liberties', color:'#5aa469' }
+    { k:'approval', name:'Approval', color:PARTY[playParty(S)].color }, { k:'unrest', name:'Unrest', color:'#C77B62' }, { k:'economy', name:'Economy', color:'#BFA14E' }, { k:'liberties', name:'Liberties', color:'#6FAE8B' }
   ];
   var grid = '';
   for (var g = 0; g <= 4; g++) { var y = pad + (ht - pad * 2) * g / 4; grid += '<line x1="' + pad + '" y1="' + y + '" x2="' + (w - pad) + '" y2="' + y + '" stroke="rgba(191,161,78,.12)"/><text x="4" y="' + (y + 3) + '">' + Math.round(100 - 25 * g) + '</text>'; }

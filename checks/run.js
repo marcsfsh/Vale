@@ -175,6 +175,27 @@ function reassignmentSites(text) {
     rogue.length ? `undocumented key(s): ${rogue.join(', ')}` : `${keys.size} keys, all documented`);
 }
 
+/* ---- 6b. palette drift ---- */
+// Every colour literal must be adjudicated. Case-insensitive on purpose: a
+// retune once shipped half-applied because lowercase hex in a script block
+// escaped an uppercase sweep, leaving the trend chart on the old palette.
+{
+  const palette = JSON.parse(fs.readFileSync(path.join(__dirname, 'palette.json'), 'utf8'));
+  const ok = new Set(Object.values(palette.allowed).flat().map(h => h.toUpperCase()));
+  const seen = new Map();
+  const re = /#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?\b/g;
+  let m;
+  while ((m = re.exec(src))) {
+    const lit = m[0].toUpperCase();
+    if (ok.has(lit)) continue;
+    if (!seen.has(lit)) seen.set(lit, src.slice(0, m.index).split('\n').length);
+  }
+  const rogue = [...seen].map(([lit, line]) => `${lit} (line ${line})`);
+  report('palette-drift', rogue.length === 0,
+    rogue.length ? `unadjudicated colour(s): ${rogue.slice(0, 4).join(', ')}${rogue.length > 4 ? ` +${rogue.length - 4} more` : ''} — add to checks/palette.json or fix`
+      : `${ok.size} adjudicated colours, no drift`);
+}
+
 /* ---- 7. Math.random ratchet ---- */
 {
   const n = (src.match(/Math\.random\(\)/g) || []).length;
