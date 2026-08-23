@@ -4,7 +4,14 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S6c — the chart vocabulary** (PR #8). Both line charts rebuilt on one shared
+**S7 — onboarding** (PR #9). The setup sheet asks its two real questions with a
+line each on what they decide, and folds length, difficulty and the house rules
+into one disclosure that names them. Also closes the colour-vision question
+flagged in S6b and S6c: `tools/seats.js` now simulates all three dichromacies,
+and every pair that collapses is an ADJACENT pair — exactly where S6b put the
+aisles and the direct labels. The palette needs no change.
+
+Previously: **S6c — the chart vocabulary** (PR #8, merged). Both line charts rebuilt on one shared
 helper: every series now ends in its current value, in its own colour, with
 leader lines where the declutter moved a label. Narrow screens open a chart on
 the present instead of the oldest session. The two items deferred out of S6a and
@@ -48,10 +55,10 @@ ratchet 10 → 5, which is now its true floor.
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
 | S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
-| S6c charts | **in review (PR #8)** | one chart vocabulary, end-value labels, charts open on the present; region tiles carry their winner as an edge |
+| S7 onboarding | **in review (PR #9)** | two guided questions, the rest behind one disclosure; playtest gains `setup-trimmed`; CVD measured |
+| S6c charts | **merged** (#8) | one chart vocabulary, end-value labels, charts open on the present; region tiles carry their winner as an edge |
 | S3 seeded PRNG | **merged** (#7) | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
 | S6b the chamber | **merged** (#6) | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
-| S7 onboarding | pending | setup trim + guided panels |
 | S8 pacing honesty | pending | each length option a complete arc; balance changes go to the user first |
 
 ## Open items / environment facts

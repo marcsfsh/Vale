@@ -129,3 +129,53 @@ for (let i = 0; i < order.length - 1; i++) {
   console.log('  ' + (order[i] + '/' + order[i + 1]).padEnd(10) + d.toFixed(1) +
     (d < 15 ? '  <- close; the aisle is doing the work here' : ''));
 }
+
+/* ---- colour vision deficiency ----
+ * Seven series told apart by hue is the hardest possible case for a red-green
+ * deficiency, and around one man in twelve has one. The chamber and the charts
+ * both give every bloc a name as well as a colour, which is the real mitigation
+ * — but that only decides how much the colours have to carry, it does not tell
+ * you which pairs collapse. This does. Viénot, Brettel & Mollon (1999): to LMS,
+ * project onto the dichromat plane, back again.
+ */
+function simulate(hexColor, kind) {
+  const [r, g, b] = hex(hexColor).map(lin);
+  let L = 17.8824 * r + 43.5161 * g + 4.11935 * b;
+  let M = 3.45565 * r + 27.1554 * g + 3.86714 * b;
+  let S = 0.0299566 * r + 0.184309 * g + 1.46709 * b;
+  if (kind === 'protanopia') L = 2.02344 * M - 2.52581 * S;
+  else if (kind === 'deuteranopia') M = 0.494207 * L + 1.24827 * S;
+  else S = -0.395913 * L + 0.801109 * M;
+  const out = [
+    0.080944 * L - 0.130504 * M + 0.116721 * S,
+    -0.0102485 * L + 0.0540194 * M - 0.113615 * S,
+    -0.000365294 * L - 0.00412163 * M + 0.693513 * S,
+  ].map(v => {
+    const c = Math.min(1, Math.max(0, v));
+    const s = c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+    return ('0' + Math.round(s * 255).toString(16)).slice(-2);
+  });
+  return '#' + out.join('').toUpperCase();
+}
+
+console.log('\nUnder colour vision deficiency — the closest pair, and how close');
+console.log('(dE under ~10 means those two parties are effectively one colour;');
+console.log(' both the chamber and the charts also label every series by name)');
+for (const kind of ['protanopia', 'deuteranopia', 'tritanopia']) {
+  const sim = {};
+  for (const k of order) sim[k] = simulate(CURRENT[k], kind);
+  const pairs = [];
+  for (let i = 0; i < order.length; i++) {
+    for (let j = i + 1; j < order.length; j++) {
+      pairs.push({ a: order[i], b: order[j], d: deltaE(sim[order[i]], sim[order[j]]),
+        was: deltaE(CURRENT[order[i]], CURRENT[order[j]]) });
+    }
+  }
+  pairs.sort((x, y) => x.d - y.d);
+  console.log('\n  ' + kind + '  (' + order.map(k => k + ' ' + sim[k]).join('  ') + ')');
+  for (const p of pairs.slice(0, 3)) {
+    console.log('    ' + (p.a + '/' + p.b).padEnd(10) + 'dE ' + p.d.toFixed(1).padStart(5) +
+      '   (' + p.was.toFixed(1) + ' in normal vision)' +
+      (p.d < 10 ? '   <- collapses' : ''));
+  }
+}
