@@ -142,6 +142,10 @@ player actions; cleared every turn.
 
 ## Load path
 
+Since S5 the first style block opens with seven embedded `@font-face` rules
+(Latin subsets as data URIs, ~128 KB) and the file references nothing
+off-origin — regenerate them with `tools/fonts.sh`, never by hand.
+
 Parse-time boot: v4 (~8176) creates a **throwaway** `newGame('normal')` and
 renders; each chunk re-enriches/re-renders (6 renders total at load); v6's boot
 IIFE (~11229) opens `startScreen()` (which offers Resume — never auto-resumes);
