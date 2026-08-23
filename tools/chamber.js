@@ -103,9 +103,10 @@ let fail = 0;
   if (!all) { console.log('FAIL  no svg.hemi on the page'); process.exit(1); }
 
   const roll = await page.evaluate(() => [
-    { name: 'Assembly', seats: S.seats },
-    { name: 'Senate', seats: S.upper.seats },
-  ].map(c => ({ name: c.name, total: Object.values(c.seats).reduce((a, b) => a + b, 0),
+    { name: 'Assembly', seats: S.seats, size: CFG.seats },
+    { name: 'Senate', seats: S.upper.seats, size: CFG.senate },
+  ].map(c => ({ name: c.name, size: c.size,
+    total: Object.values(c.seats).reduce((a, b) => a + b, 0),
     parties: Object.values(c.seats).filter(n => n > 0).length })));
 
   const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(36) + detail); };
@@ -116,6 +117,13 @@ let fail = 0;
     if (i === 0) geom = g;
     console.log((i ? '\n' : '') + r.name + ' seat map, inside the viewBox (' + g.vb + ')\n');
     say(g.seats === r.total, 'seat count', g.seats + ' circles for ' + r.total + ' seats on the roll');
+    /* hemiMap draws the SUM of the seats object. Until S8d its signature also
+       took a `total` it never read, which read as a promise that the roll and
+       the constitution agree; nothing checked that they did, so a roll short of
+       its chamber's size would have drawn a silently smaller arc. The promise
+       now lives here. */
+    if (r.size) say(r.total === r.size, 'roll fills the chamber',
+      r.total + ' seats on the roll against a constitutional ' + r.size);
     say(g.overlap === 0, 'no seats overlap',
       (g.overlap ? g.overlap + ' overlapping pair(s), worst by ' + g.worst.toFixed(2) + ' units. '
         : 'every seat clears its neighbours. ') +
@@ -185,6 +193,60 @@ let fail = 0;
     await el.screenshot({ path: path.join(OUT, 'chamber-' + t.n + '.png') });
   }
   console.log('\nscreenshots: tools/out/chamber-{phone,tablet,desktop}.png');
+
+  /* The boot roll is authored. Every roll after it is computed — runElection
+     reapportions both houses — so the constitutional size has to hold across
+     elections, not just at the opening. Ballots fall on every odd turn past
+     the first, so eight sessions is three of them. Fresh page: the awkward
+     shapes above deliberately leave S holding rolls that do not total. */
+  console.log('\nThe roll after elections — the tables are recomputed, the constitution is not');
+  const p2 = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
+  await p2.addInitScript(() => { window.confirm = () => true; });
+  await p2.goto(URL);
+  await p2.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+  await p2.click('[data-setup-begin]');
+  await p2.waitForSelector('[data-doctrine]', { timeout: 10000 });
+  await p2.click('[data-doctrine]');
+  await p2.waitForTimeout(300);
+  const drain = async () => {
+    for (let i = 0; i < 90; i++) {
+      const st = await p2.evaluate(() => ({ busy: !!UI.busy, open: !document.getElementById('modal').hidden, over: !!S.over }));
+      if (st.over) return 'over';
+      if (!st.busy && !st.open) return true;
+      if (st.open) await p2.evaluate(() => {
+        const sh = document.getElementById('sheet');
+        const btn = sh && (sh.querySelector('[data-ev]') || sh.querySelector('[data-close]') || sh.querySelector('.modal-close'));
+        if (btn) btn.click();
+      });
+      await p2.waitForTimeout(50);
+    }
+    return false;
+  };
+  await drain();
+  const seen = [];
+  for (let t = 0; t < 8; t++) {
+    const before = await p2.evaluate(() => S.turn);
+    const moved = await p2.evaluate(() => { if (S.over || UI.busy) return false; endTurn(); return true; });
+    if (!moved) break;
+    try { await p2.waitForFunction(n => S.turn > n || S.over, before, { timeout: 25000 }); } catch (e) { break; }
+    if (await drain() === 'over') break;
+    const r = await p2.evaluate(() => ({
+      turn: S.turn,
+      lower: { total: Object.values(S.seats).reduce((a, b) => a + b, 0), size: CFG.seats },
+      upper: upperOn(S) ? { total: Object.values(S.upper.seats).reduce((a, b) => a + b, 0), size: CFG.senate } : null,
+    }));
+    seen.push(r);
+  }
+  if (!seen.length) { say(false, 'the roll survives elections', 'no session could be played'); }
+  else {
+    const bad = seen.filter(r => r.lower.total !== r.lower.size || (r.upper && r.upper.total !== r.upper.size));
+    say(bad.length === 0, 'the roll survives elections',
+      bad.length
+        ? bad.map(r => 'turn ' + r.turn + ': Assembly ' + r.lower.total + '/' + r.lower.size +
+            (r.upper ? ', Senate ' + r.upper.total + '/' + r.upper.size : '')).join('; ')
+        : seen.length + ' sessions played (turns ' + seen[0].turn + '-' + seen[seen.length - 1].turn +
+          '); both houses total their constitutional size after every one');
+  }
   await browser.close();
   console.log(fail ? '\n' + fail + ' CHECK(S) FAILED' : '\nCHAMBER OK');
   process.exit(fail ? 1 : 0);

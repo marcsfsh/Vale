@@ -10,9 +10,19 @@
     "parliamentVale.autosave",
     "parliamentVale.hall"
   ],
-  "_mathRandomComment": "S3 routed all 93 call sites through the seeded engine. The one that remains is rand()'s own pre-game fallback, for the window before S exists where there is nothing to be reproducible about. The sandbox's Math.random swap is an assignment, not a call, so it does not count here — it stays as isolation for any stray call this file grows later. A rise means a new unseeded source of randomness: route it through rand() instead.",
+  "_mathRandomComment": "S3 routed all 93 call sites through the seeded engine. The one that remains is rand()'s own pre-game fallback, for the window before S exists where there is nothing to be reproducible about. The sandbox's Math.random swap is an assignment, not a call, so it does not count here \u2014 it stays as isolation for any stray call this file grows later. A rise means a new unseeded source of randomness: route it through rand() instead.",
   "mathRandomCount": 1,
   "maxBytes": 1600000,
   "_tiersComment": "S6a collapsed 13 accreted width thresholds to these five, one per tier edge plus the small-phone refinement the user sanctioned. Six chunks each picking its own 'narrow' number is how the tablet band ended up half-dressed, so a new threshold fails this check. Adding one is a design decision: make the case in the PR, then add the number here.",
-  "widthThresholds": [420, 760, 761, 1179, 1180]
+  "widthThresholds": [
+    420,
+    760,
+    761,
+    1179,
+    1180
+  ],
+  "_heightComment": "The one height threshold in the file: the landscape/short-window turn bar. It was governed by nothing until the breakpoint check learned about the height axis.",
+  "heightThresholds": [
+    460
+  ]
 }

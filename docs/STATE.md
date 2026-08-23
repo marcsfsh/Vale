@@ -4,30 +4,47 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S8c — the record scales with the campaign** (PR #14). Thresholds across the
-achievement array and the scenario goals were authored against the two-hundred
-year span; a fifty-year campaign met them with a quarter of the sessions. They
-now scale with `endYear` through one helper (`v6Span`/`v6Scale`), and the
-requirement is *rendered* from the live number rather than hard-coded in the
-prose, so a note never contradicts the test beneath it. Epic is 1.0 by
-construction — the denominator is the same `CFG` span the numbers were tuned
-against — and the regression gate is that the epic record id set is identical,
-id for id, before and after; it is, on all three seeds.
+**S8d — the flagged leftovers** (PR #15). Four small items, none a design
+decision, each carried forward from an earlier slice's notes.
 
-Two defects surfaced on the way and are fixed here. **The closing session was
-never banked**: `endTurn`'s end-of-campaign branch was `{ finish(); return; }`,
-and the `return` skipped the `v6AfterTurn` on the next line, so nothing earned
-on the last session was ever recorded — at any length, since 2024. **The hall
-of fame could not be won in fifty years**: its score summed raw cumulative
-counters, so a short campaign was structurally excluded from the top of its own
-cross-campaign leaderboard.
+`breakpoint-tiers` was a membership test wearing a partition test's name, and
+five ways past it are now closed with a proof of each: a number used as both a
+`min-` and a `max-` edge (so both rules apply at that exact pixel), `em`/`rem`
+widths, media-range syntax `(width >= 900px)`, fractional thresholds, and the
+one height threshold in the file — `max-height:460px`, the landscape turn bar,
+which until now was governed by nothing.
 
-What it is worth, measured with the fixed instrument: a short campaign closes
-at 26% / 18% / 26% of the record across three seeds, against 13% / 10% / 15%
-before. Epic is unchanged at 28% / 21% / 31%. Named as **not** verified: the
-harness plays first-choice-always and loses government early, so every
-conclusion about the twelve transient records and the eight in-government ones
-is inference from a floor, not a measure of a competent player's run.
+`hemiMap`'s `total` parameter was declared, never read, and promised a
+guarantee the body does not make: the arc is drawn from the sum of the seats
+object, so a roll short of its chamber's size draws a silently smaller chamber
+while every existing assertion still reads "ok". The parameter is gone and the
+guarantee is now real — `tools/chamber.js` asserts both houses total their
+constitutional size at the opening and after every election. This was the last
+open S6 implementation note in AGREEMENT.md bar one, which is marked still
+open there rather than quietly dropped.
+
+The campaign-seed copy now says "the same seed and the same **choices, in the
+same order**". Only the free tightening was taken: I could not produce a
+divergence from choices alone — only from dismissing a sheet versus answering
+it — and would not weaken a claim I cannot falsify.
+
+And the board below is corrected twice: PR #12 was still listed as in review,
+and S2's note that marker/seam consolidation was **deferred to S6** was
+silently dropped when S6a/b/c all merged without it. It is restored as named,
+pending work — it is the largest remaining stabilisation item and the next
+slice.
+
+Previously: **S8c — the record scales with the campaign** (PR #14, merged).
+Thresholds across the achievement array and the scenario goals were authored
+against the two-hundred-year span; a fifty-year campaign met them with a
+quarter of the sessions. They now scale with `endYear` through one helper, and
+the requirement is *rendered* from the live number rather than hard-coded in
+the prose. Epic is 1.0 by construction and its record id set is identical, id
+for id, before and after. Two defects fixed on the way: the closing session was
+never banked (`endTurn`'s end-of-campaign `return` skipped the tick), and the
+hall of fame's score summed raw cumulative counters, so a short campaign was
+structurally excluded from the top of its own leaderboard. Short closes at
+26% / 18% / 26% of the record against 13% / 10% / 15% before; epic unchanged.
 
 Previously: **S8b — the instrument** (PR #13, merged). `tools/pacing.js` was
 recomputing every achievement test against the final state; the game *latches*
@@ -99,13 +116,15 @@ ratchet 10 → 5, which is now its true floor.
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
 | S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
 | Review fixes | **merged** (#12) | 2 real defects + 6 smaller ones from an adversarial pass; chamber tool now replays awkward seat shapes, determinism gains an 8th property, tab-tour stops counting attempts |
-| S8 pacing | **merged** (#10) | measured, not retuned: all lengths reach their end year, density is flat, short closes at 8% of the record; the call is the user's |
+| S8 pacing | **merged** (#10) | measured, not retuned: all lengths reach their end year, density is flat; the call is the user's. Its published record shares were wrong — the instrument recomputed instead of reading the latched map (corrected in #13) |
 | S7 onboarding | **merged** (#9) | two guided questions, the rest behind one disclosure; playtest gains `setup-trimmed`; CVD measured |
 | S6c charts | **merged** (#8) | one chart vocabulary, end-value labels, charts open on the present; region tiles carry their winner as an edge |
 | S3 seeded PRNG | **merged** (#7) | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
 | S6b the chamber | **merged** (#6) | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
 | S8b the instrument | **merged** (#13) | pacing tool read the latched map instead of recomputing; the PR states plainly that PR #10's published figures measured the wrong quantity |
-| S8c the record scales | **in review (PR #14)** | thresholds scale with `endYear`, requirements rendered not hard-coded; closing session now banked; hall score made span-relative; epic byte-identical |
+| S8c the record scales | **merged** (#14) | thresholds scale with `endYear`, requirements rendered not hard-coded; closing session now banked; hall score made span-relative; epic byte-identical |
+| S8d the leftovers | **in review (PR #15)** | breakpoint check made a partition test (5 proofs); hemiMap's false `total` dropped and the guarantee moved into `tools/chamber.js`; seed copy tightened; this board corrected |
+| **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
 
@@ -124,8 +143,10 @@ ratchet 10 → 5, which is now its true floor.
 - Checks baselines (`checks/baseline.json`): strict 7/7 and stale bindings 0
   (S1 targets reached and pinned), dead sites max 10 (0 by end of S2),
   unseeded randomness pinned at 1 call (rand()'s pre-game fallback; was 93
-  before S3), width thresholds pinned to the five tier edges, size cap 1.6 MB (file now 1.41 MB
-  with fonts embedded), external allowlist **empty and staying empty**.
+  before S3), width thresholds pinned to the five tier edges and heights to the
+  one (460, the landscape turn bar — added in S8d, when the check learned about
+  the height axis), size cap 1.6 MB (file now 1.43 MB with fonts embedded),
+  external allowlist **empty and staying empty**.
 - Both items deferred out of S6a and S6b are closed in S6c: the turn bar is
   opaque at its top edge, and above the phone tier the chamber legend drops the
   seat counts the direct labels already carry (it keeps the party names and the

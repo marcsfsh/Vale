@@ -7143,7 +7143,12 @@ function renderTabs() {
  * Blocs are laid out left to right by each party's `order` field, which is the
  * seating order of the chamber, not the order they happen to appear in a table.
  */
-function hemiMap(seatsObj, total, o) {
+/* No `total` parameter: it was declared, never read, and promised a guarantee
+   the body does not make — the arc is drawn from the sum of `seatsObj`, so a
+   roll that does not total its constitutional size draws a silently smaller
+   chamber. The guarantee now lives in tools/chamber.js, which asserts each
+   roll sums to CFG.seats / CFG.senate. */
+function hemiMap(seatsObj, o) {
   var order = PARTIES.slice().sort(function (a, b) { return a.order - b.order; });
   var blocs = [];
   order.forEach(function (p) {
@@ -7293,11 +7298,11 @@ function benchMap() {
    the tier's max-height does the rest: the Assembly's seats render about 45%
    larger than before on a desktop. */
 function lowerMap() {
-  return hemiMap(S.seats, CFG.seats, { rows:20, cx:258, cy:236, r0:72, dr:6.79, rad:2.3, w:516, h:258,
+  return hemiMap(S.seats, { rows:20, cx:258, cy:236, r0:72, dr:6.79, rad:2.3, w:516, h:258,
     dim: !lowerSits(S), label:'Seating of the National Assembly by party' });
 }
 function senateMap() {
-  return hemiMap(S.upper.seats, CFG.senate, { rows:9, cx:258, cy:222, r0:74, dr:14.1, rad:4.4, w:516, h:246,
+  return hemiMap(S.upper.seats, { rows:9, cx:258, cy:222, r0:74, dr:14.1, rad:4.4, w:516, h:246,
     dim:false, font:11, label:'Seating of the National Senate by party' });
 }
 
@@ -8389,7 +8394,7 @@ function saveDialog() {
   showSheet(
     '<div class="kicker">Government Papers</div><h2 id="sheetTitle">Save, export or restore</h2>' +
     '<p>The game autosaves on this device. You can also download a portable government file or paste one from another browser.</p>' +
-    '<p class="note" data-seed="1">Campaign seed <b style="font-family:var(--font-n);color:var(--brass);letter-spacing:.08em">' + esc(seedText(S.seed)) + '</b> — every event, election and accident in this campaign follows from it. The same seed and the same decisions give the same republic.</p>' +
+    '<p class="note" data-seed="1">Campaign seed <b style="font-family:var(--font-n);color:var(--brass);letter-spacing:.08em">' + esc(seedText(S.seed)) + '</b> — every event, election and accident in this campaign follows from it. The same seed and the same choices, in the same order, give the same republic.</p>' +
     '<textarea id="saveBox">' + esc(JSON.stringify(S)) + '</textarea>' +
     '<div class="choices"><button class="choice" data-copy-save="1">Copy the government file<small>Copies the JSON above to the clipboard.</small></button>' +
     '<button class="choice" data-download-save="1">Download a portable save<small>A dated .json file you can keep anywhere.</small></button>' +
@@ -11594,7 +11599,7 @@ var startScreen = function () {
     '<div data-setup-advanced="1"></div></details>' +
     '<div class="setup-summary"><span>Leading the <b>' + esc(PARTY[s.party].name) + '</b></span><span>Opening: <b>' + esc(sc.name) + '</b></span><span>Until <b>' + (CFG.startYear + (V6_LENGTHS[s.length] || V6_LENGTHS.epic).years) + '</b></span><span><b>' + esc(DIFFS[s.diff].name) + '</b></span>' +
     '<span>Seed <input data-setup-seed="1" type="text" inputmode="latin" spellcheck="false" maxlength="8" placeholder="any" value="' + esc(s.seed || '') + '" style="width:9ch;font-family:var(--font-n);letter-spacing:.08em;text-transform:uppercase" aria-label="Campaign seed, eight hex digits, blank for a fresh one"></span></div>' +
-    '<p class="note">Leave the seed blank for a republic nobody has governed. Enter one you have kept and the same events, elections and accidents follow in the same order — the same seed and the same decisions give the same republic.</p>' +
+    '<p class="note">Leave the seed blank for a republic nobody has governed. Enter one you have kept and the same events, elections and accidents follow — the same seed and the same choices, in the same order, give the same republic.</p>' +
     '<div class="choices" style="margin-top:12px"><button class="choice" data-setup-begin="1"><b>Begin the government</b><small>' + esc(sc.standing(s.party)) + ' Then choose how you will exercise power.</small></button></div>';
   showSheet(html, function (node) {
     var keep = document.getElementById('sheet') ? document.getElementById('sheet').scrollTop : 0;
