@@ -54,7 +54,13 @@ body{
   line-height:1.5;
   -webkit-font-smoothing:antialiased;
 }
-#app{max-width:1180px;margin:0 auto;padding:0 14px 90px}
+#app{max-width:var(--app-max);margin:0 auto;padding:0 14px 90px}
+/* Three tiers, and only three: phone <=760, tablet 761-1179, desktop
+   >=1180. Every width query in this file resolves to one of those
+   boundaries (420 is the one legitimate small-phone refinement).
+   Desktop uses the window instead of sitting in a 1180px column. */
+:root{--app-max:1180px;--rail:320px}
+@media(min-width:1180px){:root{--app-max:1440px;--rail:340px}}
 button{font-family:var(--font-u);cursor:pointer}
 button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
@@ -99,8 +105,13 @@ nav.tabs button:hover{color:var(--ivory)}
 nav.tabs button[aria-current="true"]{color:var(--party);border-bottom-color:var(--party)}
 
 /* ---------- layout ---------- */
-.grid{display:grid;grid-template-columns:1fr 320px;gap:22px;align-items:start}
-@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) var(--rail);gap:22px;align-items:start}
+/* Tablet is its own tier, not a narrow desktop: the main column takes
+   the full width and the rail becomes a two-up row beneath it, which
+   is what 761-1179 has room for. Phone stacks everything. */
+@media(max-width:1179px){.grid{grid-template-columns:minmax(0,1fr)}
+  .grid > div:last-child:not(:only-child){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}}
+@media(max-width:760px){.grid > div:last-child:not(:only-child){grid-template-columns:minmax(0,1fr);gap:0}}
 .panel{border:1px solid rgba(191,161,78,.22);background:linear-gradient(180deg,rgba(38,48,42,.55),rgba(20,26,23,.55));padding:16px;margin-bottom:18px}
 .panel > h2, .ttl{
   font-family:var(--font-u);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
@@ -183,7 +194,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   border-top:2px solid var(--party);
   padding:10px 14px;
 }
-.turnbar .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.turnbar .in{max-width:var(--app-max);margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .turnbar .date{font-family:var(--font-d);font-size:18px;letter-spacing:.1em}
 .turnbar .hint{font-family:var(--font-u);font-size:12px;color:var(--slate);letter-spacing:.06em}
 .turnbar .sp{margin-left:auto}
