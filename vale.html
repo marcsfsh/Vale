@@ -131,6 +131,10 @@ svg.hemi{width:100%;height:auto;max-height:340px;display:block}
 @media(min-width:1180px){svg.hemi{max-height:460px}}
 .seatlegend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:8px}
 .leg{display:flex;align-items:center;gap:6px;font-family:var(--font-u);font-size:12px}
+.leg .n{font-family:var(--font-n);font-style:normal;font-variant-numeric:tabular-nums;color:var(--ivory-dim)}
+/* Above the phone tier the chamber names every bloc on the arc, so the legend
+   drops the seat counts rather than printing all seven of them twice. */
+@media(min-width:761px){.seatlegend .leg .n{display:none}}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .compbar{display:flex;height:12px;border:1px solid rgba(191,161,78,.25);overflow:hidden;margin-top:8px}
 .compbar span{display:block;height:100%}
@@ -193,7 +197,9 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 /* ---------- turn bar ---------- */
 .turnbar{
   position:fixed;left:0;right:0;bottom:0;z-index:40;
-  background:linear-gradient(180deg,rgba(14,18,15,.86),var(--ink));
+  /* Opaque at the top edge. At .86 the page's own text showed through the bar
+     on phones, where content runs right up under it. */
+  background:linear-gradient(180deg,var(--ink),var(--ink));
   border-top:2px solid var(--party);
   padding:10px 14px;
 }
@@ -7129,8 +7135,12 @@ function hemiMap(seatsObj, total, o) {
 
 function legendFor(seatsObj) {
   return PARTIES.slice().sort(function (a, b) { return a.order - b.order; }).map(function (p) {
-    return '<span class="leg"><span class="dot" style="background:' + p.color + '"></span>' + esc(p.short) + ' ' +
-      (seatsObj[p.id] || 0) + (S.banned[p.id] ? ' (banned)' : '') + '</span>';
+    /* The count is wrapped so the wider tiers can drop it: there the chamber
+       labels each bloc on the arc, and repeating all seven numbers 40px below
+       is noise. The phone hides those labels, so there the legend keeps them.
+       The party name and its banned state are never redundant. */
+    return '<span class="leg"><span class="dot" style="background:' + p.color + '"></span>' + esc(p.short) +
+      '<i class="n"> ' + (seatsObj[p.id] || 0) + '</i>' + (S.banned[p.id] ? ' (banned)' : '') + '</span>';
   }).join('');
 }
 
@@ -8370,7 +8380,9 @@ render();
   .endorsement{display:inline-flex;align-items:center;gap:5px;color:var(--ok);font:600 11px var(--font-u);text-transform:uppercase;letter-spacing:.08em}
   .poll-wrap{overflow:auto;border:1px solid rgba(191,161,78,.16);background:rgba(0,0,0,.18);padding:8px}
   .poll-chart{display:block;width:100%;min-width:520px;height:auto}
-  .poll-chart text{font:10px var(--font-u);fill:var(--slate)}
+  .poll-chart text{font:10px var(--font-u)}   /* fill is NOT set here: a CSS fill beats a
+    presentation attribute, so a rule on `text` silently greys out every series
+    label the chart colours by attribute. Axis furniture takes its fill from .ax */
   .region-target{display:flex;align-items:center;gap:8px;justify-content:space-between;border-bottom:1px solid rgba(191,161,78,.12);padding:7px 0}
   .region-target:last-child{border-bottom:0}
   .target-dots{display:flex;gap:3px}.target-dots i{width:14px;height:6px;border:1px solid rgba(191,161,78,.25);background:rgba(255,255,255,.06)}
@@ -8934,11 +8946,101 @@ function viewInterests(){
   var influence=PV5_INTERESTS.reduce(function(n,g){return n+S.interests[g.id].influence;},0),endorsed=PV5_INTERESTS.filter(function(g){return S.interests[g.id].endorsement;}).length;
   return '<div class="command-deck"><div class="eyebrow">Organised society</div><div class="brief-head"><div><h2>Votes Are Counted. Influence Is Negotiated.</h2><p>Eight permanent organisations now pursue their own access, policy demands and endorsements. Their relationship feeds the public bloc they organise; their endorsement feeds the campaign.</p></div><div class="headline"><div class="eyebrow">Balance of influence</div><b>'+influence+' combined influence</b><span>'+endorsed+' current endorsement'+(endorsed===1?'':'s')+' · integrity '+Math.round(100-S.ind.corruption)+'</span></div></div></div><div class="grid"><div><div class="panel"><h2>National Organisations</h2><div class="interest-grid">'+cards+'</div></div></div><div>'+issuePanel()+politicalInboxPanel(3)+logPanel()+'</div></div>';
 }
+/* Push labels that want the same height apart until none overlap, keeping every
+   one inside the box and as near its true value as the crowding allows. Seven
+   parties polling within a few points of each other all want the same pixel;
+   without this the right-hand column is an unreadable pile, and with it the
+   reader gets the current number for every line without going to a legend. */
+function spreadLabels(items, gap, lo, hi) {
+  items.sort(function (a, b) { return a.y - b.y; });
+  var i;
+  for (i = 1; i < items.length; i++) {
+    if (items[i].y - items[i - 1].y < gap) items[i].y = items[i - 1].y + gap;
+  }
+  // If that ran the stack off the bottom, walk back up from the last one.
+  if (items.length && items[items.length - 1].y > hi) {
+    items[items.length - 1].y = hi;
+    for (i = items.length - 2; i >= 0; i--) {
+      if (items[i + 1].y - items[i].y < gap) items[i].y = items[i + 1].y - gap;
+    }
+  }
+  for (i = 0; i < items.length; i++) items[i].y = Math.max(lo, items[i].y);
+  return items;
+}
+
+/* A line chart in the house vocabulary, shared by the polling trend and the
+   long record: a faint grid, round-jointed lines, and — the part that does the
+   work — every series ending in a dot and its CURRENT VALUE, set in the series'
+   own colour. The last number is the one the reader came for, so it is on the
+   chart rather than implied by a line's height against an axis.
+     series: [{ name, short, color, values:[0..1], emphasis }]
+     xLabels: strings, one per sample (blanks are skipped) */
+function lineChart(o) {
+  var w = o.w || 720, h = o.h || 260, padL = 40, padR = o.padR || 92, padT = 16, padB = 30;
+  var n = o.series.length ? o.series[0].values.length : 0;
+  if (n < 2) return '';
+  var x = function (i) { return padL + (w - padL - padR) * (i / (n - 1)); };
+  var y = function (v) { return h - padB - clamp(v, 0, 1) * (h - padT - padB); };
+
+  var grid = '', g;
+  for (g = 0; g <= 4; g++) {
+    var gy = padT + (h - padT - padB) * g / 4;
+    grid += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (w - padR) + '" y2="' + gy.toFixed(1) +
+      '" stroke="rgba(191,161,78,.10)"/>' +
+      '<text class="ax" x="' + (padL - 7) + '" y="' + (gy + 3.5).toFixed(1) + '" text-anchor="end">' +
+      esc(o.axis(1 - g / 4)) + '</text>';
+  }
+  var ticks = '';
+  (o.xLabels || []).forEach(function (lab, i) {
+    if (!lab) return;
+    ticks += '<text class="ax" x="' + x(i).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="' +
+      (i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle')) + '">' + esc(lab) + '</text>';
+  });
+
+  var lines = '', dots = '', marks = [];
+  o.series.forEach(function (s) {
+    var pts = s.values.map(function (v, i) { return x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join(' ');
+    lines += '<polyline points="' + pts + '" fill="none" stroke="' + s.color +
+      '" stroke-width="' + (s.emphasis ? 3 : 2) + '" stroke-linejoin="round" stroke-linecap="round" opacity="' +
+      (s.emphasis ? '1' : '.86') + '"><title>' + esc(s.name) + '</title></polyline>';
+    var ey = y(s.values[n - 1]);
+    dots += '<circle cx="' + x(n - 1).toFixed(1) + '" cy="' + ey.toFixed(1) + '" r="' + (s.emphasis ? 4 : 3.2) +
+      '" fill="' + s.color + '"/>';
+    marks.push({ y: ey, s: s });
+  });
+
+  /* Where the declutter has moved a label off its own line, a hairline ties the
+     two back together — otherwise a crowded chart hands the reader seven
+     numbers and makes them guess which line each belongs to. */
+  var lx = w - padR + 10;
+  var labels = spreadLabels(marks, 13, padT + 5, h - padB - 2).map(function (m) {
+    var dy = y(m.s.values[n - 1]);
+    var lead = Math.abs(m.y - dy) > 2
+      ? '<path class="lead" d="M ' + (x(n - 1) + 5).toFixed(1) + ' ' + dy.toFixed(1) +
+        ' L ' + (lx - 4) + ' ' + m.y.toFixed(1) + '" fill="none" stroke="' + m.s.color + '"/>'
+      : '';
+    return lead + '<text class="pt" x="' + lx + '" y="' + (m.y + 3.5).toFixed(1) + '" fill="' + m.s.color + '">' +
+      esc(m.s.short) + '<tspan class="pv" dx="5">' + esc(o.value(m.s.values[n - 1], m.s)) + '</tspan></text>';
+  }).join('');
+
+  return '<svg class="' + esc(o.cls) + ' chart-in" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' +
+    esc(o.label) + '">' + grid + ticks + '<g class="ink">' + lines + dots + '</g>' + labels + '</svg>';
+}
+
 function pv5PollChart(){
-  var hist=(S.pollHistory||[]).slice(-18);if(hist.length<2)return '<div class="empty-state">Two completed sessions are needed for a polling trend.</div>';
-  var w=720,h=260,pad=34,max=.34;var grid='';for(var g=0;g<=4;g++){var y=pad+(h-pad*2)*g/4;grid+='<line x1="'+pad+'" y1="'+y+'" x2="'+(w-pad)+'" y2="'+y+'" stroke="rgba(191,161,78,.12)"/><text x="4" y="'+(y+3)+'">'+Math.round((max*(1-g/4))*100)+'%</text>';}
-  var lines=PARTIES.map(function(p){var pts=hist.map(function(row,i){var x=pad+(w-pad*2)*(i/(hist.length-1)),y=h-pad-clamp((row.support[p.id]||0)/max,0,1)*(h-pad*2);return x.toFixed(1)+','+y.toFixed(1);}).join(' ');return '<polyline points="'+pts+'" fill="none" stroke="'+p.color+'" stroke-width="3" opacity=".9"><title>'+esc(p.name)+'</title></polyline>';}).join('');
-  return '<div class="poll-wrap"><svg class="poll-chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Party support across recent sessions">'+grid+lines+'</svg><div class="seatlegend">'+PARTIES.map(function(p){return '<span class="leg"><span class="dot" style="background:'+p.color+'"></span>'+esc(p.short)+'</span>';}).join('')+'</div></div>';
+  var hist=(S.pollHistory||[]).slice(-18);
+  if(hist.length<2)return '<div class="empty-state">Two completed sessions are needed for a polling trend.</div>';
+  var max=.34, me=playParty(S);
+  var series=PARTIES.slice().sort(function(a,b){return a.order-b.order;}).map(function(p){
+    return { name:p.name, short:p.short, color:p.color, emphasis:p.id===me,
+      values:hist.map(function(row){return (row.support[p.id]||0)/max;}) };
+  });
+  var xs=hist.map(function(row,i){ return i===0||i===hist.length-1?('Session '+(S.turn-(hist.length-1-i))):''; });
+  return '<div class="poll-wrap">'+lineChart({
+    cls:'poll-chart', label:'Party support across recent sessions', series:series, xLabels:xs,
+    axis:function(t){return Math.round(max*t*100)+'%';},
+    value:function(v){return (v*max*100).toFixed(1)+'%';}
+  })+'</div>';
 }
 function viewCampaign(){
   var proj=projection(S),next=pv5SessionsToBallot(S),phase=next===null?'Elections suspended':(next<=1?'Ballot campaign':next<=4?'Pre-election campaign':'Between elections');
@@ -9125,7 +9227,25 @@ S=enrichState(S,false);render();
 /* ---------- history chart ---------- */
 .hist-wrap{overflow:auto;border:1px solid rgba(191,161,78,.16);background:rgba(0,0,0,.18);padding:8px}
 .hist-chart{display:block;width:100%;min-width:480px;height:auto}
-.hist-chart text{font:10px var(--font-u);fill:var(--slate)}
+.hist-chart text{font:10px var(--font-u)}   /* see the note on .poll-chart text */
+
+/* ---------- the chart vocabulary, shared by both line charts ----------
+   Axis furniture recedes; the series and their end values carry the ink.
+   Figures use the tabular face so a column of numbers lines up. */
+.poll-chart .ax,.hist-chart .ax{font-family:var(--font-n);font-size:9.5px;letter-spacing:.04em;fill:var(--slate)}
+/* The halo is only there to keep a label off a line that strays into the
+   gutter, so it stays thin: at 2.6 it ate most of a 10.5px glyph and washed the
+   darker party colours out to grey. */
+.poll-chart .pt,.hist-chart .pt{font-family:var(--font-u);font-size:10.5px;font-weight:600;letter-spacing:.05em;
+  paint-order:stroke;stroke:var(--baize);stroke-width:1.4}
+.poll-chart .lead,.hist-chart .lead{stroke-width:1;opacity:.5}
+.poll-chart .pv,.hist-chart .pv{font-family:var(--font-n);font-weight:400;font-variant-numeric:tabular-nums;
+  fill:var(--ivory-dim)}
+@media(prefers-reduced-motion:no-preference){
+  /* Subtle and purposeful: the lines arrive, they do not perform. */
+  .chart-in .ink{animation:chartInk .42s cubic-bezier(.2,.7,.3,1) both}
+}
+@keyframes chartInk{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 .hist-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-family:var(--font-u);font-size:12px}
 .hist-legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
 
@@ -11145,17 +11265,23 @@ viewPolicy = function () { return v6ProgrammesPanel() + v6ViewPolicyV5(); };
 /* ---------- the record ---------- */
 function v6HistoryChart() {
   var h = S.v6.history; if (h.length < 2) return '<div class="empty-state">Two closed sessions are needed before the record can be drawn.</div>';
-  var w = 720, ht = 250, pad = 34, series = [
-    { k:'approval', name:'Approval', color:PARTY[playParty(S)].color }, { k:'unrest', name:'Unrest', color:'#C77B62' }, { k:'economy', name:'Economy', color:'#BFA14E' }, { k:'liberties', name:'Liberties', color:'#6FAE8B' }
-  ];
-  var grid = '';
-  for (var g = 0; g <= 4; g++) { var y = pad + (ht - pad * 2) * g / 4; grid += '<line x1="' + pad + '" y1="' + y + '" x2="' + (w - pad) + '" y2="' + y + '" stroke="rgba(191,161,78,.12)"/><text x="4" y="' + (y + 3) + '">' + Math.round(100 - 25 * g) + '</text>'; }
-  var labels = [0, Math.floor((h.length - 1) / 2), h.length - 1].map(function (i) { var x = pad + (w - pad * 2) * (i / (h.length - 1)); return '<text x="' + x.toFixed(0) + '" y="' + (ht - 8) + '" text-anchor="middle">' + h[i].y + '</text>'; }).join('');
-  var lines = series.map(function (s) {
-    var pts = h.map(function (row, i) { var x = pad + (w - pad * 2) * (i / (h.length - 1)), y = ht - pad - clamp(row[s.k] / 100, 0, 1) * (ht - pad * 2); return x.toFixed(1) + ',' + y.toFixed(1); }).join(' ');
-    return '<polyline points="' + pts + '" fill="none" stroke="' + s.color + '" stroke-width="2.5" opacity=".92"><title>' + esc(s.name) + '</title></polyline>';
-  }).join('');
-  return '<div class="hist-wrap"><svg class="hist-chart" viewBox="0 0 ' + w + ' ' + ht + '" role="img" aria-label="Approval, unrest, economy and liberties over the life of the government">' + grid + lines + labels + '</svg><div class="hist-legend">' + series.map(function (s) { return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>'; }).join('') + '</div></div>';
+  var series = [
+    { k:'approval',  name:'Approval',  short:'Approval',  color:PARTY[playParty(S)].color, emphasis:true },
+    { k:'unrest',    name:'Unrest',    short:'Unrest',    color:'#C77B62' },
+    { k:'economy',   name:'Economy',   short:'Economy',   color:'#BFA14E' },
+    { k:'liberties', name:'Liberties', short:'Liberties', color:'#6FAE8B' }
+  ].map(function (s) {
+    s.values = h.map(function (row) { return clamp(row[s.k] / 100, 0, 1); });
+    return s;
+  });
+  var xs = h.map(function (row, i) { return (i === 0 || i === h.length - 1) ? String(row.y) : ''; });
+  return '<div class="hist-wrap">' + lineChart({
+    cls:'hist-chart', w:720, h:250, padR:118,
+    label:'Approval, unrest, economy and liberties over the life of the government',
+    series:series, xLabels:xs,
+    axis:function (t) { return String(Math.round(t * 100)); },
+    value:function (v) { return String(Math.round(v * 100)); }
+  }) + '</div>';
 }
 function viewRecord() {
   var v = S.v6, st = S.v6.stats, unlocked = Object.keys(v.achievements).length;
@@ -12016,6 +12142,9 @@ function v7Folds() {
       var c = panel.classList.toggle('collapsed');
       h.setAttribute('aria-expanded', String(!c)); h.title = c ? 'Show this panel' : 'Hide this panel';
       prefs[key] = c; clearTimeout(UI.saveTimer); UI.saveTimer = setTimeout(saveAutosave, 300);
+      // A chart inside a collapsed panel has no width to measure, so the pass
+      // that opens it on the present skips it. Run it again once it is visible.
+      if (!c) v7ChartsToEnd();
     }
     h.addEventListener('click', function (e) { if (e.target.closest('button, a')) return; toggle(); });
     h.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
@@ -12054,6 +12183,22 @@ document.getElementById('view').addEventListener('click', function (e) {
   p.classList.toggle('open');
 });
 
+/* ---------- charts open on the present ----------
+   A line chart carries a minimum width, so on a narrow screen its box scrolls
+   sideways — and it starts at the OLDEST session, with the current figures and
+   their end labels off the right edge. The reader wants today first. Opened at
+   the end once per chart, then left alone: render() runs on every action and
+   would otherwise yank a chart the reader had scrolled back through. */
+function v7ChartsToEnd() {
+  UI.chartScroll = UI.chartScroll || {};
+  ['poll-wrap', 'hist-wrap'].forEach(function (cls) {
+    var el = document.querySelector('.' + cls);
+    if (!el || el.scrollWidth <= el.clientWidth + 1) return;
+    el.scrollLeft = UI.chartScroll[cls] === undefined ? el.scrollWidth : UI.chartScroll[cls];
+    el.addEventListener('scroll', function () { UI.chartScroll[cls] = el.scrollLeft; });
+  });
+}
+
 /* ---------- scroll memory and the render pass ---------- */
 var v7RenderBase = render;
 render = function () {
@@ -12063,7 +12208,7 @@ render = function () {
   document.body.classList.toggle('clean', v7Clean());
   document.body.classList.toggle('terse', v7Clean() && !!(S.uiPrefs && S.uiPrefs.terse !== false));
   document.body.classList.toggle('cards-compact', v7CompactOn());
-  v7Folds(); v7Cards();
+  v7Folds(); v7Cards(); v7ChartsToEnd();
   if (changed && prev && !(typeof V6M !== 'undefined' && V6M.locked)) {
     var y = UI.scrollPos && UI.scrollPos[UI.tab];
     if (y !== undefined) window.scrollTo(0, y);
@@ -12418,7 +12563,7 @@ nav.tabs.grouped .pages .nbadge{min-width:15px;height:15px;font-size:9px;margin-
 .swing-row .sn{text-align:right;font-variant-numeric:tabular-nums}
 .swing-row .sn.up{color:var(--ok)}.swing-row .sn.down{color:var(--bad)}
 .region-map{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:8px 0}
-.region-map div{border:1px solid rgba(191,161,78,.18);background:rgba(0,0,0,.22);padding:6px;font-family:var(--font-u);font-size:11px;min-width:0}
+.region-map div{border:1px solid rgba(191,161,78,.18);border-left:3px solid var(--lead,rgba(191,161,78,.18));background:rgba(0,0,0,.22);padding:6px 6px 6px 7px;font-family:var(--font-u);font-size:11px;min-width:0}
 .region-map b{display:block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .region-map span{display:flex;align-items:center;gap:5px;margin-top:2px}
 
@@ -13857,7 +14002,10 @@ showElection = function (r) {
     var d = r.delta[p.id] || 0, w = Math.round(Math.abs(d) / maxD * 50);
     return '<div class="swing-row"><span>' + esc(p.short) + '</span><span class="sbar"><i style="' + (d >= 0 ? 'left:50%' : 'right:50%') + ';width:' + w + '%;background:' + p.color + '"></i></span><span class="sn ' + (d > 0 ? 'up' : (d < 0 ? 'down' : '')) + '">' + (d > 0 ? '+' : '') + d + '</span></div>';
   }).join('');
-  var map = REGIONS.map(function (rg) { var lead = regionLeadingParty(rg), p = PARTY[lead] || PARTY[S.ruling]; return '<div><b>' + esc(rg.name) + '</b><span><span class="dot" style="background:' + p.color + '"></span>' + esc(p.short) + '</span></div>'; }).join('');
+  // Each region carries its winner as an edge, not only as a dot: the map is
+  // read as a whole first — who holds the country — and only then region by
+  // region, and a 10px dot per tile does not survive that first glance.
+  var map = REGIONS.map(function (rg) { var lead = regionLeadingParty(rg), p = PARTY[lead] || PARTY[S.ruling]; return '<div style="--lead:' + p.color + '"><b>' + esc(rg.name) + '</b><span><span class="dot" style="background:' + p.color + '"></span>' + esc(p.short) + '</span></div>'; }).join('');
   var wrap = document.createElement('div');
   wrap.innerHTML = '<div class="subhead">Seats won and lost</div><div class="swing-list">' + rows + '</div><div class="subhead">The map at the close of the count</div><div class="region-map">' + map + '</div>';
   var tw = table.closest('.tscroll') || table; tw.parentNode.insertBefore(wrap, tw.nextSibling);

@@ -4,7 +4,14 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S3 — seeded dice** (PR #7). All 93 `Math.random()` sites route through one
+**S6c — the chart vocabulary** (PR #8). Both line charts rebuilt on one shared
+helper: every series now ends in its current value, in its own colour, with
+leader lines where the declutter moved a label. Narrow screens open a chart on
+the present instead of the oldest session. The two items deferred out of S6a and
+S6b are closed here — the turn bar is opaque, and the chamber legend no longer
+repeats the seven numbers the direct labels already give.
+
+Previously: **S3 — seeded dice** (PR #7, merged). All 93 `Math.random()` sites route through one
 seeded engine whose state rides the save, so a campaign is reproducible from a
 seed the player can type at setup and read back in the save dialog. Seven
 determinism properties are asserted by `tools/determinism.js`, which found two
@@ -41,9 +48,9 @@ ratchet 10 → 5, which is now its true floor.
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
 | S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
-| S3 seeded PRNG | **in review (PR #7)** | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
+| S6c charts | **in review (PR #8)** | one chart vocabulary, end-value labels, charts open on the present; region tiles carry their winner as an edge |
+| S3 seeded PRNG | **merged** (#7) | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
 | S6b the chamber | **merged** (#6) | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
-| S6c charts + restyle | next | poll/history polylines, the v8 region grid and the trend chart still wear the pre-refresh chart vocabulary; then the per-surface pass |
 | S7 onboarding | pending | setup trim + guided panels |
 | S8 pacing honesty | pending | each length option a complete arc; balance changes go to the user first |
 
@@ -66,11 +73,8 @@ ratchet 10 → 5, which is now its true floor.
   unseeded randomness pinned at 1 call (rand()'s pre-game fallback; was 93
   before S3), width thresholds pinned to the five tier edges, size cap 1.6 MB (file now 1.41 MB
   with fonts embedded), external allowlist **empty and staying empty**.
-- **Found in S6b, deferred to S6c:** on tablet and desktop the chamber's legend
-  now repeats the seven numbers the direct labels already give, within 40px of
-  them. The legend stays for now because it also carries each party's banned
-  state and is the guaranteed-complete listing when a label is skipped; trimming
-  it is a content decision that touches every view calling `legendFor`.
-- **Found in S6a, deferred to S6c:** the turn bar's background is 86% opaque at
-  its top edge, so page content shows faintly through it on phones.
+- Both items deferred out of S6a and S6b are closed in S6c: the turn bar is
+  opaque at its top edge, and above the phone tier the chamber legend drops the
+  seat counts the direct labels already carry (it keeps the party names and the
+  banned state, which are never redundant).
 - The user's decisions of record live in docs/AGREEMENT.md (interview verbatim).

@@ -173,6 +173,31 @@ player actions; cleared every turn.
   on phones. Charts: all inline SVG strings (hemiMap, benchMap, poll/history
   polylines); v8's region map is a div grid.
 
+## The charts (S6c)
+
+Both line charts — the polling trend and the long record — go through one
+`lineChart(o)` helper, so the vocabulary is defined once: a faint grid, round
+joints, and every series ending in a dot plus **its current value, in its own
+colour**. The last number is the one the reader came for; putting it on the
+chart is what retires the hunt back to a legend.
+
+- `spreadLabels(items, gap, lo, hi)` pushes labels that want the same height
+  apart and keeps them in the box. Seven parties polling within a few points all
+  want the same pixel. Where a label has been moved off its line, a hairline
+  leader ties it back — without that a crowded chart hands over seven numbers
+  and makes the reader guess which line each belongs to.
+- **Never set `fill` on a bare `text` rule in a chart's stylesheet.** A CSS fill
+  beats an SVG presentation attribute, so `.poll-chart text{fill:…}` silently
+  greyed out every label the chart was colouring by attribute. Axis furniture
+  takes its fill from `.ax`; series labels keep theirs from the attribute.
+- The label halo is `stroke-width:1.4`. At 2.6 it ate most of a 10.5px glyph and
+  washed the darker party colours out to grey.
+- `v7ChartsToEnd()` opens a sideways-scrolling chart on the **present** rather
+  than the oldest session, once per chart, then remembers where the reader left
+  it (`UI.chartScroll`) — render runs on every action and would otherwise yank a
+  chart someone had scrolled back through. It also runs when a fold opens: a
+  chart inside a collapsed panel has no width to measure.
+
 ## The dice (S3)
 
 Every roll in the game comes from `rand()`, a mulberry32 whose one word of
