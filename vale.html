@@ -2626,7 +2626,7 @@ function warTick(st) {
     risk += Math.max(0, st.ind.tension - 54) * .0075;
     risk += (st.pol.missileForce || 0) * .004 + (st.pol.armsExports || 0) * .003 + (st.pol.protectorates || 0) * .004;
     if (st.ind.military > 78) risk += .01;
-    if (Math.random() < risk) {
+    if (rand() < risk) {
       var worst = null;
       POWERS.forEach(function (p) {
         if (p.kind === 'alliance' || p.kind === 'trade') return;
@@ -2645,7 +2645,7 @@ function warTick(st) {
   w.turns += 1;
   var edge = (st.ind.military - 55) * .05 + (st.ind.technology - 55) * .02 +
     (st.armyLoyalty - 55) * .03 + (relOf(st, 'alliance') - 50) * .02 - (st.ind.corruption - 50) * .02;
-  w.momentum += edge + (Math.random() - .5) * 4;
+  w.momentum += edge + (rand() - .5) * 4;
   var spend = 9 + st.ind.military * .12;
   st.treasury -= spend; w.cost += spend;
   st.ind.economy = c100(st.ind.economy - 1.1);
@@ -2712,11 +2712,79 @@ var TRAITS = [
 ];
 var TRAIT = {}; TRAITS.forEach(function (t) { TRAIT[t.id] = t; });
 
-function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
+/* ==========================================================
+   THE CAMPAIGN'S DICE
+   Every random number in the game comes from here, so a seed
+   plus a list of decisions reproduces a campaign exactly.
+
+   The state lives on S rather than in a closure, and that is
+   load-bearing in three places:
+
+     - it serialises with the save for free, so resuming a
+       campaign resumes its exact stream;
+     - undo restores a snapshot of S, so the dice rewind with
+       everything else instead of drifting out of step;
+     - v6Sandbox runs forecasts against a CLONE of S, so a
+       preview rolls the clone's dice and cannot consume the
+       real campaign's. That isolation is now automatic. The
+       sandbox still swaps Math.random as well, which is belt
+       and braces for any stray call this file grows later.
+
+   mulberry32: one 32-bit word of state, passes the usual
+   smoke tests, and is short enough to read.
+   ========================================================== */
+/* Rolls normally come from the live game, S. RNG_ON overrides that for code
+   which builds or edits a state that is not S yet — newGame and v6NewGame
+   construct a republic whose founding figures, factions and opening news are
+   all rolled BEFORE the object is assigned to S. Without this those rolls came
+   off whatever game happened to be loaded, so two campaigns started from the
+   same seed got the same dice and a different set of party leaders. */
+var RNG_ON = null;
+function rollFor(st, fn) {
+  var prev = RNG_ON;
+  RNG_ON = st;
+  try { return fn(); } finally { RNG_ON = prev; }
+}
+function rand() {
+  var st = RNG_ON || S;
+  // Before a game exists (module init, the throwaway boot state) there is
+  // nothing to be reproducible about, so fall back rather than throw.
+  if (!st) return Math.random();
+  if (st.rngState === undefined || st.rngState === null) st.rngState = (st.seed || 1) | 0;
+  st.rngState = (st.rngState + 0x6D2B79F5) | 0;
+  var t = st.rngState;
+  t = Math.imul(t ^ (t >>> 15), 1 | t);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+/* Seeds are shown to the player, so they are read aloud as eight hex digits
+   rather than as a signed 32-bit integer. */
+function seedText(v) { return ('00000000' + ((v | 0) >>> 0).toString(16).toUpperCase()).slice(-8); }
+function seedFromText(s) {
+  var n = parseInt(String(s || '').replace(/[^0-9A-Fa-f]/g, ''), 16);
+  return isNaN(n) ? 0 : (n | 0);
+}
+/* Set from the setup sheet when the player types a seed, and consumed by the
+   next newGame. It has to be applied BEFORE the opening state is generated:
+   the founding figures, the scenario's variations and the first news are all
+   rolls, so a seed pinned after the game exists reproduces everything except
+   the republic you started with. */
+var SEED_OVERRIDE = null;
+function mintSeed() {
+  // Date.now() alone, deliberately: the one thing that must NOT be seeded is
+  // the choice of seed, and drawing it from the unseeded source would leave a
+  // second call site for the ratchet to carve an exception around.
+  var t = Date.now();
+  var h = (t ^ (t >>> 16)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 0x5BD1E995) | 0;
+  return (h ^ (h >>> 15)) | 0;
+}
+
+function rnd(a) { return a[Math.floor(rand() * a.length)]; }
 function makeName() { return rnd(GIVEN) + ' ' + rnd(SURNAME); }
 function makeFigure(st, pid, minAge) {
-  return { name: makeName(), party: pid, age: (minAge || 42) + Math.floor(Math.random() * 22),
-    trait: rnd(TRAITS).id, since: yearOf(st.turn), loyalty: 45 + Math.floor(Math.random() * 40) };
+  return { name: makeName(), party: pid, age: (minAge || 42) + Math.floor(rand() * 22),
+    trait: rnd(TRAITS).id, since: yearOf(st.turn), loyalty: 45 + Math.floor(rand() * 40) };
 }
 function seedFigures(st) {
   st.figures = { leaders: {}, exec: {}, obits: [] };
@@ -2769,8 +2837,8 @@ function ageFigures(st) {
     var f = rec.f;
     f.age += 1;
     var risk = f.age > 78 ? .16 : (f.age > 70 ? .07 : (f.age > 62 ? .025 : .004));
-    if (Math.random() > risk) return;
-    var died = Math.random() < .45;
+    if (rand() > risk) return;
+    var died = rand() < .45;
     st.figures.obits.unshift({ name:f.name, party:f.party, year:yearOf(st.turn), died:died, trait:f.trait });
     if (st.figures.obits.length > 40) st.figures.obits.pop();
     if (rec.kind === 'leader') {
@@ -2917,13 +2985,13 @@ function extraReview(st) {
   var pending = [];
   for (var k in st.extra) { if (st.extra[k] === 'pending') pending.push(k); }
   if (!pending.length || st.pendingExtra) return;
-  var id = pending[Math.floor(Math.random() * pending.length)];
-  if (Math.random() > .42) return;
+  var id = pending[Math.floor(rand() * pending.length)];
+  if (rand() > .42) return;
   var m = EXTRA_BY[id];
   var friendly = st.court.justices.length ? courtWith(st) / st.court.justices.length : .5;
   var hold = clamp(friendly * 1.3 - (m.tier === 2 ? .38 : .12) + (st.precedents || 0) * .04 +
     (st.acts.courtStripping ? .25 : 0), .04, .96);
-  if (Math.random() < hold) {
+  if (rand() < hold) {
     st.extra[id] = 'upheld';
     st.precedents = (st.precedents || 0) + 1;
     st.capital = clamp(st.capital + 4, -5, capCap(st));
@@ -3308,7 +3376,7 @@ var EVENTS = [
       { l:'Confirm him in office and take a share', s:'Corruption rises, the empire holds.',
         f:function (S) { S.ind.corruption += 7; S.crown -= 8; mood(S, { smallbiz:4, prof:-5 }); } },
       { l:'Recall him to the capital for honours', s:'Costs capital. He may not come.',
-        f:function (S) { S.capital -= 6; if (Math.random() < .55) { S.armyLoyalty += 5; mood(S, { veterans:3 }); }
+        f:function (S) { S.capital -= 6; if (rand() < .55) { S.armyLoyalty += 5; mood(S, { veterans:3 }); }
           else { S.unrest += 9; S.ind.territories -= 4; mood(S, { veterans:-5 }); } } }
     ] }),
   ev({ id:'donative', only:['empire'], w:8, title:'The Guard Expects a Donative',
@@ -3474,7 +3542,7 @@ ev({ id:'movDemand', w:9, title:'The Movement Presents Its Demands',
     ch:[
       { l:'Fight it out', s:'Costs capital. You keep the office or you do not.',
         f:function (S) { S.capital -= 7;
-          if (approval(S) > 40 || Math.random() < .5) { mood(S, { prof:3 }); logIt(S, 'The leadership challenge was seen off.'); }
+          if (approval(S) > 40 || rand() < .5) { mood(S, { prof:3 }); logIt(S, 'The leadership challenge was seen off.'); }
           else { var f = leaderOf(S, S.ruling); S.figures.leaders[S.ruling] = makeFigure(S, S.ruling, 44);
             logIt(S, f.name + ' was replaced by ' + S.figures.leaders[S.ruling].name + ' at the head of the party.');
             chronicle(S, 'A change of leadership in the governing party.'); S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) - .06, -.8, 1); } } },
@@ -3536,85 +3604,116 @@ var UI = { tab:'chamber', polCat:'all', polSearch:'', polView:'all', queue:[], b
 
 function newGame(diff) {
   var d = DIFFS[diff] || DIFFS.normal;
-  var st = {
-    diff: d.key,
-    turn: 1,
-    form: 'federal',
-    ruling: 'lp',
-    partner: 'sd',
-    coalition: ['lp', 'rsf', 'sd'],
-    treasury: d.treasury,
-    debt: d.debt,
-    capital: d.capital,
-    unrest: 20,
-    crown: 58,
-    armyLoyalty: 70,
-    lastElection: 1,
-    revolutionCount: 0,
-    log: [],
-    seen: {},
-    changed: {},
-    recent: [],
-    prev: {},
-    ind: {
-      economy:58, technology:66, agriculture:60, infrastructure:48, poverty:46,
-      education:55, healthcare:52, safety:50, liberties:64, corruption:52,
-      military:76, energy:58, environment:44, tension:52, territories:8
-    },
-    blocs: { labour:56, tech:44, smallbiz:47, prof:54, faith:45, veterans:48, youth:50, seniors:52 },
-    pol: {},
-    exec: { pres:'tvc', vpres:'fp', chan:'sd', vchan:'lp' },
-    cabinet: {},
-    orders: {},
-    court: { size:16, justices: [], seniorLobby:{}, campaign:{}, defied:0 },
-    upper: { exists:true, elected:true, veto:2,
-      seats: { rsf:14, lp:59, sd:50, fp:66, cup:48, tvc:36, pnl:27 } },
-    lower: { exists:true, suspended:false },
-    acts: {},
-    machine: { fp:.63, lp:.25, cup:.11, sd:.09, pnl:-.05, tvc:-.19, rsf:-.60 },
-    gerry:{}, press:{}, pact:null, electoral:'boroughs',
-    extra: {}, precedents: 0, pendingExtra: null,
-    cooldown: {}, uses: {}, agenda: null,
-    apparatus: 0, unity: 60, confidence: null, cordon: {}, inherited: null,
-    playAs: 'lp', agendaShift: { e:0, a:0 }, radicalism: 0, oppYears: 0,
-    peerThreat:-99, lordsDeal:-99,
-    seats: { rsf:65, lp:261, sd:209, fp:254, cup:183, tvc:157, pnl:176 },
-    psupport: { rsf:.050, lp:.200, sd:.160, fp:.195, cup:.140, tvc:.120, pnl:.135 },
-    coopted: {},
-    banned: {},
-    over: null
-  };
-  POLICIES.forEach(function (p) { st.pol[p.id] = 0; });
-  seedFigures(st);
-  seedPowers(st);
-  st.chron = [];
-  st.movements = {}; st.movSeen = {}; st.suppressed = {};
-  var seed = ['fp','cup','fp','sd','fp','cup','lp','fp','sd','cup','tvc','lp','fp','sd','cup','pnl'];
-  for (var q = 0; q < 16; q++) {
-    var pid = seed[q];
-    st.court.justices.push({ party: pid, e: PARTY[pid].home.e, a: PARTY[pid].home.a, since: 2024 - (16 - q) });
-  }
-  st.pol.incomeTax = 2;
-  st.pol.corporateTax = 1;
-  st.pol.salesTax = 1;
-  st.pol.socialSecurity = 2;
-  st.pol.universalHealthcare = 1;
-  st.pol.publicSchools = 2;
-  st.pol.policeFunding = 1;
-  st.pol.defenceBudget = 3;
-  st.pol.carrierProgramme = 1;
-  st.pol.allianceCommitments = 2;
-  st.pol.oilAndGas = 1;
-  st.pol.highways = 1;
-  st.pol.federalGrants = 1;
-  st.pol.veteransCare = 1;
-  st.pol.borderSecurity = 1;
-  return enrichState(st, true);
+  var seed = SEED_OVERRIDE === null ? mintSeed() : SEED_OVERRIDE;
+  SEED_OVERRIDE = null;
+  /* Every roll below belongs to the NEW republic's stream. Until the object
+     is assigned to S, rand() would otherwise read whatever game is currently
+     loaded — which is how two campaigns started from the same seed got the
+     same dice and a different set of founding party leaders. */
+  var dice = { seed: seed, rngState: seed };
+  return rollFor(dice, function () {
+    var st = {
+      diff: d.key,
+      // The campaign's dice. `seed` is what the player is shown and can write
+      // down; `rngState` is the live position in that stream and moves every
+      // roll. Both ride the save, so a resumed campaign resumes mid-stream.
+      seed: seed,
+      rngState: seed,
+      turn: 1,
+      form: 'federal',
+      ruling: 'lp',
+      partner: 'sd',
+      coalition: ['lp', 'rsf', 'sd'],
+      treasury: d.treasury,
+      debt: d.debt,
+      capital: d.capital,
+      unrest: 20,
+      crown: 58,
+      armyLoyalty: 70,
+      lastElection: 1,
+      revolutionCount: 0,
+      log: [],
+      seen: {},
+      changed: {},
+      recent: [],
+      prev: {},
+      ind: {
+        economy:58, technology:66, agriculture:60, infrastructure:48, poverty:46,
+        education:55, healthcare:52, safety:50, liberties:64, corruption:52,
+        military:76, energy:58, environment:44, tension:52, territories:8
+      },
+      blocs: { labour:56, tech:44, smallbiz:47, prof:54, faith:45, veterans:48, youth:50, seniors:52 },
+      pol: {},
+      exec: { pres:'tvc', vpres:'fp', chan:'sd', vchan:'lp' },
+      cabinet: {},
+      orders: {},
+      court: { size:16, justices: [], seniorLobby:{}, campaign:{}, defied:0 },
+      upper: { exists:true, elected:true, veto:2,
+        seats: { rsf:14, lp:59, sd:50, fp:66, cup:48, tvc:36, pnl:27 } },
+      lower: { exists:true, suspended:false },
+      acts: {},
+      machine: { fp:.63, lp:.25, cup:.11, sd:.09, pnl:-.05, tvc:-.19, rsf:-.60 },
+      gerry:{}, press:{}, pact:null, electoral:'boroughs',
+      extra: {}, precedents: 0, pendingExtra: null,
+      cooldown: {}, uses: {}, agenda: null,
+      apparatus: 0, unity: 60, confidence: null, cordon: {}, inherited: null,
+      playAs: 'lp', agendaShift: { e:0, a:0 }, radicalism: 0, oppYears: 0,
+      peerThreat:-99, lordsDeal:-99,
+      seats: { rsf:65, lp:261, sd:209, fp:254, cup:183, tvc:157, pnl:176 },
+      psupport: { rsf:.050, lp:.200, sd:.160, fp:.195, cup:.140, tvc:.120, pnl:.135 },
+      coopted: {},
+      banned: {},
+      over: null
+    };
+    POLICIES.forEach(function (p) { st.pol[p.id] = 0; });
+    seedFigures(st);
+    seedPowers(st);
+    st.chron = [];
+    st.movements = {}; st.movSeen = {}; st.suppressed = {};
+    // Named `seed` until S3. `var` hoists to the top of the enclosing function,
+    // so it shadowed the campaign's numeric seed for the whole body and the
+    // state literal above was built with seed `undefined`.
+    var bench = ['fp','cup','fp','sd','fp','cup','lp','fp','sd','cup','tvc','lp','fp','sd','cup','pnl'];
+    for (var q = 0; q < 16; q++) {
+      var pid = bench[q];
+      st.court.justices.push({ party: pid, e: PARTY[pid].home.e, a: PARTY[pid].home.a, since: 2024 - (16 - q) });
+    }
+    st.pol.incomeTax = 2;
+    st.pol.corporateTax = 1;
+    st.pol.salesTax = 1;
+    st.pol.socialSecurity = 2;
+    st.pol.universalHealthcare = 1;
+    st.pol.publicSchools = 2;
+    st.pol.policeFunding = 1;
+    st.pol.defenceBudget = 3;
+    st.pol.carrierProgramme = 1;
+    st.pol.allianceCommitments = 2;
+    st.pol.oilAndGas = 1;
+    st.pol.highways = 1;
+    st.pol.federalGrants = 1;
+    st.pol.veteransCare = 1;
+    st.pol.borderSecurity = 1;
+    var out = enrichState(st, true);
+    out.rngState = dice.rngState;
+    return out;
+  });
 }
 
 function enrichState(st, fresh) {
   if (!st) return st;
   st.enrichVersion = ENRICH_VERSION;
+
+  /* A save written before the dice were seeded has no stream to resume. Rather
+     than refuse it — the policy is that breaks are loud, not that saves are
+     brittle — it is given a seed here and the player is told once, because the
+     alternative is a campaign that silently claims to be reproducible from a
+     point it is not. UI.seedMinted is transient and never serialised. */
+  if (st.seed === undefined || st.seed === null) {
+    st.seed = mintSeed();
+    st.rngState = st.seed;
+    if (!fresh && st.started) UI.seedMinted = true;
+  }
+  if (st.rngState === undefined || st.rngState === null) st.rngState = st.seed | 0;
   if (st.started === undefined) st.started = !fresh;
   if (st.doctrine === undefined) st.doctrine = fresh ? null : 'operator';
   st.partyRel = st.partyRel || {};
@@ -3764,15 +3863,15 @@ function macroTick(st) {
   var growthTarget = (st.ind.economy - 48) / 17 + (st.ind.technology - 50) / 55 +
     (st.ind.infrastructure - 50) / 80 + stimulus - Math.max(0, m.inflation - 4) * .23 - Math.max(0, st.ind.tension - 55) / 48;
   growthTarget = clamp(growthTarget, -5.5, 7.5);
-  m.growth = clamp(m.growth + (growthTarget - m.growth) * .36 + (Math.random() - .5) * .42, -7, 9);
+  m.growth = clamp(m.growth + (growthTarget - m.growth) * .36 + (rand() - .5) * .42, -7, 9);
 
   var taxHeat = (st.pol.salesTax || 0) * .22 + (st.pol.tariffs || 0) * .28;
   var inflationTarget = 1.8 + Math.max(0, m.growth - 2.2) * .36 + stimulus * .52 + taxHeat +
     Math.max(0, 52 - st.ind.energy) / 18 + (st.war ? 1.4 : 0);
-  m.inflation = clamp(m.inflation + (inflationTarget - m.inflation) * .3 + (Math.random() - .5) * .3, -.5, 18);
+  m.inflation = clamp(m.inflation + (inflationTarget - m.inflation) * .3 + (rand() - .5) * .3, -.5, 18);
 
   var unemploymentTarget = 7.7 - m.growth * .55 - (st.ind.economy - 50) / 19 - (st.ind.infrastructure - 50) / 60;
-  m.unemployment = clamp(m.unemployment + (unemploymentTarget - m.unemployment) * .34 + (Math.random() - .5) * .22, 1.8, 19);
+  m.unemployment = clamp(m.unemployment + (unemploymentTarget - m.unemployment) * .34 + (rand() - .5) * .22, 1.8, 19);
   var inequalityTarget = 55 + (st.ind.poverty - 50) * .38 - (st.pol.wealthTax || 0) * 3 -
     (st.pol.unionRights || 0) * 1.8 + (st.pol.flatTax || 0) * 3 + (st.pol.privatisation || 0) * 1.4;
   m.inequality = c100(m.inequality + (inequalityTarget - m.inequality) * .18);
@@ -3807,7 +3906,7 @@ function issueTick(st) {
     var target = 25 + issueValue(st, i) * .62;
     var active = st.bills.some(function (b) { return b.stage !== 'failed' && b.stage !== 'passed' && POL[b.policy] && i.cats.indexOf(POL[b.policy].cat) >= 0; });
     if (active) target += 10;
-    st.salience[i.id] = c100(st.salience[i.id] + (target - st.salience[i.id]) * .28 + (Math.random() - .5) * 3);
+    st.salience[i.id] = c100(st.salience[i.id] + (target - st.salience[i.id]) * .28 + (rand() - .5) * 3);
   });
 }
 
@@ -3826,11 +3925,11 @@ function regionTick(st) {
     var q = st.regions[r.id];
     var urbanTech = (r.urban - 50) / 100 * (st.ind.technology - 50) * .18;
     var prosperityTarget = 42 + st.ind.economy * .34 + st.ind.infrastructure * .13 + urbanTech - st.macro.unemployment * .65;
-    q.prosperity = c100(q.prosperity + (prosperityTarget - q.prosperity) * .16 + (Math.random() - .5) * 1.6);
+    q.prosperity = c100(q.prosperity + (prosperityTarget - q.prosperity) * .16 + (rand() - .5) * 1.6);
     var servicesTarget = (st.ind.education + st.ind.healthcare + st.ind.infrastructure) / 3 + (q.attention || 0) * 4;
     q.services = c100(q.services + (servicesTarget - q.services) * .13);
     var orderTarget = st.ind.safety - st.unrest * .18 + (r.id === 'marches' ? st.ind.military * .12 : 0);
-    q.order = c100(q.order + (orderTarget - q.order) * .19 + (Math.random() - .5));
+    q.order = c100(q.order + (orderTarget - q.order) * .19 + (rand() - .5));
     var federalTarget = st.crown + (q.services - 50) * .2 + (q.prosperity - 50) * .12 -
       ((st.pol.federalPreemption || 0) * 4) + ((st.pol.federalGrants || 0) * 2);
     q.federal = c100(q.federal + (federalTarget - q.federal) * .14);
@@ -4060,13 +4159,13 @@ function advanceBills(st) {
     while (loops-- > 0 && st.bills.indexOf(bill) >= 0) {
       var f = billForecast(st, bill), roll;
       if (bill.stage === 'committee') {
-        roll = f.committee + (Math.random() - .5) * 14;
+        roll = f.committee + (rand() - .5) * 14;
         if (st.diff === 'easy') roll = Math.max(72, roll);
         if (roll < 43) { failBill(st, bill, 'committee', roll); break; }
         bill.stage = 'assembly'; bill.notes.push('Reported from committee');
         logIt(st, bill.title + ' was reported from committee.');
       } else if (bill.stage === 'assembly') {
-        roll = f.lower + (Math.random() - .5) * 13;
+        roll = f.lower + (rand() - .5) * 13;
         if (st.diff === 'easy') roll = Math.max(68, roll);
         if (roll < 50) { failBill(st, bill, 'Assembly', roll); break; }
         bill.assemblyVote = roll;
@@ -4074,7 +4173,7 @@ function advanceBills(st) {
         bill.stage = 'senate'; bill.notes.push('Passed the Assembly');
         logIt(st, bill.title + ' passed the Assembly with ' + roll.toFixed(0) + ' percent.');
       } else if (bill.stage === 'senate') {
-        roll = f.upper + (Math.random() - .5) * 13;
+        roll = f.upper + (rand() - .5) * 13;
         if (st.diff === 'easy') roll = Math.max(66, roll);
         if (roll >= 50) { bill.senateVote = roll; enactBill(st, bill); break; }
         if (st.upper.veto === 1 && !bill.delayed) {
@@ -4302,7 +4401,7 @@ function politicsTick(st) {
       return;
     }
     var demand = partyDemandPolicy(st, partner);
-    if (demand && Math.random() < .62) {
+    if (demand && rand() < .62) {
       addInbox(st, { type:'coalition_demand', from:partner, policy:demand.policy, dir:demand.dir,
         title:PARTY[partner].short + ' Demands ' + POL[demand.policy].name,
         body:'The coalition partner has made this measure the test of whether its place in government still means anything.' });
@@ -4315,7 +4414,7 @@ function politicsTick(st) {
       title:lowFaction.name + ' Passes a Resolution', body:'The caucus demands ' + lowFaction.demand + ' and wants the leadership on record before conference.' });
     return;
   }
-  if (Math.random() < .35) {
+  if (rand() < .35) {
     addInbox(st, { type:'governors_conference', from:null, title:'The Fifty Governors Call for a Conference',
       body:'They want grants, a clearer division of powers and an answer from the government rather than another departmental circular.' });
     return;
@@ -4618,7 +4717,7 @@ function advanceAgenda(st, dir) {
 
 function agendaEvent(st) {
   var r = radicalOf(st), me = playParty(st);
-  if (r < 45 || Math.random() > pushback(st).split) return null;
+  if (r < 45 || rand() > pushback(st).split) return null;
   return { id:'agendaRevolt', w:0, title:'The Party Will Not Follow You Any Further',
     text:'A bloc of your own members has published a letter saying that the ' + PARTY[me].short +
       ' they joined no longer exists. There are enough of them to matter and they have a candidate.',
@@ -5061,7 +5160,7 @@ function ballot(st, noise) {
       (p.id === st.ruling ? (st.apparatus || 0) * .5 : 0);
     base *= regionPartyFactor(st, p.id);
     if (p.id === st.ruling) base += inc;
-    if (noise) base *= .92 + Math.random() * .16;
+    if (noise) base *= .92 + rand() * .16;
     res[p.id] = Math.max(.001, base); tot += res[p.id];
   });
   PARTIES.forEach(function (p) { res[p.id] = res[p.id] / tot; });
@@ -5203,11 +5302,11 @@ function regimeCycle(st) {
   st.court.justices.sort(function (x, y) { return x.since - y.since; });
   for (var i = 0; i < seats; i++) {
     st.court.justices.shift();
-    st.court.justices.push({ party: st.ruling, e: g.e + (Math.random() - .5) * .3,
-      a: g.a + (Math.random() - .5) * .3, since: yearOf(st.turn) });
+    st.court.justices.push({ party: st.ruling, e: g.e + (rand() - .5) * .3,
+      a: g.a + (rand() - .5) * .3, since: yearOf(st.turn) });
   }
   var lines = RITUAL[st.form] || ['The government confirmed itself in office.'];
-  logIt(st, lines[Math.floor(Math.random() * lines.length)] +
+  logIt(st, lines[Math.floor(rand() * lines.length)] +
     ' ' + seats + ' seats on the court were filled by appointment.');
   st.capital = clamp(st.capital + 2, -5, capCap(st));
   st.unrest = clamp(st.unrest + 2, 0, 110);
@@ -5223,8 +5322,8 @@ function courtElection(st) {
   seats.forEach(function (r) {
     var out = oldest.shift();
     if (out) st.court.justices.splice(st.court.justices.indexOf(out), 1);
-    st.court.justices.push({ party: r.winner, e: ppos(st, r.winner).e + (Math.random() - .5) * .5,
-      a: ppos(st, r.winner).a + (Math.random() - .5) * .5, since: yearOf(st.turn) });
+    st.court.justices.push({ party: r.winner, e: ppos(st, r.winner).e + (rand() - .5) * .5,
+      a: ppos(st, r.winner).a + (rand() - .5) * .5, since: yearOf(st.turn) });
   });
   st.court.seniorLobby = {};
   st.court.campaign = {};
@@ -5276,8 +5375,8 @@ function courtSeat(st) {
     var da = dist2(ppos(st, p.id), ppos(st, A)), db = dist2(ppos(st, p.id), ppos(st, B));
     if (da < db) sa += w * (1 + (db - da)); else sb += w * (1 + (da - db));
   });
-  sa *= (1 + ((st.court.campaign && st.court.campaign[A]) || 0)) * (.86 + Math.random() * .28);
-  sb *= (1 + ((st.court.campaign && st.court.campaign[B]) || 0)) * (.86 + Math.random() * .28);
+  sa *= (1 + ((st.court.campaign && st.court.campaign[A]) || 0)) * (.86 + rand() * .28);
+  sb *= (1 + ((st.court.campaign && st.court.campaign[B]) || 0)) * (.86 + rand() * .28);
   var pt = sa + sb;
   var r3 = { A: 85 * (sa / pt), B: 85 * (sb / pt) };
 
@@ -5342,7 +5441,7 @@ function runElection(st, early) {
       var r = {}, t = 0;
       PARTIES.forEach(function (p) {
         var v = res[p.id] * (1 + ((st.execPush && st.execPush[p.id]) || 0));
-        v *= .78 + Math.random() * .44;
+        v *= .78 + rand() * .44;
         if (p.id === st.exec[office]) v *= 1.18;
         r[p.id] = Math.max(0, v); t += r[p.id];
       });
@@ -5632,10 +5731,10 @@ var ACTIONS = [
     desc:'Signed for in a room with no minutes. It may not come back the way it went out.',
     opts:[
       { label:'Against a foreign network', cost:7,
-        run:function (S) { if (Math.random() < .68) { S.ind.safety += 4; S.ind.tension -= 3; mood(S, { veterans:5 }); logIt(S, 'The operation abroad succeeded and was never reported.'); }
+        run:function (S) { if (rand() < .68) { S.ind.safety += 4; S.ind.tension -= 3; mood(S, { veterans:5 }); logIt(S, 'The operation abroad succeeded and was never reported.'); }
           else { S.ind.tension += 8; S.ind.corruption += 4; S.capital -= 4; mood(S, { prof:-6, youth:-5 }); logIt(S, 'The operation abroad was exposed.'); } } },
       { label:'Against a domestic movement', cost:9,
-        run:function (S) { if (Math.random() < .6) { S.unrest -= 10; S.ind.liberties -= 4; logIt(S, 'The domestic operation broke up the movement.'); }
+        run:function (S) { if (rand() < .6) { S.unrest -= 10; S.ind.liberties -= 4; logIt(S, 'The domestic operation broke up the movement.'); }
           else { S.unrest += 12; S.ind.liberties -= 6; S.ind.corruption += 6; S.capital -= 6; mood(S, { prof:-11, youth:-10 }); logIt(S, 'The domestic operation was exposed and there are photographs.'); } } }
     ] }),
   A({ id:'alert', cat:'Security', name:'Raise the Alert Level', cost:4, money:6, cool:2,
@@ -6141,7 +6240,7 @@ function partyActions(pid) {
       desc:'One stage, two lecterns, ninety minutes. It can go either way and it will be replayed for years.',
       can:function () { return !S.banned[pid] && lowerSits(S); },
       run:function () {
-        if (approval(S) > 52 || Math.random() < .5) {
+        if (approval(S) > 52 || rand() < .5) {
           S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) + .08, -.8, 1);
           S.machine[pid] = clamp((S.machine[pid] || 0) - .06, -.8, 1);
           mood(S, { prof:4, youth:3 });
@@ -6220,7 +6319,7 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
       desc:'Fund the rival inside their party and see whether the leadership survives the year.',
       can:function () { return !S.banned[pid] && pid !== S.ruling; },
       run:function () {
-        if (Math.random() < .6) {
+        if (rand() < .6) {
           var f = leaderOf(S, pid);
           S.figures.leaders[pid] = makeFigure(S, pid, 42);
           S.figures.leaders[pid].loyalty = 60;
@@ -6623,7 +6722,7 @@ function aiGovern(st) {
     });
   }
   if (!cands.length) return;
-  var pick = cands[Math.floor(Math.random() * cands.length)];
+  var pick = cands[Math.floor(rand() * cands.length)];
   var pp = POL[pick.id];
   var bill = sponsorBill(st, pick.id, pick.dir, 'government', upperOn(st) ? 'negotiated' : 'clean', true);
   if (bill) {
@@ -6636,7 +6735,7 @@ function aiGovern(st) {
 function courtReview(st) {
   var gap = courtGap(st);
   if (gap < .5 || !st.recent.length) return;
-  if (Math.random() > (gap - .5) * 1.15) return;
+  if (rand() > (gap - .5) * 1.15) return;
   var cp = courtPos(st);
   var worst = null, worstD = 0;
   st.recent.forEach(function (id) {
@@ -6695,10 +6794,10 @@ function pickEvents() {
     return true;
   });
   var out = [];
-  var n = Math.random() < .55 ? 1 : (Math.random() < .75 ? 2 : 0);
+  var n = rand() < .55 ? 1 : (rand() < .75 ? 2 : 0);
   for (var i = 0; i < n && pool.length; i++) {
     var total = 0; pool.forEach(function (e) { total += e.w; });
-    var r = Math.random() * total, acc = 0, pickIdx = 0;
+    var r = rand() * total, acc = 0, pickIdx = 0;
     for (var j = 0; j < pool.length; j++) { acc += pool[j].w; if (r <= acc) { pickIdx = j; break; } }
     out.push(pool[pickIdx]);
     S.seen[pool[pickIdx].id] = true;
@@ -8173,6 +8272,7 @@ function saveDialog() {
   showSheet(
     '<div class="kicker">Government Papers</div><h2 id="sheetTitle">Save, export or restore</h2>' +
     '<p>The game autosaves on this device. You can also download a portable government file or paste one from another browser.</p>' +
+    '<p class="note" data-seed="1">Campaign seed <b style="font-family:var(--font-n);color:var(--brass);letter-spacing:.08em">' + esc(seedText(S.seed)) + '</b> — every event, election and accident in this campaign follows from it. The same seed and the same decisions give the same republic.</p>' +
     '<textarea id="saveBox">' + esc(JSON.stringify(S)) + '</textarea>' +
     '<div class="choices"><button class="choice" data-copy-save="1">Copy the government file<small>Copies the JSON above to the clipboard.</small></button>' +
     '<button class="choice" data-download-save="1">Download a portable save<small>A dated .json file you can keep anywhere.</small></button>' +
@@ -8368,10 +8468,10 @@ function pv5PortfolioRows() {
 }
 function pv5MakeMinister(st, key, boost) {
   var row=pv5PortfolioRows().filter(function(x){return x.key===key;})[0], pid=row ? st.exec[row.office] : st.ruling;
-  var comp=clamp(48+Math.floor(Math.random()*31)+(boost||0),35,91);
-  var loyalty=clamp(48+Math.floor(Math.random()*37)+(pid===playParty(st)?7:0),28,95);
-  var ambition=clamp(35+Math.floor(Math.random()*55),20,94);
-  var traits=Object.keys(PV5_MINISTER_TRAITS), trait=traits[Math.floor(Math.random()*traits.length)];
+  var comp=clamp(48+Math.floor(rand()*31)+(boost||0),35,91);
+  var loyalty=clamp(48+Math.floor(rand()*37)+(pid===playParty(st)?7:0),28,95);
+  var ambition=clamp(35+Math.floor(rand()*55),20,94);
+  var traits=Object.keys(PV5_MINISTER_TRAITS), trait=traits[Math.floor(rand()*traits.length)];
   return {name:makeName(),party:pid,competence:comp,loyalty:loyalty,ambition:ambition,trait:trait,
     appointed:st.turn,experience:0,exposure:0,briefings:0};
 }
@@ -8443,11 +8543,11 @@ function pv5MinisterTick(st){
   pv5PortfolioRows().forEach(function(row){
     var m=st.ministers[row.key];if(!m||!cabQuality(st,row.key))return;
     m.experience=(m.experience||0)+1;
-    m.competence=clamp(m.competence+(m.competence<72?.35:.12)+(Math.random()-.5)*.5,25,96);
+    m.competence=clamp(m.competence+(m.competence<72?.35:.12)+(rand()-.5)*.5,25,96);
     var partyFit=m.party===st.ruling?5:((st.coalition||[]).indexOf(m.party)>=0?2:-7);
     m.loyalty=clamp(m.loyalty+(55+partyFit-m.loyalty)*.07-(m.ambition-65)*.012,10,98);
     m.exposure=Math.max(0,(m.exposure||0)*.72+(m.trait==='operator'?1.2:0)+(st.ind.corruption-50)/35);
-    if(m.loyalty<22&&Math.random()<.12){
+    if(m.loyalty<22&&rand()<.12){
       addInbox(st,{type:'minister_resignation',minister:row.key,from:m.party,title:m.name+' Offers a Resignation',
         body:'The '+row.title+' says collective responsibility has become impossible and asks whether the letter should be accepted.'});
     }
@@ -8464,21 +8564,21 @@ function pv5NewScandal(st,key,source){
     ['The Missing Brief','A classified paper was carried out of the department and cannot now be accounted for.'],
     ['Appointments for Donors','Three senior appointments appear to have followed contributions to the party fund.']
   ];
-  var t=themes[Math.floor(Math.random()*themes.length)],sev=2+Math.floor(Math.random()*4);
-  st.scandals.unshift({id:'SC'+String(st.scandalSeq++).padStart(3,'0'),minister:key,title:t[0],detail:t[1],severity:sev,heat:30+sev*8,evidence:28+Math.floor(Math.random()*48),status:'active',opened:st.turn,source:source||'press'});
+  var t=themes[Math.floor(rand()*themes.length)],sev=2+Math.floor(rand()*4);
+  st.scandals.unshift({id:'SC'+String(st.scandalSeq++).padStart(3,'0'),minister:key,title:t[0],detail:t[1],severity:sev,heat:30+sev*8,evidence:28+Math.floor(rand()*48),status:'active',opened:st.turn,source:source||'press'});
   addNews(st,'Investigation',m.name+': '+t[0],t[1],'bad');
   logIt(st,'Questions were raised about '+m.name+', '+row.title.toLowerCase()+'.');
 }
 function pv5ScandalTick(st){
   var filled=pv5PortfolioRows().filter(function(r){return st.ministers[r.key]&&cabQuality(st,r.key);});
   var risk=Math.max(0,st.ind.corruption-48)/900+filled.length/2200;
-  if(filled.length&&Math.random()<risk){
+  if(filled.length&&rand()<risk){
     var weighted=filled.slice().sort(function(a,b){return (st.ministers[b.key].exposure||0)-(st.ministers[a.key].exposure||0);});
     pv5NewScandal(st,weighted[0].key,'press');
   }
   st.scandals.forEach(function(sc){
     if(sc.status!=='active')return;
-    sc.heat=clamp(sc.heat+(sc.evidence-45)*.035+Math.random()*3-1,0,100);
+    sc.heat=clamp(sc.heat+(sc.evidence-45)*.035+rand()*3-1,0,100);
     st.capital=clamp(st.capital-sc.severity*.08,-5,capCap(st));
     if(sc.heat>72){st.ind.corruption=c100(st.ind.corruption+.35);st.unrest=clamp(st.unrest+.22,0,110);}
   });
@@ -8509,7 +8609,7 @@ sponsorBill=function(st,policy,dir,owner,strategy,free){
   return b;
 };
 function pv5AiPrivateBill(st){
-  if(!lowerSits(st)||!FORMS[st.form].elections||st.bills.length>=5||Math.random()>.46)return;
+  if(!lowerSits(st)||!FORMS[st.form].elections||st.bills.length>=5||rand()>.46)return;
   var opp=PARTIES.filter(function(p){return(st.coalition||[]).indexOf(p.id)<0&&!st.banned[p.id];})
     .sort(function(a,b){return(st.seats[b.id]||0)-(st.seats[a.id]||0);})[0];
   if(!opp)return;
@@ -8548,8 +8648,8 @@ function pv5InterestTick(st){
     q.access=Math.max(0,(q.access||0)-1.2);
     if(q.endorsement&&q.relation<42){q.endorsement=false;logIt(st,g.name+' withdrew its endorsement.');}
   });
-  if(st.inbox.length<5&&st.turn%3===0&&Math.random()<.62){
-    var g=PV5_INTERESTS.slice().sort(function(a,b){return st.interests[b.id].influence-st.interests[a.id].influence;})[Math.floor(Math.random()*3)];
+  if(st.inbox.length<5&&st.turn%3===0&&rand()<.62){
+    var g=PV5_INTERESTS.slice().sort(function(a,b){return st.interests[b.id].influence-st.interests[a.id].influence;})[Math.floor(rand()*3)];
     var d=pv5InterestDemand(st,g);if(d){
       st.interests[g.id].demand=d;
       addInbox(st,{type:'interest_demand',interest:g.id,policy:d.policy,dir:d.dir,title:g.name+' Requests a Commitment',
@@ -8712,9 +8812,9 @@ function pv5MinisterAction(key,action){
 function pv5ResolveScandal(id,action){
   var sc=S.scandals.filter(function(x){return x.id===id;})[0];if(!sc||sc.status!=='active')return;var m=S.ministers[sc.minister];
   var costs={inquiry:[3,4],dismiss:[2,0],deny:[1,0],cooperate:[4,0]},z=costs[action];if(!pv5Spend(z[0],z[1],'Manage '+sc.title))return;
-  if(action==='inquiry'){sc.evidence=clamp(sc.evidence+(Math.random()-.42)*35,0,100);sc.heat-=12;S.ind.corruption=c100(S.ind.corruption-2);if(sc.evidence<45)sc.status='cleared';}
+  if(action==='inquiry'){sc.evidence=clamp(sc.evidence+(rand()-.42)*35,0,100);sc.heat-=12;S.ind.corruption=c100(S.ind.corruption-2);if(sc.evidence<45)sc.status='cleared';}
   if(action==='dismiss'){if(m){S.cabinet[sc.minister]=0;delete S.ministers[sc.minister];}sc.status='resigned';sc.heat=12;S.ind.corruption=c100(S.ind.corruption-2);S.unrest=Math.max(0,S.unrest-2);}
-  if(action==='deny'){if(Math.random()*100>sc.evidence){sc.status='faded';sc.heat=5;}else{sc.heat=clamp(sc.heat+24,0,100);sc.evidence=clamp(sc.evidence+12,0,100);S.capital-=3;}}
+  if(action==='deny'){if(rand()*100>sc.evidence){sc.status='faded';sc.heat=5;}else{sc.heat=clamp(sc.heat+24,0,100);sc.evidence=clamp(sc.evidence+12,0,100);S.capital-=3;}}
   if(action==='cooperate'){sc.status='admitted';sc.heat=22;S.ind.corruption=c100(S.ind.corruption-4);S.unity=c100(S.unity-3);}
   sc.resolved=S.turn;S.v5Stats.ministerialCrises++;logIt(S,sc.title+': the government chose to '+action+'.');render();
 }
@@ -9064,6 +9164,10 @@ S=enrichState(S,false);render();
 .setup-row button[aria-pressed="true"]{border-color:var(--brass);background:rgba(191,161,78,.12)}
 .setup-summary{border:1px solid rgba(191,161,78,.3);background:rgba(0,0,0,.25);padding:10px 12px;margin-top:12px;font-family:var(--font-u);font-size:12.5px;color:var(--ivory-dim);display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
 .setup-summary b{color:var(--ivory)}
+.setup-summary input{background:rgba(0,0,0,.35);border:1px solid rgba(191,161,78,.32);color:var(--brass);
+  padding:4px 7px;min-height:30px;font-size:12.5px;border-radius:0}
+.setup-summary input::placeholder{color:var(--slate);letter-spacing:.12em}
+.setup-summary input:focus{outline:2px solid var(--brass);outline-offset:1px;border-color:var(--brass)}
 
 /* ---------- verdict ---------- */
 .verdict-grades{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:7px;margin:12px 0}
@@ -9169,7 +9273,7 @@ function v6SetSeats(st, lower, upper) {
 function v6Court(st, list) {
   st.court.justices = [];
   list.forEach(function (pid, q) {
-    st.court.justices.push({ party:pid, e:PARTY[pid].home.e + (Math.random() - .5) * .2, a:PARTY[pid].home.a + (Math.random() - .5) * .2, since:2024 - (16 - q) });
+    st.court.justices.push({ party:pid, e:PARTY[pid].home.e + (rand() - .5) * .2, a:PARTY[pid].home.a + (rand() - .5) * .2, since:2024 - (16 - q) });
   });
 }
 
@@ -9290,24 +9394,29 @@ var V6_SCENARIO = {}; V6_SCENARIOS.forEach(function (s) { V6_SCENARIO[s.id] = s;
 
 function v6NewGame(diff, scenarioId, lengthId, playAs) {
   var st = newGame(diff), sc = V6_SCENARIO[scenarioId] || V6_SCENARIOS[0], len = V6_LENGTHS[lengthId] || V6_LENGTHS.epic;
-  sc.apply(st);
-  st.endYear = CFG.startYear + len.years;
-  st.playAs = playAs || st.ruling;
-  /* Re-seed everything that was derived from the default opening. */
-  st.partyRel = {}; st.factions = {}; st.coalitionDeals = {}; st.promises = []; st.inbox = []; st.inboxArchive = []; st.news = []; st.log = [];
-  st.regions = {}; st.interests = {}; st.ministers = {}; st.cabinet = {}; st.committees = {}; st.campaign = null; st.fiscal = null;
-  st.scandals = []; st.v5History = []; st.pollHistory = []; st.legacy = null; st.chron = []; st.figures = null;
-  if (!st.macro) st.macro = null;
-  seedFigures(st);
-  st.unity = 60; st.agendaShift = { e:0, a:0 }; st.started = false; st.doctrine = null;
-  st.v6 = null;
-  st = enrichState(st, true);
-  st.v6.scenario = sc.id; st.v6.length = lengthId;
-  (sc.log || []).forEach(function (line) { logIt(st, line); });
-  if (sc.news) { st.news = []; addNews(st, sc.news[0], sc.news[1], sc.news[2], 'watch'); }
-  logIt(st, 'You take the leadership of the ' + PARTY[playParty(st)].name + ', ' +
-    (standing(st) === 'leading' ? 'and the government with it.' : (standing(st) === 'junior' ? 'a junior partner in the governing coalition.' : 'in opposition to it.')));
-  return st;
+  /* newGame already rolled this republic into being; everything below re-rolls
+     large parts of it for the chosen scenario, and must draw from the SAME
+     stream rather than from whatever game is still loaded in S. */
+  return rollFor(st, function () {
+    sc.apply(st);
+    st.endYear = CFG.startYear + len.years;
+    st.playAs = playAs || st.ruling;
+    /* Re-seed everything that was derived from the default opening. */
+    st.partyRel = {}; st.factions = {}; st.coalitionDeals = {}; st.promises = []; st.inbox = []; st.inboxArchive = []; st.news = []; st.log = [];
+    st.regions = {}; st.interests = {}; st.ministers = {}; st.cabinet = {}; st.committees = {}; st.campaign = null; st.fiscal = null;
+    st.scandals = []; st.v5History = []; st.pollHistory = []; st.legacy = null; st.chron = []; st.figures = null;
+    if (!st.macro) st.macro = null;
+    seedFigures(st);
+    st.unity = 60; st.agendaShift = { e:0, a:0 }; st.started = false; st.doctrine = null;
+    st.v6 = null;
+    st = enrichState(st, true);
+    st.v6.scenario = sc.id; st.v6.length = lengthId;
+    (sc.log || []).forEach(function (line) { logIt(st, line); });
+    if (sc.news) { st.news = []; addNews(st, sc.news[0], sc.news[1], sc.news[2], 'watch'); }
+    logIt(st, 'You take the leadership of the ' + PARTY[playParty(st)].name + ', ' +
+      (standing(st) === 'leading' ? 'and the government with it.' : (standing(st) === 'junior' ? 'a junior partner in the governing coalition.' : 'in opposition to it.')));
+    return st;
+  });
 }
 
 /* ---------- durable state for the new systems ---------- */
@@ -9357,7 +9466,7 @@ function v6RegionVote(st, r, noise) {
     var v = (st.psupport[p.id] || .01) * v6RegionFit(st, p.id, r);
     if (g && g.party === p.id) v *= 1 + (g.approval - 50) / 160;
     if (g && g.challenge === p.id) v *= 1.08;
-    if (noise) v *= .9 + Math.random() * .2;
+    if (noise) v *= .9 + rand() * .2;
     res[p.id] = v; tot += v;
   });
   PARTIES.forEach(function (p) { res[p.id] = res[p.id] / (tot || 1); });
@@ -9370,9 +9479,9 @@ function v6MakeGovernor(st, r, pid) {
     pid = best || st.ruling;
   }
   var same = pid === playParty(st), allied = !same && (st.coalition || [st.ruling]).indexOf(pid) >= 0 && inPower(st);
-  return { name:makeName(), party:pid, age:46 + Math.floor(Math.random() * 20), since:yearOf(st.turn),
-    standing:clamp(50 + (same ? 12 : (allied ? 4 : -9)) + Math.floor(Math.random() * 12) - 6, 15, 85),
-    approval:48 + Math.floor(Math.random() * 14), challenge:null, terms:1 };
+  return { name:makeName(), party:pid, age:46 + Math.floor(rand() * 20), since:yearOf(st.turn),
+    standing:clamp(50 + (same ? 12 : (allied ? 4 : -9)) + Math.floor(rand() * 12) - 6, 15, 85),
+    approval:48 + Math.floor(rand() * 14), challenge:null, terms:1 };
 }
 function v6GovernorsTick(st) {
   var v = st.v6, co = st.coalition || [st.ruling];
@@ -9387,7 +9496,7 @@ function v6GovernorsTick(st) {
     g.standing = c100(g.standing + (target - g.standing) * .12);
     var fit = 1.1 - dist2(ppos(st, g.party), r.lean) * .2;
     var apTarget = 38 + q.prosperity * .16 + q.order * .12 + q.services * .1 + fit * 8 - Math.max(0, st.unrest - 40) * .12;
-    g.approval = c100(g.approval + (apTarget - g.approval) * .15 + (Math.random() - .5) * 2);
+    g.approval = c100(g.approval + (apTarget - g.approval) * .15 + (rand() - .5) * 2);
     g.age += 1;
     /* Standing with the governor moves federal trust in the region, a little, every session. */
     if (power) q.federal = c100(q.federal + (g.standing - 50) * .03);
@@ -9403,7 +9512,7 @@ function v6GovernorElections(st, early) {
     var res = v6RegionVote(st, r, true), best = null;
     PARTIES.forEach(function (p) { if (!best || res[p.id] > res[best]) best = p.id; });
     if (g.challenge) g.challenge = null;
-    if (best === g.party && g.age < 74 && Math.random() > .18) { g.terms += 1; return; }
+    if (best === g.party && g.age < 74 && rand() > .18) { g.terms += 1; return; }
     var old = g;
     v.governors[r.id] = v6MakeGovernor(st, r, best);
     changed.push({ region:r, from:old, to:v.governors[r.id] });
@@ -9671,7 +9780,7 @@ ageFigures = function (st) {
   if (after !== before) {
     var ob = (st.figures.obits || [])[0];
     var cands = [];
-    var pool = TRAITS.slice().sort(function () { return Math.random() - .5; }).slice(0, 3);
+    var pool = TRAITS.slice().sort(function () { return rand() - .5; }).slice(0, 3);
     pool.forEach(function (t) { var f = makeFigure(st, me, 40); f.trait = t.id; f.loyalty = 70; cands.push(f); });
     st.v6.succession = { previous:before, died:!!(ob && ob.died && ob.name === before.name), candidates:cands, interim:after };
   }
@@ -9737,7 +9846,7 @@ function v6ReferendumTick(st) {
   st.bills.slice().forEach(function (b) {
     if (b.stage !== 'referendum') return;
     if (st.turn < b.due) return;
-    var yes = v6ReferendumForecast(st, b.policy, b.dir) + (b.campaign || 0) + (Math.random() - .5) * 10;
+    var yes = v6ReferendumForecast(st, b.policy, b.dir) + (b.campaign || 0) + (rand() - .5) * 10;
     var p = POL[b.policy];
     if (yes >= 50) {
       b.concessions = 0;
@@ -9936,7 +10045,7 @@ var V6_ARCS = [
       { id:'result', title:function (st, v) { return 'The ' + v6Reg(st, v).name + ' Decides'; }, wait:1,
         text:function (st, v) {
           var q = v6RQ(st, v);
-          var stay = q.federal + (v.toured ? 6 : 0) + (v.grants ? 8 : 0) + (v.compact ? 12 : 0) - (v.forbade ? 10 : 0) - (v.guard ? 8 : 0) + (st.crown - 50) * .3 + (Math.random() - .5) * 8;
+          var stay = q.federal + (v.toured ? 6 : 0) + (v.grants ? 8 : 0) + (v.compact ? 12 : 0) - (v.forbade ? 10 : 0) - (v.guard ? 8 : 0) + (st.crown - 50) * .3 + (rand() - .5) * 8;
           v.stay = Math.round(clamp(stay, 12, 88)); v.left = v.stay < 50;
           return 'The votes are counted. ' + v.stay + ' percent voted to remain in the federation. ' + (v.left ? 'The organisers have declared the ' + v6Reg(st, v).name + ' an autonomous commonwealth and asked for talks on the terms of separation.' : 'The organisers have conceded, for now, and the governor has asked what the capital intends to do about the grievances that got them this far.');
         },
@@ -9953,7 +10062,7 @@ var V6_ARCS = [
     ] },
 
   { id:'greyWinter', name:'The Grey Winter', weight:4,
-    trigger:function (st) { return st.ind.healthcare < 58 || Math.random() < .3; },
+    trigger:function (st) { return st.ind.healthcare < 58 || rand() < .3; },
     phases:[
       { id:'cases', title:'The First Cases',
         text:'A respiratory virus with a long incubation has reached three metros from a port in the Meridian League. The chief medical officer wants powers; the Chancellor wants to know what they cost.',
@@ -10117,7 +10226,7 @@ var V6_ARCS = [
         ], next:'ratify' },
       { id:'ratify', title:'Ratification', wait:2,
         text:function (st, v) {
-          var p = 50 + (v.endorsed ? 18 : 0) + (v.amended ? 6 : 0) - (v.opposed ? 12 : 0) - (v.packed ? 10 : 0) + (st.crown - 50) * .4 + (Math.random() - .5) * 10;
+          var p = 50 + (v.endorsed ? 18 : 0) + (v.amended ? 6 : 0) - (v.opposed ? 12 : 0) - (v.packed ? 10 : 0) + (st.crown - 50) * .4 + (rand() - .5) * 10;
           v.ratified = p >= 50;
           return 'Ratification needed thirty-eight states. ' + (v.ratified ? 'It has them. The amendments take effect at the next session and the convention has dissolved itself.' : 'It fell short by ' + Math.max(1, Math.round((50 - p) / 3)) + '. The convention has adjourned without a date to reconvene.');
         },
@@ -10211,14 +10320,14 @@ function v6ArcsTick(st) {
   var v = st.v6;
   if (v.arcs.active) return;
   if (st.turn - v.arcs.cooldown < 5) return;
-  if (Math.random() > v6ArcChance(st)) return;
+  if (rand() > v6ArcChance(st)) return;
   var pool = V6_ARCS.filter(function (a) {
     if (v.arcs.done[a.id] && st.turn - v.arcs.done[a.id] < 45) return false;
     try { return a.trigger(st); } catch (e) { return false; }
   });
   if (!pool.length) return;
   var total = 0; pool.forEach(function (a) { total += a.weight; });
-  var r = Math.random() * total, pick = pool[0];
+  var r = rand() * total, pick = pool[0];
   for (var i = 0; i < pool.length; i++) { r -= pool[i].weight; if (r <= 0) { pick = pool[i]; break; } }
   v.arcs.active = { id:pick.id, phase:pick.phases[0].id, started:st.turn, due:st.turn, vars:{} };
   if (pick.onStart) pick.onStart(st, v.arcs.active.vars);
@@ -10248,7 +10357,7 @@ function v6ArcEvent(st, arc, phase) {
 /* ---------- dynamic governor events ---------- */
 function v6GovernorEvents(st) {
   var v = st.v6, out = [], co = st.coalition || [st.ruling];
-  if (!inPower(st) || (st.turn - (v.lastGovEvent || -99)) < 4 || Math.random() > .3) return out;
+  if (!inPower(st) || (st.turn - (v.lastGovEvent || -99)) < 4 || rand() > .3) return out;
   var hostile = REGIONS.filter(function (r) { var g = v.governors[r.id]; return g.standing < 32 && co.indexOf(g.party) < 0 && !v.autonomy[r.id]; });
   if (hostile.length) {
     var r = rnd(hostile), g = v.governors[r.id];
@@ -10473,7 +10582,7 @@ var V6_EVENTS = [
       { l:'Throw everything at it', s:'Capital -4, treasury ' + fmc(-4) + '. Your party gains three seats from the largest rival if approval is above 48; loses two otherwise.',
         f:function (S) { S.capital -= 4; S.treasury -= 4; var me = playParty(S), rival = null; PARTIES.forEach(function (q) { if (q.id !== me && !S.banned[q.id] && (!rival || (S.seats[q.id] || 0) > (S.seats[rival] || 0))) rival = q.id; });
           if (approval(S) > 48) { S.seats[me] += 3; S.seats[rival] -= 3; S.machine[me] = clamp((S.machine[me] || 0) + .03, -.8, 1); logIt(S, 'The by-election was held and the ' + PARTY[me].short + ' gained.'); } else { S.seats[me] = Math.max(0, S.seats[me] - 2); S.seats[rival] += 2; logIt(S, 'The by-election was lost.'); } } },
-      { l:'Let the local party run it', s:'Fifty-fifty: one seat either way.', f:function (S) { var me = playParty(S), rival = null; PARTIES.forEach(function (q) { if (q.id !== me && !S.banned[q.id] && (!rival || (S.seats[q.id] || 0) > (S.seats[rival] || 0))) rival = q.id; }); if (Math.random() < .5) { S.seats[me] += 1; S.seats[rival] -= 1; } else { S.seats[me] = Math.max(0, S.seats[me] - 1); S.seats[rival] += 1; } } },
+      { l:'Let the local party run it', s:'Fifty-fifty: one seat either way.', f:function (S) { var me = playParty(S), rival = null; PARTIES.forEach(function (q) { if (q.id !== me && !S.banned[q.id] && (!rival || (S.seats[q.id] || 0) > (S.seats[rival] || 0))) rival = q.id; }); if (rand() < .5) { S.seats[me] += 1; S.seats[rival] -= 1; } else { S.seats[me] = Math.max(0, S.seats[me] - 1); S.seats[rival] += 1; } } },
       { l:'Concede it early', s:'Capital +1, machine -2 percent.', f:function (S) { S.capital += 1; var me = playParty(S); S.machine[me] = clamp((S.machine[me] || 0) - .02, -.8, 1); } }
     ] }),
   ev({ id:'v6defectionsIn', w:5, title:'Members Cross the Floor to You', cond:function (S) { return (S.machine[playParty(S)] || 0) > .22 && lowerOn(S); },
@@ -10508,7 +10617,7 @@ var V6_EVENTS = [
     ch:[
       { l:'Rebuild it now', s:'Treasury ' + fmc(-22) + '. Infrastructure +4, environment +2, the highlands remember it.', f:function (S) { S.treasury -= 22; S.ind.infrastructure += 4; S.ind.environment += 2; S.regions.cassian.federal += 8; mood(S, { faith:3, smallbiz:3 }); } },
       { l:'Drain the reservoir and plan', s:'Treasury ' + fmc(-6) + '. Energy -2, farmers -4.', f:function (S) { S.treasury -= 6; S.ind.energy -= 2; mood(S, { smallbiz:-4 }); } },
-      { l:'Accept the engineers may be wrong', s:'Nothing now. If it fails, everything.', f:function (S) { if (Math.random() < .35) { S.ind.infrastructure -= 6; S.ind.safety -= 4; S.unrest += 10; S.regions.cassian.federal -= 15; mood(S, { faith:-8, smallbiz:-6, prof:-6 }); logIt(S, 'The Cassian dam failed.'); chronicle(S, 'The Cassian dam failed.'); } else logIt(S, 'The Cassian dam held through the season.'); } }
+      { l:'Accept the engineers may be wrong', s:'Nothing now. If it fails, everything.', f:function (S) { if (rand() < .35) { S.ind.infrastructure -= 6; S.ind.safety -= 4; S.unrest += 10; S.regions.cassian.federal -= 15; mood(S, { faith:-8, smallbiz:-6, prof:-6 }); logIt(S, 'The Cassian dam failed.'); chronicle(S, 'The Cassian dam failed.'); } else logIt(S, 'The Cassian dam held through the season.'); } }
     ] }),
   ev({ id:'v6wages', w:6, title:'Real Wages Have Fallen Three Years Running', cond:function (S) { return S.macro.inflation > 4.5 && S.blocs.labour < 50; },
     text:'Prices have outrun pay for three years and the Congress of Labour has published the figures. The metros blame the government and the plains blame the metros.',
@@ -11203,6 +11312,7 @@ var startScreen = function () {
   var diffs = V6_DIFF_ORDER.map(function (k) { var d = DIFFS[k]; return '<button data-setup-diff="' + k + '" aria-pressed="' + (s.diff === k) + '"><b>' + esc(d.name) + ': ' + esc(d.tag) + '</b><small>' + esc(d.blurb) + '</small></button>'; }).join('');
   var html = '<div class="kicker">Republic of Vale, 2024</div><h2 id="sheetTitle">Take a Party and the Years That Follow</h2>' +
     (UI.saveReadError ? '<p class="note" data-save-warning="1" style="color:var(--bad)">A stored save could not be read (' + esc(UI.saveReadError) + '). It has been left untouched' + (auto ? '; an older save is offered below.' : '.') + '</p>' : '') +
+    (UI.seedMinted ? '<p class="note" data-seed-warning="1" style="color:var(--brass)">That save was written before campaigns carried a seed. It will load, and it is reproducible from here on, but its earlier turns cannot be replayed.</p>' : '') +
     (auto ? '<div class="choices" style="margin-bottom:12px"><button class="choice" data-resume="1"><b>Resume the device autosave</b><small>' + esc(dateLabel(auto.turn)) + ' · ' + esc(PARTY[playParty(auto)].name) + ' · ' + esc(FORMS[auto.form].name) + (auto.endYear ? ' · ends ' + auto.endYear : '') + '</small></button></div>' : '') +
     '<p class="start-intro">Vale is a federal republic of six hundred and eighty million people, the first power of its hemisphere, and the most heavily checked constitution ever written: fifty states, two elected houses, four executive offices on staggered terms, sixteen justices nobody appoints, and eight regions with governors of their own. You lead a party. Whether that means you govern depends on the arithmetic, and the arithmetic depends on where you choose to begin.</p>' +
     '<div class="setup-steps"><span class="on">1 · Party</span><span class="on">2 · Opening</span><span class="on">3 · Length</span><span class="on">4 · Difficulty</span></div>' +
@@ -11210,7 +11320,9 @@ var startScreen = function () {
     '<div class="subhead">How the republic stands in 2024</div><div class="scenario-grid">' + scenarios + '</div>' +
     '<div class="subhead">How long the period runs</div><div class="setup-row">' + lengths + '</div>' +
     '<div class="subhead">How hard</div><div class="setup-row">' + diffs + '</div>' +
-    '<div class="setup-summary"><span>Leading the <b>' + esc(PARTY[s.party].name) + '</b></span><span>Opening: <b>' + esc(sc.name) + '</b></span><span>Until <b>' + (CFG.startYear + (V6_LENGTHS[s.length] || V6_LENGTHS.epic).years) + '</b></span><span><b>' + esc(DIFFS[s.diff].name) + '</b></span></div>' +
+    '<div class="setup-summary"><span>Leading the <b>' + esc(PARTY[s.party].name) + '</b></span><span>Opening: <b>' + esc(sc.name) + '</b></span><span>Until <b>' + (CFG.startYear + (V6_LENGTHS[s.length] || V6_LENGTHS.epic).years) + '</b></span><span><b>' + esc(DIFFS[s.diff].name) + '</b></span>' +
+    '<span>Seed <input data-setup-seed="1" type="text" inputmode="latin" spellcheck="false" maxlength="8" placeholder="any" value="' + esc(s.seed || '') + '" style="width:9ch;font-family:var(--font-n);letter-spacing:.08em;text-transform:uppercase" aria-label="Campaign seed, eight hex digits, blank for a fresh one"></span></div>' +
+    '<p class="note">Leave the seed blank for a republic nobody has governed. Enter one you have kept and the same events, elections and accidents follow in the same order — the same seed and the same decisions give the same republic.</p>' +
     '<div class="choices" style="margin-top:12px"><button class="choice" data-setup-begin="1"><b>Begin the government</b><small>' + esc(sc.standing(s.party)) + ' Then choose how you will exercise power.</small></button></div>';
   showSheet(html, function (node) {
     var keep = document.getElementById('sheet') ? document.getElementById('sheet').scrollTop : 0;
@@ -11220,7 +11332,13 @@ var startScreen = function () {
     node.querySelectorAll('[data-setup-scenario]').forEach(function (b) { b.addEventListener('click', function () { s.scenario = b.getAttribute('data-setup-scenario'); redraw(); }); });
     node.querySelectorAll('[data-setup-length]').forEach(function (b) { b.addEventListener('click', function () { s.length = b.getAttribute('data-setup-length'); redraw(); }); });
     node.querySelectorAll('[data-setup-diff]').forEach(function (b) { b.addEventListener('click', function () { s.diff = b.getAttribute('data-setup-diff'); redraw(); }); });
+    var seedBox = node.querySelector('[data-setup-seed]');
+    // Kept on `s` rather than read at click time, because redraw() rebuilds the
+    // sheet on every other setup choice and would otherwise discard the typing.
+    if (seedBox) seedBox.addEventListener('input', function () { s.seed = seedBox.value; });
     node.querySelector('[data-setup-begin]').addEventListener('click', function () {
+      var typed = seedBox ? seedBox.value.replace(/[^0-9A-Fa-f]/g, '') : '';
+      SEED_OVERRIDE = typed ? seedFromText(typed) : null;
       S = v6NewGame(s.diff, s.scenario, s.length, s.party);
       UI.undo = null; UI.tab = 'chamber';
       hideSheet();
@@ -12415,8 +12533,8 @@ v6Previews = function () { return v8PreviewsBase() && !(S && S.v8 && S.v8.rules 
 var v8PickEventsBase = pickEvents;
 pickEvents = function () {
   var out = v8PickEventsBase(), r = v8Rules(S);
-  if (r.events === 'quiet') { if (out.length > 1) out = out.slice(0, 1); else if (out.length && Math.random() < .35) out = []; }
-  else if (r.events === 'eventful' && Math.random() < .5) { var more = v8PickEventsBase(); more.forEach(function (e) { if (out.indexOf(e) < 0) out.push(e); }); }
+  if (r.events === 'quiet') { if (out.length > 1) out = out.slice(0, 1); else if (out.length && rand() < .35) out = []; }
+  else if (r.events === 'eventful' && rand() < .5) { var more = v8PickEventsBase(); more.forEach(function (e) { if (out.indexOf(e) < 0) out.push(e); }); }
   return out;
 };
 var v8ArcChanceBase = v6ArcChance;
@@ -12546,11 +12664,11 @@ function v8WorksTick(st) {
     mood(st, { labour:crash ? .6 : .35 });
     if (crash) { st.ind.corruption = c100(st.ind.corruption + .25); st.unrest = clamp(st.unrest + .15, 0, 110); }
     if (w.region && st.regions[w.region]) st.regions[w.region].attention = (st.regions[w.region].attention || 0) + .5;
-    if (Math.random() < over) {
+    if (rand() < over) {
       q.cost = Math.round(q.cost * 1.12); q.overruns = (q.overruns || 0) + 1; v.stats.overruns++;
       logIt(st, 'The estimate for ' + w.name + ' rose by twelve percent. The contractor blames the ground.');
     }
-    if (st.inbox.length < 6 && Math.random() < .05 + Math.max(0, st.ind.corruption - 50) / 800 && !st.inbox.some(function (i) { return i.type === 'v8_works_variation'; })) {
+    if (st.inbox.length < 6 && rand() < .05 + Math.max(0, st.ind.corruption - 50) / 800 && !st.inbox.some(function (i) { return i.type === 'v8_works_variation'; })) {
       addInbox(st, { type:'v8_works_variation', work:w.id, title:'The ' + w.name + ' Contractor Seeks a Variation',
         body:'The consortium says the specification has changed, the price has not, and the site will stand idle until the ministry signs. Its chairman gave to three parties at the last ballot.' });
     }
@@ -13220,8 +13338,8 @@ var V8_EVENTS = [
   ev({ id:'v8byelection', w:7, title:'The By-Election', elective:true, cond:function (S) { return electionsOn(S) && S.turn > 1; },
     text:'A member has died and the writ is moved in a seat your party held by four hundred votes. The other parties are pouring in organisers. The result will be read as a verdict on everything.',
     ch:[
-      { l:'Throw the machine at it', s:'Capital -3, treasury -2. Wins if the machine and the mood allow; the story follows the result.', f:function (S2) { var me = playParty(S2); S2.capital -= 3; S2.treasury -= 2; var win = (S2.machine[me] || 0) + (approval(S2) - 45) / 100 + Math.random() * .3 > .15; if (win) { mood(S2, { prof:1, youth:1 }); S2.unity = c100((S2.unity || 60) + 4); logIt(S2, 'The by-election was held. The ' + PARTY[me].short + ' kept the seat.'); if (S2.v8) S2.v8.press.nudge.competence = (S2.v8.press.nudge.competence || 0) + 1.2; } else { S2.unity = c100((S2.unity || 60) - 5); logIt(S2, 'The by-election was lost. The seat went to the ' + PARTY[v8Opposition(S2)].short + '.'); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + 1.4; } } },
-      { l:'Let the local party fight it', s:'No cost. A loss is likelier, and a loss is a story.', f:function (S2) { var me = playParty(S2); var win = (S2.machine[me] || 0) + (approval(S2) - 50) / 100 + Math.random() * .3 > .2; if (win) { S2.unity = c100((S2.unity || 60) + 2); logIt(S2, 'The by-election was held and the seat was kept.'); } else { S2.unity = c100((S2.unity || 60) - 4); logIt(S2, 'The by-election was lost.'); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + 1; } } }
+      { l:'Throw the machine at it', s:'Capital -3, treasury -2. Wins if the machine and the mood allow; the story follows the result.', f:function (S2) { var me = playParty(S2); S2.capital -= 3; S2.treasury -= 2; var win = (S2.machine[me] || 0) + (approval(S2) - 45) / 100 + rand() * .3 > .15; if (win) { mood(S2, { prof:1, youth:1 }); S2.unity = c100((S2.unity || 60) + 4); logIt(S2, 'The by-election was held. The ' + PARTY[me].short + ' kept the seat.'); if (S2.v8) S2.v8.press.nudge.competence = (S2.v8.press.nudge.competence || 0) + 1.2; } else { S2.unity = c100((S2.unity || 60) - 5); logIt(S2, 'The by-election was lost. The seat went to the ' + PARTY[v8Opposition(S2)].short + '.'); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + 1.4; } } },
+      { l:'Let the local party fight it', s:'No cost. A loss is likelier, and a loss is a story.', f:function (S2) { var me = playParty(S2); var win = (S2.machine[me] || 0) + (approval(S2) - 50) / 100 + rand() * .3 > .2; if (win) { S2.unity = c100((S2.unity || 60) + 2); logIt(S2, 'The by-election was held and the seat was kept.'); } else { S2.unity = c100((S2.unity || 60) - 4); logIt(S2, 'The by-election was lost.'); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + 1; } } }
     ] }),
   ev({ id:'v8pollShock', w:6, title:'The Poll of Polls', elective:true, cond:function (S) { return electionsOn(S) && approval(S) < 42 && inPower(S); },
     text:'The poll of polls has the government eleven points behind. A cabinet minister has told a columnist that the leader has "until the conference". The conference is in six weeks.',
@@ -13241,7 +13359,7 @@ var V8_EVENTS = [
     text:'The sovereign rating is under review. The agency wants a plan with numbers in it by Friday. The bond desk says a downgrade costs a point on every loan for a decade.',
     ch:[
       { l:'A credible plan: cuts and taxes', s:'Treasury +6, labour -4, seniors -3, the exchanges +5. The rating holds.', f:function (S2) { S2.treasury += 6; mood(S2, { labour:-4, seniors:-3, tech:5, prof:2 }); S2.ind.poverty += 1; } },
-      { l:'A plan with adjectives', s:'Nothing now. The rating may fall.', f:function (S2) { if (Math.random() < .5) { S2.debt += 20; mood(S2, { tech:-4 }); logIt(S2, 'The sovereign rating was cut.'); if (S2.v8) S2.v8.press.nudge.squeeze = (S2.v8.press.nudge.squeeze || 0) + 1; } } },
+      { l:'A plan with adjectives', s:'Nothing now. The rating may fall.', f:function (S2) { if (rand() < .5) { S2.debt += 20; mood(S2, { tech:-4 }); logIt(S2, 'The sovereign rating was cut.'); if (S2.v8) S2.v8.press.nudge.squeeze = (S2.v8.press.nudge.squeeze || 0) + 1; } } },
       { l:'Borrow from the Meridian League instead', s:'Treasury +12, debt +12, relations with Meridian +4, the Alliance -3.', f:function (S2) { S2.treasury += 12; S2.debt += 12; shiftRel(S2, 'meridian', 4); shiftRel(S2, 'alliance', -3); } }
     ] }),
   ev({ id:'v8teachers', w:5, title:'The Teachers\' Ballot', cond:function (S) { return S.ind.education < 52; },
@@ -13444,7 +13562,7 @@ var V8_ARCS = [
           { l:'Seek a vote of confidence from the caucus', s:'Unity +10 and capital +4 if the caucus is with you; unity -8 and capital -5 if it is not.',
             f:function (S2, v) { var me = playParty(S2), ok = factionAverage(S2, me) >= 52 || (v.conceded && factionAverage(S2, me) >= 45); if (ok) { S2.unity = c100((S2.unity || 60) + 10); S2.capital += 4; logIt(S2, 'The caucus gave the leadership its confidence.'); } else { S2.unity = c100((S2.unity || 60) - 8); S2.capital -= 5; logIt(S2, 'The caucus withheld its confidence. The leadership survived on the Speaker\'s count.'); v8Flag(S2, 'resignation'); } } },
           { l:'Announce the succession', s:'A leadership contest follows next session. Unity +3 now.',
-            f:function (S2) { var me = playParty(S2), before = leaderOf(S2, me), cands = []; TRAITS.slice().sort(function () { return Math.random() - .5; }).slice(0, 3).forEach(function (t) { var f = makeFigure(S2, me, 40); f.trait = t.id; f.loyalty = 70; cands.push(f); }); S2.unity = c100((S2.unity || 60) + 3); S2.v6.succession = { previous:before, died:false, candidates:cands, interim:before }; chronicle(S2, before.name + ' announced the succession after the cabinet letter.'); } }
+            f:function (S2) { var me = playParty(S2), before = leaderOf(S2, me), cands = []; TRAITS.slice().sort(function () { return rand() - .5; }).slice(0, 3).forEach(function (t) { var f = makeFigure(S2, me, 40); f.trait = t.id; f.loyalty = 70; cands.push(f); }); S2.unity = c100((S2.unity || 60) + 3); S2.v6.succession = { previous:before, died:false, candidates:cands, interim:before }; chronicle(S2, before.name + ' announced the succession after the cabinet letter.'); } }
         ], next:'aftermath' },
       { id:'aftermath', title:'After the Letter', wait:2,
         text:'The letter is history and the party is still in office. The question is what kind of party it is now.',
@@ -14192,9 +14310,9 @@ function v9Widen(id, extra, firstLabel) {
 
   v9Widen('covert', [
     { label:'Against a hostile power\u2019s proxies', cost:8, tip:'Arm and fund whoever is fighting the power you like least. Relations with it fall either way.',
-      run:function (S2) { var worst = null; POWERS.forEach(function (p) { if (p.kind === 'alliance' || p.kind === 'trade') return; if (!worst || relOf(S2, p.id) < relOf(S2, worst)) worst = p.id; }); if (worst) shiftRel(S2, worst, -7); if (Math.random() < .65) { S2.ind.tension = c100(S2.ind.tension + 2); S2.ind.military = c100(S2.ind.military + 2); mood(S2, { veterans:5 }); logIt(S2, 'The proxies were armed and the operation held.'); } else { S2.ind.tension = c100(S2.ind.tension + 7); S2.ind.corruption = c100(S2.ind.corruption + 3); mood(S2, { prof:-5, youth:-4 }); logIt(S2, 'The proxy operation was exposed in a foreign parliament.'); } } },
+      run:function (S2) { var worst = null; POWERS.forEach(function (p) { if (p.kind === 'alliance' || p.kind === 'trade') return; if (!worst || relOf(S2, p.id) < relOf(S2, worst)) worst = p.id; }); if (worst) shiftRel(S2, worst, -7); if (rand() < .65) { S2.ind.tension = c100(S2.ind.tension + 2); S2.ind.military = c100(S2.ind.military + 2); mood(S2, { veterans:5 }); logIt(S2, 'The proxies were armed and the operation held.'); } else { S2.ind.tension = c100(S2.ind.tension + 7); S2.ind.corruption = c100(S2.ind.corruption + 3); mood(S2, { prof:-5, youth:-4 }); logIt(S2, 'The proxy operation was exposed in a foreign parliament.'); } } },
     { label:'A rescue operation', cost:6, tip:'Hostages, a carrier and a night. Usually it works, and the country loves it when it does.',
-      run:function (S2) { if (Math.random() < .72) { mood(S2, { veterans:8, faith:4, seniors:4, labour:3, prof:2 }); v9Cap(S2, 3); S2.ind.tension = c100(S2.ind.tension + 2); logIt(S2, 'The rescue operation succeeded. The hostages were home by morning.'); } else { mood(S2, { veterans:-4, prof:-4, youth:-3 }); v9Cap(S2, -3); S2.ind.tension = c100(S2.ind.tension + 5); S2.armyLoyalty = c100(S2.armyLoyalty - 3); logIt(S2, 'The rescue operation failed on the ground.'); } } }
+      run:function (S2) { if (rand() < .72) { mood(S2, { veterans:8, faith:4, seniors:4, labour:3, prof:2 }); v9Cap(S2, 3); S2.ind.tension = c100(S2.ind.tension + 2); logIt(S2, 'The rescue operation succeeded. The hostages were home by morning.'); } else { mood(S2, { veterans:-4, prof:-4, youth:-3 }); v9Cap(S2, -3); S2.ind.tension = c100(S2.ind.tension + 5); S2.armyLoyalty = c100(S2.armyLoyalty - 3); logIt(S2, 'The rescue operation failed on the ground.'); } } }
   ]);
 
   v9Widen('alert', [
@@ -14729,7 +14847,7 @@ enactBill = function (st, bill) {
   var p = POL[bill.policy], m0 = p ? p.mood : null;
   if (bill.staged && m0) p.mood = scaleObj(m0, .5);
   try { v9EnactBillBase(st, bill); } finally { if (bill.staged && m0) p.mood = m0; }
-  if (bill.staged && bill.dir > 0) { st.recent = st.recent.filter(function (x) { return x !== bill.policy; }); if (Math.random() < .5) st.recent.push(bill.policy); }
+  if (bill.staged && bill.dir > 0) { st.recent = st.recent.filter(function (x) { return x !== bill.policy; }); if (rand() < .5) st.recent.push(bill.policy); }
   if (bill.sunset && st.v9 && bill.dir > 0) { st.v9.sunsets[bill.policy] = st.turn + 10; }
 };
 var v9BillCardBase = billCard;
@@ -14856,14 +14974,14 @@ function v9CaseEvent(st) {
   if (st.turn - st.v9.cases.last < 5) return null;
   var base = .16 + Math.max(0, courtGap(st) - .3) * .2;
   if (st.v8 && st.v8.rules && st.v8.rules.watchfulCourt) base *= 1.5;
-  if (Math.random() > base) return null;
+  if (rand() > base) return null;
   var pool = v9CasePool(st); if (!pool.length) return null;
-  var c = pool[Math.floor(Math.random() * pool.length)];
+  var c = pool[Math.floor(rand() * pool.length)];
   st.v9.cases.last = st.turn;
   var p = v9CaseChance(st, c);
   function decide(S2, bonus, label) {
     if (UI.v9Sim) return; /* previews show the certain costs only; the judgment itself is not foreseeable */
-    var won = Math.random() < clamp(p + bonus, .05, .95);
+    var won = rand() < clamp(p + bonus, .05, .95);
     S2.v9.cases.done[c.id] = S2.turn; S2.v9.cases.heard++;
     if (won) { S2.v9.cases.won++; c.win(S2); logIt(S2, c.name + ': ' + c.winLine); addNews(S2, 'From the Court', c.name + ' is decided for the government', c.winLine, 'good'); S2.v9.lastCase = { name:c.name, won:true, turn:S2.turn }; }
     else { S2.v9.cases.lost++; c.lose(S2); logIt(S2, c.name + ': ' + c.loseLine); addNews(S2, 'From the Court', c.name + ' goes against the government', c.loseLine, 'bad'); S2.v9.lastCase = { name:c.name, won:false, turn:S2.turn }; }
@@ -14879,7 +14997,7 @@ function v9CaseEvent(st) {
       { l:'Settle before judgment', s:'Treasury ' + fmc(-8) + ', capital -' + cst(2) + '. No ruling, no precedent, and the question returns in a decade.',
         f:function (S2) { S2.treasury -= 8; S2.capital = clamp(S2.capital - cst(2), -5, capCap(S2)); S2.v9.cases.done[c.id] = S2.turn; S2.ind.corruption = c100(S2.ind.corruption + 1); logIt(S2, c.name + ' was settled before judgment.'); } },
       { l:'Argue it yourself at the bar', s:'Capital -' + cst(2) + '. An orator or a liberal leader adds twenty points; anyone else adds five and risks a humiliation.',
-        f:function (S2) { S2.capital = clamp(S2.capital - cst(2), -5, capCap(S2)); var t = leaderOf(S2, S2.ruling).trait, bonus = (t === 'orator' || t === 'liberal' || t === 'technocrat') ? .2 : .05; if (bonus === .05 && Math.random() < .3) { mood(S2, { prof:-4 }); S2.unity = c100((S2.unity || 60) - 2); } decide(S2, bonus, 'argued by the leader'); } }
+        f:function (S2) { S2.capital = clamp(S2.capital - cst(2), -5, capCap(S2)); var t = leaderOf(S2, S2.ruling).trait, bonus = (t === 'orator' || t === 'liberal' || t === 'technocrat') ? .2 : .05; if (bonus === .05 && rand() < .3) { mood(S2, { prof:-4 }); S2.unity = c100((S2.unity || 60) - 2); } decide(S2, bonus, 'argued by the leader'); } }
     ] };
 }
 
@@ -15115,7 +15233,7 @@ var V9_EVENTS = [
     text:'A private member has proposed that every federal institution from the schools to the carriers carry a chaplaincy paid for by the state. The congregations have filled the galleries and the Constitutional Club has filled the lobby.',
     ch:[
       { l:'Adopt it as a government bill', s:'Faith +9, liberties -3, the professions -5, the young -5, treasury ' + fmc(-4) + '.', f:function (S2) { S2.treasury -= 4; S2.ind.liberties -= 3; mood(S2, { faith:9, seniors:3, prof:-5, youth:-5 }); } },
-      { l:'Allow a free vote', s:'Capital +1, unity -2. It passes or it does not; the government is not blamed either way.', f:function (S2) { S2.capital += 1; S2.unity -= 2; if (Math.random() < .5) { mood(S2, { faith:5, prof:-2 }); logIt(S2, 'The chaplaincy bill passed on a free vote.'); } else { mood(S2, { faith:-3, prof:3 }); logIt(S2, 'The chaplaincy bill failed on a free vote.'); } } },
+      { l:'Allow a free vote', s:'Capital +1, unity -2. It passes or it does not; the government is not blamed either way.', f:function (S2) { S2.capital += 1; S2.unity -= 2; if (rand() < .5) { mood(S2, { faith:5, prof:-2 }); logIt(S2, 'The chaplaincy bill passed on a free vote.'); } else { mood(S2, { faith:-3, prof:3 }); logIt(S2, 'The chaplaincy bill failed on a free vote.'); } } },
       { l:'Oppose it on constitutional grounds', s:'Liberties +2, the professions +5, the young +3, faith -7.', f:function (S2) { S2.ind.liberties += 2; mood(S2, { prof:5, youth:3, faith:-7 }); } }
     ] }),
   ev({ id:'v9portCollapse', w:6, cond:function (S2) { return S2.ind.infrastructure < 50; }, title:'The Somnium Locks Fail',
@@ -15461,7 +15579,7 @@ budget = function (st) {
 var v9CourtReviewBase = courtReview;
 courtReview = function (st) {
   v9CourtReviewBase(st);
-  if (st.v8 && st.v8.rules && st.v8.rules.watchfulCourt && !st.pendingRuling && Math.random() < .5) v9CourtReviewBase(st);
+  if (st.v8 && st.v8.rules && st.v8.rules.watchfulCourt && !st.pendingRuling && rand() < .5) v9CourtReviewBase(st);
 };
 
 /* ==========================================================

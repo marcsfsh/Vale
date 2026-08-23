@@ -4,7 +4,14 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S6b — the chamber** (PR #6). The seat map rebuilt to the design rulings:
+**S3 — seeded dice** (PR #7). All 93 `Math.random()` sites route through one
+seeded engine whose state rides the save, so a campaign is reproducible from a
+seed the player can type at setup and read back in the save dialog. Seven
+determinism properties are asserted by `tools/determinism.js`, which found two
+real bugs in the implementation — construction-time rolls drawn from the
+previous game, and a `var seed` local that hoisted over the campaign seed.
+
+Previously: **S6b — the chamber** (PR #6, merged). The seat map rebuilt to the design rulings:
 aisles between blocs, a direct label on every bloc, seats rimmed in the ground
 colour, and the two invisible party colours lifted along their own hue (RSF
 contrast 1.90 → 2.68 at 0.4° of drift, PNL 1.35 → 2.86 at 7.8°). Seats render
@@ -31,11 +38,11 @@ ratchet 10 → 5, which is now its true floor.
 | S0 agreement + tooling | **merged** (#1) | checks/, tools/, docs/, hook, skill, permissions |
 | S1 correctness | **merged** (#2) | ratchets moved: strict 7/7, stale bindings 0, orphans 10 |
 | S2 chain consolidation | **merged** (#4) | 5 orphans deleted with poison-proofs; 5 'orphans' proved live at boot and kept; ratchet 10→5 (its true floor). Marker/seam consolidation deferred to S6, where the restyle needs the seams |
-| S3 seeded PRNG | pending | one engine, seed in save, loud save-break, exact-value harness tests |
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
 | S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
-| S6b the chamber | **in review (PR #6)** | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
+| S3 seeded PRNG | **in review (PR #7)** | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
+| S6b the chamber | **merged** (#6) | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
 | S6c charts + restyle | next | poll/history polylines, the v8 region grid and the trend chart still wear the pre-refresh chart vocabulary; then the per-surface pass |
 | S7 onboarding | pending | setup trim + guided panels |
 | S8 pacing honesty | pending | each length option a complete arc; balance changes go to the user first |
@@ -56,7 +63,8 @@ ratchet 10 → 5, which is now its true floor.
   meanwhile: Chromium at the phone viewport (named SKIP in harness output).
 - Checks baselines (`checks/baseline.json`): strict 7/7 and stale bindings 0
   (S1 targets reached and pinned), dead sites max 10 (0 by end of S2),
-  Math.random frozen at 93 (changes in S3), size cap 1.6 MB (file now 1.41 MB
+  unseeded randomness pinned at 1 call (rand()'s pre-game fallback; was 93
+  before S3), width thresholds pinned to the five tier edges, size cap 1.6 MB (file now 1.41 MB
   with fonts embedded), external allowlist **empty and staying empty**.
 - **Found in S6b, deferred to S6c:** on tablet and desktop the chamber's legend
   now repeats the seven numbers the direct labels already give, within 40px of
