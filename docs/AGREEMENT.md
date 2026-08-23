@@ -153,3 +153,33 @@ implements this as vale.html's token system with measured font subsets.
 parliament seats."** The hemicycle is always drawn seat by seat — as the
 game's `hemiMap` already does — never smoothed into arc segments. Binds the
 S6 viz redesign and every future chamber/senate/court display.
+
+**Party-palette ruling (owner, 2026-08-23): "The original color pallet for the
+parties … needs to be intact. The exact color values can shift as needed so
+long as they remain close to the original."** The canonical values are the
+`PARTIES` table's own and are used UNCHANGED — no shift was needed:
+
+| party | colour | contrast on #141A17 |
+|---|---|---|
+| RSF Revolutionary Socialist Front | `#9D0000` | 2.05:1 — rimmed |
+| LP Labor Party | `#FF0000` | 4.41:1 |
+| SD Social Democrats | `#FFA097` | 9.02:1 |
+| FP Federal Party | `#FFFB00` | 16.01:1 |
+| CUP Conservative Union Party | `#03F2FF` | 12.73:1 |
+| TVC Traditional Values Coalition | `#00ABEF` | 6.78:1 |
+| PNL Patriot Nationalist League | `#0000BC` | 1.45:1 — rimmed |
+
+Only `#9D0000` and `#0000BC` fail as dots on a dark ground, and the game
+already solves exactly those two with an ivory rim (`vale.html:11755`) rather
+than a colour change — the refresh keeps that treatment (rim ~45%, giving
+3.5:1). **Legibility is bought with a rim, never with a hue shift.** Lifting
+`#9D0000` toward legibility was measured and rejected: it collapses the
+lightness gap that distinguishes RSF from LP (ΔE 18 → the two reds merge).
+
+Seating order is the `PARTIES` `order` field (RSF, LP, SD, FP, CUP, TVC, PNL),
+which also seats the coalitions contiguously — Popular Front left, Unity Front
+centre, PNL right.
+
+*Implementation note for S6:* the existing rim rule selects on the literal fill
+(`svg.hemi circle[fill="#0000BC"]`) — a silent break if a colour is ever
+retuned. Reimplement it as a class on the circle, not an attribute match.
