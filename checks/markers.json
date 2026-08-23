@@ -1,0 +1,6 @@
+{
+  "_comment": "Adjudicated splice markers that legitimately occur only once in the source. Every other marker literal must appear >=2x (builder + splicer) or checks/run.js fails. Each entry needs a reason. This list ratchets down as consolidation replaces string-splicing with real seams.",
+  "singleOccurrence": {
+    "<tr><td>Debt service</td>": "The ledger builds this row from expRows.push(['Debt service', b.interest]) (~7895) via a generic row renderer, so the literal exists only at the v8 splice (~13508). If the label is renamed, v8Insert's fallback APPENDS the grand-works row at the end of the view (visible misplacement, not silent loss). Eliminated when S2 gives the ledger a real seam."
+  }
+}
