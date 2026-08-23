@@ -223,11 +223,20 @@ function reassignmentSites(text) {
       : `${allowed.size} tier edges [${baseline.widthThresholds.join(', ')}], no off-tier thresholds`);
 }
 
-/* ---- 7. Math.random ratchet ---- */
+/* ---- 7. seeded-randomness ratchet ---- */
+// Determinism is a promise to the player: a seed plus a list of decisions
+// reproduces a campaign. It holds only while every roll comes from rand(), so
+// an unseeded Math.random() anywhere breaks it silently — the campaign still
+// plays, it just stops being replayable.
 {
   const n = (src.match(/Math\.random\(\)/g) || []).length;
-  report('math-random-ratchet', n === baseline.mathRandomCount,
-    `${n} Math.random() sites (baseline ${baseline.mathRandomCount}; changes only with the seeded-PRNG slice)`);
+  const seeded = (src.match(/\brand\(\)/g) || []).length;
+  const engine = /function rand\(\)/.test(src);
+  const ok = n === baseline.mathRandomCount && engine && seeded > 50;
+  report('math-random-ratchet', ok,
+    !engine ? 'the seeded engine rand() is gone — determinism is not enforceable without it'
+      : `${n} Math.random() call(s) (baseline ${baseline.mathRandomCount}), ${seeded} through the seeded engine` +
+        (n === baseline.mathRandomCount ? '' : ' — route the new one through rand()'));
 }
 
 /* ---- 8. size budget ---- */

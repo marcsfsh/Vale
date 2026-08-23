@@ -173,6 +173,36 @@ player actions; cleared every turn.
   on phones. Charts: all inline SVG strings (hemiMap, benchMap, poll/history
   polylines); v8's region map is a div grid.
 
+## The dice (S3)
+
+Every roll in the game comes from `rand()`, a mulberry32 whose one word of
+state lives **on the state object**, not in a closure. That placement does three
+jobs at once and should not be changed casually: the stream serialises with the
+save, undo rewinds it along with everything else (undo restores a snapshot of
+S), and `v6Sandbox` forecasts roll a clone's dice rather than the campaign's,
+because the sandbox already swaps S. The sandbox still swaps the unseeded source
+too, as isolation for any stray call the file grows later.
+
+- `RNG_ON` / `rollFor(st, fn)` redirect rolls to a state that is **not** S yet.
+  `newGame` and `v6NewGame` both need it: they roll the founding figures,
+  factions and opening news before the object is assigned to S, and without the
+  redirect those rolls came off whatever campaign happened to be loaded — two
+  games from one seed got the same dice and different party leaders.
+- A player can type a seed at setup (`SEED_OVERRIDE`, consumed by the next
+  `newGame`) and read it back in the save dialog. It must be applied *before*
+  the opening state is generated; pinning `S.seed` afterwards reproduces
+  everything except the republic you started with.
+- A save with no seed is given one and the player is told once
+  (`UI.seedMinted`, transient). Per the ruling, breaks are loud, not silent.
+- **Never name a local `seed` inside `newGame`.** One already did, and because
+  `var` hoists to the top of the function it shadowed the campaign seed for the
+  whole body: the state literal was built with `seed: undefined`.
+- `node tools/determinism.js` is the proof — seven properties, including that a
+  *different* seed diverges, which a constant-returning engine would otherwise
+  pass. Drive it through the model (`v6Sandbox` + `tickTurn`), not the modal
+  queue: which queued sheets a UI run pumps depends on click interleaving, so a
+  UI-level comparison measures the harness, not the game.
+
 ## The chamber (hemiMap)
 
 The centrepiece, and the one drawing with real arithmetic in it. Rules that
