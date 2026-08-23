@@ -212,7 +212,13 @@ either fixed or adjudicated with a reason.
 *Implementation notes for S6:* (1) the existing rim rule selects on the literal
 fill (`svg.hemi circle[fill="#0000BC"]`) — a silent break if a colour is ever
 retuned; reimplement it as a class on the circle, not an attribute match.
+**Closed in S6b**, and the rule is now an invariant in CLAUDE.md.
 (2) `hemiMap`'s `total` parameter is declared but never read — the map draws
 the sum of the seats object, so a seat table that doesn't total `CFG.seats`
-silently draws a different-sized chamber. (3) Rounding drift is absorbed
-entirely by the outermost row, which can in principle go negative.
+silently draws a different-sized chamber. **Closed in S8d**: the parameter is
+gone, and the guarantee it falsely implied is now an assertion in
+`tools/chamber.js` — the opening roll and the roll after every election must
+total `CFG.seats` / `CFG.senate`. (3) Rounding drift is absorbed entirely by
+the outermost row, which can in principle go negative. **Still open**, and
+still latent: no shipped roll gets near it, and `tools/chamber.js`'s overlap
+assertion is what would catch it if one did.

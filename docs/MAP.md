@@ -325,7 +325,14 @@ The centrepiece, and the one drawing with real arithmetic in it. Rules that
 came out of S6b and should not be relitigated casually:
 
 - **One circle per seat, never an arc segment** (ruled). `tools/chamber.js`
-  asserts the circle count equals the roll.
+  asserts the circle count equals the roll — and, since S8d, that the roll
+  equals the constitution. `hemiMap(seatsObj, o)` draws the SUM of `seatsObj`
+  and nothing else; it used to take a `total` it never read, which read as a
+  promise it does not make. A table short of `CFG.seats` draws a silently
+  smaller chamber, so the check is on the opening roll and on the roll after
+  every election (`runElection` reapportions both houses; its two remainder
+  loops are what hold the total, and removing them is the proof that the
+  assertion fires).
 - Three legibility problems, three separate mechanisms, because an earlier pass
   tried to solve all of them with colour and made things worse — a lit floor cut
   PNL's contrast from 1.42 to 1.10, and free optimisation of the palette turned

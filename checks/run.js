@@ -197,30 +197,75 @@ function reassignmentSites(text) {
 }
 
 /* ---- 6c. breakpoint tiers ---- */
-// Every width threshold in every @media rule must be a tier edge. Six chunks
-// each inventing its own idea of "narrow" is what produced a 761-1179 band
-// wearing the phone's tab strip over a desktop body, and a turn bar that
-// changed its chip count three times inside one tier. The numbers are the
-// design decision; this check just refuses to let a new one arrive quietly.
+// Every width threshold in every @media rule must be a tier edge, and each edge
+// must be used on ONE side only. Six chunks each inventing its own idea of
+// "narrow" is what produced a 761-1179 band wearing the phone's tab strip over
+// a desktop body, and a turn bar that changed its chip count three times inside
+// one tier. The numbers are the design decision; this refuses to let a new one
+// arrive quietly.
+//
+// The first version of this check was a membership test on whatever `(\d+)px`
+// it could find, which left four ways past it: `max-width:1180px` sailed
+// through because 1180 is a legal edge, even though it and `min-width:1180px`
+// both apply at exactly 1180; em/rem widths matched nothing and reported green;
+// media-range syntax `(width >= 900px)` contains neither `min-width:` nor
+// `max-width:` and was invisible; and `max-width:1179.98px` matched the
+// substring `98px`, failing while naming a number that is not in the file.
 {
-  const allowed = new Set(baseline.widthThresholds);
-  const seen = new Map(); // px -> first line
-  const re = /@media([^{]+)/g;
+  const allowed = { width: new Set(baseline.widthThresholds), height: new Set(baseline.heightThresholds || []) };
+  const problems = [];
+  const edges = new Map(); // "axis:px" -> Set of the sides it is used on
+  const re = /@media([^{]*)\{/g;
   let m;
   while ((m = re.exec(src))) {
+    const cond = m[1];
     const line = src.slice(0, m.index).split('\n').length;
-    const w = /(?:min|max)-width:\s*(\d+)px/g;
+    // Range syntax expresses the same decision in a form the tier list cannot
+    // be compared against, so it is refused outright rather than parsed.
+    if (/\(\s*(?:width|height)\s*[<>=]/i.test(cond) || /[<>]=?\s*(?:width|height)\s*[<>]/i.test(cond)) {
+      problems.push(`media-range syntax at line ${line} (${cond.trim().slice(0, 40)}) — write tiers as min-/max- so they can be checked`);
+      continue;
+    }
+    if (/device-(?:width|height)/i.test(cond)) {
+      problems.push(`device-width/height at line ${line} — deprecated, and not governed by the tier list`);
+      continue;
+    }
+    const feat = /(min|max)-(width|height)\s*:\s*([0-9]*\.?[0-9]+)\s*([a-z%]*)/gi;
     let n;
-    while ((n = w.exec(m[1]))) {
-      const px = Number(n[1]);
-      if (allowed.has(px)) continue;
-      if (!seen.has(px)) seen.set(px, line);
+    while ((n = feat.exec(cond))) {
+      const side = n[1].toLowerCase(), axis = n[2].toLowerCase(), value = n[3], unit = (n[4] || '').toLowerCase();
+      if (unit !== 'px') {
+        problems.push(`${side}-${axis}:${value}${unit || ' (no unit)'} at line ${line} — tiers are pinned in px; a relative unit moves with the font size`);
+        continue;
+      }
+      if (!/^\d+$/.test(value)) {
+        problems.push(`fractional threshold ${side}-${axis}:${value}px at line ${line} — tier edges are whole pixels`);
+        continue;
+      }
+      const px = Number(value);
+      if (!allowed[axis].has(px)) {
+        problems.push(`off-tier ${axis} threshold ${px}px at line ${line} — fold it into a tier, or add the number to checks/baseline.json with the case for it`);
+        continue;
+      }
+      const key = axis + ':' + px;
+      if (!edges.has(key)) edges.set(key, new Set());
+      edges.get(key).add(side);
     }
   }
-  const rogue = [...seen].sort((a, b) => a[0] - b[0]).map(([px, line]) => `${px}px (line ${line})`);
-  report('breakpoint-tiers', rogue.length === 0,
-    rogue.length ? `off-tier width threshold(s): ${rogue.join(', ')} — fold into a tier, or add the number to checks/baseline.json with the case for it`
-      : `${allowed.size} tier edges [${baseline.widthThresholds.join(', ')}], no off-tier thresholds`);
+  // A number used as both an upper and a lower bound means two rules apply at
+  // that exact pixel. The tier edges are deliberately adjacent pairs — 760/761,
+  // 1179/1180 — precisely so this cannot happen.
+  for (const [key, sides] of edges) {
+    if (sides.size > 1) {
+      const axis = key.split(':')[0], px = key.split(':')[1];
+      problems.push(`${px}px is used as both min-${axis} and max-${axis} — both rules apply at exactly ${px}px; tier edges come in adjacent pairs for this reason`);
+    }
+  }
+  report('breakpoint-tiers', problems.length === 0,
+    problems.length ? problems[0] + (problems.length > 1 ? ` (+${problems.length - 1} more)` : '')
+      : `${allowed.width.size} width edges [${baseline.widthThresholds.join(', ')}] and ` +
+        `${allowed.height.size} height edge(s) [${(baseline.heightThresholds || []).join(', ')}], ` +
+        `each used on one side only, all px, no range syntax`);
 }
 
 /* ---- 7. seeded-randomness ratchet ---- */
