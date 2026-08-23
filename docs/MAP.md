@@ -173,6 +173,26 @@ player actions; cleared every turn.
   on phones. Charts: all inline SVG strings (hemiMap, benchMap, poll/history
   polylines); v8's region map is a div grid.
 
+## The setup sheet (S7)
+
+Two questions are the game — which party, and how the republic stands — and both
+are numbered and carry a line saying what they decide. Length, difficulty and
+the house rules all have defaults worth keeping and are what a returning player
+comes back to adjust, so they fold into one `<details class="setup-more">` whose
+summary names the current settings: trimmed, not hidden.
+
+- **`[data-setup-advanced]` is a cross-chunk seam.** The setup sheet is built by
+  one chunk and the house rules are spliced in by a later one, which targets
+  that slot so the rules fold away beside the two settings they belong with. It
+  falls back to `.setup-summary` if the slot ever disappears, and the playtest's
+  `setup-trimmed` step guards it — rename the slot and the rules silently
+  reappear outside the fold, un-trimming the sheet with nothing else failing.
+- The disclosure's open state lives on `UI.setup.more`, like the seed on
+  `UI.setup.seed`: `redraw()` rebuilds the whole sheet on every setup choice, so
+  anything not kept there snaps shut under the reader.
+- A four-step progress strip used to sit above the questions with every step
+  marked done at all times. It is gone; it told the reader nothing.
+
 ## The charts (S6c)
 
 Both line charts — the polling trend and the long record — go through one

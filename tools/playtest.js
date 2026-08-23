@@ -89,6 +89,24 @@ async function run() {
     return finish();
   }
 
+  // -- the setup sheet asks its two questions and folds the rest away (S7) --
+  // The house-rules block is written by a later chunk into a slot the setup
+  // sheet offers, so this is a cross-chunk seam: rename the slot and the rules
+  // silently reappear outside the fold, un-trimming the sheet.
+  const setup = await page.evaluate(() => {
+    const d = document.querySelector('.setup-more');
+    return {
+      fold: !!d,
+      open: d ? d.open : null,
+      rulesInside: d ? !!d.querySelector('[data-v8rule]') : false,
+      rulesLoose: [...document.querySelectorAll('#sheet [data-v8rule]')].some(b => !b.closest('.setup-more')),
+      guides: document.querySelectorAll('#sheet .setup-guide').length,
+    };
+  });
+  step('setup-trimmed', setup.fold && setup.open === false && setup.rulesInside && !setup.rulesLoose && setup.guides >= 2,
+    `fold present: ${setup.fold}, shut by default: ${setup.open === false}, house rules inside it: ` +
+    `${setup.rulesInside}, none left loose: ${!setup.rulesLoose}, guided questions: ${setup.guides}`);
+
   // -- new game through setup + doctrine --
   await page.click('[data-setup-begin]');
   await page.waitForSelector('[data-doctrine]', { timeout: 10000 });

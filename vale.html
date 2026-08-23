@@ -9263,9 +9263,19 @@ S=enrichState(S,false);render();
 
 /* ---------- start screen ---------- */
 .start-intro{font-size:14.5px;color:var(--ivory-dim);margin:0 0 10px;max-width:68ch}
-.setup-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:12px 0 6px}
-.setup-steps span{font-family:var(--font-u);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);border-bottom:2px solid rgba(191,161,78,.2);padding-bottom:5px}
-.setup-steps span.on{color:var(--party);border-bottom-color:var(--party)}
+/* A four-step progress strip used to sit here with every step marked done at
+   all times, which told the reader nothing. The setup sheet now numbers its
+   questions in their own headings and explains what each one decides. */
+.setup-guide{margin:2px 0 9px;color:var(--ivory-dim);max-width:64ch}
+.setup-more{border:1px solid rgba(191,161,78,.22);background:rgba(0,0,0,.2);margin:16px 0 0;padding:0 12px}
+.setup-more>summary{cursor:pointer;list-style:none;padding:11px 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;
+  font-family:var(--font-u);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ivory)}
+.setup-more>summary::-webkit-details-marker{display:none}
+.setup-more>summary:after{content:"+";margin-left:auto;color:var(--brass);font-size:15px;line-height:1}
+.setup-more[open]>summary:after{content:"\2212"}
+.setup-more>summary small{font-family:var(--font-n);letter-spacing:.04em;text-transform:none;color:var(--slate);font-size:11.5px}
+.setup-more>summary:hover,.setup-more>summary:focus-visible{color:var(--brass)}
+.setup-more>:last-child{margin-bottom:12px}
 .party-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin:8px 0 4px}
 .party-pick{text-align:left;border:1px solid rgba(191,161,78,.25);background:rgba(0,0,0,.25);color:var(--ivory);padding:9px 10px;font-family:var(--font-u);display:grid;gap:3px}
 .party-pick b{font-size:13px;letter-spacing:.03em;display:flex;align-items:center;gap:6px}
@@ -11441,11 +11451,22 @@ var startScreen = function () {
     (UI.seedMinted ? '<p class="note" data-seed-warning="1" style="color:var(--brass)">That save was written before campaigns carried a seed. It will load, and it is reproducible from here on, but its earlier turns cannot be replayed.</p>' : '') +
     (auto ? '<div class="choices" style="margin-bottom:12px"><button class="choice" data-resume="1"><b>Resume the device autosave</b><small>' + esc(dateLabel(auto.turn)) + ' · ' + esc(PARTY[playParty(auto)].name) + ' · ' + esc(FORMS[auto.form].name) + (auto.endYear ? ' · ends ' + auto.endYear : '') + '</small></button></div>' : '') +
     '<p class="start-intro">Vale is a federal republic of six hundred and eighty million people, the first power of its hemisphere, and the most heavily checked constitution ever written: fifty states, two elected houses, four executive offices on staggered terms, sixteen justices nobody appoints, and eight regions with governors of their own. You lead a party. Whether that means you govern depends on the arithmetic, and the arithmetic depends on where you choose to begin.</p>' +
-    '<div class="setup-steps"><span class="on">1 · Party</span><span class="on">2 · Opening</span><span class="on">3 · Length</span><span class="on">4 · Difficulty</span></div>' +
-    '<div class="subhead">Which party you lead</div><div class="party-grid">' + parties + '</div>' +
-    '<div class="subhead">How the republic stands in 2024</div><div class="scenario-grid">' + scenarios + '</div>' +
+    /* Two questions decide the game, and both of them are interesting. Length,
+       difficulty and the house rules all have defaults worth keeping and are
+       what a returning player comes back to adjust, so they fold away behind
+       one disclosure that names what it is holding — trimmed, not hidden. */
+    '<div class="subhead">1 · Which party you lead</div>' +
+    '<p class="note setup-guide">Your party decides who will work with you and what you can plausibly ask for. It does not decide whether you govern — the arithmetic does that.</p>' +
+    '<div class="party-grid">' + parties + '</div>' +
+    '<div class="subhead">2 · How the republic stands in 2024</div>' +
+    '<p class="note setup-guide">The opening sets the board you inherit: who holds the seats, what is already in crisis, and how much room the government has before it has done anything at all.</p>' +
+    '<div class="scenario-grid">' + scenarios + '</div>' +
+    '<details class="setup-more"' + (s.more ? ' open' : '') + '><summary><b>3 · Length, difficulty and house rules</b>' +
+    '<small>' + esc((V6_LENGTHS[s.length] || V6_LENGTHS.epic).name + ' · ' + DIFFS[s.diff].name) + '</small></summary>' +
     '<div class="subhead">How long the period runs</div><div class="setup-row">' + lengths + '</div>' +
     '<div class="subhead">How hard</div><div class="setup-row">' + diffs + '</div>' +
+    /* The house-rules block from the later chunk lands here, on this slot. */
+    '<div data-setup-advanced="1"></div></details>' +
     '<div class="setup-summary"><span>Leading the <b>' + esc(PARTY[s.party].name) + '</b></span><span>Opening: <b>' + esc(sc.name) + '</b></span><span>Until <b>' + (CFG.startYear + (V6_LENGTHS[s.length] || V6_LENGTHS.epic).years) + '</b></span><span><b>' + esc(DIFFS[s.diff].name) + '</b></span>' +
     '<span>Seed <input data-setup-seed="1" type="text" inputmode="latin" spellcheck="false" maxlength="8" placeholder="any" value="' + esc(s.seed || '') + '" style="width:9ch;font-family:var(--font-n);letter-spacing:.08em;text-transform:uppercase" aria-label="Campaign seed, eight hex digits, blank for a fresh one"></span></div>' +
     '<p class="note">Leave the seed blank for a republic nobody has governed. Enter one you have kept and the same events, elections and accidents follow in the same order — the same seed and the same decisions give the same republic.</p>' +
@@ -11458,6 +11479,10 @@ var startScreen = function () {
     node.querySelectorAll('[data-setup-scenario]').forEach(function (b) { b.addEventListener('click', function () { s.scenario = b.getAttribute('data-setup-scenario'); redraw(); }); });
     node.querySelectorAll('[data-setup-length]').forEach(function (b) { b.addEventListener('click', function () { s.length = b.getAttribute('data-setup-length'); redraw(); }); });
     node.querySelectorAll('[data-setup-diff]').forEach(function (b) { b.addEventListener('click', function () { s.diff = b.getAttribute('data-setup-diff'); redraw(); }); });
+    // redraw() rebuilds the sheet on every setup choice, so an opened
+    // disclosure has to be remembered or it snaps shut under the reader.
+    var more = node.querySelector('.setup-more');
+    if (more) more.addEventListener('toggle', function () { s.more = more.open; });
     var seedBox = node.querySelector('[data-setup-seed]');
     // Kept on `s` rather than read at click time, because redraw() rebuilds the
     // sheet on every other setup choice and would otherwise discard the typing.
@@ -11673,7 +11698,6 @@ button,.btn,.choice,.tag,nav.tabs button{touch-action:manipulation}
   .coal-total strong{font-size:16px}
   .verdict-grades{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
   .grade strong{font-size:24px}
-  .setup-steps span{font-size:9px;letter-spacing:.1em}
   .party-grid{grid-template-columns:1fr 1fr;gap:5px}
   .party-pick{padding:8px 9px}
   .party-pick small:first-of-type{display:none}
@@ -14120,9 +14144,13 @@ startScreen = function () {
   var html = '<div class="subhead">House rules</div><div class="rules-row">' +
     (ev ? ev.opts.map(function (o) { return '<button data-v8rule="events" data-val="' + o[0] + '" aria-pressed="' + (r.events === o[0]) + '"><b>' + esc(o[1]) + '</b><small>' + esc(o[2]) + '</small></button>'; }).join('') : '') + '</div><div class="rules-row">' +
     V8_RULES.filter(function (x) { return x.id !== 'events'; }).map(function (x) { return '<button data-v8rule="' + x.id + '" aria-pressed="' + !!r[x.id] + '"><b>' + esc(x.name) + '</b><small>' + esc(x.note) + '</small></button>'; }).join('') + '</div>';
-  sum.insertAdjacentHTML('beforebegin', html);
+  // Since S7 the setup sheet offers a slot inside its "length, difficulty and
+  // house rules" disclosure, so the rules fold away with the two settings they
+  // belong beside. Falling back to the summary keeps this working if that
+  // disclosure is ever removed.
+  var slot = sh.querySelector('[data-setup-advanced]') || sum;
+  slot.insertAdjacentHTML('beforebegin', html);
   sum.insertAdjacentHTML('beforeend', '<span>Rules: <b>' + esc(v8RulesSummary({ v8:{ rules:r } })) + '</b></span>');
-  var steps = sh.querySelector('.setup-steps'); if (steps) steps.insertAdjacentHTML('beforeend', '<span class="on">5 \u00b7 Rules</span>');
   var hall = v8HallRead(); if (hall.length) { var intro = sh.querySelector('.start-intro'); if (intro) intro.insertAdjacentHTML('afterend', v8HallMini(hall)); }
   sh.querySelectorAll('[data-v8rule]').forEach(function (b) {
     b.addEventListener('click', function () {
