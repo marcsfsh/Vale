@@ -4593,6 +4593,66 @@ function mood(st, obj) { for (var k in obj) { if (st.blocs[k] !== undefined) st.
 function dateLabel(t) { return String(CFG.startYear + t - 1); }
 function yearOf(t) { return CFG.startYear + t - 1; }
 function lastTurn() { return ((S && S.endYear) || CFG.endYear) - CFG.startYear + 1; }
+
+/* ==========================================================
+   THE RECORD SCALES WITH THE CAMPAIGN
+
+   Every threshold in the records and the opening goals was written against the
+   full two-hundred-year period. A fifty-year campaign was handed the same
+   numbers with a quarter of the sessions, so the same achievement was four
+   times as hard and the short option read as a truncation rather than as a
+   shape of its own. These scale the numbers by the campaign's own span.
+
+   Epic is 1.0 BY CONSTRUCTION: the denominator is the same CFG span the
+   thresholds were tuned against, so the default cannot move. Both Math.min
+   calls are belt and braces — a hand-edited endYear past 2224 must never be
+   able to RAISE a tuned threshold.
+
+   These must never throw. v6AchievementsTick swallows test errors, so a helper
+   that throws makes a record permanently unearnable in silence.
+   ========================================================== */
+function v6Span(st) {
+  var full = CFG.endYear - CFG.startYear;
+  var y = ((st && st.endYear) || CFG.endYear) - CFG.startYear;
+  if (!(y > 0) || !(full > 0)) return 1;
+  return Math.min(1, y / full);
+}
+function v6Scale(st, base, floor) {
+  var n = Math.round(base * v6Span(st));
+  /* A threshold that was above two never collapses onto one: 'Veteran of the
+     Crises' scaling down to a single arc would land on the same session as
+     'Crisis Manager', which is two records for one act. */
+  var lo = floor === undefined ? (base > 2 ? 2 : base) : floor;
+  return Math.max(lo, Math.min(base, n));
+}
+function v6Midpoint(st) {
+  return CFG.startYear + Math.round((((st && st.endYear) || CFG.endYear) - CFG.startYear) / 2);
+}
+
+/* Notes state the requirement, so a scaled requirement needs a scaled note or
+   the panel lies. {n} takes the number in words — every hand-written note in
+   this file is worded, 'Ten of your bills became law' — {N} capitalised, and
+   {d} in digits for a year. An entry with no `req` is returned as written. */
+var V6_WORDS = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+var V6_TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+function v6Words(n) {
+  n = Math.round(n);
+  if (!(n >= 0) || n > 99) return String(n);
+  if (n < 20) return V6_WORDS[n];
+  var t = V6_TENS[Math.floor(n / 10)], u = n % 10;
+  return u ? t + '-' + V6_WORDS[u] : t;
+}
+function v6Note(a, st) {
+  if (!a || !a.note) return a ? a.note : '';
+  if (!a.req) return a.note;
+  var v; try { v = a.req(st); } catch (e) { return a.note; }
+  var w = v6Words(v);
+  return String(a.note)
+    .replace(/\{N\}/g, w.charAt(0).toUpperCase() + w.slice(1))
+    .replace(/\{n\}/g, w)
+    .replace(/\{d\}/g, String(v));
+}
 function isBallotTurn(t) { return t > 1 && t % 2 === 1; }
 function isExecTurn(t) { return t >= 5 && (t - 5) % 4 === 0; }
 function execPair(t) { return (Math.floor((t - 5) / 4) % 2 === 0) ? ['pres', 'vchan'] : ['chan', 'vpres']; }
@@ -6725,6 +6785,19 @@ function endTurn() {
       if (electionResult.changed || electionResult.exec || Math.abs(electionResult.swing) >= 45) showElection(electionResult);
       else quietElection(electionResult);
     } else if (S.turn > lastTurn()) {
+      /* The last session's results are banked BEFORE finish(). Both gameOver
+         wrappers read S.v6.achievements synchronously and v8HallRecord writes
+         the count into localStorage, so a tick afterwards would show — and
+         permanently store — a stale record. Until this was fixed the `return`
+         below skipped v6AfterTurn entirely and nothing earned on the closing
+         session was ever banked, at any length.
+         The Gazette is suppressed for this one call so v6Later cannot race the
+         end card with it; the report is still built and still waits in the
+         menu, and the player's own preference is put back either way. */
+      var rep0 = S.uiPrefs.report;
+      S.uiPrefs.report = false;
+      try { if (typeof v6AfterTurn === 'function') v6AfterTurn(S, null); }
+      finally { S.uiPrefs.report = rep0; }
       finish();
       return;
     }
@@ -6868,7 +6941,12 @@ function finish() {
   var a = approval(S);
   var score = Math.round(a * .9 + (100 - S.unrest) * .5 + S.ind.economy * .4 + S.ind.education * .2 +
     S.ind.healthcare * .25 + (100 - S.ind.poverty) * .3 + S.ind.liberties * .25 + S.ind.technology * .2 +
-    S.ind.infrastructure * .15 + S.ind.military * .1 - S.debt * .12 + S.legacy.promisesKept * 3 - S.legacy.promisesBroken * 4 + S.legacy.playerLaws * .35);
+    S.ind.infrastructure * .15 + S.ind.military * .1 - S.debt * .12 +
+    /* The three cumulative terms are divided by the campaign's span so the
+       hall of fame compares like with like. They are raw totals, and the hall
+       sorts by this score, so a fifty-year government was structurally barred
+       from the top of its own leaderboard however well it governed. */
+    (S.legacy.promisesKept * 3 - S.legacy.promisesBroken * 4 + S.legacy.playerLaws * .35) / v6Span(S));
   var path = FORMS[S.form].path;
   var pathNote = '';
   if (S.form === 'empire') pathNote = 'Vale ends the two centuries an Empire, with an Emperor by descent, prefects over the fifty states and a Senate that exists to be addressed. ';
@@ -10090,14 +10168,14 @@ function v6HistoryTick(st) {
 }
 var V6_ACHIEVEMENTS = [
   { id:'firstLaw', name:'First Assent', note:'Your first bill received assent.', test:function (st) { return st.legacy.playerLaws >= 1; } },
-  { id:'lawmaker', name:'Lawmaker', note:'Ten of your bills became law.', test:function (st) { return st.legacy.playerLaws >= 10; } },
-  { id:'legislator', name:'The Legislator', note:'Fifty of your bills became law.', test:function (st) { return st.legacy.playerLaws >= 50; } },
+  { id:'lawmaker', name:'Lawmaker', note:'{N} of your bills became law.', req:function (st) { return v6Scale(st, 10); }, test:function (st) { return st.legacy.playerLaws >= v6Scale(st, 10); } },
+  { id:'legislator', name:'The Legislator', note:'{N} of your bills became law.', req:function (st) { return v6Scale(st, 50); }, test:function (st) { return st.legacy.playerLaws >= v6Scale(st, 50); } },
   { id:'majority', name:'A Majority of One\'s Own', note:'Your party held more than half the Assembly.', test:function (st) { return seatShare(st, [playParty(st)]) > .5; } },
   { id:'landslide', name:'Landslide', note:'Your party held sixty percent of the Assembly.', test:function (st) { return seatShare(st, [playParty(st)]) >= .6; } },
   { id:'grandCoalition', name:'Grand Coalition', note:'Governed with the party furthest from you in the chamber.', test:function (st) { var co = st.coalition || []; if (co.length < 2 || !leads(st)) return false; var far = 0; co.forEach(function (p) { far = Math.max(far, dist2(ppos(st, p), ppos(st, st.ruling))); }); return far > 1.1; } },
-  { id:'comeback', name:'The Comeback', note:'Returned to government after at least six years in opposition.', test:function (st) { return st.v6.flags && st.v6.flags.comeback; } },
-  { id:'longReign', name:'The Long Reign', note:'Thirty years in government.', test:function (st) { return st.legacy.yearsInGovernment >= 30; } },
-  { id:'balanced', name:'Sound Money', note:'Ten consecutive sessions in surplus.', test:function (st) { return st.v6.stats.bestBalanceRun >= 10; } },
+  { id:'comeback', name:'The Comeback', note:'Returned to government after at least {n} years in opposition.', req:function (st) { return v6Scale(st, 6); }, test:function (st) { return st.v6.flags && st.v6.flags.comeback; } },
+  { id:'longReign', name:'The Long Reign', note:'{N} years in government.', req:function (st) { return v6Scale(st, 30); }, test:function (st) { return st.legacy.yearsInGovernment >= v6Scale(st, 30); } },
+  { id:'balanced', name:'Sound Money', note:'{N} consecutive sessions in surplus.', req:function (st) { return v6Scale(st, 10); }, test:function (st) { return st.v6.stats.bestBalanceRun >= v6Scale(st, 10); } },
   { id:'debtFree', name:'Out of the Red', note:'The federal debt was cleared.', test:function (st) { return st.debt <= 0 && st.turn > 3; } },
   { id:'aaa', name:'Triple A', note:'The sovereign rating reached AAA.', test:function (st) { return st.macro.rating === 'AAA'; } },
   { id:'fullCabinet', name:'Every Seat Filled', note:'All sixteen cabinet posts held at once.', test:function (st) { return cabinetFilled(st) >= 16; } },
@@ -10109,7 +10187,7 @@ var V6_ACHIEVEMENTS = [
   { id:'boardroom', name:'The Boardroom', note:'Established the Corporate Republic.', test:function (st) { return st.form === 'corporate'; } },
   { id:'mandate', name:'By the People', note:'Won a national referendum.', test:function (st) { return st.v6.stats.referendumsWon >= 1; } },
   { id:'crisisManager', name:'Crisis Manager', note:'Saw a crisis arc through to its end.', test:function (st) { return st.v6.arcs.count >= 1; } },
-  { id:'veteran', name:'Veteran of Five Crises', note:'Resolved five crisis arcs.', test:function (st) { return st.v6.arcs.count >= 5; } },
+  { id:'veteran', name:'Veteran of the Crises', note:'Resolved {n} crisis arcs.', req:function (st) { return v6Scale(st, 5, 3); }, test:function (st) { return st.v6.arcs.count >= v6Scale(st, 5, 3); } },
   { id:'governorsFriend', name:'Friend of the States', note:'In government with every governor standing above 65 with you.', test:function (st) { return inPower(st) && REGIONS.every(function (r) { return st.v6.governors[r.id].standing >= 65; }); } },
   { id:'united', name:'One Party, One Mind', note:'Party unity reached 90.', test:function (st) { return (st.unity || 0) >= 90; } },
   { id:'beloved', name:'Beloved', note:'Approval reached 75.', test:function (st) { return approval(st) >= 75; } },
@@ -10119,9 +10197,9 @@ var V6_ACHIEVEMENTS = [
   { id:'packed', name:'The Bench Is Yours', note:'Three quarters of the court sat with the government.', test:function (st) { return st.court.justices.length && courtWith(st) / st.court.justices.length >= .75; } },
   { id:'turncoat', name:'Turncoat', note:'Crossed the floor to lead another party.', test:function (st) { return st.v6.flags && st.v6.flags.switched; } },
   { id:'programme', name:'Delivered', note:'Completed a policy programme.', test:function (st) { return Object.keys(st.v6.programmesDone).length >= 1; } },
-  { id:'centenary', name:'The Centenary', note:'Reached the year 2124.', test:function (st) { return yearOf(st.turn) >= 2124; } },
+  { id:'centenary', name:'The Middle Years', note:'Reached {d}, the midpoint of the period.', req:function (st) { return v6Midpoint(st); }, test:function (st) { return yearOf(st.turn) >= v6Midpoint(st); } },
   { id:'survivor', name:'Survivor', note:'Brought unrest back below 50 from above 90.', test:function (st) { return st.v6.flags && st.v6.flags.survived; } },
-  { id:'keeper', name:'Keeper of Promises', note:'Kept ten manifesto commitments.', test:function (st) { return st.legacy.promisesKept >= 10; } }
+  { id:'keeper', name:'Keeper of Promises', note:'Kept {n} manifesto commitments.', req:function (st) { return v6Scale(st, 10); }, test:function (st) { return st.legacy.promisesKept >= v6Scale(st, 10); } }
 ];
 var V6_ACHIEVEMENT = {}; V6_ACHIEVEMENTS.forEach(function (a) { V6_ACHIEVEMENT[a.id] = a; });
 function v6AchievementsTick(st) {
@@ -10132,7 +10210,7 @@ function v6AchievementsTick(st) {
   V6_ACHIEVEMENTS.forEach(function (a) {
     if (v.achievements[a.id]) return;
     var ok = false; try { ok = !!a.test(st); } catch (e) { ok = false; }
-    if (ok) { v.achievements[a.id] = st.turn; unlocked.push(a); logIt(st, 'Record: ' + a.name + '. ' + a.note); }
+    if (ok) { v.achievements[a.id] = st.turn; unlocked.push(a); logIt(st, 'Record: ' + a.name + '. ' + v6Note(a, st)); }
   });
   v.justUnlocked = unlocked.map(function (a) { return a.id; });
 }
@@ -10860,7 +10938,7 @@ runElection = function (st, early) {
   var r = v6RunElectionBase(st, early);
   var v = st.v6 || v6EnsureState(st).v6;
   v.flags = v.flags || {};
-  if (r.lead === me && wasOpp >= 6) v.flags.comeback = true;
+  if (r.lead === me && wasOpp >= v6Scale(st, 6)) v.flags.comeback = true;
   if (r.lead === me && (st.seats[me] || 0) <= CFG.seats / 2 && electionsOn(st)) v.needCoalition = { early:!!r.early, year:yearOf(st.turn) };
   v6GovernorElections(st, false);
   return r;
@@ -10944,7 +11022,7 @@ function v6ShowReport(rep) {
   if (!parl.length) parl.push('<li>Nothing reached assent or fell this session. ' + rep.bills + ' bill' + (rep.bills === 1 ? ' is' : 's are') + ' live.</li>');
   var country = rep.news.map(function (n) { return '<li class="' + (n.tone === 'good' ? 'good' : (n.tone === 'bad' ? 'bad' : '')) + '"><b>' + esc(n.kicker) + '</b><br>' + esc(n.headline) + '</li>'; });
   if (!country.length) country.push('<li>The country was quiet, or quiet enough.</li>');
-  var achs = rep.ach.map(function (id) { var a = V6_ACHIEVEMENT[id]; return a ? '<li class="good"><b>Record</b><br>' + esc(a.name) + '. ' + esc(a.note) + '</li>' : ''; }).join('');
+  var achs = rep.ach.map(function (id) { var a = V6_ACHIEVEMENT[id]; return a ? '<li class="good"><b>Record</b><br>' + esc(a.name) + '. ' + esc(v6Note(a, st)) + '</li>' : ''; }).join('');
   var arcLine = rep.arc && V6_ARC[rep.arc.id] ? '<span class="tag down">' + esc(V6_ARC[rep.arc.id].name) + ' continues</span>' : '';
   var html = '<div class="gazette"><div class="gz-masthead"><div class="gz-title">The Vale Gazette</div><div class="gz-date">Session of ' + rep.year + ' · closing returns · ' + esc(PARTY[playParty(st)].short) + ' ' + esc(rep.standing === 'leading' ? 'in government' : (rep.standing === 'junior' ? 'in coalition' : 'in opposition')) + '</div></div>' +
     '<div class="gz-lead"><div class="kicker">' + (rep.election ? 'The Country Has Voted' : 'Lead Story') + '</div><h2 id="sheetTitle">' + esc(rep.headline) + '</h2><p>' + esc(rep.standfirst) + '</p></div>' +
@@ -11342,7 +11420,7 @@ function v6HistoryChart() {
 }
 function viewRecord() {
   var v = S.v6, st = S.v6.stats, unlocked = Object.keys(v.achievements).length;
-  var ach = V6_ACHIEVEMENTS.map(function (a) { var on = v.achievements[a.id] !== undefined; return '<div class="ach ' + (on ? 'on' : '') + '"><div class="medal">' + (on ? '&#10003;' : '&middot;') + '</div><div><b>' + esc(a.name) + '</b><small>' + esc(a.note) + (on ? ' ' + yearOf(v.achievements[a.id]) + '.' : '') + '</small></div></div>'; }).join('');
+  var ach = V6_ACHIEVEMENTS.map(function (a) { var on = v.achievements[a.id] !== undefined; return '<div class="ach ' + (on ? 'on' : '') + '"><div class="medal">' + (on ? '&#10003;' : '&middot;') + '</div><div><b>' + esc(a.name) + '</b><small>' + esc(v6Note(a, S)) + (on ? ' ' + yearOf(v.achievements[a.id]) + '.' : '') + '</small></div></div>'; }).join('');
   var arcs = Object.keys(v.arcs.done).sort(function (a, b) { return v.arcs.done[a] - v.arcs.done[b]; }).map(function (id) { return V6_ARC[id] ? '<tr><td>' + yearOf(v.arcs.done[id]) + '</td><td>' + esc(V6_ARC[id].name) + '</td><td>Resolved</td></tr>' : ''; }).join('');
   if (v.arcs.active && V6_ARC[v.arcs.active.id]) arcs += '<tr><td>' + yearOf(v.arcs.active.started) + '</td><td>' + esc(V6_ARC[v.arcs.active.id].name) + '</td><td>In progress</td></tr>';
   var refs = v.referendums.map(function (r) { return '<tr><td>' + r.year + '</td><td>' + esc(POL[r.policy] ? POL[r.policy].name : r.policy) + '</td><td class="num">' + Math.round(r.yes) + '%</td><td>' + (r.won ? 'Carried' : 'Rejected') + '</td></tr>'; }).join('');
@@ -13344,16 +13422,16 @@ function v8PolMax(st, id) { return POL[id] ? (st.pol[id] || 0) / POL[id].max : 0
 var V8_GOALS = {
   popularFront:[
     { id:'pf_majority', name:'A majority of your own', note:'Win more than half the Assembly for your party alone.', test:function (st) { return seatShare(st, [playParty(st)]) > .5; }, prog:function (st) { return seatShare(st, [playParty(st)]) * 200; } },
-    { id:'pf_senate', name:'Through the Senate', note:'Put ten of your bills on the statute book.', test:function (st) { return st.legacy.playerLaws >= 10; }, prog:function (st) { return st.legacy.playerLaws * 10; } },
+    { id:'pf_senate', name:'Through the Senate', note:'Put {n} of your bills on the statute book.', req:function (st) { return v6Scale(st, 10); }, test:function (st) { return st.legacy.playerLaws >= v6Scale(st, 10); }, prog:function (st) { return st.legacy.playerLaws / v6Scale(st, 10) * 100; } },
     { id:'pf_welfare', name:'The settlement', note:'Universal healthcare and social security both at their highest level.', test:function (st) { return v8PolMax(st, 'universalHealthcare') >= 1 && v8PolMax(st, 'socialSecurity') >= 1; }, prog:function (st) { return (v8PolMax(st, 'universalHealthcare') + v8PolMax(st, 'socialSecurity')) * 50; } }
   ],
   unityFront:[
-    { id:'uf_hold', name:'The centre holds', note:'Keep your party in government for sixteen years.', test:function (st) { return st.legacy.yearsInGovernment >= 16; }, prog:function (st) { return st.legacy.yearsInGovernment / 16 * 100; } },
-    { id:'uf_books', name:'Sound administration', note:'Six consecutive sessions in surplus.', test:function (st) { return st.v6.stats.bestBalanceRun >= 6; }, prog:function (st) { return st.v6.stats.bestBalanceRun / 6 * 100; } },
+    { id:'uf_hold', name:'The centre holds', note:'Keep your party in government for {n} years.', req:function (st) { return v6Scale(st, 16); }, test:function (st) { return st.legacy.yearsInGovernment >= v6Scale(st, 16); }, prog:function (st) { return st.legacy.yearsInGovernment / v6Scale(st, 16) * 100; } },
+    { id:'uf_books', name:'Sound administration', note:'{N} consecutive sessions in surplus.', req:function (st) { return v6Scale(st, 6); }, test:function (st) { return st.v6.stats.bestBalanceRun >= v6Scale(st, 6); }, prog:function (st) { return st.v6.stats.bestBalanceRun / v6Scale(st, 6) * 100; } },
     { id:'uf_liberty', name:'The open republic', note:'Civil liberties at 72 with corruption below 40.', test:function (st) { return st.ind.liberties >= 72 && st.ind.corruption < 40; }, prog:function (st) { return Math.min(1, st.ind.liberties / 72) * 50 + Math.min(1, (100 - st.ind.corruption) / 60) * 50; } }
   ],
   conservativeTide:[
-    { id:'ct_balance', name:'Balance the books', note:'Five consecutive sessions in surplus.', test:function (st) { return st.v6.stats.bestBalanceRun >= 5; }, prog:function (st) { return st.v6.stats.bestBalanceRun / 5 * 100; } },
+    { id:'ct_balance', name:'Balance the books', note:'{N} consecutive sessions in surplus.', req:function (st) { return v6Scale(st, 5); }, test:function (st) { return st.v6.stats.bestBalanceRun >= v6Scale(st, 5); }, prog:function (st) { return st.v6.stats.bestBalanceRun / v6Scale(st, 5) * 100; } },
     { id:'ct_boom', name:'Growth without heat', note:'Growth above three percent with inflation below four.', test:function (st) { return st.macro.growth >= 3 && st.macro.inflation < 4; }, prog:function (st) { return clamp(st.macro.growth / 3 * 60 + (st.macro.inflation < 4 ? 40 : 0), 0, 100); } },
     { id:'ct_metros', name:'Win the coast', note:'Federal trust in the Somnium Coast at 60.', test:function (st) { return st.regions.somnium.federal >= 60; }, prog:function (st) { return st.regions.somnium.federal / 60 * 100; } }
   ],
@@ -13370,7 +13448,7 @@ var V8_GOALS = {
   redDawn:[
     { id:'rd_programme', name:'The programme delivered', note:'The wealth tax and union rights both at their highest level.', test:function (st) { return v8PolMax(st, 'wealthTax') >= 1 && v8PolMax(st, 'unionRights') >= 1; }, prog:function (st) { return (v8PolMax(st, 'wealthTax') + v8PolMax(st, 'unionRights')) * 50; } },
     { id:'rd_exchanges', name:'Peace with the exchanges', note:'Technology and finance back above 40.', test:function (st) { return st.blocs.tech >= 40; }, prog:function (st) { return st.blocs.tech / 40 * 100; } },
-    { id:'rd_decade', name:'A decade of the Front', note:'Twelve years in government.', test:function (st) { return st.legacy.yearsInGovernment >= 12; }, prog:function (st) { return st.legacy.yearsInGovernment / 12 * 100; } }
+    { id:'rd_decade', name:'A decade of the Front', note:'{N} years in government.', req:function (st) { return v6Scale(st, 12); }, test:function (st) { return st.legacy.yearsInGovernment >= v6Scale(st, 12); }, prog:function (st) { return st.legacy.yearsInGovernment / v6Scale(st, 12) * 100; } }
   ],
   longDepression:[
     { id:'ld_growth', name:'Recovery', note:'Growth at two and a half percent.', test:function (st) { return st.macro.growth >= 2.5; }, prog:function (st) { return clamp((st.macro.growth + 3) / 5.5 * 100, 0, 100); } },
@@ -13387,8 +13465,8 @@ function v8GoalsTick(st) {
     if (!ok) return;
     v.goals[g.id] = st.turn;
     st.capital = clamp(st.capital + 6, -5, capCap(st)); st.unity = c100((st.unity || 60) + 3);
-    logIt(st, 'Opening goal met: ' + g.name + '. ' + g.note + ' Capital +6, unity +3.');
-    addNews(st, 'The Opening', g.name, g.note + ' The goal set at the start of the period is met.', 'good');
+    logIt(st, 'Opening goal met: ' + g.name + '. ' + v6Note(g, st) + ' Capital +6, unity +3.');
+    addNews(st, 'The Opening', g.name, v6Note(g, st) + ' The goal set at the start of the period is met.', 'good');
     chronicle(st, 'Goal met: ' + g.name + '.');
   });
 }
@@ -13399,15 +13477,15 @@ pv5Objectives = function (st) {
   v8ScenarioGoals(st).forEach(function (g) {
     var done = !!st.v8.goals[g.id], value = 0;
     if (!done) { try { value = clamp(g.prog(st), 0, 100); } catch (e) { value = 0; } } else value = 100;
-    out.push({ name:'Opening: ' + g.name, detail:g.note + (done ? ' Met in ' + yearOf(st.v8.goals[g.id]) + '.' : ''), value:Math.round(value), target:100, done:done, risk:false, jump:'record' });
+    out.push({ name:'Opening: ' + g.name, detail:v6Note(g, st) + (done ? ' Met in ' + yearOf(st.v8.goals[g.id]) + '.' : ''), value:Math.round(value), target:100, done:done, risk:false, jump:'record' });
   });
   return out;
 };
 [
   { id:'v8work1', name:'The First Stone', note:'Opened a grand work.', test:function (st) { return !!st.v8 && st.v8.stats.worksDone >= 1; } },
-  { id:'v8work3', name:'Monumental', note:'Opened three grand works.', test:function (st) { return !!st.v8 && st.v8.stats.worksDone >= 3; } },
-  { id:'v8despatch', name:'Master of the Despatch Box', note:'Fifteen Question Times taken.', test:function (st) { return !!st.v8 && st.v8.stats.questions >= 15; } },
-  { id:'v8story', name:'The Story Holds', note:'Six consecutive sessions of a government that works.', test:function (st) { return !!st.v8 && st.v8.press.streak >= 6; } },
+  { id:'v8work3', name:'Monumental', note:'Opened {n} grand works.', req:function (st) { return v6Scale(st, 3); }, test:function (st) { return !!st.v8 && st.v8.stats.worksDone >= v6Scale(st, 3); } },
+  { id:'v8despatch', name:'Master of the Despatch Box', note:'{N} Question Times taken.', req:function (st) { return v6Scale(st, 15); }, test:function (st) { return !!st.v8 && st.v8.stats.questions >= v6Scale(st, 15); } },
+  { id:'v8story', name:'The Story Holds', note:'{N} consecutive sessions of a government that works.', req:function (st) { return v6Scale(st, 6); }, test:function (st) { return !!st.v8 && st.v8.press.streak >= v6Scale(st, 6); } },
   { id:'v8goals', name:'The Opening Won', note:'Every goal of the opening met.', test:function (st) { return !!st.v8 && v8ScenarioGoals(st).every(function (g) { return st.v8.goals[g.id]; }); } },
   { id:'v8ironman', name:'No Second Thoughts', note:'Twenty sessions closed with undo switched off.', test:function (st) { return !!st.v8 && !!st.v8.rules.ironman && st.turn >= 21; } }
 ].forEach(function (a) { V6_ACHIEVEMENTS.push(a); V6_ACHIEVEMENT[a.id] = a; });

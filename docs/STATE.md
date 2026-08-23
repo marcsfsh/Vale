@@ -4,14 +4,37 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**Review fixes** (PR #12). An adversarial pass over the night's six slices found
-two real defects that had shipped green, and both are now fixed with the test
-that would have caught them. A six-seat Senate bloc had its seat count rendered
-NOWHERE on tablet or desktop (S6c trimmed the legend's numbers assuming the
-chamber labels every bloc; it does not). And `enrichState` rolled against
-whatever campaign was loaded rather than the state it was enriching, so opening
-the save dialog mid-campaign could spend the live campaign's dice — the exact
-guarantee S3 exists to make. Six smaller findings closed alongside.
+**S8c — the record scales with the campaign** (PR #14). Thresholds across the
+achievement array and the scenario goals were authored against the two-hundred
+year span; a fifty-year campaign met them with a quarter of the sessions. They
+now scale with `endYear` through one helper (`v6Span`/`v6Scale`), and the
+requirement is *rendered* from the live number rather than hard-coded in the
+prose, so a note never contradicts the test beneath it. Epic is 1.0 by
+construction — the denominator is the same `CFG` span the numbers were tuned
+against — and the regression gate is that the epic record id set is identical,
+id for id, before and after; it is, on all three seeds.
+
+Two defects surfaced on the way and are fixed here. **The closing session was
+never banked**: `endTurn`'s end-of-campaign branch was `{ finish(); return; }`,
+and the `return` skipped the `v6AfterTurn` on the next line, so nothing earned
+on the last session was ever recorded — at any length, since 2024. **The hall
+of fame could not be won in fifty years**: its score summed raw cumulative
+counters, so a short campaign was structurally excluded from the top of its own
+cross-campaign leaderboard.
+
+What it is worth, measured with the fixed instrument: a short campaign closes
+at 26% / 18% / 26% of the record across three seeds, against 13% / 10% / 15%
+before. Epic is unchanged at 28% / 21% / 31%. Named as **not** verified: the
+harness plays first-choice-always and loses government early, so every
+conclusion about the twelve transient records and the eight in-government ones
+is inference from a floor, not a measure of a competent player's run.
+
+Previously: **S8b — the instrument** (PR #13, merged). `tools/pacing.js` was
+recomputing every achievement test against the final state; the game *latches*
+its records and the displays read the latched map. The figures published in
+PR #10 (short 8%, epic 28%) therefore measured the wrong quantity. The tool now
+reports the latched map, the id list, a per-test `threw:` list, and the six
+counters that gate eight of the length-sensitive records.
 
 Previously: **S8 — pacing, measured** (PR #10, merged). `tools/pacing.js` plays each length option to
 its end year through the real turn loop. Findings: all three lengths **do** reach
@@ -75,12 +98,14 @@ ratchet 10 → 5, which is now its true floor.
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
 | S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
-| Review fixes | **in review (PR #12)** | 2 real defects + 6 smaller ones from an adversarial pass; chamber tool now replays awkward seat shapes, determinism gains an 8th property, tab-tour stops counting attempts |
+| Review fixes | **merged** (#12) | 2 real defects + 6 smaller ones from an adversarial pass; chamber tool now replays awkward seat shapes, determinism gains an 8th property, tab-tour stops counting attempts |
 | S8 pacing | **merged** (#10) | measured, not retuned: all lengths reach their end year, density is flat, short closes at 8% of the record; the call is the user's |
 | S7 onboarding | **merged** (#9) | two guided questions, the rest behind one disclosure; playtest gains `setup-trimmed`; CVD measured |
 | S6c charts | **merged** (#8) | one chart vocabulary, end-value labels, charts open on the present; region tiles carry their winner as an edge |
 | S3 seeded PRNG | **merged** (#7) | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
 | S6b the chamber | **merged** (#6) | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
+| S8b the instrument | **merged** (#13) | pacing tool read the latched map instead of recomputing; the PR states plainly that PR #10's published figures measured the wrong quantity |
+| S8c the record scales | **in review (PR #14)** | thresholds scale with `endYear`, requirements rendered not hard-coded; closing session now banked; hall score made span-relative; epic byte-identical |
 
 ## Open items / environment facts
 

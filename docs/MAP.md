@@ -135,11 +135,23 @@ the live chain — fine, but know they re-bind per sheet.
 → `advanceBills` (v6) → `aiGovern` (v5) → `politicsTick` → `agendaEvent` →
 `courtReview` (v9→v6→v4) → `pickEvents` (v8) → `v6ExtraEvents` (v9) →
 `S.turn += 1` → `runQueue` (v6 modal queue, `[data-ev]` choices, `UI.busy`) →
-done: `checkCollapse` | `runElection` (v8→v6→v5→v4) | `finish`→`gameOver`
-(v8 hall→v6 grades→v4 sets `S.over`) → `v6AfterTurn` (v8→v6, queues gazette
-via `v6Later`/`v6Pump`, pumped by v6's hideSheet wrapper) → `render`
-(v9→v8→v7→mobile→v6 full redraw; v6's body is a full rewrite that redraws
-`#stats`+`#tabs`+active view via innerHTML, then `wire()` re-binds).
+done: `checkCollapse` | `runElection` (v8→v6→v5→v4) | the closing branch →
+`v6AfterTurn` (v8→v6, queues gazette via `v6Later`/`v6Pump`, pumped by v6's
+hideSheet wrapper) → `render` (v9→v8→v7→mobile→v6 full redraw; v6's body is a
+full rewrite that redraws `#stats`+`#tabs`+active view via innerHTML, then
+`wire()` re-binds).
+
+The **closing branch** (`S.turn > lastTurn()`, ~6787) runs `v6AfterTurn` itself
+and then `finish()`→`gameOver` (v8 hall→v6 grades→v4 sets `S.over`), and
+returns. Order is load-bearing in both directions: the tick must come first,
+because `gameOver` reads `S.v6.achievements` synchronously (~11556) and
+`v8HallRecord` (~13505) *persists* the count to localStorage — a tick after
+`finish()` would show and permanently store a stale number; and it must be this
+branch's own call, because the shared `v6AfterTurn` on the line below is
+unreachable past the `return`. Until S8c the branch was one line
+(`{ finish(); return; }`) and nothing earned on the closing session was ever
+banked, at any length. The Gazette is suppressed for that one call
+(`S.uiPrefs.report` saved and restored) so `v6Later` cannot race the end card.
 
 Undo: `captureUndo` (v8 ~12405, stack max 8, ironman disables) at the start of
 player actions; cleared every turn.
@@ -260,6 +272,52 @@ too, as isolation for any stray call the file grows later.
   pass. Drive it through the model (`v6Sandbox` + `tickTurn`), not the modal
   queue: which queued sheets a UI run pumps depends on click interleaving, so a
   UI-level comparison measures the harness, not the game.
+
+## The record (S8c)
+
+Thresholds are authored against the **epic** span and scaled down for shorter
+campaigns, so the share of the record a player can reach no longer depends on
+which length they picked.
+
+- `v6Span(st)` (~4614) = `(st.endYear - CFG.startYear) / (CFG.endYear -
+  CFG.startYear)`, clamped to ≤1 → 0.25 / 0.5 / 1.0. `CFG.endYear` is the epic
+  end year, so **epic is 1.0 by construction and the tuned defaults cannot
+  move**. A save with no `endYear` (pre-S8c, and the v5 fixtures) returns 1 and
+  behaves exactly as epic; `enrichState` backfills the field anyway.
+- `v6Scale(st, base, floor)` rounds `base * span` and clamps into
+  `[floor ?? (base>2?2:base), base]`. The `Math.min` upper clamp is deliberate:
+  a hand-edited `endYear` can lower a threshold but never raise one.
+- **Neither helper may ever throw.** `v6AchievementsTick` swallows test errors
+  (`catch (e) { ok = false; }`, ~10212), so a throwing helper makes a record
+  permanently unearnable in silence. `tools/pacing.js` reports a `threw:` list
+  for exactly this reason.
+
+Scaled: `lawmaker` 10, `legislator` 50, `longReign` 30, `veteran` 5 (floor 3),
+`keeper` 10, `balanced` 10, `v8work3` 3, `v8despatch` 15, `v8story` 6, and the
+`comeback` flag site (~10941, `wasOpp >= 6`). `centenary` was an absolute date
+(2124) and so structurally unreachable below epic; it is now the campaign's own
+midpoint (`v6Midpoint`), which is byte-identical at epic. `v8ironman` (turn ≥
+21) is **not** scaled — turn 21 arrives in all three lengths.
+
+Five V8 scenario goals scale with them, and each is a `test`+`prog`+`note`
+triple that must move in lockstep: `pf_senate` 10, `uf_hold` 16, `rd_decade`
+12, `uf_books` 6, `ct_balance` 5. `pf_senate` is the load-bearing one —
+`popularFront` is the default scenario and its threshold is the same 10 as
+`lawmaker`, so scaling one without the other makes the record panel and the
+goals panel contradict each other.
+
+Requirements are **rendered, not hard-coded**: a scaled entry carries a
+templated `note` (`'{N} of your bills became law.'`, `{n}` lowercase, `{d}`
+digits) plus a `req:` returning the live number, and `v6Note(a, st)` (~4646)
+substitutes an English word. Six sites read a note and all six go through it —
+unlock log (~10213), Gazette (~11025), record panel (~11423), goal log
+(~13468), goal news (~13469), goal panel (~13480). **In `viewRecord` the state to pass is `S`, not `st`**: that
+function shadows `st` with `S.v6.stats`.
+
+`finish()`'s hall score (~6949) divides its two cumulative terms
+(`promisesKept`, `playerLaws`) by `v6Span` for the same reason — the hall is a
+cross-campaign leaderboard, and comparing raw totals structurally excludes a
+short campaign from the top of its own board.
 
 ## The chamber (hemiMap)
 
