@@ -180,6 +180,27 @@ Seating order is the `PARTIES` `order` field (RSF, LP, SD, FP, CUP, TVC, PNL),
 which also seats the coalitions contiguously — Popular Front left, Unity Front
 centre, PNL right.
 
-*Implementation note for S6:* the existing rim rule selects on the literal fill
-(`svg.hemi circle[fill="#0000BC"]`) — a silent break if a colour is ever
-retuned. Reimplement it as a class on the circle, not an attribute match.
+**Seating treatment (owner: make the colours "stand out a bit more so they
+don't butt up against the background harshly").** Full-chroma seats on a
+near-black ground vibrate at the edge. This is solved on the *seating*, never
+on the colours:
+
+- a soft pool of light under the arc (`#3A4A40` radial gradient peaking on the
+  seat band), so seats sit on a lit bench rather than the void;
+- a same-hue aura per bloc (`drop-shadow(0 0 2.1px <party>8C)`), so each dot
+  fades into the ground instead of snapping against it — and reads brighter;
+- the game's own seat opacity (`.92`, used here as `.93`) so the floor tints
+  through and the blocs feel of a piece;
+- the brass despatch-box hairline the game already draws at the baseline;
+- the ivory rim on `#9D0000` and `#0000BC` (above).
+
+Bars, legend swatches and region tiles get the same idea — a soft same-hue
+bloom (`box-shadow`), never a changed hue.
+
+*Implementation notes for S6:* (1) the existing rim rule selects on the literal
+fill (`svg.hemi circle[fill="#0000BC"]`) — a silent break if a colour is ever
+retuned; reimplement it as a class on the circle, not an attribute match.
+(2) `hemiMap`'s `total` parameter is declared but never read — the map draws
+the sum of the seats object, so a seat table that doesn't total `CFG.seats`
+silently draws a different-sized chamber. (3) Rounding drift is absorbed
+entirely by the outermost row, which can in principle go negative.
