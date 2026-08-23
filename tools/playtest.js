@@ -228,6 +228,56 @@ async function run() {
   await page.screenshot({ path: path.join(OUT, 'phone-390.png') });
   step('screenshots', true, 'tools/out/{desktop-1500,tablet-834,phone-390}.png');
 
+  /* -- the phone tier, asserted rather than only photographed --
+     The ruled reference phone is a WebKit engine this environment cannot
+     install, so every phone result here is Chromium standing in. That makes it
+     more important, not less, that the phone layer's BEHAVIOUR is checked and
+     not just its picture: a screenshot cannot tell you the stat strip stopped
+     scrolling or that a sheet stopped reaching the bottom of the screen. */
+  const phone = await page.evaluate(() => {
+    const q = s => document.querySelector(s);
+    const cs = s => { const e = q(s); return e ? getComputedStyle(e) : null; };
+    const grid = cs('#view .grid'), stats = q('.stats'), bar = cs('.turnbar .in');
+    return {
+      oneColumn: grid ? grid.gridTemplateColumns.split(' ').filter(Boolean).length === 1 : null,
+      // the stat strip becomes a horizontal scroller with a toggle beneath it
+      statsScroll: stats ? stats.scrollWidth > stats.clientWidth + 1 : false,
+      statsToggle: !!q('.stats-toggle'),
+      // the turn bar is the phone grid, not the desktop flex row
+      barGrid: bar ? bar.display === 'grid' : null,
+      /* The chamber's direct labels are hidden here in favour of the legend,
+         which keeps its seat counts on this tier only. Both halves are checked
+         against a chamber that is actually on screen — asking whether a label
+         is hidden when no chamber rendered at all passes for the wrong reason. */
+      hemiPresent: !!q('svg.hemi circle'),
+      hemiLabelsHidden: (() => { const t = q('svg.hemi text'); return !!t && getComputedStyle(t).display === 'none'; })(),
+      legendCounts: (() => { const n = q('.seatlegend .leg .n'); return !!n && getComputedStyle(n).display !== 'none'; })(),
+      noSideScroll: document.documentElement.scrollWidth <= 391,
+    };
+  });
+  step('phone-layer', phone.oneColumn === true && phone.statsToggle && phone.barGrid === true &&
+    phone.hemiPresent && phone.hemiLabelsHidden && phone.legendCounts && phone.noSideScroll,
+    `one column: ${phone.oneColumn}, stat strip scrolls: ${phone.statsScroll} with toggle: ${phone.statsToggle}, ` +
+    `turn bar is a grid: ${phone.barGrid}, chamber on screen: ${phone.hemiPresent} with its arc labels hidden: ` +
+    `${phone.hemiLabelsHidden} and the legend keeping its counts: ${phone.legendCounts}, ` +
+    `no sideways scroll: ${phone.noSideScroll}`);
+
+  // a sheet on a phone is a full-bleed page anchored to the bottom, not a
+  // centred desktop modal that leaves the primary action off-screen
+  await page.evaluate(() => { if (typeof saveDialog === 'function') saveDialog(); });
+  await page.waitForTimeout(300);
+  const sheet = await page.evaluate(() => {
+    const s = document.getElementById('sheet'), m = document.getElementById('modal');
+    if (!s || !m || m.hidden) return null;
+    const r = s.getBoundingClientRect();
+    return { width: Math.round(r.width), bottom: Math.round(r.bottom), vh: window.innerHeight,
+      full: r.width >= window.innerWidth - 1, reachesBottom: r.bottom >= window.innerHeight - 2 };
+  });
+  await page.evaluate(() => { if (typeof hideSheet === 'function') hideSheet(); });
+  step('phone-sheet', !!sheet && sheet.full && sheet.reachesBottom,
+    sheet ? `sheet ${sheet.width}px wide of 390, bottom at ${sheet.bottom} of ${sheet.vh}` : 'no sheet opened');
+  await page.setViewportSize({ width: 1500, height: 950 });
+
   step('console-errors', errors.length === 0, `${errors.length} error(s)` + (errors.length ? ': ' + errors.slice(0, 2).join(' | ') : '') +
     (offline.length ? `; ${offline.length} expected-offline resource failure(s) (fonts — exemption dies with the external-ref allowlist)` : ''));
   await browser.close();
