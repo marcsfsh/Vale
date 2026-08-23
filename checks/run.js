@@ -163,7 +163,10 @@ function reassignmentSites(text) {
 
 /* ---- 6. save keys ---- */
 {
-  const re = /localStorage\.(?:get|set|remove)Item\('([^']+)'/g;
+  // Every parliamentVale.* string literal anywhere counts — keys reach
+  // localStorage through variables (readAutosave's key array), so matching
+  // only direct getItem('...') calls would go blind to them.
+  const re = /'(parliamentVale[^']*)'/g;
   const keys = new Set();
   let m;
   while ((m = re.exec(src))) keys.add(m[1]);

@@ -4366,14 +4366,32 @@ function toast(msg) {
 
 function saveAutosave() {
   if (!S || !S.started) return;
-  try { localStorage.setItem('parliamentVale.autosave.v5', JSON.stringify(S)); } catch (e) {}
+  try {
+    localStorage.setItem('parliamentVale.autosave.v5', JSON.stringify(S));
+    UI.saveWriteFailed = false;
+  } catch (e) {
+    /* A full or blocked store must not look like a successful save: say so
+       once, and again only after a save has succeeded in between. */
+    if (!UI.saveWriteFailed) {
+      UI.saveWriteFailed = true;
+      toast('The autosave could not be written. Storage is full or blocked; use Save / load to keep a portable copy.');
+    }
+  }
 }
 
 function readAutosave() {
-  try {
-    var raw = localStorage.getItem('parliamentVale.autosave.v5') || localStorage.getItem('parliamentVale.autosave.v4') || localStorage.getItem('parliamentVale.autosave');
-    return raw ? enrichState(JSON.parse(raw), false) : null;
-  } catch (e) { return null; }
+  /* Each key parses independently: one corrupt blob must not hide an older,
+     intact save, and is never modified or deleted — only reported. */
+  var keys = ['parliamentVale.autosave.v5', 'parliamentVale.autosave.v4', 'parliamentVale.autosave'];
+  UI.saveReadError = null;
+  for (var i = 0; i < keys.length; i++) {
+    var raw = null;
+    try { raw = localStorage.getItem(keys[i]); } catch (e) { return null; }
+    if (!raw) continue;
+    try { return enrichState(JSON.parse(raw), false); }
+    catch (e) { UI.saveReadError = keys[i]; }
+  }
+  return null;
 }
 
 function applyDoctrine(st, id) {
@@ -8013,10 +8031,12 @@ document.getElementById('tabs').addEventListener('click', function (e) {
   UI.tab = b.getAttribute('data-tab');
   render();
 });
-document.getElementById('btnEnd').addEventListener('click', confirmEndTurn);
+/* Call through the identifier: later chunks reassign these names, and passing
+   the function value here would freeze the v4 body on the button forever. */
+document.getElementById('btnEnd').addEventListener('click', function () { confirmEndTurn(); });
 document.getElementById('btnBrief').addEventListener('click', function () { UI.tab='chamber'; render(); window.scrollTo({top:0,behavior:'smooth'}); });
-document.getElementById('btnHelp').addEventListener('click', helpDialog);
-document.getElementById('btnUndo').addEventListener('click', undoLast);
+document.getElementById('btnHelp').addEventListener('click', function () { helpDialog(); });
+document.getElementById('btnUndo').addEventListener('click', function () { undoLast(); });
 document.getElementById('btnSave').addEventListener('click', saveDialog);
 document.addEventListener('keydown', function (e) {
   var tag=(e.target&&e.target.tagName||'').toLowerCase();
@@ -10714,8 +10734,10 @@ function v6Sandbox(fn) {
   var rr = render, ss = showSheet, hs = hideSheet, tt = toast, ff = flash, rnd0 = Math.random, sv = saveAutosave, cu = captureUndo, msgs = [], seed = 48271;
   S = clone; render = function () {}; showSheet = function () {}; hideSheet = function () {}; toast = function () {}; flash = function (m) { msgs.push(String(m)); };
   Math.random = function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }; saveAutosave = function () {}; captureUndo = function () {};
+  /* The nine swapped globals must come back whatever fn does — a restore that
+     sits outside a finally can be skipped, leaving the whole UI stubbed. */
   try { fn(clone); } catch (e) { msgs.push('The forecast could not be made.'); }
-  S = real; render = rr; showSheet = ss; hideSheet = hs; toast = tt; flash = ff; Math.random = rnd0; saveAutosave = sv; captureUndo = cu; UI.undo = savedUndo;
+  finally { S = real; render = rr; showSheet = ss; hideSheet = hs; toast = tt; flash = ff; Math.random = rnd0; saveAutosave = sv; captureUndo = cu; UI.undo = savedUndo; }
   return { st:clone, msgs:msgs };
 }
 function v6Diff(a, b) {
@@ -11199,6 +11221,7 @@ startScreen = function () {
   var lengths = Object.keys(V6_LENGTHS).map(function (k) { var L = V6_LENGTHS[k]; return '<button data-setup-length="' + k + '" aria-pressed="' + (s.length === k) + '"><b>' + esc(L.name) + '</b><small>' + esc(L.note) + '</small></button>'; }).join('');
   var diffs = V6_DIFF_ORDER.map(function (k) { var d = DIFFS[k]; return '<button data-setup-diff="' + k + '" aria-pressed="' + (s.diff === k) + '"><b>' + esc(d.name) + ': ' + esc(d.tag) + '</b><small>' + esc(d.blurb) + '</small></button>'; }).join('');
   var html = '<div class="kicker">Republic of Vale, 2024</div><h2 id="sheetTitle">Take a Party and the Years That Follow</h2>' +
+    (UI.saveReadError ? '<p class="note" data-save-warning="1" style="color:var(--bad)">A stored save could not be read (' + esc(UI.saveReadError) + '). It has been left untouched' + (auto ? '; an older save is offered below.' : '.') + '</p>' : '') +
     (auto ? '<div class="choices" style="margin-bottom:12px"><button class="choice" data-resume="1"><b>Resume the device autosave</b><small>' + esc(dateLabel(auto.turn)) + ' · ' + esc(PARTY[playParty(auto)].name) + ' · ' + esc(FORMS[auto.form].name) + (auto.endYear ? ' · ends ' + auto.endYear : '') + '</small></button></div>' : '') +
     '<p class="start-intro">Vale is a federal republic of six hundred and eighty million people, the first power of its hemisphere, and the most heavily checked constitution ever written: fifty states, two elected houses, four executive offices on staggered terms, sixteen justices nobody appoints, and eight regions with governors of their own. You lead a party. Whether that means you govern depends on the arithmetic, and the arithmetic depends on where you choose to begin.</p>' +
     '<div class="setup-steps"><span class="on">1 · Party</span><span class="on">2 · Opening</span><span class="on">3 · Length</span><span class="on">4 · Difficulty</span></div>' +
@@ -11464,6 +11487,7 @@ button,.btn,.choice,.tag,nav.tabs button{touch-action:manipulation}
 
 </style>
 <script>
+'use strict';
 
 /* ==========================================================
    MOBILE BEHAVIOURS
@@ -11733,6 +11757,7 @@ svg.hemi circle[fill="#0000BC"],svg.hemi circle[fill="#9D0000"]{stroke:rgba(237,
 
 </style>
 <script>
+'use strict';
 
 /* ==========================================================
    THE CLEAN DESK · streamlining layer

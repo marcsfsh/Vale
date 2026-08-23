@@ -136,3 +136,76 @@ fonts with the refresh"*. Character: *"Calm, data dense command desk"*.
 Process: *"Mockups first, then build"*. Foundation: *"Dark-first"*. Directions:
 *"Civic modernism, Situation room, Modern ministry, At least 2 others"* (≥5
 total). Motion: *"Subtle and purposeful"*. Data viz: *"Redesign the viz layer"*.
+
+**The chosen identity (2026-08-23, after two mockup rounds):** round one
+narrowed five directions to Modern Ministry and Civic Modernism (*"a tie…
+present 6 final options: 3 variants of each"*); the runoff's verdict:
+**"Ministry C is the finalist"** — **Ministry Precise**: Ministry's materials
+on Civic's discipline. Tokens: ground #141A17, panel #1A211D, cell #171D18,
+rule #26302A; ink #EAE7DC, muted #97A099; brass #BFA14E (primary), #C77B62
+bad, #6FAE8B good. Type: Marcellus (masthead/headlines), Archivo Narrow
+(caps labels/buttons), Public Sans (prose), IBM Plex Mono (all numerals,
+tabular). Reference boards: the "Ministry Precise · The Design" page of the
+mockup canvas (Overview desktop+phone, Drafting Desk, Election Night). S5
+implements this as vale.html's token system with measured font subsets.
+
+**Seat-map ruling (owner, 2026-08-23): "Must maintain individual circles for
+parliament seats."** The hemicycle is always drawn seat by seat — as the
+game's `hemiMap` already does — never smoothed into arc segments. Binds the
+S6 viz redesign and every future chamber/senate/court display.
+
+**Party-palette ruling (owner, 2026-08-23): "The original color pallet for the
+parties … needs to be intact. The exact color values can shift as needed so
+long as they remain close to the original."** Followed by: *"Not good enough as
+far as making the colors legible goes."*
+
+Five of the seven are used **unchanged**. Two are lifted in lightness with
+**hue locked** — they were not legible at any rim strength:
+
+| party | colour | change | contrast on the seat ground |
+|---|---|---|---|
+| RSF Revolutionary Socialist Front | `#9D0000` → `#C70000` | ΔE 9.1, hue locked | 2.01 → 2.83, rimmed |
+| LP Labor Party | `#FF0000` | — | 4.33 |
+| SD Social Democrats | `#FFA097` | — | 8.84 |
+| FP Federal Party | `#FFFB00` | — | 15.70 |
+| CUP Conservative Union Party | `#03F2FF` | — | 12.48 |
+| TVC Traditional Values Coalition | `#00ABEF` | — | 6.65 |
+| PNL Patriot Nationalist League | `#0000BC` → `#1551FF` | ΔE 17.0, hue locked | 1.42 → 3.01, rimmed |
+
+**What the measurements established, and it is worth not re-deriving:**
+
+1. A dark colour cannot be made legible on a dark ground by treatment alone.
+   `#0000BC` measured **1.42:1** — the rim helps it be *seen*, not *read*. The
+   lift was necessary, and the owner's licence to shift values covers it.
+2. The lit floor added for softness **made the dark colours worse** (PNL fell
+   to 1.10:1 against the lifted ground). Floor opacity was cut accordingly.
+   Any future "ambient" treatment must be re-measured against the darkest
+   party, not the average one.
+3. **Colour alone cannot carry this palette.** Vale has three reds and three
+   blues; a search over hue-and-lightness showed no assignment is
+   simultaneously faithful, high-contrast and mutually distinct at seat size.
+   Free optimisation "solved" it by turning Labor's red into pink — rejected.
+   Therefore legibility is carried by STRUCTURE:
+
+   - **aisles** — a real angular gap (~2.6°) between blocs, so each party reads
+     as a group even where two share a hue family;
+   - **direct labels** — every bloc names itself on the arc with its seat
+     count, so colour is never decoded against a legend (this also retires the
+     separate legend, which became duplication);
+   - **size** — seats large enough for their colour to register (election
+     board r=2.7 in a 780-wide frame; compact chamber r=1.9);
+   - plus the softening set: gentle floor, same-hue aura, the game's seat
+     opacity, the brass despatch-box hairline, ivory rim on the two dark ones.
+
+Seating order is the `PARTIES` `order` field (RSF, LP, SD, FP, CUP, TVC, PNL),
+which also seats the coalitions contiguously — Popular Front left, Unity Front
+centre, PNL right. Confirmed against `hemiMap`: it sorts parties by `order`,
+pools all seats, and sorts by descending angle.
+
+*Implementation notes for S6:* (1) the existing rim rule selects on the literal
+fill (`svg.hemi circle[fill="#0000BC"]`) — a silent break if a colour is ever
+retuned; reimplement it as a class on the circle, not an attribute match.
+(2) `hemiMap`'s `total` parameter is declared but never read — the map draws
+the sum of the seats object, so a seat table that doesn't total `CFG.seats`
+silently draws a different-sized chamber. (3) Rounding drift is absorbed
+entirely by the outermost row, which can in principle go negative.

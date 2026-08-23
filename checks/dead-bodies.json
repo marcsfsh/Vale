@@ -225,7 +225,7 @@
   "helpDialog#1": {
    "line": 11129,
    "aliasCaptured": false,
-   "reason": "v6 full rewrite; no alias captured — BUT the replaced v4 body (~8068) remains reachable via the stale #btnHelp value binding (~8018) until S1 rebinds it. After S1 it is a true orphan."
+   "reason": "v6 full rewrite; no alias captured. Since S1 rebound #btnHelp to call through the identifier, the replaced v4 body (~8068) is a true orphan — the 10th dead body, deletable in S2 after poison-proof."
   },
   "gameOver#1": {
    "line": 11180,

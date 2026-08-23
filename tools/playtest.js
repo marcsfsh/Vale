@@ -19,7 +19,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(__dirname, 'out');
-const URL = 'file://' + path.join(ROOT, 'vale.html');
+const URL = 'file://' + (process.env.VALE_FILE || path.join(ROOT, 'vale.html'));
 const QUICK = process.argv.includes('--quick');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -105,10 +105,14 @@ async function run() {
   const bills = await page.evaluate(() => S.bills.filter(b => b.owner === 'player').length);
   step('draft-bill', bills > 0, `${bills} player bill(s) before the houses`);
 
-  // -- end the session via the keyboard path (the live chain) --
+  // -- end the session via the BUTTON (S1: must reach the live v8 chain, not
+  //    the frozen v4 body — the v8 wrapper's close-checklist is the tell) --
   const turnBefore = await page.evaluate(() => S.turn);
-  await page.keyboard.press('e');
+  await page.click('#btnEnd');
   await page.waitForSelector('[data-end-confirm]', { timeout: 10000 });
+  const checklist = await page.evaluate(() =>
+    !!document.querySelector('#sheet .close-list, #sheet [data-close-list], #sheet .closelist'));
+  step('end-button-live', checklist, 'End button reaches the v8 close-checklist wrapper');
   await page.click('[data-end-confirm]');
   const drained = await drainModals(page, 40);
   const turnAfter = await page.evaluate(() => S.turn);
@@ -132,6 +136,47 @@ async function run() {
     const resumedTurn = await page.evaluate(() => S.turn);
     step('resume-restores', resumedTurn === turnAfter, `turn after resume: ${resumedTurn} (expected ${turnAfter})`);
   }
+
+  // -- Guide button (S1): must open the live v6+ guide with the v9 cards, not
+  //    the frozen v4 field guide --
+  await page.click('#btnHelp');
+  await page.waitForTimeout(200);
+  const guide = await page.evaluate(() => {
+    const sh = document.getElementById('sheet');
+    return { open: !document.getElementById('modal').hidden, v9: /The dossier/.test(sh.textContent) };
+  });
+  step('guide-live', guide.open && guide.v9, 'Guide opens the live chain (v9 "The dossier" card present)');
+  await page.evaluate(() => { const b = document.querySelector('#sheet [data-close]'); if (b) b.click(); });
+
+  // -- loud save read (S1): a corrupt .v5 must warn, fall through to an older
+  //    intact save, and leave the corrupt blob byte-for-byte untouched --
+  const blob = await page.evaluate(() => localStorage.getItem('parliamentVale.autosave.v5'));
+  if (blob) {
+    fs.mkdirSync(path.join(__dirname, 'fixtures'), { recursive: true });
+    fs.writeFileSync(path.join(__dirname, 'fixtures', 'synthetic-turn2.v5.json'), blob);
+  }
+  await page.evaluate(b => {
+    localStorage.setItem('parliamentVale.autosave.v5', '{"corrupt":');
+    localStorage.setItem('parliamentVale.autosave.v4', b);
+  }, blob);
+  await page.reload();
+  await page.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+  const loud = await page.evaluate(() => ({
+    warning: !!document.querySelector('[data-save-warning]'),
+    resume: !!document.querySelector('[data-resume]'),
+    untouched: localStorage.getItem('parliamentVale.autosave.v5') === '{"corrupt":',
+  }));
+  step('corrupt-save-loud', loud.warning && loud.resume && loud.untouched,
+    `warning shown: ${loud.warning}; older save offered: ${loud.resume}; corrupt blob untouched: ${loud.untouched}`);
+  await page.screenshot({ path: path.join(OUT, 'save-warning.png') });
+  await page.click('[data-resume]');
+  const v4Resumed = await page.evaluate(() => S.turn);
+  step('corrupt-save-fallthrough', v4Resumed === turnAfter, `resumed from the .v4 key at turn ${v4Resumed}`);
+  // the resumed game's own debounce now rewrites .v5 over the corrupt blob —
+  // correct behavior; let it settle before the screenshots, and drop the
+  // planted .v4 so the harness leaves no stale generation behind
+  await page.waitForTimeout(400);
+  await page.evaluate(() => localStorage.removeItem('parliamentVale.autosave.v4'));
 
   // -- screenshots: desktop / tablet / phone on the live game --
   await page.screenshot({ path: path.join(OUT, 'desktop-1500.png'), fullPage: false });
