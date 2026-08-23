@@ -196,6 +196,33 @@ function reassignmentSites(text) {
       : `${ok.size} adjudicated colours, no drift`);
 }
 
+/* ---- 6c. breakpoint tiers ---- */
+// Every width threshold in every @media rule must be a tier edge. Six chunks
+// each inventing its own idea of "narrow" is what produced a 761-1179 band
+// wearing the phone's tab strip over a desktop body, and a turn bar that
+// changed its chip count three times inside one tier. The numbers are the
+// design decision; this check just refuses to let a new one arrive quietly.
+{
+  const allowed = new Set(baseline.widthThresholds);
+  const seen = new Map(); // px -> first line
+  const re = /@media([^{]+)/g;
+  let m;
+  while ((m = re.exec(src))) {
+    const line = src.slice(0, m.index).split('\n').length;
+    const w = /(?:min|max)-width:\s*(\d+)px/g;
+    let n;
+    while ((n = w.exec(m[1]))) {
+      const px = Number(n[1]);
+      if (allowed.has(px)) continue;
+      if (!seen.has(px)) seen.set(px, line);
+    }
+  }
+  const rogue = [...seen].sort((a, b) => a[0] - b[0]).map(([px, line]) => `${px}px (line ${line})`);
+  report('breakpoint-tiers', rogue.length === 0,
+    rogue.length ? `off-tier width threshold(s): ${rogue.join(', ')} — fold into a tier, or add the number to checks/baseline.json with the case for it`
+      : `${allowed.size} tier edges [${baseline.widthThresholds.join(', ')}], no off-tier thresholds`);
+}
+
 /* ---- 7. Math.random ratchet ---- */
 {
   const n = (src.match(/Math\.random\(\)/g) || []).length;

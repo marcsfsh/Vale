@@ -11,5 +11,7 @@
     "parliamentVale.hall"
   ],
   "mathRandomCount": 93,
-  "maxBytes": 1600000
+  "maxBytes": 1600000,
+  "_tiersComment": "S6a collapsed 13 accreted width thresholds to these five, one per tier edge plus the small-phone refinement the user sanctioned. Six chunks each picking its own 'narrow' number is how the tablet band ended up half-dressed, so a new threshold fails this check. Adding one is a design decision: make the case in the PR, then add the number here.",
+  "widthThresholds": [420, 760, 761, 1179, 1180]
 }

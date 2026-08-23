@@ -4,16 +4,18 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S2 — chain consolidation** (PR #4). Five dead bodies deleted after
-poison-proof (132 lines); five more that a reference scan called dead were
-proved to execute at boot and kept, with MAP.md corrected. Dead-body ratchet
-10 → 5, which is now its true floor.
+**S6a — three real tiers** (PR #5). Thirteen width thresholds collapsed to
+five, and all five are tier edges: 420, 760/761, 1179/1180. The desktop now
+uses the window (21% of a 1500px screen was unused, now 4%), and the tablet
+band is a tier with its own layout instead of a narrow desktop wearing half the
+phone's chrome. Ten queries deleted as provably dead, five retargeted, one
+carried forward — `.gz-cols`, which was the only rule in the sweep doing live
+work, and which had left the gazette two-up across 621–760.
 
-Previously: **S5 — token foundation** (PR #3, merged). Ministry Precise is in the game: the token
-set retuned, seven faces embedded as data URIs, the Google Fonts link and its
-preconnects gone, and the external-reference allowlist now **empty and
-enforced** (invariant 4 achieved). Chrome is brass; the party's own colour is
-reserved for party identity.
+Previously: **S2 — chain consolidation** (PR #4, merged). Five dead bodies
+deleted after poison-proof (132 lines); five more that a reference scan called
+dead were proved to execute at boot and kept, with MAP.md corrected. Dead-body
+ratchet 10 → 5, which is now its true floor.
 
 ## Slice board
 
@@ -21,11 +23,13 @@ reserved for party identity.
 |---|---|---|
 | S0 agreement + tooling | **merged** (#1) | checks/, tools/, docs/, hook, skill, permissions |
 | S1 correctness | **merged** (#2) | ratchets moved: strict 7/7, stale bindings 0, orphans 10 |
-| S2 chain consolidation | **in review (PR #4)** | 5 orphans deleted with poison-proofs; 5 'orphans' proved live at boot and kept; ratchet 10→5 (its true floor). Marker/seam consolidation deferred to S6, where the restyle needs the seams |
+| S2 chain consolidation | **merged** (#4) | 5 orphans deleted with poison-proofs; 5 'orphans' proved live at boot and kept; ratchet 10→5 (its true floor). Marker/seam consolidation deferred to S6, where the restyle needs the seams |
 | S3 seeded PRNG | pending | one engine, seed in save, loud save-break, exact-value harness tests |
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
-| S6+ refresh tab-by-tab | blocked on S5 | breakpoint consolidation to 3 tiers first; viz redesign |
+| S6a three tiers | **in review (PR #5)** | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
+| S6b viz redesign | next | seat map per the rulings — individual circles, real party palette, aisles, direct labels, floor/aura/rim |
+| S6c restyle tab-by-tab | pending | per-surface pass; also owns the translucent turn bar (86% at its top edge, so phone content bleeds through) |
 | S7 onboarding | pending | setup trim + guided panels |
 | S8 pacing honesty | pending | each length option a complete arc; balance changes go to the user first |
 
