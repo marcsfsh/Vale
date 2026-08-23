@@ -1,28 +1,105 @@
+CORRECTED BASELINE — the figures published before this run measured the wrong
+quantity, and are superseded.
+
+tools/pacing.js used to report `V6_ACHIEVEMENTS.filter(a => a.test(st)).length`
+— it re-ran every test against the FINAL state and counted what happened to be
+true at that instant. The game does not work that way: v6AchievementsTick
+latches, and the game's own displays (the end card, the persisted hall entry)
+count the latched map. Twelve of the thirty-nine records are transient
+conditions that bank the first time they flicker and are usually false again by
+the end, so they were invisible to the old figure — and the longer the campaign,
+the more turns it has to flicker, so the error was WORSE for the long options.
+
+Old figures (superseded): short 8%, century 18-23%, epic 21-28%.
+Corrected below:         short 10-15%, century 18-28%, epic 21-31%.
+
+The gap is real and roughly two to one, but it is smaller than reported and it
+sits almost entirely at SHORT — the century already matches the epic set almost
+record for record.
+
+Run: three lengths, three seeds, nine campaigns, ~1,050 sessions.
+
+================================================================================
 playing short from seed 5EED1234 ... 50 sessions, reached the end year
 playing standard from seed 5EED1234 ... 100 sessions, reached the end year
 playing epic from seed 5EED1234 ... 200 sessions, reached the end year
 playing short from seed A11CE001 ... 50 sessions, reached the end year
 playing standard from seed A11CE001 ... 100 sessions, reached the end year
 playing epic from seed A11CE001 ... 200 sessions, reached the end year
+playing short from seed C0FFEE42 ... 50 sessions, reached the end year
+playing standard from seed C0FFEE42 ... 100 sessions, reached the end year
+playing epic from seed C0FFEE42 ... 200 sessions, reached the end year
 
 What each length actually delivered
 
 length    seed      sessions  years  ended                elections  crises  referendums  treaties  wars  achievements
-short     5EED1234  50        50     reached the end year 9          3       0            0         2     3/39
-standard  5EED1234  100       100    reached the end year 9          7       0            0         8     9/39
+short     5EED1234  50        50     reached the end year 9          3       0            0         2     6/39
+standard  5EED1234  100       100    reached the end year 9          7       0            0         8     11/39
 epic      5EED1234  200       200    reached the end year 9          13      0            0         22    11/39
-short     A11CE001  50        50     reached the end year 3          4       0            0         5     3/39
+short     A11CE001  50        50     reached the end year 3          4       0            0         5     4/39
 standard  A11CE001  100       100    reached the end year 3          7       0            0         14    7/39
 epic      A11CE001  200       200    reached the end year 3          15      0            0         18    8/39
+short     C0FFEE42  50        50     reached the end year 11         3       0            0         7     6/39
+standard  C0FFEE42  100       100    reached the end year 11         6       0            0         14    11/39
+epic      C0FFEE42  200       200    reached the end year 11         12      0            0         23    12/39
 
 Per session — is the shorter option denser, or just shorter?
 
-length    crises/10 sessions  elections/10  events/session  achievements at the close
-short     0.6                 1.8           1.6             8%
-standard  0.7                 0.9           1.6             23%
+length    crises/10 sessions  elections/10  events/session  records at the close
+short     0.6                 1.8           1.6             15%
+standard  0.7                 0.9           1.6             28%
 epic      0.7                 0.4           1.6             28%
-short     0.8                 0.6           1.8             8%
+short     0.8                 0.6           1.8             10%
 standard  0.7                 0.3           1.8             18%
 epic      0.8                 0.1           1.7             21%
+short     0.6                 2.2           1.8             15%
+standard  0.6                 1.1           1.7             28%
+epic      0.6                 0.6           1.8             31%
+
+The counters the record is gated on
+
+length    seed      laws  yrs-gov  promises  best-run  works  questions  streak  goals-met
+short     5EED1234  0     20       0         3         0      0          0       0
+standard  5EED1234  0     24       0         45        0      0          0       0
+epic      5EED1234  0     24       0         145       0      0          33      0
+short     A11CE001  0     8        0         1         0      0          0       0
+standard  A11CE001  0     8        0         25        0      0          0       0
+epic      A11CE001  0     8        0         25        0      0          26      0
+short     C0FFEE42  0     32       0         3         0      0          2       0
+standard  C0FFEE42  0     58       0         53        0      0          0       0
+epic      C0FFEE42  0     70       0         98        0      0          37      0
+
+Records actually earned (the latched map the game itself counts)
+
+  short 5EED1234      aaa beloved crisisManager packed quiet victor
+                      recomputed-at-the-end would have said 3, which is the bug this tool used to report
+  standard 5EED1234   aaa balanced beloved centenary crisisManager debtFree packed quiet v8story veteran victor
+                      recomputed-at-the-end would have said 9, which is the bug this tool used to report
+  epic 5EED1234       aaa balanced beloved centenary crisisManager debtFree packed quiet v8story veteran victor
+  short A11CE001      beloved crisisManager packed victor
+                      recomputed-at-the-end would have said 3, which is the bug this tool used to report
+  standard A11CE001   balanced beloved centenary crisisManager packed veteran victor
+  epic A11CE001       balanced beloved centenary crisisManager packed v8story veteran victor
+  short C0FFEE42      aaa beloved crisisManager longReign packed victor
+                      recomputed-at-the-end would have said 4, which is the bug this tool used to report
+  standard C0FFEE42   aaa balanced beloved centenary crisisManager debtFree longReign packed quiet veteran victor
+                      recomputed-at-the-end would have said 10, which is the bug this tool used to report
+  epic C0FFEE42       aaa balanced beloved centenary crisisManager debtFree longReign packed quiet v8story veteran victor
+                      recomputed-at-the-end would have said 11, which is the bug this tool used to report
+
+  never earned in any run: 27 of 39 — the harness plays first-choice-always and loses government early, so this
+  is a floor on what the game offers, not a measure of what a player reaches
+
+Trajectory (every 20 sessions): year / elections won / years governing / crises / achievements
+
+  short 5EED1234      2025:0/1/0/0   2045:9/20/1/6   2065:9/20/2/6
+  standard 5EED1234   2025:0/1/0/0   2045:9/20/1/6   2065:9/20/2/6   2085:9/20/4/6   2105:9/24/5/8
+  epic 5EED1234       2025:0/1/0/0   2045:9/20/1/6   2065:9/20/2/6   2085:9/20/4/6   2105:9/24/5/8   2125:9/24/7/11   2145:9/24/9/11   2165:9/24/9/11   2185:9/24/10/11   2205:9/24/12/11
+  short A11CE001      2025:0/1/0/0   2045:3/8/1/4   2065:3/8/3/4
+  standard A11CE001   2025:0/1/0/0   2045:3/8/1/4   2065:3/8/3/4   2085:3/8/5/6   2105:3/8/5/6
+  epic A11CE001       2025:0/1/0/0   2045:3/8/1/4   2065:3/8/3/4   2085:3/8/5/6   2105:3/8/5/6   2125:3/8/7/7   2145:3/8/9/7   2165:3/8/10/7   2185:3/8/12/8   2205:3/8/14/8
+  short C0FFEE42      2025:0/1/0/0   2045:10/21/2/4   2065:11/32/2/6
+  standard C0FFEE42   2025:0/1/0/0   2045:10/21/2/4   2065:11/32/2/6   2085:11/32/3/7   2105:11/41/5/9
+  epic C0FFEE42       2025:0/1/0/0   2045:10/21/2/4   2065:11/32/2/6   2085:11/32/3/7   2105:11/41/5/9   2125:11/59/7/11   2145:11/66/8/11   2165:11/70/8/12   2185:11/70/10/12   2205:11/70/11/12
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
