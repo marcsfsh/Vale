@@ -108,7 +108,7 @@ let fail = 0;
   ].map(c => ({ name: c.name, total: Object.values(c.seats).reduce((a, b) => a + b, 0),
     parties: Object.values(c.seats).filter(n => n > 0).length })));
 
-  const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(22) + detail); };
+  const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(36) + detail); };
   let geom;
   for (let i = 0; i < all; i++) {
     const g = await geomFor(i);
@@ -128,6 +128,46 @@ let fail = 0;
     say(g.clash === 0, 'labels do not collide', g.clash ? g.clash + ' overlapping pair(s)' : g.texts.length + ' placed, none overlapping');
     say(g.used >= 88, 'box fits its drawing', g.used + '% of the viewBox covered by seats and labels (the rest is dead margin the tier pays height for)');
     console.log('      labels: ' + g.texts.join(' | '));
+  }
+
+  /* The boot state is the easy case: seven roughly-even blocs, nothing dimmed,
+     no three-digit count on the far-left bench. Shipped scenarios are not that
+     kind, and both of this tool's label assertions passed a build where a
+     six-seat bloc got no label at all. Replay the awkward shapes. */
+  console.log('\nAwkward seat shapes — the ones the default opening does not exercise');
+  const SHAPES = [
+    { name: 'a six-seat Senate bloc',
+      seats: { rsf: 6, lp: 59, sd: 50, fp: 66, cup: 48, tvc: 36, pnl: 35 }, upper: true },
+    { name: 'three digits on the far-left bench',
+      seats: { rsf: 120, lp: 300, sd: 209, fp: 254, cup: 174, tvc: 125, pnl: 123 }, upper: false },
+    { name: 'one party holds almost every seat',
+      seats: { rsf: 4, lp: 1270, sd: 8, fp: 9, cup: 6, tvc: 5, pnl: 3 }, upper: false },
+  ];
+  for (const shape of SHAPES) {
+    const r = await page.evaluate(s => {
+      if (s.upper) S.upper.seats = s.seats; else S.seats = s.seats;
+      UI.tab = s.upper ? 'houses' : 'chamber';
+      render();
+      const svgs = [...document.querySelectorAll('svg.hemi')];
+      const svg = s.upper ? svgs[svgs.length - 1] : svgs[0];
+      const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+      const texts = [...svg.querySelectorAll('text')];
+      const named = texts.map(t => t.textContent.replace(/\s+/g, ' ').trim());
+      const escapes = texts.filter(t => {
+        const b = t.getBBox();
+        return b.x < -0.5 || b.x + b.width > vb[2] + 0.5;
+      }).length;
+      const parties = Object.values(s.seats).filter(n => n > 0).length;
+      // every party with seats must have its count readable SOMEWHERE
+      const legend = [...document.querySelectorAll('.seatlegend .leg')]
+        .filter(l => { const n = l.querySelector('.n'); return n && getComputedStyle(n).display !== 'none'; }).length;
+      return { named, escapes, parties, legend, circles: svg.querySelectorAll('circle').length };
+    }, shape);
+    const ok = r.escapes === 0 && r.legend >= r.parties &&
+      r.circles === Object.values(shape.seats).reduce((a, b) => a + b, 0);
+    say(ok, shape.name,
+      `${r.circles} seats drawn, ${r.named.length} of ${r.parties} blocs labelled on the arc, ` +
+      `${r.legend} counts readable in the legend, ${r.escapes} label(s) outside the box`);
   }
 
   console.log('\nRendered size per tier — how big a seat actually reads');

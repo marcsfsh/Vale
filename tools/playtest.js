@@ -65,11 +65,10 @@ async function boot(page) {
 async function run() {
   const errors = [];
   const offline = [];
-  // While the external-ref allowlist is non-empty (the Google Fonts link, until
-  // the refresh removes it), a failed resource load offline is the known
-  // cosmetic failure — counted separately, not a FAIL. This exemption dies with
-  // the allowlist: once checks/baseline.json lists no allowed prefixes, every
-  // resource failure is an error again (a self-contained file loads nothing).
+  // The allowlist has been EMPTY since S5 — the fonts are embedded and the file
+  // references nothing off-origin — so this bucket should stay at zero. It is
+  // kept as a separate count rather than deleted so that a resource failure
+  // reports as itself instead of as an anonymous console error.
   const allow = JSON.parse(fs.readFileSync(path.join(ROOT, 'checks', 'baseline.json'), 'utf8')).allowedExternalPrefixes;
   const browser = await playwright.chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -144,15 +143,26 @@ async function run() {
   // -- walk every view and both menus. The S2 poison-proofs are only worth as
   //    much as the paths this harness actually visits, so it visits all of
   //    them: each tab rendered, the council menu, the field guide, save/load.
+  /* This counted ATTEMPTS, not renders — `toured++` after each evaluate,
+     against a threshold of 10 — so a view that rendered nothing, or five views
+     dropped from TABS outright, sailed through. It now requires every view to
+     put something in #view, and names the ones that did not. */
   const tabs = await page.evaluate(() => (typeof TABS !== 'undefined' ? TABS.map(t => t.id) : []));
-  let toured = 0;
+  const empty = [];
   for (const t of tabs) {
     await page.evaluate(id => { UI.tab = id; render(); }, t);
     await page.waitForTimeout(45);
-    toured++;
+    const filled = await page.evaluate(() => {
+      const v = document.getElementById('view');
+      return !!v && v.children.length > 0 && v.textContent.trim().length > 40;
+    });
+    if (!filled) empty.push(t);
   }
   await page.evaluate(() => { UI.tab = 'chamber'; render(); });
-  step('tab-tour', toured >= 10, `${toured} of ${tabs.length} views rendered`);
+  step('tab-tour', tabs.length >= 15 && empty.length === 0,
+    `${tabs.length - empty.length} of ${tabs.length} views rendered content` +
+    (empty.length ? `; empty: ${empty.join(', ')}` : '') +
+    (tabs.length < 15 ? `; only ${tabs.length} views exist, expected at least 15` : ''));
 
   for (const [name, open] of [['menu', () => v6Menu()], ['guide', () => helpDialog()], ['save dialog', () => saveDialog()]]) {
     await page.evaluate(fn => { try { eval('(' + fn + ')()'); } catch (e) { window.__sheetErr = String(e); } }, open.toString());

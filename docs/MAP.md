@@ -197,8 +197,9 @@ summary names the current settings: trimmed, not hidden.
 
 Both line charts — the polling trend and the long record — go through one
 `lineChart(o)` helper, so the vocabulary is defined once: a faint grid, round
-joints, and every series ending in a dot plus **its current value, in its own
-colour**. The last number is the one the reader came for; putting it on the
+joints, and every series ending in a dot, its **name in the series' own colour**
+and its current value beside that in neutral ink — the hue identifies the line,
+the figure stays legible. The last number is the one the reader came for; putting it on the
 chart is what retires the hunt back to a legend.
 
 - `spreadLabels(items, gap, lo, hi)` pushes labels that want the same height
@@ -219,6 +220,18 @@ chart is what retires the hunt back to a legend.
   chart inside a collapsed panel has no width to measure.
 
 ## The dice (S3)
+
+**The enrich chain's guard must stay outermost.** Each chunk wraps
+`enrichState`, so a guard on the v4 base leaves every later chunk's backfill
+outside it. The guard therefore lives at the very end of the last chunk
+(`v9EnrichGuarded`), and any future wrapper must be installed ABOVE it. What it
+prevents: the ensure functions invent a missing governor or minister with rolls,
+and `enrichState` is called on states that are NOT the live game —
+`readAutosave` enriches a stored blob to decide whether to offer it, and
+`undoLast` enriches a snapshot before assigning it. Unguarded, opening the save
+dialog mid-campaign spent the live campaign's dice on a throwaway object and the
+seed stopped reproducing the campaign. `tools/determinism.js` asserts it.
+
 
 Every roll in the game comes from `rand()`, a mulberry32 whose one word of
 state lives **on the state object**, not in a closure. That placement does three
@@ -274,7 +287,13 @@ came out of S6b and should not be relitigated casually:
   max-height per tier (460 desktop / 340 tablet / 250 phone). Row count is the
   other lever, swept not guessed: more rows over the same depth widen the pitch.
 - Labels are placed biggest bloc first, anchored **away** from the floor at the
-  horizontal ends, and skipped rather than overlapped. The phone tier hides them
+  horizontal ends, nudged back inside the box, and skipped rather than
+  overlapped. Because a label CAN be skipped — a dimmed chamber, a wedge under
+  ~0.1 rad, a collision — the legend beside the map keeps its seat counts on
+  every tier. S6c trimmed those counts above the phone tier on the assumption
+  that every bloc is labelled; a six-seat Senate bloc then had its number
+  rendered nowhere at all. Do not re-trim without first making every bloc
+  labelled unconditionally. The phone tier hides them
   in CSS and leans on the legend, which is the same data at a readable size.
 - Re-measure any change with `node tools/chamber.js` (geometry, overlaps, label
   collisions, rendered size per tier) and `node tools/seats.js` (contrast and
