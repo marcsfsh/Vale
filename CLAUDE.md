@@ -3,7 +3,7 @@
 One product: `vale.html` — a complete turn-based government simulator in a single
 self-contained file. Everything else in this repo is tooling or documentation.
 
-IMPORTANT: never read `vale.html` whole — it is 1.27 MB and consumes most of a
+IMPORTANT: never read `vale.html` whole — it is 1.4 MB and consumes most of a
 context window. Use `grep -n`, Read windows of ≤80 lines, and the Explore agent
 for open-ended sweeps. `docs/MAP.md` holds the structural map; read it before
 touching the file.
@@ -12,40 +12,67 @@ touching the file.
 
 - `vale.html` is the whole app: no build step, no package.json anywhere, no
   runtime dependency, no `<script src>`; it must open from `file://`.
-- No external reference beyond the Google Fonts link that is scheduled to leave
-  (`checks/baseline.json` holds the shrinking allowlist). Never add one.
+- **Zero external references.** The allowlist in `checks/baseline.json` is empty
+  and stays empty — the fonts are embedded as data URIs (`tools/fonts.sh`
+  regenerates them; never hand-edit the `@font-face` block). Never add one.
 - Saves may break pre-release, but only loudly: a blob that can't load gets a
   clear message and is left untouched in localStorage. Silent corruption or
   silent discard of a save is the worst possible failure here.
 - Three layout tiers, all first-class: phone ≤760 (reference: iPhone on
   Firefox = WebKit engine), tablet 761–1179, desktop ≥1180 (focus: 1500px
   Chromium). Improving one tier at another's cost is a regression.
+- **Five width thresholds exist and no more**: 420, 760/761, 1179/1180. A sixth
+  fails `breakpoint-tiers`. Needing a boundary at 900 almost always means the
+  rule belongs to a tier that already has one.
+- The party palette is the game's identity and is the user's to rule. Two
+  colours were lifted along their own hue in S6b; propose any further change
+  with `node tools/seats.js` output, never unilaterally.
 
-## The two rules the file's history punishes
+## The rules this file's history punishes
 
 - Never rebind a top-level function name without capturing the previous body
-  (`var vXFooBase = foo;` first). Every reassignment site must be adjudicated
-  in `checks/dead-bodies.json` or checks fail.
+  (`var vXFooBase = foo;` first). Every reassignment site must be adjudicated in
+  `checks/dead-bodies.json` or checks fail.
 - Never pass a reassignable function identifier by value at top level
   (`addEventListener('click', foo)` at column 0) — it freezes the body at that
-  vintage. Three known offenders exist (`#btnEnd`/`#btnHelp`/`#btnUndo`,
-  scheduled for fix in slice S1); do not add a fourth.
+  vintage. The ratchet is at 0; do not add the first.
+- **All randomness goes through `rand()`**, whose state rides the save. Never
+  call the unseeded source, and never name a local `seed` inside `newGame` —
+  `var` hoists to the top of the function and one already shadowed the campaign
+  seed, so the state literal was built with `seed: undefined`.
+- **Never set `fill` on a bare `text` selector in a chart's stylesheet.** A CSS
+  fill beats an SVG presentation attribute and silently greys out every label
+  the chart colours by attribute.
+- Never key CSS to a colour literal (`circle[fill="#0000BC"]`). A palette
+  retune then unstyles the thing it was propping up, silently.
 
 Also: CSS chunks conflict by source order (last wins, equal specificity) — new
 rules go at the end or under a body-class scope; later chunks splice rendered
-HTML by marker strings and query DOM sentinels, so renaming a class or heading
-can silently disable a feature (checks catch the literal-marker class only).
+HTML by marker strings and query DOM sentinels, so renaming a class, heading or
+slot attribute can silently disable a feature (checks catch the literal-marker
+class only; cross-chunk DOM slots are guarded by playtest steps instead).
 
 ## Commands
 
-- `node checks/run.js` — static checks, <5s, run before every commit.
-- `node tools/playtest.js` — headless scripted turn + reload/resume + 3
-  viewport screenshots (`--quick` for boot-only). Needs the global playwright
-  install; it prints SKIP with instructions where missing — a SKIP is never a
-  PASS. WebKit downloads are blocked by this cloud environment's network
-  policy; the Chromium run is the named substitute.
-- Verification bar and PR discipline: docs/AGREEMENT.md §E; the playtest skill
-  (`.claude/skills/playtest/`) is the step-by-step procedure.
+Run `node checks/run.js` before every commit. Run the harness that covers what
+you touched; a SKIP is never a PASS.
+
+- `checks/run.js` — 11 static checks, <5s.
+- `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
+  all 15 views, 3 viewport screenshots (`--quick` for boot-only).
+- `tools/determinism.js` — seven properties of the seeded dice. Drive the model,
+  not the modal queue: which queued sheets a UI run pumps depends on click
+  timing, so a UI-level comparison measures the harness, not the game.
+- `tools/chamber.js` — seat-map geometry, overlaps, label collisions, rendered
+  size per tier. `tools/seats.js` — palette contrast, ΔE, colour-vision sim.
+- `tools/tiers.js` / `tools/tabs.js` — layout at each tier boundary.
+- `tools/pacing.js` — plays a length option to its end and reports the arc.
+- `tools/poison.js` — proves a body is dead before you delete it.
+
+Playwright resolves from the global install (`npm root -g` + `createRequire`);
+bare `require('playwright')` fails from this repo. WebKit downloads are blocked
+by this environment's network policy — the Chromium phone viewport is the named
+substitute, and it is reported as a SKIP.
 
 ## Working state
 
