@@ -166,5 +166,16 @@ async function campaign(browser, lengthKey, seedText) {
       (f.events / r.sessions).toFixed(1).padEnd(16) +
       Math.round(f.achievements / f.achievementsTotal * 100) + '%');
   }
+  /* The trajectory, not just the total: a figure that is identical at 50 and
+     200 sessions has stopped moving, and it matters a great deal whether it
+     stopped because the game stops awarding it or because this harness — which
+     always takes the first choice on offer — lost the government early and
+     never got it back. */
+  console.log('\nTrajectory (every 20 sessions): year / elections won / years governing / crises / achievements\n');
+  for (const r of rows) {
+    const line = r.marks.filter((m, i) => i % 4 === 0).map(m =>
+      m.year + ':' + m.elections + '/' + m.yearsGoverning + '/' + m.arcs + '/' + m.achievements).join('   ');
+    console.log('  ' + (r.key + ' ' + r.seed).padEnd(20) + line);
+  }
   console.log('\nThis tool measures. Balance is the user\'s to rule (docs/AGREEMENT.md).');
 })().catch(e => { console.log('FAIL  ' + e.message); process.exit(1); });

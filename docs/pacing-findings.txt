@@ -1,0 +1,28 @@
+playing short from seed 5EED1234 ... 50 sessions, reached the end year
+playing standard from seed 5EED1234 ... 100 sessions, reached the end year
+playing epic from seed 5EED1234 ... 200 sessions, reached the end year
+playing short from seed A11CE001 ... 50 sessions, reached the end year
+playing standard from seed A11CE001 ... 100 sessions, reached the end year
+playing epic from seed A11CE001 ... 200 sessions, reached the end year
+
+What each length actually delivered
+
+length    seed      sessions  years  ended                elections  crises  referendums  treaties  wars  achievements
+short     5EED1234  50        50     reached the end year 9          3       0            0         2     3/39
+standard  5EED1234  100       100    reached the end year 9          7       0            0         8     9/39
+epic      5EED1234  200       200    reached the end year 9          13      0            0         22    11/39
+short     A11CE001  50        50     reached the end year 3          4       0            0         5     3/39
+standard  A11CE001  100       100    reached the end year 3          7       0            0         14    7/39
+epic      A11CE001  200       200    reached the end year 3          15      0            0         18    8/39
+
+Per session — is the shorter option denser, or just shorter?
+
+length    crises/10 sessions  elections/10  events/session  achievements at the close
+short     0.6                 1.8           1.6             8%
+standard  0.7                 0.9           1.6             23%
+epic      0.7                 0.4           1.6             28%
+short     0.8                 0.6           1.8             8%
+standard  0.7                 0.3           1.8             18%
+epic      0.8                 0.1           1.7             21%
+
+This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).

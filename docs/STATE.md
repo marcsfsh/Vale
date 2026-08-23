@@ -4,7 +4,18 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S7 — onboarding** (PR #9). The setup sheet asks its two real questions with a
+**S8 — pacing, measured** (PR #10). `tools/pacing.js` plays each length option to
+its end year through the real turn loop. Findings: all three lengths **do** reach
+their end year, and dispatch density is flat at ~1.6-1.8 per session across all
+of them — so the fifty-year option is not denser, it is simply shorter. The
+record tells the same story: a short campaign closes having unlocked **3 of 39
+achievements (8%)**, against 18-23% for a century and 21-28% for two hundred
+years. A retune is reserved to the user; three options are put to them in the
+PR. Harness caveat, stated in both: it always takes the first choice on offer,
+so it loses government early and never initiates a referendum or a treaty — the
+achievement figures are a floor, not a typical player's experience.
+
+Previously: **S7 — onboarding** (PR #9, merged). The setup sheet asks its two real questions with a
 line each on what they decide, and folds length, difficulty and the house rules
 into one disclosure that names them. Also closes the colour-vision question
 flagged in S6b and S6c: `tools/seats.js` now simulates all three dichromacies,
@@ -55,11 +66,11 @@ ratchet 10 → 5, which is now its true floor.
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
 | S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
-| S7 onboarding | **in review (PR #9)** | two guided questions, the rest behind one disclosure; playtest gains `setup-trimmed`; CVD measured |
+| S8 pacing | **in review (PR #10)** | measured, not retuned: all lengths reach their end year, density is flat, short closes at 8% of the record; the call is the user's |
+| S7 onboarding | **merged** (#9) | two guided questions, the rest behind one disclosure; playtest gains `setup-trimmed`; CVD measured |
 | S6c charts | **merged** (#8) | one chart vocabulary, end-value labels, charts open on the present; region tiles carry their winner as an edge |
 | S3 seeded PRNG | **merged** (#7) | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
 | S6b the chamber | **merged** (#6) | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
-| S8 pacing honesty | pending | each length option a complete arc; balance changes go to the user first |
 
 ## Open items / environment facts
 
