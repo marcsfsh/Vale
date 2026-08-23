@@ -123,6 +123,28 @@ async function run() {
   const desk = await page.evaluate(() => !!document.querySelector('#view .desk-row, #view .desk, #view [data-desk], #view .panel'));
   step('v7-splice-renders', desk, 'Overview renders panels after the turn');
 
+  // -- walk every view and both menus. The S2 poison-proofs are only worth as
+  //    much as the paths this harness actually visits, so it visits all of
+  //    them: each tab rendered, the council menu, the field guide, save/load.
+  const tabs = await page.evaluate(() => (typeof TABS !== 'undefined' ? TABS.map(t => t.id) : []));
+  let toured = 0;
+  for (const t of tabs) {
+    await page.evaluate(id => { UI.tab = id; render(); }, t);
+    await page.waitForTimeout(45);
+    toured++;
+  }
+  await page.evaluate(() => { UI.tab = 'chamber'; render(); });
+  step('tab-tour', toured >= 10, `${toured} of ${tabs.length} views rendered`);
+
+  for (const [name, open] of [['menu', () => v6Menu()], ['guide', () => helpDialog()], ['save dialog', () => saveDialog()]]) {
+    await page.evaluate(fn => { try { eval('(' + fn + ')()'); } catch (e) { window.__sheetErr = String(e); } }, open.toString());
+    await page.waitForTimeout(120);
+    await page.evaluate(() => { const b = document.querySelector('#sheet [data-close]'); if (b) b.click(); });
+    await page.waitForTimeout(60);
+  }
+  const sheetErr = await page.evaluate(() => window.__sheetErr || null);
+  step('sheets-open', !sheetErr, sheetErr ? 'a sheet threw: ' + sheetErr : 'council menu, field guide and save dialog all open and close');
+
   // -- autosave written, reload, resume --
   await page.waitForTimeout(400); // outlast the 160ms debounce
   const saved = await page.evaluate(() => !!localStorage.getItem('parliamentVale.autosave.v5'));

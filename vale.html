@@ -6701,33 +6701,6 @@ function pickEvents() {
   return out;
 }
 
-function runQueue(done) {
-  if (!UI.queue.length) { UI.busy = false; done(); return; }
-  UI.busy = true;
-  var e = UI.queue.shift();
-  var html = '<div class="kicker">Dispatch, ' + esc(dateLabel(S.turn - 1)) + '</div><h2>' + esc(e.title) + '</h2><p>' + esc(e.text) + '</p><div class="choices">';
-  e.ch.forEach(function (c, i) {
-    html += '<button class="choice" data-ev="' + i + '">' + esc(c.l) + '<small>' + esc(c.s) + '</small></button>';
-  });
-  html += '</div>';
-  showSheet(html, function (node) {
-    node.querySelectorAll('[data-ev]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var c = e.ch[parseInt(btn.getAttribute('data-ev'), 10)];
-        var snap = { treasury:S.treasury, capital:S.capital, unrest:S.unrest, debt:S.debt,
-                     ind:JSON.parse(JSON.stringify(S.ind)), blocs:JSON.parse(JSON.stringify(S.blocs)) };
-        c.f(S);
-        softenEvent(snap);
-        S.treasury = Math.max(-40, S.treasury);
-        S.unrest = clamp(S.unrest, 0, 110);
-        S.capital = clamp(S.capital, -5, capCap(S));
-        logIt(S, e.title + ': ' + c.l + '.');
-        hideSheet();
-        runQueue(done);
-      });
-    });
-  });
-}
 
 function soften(before, after, k, badIsUp) {
   var d = after - before;
@@ -8092,17 +8065,6 @@ function flash(msg) {
   setTimeout(function () { h.style.color = ''; render(); }, 1600);
 }
 
-function helpDialog() {
-  showSheet('<div class="kicker">Field Guide</div><h2 id="sheetTitle">How the Government Works</h2>'+
-    '<div class="cards"><div class="card"><h3>1. Read the briefing</h3><p class="desc">The Overview ranks urgent risks, political papers, live bills, mandate deadlines and the issue dominating public life.</p></div>'+
-    '<div class="card"><h3>2. Spend political capital</h3><p class="desc">Capital pays for legislation, negotiation, party organisation and executive action. Unspent capital carries over up to the difficulty cap.</p></div>'+
-    '<div class="card"><h3>3. Build legislation</h3><p class="desc">Draft from Policy, then work the bill in Legislative. Committee and both houses use forecasts based on ideology, seats, trust, salience and procedure.</p></div>'+
-    '<div class="card"><h3>4. Answer other actors</h3><p class="desc">Coalition partners, opposition parties, caucuses and governors create dated political papers. Ignoring one is a decision with consequences.</p></div>'+
-    '<div class="card"><h3>5. Govern the federation</h3><p class="desc">Eight regional briefs aggregate the fifty states. Prosperity, services, order and federal trust affect elections and state resistance.</p></div>'+
-    '<div class="card"><h3>6. Close the session</h3><p class="desc">Every session advances bills, the economy, regions, public issues, factions, movements, diplomacy, courts, events and the electoral calendar.</p></div></div>'+
-    '<div class="subhead">Useful controls</div><table><tbody>'+tr('1–9','Open the first nine sections')+tr('0','Open the Ledger')+tr('E','End-session review')+tr('U','Undo the last decision')+tr('Ctrl / Cmd + S','Save and export')+'</tbody></table>'+
-    '<div class="choices"><button class="choice" data-close="1">Return to government</button></div>');
-}
 
 function saveDialog() {
   saveAutosave();
@@ -8143,63 +8105,6 @@ function saveDialog() {
 }
 
 /* ---------------- boot ---------------- */
-function startScreen() {
-  var opts = ['easy', 'normal', 'hard'].map(function (k) {
-    var d = DIFFS[k];
-    return '<button class="choice" data-diff="' + k + '">' + esc(d.name) + ': ' + esc(d.tag) +
-      '<small>' + esc(d.blurb) + '</small></button>';
-  }).join('');
-
-  var START_COALITION = ['lp', 'sd', 'rsf'];
-  function positionOf(id) {
-    if (id === 'lp') return 'You lead the government.';
-    if (START_COALITION.indexOf(id) >= 0) return 'You enter as a junior partner in the Popular Front.';
-    return 'You begin in opposition.';
-  }
-
-  var chosen = UI.playAs || 'lp';
-  var auto = readAutosave();
-  var partyBtns = PARTIES.slice().sort(function (a, b) { return a.order - b.order; }).map(function (pw) {
-    return '<button class="choice" data-play="' + pw.id + '"' +
-      (chosen === pw.id ? ' style="border-color:' + pw.color + ';background:rgba(255,255,255,.06)"' : '') +
-      '><span class="dot" style="background:' + pw.color + '"></span> ' + esc(pw.name) +
-      '<small>' + esc(pw.blurb) + ' ' + esc(positionOf(pw.id)) + '</small></button>';
-  }).join('');
-
-  showSheet(
-    '<div class="kicker">Republic of Vale, 2024</div><h2>Take a Party and Two Hundred Years</h2>' +
-    (auto ? '<div class="choices" style="margin-bottom:14px"><button class="choice" data-resume="1"><b>Resume the device autosave</b><small>' + esc(dateLabel(auto.turn)) + ' · ' + esc(PARTY[playParty(auto)].name) + ' · ' + esc(FORMS[auto.form].name) + '</small></button></div>' : '') +
-    '<p>Vale is a federal republic of six hundred and eighty million people across three point two million square miles, the first power of its hemisphere, and the most heavily checked constitution ever written. Six tiers of government, fifty states, two elected federal houses, four executive offices on staggered eight year terms, and sixteen justices nobody appoints.</p>' +
-    '<p>You lead a party. Whether that means you govern depends on the arithmetic. In 2024 the Labor Party heads the Popular Front with the Social Democrats and the Revolutionary Socialist Front, 535 of 1,305 seats, a hundred and eighteen short of a majority, so it governs on sufferance. The weight of Valean politics is the status quo bloc in the middle: the Federal Party, founded in 1799 and never once out of the Assembly since, took 254 seats to Labour\u2019s 261, and with the Social Democrats and the Conservative Union it commands 646, half the chamber.</p>' +
-    '<p>The Senate is worse for any government. The Unity Front holds 164 of 300 there, an outright majority, because seats turn over one per state every two years and the chamber is still a picture of the electorate of 2012. It must concur in everything. Sixteen justices can strike down what passes, and two of their seats are returned at every ballot in three sealed rounds.</p>' +
-    '<p>Push your party where you want it and it will follow you for a while. Past a certain distance from the platform it was founded on, it starts pushing back, and past that it starts breaking. You can cross the floor to any other party at any time, and your own network of agents, donors and editors comes with you when you do.</p>' +
-    '<div class="result"><div><b>Legislation</b><span style="font-size:13px">Four stages</span></div><div><b>Political actors</b><span style="font-size:13px">Active demands</span></div><div><b>Federation</b><span style="font-size:13px">Eight regions</span></div><div><b>Party life</b><span style="font-size:13px">Three caucuses</span></div><div><b>Economy</b><span style="font-size:13px">Full cycle</span></div><div><b>Continuity</b><span style="font-size:13px">Autosave</span></div></div>' +
-    '<div class="subhead">Which party you lead</div>' +
-    '<div class="choices">' + partyBtns + '</div>' +
-    '<div class="subhead">How hard</div>' +
-    '<div class="choices">' + opts + '</div>',
-    function (node) {
-      var resume=node.querySelector('[data-resume]'); if(resume) resume.addEventListener('click',function(){S=auto;UI.undo=null;hideSheet();render();toast('Autosave resumed.');});
-      node.querySelectorAll('[data-play]').forEach(function (b) {
-        b.addEventListener('click', function () { UI.playAs = b.getAttribute('data-play'); hideSheet(); startScreen(); });
-      });
-      node.querySelectorAll('[data-diff]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          S = newGame(b.getAttribute('data-diff'));
-          S.playAs = UI.playAs || 'lp';
-          S.unity = 60; S.agendaShift = { e:0, a:0 };
-          logIt(S, 'A minority Labor government takes office at the head of the Popular Front, 535 of 1,305, seven seats ahead of a Federal Party that leads the Unity Front and holds the Senate outright.');
-          logIt(S, 'You take the leadership of the ' + PARTY[playParty(S)].name + ', ' +
-            (standing(S) === 'leading' ? 'and the government with it.'
-              : (standing(S) === 'junior' ? 'a junior partner in the governing coalition.'
-              : 'in opposition to it.')));
-          hideSheet();
-          showDoctrineChoice();
-        });
-      });
-    }
-  );
-}
 S = newGame('normal');
 logIt(S, 'A Labor government takes office at the head of the Popular Front, facing a Senate held by the Unity Front.');
 render();
@@ -8882,14 +8787,6 @@ render=function(){
   document.getElementById('btnEnd').disabled=!!S.over;var undo=document.getElementById('btnUndo');undo.disabled=!UI.undo||!!S.over||UI.busy;undo.title=UI.undo?'Undo: '+UI.undo.label:'No decision to undo';clearTimeout(UI.saveTimer);UI.saveTimer=setTimeout(saveAutosave,160);
 };
 
-function pv5CommandPalette(){
-  var cmds=[['1','Overview','chamber'],['2','Policy book','policy'],['3','Legislative and committees','houses'],['4','Government and cabinet','government'],['5','Parties and coalition politics','parties'],['6','Organised interests','interests'],['7','Campaign directorate','campaign'],['8','Nation and public opinion','nation'],['9','Fiscal ledger','ledger']];
-  showSheet('<div class="kicker">Council Menu</div><h2 id="sheetTitle">Go Directly to the Work</h2><p>Open a major file, change interface density, or return to the next unresolved pressure.</p><div class="command-list">'+cmds.map(function(c){return '<button data-command-tab="'+c[2]+'"><kbd>'+c[0]+'</kbd><span>'+esc(c[1])+'</span><small>Open</small></button>';}).join('')+'<button data-command-urgent="1"><kbd>!</kbd><span>Most urgent unresolved file</span><small>Open</small></button><button data-command-compact="1"><kbd>↕</kbd><span>'+(S.uiPrefs.compact?'Use comfortable density':'Use compact density')+'</span><small>Toggle</small></button></div><div class="choices"><button class="choice" data-close="1">Close council menu</button></div>',function(node){
-    node.querySelectorAll('[data-command-tab]').forEach(function(b){b.addEventListener('click',function(){UI.tab=b.getAttribute('data-command-tab');hideSheet();render();window.scrollTo({top:0,behavior:'smooth'});});});
-    node.querySelector('[data-command-urgent]').addEventListener('click',function(){var o=pv5Objectives(S).filter(function(x){return x.risk;})[0]||pv5Objectives(S).filter(function(x){return !x.done;})[0];UI.tab=o?o.jump:'chamber';hideSheet();render();window.scrollTo({top:0,behavior:'smooth'});});
-    node.querySelector('[data-command-compact]').addEventListener('click',function(){S.uiPrefs.compact=!S.uiPrefs.compact;hideSheet();render();});
-  });
-}
 document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!UI.busy)pv5CommandPalette();}});
 
 /* Refresh the current state through v5. The v6 layer opens the start screen. */
@@ -10852,7 +10749,7 @@ function v6AttachForecasts(root) {
 }
 
 /* ---------- the event dialog, with previews ---------- */
-runQueue = function (done) {
+var runQueue = function (done) {
   if (!UI.queue.length) { UI.busy = false; done(); return; }
   UI.busy = true;
   var e = UI.queue.shift();
@@ -11123,39 +11020,9 @@ render = function () {
 };
 
 /* ---------- the menu ---------- */
-function v6Menu() {
-  var keys = Object.keys(V6_KEYMAP).sort(function (a, b) { return (a === '0' ? 10 : +a) - (b === '0' ? 10 : +b); });
-  var cmds = keys.map(function (k) { var t = TABS.filter(function (x) { return x.id === V6_KEYMAP[k]; })[0]; return t ? '<button data-command-tab="' + t.id + '"><kbd>' + k + '</kbd><span>' + esc(t.name) + '</span><small>Open</small></button>' : ''; }).join('');
-  var rest = TABS.filter(function (t) { return keys.every(function (k) { return V6_KEYMAP[k] !== t.id; }); }).map(function (t) { return '<button data-command-tab="' + t.id + '"><kbd>·</kbd><span>' + esc(t.name) + '</span><small>Open</small></button>'; }).join('');
-  showSheet('<div class="kicker">Council Menu</div><h2 id="sheetTitle">Go Directly to the Work</h2><div class="command-list">' + cmds + rest +
-    '<button data-command-gazette="1"><kbd>G</kbd><span>Last session\'s Gazette</span><small>Open</small></button>' +
-    '<button data-command-urgent="1"><kbd>!</kbd><span>Most urgent unresolved file</span><small>Open</small></button>' +
-    '<button data-command-report="1"><kbd>·</kbd><span>' + (S.uiPrefs.report !== false ? 'Stop showing the Gazette after each session' : 'Show the Gazette after each session') + '</span><small>Toggle</small></button>' +
-    '<button data-command-previews="1"><kbd>·</kbd><span>' + (S.uiPrefs.previews !== false ? 'Hide effect forecasts on choices' : 'Show effect forecasts on choices') + '</span><small>Toggle</small></button>' +
-    '<button data-command-compact="1"><kbd>·</kbd><span>' + (S.uiPrefs.compact ? 'Use comfortable density' : 'Use compact density') + '</span><small>Toggle</small></button>' +
-    '<button data-command-help="1"><kbd>?</kbd><span>Field guide</span><small>Open</small></button>' +
-    '<button data-command-save="1"><kbd>S</kbd><span>Save, export or restore</span><small>Open</small></button>' +
-    '<button data-command-new="1"><kbd>·</kbd><span>Begin a new government</span><small>Confirm</small></button></div>' +
-    '<div class="choices"><button class="choice" data-close="1">Close the menu</button></div>', function (node) {
-      node.querySelectorAll('[data-command-tab]').forEach(function (b) { b.addEventListener('click', function () { UI.tab = b.getAttribute('data-command-tab'); hideSheet(); render(); window.scrollTo({ top:0, behavior:'smooth' }); }); });
-      node.querySelector('[data-command-gazette]').addEventListener('click', function () { hideSheet(); v6ShowReport(S.v6.report); });
-      node.querySelector('[data-command-urgent]').addEventListener('click', function () { var o = v6Advisors(S)[0]; UI.tab = o ? o.jump : 'chamber'; hideSheet(); render(); window.scrollTo({ top:0, behavior:'smooth' }); });
-      node.querySelector('[data-command-report]').addEventListener('click', function () { S.uiPrefs.report = S.uiPrefs.report === false; hideSheet(); render(); toast(S.uiPrefs.report ? 'The Gazette will appear after each session.' : 'The Gazette will wait in the menu.'); });
-      node.querySelector('[data-command-previews]').addEventListener('click', function () { S.uiPrefs.previews = S.uiPrefs.previews === false; hideSheet(); render(); });
-      node.querySelector('[data-command-compact]').addEventListener('click', function () { S.uiPrefs.compact = !S.uiPrefs.compact; hideSheet(); render(); });
-      node.querySelector('[data-command-help]').addEventListener('click', function () { hideSheet(); helpDialog(); });
-      node.querySelector('[data-command-save]').addEventListener('click', function () { hideSheet(); saveDialog(); });
-      node.querySelector('[data-command-new]').addEventListener('click', function () {
-        showSheet('<div class="kicker">A New Government</div><h2 id="sheetTitle">Abandon this one?</h2><p>The current government is autosaved on this device and can be resumed from the start screen until a new game is begun and saved over it. Export a portable save first if you want to keep it.</p><div class="choices"><button class="choice" data-new-confirm="1">Go to the start screen</button><button class="choice" data-close="1">Stay</button></div>', function (n2) {
-          n2.querySelector('[data-new-confirm]').addEventListener('click', function () { hideSheet(); startScreen(); });
-        });
-      });
-    });
-}
-pv5CommandPalette = v6Menu;
 
 /* ---------- field guide ---------- */
-helpDialog = function () {
+var helpDialog = function () {
   var keys = Object.keys(V6_KEYMAP).sort(function (a, b) { return (a === '0' ? 10 : +a) - (b === '0' ? 10 : +b); });
   var keyRows = keys.map(function (k) { var t = TABS.filter(function (x) { return x.id === V6_KEYMAP[k]; })[0]; return t ? tr(k, t.name) : ''; }).join('');
   showSheet('<div class="kicker">Field Guide</div><h2 id="sheetTitle">How the Government Works</h2>' +
@@ -11217,7 +11084,7 @@ gameOver = function (title, text, score) {
 };
 
 /* ---------- the start screen ---------- */
-startScreen = function () {
+var startScreen = function () {
   UI.setup = UI.setup || { party:'lp', scenario:'popularFront', length:'epic', diff:'normal', step:0 };
   var s = UI.setup, auto = readAutosave();
   var sc = V6_SCENARIO[s.scenario] || V6_SCENARIOS[0];
@@ -12127,7 +11994,7 @@ function v7Menu() {
       if (!touch) setTimeout(function () { input.focus(); }, 30);
     });
 }
-v6Menu = v7Menu; pv5CommandPalette = v7Menu;
+var v6Menu = v7Menu; var pv5CommandPalette = v7Menu;
 document.addEventListener('keydown', function (e) {
   var tag = (e.target && e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return;

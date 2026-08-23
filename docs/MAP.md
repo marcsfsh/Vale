@@ -47,29 +47,50 @@ Everything else is innerHTML-rendered into those ids.
 7. The v4 base was retro-edited with forward hooks: `typeof v6Snapshot` (~6539),
    `V6_KEYMAP` fallback (~8029), `#btnMenu` in the static HTML.
 
-## Orphaned bodies (dead code) — checks/dead-bodies.json is the ledger
+## Dead code, and the bodies that only look dead — corrected in S2
 
-10 reassignment sites capture no alias; since S1's button rebind, all 10
-replaced bodies are unreachable — the 9 below plus v4 `helpDialog` (~8068):
+A reference scan is **not** proof a body is dead. S2 poisoned each candidate
+(`throw` as its first statement, then the full playtest — `tools/poison.js`)
+and half the list turned out to be live: those bodies execute once at their own
+chunk's boot, before the next chunk replaces them.
 
-| dead body | killed by |
+**Deleted in S2** (poison-proved unreachable across boot, a full turn, all 15
+views, three sheets, reload/resume and the corrupt-save path — 132 lines):
+
+| body | had been killed by |
 |---|---|
-| v4 `render` (~6859) | v5 rewrite ~8847 |
-| v5 `render` (~8847) | v6 rewrite ~11077 (the `var rr = render` at ~10714 is v6Sandbox's call-time local, not a capture) |
-| v4 `runQueue` (~6679) | v6 rewrite ~10826 † |
-| v4 `renderStats` (~6895) | v6 rewrite ~11036 † |
-| v4 `startScreen` (~8119) | v6 rewrite ~11191 |
-| v5 `pv5CommandPalette` (~8858) | `pv5CommandPalette = v6Menu` ~11126 |
-| v6 `v6Menu` (~11097) | 2nd stmt of `v6Menu = v7Menu; pv5CommandPalette = v7Menu;` ~12098 (1st stmt destroys the only alias one statement early) |
-| mobile `v6mCenterTab` (~11518) | v7 rewrite ~11768 (ran once at mobile boot ~11582, then died) |
-| mobile `v6mPolicyFolds` (~11498) | v7 rewrite ~11845 (same) |
+| v4 `runQueue` | v6 rewrite |
+| v4 `startScreen` | v6 rewrite |
+| v5 `pv5CommandPalette` | `pv5CommandPalette = v6Menu` |
+| v4 `helpDialog` | v6 rewrite (reachable until S1 rebound `#btnHelp`) |
+| v6 `v6Menu` | `v6Menu = v7Menu` |
 
-† alias absence verified at grep level only — S2 deletes a body only after a
-poison-proof (scratch copy, `throw` in the body, full playtest green).
+Deleting a `function x(){}` strands every later bare `x = …` under strict mode,
+so in each case the **first surviving assignment became the declaration**
+(`var runQueue = function …`), later wrappers untouched. The dead-to-dead line
+`pv5CommandPalette = v6Menu;` went with its operands.
 
-The 10th no-alias site is `helpDialog` (~11129): since S1 rebound `#btnHelp`
-to call through the identifier, its victim — the v4 body (~8068) — is the 10th
-true orphan, deletable in S2 after poison-proof.
+**Live, despite replacing a body without an alias** (5 sites, the ratchet's
+floor — `checks/dead-bodies.json` carries the proof for each):
+
+| site | why it is not dead |
+|---|---|
+| v5 `render` rewrite | the v4 body runs at v4's boot `render()` |
+| v6 `render` rewrite | the v5 body runs at v5's boot |
+| v6 `renderStats` rewrite | v4 `render` calls the v4 body at boot |
+| v7 `v6mCenterTab` rewrite | the mobile body runs at the mobile chunk's boot |
+| v7 `v6mPolicyFolds` rewrite | same |
+
+Two traps found the hard way, both worth remembering:
+
+- **Poisoning several bodies at once masks reachability.** A throw aborts the
+  rest of the block it is in, so a later call in that same block never happens
+  and its body looks unreachable. `v6mPolicyFolds` throwing hid
+  `v6mCenterTab`; poisoning `render` hid `renderStats`. Poison in small sets
+  and re-test survivors alone.
+- **Ordinal keys (`name#2`) shift when a site is deleted.** Verdicts must be
+  re-derived after any deletion, never carried across — carrying them once
+  mislabelled two wrapper sites that do capture aliases.
 
 ## Stale value bindings — fixed in S1, ratchet at 0
 
