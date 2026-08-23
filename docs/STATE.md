@@ -4,7 +4,14 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S6a — three real tiers** (PR #5). Thirteen width thresholds collapsed to
+**S6b — the chamber** (PR #6). The seat map rebuilt to the design rulings:
+aisles between blocs, a direct label on every bloc, seats rimmed in the ground
+colour, and the two invisible party colours lifted along their own hue (RSF
+contrast 1.90 → 2.68 at 0.4° of drift, PNL 1.35 → 2.86 at 7.8°). Seats render
+about 75% larger on a desktop. `tools/chamber.js` and `tools/seats.js` make all
+of it re-measurable, and both caught real defects in the first draft.
+
+Previously: **S6a — three real tiers** (PR #5, merged). Thirteen width thresholds collapsed to
 five, and all five are tier edges: 420, 760/761, 1179/1180. The desktop now
 uses the window (21% of a 1500px screen was unused, now 4%), and the tablet
 band is a tier with its own layout instead of a narrow desktop wearing half the
@@ -27,9 +34,9 @@ ratchet 10 → 5, which is now its true floor.
 | S3 seeded PRNG | pending | one engine, seed in save, loud save-break, exact-value harness tests |
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
-| S6a three tiers | **in review (PR #5)** | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
-| S6b viz redesign | next | seat map per the rulings — individual circles, real party palette, aisles, direct labels, floor/aura/rim |
-| S6c restyle tab-by-tab | pending | per-surface pass; also owns the translucent turn bar (86% at its top edge, so phone content bleeds through) |
+| S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
+| S6b the chamber | **in review (PR #6)** | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
+| S6c charts + restyle | next | poll/history polylines, the v8 region grid and the trend chart still wear the pre-refresh chart vocabulary; then the per-surface pass |
 | S7 onboarding | pending | setup trim + guided panels |
 | S8 pacing honesty | pending | each length option a complete arc; balance changes go to the user first |
 
@@ -51,4 +58,11 @@ ratchet 10 → 5, which is now its true floor.
   (S1 targets reached and pinned), dead sites max 10 (0 by end of S2),
   Math.random frozen at 93 (changes in S3), size cap 1.6 MB (file now 1.41 MB
   with fonts embedded), external allowlist **empty and staying empty**.
+- **Found in S6b, deferred to S6c:** on tablet and desktop the chamber's legend
+  now repeats the seven numbers the direct labels already give, within 40px of
+  them. The legend stays for now because it also carries each party's banned
+  state and is the guaranteed-complete listing when a label is skipped; trimming
+  it is a content decision that touches every view calling `legendFor`.
+- **Found in S6a, deferred to S6c:** the turn bar's background is 86% opaque at
+  its top edge, so page content shows faintly through it on phones.
 - The user's decisions of record live in docs/AGREEMENT.md (interview verbatim).

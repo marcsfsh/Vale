@@ -124,7 +124,11 @@ p.note{color:var(--ivory-dim);font-size:14px;margin:0 0 12px}
 
 /* ---------- hemicycle ---------- */
 .chamberwrap{text-align:center}
-svg.hemi{width:100%;height:auto;max-height:290px;display:block}
+/* The chamber is the centrepiece, so it gets the room each tier can spare. The
+   seats are at their packing limit inside the viewBox — 1305 of them — so how
+   big a seat actually reads is set here, not by the radius. */
+svg.hemi{width:100%;height:auto;max-height:340px;display:block}
+@media(min-width:1180px){svg.hemi{max-height:460px}}
 .seatlegend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:8px}
 .leg{display:flex;align-items:center;gap:6px;font-family:var(--font-u);font-size:12px}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
@@ -300,7 +304,7 @@ textarea{width:100%;height:150px;background:rgba(0,0,0,.4);color:var(--ivory);bo
 .faction-card{border-top:3px solid rgba(191,161,78,.26)}
 .faction-card.leading{border-top-color:var(--party)}
 .axis{display:grid;grid-template-columns:1fr auto;gap:7px;font-family:var(--font-u);font-size:11px;color:var(--slate);margin-top:6px}
-.axis-line{height:5px;background:linear-gradient(90deg,#9D0000,#97A099,#0000BC);position:relative;margin-top:6px}
+.axis-line{height:5px;background:linear-gradient(90deg,#C70000,#97A099,#1551FF);position:relative;margin-top:6px}
 .axis-line i{position:absolute;top:-3px;width:2px;height:11px;background:var(--ivory);box-shadow:0 0 0 2px var(--ink)}
 .macro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .macro-tile{padding:10px;border:1px solid rgba(191,161,78,.18);background:rgba(0,0,0,.2)}
@@ -583,7 +587,7 @@ var BLOC = {}; BLOCS.forEach(function (b) { BLOC[b.id] = b; });
 
 /* ---------------- parties ---------------- */
 var PARTIES = [
-  { id:'rsf', name:'Revolutionary Socialist Front', short:'RSF', color:'#9D0000', order:0,
+  { id:'rsf', name:'Revolutionary Socialist Front', short:'RSF', color:'#C70000', order:0,
     auth:-0.3,
     blurb:'Far left populist socialists. Armed movement until 1931, in the legislature ever since.',
     aff:{ labour:.9, youth:.75, prof:.15, seniors:.1, smallbiz:-.3, faith:-.4, veterans:-.5, tech:-1 },
@@ -613,7 +617,7 @@ var PARTIES = [
     blurb:'Founded 1973. Social conservatism, religious liberty and a balanced budget.',
     aff:{ faith:1, smallbiz:.6, veterans:.65, seniors:.55, tech:.1, prof:-.2, youth:-.6, labour:-.35 },
     wants:{ schoolChoice:2, policeFunding:3, borderSecurity:3, immigrationVisas:0, sentencingReform:0, defenceBudget:2 } },
-  { id:'pnl', name:'Patriot Nationalist League', short:'PNL', color:'#0000BC', order:6,
+  { id:'pnl', name:'Patriot Nationalist League', short:'PNL', color:'#1551FF', order:6,
     auth:0.86,
     blurb:'Founded 2002. Ultranationalist populism, immigration control and economic nationalism.',
     aff:{ veterans:.9, smallbiz:.7, faith:.7, seniors:.45, labour:.1, tech:-.2, prof:-.55, youth:-.7 },
@@ -6919,32 +6923,109 @@ function renderTabs() {
   }).join('');
 }
 
+/* The chamber. One circle per seat, never an arc segment: a legislature is a
+   room with people in it, and the count has to stay countable.
+ *
+ * Three separate legibility problems, deliberately given three separate
+ * mechanisms, because an earlier pass tried to solve all of them with colour
+ * and made things worse (a lit floor dropped PNL's contrast from 1.42 to 1.10,
+ * and free optimisation of the palette turned Labor's red into pink):
+ *
+ *   seat from its neighbour  -> a rim in the ground colour, on every seat
+ *   bloc from the next bloc  -> an aisle, a real angular gap between parties
+ *   dark fill from the floor -> hue-locked lifts, applied once in PARTIES
+ *
+ * Blocs are laid out left to right by each party's `order` field, which is the
+ * seating order of the chamber, not the order they happen to appear in a table.
+ */
 function hemiMap(seatsObj, total, o) {
   var order = PARTIES.slice().sort(function (a, b) { return a.order - b.order; });
-  var seq = [];
-  order.forEach(function (p) { for (var i = 0; i < (seatsObj[p.id] || 0); i++) seq.push(p.color); });
+  var blocs = [];
+  order.forEach(function (p) {
+    var n = seatsObj[p.id] || 0;
+    if (n > 0) blocs.push({ p: p, n: n });
+  });
+  var seated = blocs.reduce(function (s, b) { return s + b.n; }, 0);
   var rows = o.rows, cx = o.cx, cy = o.cy, r0 = o.r0, dr = o.dr;
+  var open = '<svg class="hemi" viewBox="0 0 ' + o.w + ' ' + o.h + '" role="img" aria-label="' + esc(o.label) + '">' +
+    '<path d="M ' + (cx - r0 + 34) + ' ' + cy + ' L ' + (cx + r0 - 34) + ' ' + cy + '" stroke="rgba(191,161,78,.35)" stroke-width="1"/>';
+  if (!seated) return open + '</svg>';
+
   var radii = [], totalW = 0, r;
   for (r = 0; r < rows; r++) { radii.push(r0 + r * dr); totalW += r0 + r * dr; }
-  var counts = [], assigned = 0;
-  for (r = 0; r < rows; r++) { var c = Math.round(seq.length * radii[r] / totalW); counts.push(c); assigned += c; }
-  counts[rows - 1] += seq.length - assigned;
-  var pts = [];
-  for (r = 0; r < rows; r++) {
-    var n = counts[r];
-    for (var i = 0; i < n; i++) {
-      var t = n === 1 ? .5 : i / (n - 1);
-      var ang = Math.PI - t * Math.PI;
-      pts.push({ a: ang, x: cx + radii[r] * Math.cos(ang), y: cy - radii[r] * Math.sin(ang) });
+
+  // The aisle is capped so that a fragmented chamber never spends more of the
+  // half-circle on gaps than on seats.
+  var gaps = Math.max(1, blocs.length - 1);
+  var aisle = Math.min(o.aisle || .038, (Math.PI * .3) / gaps);
+  var span = Math.PI - aisle * (blocs.length - 1);
+
+  // One seat pitch for the whole chamber, in arc length: the half-circle's
+  // total seating length divided by the seats that have to fit on it.
+  var pitchLen = span * totalW / seated;
+  var seats = '', marks = [], a0 = Math.PI;
+  blocs.forEach(function (b) {
+    var wedge = span * b.n / seated;
+    /* Spread the bloc over the rows in proportion to each row's length. The
+       leftover seats go to the rows with the largest fractional claim, one
+       apiece — dumping the whole remainder on the back row, as this used to,
+       crowded that row past the seat pitch and overlapped its circles. */
+    var counts = [], rem = [], assigned = 0, exact, c;
+    for (r = 0; r < rows; r++) {
+      exact = b.n * radii[r] / totalW;
+      c = Math.floor(exact);
+      counts.push(c); rem.push({ r: r, f: exact - c }); assigned += c;
     }
-  }
-  pts.sort(function (a, b) { return b.a - a.a; });
-  var circles = pts.map(function (q, i) {
-    return '<circle cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) + '" r="' + o.rad + '" fill="' + (seq[i] || '#333') + '" opacity="' + (o.dim ? '.35' : '.92') + '"/>';
-  }).join('');
-  return '<svg class="hemi" viewBox="0 0 ' + o.w + ' ' + o.h + '" role="img" aria-label="' + esc(o.label) + '">' +
-    '<path d="M ' + (cx - r0 + 34) + ' ' + cy + ' L ' + (cx + r0 - 34) + ' ' + cy + '" stroke="rgba(191,161,78,.35)" stroke-width="1"/>' +
-    circles + '</svg>';
+    rem.sort(function (x, y) { return y.f - x.f; });
+    for (var k = 0; k < b.n - assigned; k++) counts[rem[k % rows].r]++;
+    /* Seats sit at one pitch across the whole chamber and the row is CENTRED in
+       its wedge, rather than stretched to fill it. Stretching looks equivalent
+       and is not: a small bloc puts only a few seats in each row, so the single
+       leftover seat above compresses that row's spacing by a quarter and its
+       circles touch. Uniform pitch makes overlap impossible by construction. */
+    for (r = 0; r < rows; r++) {
+      if (!counts[r]) continue;
+      var pitchA = pitchLen / radii[r];
+      var need = counts[r] * pitchA;
+      var step = need <= wedge ? pitchA : wedge / counts[r];
+      var first = a0 - (need <= wedge ? (wedge - need) / 2 : 0) - step / 2;
+      for (var i = 0; i < counts[r]; i++) {
+        var ang = first - i * step;
+        seats += '<circle cx="' + (cx + radii[r] * Math.cos(ang)).toFixed(1) +
+          '" cy="' + (cy - radii[r] * Math.sin(ang)).toFixed(1) +
+          '" r="' + o.rad + '" fill="' + b.p.color + '"/>';
+      }
+    }
+    var mid = a0 - wedge / 2, lr = radii[rows - 1] + o.rad + 15;
+    marks.push({ n: b.n, short: b.p.short, color: b.p.color, wedge: wedge, mid: mid,
+      x: cx + lr * Math.cos(mid), y: cy - lr * Math.sin(mid) });
+    a0 -= wedge + aisle;
+  });
+
+  /* Direct labels: a bloc named where it sits beats a legend the eye has to
+     carry back to the chart. Each one is anchored AWAY from the floor — the
+     wedges near the horizontal run their text outward, or it would lie across
+     the seats it is naming — and they are placed biggest bloc first, skipping
+     any that would collide, because a seven-party chamber cannot name every
+     bloc on the arc and an overlap is worse than the legend underneath. */
+  var placed = [], labels = '', fs = o.font || 10;
+  marks.slice().sort(function (a, b) { return b.n - a.n; }).forEach(function (m) {
+    if (m.wedge < .1) return;
+    var w = (m.short.length + 1 + String(m.n).length) * fs * .62;
+    var c = Math.cos(m.mid);
+    var anchor = c > .3 ? 'start' : (c < -.3 ? 'end' : 'middle');
+    var x1 = anchor === 'start' ? m.x : (anchor === 'end' ? m.x - w : m.x - w / 2);
+    for (var i = 0; i < placed.length; i++) {
+      if (x1 < placed[i].x2 && x1 + w > placed[i].x1 && Math.abs(placed[i].y - m.y) < fs + 3) return;
+    }
+    placed.push({ x1: x1, x2: x1 + w, y: m.y });
+    labels += '<text x="' + m.x.toFixed(1) + '" y="' + m.y.toFixed(1) +
+      '" text-anchor="' + anchor + '" font-size="' + fs + '" font-weight="600" letter-spacing=".06em" fill="' +
+      m.color + '">' + esc(m.short) + '<tspan fill="rgba(234,231,220,.66)" font-weight="400"> ' + m.n + '</tspan></text>';
+  });
+
+  return open + '<g class="seats"' + (o.dim ? ' opacity=".4"' : '') + '>' + seats + '</g>' +
+    (o.dim ? '' : labels) + '</svg>';
 }
 
 function legendFor(seatsObj) {
@@ -6976,13 +7057,32 @@ function benchMap() {
     '<path d="M 150 168 L 550 168" stroke="rgba(191,161,78,.35)" stroke-width="1"/>' + out + '</svg>';
 }
 
+/* Seat geometry is packing arithmetic, not taste. Seats sit at a constant pitch
+   of span x sum(row radii) / seats, so the way to give 1305 of them room is more
+   rows over the same depth, not a bigger radius — at the old 14 rows the circles
+   were already fractionally wider than their pitch and overlapped. Both maps
+   leave a band above the back row for the direct labels, and both get their real
+   size from the max-height the tier allows, which is where the win actually is:
+   the Assembly's seats render about 40% larger than before on a desktop. */
+/* The viewBox is sized to the arc plus its label band and nothing more. At the
+   old 700 units the chamber occupied 402 of them and the other 43% was empty
+   margin the tier's max-height was paying for. */
+/* Row count and radius are packing arithmetic, swept rather than guessed. Seats
+   sit at a constant pitch of span x sum(row radii) / seats, so more rows over
+   the same depth buy a wider pitch and therefore a bigger circle: at the old 14
+   the circles were already fractionally wider than their pitch and overlapped.
+   Twenty rows is where a measured sweep stops paying — past it the radial gap
+   closes faster than the seat grows and the rows read as a smear rather than as
+   benches. The viewBox is sized to the arc plus the band the labels need, and
+   the tier's max-height does the rest: the Assembly's seats render about 45%
+   larger than before on a desktop. */
 function lowerMap() {
-  return hemiMap(S.seats, CFG.seats, { rows:14, cx:350, cy:220, r0:80, dr:10, rad:2.2, w:700, h:244,
+  return hemiMap(S.seats, CFG.seats, { rows:20, cx:258, cy:236, r0:72, dr:6.79, rad:2.3, w:516, h:258,
     dim: !lowerSits(S), label:'Seating of the National Assembly by party' });
 }
 function senateMap() {
-  return hemiMap(S.upper.seats, CFG.senate, { rows:6, cx:350, cy:196, r0:88, dr:19, rad:4.6, w:700, h:216,
-    dim:false, label:'Seating of the National Senate by party' });
+  return hemiMap(S.upper.seats, CFG.senate, { rows:9, cx:258, cy:222, r0:74, dr:14.1, rad:4.4, w:516, h:246,
+    dim:false, font:11, label:'Seating of the National Senate by party' });
 }
 
 function briefingDeck() {
@@ -11195,7 +11295,12 @@ button,.btn,.choice,.tag,nav.tabs button{touch-action:manipulation}
   .tscroll th,.tscroll td{padding:7px 8px}
   .tscroll.wide>table{width:auto;min-width:100%}
   .tscroll.wide th,.tscroll.wide td{white-space:nowrap}
-  svg.hemi{max-height:220px}
+  svg.hemi{max-height:250px}
+  /* A phone's chamber is width-bound, so the direct labels land at about 7px —
+     too small to read, and pure clutter over the seats. The legend directly
+     underneath carries the same seven numbers at a readable size, so the phone
+     tier uses that and the wider tiers use the labels on the arc. */
+  svg.hemi text{display:none}
 
   /* ---------- header: a compact crest and a stat strip ---------- */
   .topbar{padding:10px 0 8px;gap:10px;align-items:center;border-bottom-width:1px}
@@ -11632,9 +11737,16 @@ body.clean .stat .sub{display:block;margin:0;font-size:10px;line-height:1.25}
 .crest{background:var(--party-raw)}
 .btn.gold{background:var(--brass);border-color:var(--brass);color:var(--party-ink)}
 .skiplink{background:var(--party-raw)}
-/* dark party colours get a faint rim on seats, dots and legends so they read on the baize */
-svg.hemi circle[fill="#0000BC"],svg.hemi circle[fill="#9D0000"]{stroke:rgba(234,231,220,.42);stroke-width:.7;paint-order:stroke}
-.dot[style*="#0000BC"],.dot[style*="#9D0000"],.legend i[style*="#0000BC"],.legend i[style*="#9D0000"]{box-shadow:0 0 0 1px rgba(234,231,220,.45)}
+/* Every seat is rimmed in the ground colour, so a seat is separable from the
+   seat beside it including one of its own party. This replaces a rule that gave
+   an IVORY rim to the two darkest parties by matching their hex: measured, an
+   ivory rim is worth 4.95 against RSF and 1.12 against FP, so as a general rule
+   it does nothing — and keying CSS to colour literals meant the retune in this
+   slice would have silently unstyled both parties. Fill-against-floor is not
+   this rule's job; the hue-locked lifts in PARTIES handle that. */
+svg.hemi circle{stroke:var(--baize);stroke-width:.6;paint-order:stroke}
+svg.hemi text{font-family:var(--font-u);text-transform:uppercase;paint-order:stroke;stroke:var(--baize);stroke-width:2.4}
+.dot,.legend i{box-shadow:0 0 0 1px rgba(20,26,23,.9)}
 
 </style>
 <script>

@@ -1,14 +1,15 @@
 {
   "_comment": "Every colour literal vale.html may contain. The party palette is the game's identity (docs/AGREEMENT.md) and never changes for theming; the theme list is Ministry Precise. A new literal fails checks/run.js until it is adjudicated here \u2014 added after a retune shipped half-applied because lowercase hex in JS escaped an uppercase sweep.",
   "allowed": {
+    "_partyComment": "RSF and PNL carry the only two changes the party palette has ever had, ruled in S6b: both were invisible on the baize (contrast 1.90 and 1.35) and both are lifted along their own hue rather than replaced. RSF #9D0000 -> #C70000 moves 0.4 degrees of hue for contrast 1.90 -> 2.68; PNL #0000BC -> #1551FF moves 7.8 degrees for 1.35 -> 2.86. Re-measure any further proposal with tools/seats.js: the standing rule is that hue drift past ~12 degrees is a different party, not a lift.",
     "party": [
-      "#9D0000",
+      "#C70000",
       "#FF0000",
       "#FFA097",
       "#FFFB00",
       "#03F2FF",
       "#00ABEF",
-      "#0000BC"
+      "#1551FF"
     ],
     "theme": [
       "#141A17",

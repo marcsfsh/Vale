@@ -170,8 +170,40 @@ player actions; cleared every turn.
   table wrapping, policy folds, `--turnbar-h` via ResizeObserver, safe-area
   vars. v7: grouped two-row nav (`uiPrefs.layout==='classic'` opts out), per-tab
   scroll restore (`UI.scrollPos`), `body.clean` hides #btnBrief/#btnHelp/#btnSave
-  on phones. Charts: all inline SVG strings (hemiMap ~6922, benchMap, poll/
-  history polylines); v8's region map is a div grid.
+  on phones. Charts: all inline SVG strings (hemiMap, benchMap, poll/history
+  polylines); v8's region map is a div grid.
+
+## The chamber (hemiMap)
+
+The centrepiece, and the one drawing with real arithmetic in it. Rules that
+came out of S6b and should not be relitigated casually:
+
+- **One circle per seat, never an arc segment** (ruled). `tools/chamber.js`
+  asserts the circle count equals the roll.
+- Three legibility problems, three separate mechanisms, because an earlier pass
+  tried to solve all of them with colour and made things worse — a lit floor cut
+  PNL's contrast from 1.42 to 1.10, and free optimisation of the palette turned
+  Labor's red into pink. Seat from neighbour: a rim in the **ground** colour on
+  every seat. Bloc from bloc: an **aisle**, a real angular gap. Dark fill from
+  the floor: **hue-locked lifts**, applied once in PARTIES, never in CSS keyed
+  to a colour literal (the rule that hack replaced would have silently unstyled
+  both parties the moment the palette moved).
+- Seats sit at **one pitch for the whole chamber** — `span x sum(row radii) /
+  seats` — and each row is centred in its bloc's wedge rather than stretched to
+  fill it. Stretching looks equivalent and is not: a small bloc puts three or
+  four seats in a row, so one leftover seat compresses that row by a quarter and
+  its circles touch. This is how the two overlapping pairs in the first S6b
+  draft happened.
+- Seat size is **not** the radius. At 1305 seats the circles are near their
+  packing limit, so what a seat actually reads at is set by `svg.hemi`'s
+  max-height per tier (460 desktop / 340 tablet / 250 phone). Row count is the
+  other lever, swept not guessed: more rows over the same depth widen the pitch.
+- Labels are placed biggest bloc first, anchored **away** from the floor at the
+  horizontal ends, and skipped rather than overlapped. The phone tier hides them
+  in CSS and leans on the legend, which is the same data at a readable size.
+- Re-measure any change with `node tools/chamber.js` (geometry, overlaps, label
+  collisions, rendered size per tier) and `node tools/seats.js` (contrast and
+  CIEDE2000 against the colour being replaced).
 
 ## Load path
 
