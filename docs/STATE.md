@@ -17,8 +17,8 @@ toolbar bindings now call through their identifiers; v6Sandbox restores in a
 | S1 correctness | **in review (PR #2)** | all landed; ratchets moved: strict 7/7, stale bindings 0, orphans 10 (helpDialog v4 joined) |
 | S2 chain consolidation | pending | function-by-function with poison-proof deletions; dead sites 10→0, markers shrink |
 | S3 seeded PRNG | pending | one engine, seed in save, loud save-break, exact-value harness tests |
-| S4 look mockups | **canvas published — awaiting the owner's pick** | 5 directions × desktop+phone at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; type subset costs are estimates, measured precisely in S5 on the chosen faces |
-| S5 token foundation | blocked on S4 pick | tokens + embedded fonts, Google link out, external allowlist → empty |
+| S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
+| S5 token foundation | **unblocked — next up** | Ministry Precise tokens into vale.html; subset + embed Marcellus/Archivo Narrow/Public Sans/IBM Plex Mono (measure for real); Google link out; external allowlist → empty |
 | S6+ refresh tab-by-tab | blocked on S5 | breakpoint consolidation to 3 tiers first; viz redesign |
 | S7 onboarding | pending | setup trim + guided panels |
 | S8 pacing honesty | pending | each length option a complete arc; balance changes go to the user first |

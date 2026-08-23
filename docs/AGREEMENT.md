@@ -136,3 +136,15 @@ fonts with the refresh"*. Character: *"Calm, data dense command desk"*.
 Process: *"Mockups first, then build"*. Foundation: *"Dark-first"*. Directions:
 *"Civic modernism, Situation room, Modern ministry, At least 2 others"* (≥5
 total). Motion: *"Subtle and purposeful"*. Data viz: *"Redesign the viz layer"*.
+
+**The chosen identity (2026-08-23, after two mockup rounds):** round one
+narrowed five directions to Modern Ministry and Civic Modernism (*"a tie…
+present 6 final options: 3 variants of each"*); the runoff's verdict:
+**"Ministry C is the finalist"** — **Ministry Precise**: Ministry's materials
+on Civic's discipline. Tokens: ground #141A17, panel #1A211D, cell #171D18,
+rule #26302A; ink #EAE7DC, muted #97A099; brass #BFA14E (primary), #C77B62
+bad, #6FAE8B good. Type: Marcellus (masthead/headlines), Archivo Narrow
+(caps labels/buttons), Public Sans (prose), IBM Plex Mono (all numerals,
+tabular). Reference boards: the "Ministry Precise · The Design" page of the
+mockup canvas (Overview desktop+phone, Drafting Desk, Election Night). S5
+implements this as vale.html's token system with measured font subsets.
