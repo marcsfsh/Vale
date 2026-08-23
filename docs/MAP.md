@@ -147,13 +147,25 @@ player actions; cleared every turn.
 ## Layout
 
 - Tiers as ruled: phone ≤760 (the JS gate is `V6M.mq =
-  matchMedia('(max-width:760px)')` ~11471 — the single "is mobile" switch),
-  tablet 761–1179, desktop ≥1180 (`#app{max-width:1180px}`).
-- Breakpoint owners (13 width thresholds — consolidation target): 420
-  mobile/v7 · 520 v4/v9 · 600 v4/v6/v7 · 620 v6 · 640 v5/v6 · **760**
-  mobile/v7/v8 · 761min v7/v8 · **880** v4 (.grid collapse — so 761–880 has a
-  collapsed sidebar with zero mobile behaviors) · 900 v4/v6/mobile · 901min
-  v6/v7 · 1000 mobile (chips) vs 1100 v6 (chips — they disagree) · 1180 cap.
+  matchMedia('(max-width:760px)')` — the single "is mobile" switch), tablet
+  761–1179, desktop ≥1180.
+- **Since S6a there are exactly five width thresholds, and every one of them is
+  a tier edge**: 420 (the sanctioned small-phone refinement), 760/761, and
+  1179/1180. Adding a sixth is the thing this slice existed to prevent — if a
+  layout needs a boundary at 900, the answer is almost always that it belongs to
+  a tier that already has one. Nineteen width queries remain, all on those five
+  numbers; the audit that got them there is in the S6a PR.
+- Tier shapes. Desktop widens the shell (`--app-max:1440px`, `--rail:340px`)
+  and is the only tier with a two-column `.grid`. Tablet takes the full width
+  for the main column and re-lays the rail as a two-up row beneath it; it wraps
+  the tab strip rather than scrolling it (measured: a 1180 threshold left 4–9 of
+  the 15 classic tabs off-screen across the band), keeps two turn-bar chips and
+  drops the hint. Phone is owned outright by the `max-width:760px` layer.
+- Two rules are keyed to something other than width and must stay that way:
+  the landscape/short-window turn bar (`max-width:1179px and max-height:460px`
+  — height is what it is actually about; a landscape phone is up to 932px wide,
+  which is why its old 900px ceiling missed the largest phones), and the touch
+  layer (`hover:none and pointer:coarse`).
 - Mobile layer: scroll-lock preserving position (v6mLock/Unlock), `.tscroll`
   table wrapping, policy folds, `--turnbar-h` via ResizeObserver, safe-area
   vars. v7: grouped two-row nav (`uiPrefs.layout==='classic'` opts out), per-tab

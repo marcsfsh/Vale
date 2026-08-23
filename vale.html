@@ -54,7 +54,13 @@ body{
   line-height:1.5;
   -webkit-font-smoothing:antialiased;
 }
-#app{max-width:1180px;margin:0 auto;padding:0 14px 90px}
+#app{max-width:var(--app-max);margin:0 auto;padding:0 14px 90px}
+/* Three tiers, and only three: phone <=760, tablet 761-1179, desktop
+   >=1180. Every width query in this file resolves to one of those
+   boundaries (420 is the one legitimate small-phone refinement).
+   Desktop uses the window instead of sitting in a 1180px column. */
+:root{--app-max:1180px;--rail:320px}
+@media(min-width:1180px){:root{--app-max:1440px;--rail:340px}}
 button{font-family:var(--font-u);cursor:pointer}
 button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
@@ -99,8 +105,13 @@ nav.tabs button:hover{color:var(--ivory)}
 nav.tabs button[aria-current="true"]{color:var(--party);border-bottom-color:var(--party)}
 
 /* ---------- layout ---------- */
-.grid{display:grid;grid-template-columns:1fr 320px;gap:22px;align-items:start}
-@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) var(--rail);gap:22px;align-items:start}
+/* Tablet is its own tier, not a narrow desktop: the main column takes
+   the full width and the rail becomes a two-up row beneath it, which
+   is what 761-1179 has room for. Phone stacks everything. */
+@media(max-width:1179px){.grid{grid-template-columns:minmax(0,1fr)}
+  .grid > div:last-child:not(:only-child){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}}
+@media(max-width:760px){.grid > div:last-child:not(:only-child){grid-template-columns:minmax(0,1fr);gap:0}}
 .panel{border:1px solid rgba(191,161,78,.22);background:linear-gradient(180deg,rgba(38,48,42,.55),rgba(20,26,23,.55));padding:16px;margin-bottom:18px}
 .panel > h2, .ttl{
   font-family:var(--font-u);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
@@ -125,7 +136,6 @@ svg.hemi{width:100%;height:auto;max-height:290px;display:block}
 /* ---------- bars ---------- */
 .rows{display:grid;gap:9px}
 .row{display:grid;grid-template-columns:1fr 130px 44px;gap:10px;align-items:center}
-@media(max-width:520px){.row{grid-template-columns:1fr 84px 40px}}
 .row .lab{font-family:var(--font-u);font-size:13px;letter-spacing:.04em}
 .bar{height:9px;background:rgba(0,0,0,.4);border:1px solid rgba(191,161,78,.18);position:relative;overflow:hidden}
 .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--party);display:block}
@@ -183,7 +193,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   border-top:2px solid var(--party);
   padding:10px 14px;
 }
-.turnbar .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.turnbar .in{max-width:var(--app-max);margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .turnbar .date{font-family:var(--font-d);font-size:18px;letter-spacing:.1em}
 .turnbar .hint{font-family:var(--font-u);font-size:12px;color:var(--slate);letter-spacing:.06em}
 .turnbar .sp{margin-left:auto}
@@ -319,22 +329,14 @@ textarea{width:100%;height:150px;background:rgba(0,0,0,.4);color:var(--ivory);bo
 .turnbar .session-chip{font-family:var(--font-u);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(191,161,78,.23);padding:3px 7px;color:var(--ivory-dim)}
 .btn.danger{border-color:var(--bad);background:rgba(199,123,98,.12)}
 
-@media(max-width:900px){
-  #app{padding-left:10px;padding-right:10px}
-  nav.tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;position:sticky;top:0;z-index:30;background:rgba(20,26,23,.97);margin-left:-10px;margin-right:-10px;padding-left:10px}
-  nav.tabs button{white-space:nowrap;padding:11px 12px}
-  .brief-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .brief-head{grid-template-columns:1fr}
-}
-@media(max-width:600px){
-  body{font-size:14px}
-  .topbar{align-items:center}.stats{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.stat{min-width:0;padding:5px 7px}.stat span{font-size:16px}.stat .delta{display:block;margin:0}
-  .panel{padding:12px;margin-bottom:12px}.cards{grid-template-columns:1fr}.brief-grid,.macro-grid{grid-template-columns:repeat(2,1fr)}
-  .region-kpis{grid-template-columns:repeat(2,1fr)}.support-pair{grid-template-columns:1fr}
-  .turnbar .hint{display:none}.turnbar .in{gap:7px}.turnbar .sp{margin-left:0;flex:1}.turnbar .big{width:100%;padding:9px 12px}
-  .sheet{padding:18px 14px}.modal{padding:8px}.timeline,.stage-labels{grid-template-columns:repeat(4,1fr)}
-  table{display:block;overflow-x:auto;white-space:nowrap}
-}
+/* The v4 chunk's own 900px and 600px narrow layers used to live here. Every
+   declaration in them was restated — three of them REVERSED — by the phone
+   layer at max-width:760px further down the file, which is later in source
+   order and therefore won at every width the old rules could reach. The 900px
+   layer additionally dressed 761-900 in phone chrome (10px gutters, a sticky
+   scrolling tab strip) over an otherwise desktop body, which is the exact
+   half-dressed tablet this file is being cured of. Both are gone; the phone
+   layer at 760 is the single owner of the phone tier. */
 @media print{
   body{background:#fff;color:#111}.turnbar,.tabs,.btnrow,.iconbtn,.skiplink{display:none!important}#app{max-width:none;padding:0}.panel,.card,.command-deck{background:#fff;color:#111;border-color:#777;break-inside:avoid}.note,.desc,.muted{color:#444!important}
 }
@@ -8189,12 +8191,9 @@ render();
   .compact .panel{padding:11px;margin-bottom:11px}.compact .cards,.compact .minister-grid,.compact .interest-grid{gap:7px}
   .compact .card,.compact .minister-card,.compact .interest-card{padding:9px}
   select.select,input[type="search"]{min-height:34px}
-  @media(max-width:640px){
-    #app{padding-inline:10px}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.stat{min-width:0}
-    nav.tabs{margin-inline:-10px;padding-inline:10px}.forecast-band{grid-template-columns:repeat(2,1fr)}
-    .objective-grid,.committee-grid,.minister-grid,.interest-grid,.campaign-grid,.fiscal-grid{grid-template-columns:1fr}
-    .turnbar .hint,.turnbar .session-meta{display:none}.turnbar .in{gap:7px}.turnbar .btn{padding:7px 9px}.turnbar .big{padding:9px 13px}
-  }
+  /* v5's own 640px phone pass lived here. All ten of its declarations are
+     restated by the 760px phone layer, which is later in source and a strict
+     superset of its range, so it reached no width the phone layer did not. */
 </style>
 <script>
 'use strict';
@@ -8809,7 +8808,15 @@ S=enrichState(S,false);render();
    ========================================================== */
 
 /* ---------- layout repairs ---------- */
-@media(min-width:901px){
+/* Above the phone tier the tab strip wraps instead of scrolling sideways. The
+   threshold was 901 — a number with no other use in the file, and one that cost
+   the classic 15-tab layout dearly: measured at 761/834/900/1024/1179, a 901
+   (or 1180) threshold left between 4 and 9 tabs off the end of a 45px scroller
+   right across the tablet band, where 761 wraps to two rows and shows all 15.
+   In the default grouped layout the group row is 5 buttons and fits either way,
+   so this is free there. Its grouped-bar twin below moves in lockstep — split
+   them and 761-900 gets one bar wrapping and the other scrolling. */
+@media(min-width:761px){
   nav.tabs{flex-wrap:wrap;overflow:visible;padding-bottom:0}
   nav.tabs button{padding:10px 13px;font-size:11.5px}
 }
@@ -8819,14 +8826,14 @@ S=enrichState(S,false);render();
 .turnbar .hint{flex:1 1 120px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .turnbar .sp{display:none}
 .turnbar .btn{flex:none;white-space:nowrap}
-@media(max-width:1100px){.turnbar .session-chip:nth-child(n+4){display:none}}
-@media(max-width:900px){.turnbar .hint{display:none}}
-@media(max-width:640px){
-  .turnbar .in{flex-wrap:wrap;gap:6px}
-  .turnbar .session-meta{display:none}
-  .turnbar .btn{padding:7px 8px;font-size:11px}
-  .turnbar .big{width:100%;order:9}
-}
+/* The turn bar sheds its optional cargo once per tier. It used to shed it on a
+   four-rung ladder — 1100 hid the 4th chip, 1000 the 3rd, 900 the whole chip
+   block, 640 rebuilt the bar — written by three chunks that did not know about
+   each other. Because the first two used different nth-child offsets they
+   composed rather than overrode, so the chip count changed three times inside
+   what is now one tier. Desktop carries everything; tablet keeps two chips and
+   drops the hint; the phone layer at 760 owns the bar outright. */
+@media(max-width:1179px){.turnbar .session-chip:nth-child(n+3){display:none}.turnbar .hint{display:none}}
 /* the objective card's 'risk' state collided with the risk-list layout */
 .objective-card.risk{display:block;grid-template-columns:none;gap:0;border:1px solid rgba(191,161,78,.2);background:rgba(0,0,0,.23);padding:12px}
 .stat .delta.up{color:var(--ok)}.stat .delta.down{color:var(--bad)}
@@ -8850,7 +8857,7 @@ S=enrichState(S,false);render();
 .gz-delta small{font-family:var(--font-u);font-size:11px}
 .gz-delta small.up{color:var(--ok)}.gz-delta small.down{color:var(--bad)}.gz-delta small.flat{color:var(--slate)}
 .gz-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
-@media(max-width:620px){.gz-cols{grid-template-columns:1fr}}
+/* the gazette's two-up body folds with everything else, in the phone layer */
 .gz-cols h4{font-family:var(--font-u);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--party);margin:0 0 6px;border-bottom:1px solid rgba(191,161,78,.25);padding-bottom:4px}
 .gz-cols ul{list-style:none;margin:0;padding:0}
 .gz-cols li{font-size:13px;color:var(--ivory-dim);padding:4px 0;border-bottom:1px dotted rgba(191,161,78,.15);line-height:1.4}
@@ -8878,7 +8885,7 @@ S=enrichState(S,false);render();
 .arc-banner .arc-steps i{width:26px;height:5px;background:rgba(255,255,255,.1)}
 .arc-banner .arc-steps i.on{background:var(--bad)}
 .arc-banner .arc-steps i.done{background:var(--brass)}
-@media(max-width:600px){.arc-banner{grid-template-columns:auto 1fr}.arc-banner .btn{grid-column:1/-1;justify-self:start}}
+/* .arc-banner's phone reflow is restated byte-for-byte in the phone layer */
 .arc-record td:first-child{white-space:nowrap}
 
 /* ---------- governors ---------- */
@@ -11165,16 +11172,14 @@ button,.btn,.choice,.tag,nav.tabs button{touch-action:manipulation}
   details.fold summary{padding:11px 0;min-height:40px}
 }
 
-/* ---------- tablets and narrow desktops ---------- */
-@media(max-width:1000px){.turnbar .session-chip:nth-child(n+3){display:none}}
-@media(max-width:900px){
-  nav.tabs{margin-left:-10px;margin-right:-10px;padding-inline:10px}
-  .turnbar .session-meta{display:none}
-  .turnbar .in{gap:8px}
-  .turnbar .btn{padding:7px 9px}
-}
+/* A "tablets and narrow desktops" layer used to sit here: rungs two and three
+   of the turn bar's chip ladder (see the tier rule in the v6 block above) plus
+   a tab strip bled -10px sideways against a gutter that is only 10px wide
+   below 760. Everything in it either belongs to the phone layer below, which
+   restates it, or to the one tier rule that replaced the ladder. The tablet is
+   no longer a narrow desktop; it is a tier, and it is dressed as one. */
 
-/* ---------- narrow layouts ---------- */
+/* ---------- the phone tier ---------- */
 @media(max-width:760px){
   #app{padding:0 max(10px,var(--safe-r)) calc(var(--turnbar-h) + 14px) max(10px,var(--safe-l))}
   body{font-size:14.5px}
@@ -11313,7 +11318,7 @@ button,.btn,.choice,.tag,nav.tabs button{touch-action:manipulation}
   .gz-deltas{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
   .gz-delta{padding:6px 7px}
   .gz-delta strong{font-size:15px}
-  .gz-cols{gap:12px}
+  .gz-cols{grid-template-columns:minmax(0,1fr);gap:12px}
   .coal-row{padding:9px 9px;gap:8px}
   .coal-row .seats{font-size:14px}
   .coal-total strong{font-size:16px}
@@ -11342,12 +11347,14 @@ button,.btn,.choice,.tag,nav.tabs button{touch-action:manipulation}
   .gz-deltas{grid-template-columns:repeat(2,minmax(0,1fr))}
   .verdict-grades{grid-template-columns:repeat(3,minmax(0,1fr))}
   .party-grid{grid-template-columns:1fr}
-  .turnbar .in{grid-template-columns:auto repeat(5,minmax(0,1fr))}
   .turnbar .btn{font-size:9.5px;letter-spacing:.03em;padding:6px 1px}
 }
 
 /* landscape phones: keep the bar short */
-@media(max-width:900px) and (max-height:460px){
+/* Keyed to height, not to a tier: a landscape phone is 430px tall and up to
+   932px wide, so the old 900px ceiling missed the largest phones in the very
+   orientation the rule exists for. The tier boundary is the ceiling now. */
+@media(max-width:1179px) and (max-height:460px){
   .turnbar{padding-top:6px;padding-bottom:calc(6px + var(--safe-b))}
   .turnbar .in{display:flex;flex-wrap:nowrap;gap:5px;align-items:center}
   .turnbar .session-meta,.turnbar .hint,.turnbar .sp{display:none}
@@ -11502,7 +11509,7 @@ nav.tabs.grouped .pages{background:rgba(0,0,0,.2)}
 nav.tabs.grouped .pages button{flex:0 0 auto;font-size:11px;letter-spacing:.14em;padding:9px 14px;border-bottom:2px solid transparent;color:var(--slate);font-weight:500;min-height:0}
 nav.tabs.grouped .pages button[aria-current="true"]{color:var(--ivory);border-bottom-color:var(--brass)}
 nav.tabs.grouped .pages button:hover{color:var(--ivory)}
-@media(min-width:901px){nav.tabs.grouped .tabrow{flex-wrap:wrap;overflow:visible}}
+@media(min-width:761px){nav.tabs.grouped .tabrow{flex-wrap:wrap;overflow:visible}}
 @media(max-width:760px){
   nav.tabs.grouped .tabrow{padding:0 10px;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10px,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,transparent 0,#000 10px,#000 calc(100% - 22px),transparent)}
   nav.tabs.grouped .groups button{padding:12px 11px;font-size:11px;letter-spacing:.12em;min-height:44px}
@@ -11534,7 +11541,7 @@ nav.tabs.grouped .pages button:hover{color:var(--ivory)}
 .desk-obj.done em{color:var(--ok)}
 .desk-obj.atrisk em{color:var(--bad)}
 .desk-obj .btn{padding:4px 9px;font-size:11px}
-@media(max-width:600px){
+@media(max-width:760px){
   .desk-row{grid-template-columns:1fr}
   .desk-row .btn{justify-self:start}
   .desk-obj{grid-template-columns:minmax(0,1fr) auto;gap:4px 8px}
@@ -11566,7 +11573,7 @@ body.terse #view p.note.open,body.terse #view .brief-head p.open{cursor:pointer}
 .finder-row .fo .btn{padding:5px 9px;font-size:11px}
 .finder-empty{color:var(--slate);font-family:var(--font-u);font-size:12.5px;padding:8px 0}
 .finder-hint{font-family:var(--font-u);font-size:11px;color:var(--slate);margin:-4px 0 8px}
-@media(max-width:600px){.finder-row{grid-template-columns:minmax(0,1fr) auto}.finder-row .fk{display:none}}
+@media(max-width:760px){.finder-row{grid-template-columns:minmax(0,1fr) auto}.finder-row .fk{display:none}}
 
 /* the element the finder jumps to */
 .spot{outline:2px solid var(--brass);outline-offset:3px;animation:spot 2.8s ease-out forwards}
@@ -13802,7 +13809,7 @@ tr.jrow{cursor:pointer}
 tr.jrow:hover td{background:rgba(255,255,255,.04)}
 tr.jrow:focus-visible{outline:2px solid var(--brass);outline-offset:-2px}
 body.v9 .card .btnrow [data-v9open]{margin-left:auto}
-@media(max-width:520px){.tier{grid-template-columns:24px 1fr}.tier b{font-size:16px}}
+@media(max-width:420px){.tier{grid-template-columns:24px 1fr}.tier b{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.clause-row button,.tier{transition:none}}
 </style>
 <script>
