@@ -12,7 +12,7 @@
  * survives a save, or that a preview does not quietly consume it. So this plays
  * real turns and compares real state.
  *
- * Five properties, each a way the promise has failed before in games like this:
+ * Eight properties, each a way the promise has failed before in games like this:
  *
  *   1. same seed  -> identical state after several turns
  *   2. diff seed  -> different state (a broken engine that returns a constant
@@ -20,6 +20,9 @@
  *   3. the stream survives a save/reload round trip
  *   4. a sandbox forecast does not advance the real campaign's dice
  *   5. undo rewinds the dice with everything else
+ *   6. enriching some OTHER state does not spend this campaign's dice
+ *   7. a fresh page reproduces what the same page did
+ *   8. a forecast repeated on one state gives one answer
  */
 const { execSync } = require('child_process');
 const { createRequire } = require('module');
@@ -271,7 +274,31 @@ async function playTurns(page, n) {
     new Set(forecasts).size === 1 ? 'the same state forecast three times gave the same answer'
       : 'three forecasts of one state disagreed: ' + forecasts.join(' / '));
 
-  // 5 — undo rewinds the dice too
+  /* 6 — enriching some OTHER state must not spend this campaign's dice.
+     The five scenarios above all hand fully-enriched states around, so none of
+     them could see this: the backfill paths invent a missing governor or
+     minister with makeName() and several rolls, and enrichState is called on
+     states that are not S — readAutosave enriches a stored blob to decide
+     whether to offer it, undoLast enriches a snapshot before assigning it. Both
+     are reachable mid-campaign, readAutosave from the save dialog itself. */
+  const h = await campaign(browser, { seedText: SEED });
+  await playTurns(h, 1);
+  const bleed = await h.evaluate(() => {
+    const before = S.rngState;
+    const blob = JSON.parse(JSON.stringify(S));
+    delete blob.v6; delete blob.figures;          // force the backfill to roll
+    const out = enrichState(blob, false);
+    return { before, after: S.rngState, blobMoved: out.rngState !== before };
+  });
+  await h.close();
+  say(bleed.before === bleed.after && bleed.blobMoved, 'enrich spends its own dice',
+    bleed.before === bleed.after
+      ? 'backfilling a detached state left the live stream at ' + bleed.before +
+        ' and advanced the blob\'s own instead'
+      : 'the LIVE stream moved ' + bleed.before + ' -> ' + bleed.after +
+        ' while enriching a different state — a save dialog would break the seed');
+
+  // 7 — undo rewinds the dice too
   const g = await campaign(browser, { seedText: SEED });
   await playTurns(g, 1);
   await settle(g);

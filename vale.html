@@ -132,9 +132,14 @@ svg.hemi{width:100%;height:auto;max-height:340px;display:block}
 .seatlegend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:8px}
 .leg{display:flex;align-items:center;gap:6px;font-family:var(--font-u);font-size:12px}
 .leg .n{font-family:var(--font-n);font-style:normal;font-variant-numeric:tabular-nums;color:var(--ivory-dim)}
-/* Above the phone tier the chamber names every bloc on the arc, so the legend
-   drops the seat counts rather than printing all seven of them twice. */
-@media(min-width:761px){.seatlegend .leg .n{display:none}}
+/* S6c hid these counts above the phone tier, reasoning that the chamber already
+   names every bloc on its arc. It does not: hemiMap drops a label when the
+   chamber is dimmed, when a bloc's wedge is too narrow to hold one, and when one
+   would collide with a label already placed. A six-seat Senate bloc — which
+   several shipped scenarios have — then had its seat count rendered NOWHERE on
+   tablet or desktop. The legend is the guaranteed-complete listing and keeps its
+   numbers; mild duplication is the price of that guarantee. Do not re-trim this
+   without first making hemiMap label every bloc unconditionally. */
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .compbar{display:flex;height:12px;border:1px solid rgba(191,161,78,.25);overflow:hidden;margin-top:8px}
 .compbar span{display:block;height:100%}
@@ -3699,93 +3704,105 @@ function newGame(diff) {
     st.pol.federalGrants = 1;
     st.pol.veteransCare = 1;
     st.pol.borderSecurity = 1;
-    var out = enrichState(st, true);
-    out.rngState = dice.rngState;
-    return out;
+    // Hand the stream to the state before enriching: enrichState now advances
+    // the stream of whatever it is given, so copying dice.rngState back
+    // afterwards would discard everything the backfill rolled.
+    st.rngState = dice.rngState;
+    return enrichState(st, true);
   });
 }
 
 function enrichState(st, fresh) {
   if (!st) return st;
-  st.enrichVersion = ENRICH_VERSION;
+  /* Every roll below belongs to the state BEING ENRICHED, not to whatever
+     campaign happens to be loaded. The backfill paths do roll — a missing
+     governor or minister is invented with makeName() and several rand()s —
+     and enrichState is called on states that are not S: readAutosave enriches
+     a stored blob to decide whether to offer it, and undoLast enriches a
+     snapshot before assigning it. Without this, opening the save dialog
+     mid-campaign could spend the LIVE campaign's dice on a throwaway object,
+     which is precisely the guarantee the seeded engine exists to make. */
+  return rollFor(st, function () {
+    st.enrichVersion = ENRICH_VERSION;
 
-  /* A save written before the dice were seeded has no stream to resume. Rather
-     than refuse it — the policy is that breaks are loud, not that saves are
-     brittle — it is given a seed here and the player is told once, because the
-     alternative is a campaign that silently claims to be reproducible from a
-     point it is not. UI.seedMinted is transient and never serialised. */
-  if (st.seed === undefined || st.seed === null) {
-    st.seed = mintSeed();
-    st.rngState = st.seed;
-    if (!fresh && st.started) UI.seedMinted = true;
-  }
-  if (st.rngState === undefined || st.rngState === null) st.rngState = st.seed | 0;
-  if (st.started === undefined) st.started = !fresh;
-  if (st.doctrine === undefined) st.doctrine = fresh ? null : 'operator';
-  st.partyRel = st.partyRel || {};
-  PARTIES.forEach(function (p) {
-    if (st.partyRel[p.id] === undefined) {
-      st.partyRel[p.id] = p.id === playParty(st) ? 76 : ((st.coalition || []).indexOf(p.id) >= 0 ? 66 : 44);
+    /* A save written before the dice were seeded has no stream to resume. Rather
+       than refuse it — the policy is that breaks are loud, not that saves are
+       brittle — it is given a seed here and the player is told once, because the
+       alternative is a campaign that silently claims to be reproducible from a
+       point it is not. UI.seedMinted is transient and never serialised. */
+    if (st.seed === undefined || st.seed === null) {
+      st.seed = mintSeed();
+      st.rngState = st.seed;
+      if (!fresh && st.started) UI.seedMinted = true;
     }
+    if (st.rngState === undefined || st.rngState === null) st.rngState = st.seed | 0;
+    if (st.started === undefined) st.started = !fresh;
+    if (st.doctrine === undefined) st.doctrine = fresh ? null : 'operator';
+    st.partyRel = st.partyRel || {};
+    PARTIES.forEach(function (p) {
+      if (st.partyRel[p.id] === undefined) {
+        st.partyRel[p.id] = p.id === playParty(st) ? 76 : ((st.coalition || []).indexOf(p.id) >= 0 ? 66 : 44);
+      }
+    });
+
+    st.regions = st.regions || {};
+    REGIONS.forEach(function (r, idx) {
+      if (!st.regions[r.id]) {
+        var serviceBase = 43 + ((idx * 7) % 16);
+        st.regions[r.id] = {
+          prosperity: clamp(r.wealth * .62 + st.ind.economy * .38 + (idx % 3 - 1) * 3, 20, 90),
+          services: clamp(serviceBase + (st.ind.education + st.ind.healthcare - 100) * .13, 20, 88),
+          order: clamp(47 + (st.ind.safety - 50) * .45 + (idx % 2 ? 4 : -2), 18, 90),
+          federal: clamp(st.crown + (r.urban > 75 ? 5 : (r.urban < 35 ? -5 : 0)), 15, 90),
+          attention: 0,
+          lastVisit: -99
+        };
+      }
+    });
+    st.regionCooldown = st.regionCooldown || {};
+
+    st.macro = st.macro || {
+      growth:2.3, inflation:3.4, unemployment:5.8, inequality:48,
+      confidence:58, productivity:1.6, rating:'AA', lastGrowth:2.3,
+      lastInflation:3.4, lastUnemployment:5.8
+    };
+    st.salience = st.salience || {
+      prices:62, jobs:58, health:51, safety:47, integrity:54, climate:42,
+      schools:44, defence:39, migration:43, federal:36, rights:41, world:34
+    };
+    ISSUES.forEach(function (i) { if (st.salience[i.id] === undefined) st.salience[i.id] = 40; });
+
+    st.factions = st.factions || {};
+    PARTIES.forEach(function (p) {
+      if (!st.factions[p.id]) {
+        st.factions[p.id] = PARTY_FACTIONS[p.id].map(function (f, i) {
+          return { name:f.name, strength:f.strength, loyalty:clamp(64 - i * 3 + (p.id === playParty(st) ? 3 : 0), 30, 85),
+            e:f.e, a:f.a, demand:f.demand, favours:0 };
+        });
+      }
+    });
+
+    st.bills = st.bills || [];
+    st.billArchive = st.billArchive || [];
+    st.billSeq = st.billSeq || 1;
+    st.inbox = st.inbox || [];
+    st.inboxArchive = st.inboxArchive || [];
+    st.inboxSeq = st.inboxSeq || 1;
+    st.news = st.news || [];
+    st.pollHistory = st.pollHistory || [];
+    st.promises = st.promises || [];
+    st.legacy = st.legacy || {
+      sessions:0, laws:0, playerLaws:0, billsFailed:0, electionsWon:0, coalitionsBuilt:0,
+      promisesKept:0, promisesBroken:0, yearsInGovernment:0, yearsInOpposition:0,
+      highestApproval:Math.round(approval(st)), lowestUnrest:Math.round(st.unrest),
+      reforms:0, crisesSurvived:0
+    };
+    if (st.legacy.playerLaws === undefined) st.legacy.playerLaws = st.legacy.laws || 0;
+    if (!st.news.length) addNews(st, 'Opening of Parliament', 'A minority government meets a hostile Senate',
+      'The arithmetic is close, the programme is not, and every party has arrived with a price.', 'watch');
+    if (fresh && !st.inbox.length) seedOpeningInbox(st);
+    return st;
   });
-
-  st.regions = st.regions || {};
-  REGIONS.forEach(function (r, idx) {
-    if (!st.regions[r.id]) {
-      var serviceBase = 43 + ((idx * 7) % 16);
-      st.regions[r.id] = {
-        prosperity: clamp(r.wealth * .62 + st.ind.economy * .38 + (idx % 3 - 1) * 3, 20, 90),
-        services: clamp(serviceBase + (st.ind.education + st.ind.healthcare - 100) * .13, 20, 88),
-        order: clamp(47 + (st.ind.safety - 50) * .45 + (idx % 2 ? 4 : -2), 18, 90),
-        federal: clamp(st.crown + (r.urban > 75 ? 5 : (r.urban < 35 ? -5 : 0)), 15, 90),
-        attention: 0,
-        lastVisit: -99
-      };
-    }
-  });
-  st.regionCooldown = st.regionCooldown || {};
-
-  st.macro = st.macro || {
-    growth:2.3, inflation:3.4, unemployment:5.8, inequality:48,
-    confidence:58, productivity:1.6, rating:'AA', lastGrowth:2.3,
-    lastInflation:3.4, lastUnemployment:5.8
-  };
-  st.salience = st.salience || {
-    prices:62, jobs:58, health:51, safety:47, integrity:54, climate:42,
-    schools:44, defence:39, migration:43, federal:36, rights:41, world:34
-  };
-  ISSUES.forEach(function (i) { if (st.salience[i.id] === undefined) st.salience[i.id] = 40; });
-
-  st.factions = st.factions || {};
-  PARTIES.forEach(function (p) {
-    if (!st.factions[p.id]) {
-      st.factions[p.id] = PARTY_FACTIONS[p.id].map(function (f, i) {
-        return { name:f.name, strength:f.strength, loyalty:clamp(64 - i * 3 + (p.id === playParty(st) ? 3 : 0), 30, 85),
-          e:f.e, a:f.a, demand:f.demand, favours:0 };
-      });
-    }
-  });
-
-  st.bills = st.bills || [];
-  st.billArchive = st.billArchive || [];
-  st.billSeq = st.billSeq || 1;
-  st.inbox = st.inbox || [];
-  st.inboxArchive = st.inboxArchive || [];
-  st.inboxSeq = st.inboxSeq || 1;
-  st.news = st.news || [];
-  st.pollHistory = st.pollHistory || [];
-  st.promises = st.promises || [];
-  st.legacy = st.legacy || {
-    sessions:0, laws:0, playerLaws:0, billsFailed:0, electionsWon:0, coalitionsBuilt:0,
-    promisesKept:0, promisesBroken:0, yearsInGovernment:0, yearsInOpposition:0,
-    highestApproval:Math.round(approval(st)), lowestUnrest:Math.round(st.unrest),
-    reforms:0, crisesSurvived:0
-  };
-  if (st.legacy.playerLaws === undefined) st.legacy.playerLaws = st.legacy.laws || 0;
-  if (!st.news.length) addNews(st, 'Opening of Parliament', 'A minority government meets a hostile Senate',
-    'The arithmetic is close, the programme is not, and every party has arrived with a price.', 'watch');
-  if (fresh && !st.inbox.length) seedOpeningInbox(st);
-  return st;
 }
 
 function addNews(st, kicker, headline, detail, tone) {
@@ -4502,6 +4519,11 @@ function readAutosave() {
      intact save, and is never modified or deleted — only reported. */
   var keys = ['parliamentVale.autosave.v5', 'parliamentVale.autosave.v4', 'parliamentVale.autosave'];
   UI.saveReadError = null;
+  /* Cleared per read, like saveReadError: both describe THIS read of the store.
+     Left standing, the pre-seed notice reappeared on every later setup sheet in
+     the session, including above an autosave that does carry a seed — the
+     comment said the player is told once and they were told forever. */
+  UI.seedMinted = false;
   for (var i = 0; i < keys.length; i++) {
     var raw = null;
     try { raw = localStorage.getItem(keys[i]); } catch (e) { return null; }
@@ -7120,6 +7142,13 @@ function hemiMap(seatsObj, total, o) {
     var c = Math.cos(m.mid);
     var anchor = c > .3 ? 'start' : (c < -.3 ? 'end' : 'middle');
     var x1 = anchor === 'start' ? m.x : (anchor === 'end' ? m.x - w : m.x - w / 2);
+    /* Nudge back inside the box. The far-left bloc anchors its text leftward,
+       so a three-digit seat count — which shipped scenarios have — ran past the
+       edge and was clipped. The halo stroke widens the glyphs another unit or
+       so, hence the small margin. */
+    var edge = 2;
+    if (x1 < edge) { m.x += edge - x1; x1 = edge; }
+    else if (x1 + w > o.w - edge) { m.x -= (x1 + w) - (o.w - edge); x1 = o.w - edge - w; }
     for (var i = 0; i < placed.length; i++) {
       if (x1 < placed[i].x2 && x1 + w > placed[i].x1 && Math.abs(placed[i].y - m.y) < fs + 3) return;
     }
@@ -8970,9 +8999,11 @@ function spreadLabels(items, gap, lo, hi) {
 
 /* A line chart in the house vocabulary, shared by the polling trend and the
    long record: a faint grid, round-jointed lines, and — the part that does the
-   work — every series ending in a dot and its CURRENT VALUE, set in the series'
-   own colour. The last number is the one the reader came for, so it is on the
-   chart rather than implied by a line's height against an axis.
+   work — every series ending in a dot, its NAME in the series' own colour, and
+   its CURRENT VALUE beside that in neutral ink. The last number is the one the
+   reader came for, so it is on the chart rather than implied by a line's height
+   against an axis; the colour sits on the name, where it identifies, rather
+   than on the figure, where seven hues at 10px would fight each other.
      series: [{ name, short, color, values:[0..1], emphasis }]
      xLabels: strings, one per sample (blanks are skipped) */
 function lineChart(o) {
@@ -9030,7 +9061,17 @@ function lineChart(o) {
 function pv5PollChart(){
   var hist=(S.pollHistory||[]).slice(-18);
   if(hist.length<2)return '<div class="empty-state">Two completed sessions are needed for a polling trend.</div>';
-  var max=.34, me=playParty(S);
+  /* The axis used to be pinned at 34% and the line clamped to it. That was
+     survivable while the chart had no numbers on it; since S6c puts each
+     party's real figure beside its end dot, a party polling above 34% would sit
+     on the top gridline next to a label reading 41%. The scale now grows to the
+     next five points instead, and only ever upward, so the familiar 34% frame
+     is what you normally see. */
+  var peak = 0;
+  hist.forEach(function (row) {
+    PARTIES.forEach(function (p) { peak = Math.max(peak, row.support[p.id] || 0); });
+  });
+  var max = Math.max(.34, Math.ceil(peak * 20) / 20), me = playParty(S);
   var series=PARTIES.slice().sort(function(a,b){return a.order-b.order;}).map(function(p){
     return { name:p.name, short:p.short, color:p.color, emphasis:p.id===me,
       values:hist.map(function(row){return (row.support[p.id]||0)/max;}) };
@@ -9539,7 +9580,13 @@ function v6NewGame(diff, scenarioId, lengthId, playAs) {
     seedFigures(st);
     st.unity = 60; st.agendaShift = { e:0, a:0 }; st.started = false; st.doctrine = null;
     st.v6 = null;
-    st = enrichState(st, true);
+    /* enrichState returns the same object today, but it is free not to, and
+       rollFor pinned the stream to the object it was HANDED. If a future enrich
+       step rebuilds the state, every roll after this line would advance an
+       orphan and the campaign would carry a stale stream position, silently.
+       newGame guards this by copying explicitly; this is the same guard. */
+    var enriched = enrichState(st, true);
+    if (enriched !== st) { enriched.rngState = st.rngState; st = enriched; }
     st.v6.scenario = sc.id; st.v6.length = lengthId;
     (sc.log || []).forEach(function (line) { logIt(st, line); });
     if (sc.news) { st.news = []; addNews(st, sc.news[0], sc.news[1], sc.news[2], 'watch'); }
@@ -11437,7 +11484,7 @@ gameOver = function (title, text, score) {
 
 /* ---------- the start screen ---------- */
 var startScreen = function () {
-  UI.setup = UI.setup || { party:'lp', scenario:'popularFront', length:'epic', diff:'normal', step:0 };
+  UI.setup = UI.setup || { party:'lp', scenario:'popularFront', length:'epic', diff:'normal' };
   var s = UI.setup, auto = readAutosave();
   var sc = V6_SCENARIO[s.scenario] || V6_SCENARIOS[0];
   var parties = PARTIES.slice().sort(function (a, b) { return a.order - b.order; }).map(function (p) {
@@ -12219,7 +12266,13 @@ function v7ChartsToEnd() {
     var el = document.querySelector('.' + cls);
     if (!el || el.scrollWidth <= el.clientWidth + 1) return;
     el.scrollLeft = UI.chartScroll[cls] === undefined ? el.scrollWidth : UI.chartScroll[cls];
-    el.addEventListener('scroll', function () { UI.chartScroll[cls] = el.scrollLeft; });
+    // Bound once per element. v7Folds calls this on every fold open with no
+    // intervening render, so an unguarded addEventListener stacked duplicates
+    // on the same node.
+    if (!el.dataset.scrollBound) {
+      el.dataset.scrollBound = '1';
+      el.addEventListener('scroll', function () { UI.chartScroll[cls] = el.scrollLeft; });
+    }
   });
 }
 
@@ -14260,6 +14313,29 @@ function v9EnsureState(st, fresh) {
 }
 var v9EnrichV8 = enrichState;
 enrichState = function (st, fresh) { return v9EnsureState(v9EnrichV8(st, fresh), fresh); };
+
+/* ---------- the enrich chain rolls against the state it is enriching ----------
+   Each chunk WRAPS enrichState, so a guard installed on the v4 base leaves every
+   later chunk's backfill outside it — which is how the first attempt at this fix
+   passed compilation and still failed its test. The guard has to be the
+   outermost wrapper, so it lives here, last.
+
+   What it prevents: the ensure functions invent a missing governor or minister
+   with makeName() and several rolls, and enrichState is called on states that
+   are NOT the live game — readAutosave enriches a stored blob to decide whether
+   to offer it, and undoLast enriches a snapshot before assigning it. Both are
+   reachable mid-campaign, readAutosave from inside the save dialog itself. Ungu-
+   arded, opening that dialog spent the live campaign's dice on a throwaway
+   object and the seed stopped reproducing the campaign.
+
+   ANY future wrapper of enrichState must be installed ABOVE this line, or it
+   will sit outside the guard and reopen the hole. tools/determinism.js asserts
+   the property directly ("enrich spends its own dice"). */
+var v9EnrichGuarded = enrichState;
+enrichState = function (st, fresh) {
+  if (!st) return v9EnrichGuarded(st, fresh);
+  return rollFor(st, function () { return v9EnrichGuarded(st, fresh); });
+};
 
 /* ---------- small helpers ---------- */
 function v9Me() { return playParty(S); }

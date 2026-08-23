@@ -1,706 +1,711 @@
 {
- "_comment": "Adjudicated verdicts for every top-level function reassignment site in vale.html, keyed name#ordinal. aliasCaptured=false means the site replaces a body without keeping a reference to it. Since S2 every such site has been POISON-PROVED (tools/poison.js): each replaced body executes once at its own chunk boot, so it is transitional rather than dead. The five genuinely unreachable bodies were deleted in S2. NOTE: ordinal keys shift when a site is deleted -- re-derive verdicts, never carry them across a deletion.",
- "maxDead": 5,
- "sites": {
-  "enrichState#1": {
-   "line": 8329,
-   "aliasCaptured": true,
-   "reason": "alias var pv5EnrichV4 captured above"
-  },
-  "cabinetBonus#1": {
-   "line": 8333,
-   "aliasCaptured": true,
-   "reason": "alias var pv5CabinetBonusV4 captured above"
-  },
-  "billForecast#1": {
-   "line": 8396,
-   "aliasCaptured": true,
-   "reason": "alias var pv5BillForecastV4 captured above"
-  },
-  "sponsorBill#1": {
-   "line": 8407,
-   "aliasCaptured": true,
-   "reason": "alias var pv5SponsorBillV4 captured above"
-  },
-  "aiGovern#1": {
-   "line": 8425,
-   "aliasCaptured": true,
-   "reason": "alias var pv5AiGovernV4 captured above"
-  },
-  "blocTarget#1": {
-   "line": 8462,
-   "aliasCaptured": true,
-   "reason": "alias var pv5BlocTargetV4 captured above"
-  },
-  "ballot#1": {
-   "line": 8493,
-   "aliasCaptured": true,
-   "reason": "alias var pv5BallotV4 captured above"
-  },
-  "runElection#1": {
-   "line": 8500,
-   "aliasCaptured": true,
-   "reason": "alias var pv5RunElectionV4 captured above"
-  },
-  "budget#1": {
-   "line": 8515,
-   "aliasCaptured": true,
-   "reason": "alias var pv5BudgetV4 captured above"
-  },
-  "macroTick#1": {
-   "line": 8522,
-   "aliasCaptured": true,
-   "reason": "alias var pv5MacroTickV4 captured above"
-  },
-  "sessionSystemsTick#1": {
-   "line": 8542,
-   "aliasCaptured": true,
-   "reason": "alias var pv5SessionTickV4 captured above"
-  },
-  "inboxChoices#1": {
-   "line": 8548,
-   "aliasCaptured": true,
-   "reason": "alias var pv5InboxChoicesV4 captured above"
-  },
-  "respondInbox#1": {
-   "line": 8562,
-   "aliasCaptured": true,
-   "reason": "alias var pv5RespondInboxV4 captured above"
-  },
-  "viewHouses#1": {
-   "line": 8731,
-   "aliasCaptured": true,
-   "reason": "alias var pv5ViewHousesV4 captured above"
-  },
-  "viewLedger#1": {
-   "line": 8756,
-   "aliasCaptured": true,
-   "reason": "alias var pv5ViewLedgerV4 captured above"
-  },
-  "viewChamber#1": {
-   "line": 8759,
-   "aliasCaptured": true,
-   "reason": "alias var pv5ViewChamberV4 captured above"
-  },
-  "wire#1": {
-   "line": 8767,
-   "aliasCaptured": true,
-   "reason": "alias var pv5WireV4 captured above"
-  },
-  "render#1": {
-   "line": 8779,
-   "aliasCaptured": false,
-   "reason": "v5 full rewrite, no alias. Poison-proved LIVE (tools/poison.js render-v4): the v4 body it replaces executes once at v4 boot. Transitional, not dead."
-  },
-  "billForecast#2": {
-   "line": 9031,
-   "aliasCaptured": true,
-   "reason": "alias var v6BillForecastV5 captured above"
-  },
-  "enrichState#2": {
-   "line": 9238,
-   "aliasCaptured": true,
-   "reason": "alias var v6EnrichV5 captured above"
-  },
-  "budget#2": {
-   "line": 9399,
-   "aliasCaptured": true,
-   "reason": "alias var v6BudgetV5 captured above"
-  },
-  "warTick#1": {
-   "line": 9409,
-   "aliasCaptured": true,
-   "reason": "alias var v6WarTickBase captured above"
-  },
-  "policyCost#1": {
-   "line": 9546,
-   "aliasCaptured": true,
-   "reason": "alias var v6PolicyCostV5 captured above"
-  },
-  "ageFigures#1": {
-   "line": 9560,
-   "aliasCaptured": true,
-   "reason": "alias var v6AgeFiguresBase captured above"
-  },
-  "draftBillDialog#1": {
-   "line": 9606,
-   "aliasCaptured": true,
-   "reason": "alias var v6DraftBillDialogBase captured above"
-  },
-  "advanceBills#1": {
-   "line": 9656,
-   "aliasCaptured": true,
-   "reason": "alias var v6AdvanceBillsBase captured above"
-  },
-  "courtReview#1": {
-   "line": 9659,
-   "aliasCaptured": true,
-   "reason": "alias var v6CourtReviewBase captured above"
-  },
-  "billAction#1": {
-   "line": 9667,
-   "aliasCaptured": true,
-   "reason": "alias var v6BillActionBase captured above"
-  },
-  "billCard#1": {
-   "line": 9677,
-   "aliasCaptured": true,
-   "reason": "alias var v6BillCardBase captured above"
-  },
-  "logIt#1": {
-   "line": 10429,
-   "aliasCaptured": true,
-   "reason": "alias var v6LogItBase captured above"
-  },
-  "hideSheet#1": {
-   "line": 10433,
-   "aliasCaptured": true,
-   "reason": "alias var v6HideSheetBase captured above"
-  },
-  "tickTurn#1": {
-   "line": 10449,
-   "aliasCaptured": true,
-   "reason": "alias var v6TickTurnBase captured above"
-  },
-  "runElection#2": {
-   "line": 10465,
-   "aliasCaptured": true,
-   "reason": "alias var v6RunElectionBase captured above"
-  },
-  "doTransition#1": {
-   "line": 10476,
-   "aliasCaptured": true,
-   "reason": "alias var v6DoTransitionBase captured above"
-  },
-  "doAction#1": {
-   "line": 10482,
-   "aliasCaptured": true,
-   "reason": "alias var v6DoActionBase captured above"
-  },
-  "viewChamber#2": {
-   "line": 10840,
-   "aliasCaptured": true,
-   "reason": "alias var v6ViewChamberV5 captured above"
-  },
-  "viewFederation#1": {
-   "line": 10862,
-   "aliasCaptured": true,
-   "reason": "alias var v6ViewFederationV5 captured above"
-  },
-  "viewWorld#1": {
-   "line": 10890,
-   "aliasCaptured": true,
-   "reason": "alias var v6ViewWorldV5 captured above"
-  },
-  "viewPolicy#1": {
-   "line": 10927,
-   "aliasCaptured": true,
-   "reason": "alias var v6ViewPolicyV5 captured above"
-  },
-  "renderStats#1": {
-   "line": 10962,
-   "aliasCaptured": false,
-   "reason": "v6 rewrite, no alias. Poison-proved LIVE (renderstats-v4): v4 render calls the v4 body at boot."
-  },
-  "wire#2": {
-   "line": 10993,
-   "aliasCaptured": true,
-   "reason": "alias var v6WireV5 captured above"
-  },
-  "render#2": {
-   "line": 11003,
-   "aliasCaptured": false,
-   "reason": "v6 full rewrite, no alias. Poison-proved LIVE (render-v5): the v5 body executes once at v5 boot before this replaces it."
-  },
-  "gameOver#1": {
-   "line": 11076,
-   "aliasCaptured": true,
-   "reason": "alias var v6GameOverBase captured above"
-  },
-  "render#3": {
-   "line": 11423,
-   "aliasCaptured": true,
-   "reason": "alias var v6mRenderBase captured above"
-  },
-  "showSheet#1": {
-   "line": 11451,
-   "aliasCaptured": true,
-   "reason": "alias var v6mShowSheetBase captured above"
-  },
-  "hideSheet#2": {
-   "line": 11456,
-   "aliasCaptured": true,
-   "reason": "alias var v6mHideSheetBase captured above"
-  },
-  "renderTabs#1": {
-   "line": 11652,
-   "aliasCaptured": true,
-   "reason": "alias var v7RenderTabsBase captured above"
-  },
-  "v6mCenterTab#1": {
-   "line": 11667,
-   "aliasCaptured": false,
-   "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (centertab-mobile): the mobile body runs at the mobile chunk boot."
-  },
-  "viewChamber#3": {
-   "line": 11702,
-   "aliasCaptured": true,
-   "reason": "alias var v7ViewChamberBase captured above"
-  },
-  "viewPolicy#2": {
-   "line": 11741,
-   "aliasCaptured": true,
-   "reason": "alias var v7ViewPolicyBase captured above"
-  },
-  "v6mPolicyFolds#1": {
-   "line": 11744,
-   "aliasCaptured": false,
-   "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (policyfolds-mobile): the mobile body runs at the mobile chunk boot."
-  },
-  "render#4": {
-   "line": 11822,
-   "aliasCaptured": true,
-   "reason": "alias var v7RenderBase captured above"
-  },
-  "confirmEndTurn#1": {
-   "line": 11840,
-   "aliasCaptured": true,
-   "reason": "alias var v7ConfirmEndBase captured above"
-  },
-  "helpDialog#1": {
-   "line": 12006,
-   "aliasCaptured": true,
-   "reason": "alias var v7HelpBase captured above"
-  },
-  "applyTheme#1": {
-   "line": 12043,
-   "aliasCaptured": true,
-   "reason": "alias var v7ApplyThemeBase captured above"
-  },
-  "enrichState#3": {
-   "line": 12271,
-   "aliasCaptured": true,
-   "reason": "alias var v8EnrichV7 captured above"
-  },
-  "v6NewGame#1": {
-   "line": 12288,
-   "aliasCaptured": true,
-   "reason": "alias var v8NewGameBase captured above"
-  },
-  "v6Previews#1": {
-   "line": 12295,
-   "aliasCaptured": true,
-   "reason": "alias var v8PreviewsBase captured above"
-  },
-  "pickEvents#1": {
-   "line": 12297,
-   "aliasCaptured": true,
-   "reason": "alias var v8PickEventsBase captured above"
-  },
-  "v6ArcChance#1": {
-   "line": 12304,
-   "aliasCaptured": true,
-   "reason": "alias var v8ArcChanceBase captured above"
-  },
-  "captureUndo#1": {
-   "line": 12309,
-   "aliasCaptured": true,
-   "reason": "alias var v8CaptureBase captured above"
-  },
-  "undoLast#1": {
-   "line": 12315,
-   "aliasCaptured": true,
-   "reason": "alias var v8UndoBase captured above"
-  },
-  "endTurn#1": {
-   "line": 12324,
-   "aliasCaptured": true,
-   "reason": "alias var v8EndTurnBase captured above"
-  },
-  "budget#3": {
-   "line": 12401,
-   "aliasCaptured": true,
-   "reason": "alias var v8BudgetBase captured above"
-  },
-  "inboxChoices#2": {
-   "line": 12498,
-   "aliasCaptured": true,
-   "reason": "alias var v8InboxChoicesBase captured above"
-  },
-  "respondInbox#2": {
-   "line": 12510,
-   "aliasCaptured": true,
-   "reason": "alias var v8RespondInboxBase captured above"
-  },
-  "blocTarget#2": {
-   "line": 12684,
-   "aliasCaptured": true,
-   "reason": "alias var v8BlocTargetBase captured above"
-  },
-  "capitalIncome#1": {
-   "line": 12686,
-   "aliasCaptured": true,
-   "reason": "alias var v8CapitalBase captured above"
-  },
-  "pv5CampaignPower#1": {
-   "line": 12688,
-   "aliasCaptured": true,
-   "reason": "alias var v8CampaignBase captured above"
-  },
-  "pv5Objectives#1": {
-   "line": 12937,
-   "aliasCaptured": true,
-   "reason": "alias var v8ObjectivesBase captured above"
-  },
-  "gameOver#2": {
-   "line": 12979,
-   "aliasCaptured": true,
-   "reason": "alias var v8GameOverBase captured above"
-  },
-  "tickTurn#2": {
-   "line": 13348,
-   "aliasCaptured": true,
-   "reason": "alias var v8TickBase captured above"
-  },
-  "v6AfterTurn#1": {
-   "line": 13355,
-   "aliasCaptured": true,
-   "reason": "alias var v8AfterTurnBase captured above"
-  },
-  "runElection#3": {
-   "line": 13370,
-   "aliasCaptured": true,
-   "reason": "alias var v8RunElectionBase captured above"
-  },
-  "viewChamber#4": {
-   "line": 13385,
-   "aliasCaptured": true,
-   "reason": "alias var v8ViewChamberBase captured above"
-  },
-  "viewHouses#2": {
-   "line": 13391,
-   "aliasCaptured": true,
-   "reason": "alias var v8ViewHousesBase captured above"
-  },
-  "viewNation#1": {
-   "line": 13398,
-   "aliasCaptured": true,
-   "reason": "alias var v8ViewNationBase captured above"
-  },
-  "viewParties#1": {
-   "line": 13403,
-   "aliasCaptured": true,
-   "reason": "alias var v8ViewPartiesBase captured above"
-  },
-  "viewLedger#2": {
-   "line": 13409,
-   "aliasCaptured": true,
-   "reason": "alias var v8ViewLedgerBase captured above"
-  },
-  "viewRecord#1": {
-   "line": 13418,
-   "aliasCaptured": true,
-   "reason": "alias var v8ViewRecordBase captured above"
-  },
-  "v6ShowReport#1": {
-   "line": 13427,
-   "aliasCaptured": true,
-   "reason": "alias var v8ShowReportBase captured above"
-  },
-  "wire#3": {
-   "line": 13445,
-   "aliasCaptured": true,
-   "reason": "alias var v8WireBase captured above"
-  },
-  "v6SimButton#1": {
-   "line": 13455,
-   "aliasCaptured": true,
-   "reason": "alias var v8SimBase captured above"
-  },
-  "v6Advisors#1": {
-   "line": 13475,
-   "aliasCaptured": true,
-   "reason": "alias var v8AdvisorsBase captured above"
-  },
-  "v7Risks#1": {
-   "line": 13489,
-   "aliasCaptured": true,
-   "reason": "alias var v8RisksBase captured above"
-  },
-  "billCard#2": {
-   "line": 13510,
-   "aliasCaptured": true,
-   "reason": "alias var v8BillCardBase captured above"
-  },
-  "renderTabs#2": {
-   "line": 13533,
-   "aliasCaptured": true,
-   "reason": "alias var v8RenderTabsBase captured above"
-  },
-  "showElection#1": {
-   "line": 13614,
-   "aliasCaptured": true,
-   "reason": "alias var v8ShowElectionBase captured above"
-  },
-  "confirmEndTurn#2": {
-   "line": 13651,
-   "aliasCaptured": true,
-   "reason": "alias var v8ConfirmEndBase captured above"
-  },
-  "v7Index#1": {
-   "line": 13680,
-   "aliasCaptured": true,
-   "reason": "alias var v8IndexBase captured above"
-  },
-  "v7Jump#1": {
-   "line": 13693,
-   "aliasCaptured": true,
-   "reason": "alias var v8JumpBase captured above"
-  },
-  "v7MenuList#1": {
-   "line": 13703,
-   "aliasCaptured": true,
-   "reason": "alias var v8MenuListBase captured above"
-  },
-  "helpDialog#2": {
-   "line": 13715,
-   "aliasCaptured": true,
-   "reason": "alias var v8HelpBase captured above"
-  },
-  "startScreen#1": {
-   "line": 13730,
-   "aliasCaptured": true,
-   "reason": "alias var v8StartBase captured above"
-  },
-  "render#5": {
-   "line": 13755,
-   "aliasCaptured": true,
-   "reason": "alias var v8RenderBase captured above"
-  },
-  "enrichState#4": {
-   "line": 13849,
-   "aliasCaptured": true,
-   "reason": "alias var v9EnrichV8 captured above"
-  },
-  "partyActions#1": {
-   "line": 14259,
-   "aliasCaptured": true,
-   "reason": "alias var v9PartyActionsBase captured above"
-  },
-  "regionAction#1": {
-   "line": 14321,
-   "aliasCaptured": true,
-   "reason": "alias var v9RegionActionBase captured above"
-  },
-  "viewFederation#2": {
-   "line": 14338,
-   "aliasCaptured": true,
-   "reason": "alias var v9ViewFederationBase captured above"
-  },
-  "indicatorTargets#1": {
-   "line": 14476,
-   "aliasCaptured": true,
-   "reason": "alias var v9IndicatorTargetsBase captured above"
-  },
-  "policyCard#1": {
-   "line": 14546,
-   "aliasCaptured": true,
-   "reason": "alias var v9PolicyCardBase captured above"
-  },
-  "draftBillDialog#2": {
-   "line": 14574,
-   "aliasCaptured": true,
-   "reason": "alias var v9DraftDialogBase captured above"
-  },
-  "hideSheet#3": {
-   "line": 14594,
-   "aliasCaptured": true,
-   "reason": "alias var v9HideSheetBase captured above"
-  },
-  "sponsorBill#2": {
-   "line": 14597,
-   "aliasCaptured": true,
-   "reason": "alias var v9SponsorBillBase captured above"
-  },
-  "enactBill#1": {
-   "line": 14609,
-   "aliasCaptured": true,
-   "reason": "alias var v9EnactBillBase captured above"
-  },
-  "billCard#3": {
-   "line": 14617,
-   "aliasCaptured": true,
-   "reason": "alias var v9BillCardBase captured above"
-  },
-  "billAction#2": {
-   "line": 14631,
-   "aliasCaptured": true,
-   "reason": "alias var v9BillActionBase captured above"
-  },
-  "billCard#4": {
-   "line": 14644,
-   "aliasCaptured": true,
-   "reason": "alias var v9BillCardAppeal captured above"
-  },
-  "v6Sandbox#1": {
-   "line": 14768,
-   "aliasCaptured": true,
-   "reason": "alias var v9SandboxBase captured above"
-  },
-  "viewJudicial#1": {
-   "line": 14800,
-   "aliasCaptured": true,
-   "reason": "alias var v9ViewJudicialBase captured above"
-  },
-  "v6ProgrammesPanel#1": {
-   "line": 15131,
-   "aliasCaptured": true,
-   "reason": "alias var v9ProgrammesPanelBase captured above"
-  },
-  "applyDoctrine#1": {
-   "line": 15229,
-   "aliasCaptured": true,
-   "reason": "alias var v9ApplyDoctrineBase captured above"
-  },
-  "capitalIncome#2": {
-   "line": 15237,
-   "aliasCaptured": true,
-   "reason": "alias var v9CapitalIncomeBase captured above"
-  },
-  "indicatorTargets#2": {
-   "line": 15248,
-   "aliasCaptured": true,
-   "reason": "alias var v9IndicatorTargetsDoctrine captured above"
-  },
-  "billForecast#3": {
-   "line": 15257,
-   "aliasCaptured": true,
-   "reason": "alias var v9BillForecastBase captured above"
-  },
-  "policyCost#2": {
-   "line": 15268,
-   "aliasCaptured": true,
-   "reason": "alias var v9PolicyCostBase captured above"
-  },
-  "actionCost#1": {
-   "line": 15276,
-   "aliasCaptured": true,
-   "reason": "alias var v9ActionCostBase captured above"
-  },
-  "actCost#1": {
-   "line": 15284,
-   "aliasCaptured": true,
-   "reason": "alias var v9ActCostBase captured above"
-  },
-  "doExtra#1": {
-   "line": 15290,
-   "aliasCaptured": true,
-   "reason": "alias var v9ExtraCostDoctrine captured above"
-  },
-  "extraCard#1": {
-   "line": 15299,
-   "aliasCaptured": true,
-   "reason": "alias var v9ExtraCardBase captured above"
-  },
-  "v8ApplyRules#1": {
-   "line": 15315,
-   "aliasCaptured": true,
-   "reason": "alias var v9ApplyRulesBase captured above"
-  },
-  "v8RulesSummary#1": {
-   "line": 15321,
-   "aliasCaptured": true,
-   "reason": "alias var v9RulesSummaryBase captured above"
-  },
-  "upperResist#1": {
-   "line": 15327,
-   "aliasCaptured": true,
-   "reason": "alias var v9UpperResistBase captured above"
-  },
-  "budget#4": {
-   "line": 15333,
-   "aliasCaptured": true,
-   "reason": "alias var v9BudgetBase captured above"
-  },
-  "courtReview#2": {
-   "line": 15343,
-   "aliasCaptured": true,
-   "reason": "alias var v9CourtReviewBase captured above"
-  },
-  "figureEffects#1": {
-   "line": 15359,
-   "aliasCaptured": true,
-   "reason": "alias var v9FigureEffectsBase captured above"
-  },
-  "v6TreatiesTick#1": {
-   "line": 15382,
-   "aliasCaptured": true,
-   "reason": "alias var v9TreatiesTickBase captured above"
-  },
-  "allocateSeats#1": {
-   "line": 15403,
-   "aliasCaptured": true,
-   "reason": "alias var v9AllocateSeatsBase captured above"
-  },
-  "tickTurn#3": {
-   "line": 15459,
-   "aliasCaptured": true,
-   "reason": "alias var v9TickBase captured above"
-  },
-  "v6ExtraEvents#1": {
-   "line": 15472,
-   "aliasCaptured": true,
-   "reason": "alias var v9ExtraEventsBase captured above"
-  },
-  "wire#4": {
-   "line": 15485,
-   "aliasCaptured": true,
-   "reason": "alias var v9WireBase captured above"
-  },
-  "v6Advisors#2": {
-   "line": 15521,
-   "aliasCaptured": true,
-   "reason": "alias var v9AdvisorsBase captured above"
-  },
-  "v7Risks#2": {
-   "line": 15534,
-   "aliasCaptured": true,
-   "reason": "alias var v9RisksBase captured above"
-  },
-  "v8CloseChecklist#1": {
-   "line": 15542,
-   "aliasCaptured": true,
-   "reason": "alias var v9CloseChecklistBase captured above"
-  },
-  "viewRecord#2": {
-   "line": 15554,
-   "aliasCaptured": true,
-   "reason": "alias var v9ViewRecordBase captured above"
-  },
-  "helpDialog#3": {
-   "line": 15570,
-   "aliasCaptured": true,
-   "reason": "alias var v9HelpBase captured above"
-  },
-  "v7MenuList#2": {
-   "line": 15580,
-   "aliasCaptured": true,
-   "reason": "alias var v9MenuListBase captured above"
-  },
-  "v7Index#2": {
-   "line": 15589,
-   "aliasCaptured": true,
-   "reason": "alias var v9IndexBase captured above"
-  },
-  "v7Jump#2": {
-   "line": 15597,
-   "aliasCaptured": true,
-   "reason": "alias var v9JumpBase captured above"
-  },
-  "render#6": {
-   "line": 15606,
-   "aliasCaptured": true,
-   "reason": "alias var v9RenderBase captured above"
+  "_comment": "Adjudicated verdicts for every top-level function reassignment site in vale.html, keyed name#ordinal. aliasCaptured=false means the site replaces a body without keeping a reference to it. Since S2 every such site has been POISON-PROVED (tools/poison.js): each replaced body executes once at its own chunk boot, so it is transitional rather than dead. The five genuinely unreachable bodies were deleted in S2. NOTE: ordinal keys shift when a site is deleted -- re-derive verdicts, never carry them across a deletion.",
+  "maxDead": 5,
+  "sites": {
+    "enrichState#1": {
+      "line": 8329,
+      "aliasCaptured": true,
+      "reason": "alias var pv5EnrichV4 captured above"
+    },
+    "cabinetBonus#1": {
+      "line": 8333,
+      "aliasCaptured": true,
+      "reason": "alias var pv5CabinetBonusV4 captured above"
+    },
+    "billForecast#1": {
+      "line": 8396,
+      "aliasCaptured": true,
+      "reason": "alias var pv5BillForecastV4 captured above"
+    },
+    "sponsorBill#1": {
+      "line": 8407,
+      "aliasCaptured": true,
+      "reason": "alias var pv5SponsorBillV4 captured above"
+    },
+    "aiGovern#1": {
+      "line": 8425,
+      "aliasCaptured": true,
+      "reason": "alias var pv5AiGovernV4 captured above"
+    },
+    "blocTarget#1": {
+      "line": 8462,
+      "aliasCaptured": true,
+      "reason": "alias var pv5BlocTargetV4 captured above"
+    },
+    "ballot#1": {
+      "line": 8493,
+      "aliasCaptured": true,
+      "reason": "alias var pv5BallotV4 captured above"
+    },
+    "runElection#1": {
+      "line": 8500,
+      "aliasCaptured": true,
+      "reason": "alias var pv5RunElectionV4 captured above"
+    },
+    "budget#1": {
+      "line": 8515,
+      "aliasCaptured": true,
+      "reason": "alias var pv5BudgetV4 captured above"
+    },
+    "macroTick#1": {
+      "line": 8522,
+      "aliasCaptured": true,
+      "reason": "alias var pv5MacroTickV4 captured above"
+    },
+    "sessionSystemsTick#1": {
+      "line": 8542,
+      "aliasCaptured": true,
+      "reason": "alias var pv5SessionTickV4 captured above"
+    },
+    "inboxChoices#1": {
+      "line": 8548,
+      "aliasCaptured": true,
+      "reason": "alias var pv5InboxChoicesV4 captured above"
+    },
+    "respondInbox#1": {
+      "line": 8562,
+      "aliasCaptured": true,
+      "reason": "alias var pv5RespondInboxV4 captured above"
+    },
+    "viewHouses#1": {
+      "line": 8731,
+      "aliasCaptured": true,
+      "reason": "alias var pv5ViewHousesV4 captured above"
+    },
+    "viewLedger#1": {
+      "line": 8756,
+      "aliasCaptured": true,
+      "reason": "alias var pv5ViewLedgerV4 captured above"
+    },
+    "viewChamber#1": {
+      "line": 8759,
+      "aliasCaptured": true,
+      "reason": "alias var pv5ViewChamberV4 captured above"
+    },
+    "wire#1": {
+      "line": 8767,
+      "aliasCaptured": true,
+      "reason": "alias var pv5WireV4 captured above"
+    },
+    "render#1": {
+      "line": 8779,
+      "aliasCaptured": false,
+      "reason": "v5 full rewrite, no alias. Poison-proved LIVE (tools/poison.js render-v4): the v4 body it replaces executes once at v4 boot. Transitional, not dead."
+    },
+    "billForecast#2": {
+      "line": 9031,
+      "aliasCaptured": true,
+      "reason": "alias var v6BillForecastV5 captured above"
+    },
+    "enrichState#2": {
+      "line": 9238,
+      "aliasCaptured": true,
+      "reason": "alias var v6EnrichV5 captured above"
+    },
+    "budget#2": {
+      "line": 9399,
+      "aliasCaptured": true,
+      "reason": "alias var v6BudgetV5 captured above"
+    },
+    "warTick#1": {
+      "line": 9409,
+      "aliasCaptured": true,
+      "reason": "alias var v6WarTickBase captured above"
+    },
+    "policyCost#1": {
+      "line": 9546,
+      "aliasCaptured": true,
+      "reason": "alias var v6PolicyCostV5 captured above"
+    },
+    "ageFigures#1": {
+      "line": 9560,
+      "aliasCaptured": true,
+      "reason": "alias var v6AgeFiguresBase captured above"
+    },
+    "draftBillDialog#1": {
+      "line": 9606,
+      "aliasCaptured": true,
+      "reason": "alias var v6DraftBillDialogBase captured above"
+    },
+    "advanceBills#1": {
+      "line": 9656,
+      "aliasCaptured": true,
+      "reason": "alias var v6AdvanceBillsBase captured above"
+    },
+    "courtReview#1": {
+      "line": 9659,
+      "aliasCaptured": true,
+      "reason": "alias var v6CourtReviewBase captured above"
+    },
+    "billAction#1": {
+      "line": 9667,
+      "aliasCaptured": true,
+      "reason": "alias var v6BillActionBase captured above"
+    },
+    "billCard#1": {
+      "line": 9677,
+      "aliasCaptured": true,
+      "reason": "alias var v6BillCardBase captured above"
+    },
+    "logIt#1": {
+      "line": 10429,
+      "aliasCaptured": true,
+      "reason": "alias var v6LogItBase captured above"
+    },
+    "hideSheet#1": {
+      "line": 10433,
+      "aliasCaptured": true,
+      "reason": "alias var v6HideSheetBase captured above"
+    },
+    "tickTurn#1": {
+      "line": 10449,
+      "aliasCaptured": true,
+      "reason": "alias var v6TickTurnBase captured above"
+    },
+    "runElection#2": {
+      "line": 10465,
+      "aliasCaptured": true,
+      "reason": "alias var v6RunElectionBase captured above"
+    },
+    "doTransition#1": {
+      "line": 10476,
+      "aliasCaptured": true,
+      "reason": "alias var v6DoTransitionBase captured above"
+    },
+    "doAction#1": {
+      "line": 10482,
+      "aliasCaptured": true,
+      "reason": "alias var v6DoActionBase captured above"
+    },
+    "viewChamber#2": {
+      "line": 10840,
+      "aliasCaptured": true,
+      "reason": "alias var v6ViewChamberV5 captured above"
+    },
+    "viewFederation#1": {
+      "line": 10862,
+      "aliasCaptured": true,
+      "reason": "alias var v6ViewFederationV5 captured above"
+    },
+    "viewWorld#1": {
+      "line": 10890,
+      "aliasCaptured": true,
+      "reason": "alias var v6ViewWorldV5 captured above"
+    },
+    "viewPolicy#1": {
+      "line": 10927,
+      "aliasCaptured": true,
+      "reason": "alias var v6ViewPolicyV5 captured above"
+    },
+    "renderStats#1": {
+      "line": 10962,
+      "aliasCaptured": false,
+      "reason": "v6 rewrite, no alias. Poison-proved LIVE (renderstats-v4): v4 render calls the v4 body at boot."
+    },
+    "wire#2": {
+      "line": 10993,
+      "aliasCaptured": true,
+      "reason": "alias var v6WireV5 captured above"
+    },
+    "render#2": {
+      "line": 11003,
+      "aliasCaptured": false,
+      "reason": "v6 full rewrite, no alias. Poison-proved LIVE (render-v5): the v5 body executes once at v5 boot before this replaces it."
+    },
+    "gameOver#1": {
+      "line": 11076,
+      "aliasCaptured": true,
+      "reason": "alias var v6GameOverBase captured above"
+    },
+    "render#3": {
+      "line": 11423,
+      "aliasCaptured": true,
+      "reason": "alias var v6mRenderBase captured above"
+    },
+    "showSheet#1": {
+      "line": 11451,
+      "aliasCaptured": true,
+      "reason": "alias var v6mShowSheetBase captured above"
+    },
+    "hideSheet#2": {
+      "line": 11456,
+      "aliasCaptured": true,
+      "reason": "alias var v6mHideSheetBase captured above"
+    },
+    "renderTabs#1": {
+      "line": 11652,
+      "aliasCaptured": true,
+      "reason": "alias var v7RenderTabsBase captured above"
+    },
+    "v6mCenterTab#1": {
+      "line": 11667,
+      "aliasCaptured": false,
+      "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (centertab-mobile): the mobile body runs at the mobile chunk boot."
+    },
+    "viewChamber#3": {
+      "line": 11702,
+      "aliasCaptured": true,
+      "reason": "alias var v7ViewChamberBase captured above"
+    },
+    "viewPolicy#2": {
+      "line": 11741,
+      "aliasCaptured": true,
+      "reason": "alias var v7ViewPolicyBase captured above"
+    },
+    "v6mPolicyFolds#1": {
+      "line": 11744,
+      "aliasCaptured": false,
+      "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (policyfolds-mobile): the mobile body runs at the mobile chunk boot."
+    },
+    "render#4": {
+      "line": 11822,
+      "aliasCaptured": true,
+      "reason": "alias var v7RenderBase captured above"
+    },
+    "confirmEndTurn#1": {
+      "line": 11840,
+      "aliasCaptured": true,
+      "reason": "alias var v7ConfirmEndBase captured above"
+    },
+    "helpDialog#1": {
+      "line": 12006,
+      "aliasCaptured": true,
+      "reason": "alias var v7HelpBase captured above"
+    },
+    "applyTheme#1": {
+      "line": 12043,
+      "aliasCaptured": true,
+      "reason": "alias var v7ApplyThemeBase captured above"
+    },
+    "enrichState#3": {
+      "line": 12271,
+      "aliasCaptured": true,
+      "reason": "alias var v8EnrichV7 captured above"
+    },
+    "v6NewGame#1": {
+      "line": 12288,
+      "aliasCaptured": true,
+      "reason": "alias var v8NewGameBase captured above"
+    },
+    "v6Previews#1": {
+      "line": 12295,
+      "aliasCaptured": true,
+      "reason": "alias var v8PreviewsBase captured above"
+    },
+    "pickEvents#1": {
+      "line": 12297,
+      "aliasCaptured": true,
+      "reason": "alias var v8PickEventsBase captured above"
+    },
+    "v6ArcChance#1": {
+      "line": 12304,
+      "aliasCaptured": true,
+      "reason": "alias var v8ArcChanceBase captured above"
+    },
+    "captureUndo#1": {
+      "line": 12309,
+      "aliasCaptured": true,
+      "reason": "alias var v8CaptureBase captured above"
+    },
+    "undoLast#1": {
+      "line": 12315,
+      "aliasCaptured": true,
+      "reason": "alias var v8UndoBase captured above"
+    },
+    "endTurn#1": {
+      "line": 12324,
+      "aliasCaptured": true,
+      "reason": "alias var v8EndTurnBase captured above"
+    },
+    "budget#3": {
+      "line": 12401,
+      "aliasCaptured": true,
+      "reason": "alias var v8BudgetBase captured above"
+    },
+    "inboxChoices#2": {
+      "line": 12498,
+      "aliasCaptured": true,
+      "reason": "alias var v8InboxChoicesBase captured above"
+    },
+    "respondInbox#2": {
+      "line": 12510,
+      "aliasCaptured": true,
+      "reason": "alias var v8RespondInboxBase captured above"
+    },
+    "blocTarget#2": {
+      "line": 12684,
+      "aliasCaptured": true,
+      "reason": "alias var v8BlocTargetBase captured above"
+    },
+    "capitalIncome#1": {
+      "line": 12686,
+      "aliasCaptured": true,
+      "reason": "alias var v8CapitalBase captured above"
+    },
+    "pv5CampaignPower#1": {
+      "line": 12688,
+      "aliasCaptured": true,
+      "reason": "alias var v8CampaignBase captured above"
+    },
+    "pv5Objectives#1": {
+      "line": 12937,
+      "aliasCaptured": true,
+      "reason": "alias var v8ObjectivesBase captured above"
+    },
+    "gameOver#2": {
+      "line": 12979,
+      "aliasCaptured": true,
+      "reason": "alias var v8GameOverBase captured above"
+    },
+    "tickTurn#2": {
+      "line": 13348,
+      "aliasCaptured": true,
+      "reason": "alias var v8TickBase captured above"
+    },
+    "v6AfterTurn#1": {
+      "line": 13355,
+      "aliasCaptured": true,
+      "reason": "alias var v8AfterTurnBase captured above"
+    },
+    "runElection#3": {
+      "line": 13370,
+      "aliasCaptured": true,
+      "reason": "alias var v8RunElectionBase captured above"
+    },
+    "viewChamber#4": {
+      "line": 13385,
+      "aliasCaptured": true,
+      "reason": "alias var v8ViewChamberBase captured above"
+    },
+    "viewHouses#2": {
+      "line": 13391,
+      "aliasCaptured": true,
+      "reason": "alias var v8ViewHousesBase captured above"
+    },
+    "viewNation#1": {
+      "line": 13398,
+      "aliasCaptured": true,
+      "reason": "alias var v8ViewNationBase captured above"
+    },
+    "viewParties#1": {
+      "line": 13403,
+      "aliasCaptured": true,
+      "reason": "alias var v8ViewPartiesBase captured above"
+    },
+    "viewLedger#2": {
+      "line": 13409,
+      "aliasCaptured": true,
+      "reason": "alias var v8ViewLedgerBase captured above"
+    },
+    "viewRecord#1": {
+      "line": 13418,
+      "aliasCaptured": true,
+      "reason": "alias var v8ViewRecordBase captured above"
+    },
+    "v6ShowReport#1": {
+      "line": 13427,
+      "aliasCaptured": true,
+      "reason": "alias var v8ShowReportBase captured above"
+    },
+    "wire#3": {
+      "line": 13445,
+      "aliasCaptured": true,
+      "reason": "alias var v8WireBase captured above"
+    },
+    "v6SimButton#1": {
+      "line": 13455,
+      "aliasCaptured": true,
+      "reason": "alias var v8SimBase captured above"
+    },
+    "v6Advisors#1": {
+      "line": 13475,
+      "aliasCaptured": true,
+      "reason": "alias var v8AdvisorsBase captured above"
+    },
+    "v7Risks#1": {
+      "line": 13489,
+      "aliasCaptured": true,
+      "reason": "alias var v8RisksBase captured above"
+    },
+    "billCard#2": {
+      "line": 13510,
+      "aliasCaptured": true,
+      "reason": "alias var v8BillCardBase captured above"
+    },
+    "renderTabs#2": {
+      "line": 13533,
+      "aliasCaptured": true,
+      "reason": "alias var v8RenderTabsBase captured above"
+    },
+    "showElection#1": {
+      "line": 13614,
+      "aliasCaptured": true,
+      "reason": "alias var v8ShowElectionBase captured above"
+    },
+    "confirmEndTurn#2": {
+      "line": 13651,
+      "aliasCaptured": true,
+      "reason": "alias var v8ConfirmEndBase captured above"
+    },
+    "v7Index#1": {
+      "line": 13680,
+      "aliasCaptured": true,
+      "reason": "alias var v8IndexBase captured above"
+    },
+    "v7Jump#1": {
+      "line": 13693,
+      "aliasCaptured": true,
+      "reason": "alias var v8JumpBase captured above"
+    },
+    "v7MenuList#1": {
+      "line": 13703,
+      "aliasCaptured": true,
+      "reason": "alias var v8MenuListBase captured above"
+    },
+    "helpDialog#2": {
+      "line": 13715,
+      "aliasCaptured": true,
+      "reason": "alias var v8HelpBase captured above"
+    },
+    "startScreen#1": {
+      "line": 13730,
+      "aliasCaptured": true,
+      "reason": "alias var v8StartBase captured above"
+    },
+    "render#5": {
+      "line": 13755,
+      "aliasCaptured": true,
+      "reason": "alias var v8RenderBase captured above"
+    },
+    "enrichState#4": {
+      "line": 13849,
+      "aliasCaptured": true,
+      "reason": "alias var v9EnrichV8 captured above"
+    },
+    "partyActions#1": {
+      "line": 14259,
+      "aliasCaptured": true,
+      "reason": "alias var v9PartyActionsBase captured above"
+    },
+    "regionAction#1": {
+      "line": 14321,
+      "aliasCaptured": true,
+      "reason": "alias var v9RegionActionBase captured above"
+    },
+    "viewFederation#2": {
+      "line": 14338,
+      "aliasCaptured": true,
+      "reason": "alias var v9ViewFederationBase captured above"
+    },
+    "indicatorTargets#1": {
+      "line": 14476,
+      "aliasCaptured": true,
+      "reason": "alias var v9IndicatorTargetsBase captured above"
+    },
+    "policyCard#1": {
+      "line": 14546,
+      "aliasCaptured": true,
+      "reason": "alias var v9PolicyCardBase captured above"
+    },
+    "draftBillDialog#2": {
+      "line": 14574,
+      "aliasCaptured": true,
+      "reason": "alias var v9DraftDialogBase captured above"
+    },
+    "hideSheet#3": {
+      "line": 14594,
+      "aliasCaptured": true,
+      "reason": "alias var v9HideSheetBase captured above"
+    },
+    "sponsorBill#2": {
+      "line": 14597,
+      "aliasCaptured": true,
+      "reason": "alias var v9SponsorBillBase captured above"
+    },
+    "enactBill#1": {
+      "line": 14609,
+      "aliasCaptured": true,
+      "reason": "alias var v9EnactBillBase captured above"
+    },
+    "billCard#3": {
+      "line": 14617,
+      "aliasCaptured": true,
+      "reason": "alias var v9BillCardBase captured above"
+    },
+    "billAction#2": {
+      "line": 14631,
+      "aliasCaptured": true,
+      "reason": "alias var v9BillActionBase captured above"
+    },
+    "billCard#4": {
+      "line": 14644,
+      "aliasCaptured": true,
+      "reason": "alias var v9BillCardAppeal captured above"
+    },
+    "v6Sandbox#1": {
+      "line": 14768,
+      "aliasCaptured": true,
+      "reason": "alias var v9SandboxBase captured above"
+    },
+    "viewJudicial#1": {
+      "line": 14800,
+      "aliasCaptured": true,
+      "reason": "alias var v9ViewJudicialBase captured above"
+    },
+    "v6ProgrammesPanel#1": {
+      "line": 15131,
+      "aliasCaptured": true,
+      "reason": "alias var v9ProgrammesPanelBase captured above"
+    },
+    "applyDoctrine#1": {
+      "line": 15229,
+      "aliasCaptured": true,
+      "reason": "alias var v9ApplyDoctrineBase captured above"
+    },
+    "capitalIncome#2": {
+      "line": 15237,
+      "aliasCaptured": true,
+      "reason": "alias var v9CapitalIncomeBase captured above"
+    },
+    "indicatorTargets#2": {
+      "line": 15248,
+      "aliasCaptured": true,
+      "reason": "alias var v9IndicatorTargetsDoctrine captured above"
+    },
+    "billForecast#3": {
+      "line": 15257,
+      "aliasCaptured": true,
+      "reason": "alias var v9BillForecastBase captured above"
+    },
+    "policyCost#2": {
+      "line": 15268,
+      "aliasCaptured": true,
+      "reason": "alias var v9PolicyCostBase captured above"
+    },
+    "actionCost#1": {
+      "line": 15276,
+      "aliasCaptured": true,
+      "reason": "alias var v9ActionCostBase captured above"
+    },
+    "actCost#1": {
+      "line": 15284,
+      "aliasCaptured": true,
+      "reason": "alias var v9ActCostBase captured above"
+    },
+    "doExtra#1": {
+      "line": 15290,
+      "aliasCaptured": true,
+      "reason": "alias var v9ExtraCostDoctrine captured above"
+    },
+    "extraCard#1": {
+      "line": 15299,
+      "aliasCaptured": true,
+      "reason": "alias var v9ExtraCardBase captured above"
+    },
+    "v8ApplyRules#1": {
+      "line": 15315,
+      "aliasCaptured": true,
+      "reason": "alias var v9ApplyRulesBase captured above"
+    },
+    "v8RulesSummary#1": {
+      "line": 15321,
+      "aliasCaptured": true,
+      "reason": "alias var v9RulesSummaryBase captured above"
+    },
+    "upperResist#1": {
+      "line": 15327,
+      "aliasCaptured": true,
+      "reason": "alias var v9UpperResistBase captured above"
+    },
+    "budget#4": {
+      "line": 15333,
+      "aliasCaptured": true,
+      "reason": "alias var v9BudgetBase captured above"
+    },
+    "courtReview#2": {
+      "line": 15343,
+      "aliasCaptured": true,
+      "reason": "alias var v9CourtReviewBase captured above"
+    },
+    "figureEffects#1": {
+      "line": 15359,
+      "aliasCaptured": true,
+      "reason": "alias var v9FigureEffectsBase captured above"
+    },
+    "v6TreatiesTick#1": {
+      "line": 15382,
+      "aliasCaptured": true,
+      "reason": "alias var v9TreatiesTickBase captured above"
+    },
+    "allocateSeats#1": {
+      "line": 15403,
+      "aliasCaptured": true,
+      "reason": "alias var v9AllocateSeatsBase captured above"
+    },
+    "tickTurn#3": {
+      "line": 15459,
+      "aliasCaptured": true,
+      "reason": "alias var v9TickBase captured above"
+    },
+    "v6ExtraEvents#1": {
+      "line": 15472,
+      "aliasCaptured": true,
+      "reason": "alias var v9ExtraEventsBase captured above"
+    },
+    "wire#4": {
+      "line": 15485,
+      "aliasCaptured": true,
+      "reason": "alias var v9WireBase captured above"
+    },
+    "v6Advisors#2": {
+      "line": 15521,
+      "aliasCaptured": true,
+      "reason": "alias var v9AdvisorsBase captured above"
+    },
+    "v7Risks#2": {
+      "line": 15534,
+      "aliasCaptured": true,
+      "reason": "alias var v9RisksBase captured above"
+    },
+    "v8CloseChecklist#1": {
+      "line": 15542,
+      "aliasCaptured": true,
+      "reason": "alias var v9CloseChecklistBase captured above"
+    },
+    "viewRecord#2": {
+      "line": 15554,
+      "aliasCaptured": true,
+      "reason": "alias var v9ViewRecordBase captured above"
+    },
+    "helpDialog#3": {
+      "line": 15570,
+      "aliasCaptured": true,
+      "reason": "alias var v9HelpBase captured above"
+    },
+    "v7MenuList#2": {
+      "line": 15580,
+      "aliasCaptured": true,
+      "reason": "alias var v9MenuListBase captured above"
+    },
+    "v7Index#2": {
+      "line": 15589,
+      "aliasCaptured": true,
+      "reason": "alias var v9IndexBase captured above"
+    },
+    "v7Jump#2": {
+      "line": 15597,
+      "aliasCaptured": true,
+      "reason": "alias var v9JumpBase captured above"
+    },
+    "render#6": {
+      "line": 15606,
+      "aliasCaptured": true,
+      "reason": "alias var v9RenderBase captured above"
+    },
+    "enrichState#5": {
+      "line": 14333,
+      "aliasCaptured": true,
+      "reason": "alias var v9EnrichGuarded captured above. The outermost wrapper of the enrich chain, and it must STAY outermost: it points the dice at the state being enriched, and any wrapper installed after it would run its backfill rolls outside that guard, spending the live campaign's stream on a detached object. tools/determinism.js asserts the property."
+    }
   }
- }
 }

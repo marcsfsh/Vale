@@ -4,7 +4,16 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S8 — pacing, measured** (PR #10). `tools/pacing.js` plays each length option to
+**Review fixes** (PR #12). An adversarial pass over the night's six slices found
+two real defects that had shipped green, and both are now fixed with the test
+that would have caught them. A six-seat Senate bloc had its seat count rendered
+NOWHERE on tablet or desktop (S6c trimmed the legend's numbers assuming the
+chamber labels every bloc; it does not). And `enrichState` rolled against
+whatever campaign was loaded rather than the state it was enriching, so opening
+the save dialog mid-campaign could spend the live campaign's dice — the exact
+guarantee S3 exists to make. Six smaller findings closed alongside.
+
+Previously: **S8 — pacing, measured** (PR #10, merged). `tools/pacing.js` plays each length option to
 its end year through the real turn loop. Findings: all three lengths **do** reach
 their end year, and dispatch density is flat at ~1.6-1.8 per session across all
 of them — so the fifty-year option is not denser, it is simply shorter. The
@@ -66,7 +75,8 @@ ratchet 10 → 5, which is now its true floor.
 | S4 look mockups | **done — Ministry Precise chosen** | two rounds (5 directions, then 3+3 runoff) at claude.ai/code/artifact/6f9de079-1c31-4c8c-a2f9-03f018069e57; tokens + type recorded in AGREEMENT.md; finalist screen set (Overview ×2, Drafting Desk, Election Night) on the canvas |
 | S5 token foundation | **merged** (#3) | tokens retuned, 7 faces embedded (128 KB measured), no external references, allowlist empty; figures on the tabular mono face |
 | S6a three tiers | **merged** (#5) | 13 thresholds → 5, all tier edges; desktop waste 21%→4%; tablet given a real layout; `tools/tiers.js` + `tools/tabs.js` measure it |
-| S8 pacing | **in review (PR #10)** | measured, not retuned: all lengths reach their end year, density is flat, short closes at 8% of the record; the call is the user's |
+| Review fixes | **in review (PR #12)** | 2 real defects + 6 smaller ones from an adversarial pass; chamber tool now replays awkward seat shapes, determinism gains an 8th property, tab-tour stops counting attempts |
+| S8 pacing | **merged** (#10) | measured, not retuned: all lengths reach their end year, density is flat, short closes at 8% of the record; the call is the user's |
 | S7 onboarding | **merged** (#9) | two guided questions, the rest behind one disclosure; playtest gains `setup-trimmed`; CVD measured |
 | S6c charts | **merged** (#8) | one chart vocabulary, end-value labels, charts open on the present; region tiles carry their winner as an edge |
 | S3 seeded PRNG | **merged** (#7) | one engine, state on the save, seed typed at setup and shown in the save dialog; `tools/determinism.js` asserts 7 properties |
