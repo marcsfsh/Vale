@@ -1,0 +1,47 @@
+{
+  "_comment": "Every colour literal vale.html may contain. The party palette is the game's identity (docs/AGREEMENT.md) and never changes for theming; the theme list is Ministry Precise. A new literal fails checks/run.js until it is adjudicated here \u2014 added after a retune shipped half-applied because lowercase hex in JS escaped an uppercase sweep.",
+  "allowed": {
+    "party": [
+      "#9D0000",
+      "#FF0000",
+      "#FFA097",
+      "#FFFB00",
+      "#03F2FF",
+      "#00ABEF",
+      "#0000BC"
+    ],
+    "theme": [
+      "#141A17",
+      "#1A211D",
+      "#26302A",
+      "#0E120F",
+      "#EAE7DC",
+      "#97A099",
+      "#7C8A80",
+      "#BFA14E",
+      "#7E6A33",
+      "#D4B45E",
+      "#C77B62",
+      "#7A4038",
+      "#6FAE8B"
+    ],
+    "structural": [
+      "#000",
+      "#fff",
+      "#111",
+      "#777",
+      "#444",
+      "#333",
+      "#888"
+    ]
+  },
+  "notes": {
+    "#000": "alpha stencils in mask-image gradients and black overlays \u2014 not colour",
+    "#fff": "print stylesheet paper inversion, and one badge foreground",
+    "#111": "print stylesheet",
+    "#777": "print stylesheet",
+    "#444": "print stylesheet",
+    "#333": "hemiMap's fallback fill for a seat beyond the colour sequence",
+    "#888": "neutral chart gridline"
+  }
+}

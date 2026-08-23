@@ -45,7 +45,8 @@ record the re-ruling here. Sources: [docs:…] = verified Claude Code doc claim,
 - **`checks/run.js`** — static checks (syntax+strict ratchet, external refs,
   dead-body ratchet with `checks/dead-bodies.json` adjudication, stale-binding
   ratchet, literal-marker integrity with `checks/markers.json`, save keys,
-  Math.random ratchet, size budget). Every check shipped with proof it can fail
+  palette drift with `checks/palette.json` adjudication, Math.random ratchet,
+  size budget). Every check shipped with proof it can fail
   [brief]. Baselines only move toward their targets, with the reason in the PR
   that moves them.
 - **`tools/playtest.js`** — headless scripted turn, reload/resume assert,
@@ -201,6 +202,12 @@ Seating order is the `PARTIES` `order` field (RSF, LP, SD, FP, CUP, TVC, PNL),
 which also seats the coalitions contiguously — Popular Front left, Unity Front
 centre, PNL right. Confirmed against `hemiMap`: it sorts parties by `order`,
 pools all seats, and sorts by descending angle.
+
+**Colour literals are adjudicated** (`checks/palette.json`, case-insensitive).
+Added because the S5 retune shipped half-applied: an uppercase sweep missed
+lowercase hex inside a script block, leaving the whole trend chart on the old
+palette. Any colour the game does not already use fails the checks until it is
+either fixed or adjudicated with a reason.
 
 *Implementation notes for S6:* (1) the existing rim rule selects on the literal
 fill (`svg.hemi circle[fill="#0000BC"]`) — a silent break if a colour is ever

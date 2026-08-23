@@ -1,11 +1,8 @@
 {
-  "_comment": "Ratchet baselines for checks/run.js. Baselines only move toward the target, with the reason recorded in the PR that moves them.",
+  "_comment": "Ratchet baselines for checks/run.js. Baselines only move toward the target, with the reason recorded in the PR that moves them. allowedExternalPrefixes is EMPTY and stays empty: since S5 the game embeds its own fonts and references nothing off-origin (invariant 4).",
   "scriptBlocks": 7,
   "strictBlocksMin": 7,
-  "allowedExternalPrefixes": [
-    "https://fonts.googleapis.com",
-    "https://fonts.gstatic.com"
-  ],
+  "allowedExternalPrefixes": [],
   "staleBindingsMax": 0,
   "saveKeys": [
     "parliamentVale.autosave.v5",
