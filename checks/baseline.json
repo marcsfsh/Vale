@@ -1,0 +1,18 @@
+{
+  "_comment": "Ratchet baselines for checks/run.js. Baselines only move toward the target, with the reason recorded in the PR that moves them.",
+  "scriptBlocks": 7,
+  "strictBlocksMin": 5,
+  "allowedExternalPrefixes": [
+    "https://fonts.googleapis.com",
+    "https://fonts.gstatic.com"
+  ],
+  "staleBindingsMax": 3,
+  "saveKeys": [
+    "parliamentVale.autosave.v5",
+    "parliamentVale.autosave.v4",
+    "parliamentVale.autosave",
+    "parliamentVale.hall"
+  ],
+  "mathRandomCount": 93,
+  "maxBytes": 1600000
+}
