@@ -156,46 +156,51 @@ S6 viz redesign and every future chamber/senate/court display.
 
 **Party-palette ruling (owner, 2026-08-23): "The original color pallet for the
 parties … needs to be intact. The exact color values can shift as needed so
-long as they remain close to the original."** The canonical values are the
-`PARTIES` table's own and are used UNCHANGED — no shift was needed:
+long as they remain close to the original."** Followed by: *"Not good enough as
+far as making the colors legible goes."*
 
-| party | colour | contrast on #141A17 |
-|---|---|---|
-| RSF Revolutionary Socialist Front | `#9D0000` | 2.05:1 — rimmed |
-| LP Labor Party | `#FF0000` | 4.41:1 |
-| SD Social Democrats | `#FFA097` | 9.02:1 |
-| FP Federal Party | `#FFFB00` | 16.01:1 |
-| CUP Conservative Union Party | `#03F2FF` | 12.73:1 |
-| TVC Traditional Values Coalition | `#00ABEF` | 6.78:1 |
-| PNL Patriot Nationalist League | `#0000BC` | 1.45:1 — rimmed |
+Five of the seven are used **unchanged**. Two are lifted in lightness with
+**hue locked** — they were not legible at any rim strength:
 
-Only `#9D0000` and `#0000BC` fail as dots on a dark ground, and the game
-already solves exactly those two with an ivory rim (`vale.html:11755`) rather
-than a colour change — the refresh keeps that treatment (rim ~45%, giving
-3.5:1). **Legibility is bought with a rim, never with a hue shift.** Lifting
-`#9D0000` toward legibility was measured and rejected: it collapses the
-lightness gap that distinguishes RSF from LP (ΔE 18 → the two reds merge).
+| party | colour | change | contrast on the seat ground |
+|---|---|---|---|
+| RSF Revolutionary Socialist Front | `#9D0000` → `#C70000` | ΔE 9.1, hue locked | 2.01 → 2.83, rimmed |
+| LP Labor Party | `#FF0000` | — | 4.33 |
+| SD Social Democrats | `#FFA097` | — | 8.84 |
+| FP Federal Party | `#FFFB00` | — | 15.70 |
+| CUP Conservative Union Party | `#03F2FF` | — | 12.48 |
+| TVC Traditional Values Coalition | `#00ABEF` | — | 6.65 |
+| PNL Patriot Nationalist League | `#0000BC` → `#1551FF` | ΔE 17.0, hue locked | 1.42 → 3.01, rimmed |
+
+**What the measurements established, and it is worth not re-deriving:**
+
+1. A dark colour cannot be made legible on a dark ground by treatment alone.
+   `#0000BC` measured **1.42:1** — the rim helps it be *seen*, not *read*. The
+   lift was necessary, and the owner's licence to shift values covers it.
+2. The lit floor added for softness **made the dark colours worse** (PNL fell
+   to 1.10:1 against the lifted ground). Floor opacity was cut accordingly.
+   Any future "ambient" treatment must be re-measured against the darkest
+   party, not the average one.
+3. **Colour alone cannot carry this palette.** Vale has three reds and three
+   blues; a search over hue-and-lightness showed no assignment is
+   simultaneously faithful, high-contrast and mutually distinct at seat size.
+   Free optimisation "solved" it by turning Labor's red into pink — rejected.
+   Therefore legibility is carried by STRUCTURE:
+
+   - **aisles** — a real angular gap (~2.6°) between blocs, so each party reads
+     as a group even where two share a hue family;
+   - **direct labels** — every bloc names itself on the arc with its seat
+     count, so colour is never decoded against a legend (this also retires the
+     separate legend, which became duplication);
+   - **size** — seats large enough for their colour to register (election
+     board r=2.7 in a 780-wide frame; compact chamber r=1.9);
+   - plus the softening set: gentle floor, same-hue aura, the game's seat
+     opacity, the brass despatch-box hairline, ivory rim on the two dark ones.
 
 Seating order is the `PARTIES` `order` field (RSF, LP, SD, FP, CUP, TVC, PNL),
 which also seats the coalitions contiguously — Popular Front left, Unity Front
-centre, PNL right.
-
-**Seating treatment (owner: make the colours "stand out a bit more so they
-don't butt up against the background harshly").** Full-chroma seats on a
-near-black ground vibrate at the edge. This is solved on the *seating*, never
-on the colours:
-
-- a soft pool of light under the arc (`#3A4A40` radial gradient peaking on the
-  seat band), so seats sit on a lit bench rather than the void;
-- a same-hue aura per bloc (`drop-shadow(0 0 2.1px <party>8C)`), so each dot
-  fades into the ground instead of snapping against it — and reads brighter;
-- the game's own seat opacity (`.92`, used here as `.93`) so the floor tints
-  through and the blocs feel of a piece;
-- the brass despatch-box hairline the game already draws at the baseline;
-- the ivory rim on `#9D0000` and `#0000BC` (above).
-
-Bars, legend swatches and region tiles get the same idea — a soft same-hue
-bloom (`box-shadow`), never a changed hue.
+centre, PNL right. Confirmed against `hemiMap`: it sorts parties by `order`,
+pools all seats, and sorts by descending angle.
 
 *Implementation notes for S6:* (1) the existing rim rule selects on the literal
 fill (`svg.hemi circle[fill="#0000BC"]`) — a silent break if a colour is ever
