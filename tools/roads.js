@@ -776,6 +776,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     }
     v10QtContext = held;
     out.shelf = shelf; out.walked = new Set(walk).size;
+    /* the rotation is NEW SAVE STATE. A campaign saved before it existed has
+       no v10.qtSeen at all, and must load, ask a question and start clean
+       rather than throwing on the first render. */
+    const blob = JSON.parse(JSON.stringify(S));
+    if (blob.v10) delete blob.v10.qtSeen;
+    blob.turn = 40; blob.v8.qt.pending = true; blob.v8.qt.v10 = -1;
+    const loaded = v8EnsureState(blob, false) || blob;
+    try { v8EnsureQuestion(loaded); out.oldSaveThrew = false; }
+    catch (e) { out.oldSaveThrew = String(e); }
+    out.oldSaveAsks = !!(loaded.v8.qt && loaded.v8.qt.question);
+    out.rotationRidesTheSave = /qtSeen/.test(JSON.stringify(S));
     v10QtContext = base;
     S.turn = keepTurn; S.v8.qt = keepQt;
     return out;
@@ -812,13 +823,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `templated where they should be written: ${papers.templated.length}; buttons the renderer cannot price: ${papers.unpriced.length}`);
 
   say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent &&
-      qt.stable && qt.rotationHeld && qt.walked === qt.shelf,
+      qt.stable && qt.rotationHeld && qt.walked === qt.shelf &&
+      qt.oldSaveThrew === false && qt.oldSaveAsks && qt.rotationRidesTheSave,
     'a session picks its question without spending a die',
     `60 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
     `${qt.distinctInOpposition} in opposition, across ${qt.distinctSubjects} subjects, ` +
     `${qt.leaks} of them showing an unfilled placeholder; rngState moved: ${qt.diceSpent}; ` +
     `fifty renders in one session left the question and the rotation alone: ${qt.stable && qt.rotationHeld}; ` +
-    `a subject walks all ${qt.shelf} of its questions before repeating one: ${qt.walked === qt.shelf}`);
+    `a subject walks all ${qt.shelf} of its questions before repeating one: ${qt.walked === qt.shelf}; ` +
+    `the rotation rides the save: ${qt.rotationRidesTheSave}, and a campaign saved before it existed still asks: ${qt.oldSaveAsks}`);
 
 
   // 1. the authority ladder, precondition by precondition
