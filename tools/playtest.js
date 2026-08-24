@@ -123,6 +123,8 @@ async function run() {
   step('new-game', !!started, 'S.started after doctrine choice');
 
   // -- a bill through the draft dialog (bill action + modal in one) --
+  await page.click('[data-group="gLaw"]');
+  await page.waitForTimeout(120);
   await page.click('[data-tab="policy"]');
   await page.waitForSelector('[data-pol][data-dir="1"]:not([disabled])', { timeout: 10000 });
   await page.click('[data-pol][data-dir="1"]:not([disabled])');
@@ -145,6 +147,8 @@ async function run() {
   step('end-turn', drained && turnAfter === turnBefore + 1, `turn ${turnBefore} -> ${turnAfter}, queue drained: ${drained}`);
 
   // -- v7 splice coverage (no literal marker exists for these; see checks) --
+  await page.click('[data-group="gDesk"]');
+  await page.waitForTimeout(120);
   await page.click('[data-tab="chamber"]');
   const desk = await page.evaluate(() => !!document.querySelector('#view .desk-row, #view .desk, #view [data-desk], #view .panel'));
   step('v7-splice-renders', desk, 'Overview renders panels after the turn');
@@ -208,17 +212,18 @@ async function run() {
     // E: a long sheet opens at its own heading, not scrolled to a deep button
     const e1 = await page.evaluate(() => { helpDialog(); const sh = document.getElementById('sheet'); const st = sh.scrollTop; hideSheet(); return st; });
     if (e1 > 2) holds.push(`sheet opened pre-scrolled to ${e1}px`);
-    // F: re-pressing the current tab's own key no longer forces the page to top
-    const fkey = await page.evaluate(() => {
-      const map = typeof V6_KEYMAP !== 'undefined' ? V6_KEYMAP : { '1':'chamber' };
-      const k = Object.keys(map)[2] || '1';
-      UI.tab = map[k]; render(); window.scrollTo(0, 500);
-      return k;
+    // F: keyboard navigation goes through the single scroll owner — the
+    //    remembered position of the destination tab is restored, with no
+    //    forced smooth-to-top afterwards
+    await page.evaluate(() => {
+      UI.tab = 'policy'; render(); window.scrollTo(0, 500);
+      UI.tab = 'chamber'; render();
     });
-    await page.keyboard.press(fkey);
+    await page.keyboard.press('2');
     await page.waitForTimeout(350);
-    const f1 = await page.evaluate(() => window.scrollY);
-    if (f1 < 400) holds.push(`same-tab key press scrolled 500 -> ${f1}`);
+    const f1 = await page.evaluate(() => ({ tab: UI.tab, y: window.scrollY }));
+    if (f1.tab !== 'policy') holds.push(`key 2 landed on ${f1.tab}, expected policy`);
+    else if (Math.abs(f1.y - 500) > 60) holds.push(`owner did not restore policy's 500: ${f1.y}`);
     // H: flash() no longer schedules a delayed full render
     const h1 = await page.evaluate(async () => {
       window.__renders = 0;
@@ -267,6 +272,66 @@ async function run() {
     await page.evaluate(() => { UI.tab = 'chamber'; render(); window.scrollTo(0, 0); });
     step('scroll-keeps', holds.length === 0,
       holds.length ? holds.join('; ') : 'same-tab renders, sheets, key re-press, flash, gutter, phone strips: all hold still');
+  }
+
+  // -- the atlas (S9c): six groups, ids disjoint from tab ids, every view
+  //    reachable through its group, the keyboard covering all fifteen
+  {
+    const tree = await page.evaluate(() => {
+      const tabIds = TABS.map(t => t.id);
+      const inGroups = [];
+      V7_GROUPS.forEach(g => g.tabs.forEach(t => inGroups.push(t)));
+      const labels = V7_GROUPS.map(g => g.name);
+      const pageLabels = TABS.map(t => t.name);
+      return {
+        groups: V7_GROUPS.length,
+        idCollisions: V7_GROUPS.filter(g => tabIds.indexOf(g.id) >= 0).map(g => g.id),
+        uncovered: tabIds.filter(t => inGroups.indexOf(t) < 0),
+        doubled: inGroups.filter((t, i) => inGroups.indexOf(t) !== i),
+        dupGroupLabels: labels.filter((l, i) => labels.indexOf(l) !== i),
+        dupPageLabels: pageLabels.filter((l, i) => pageLabels.indexOf(l) !== i),
+        dualAttr: document.querySelectorAll('#tabs [data-group][data-tab]').length,
+      };
+    });
+    step('nav-tree', tree.groups === 6 && !tree.idCollisions.length && !tree.uncovered.length &&
+      !tree.doubled.length && !tree.dupGroupLabels.length && !tree.dupPageLabels.length && tree.dualAttr === 0,
+      `6 groups: ${tree.groups === 6}; group ids collide with tab ids: ${tree.idCollisions.join(',') || 'none'}; ` +
+      `ungrouped: ${tree.uncovered.join(',') || 'none'}; doubled: ${tree.doubled.join(',') || 'none'}; ` +
+      `duplicate labels: ${(tree.dupGroupLabels.concat(tree.dupPageLabels)).join(',') || 'none'}; dual-attribute buttons: ${tree.dualAttr}`);
+
+    const reach = await page.evaluate(async () => {
+      const missed = [];
+      for (const g of V7_GROUPS) {
+        document.querySelector('#tabs [data-group="' + g.id + '"]').click();
+        await new Promise(r => setTimeout(r, 40));
+        if (g.tabs.indexOf(UI.tab) < 0) missed.push(g.id + '->' + UI.tab);
+        for (const t of g.tabs) {
+          const b = document.querySelector('#tabs [data-tab="' + t + '"]');
+          if (!b) { missed.push(g.id + ' misses ' + t); continue; }
+          b.click();
+          await new Promise(r => setTimeout(r, 40));
+          if (UI.tab !== t) missed.push(t + ' click landed on ' + UI.tab);
+        }
+      }
+      return missed;
+    });
+    step('nav-reach', reach.length === 0, reach.length ? reach.join('; ') : 'every view reachable through its group');
+
+    const keys = await page.evaluate(async () => {
+      const seen = {};
+      for (let i = 0; i < V7_GROUPS.length; i++) {
+        for (let rep = 0; rep < V7_GROUPS[i].tabs.length; rep++) {
+          v7KeyNav(String(i + 1));
+          seen[UI.tab] = true;
+          await new Promise(r => setTimeout(r, 15));
+        }
+      }
+      return { visited: Object.keys(seen).length, total: TABS.length };
+    });
+    step('nav-keys', keys.visited === keys.total,
+      `digits 1-6 with cycling visit ${keys.visited} of ${keys.total} views`);
+
+    await page.evaluate(() => { UI.tab = 'chamber'; render(); });
   }
 
   for (const [name, open] of [['menu', () => v6Menu()], ['guide', () => helpDialog()], ['save dialog', () => saveDialog()]]) {
@@ -327,6 +392,20 @@ async function run() {
   await page.click('[data-resume]');
   const v4Resumed = await page.evaluate(() => S.turn);
   step('corrupt-save-fallthrough', v4Resumed === turnAfter, `resumed from the .v4 key at turn ${v4Resumed}`);
+
+  // -- fold prefs follow their relocated panels (S9c)
+  {
+    const mig = await page.evaluate(() => {
+      S.uiPrefs.folds = S.uiPrefs.folds || {};
+      S.uiPrefs.folds['world|the chronicle'] = true;
+      delete S.uiPrefs.folds['record|the chronicle'];
+      UI.tab = 'record'; render();
+      return { migrated: S.uiPrefs.folds['record|the chronicle'] === true,
+               oldGone: S.uiPrefs.folds['world|the chronicle'] === undefined };
+    });
+    step('fold-migrate', mig.migrated && mig.oldGone,
+      `world|the chronicle -> record|the chronicle: migrated ${mig.migrated}, old key removed ${mig.oldGone}`);
+  }
   // the resumed game's own debounce now rewrites .v5 over the corrupt blob —
   // correct behavior; let it settle before the screenshots, and drop the
   // planted .v4 so the harness leaves no stale generation behind
@@ -334,6 +413,8 @@ async function run() {
   await page.evaluate(() => localStorage.removeItem('parliamentVale.autosave.v4'));
 
   // -- screenshots: desktop / tablet / phone on the live game --
+  await page.evaluate(() => { UI.tab = 'chamber'; render(); });
+  await page.waitForTimeout(150);
   await page.screenshot({ path: path.join(OUT, 'desktop-1500.png'), fullPage: false });
   await page.setViewportSize({ width: 834, height: 1150 });
   await page.waitForTimeout(250);

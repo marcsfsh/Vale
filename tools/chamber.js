@@ -181,7 +181,7 @@ let fail = 0;
   console.log('\nRendered size per tier — how big a seat actually reads');
   for (const t of TIERS) {
     await page.setViewportSize({ width: t.w, height: 1000 });
-    await page.evaluate(() => { UI.tab = 'parliament'; render(); });
+    await page.evaluate(() => { UI.tab = 'chamber'; render(); });
     await page.waitForTimeout(250);
     const el = await page.$('svg.hemi');
     if (!el) { console.log('  ' + t.n + ': no map rendered'); fail++; continue; }

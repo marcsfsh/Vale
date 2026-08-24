@@ -4,7 +4,36 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S9b — the screen stops jumping** (PR #17). The owner's report — "I click
+**S9c — the Atlas** (PR #18). The navigation overhaul the owner ordered:
+"Government is both a tab and subtab... things don't seem to logically or
+intuitively be grouped together."
+
+Six groups now, one organising principle each, ids g-prefixed so a group id
+can never collide with a tab id again: Desk (the brief and the record),
+Lawmaking (a measure drafted, passed, and PAID FOR — the ledger finally sits
+beside the bills it funds), Government (the offices and the ministry),
+Constitution (the order and the court that polices it), Politics, Country. The
+double-"Government" died by relabelling the tab "Ministry" (its id — and every
+saved fold key and jump literal — unchanged). Group buttons carry data-group
+only, so `[data-tab="government"]` is unambiguous at last. Digits 1-6 pick a
+group and repeat cycles its pages: six keys cover all fifteen views (five tabs
+had NO key before — the map was an ordinal slice that v5's splices had pushed
+them out of), and the field guide and council menu derive from the same array.
+
+Misfiled content moved home: domestic protest movements and their handling
+actions from World to Nation (merged into one panel), the Society deck to
+Nation, the Chronicle to Record, the States deck deduped to Federation, the
+Ministry deck to the Ministry page. The pasted-everywhere panels were cut to
+canonical homes: Dispatches on 13 of 15 views became 2, the inbox 7 became 3
+surfaces (full on Parties, preview on the Desk), the manifesto 5 became 2.
+Saved fold preferences follow their panels via V7_FOLD_REMAP — migrated, not
+orphaned (proven by the fold-migrate step). tools/tabs.js was rewritten (it
+had been dead since S6a removed the rule it spliced) and tools/chamber.js's
+group-id-as-tab bug is fixed. Proof against the pre-fix file: government id
+collision, 5 dual-attribute buttons, 5 keyless tabs; current file: zero, zero,
+zero.
+
+Previously: **S9b — the screen stops jumping** (PR #17, merged). The owner's report — "I click
 something and the screen jumps around or resets" — decomposed into nine
 mechanisms, each fixed in place:
 
@@ -182,7 +211,8 @@ ratchet 10 → 5, which is now its true floor.
 | S8c the record scales | **merged** (#14) | thresholds scale with `endYear`, requirements rendered not hard-coded; closing session now banked; hall score made span-relative; epic byte-identical |
 | S8d the leftovers | **merged** (#15) | breakpoint check made a partition test (5 proofs); hemiMap's false `total` dropped and the guarantee moved into `tools/chamber.js`; seed copy tightened; this board corrected |
 | S9a nothing lost quietly | **merged** (#16) | hall gets the S1 loudness contract; collapse endings bank their session; the one raw `note` read site fixed; year clamps; 4 new playtest steps, each proven to fail pre-fix |
-| S9b the screen holds still | **in review (PR #17)** | nine jump mechanisms fixed in place; v7's restore is the single scroll owner; `scroll-keeps` step discriminates on three of them |
+| S9b the screen holds still | **merged** (#17) | nine jump mechanisms fixed in place; v7's restore is the single scroll owner; `scroll-keeps` step discriminates on three of them |
+| S9c the Atlas | **in review (PR #18)** | six coherent groups, ids collision-proof, Ministry relabel, 6-key keyboard covers all 15 views, misfiled panels rehomed with fold-pref migration, tabs.js rewritten |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
