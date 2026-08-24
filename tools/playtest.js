@@ -498,6 +498,46 @@ async function run() {
       `stamped: ${moved.stamped}; second pass moved: ${twice.length}`);
   }
 
+  // -- S10d/e/f: the works instruments, the chair controls, the question pool
+  {
+    const late = await page.evaluate(() => {
+      const me = playParty(S), out = {};
+      const keep = { ruling:S.ruling, coalition:S.coalition, capital:S.capital, treasury:S.treasury,
+        works:JSON.parse(JSON.stringify(S.v8.works)), committees:JSON.parse(JSON.stringify(S.committees)) };
+      S.ruling = me; S.coalition = [me]; S.capital = 300; S.treasury = 4000;
+
+      /* a work under way offers the instruments, and they show on the card */
+      const w = V8_WORKS.filter(x => x.req(S))[0];
+      v8WorkAction(w.id, 'commission');
+      v8WorkAction(w.id, 'domestic');
+      UI.tab = 'nation'; render();
+      const card = document.querySelector('[data-work="' + w.id + '"]');
+      out.instrumentButtons = card ? card.querySelectorAll('[data-arg="gild"],[data-arg="descope"],[data-arg="inquiry"],[data-arg="partner"]').length : 0;
+      out.builtTagShown = !!(card && /domestic labour clause/i.test(card.textContent));
+      out.worksCount = V8_WORKS.length;
+
+      /* the chair controls render while leading, and the chair is a person */
+      UI.tab = 'houses'; render();
+      out.chairButtons = document.querySelectorAll('[data-chair]').length;
+      out.chairNamed = !!S.committees[PV5_COMMITTEES[0].id].chairName;
+
+      /* the question pool is bigger than the five sentences it replaces */
+      out.questionPool = typeof V10_QT !== 'undefined' ? V10_QT.length : 0;
+      out.paperPool = typeof V10_PAPERS !== 'undefined' ? V10_PAPERS.length : 0;
+      out.powers = POWERS.length;
+
+      S.v8.works = keep.works; S.committees = keep.committees;
+      S.ruling = keep.ruling; S.coalition = keep.coalition; S.capital = keep.capital; S.treasury = keep.treasury;
+      UI.tab = 'chamber'; render();
+      return out;
+    });
+    step('works-instruments', late.instrumentButtons >= 4 && late.builtTagShown && late.worksCount >= 48,
+      `${late.worksCount} works; a work under way offers ${late.instrumentButtons} instruments and the card says how it is being built: ${late.builtTagShown}`);
+    step('chairs-and-pools', late.chairButtons > 0 && late.chairNamed && late.questionPool >= 90 && late.paperPool >= 32 && late.powers >= 11,
+      `${late.chairButtons} chair controls while leading, chairs are named: ${late.chairNamed}; ` +
+      `${late.questionPool} questions, ${late.paperPool} papers, ${late.powers} powers`);
+  }
+
   // -- S10c: the order book issues, stands, lapses and revokes
   {
     const ord = await page.evaluate(() => {

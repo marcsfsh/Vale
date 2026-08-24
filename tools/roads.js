@@ -476,8 +476,313 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(book.twoTargets === true, 'a targeted order is per target',
     'the same instrument stands separately in two regions: ' + book.twoTargets);
 
+  /* S10d — THE WORKS. Forty-eight distinct, and instruments that change what
+     a work turns out to be rather than only how fast it is paid for. */
+  const works = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const keep = { ruling: S.ruling, coalition: S.coalition, capital: S.capital, treasury: S.treasury,
+      works: JSON.parse(JSON.stringify(S.v8.works)), ind: JSON.parse(JSON.stringify(S.ind)) };
+    out.count = V8_WORKS.length;
+    out.regions = new Set(V8_WORKS.map(w => w.region || 'national')).size;
+    out.everyRegion = REGIONS.every(r => V8_WORKS.some(w => w.region === r.id));
+    /* every work must be buildable in principle: a req that can be met */
+    out.impossible = V8_WORKS.filter(w => { try { return !w.req({ ind: Object.fromEntries(Object.keys(IND).map(k => [k, 100])) }); } catch (e) { return true; } }).map(w => w.id);
+
+    S.ruling = me; S.coalition = [me]; S.capital = 400; S.treasury = 4000;
+    const w = V8_WORKS.filter(x => x.region && x.done && x.done.capital)[0];
+    /* a work scaled back delivers less; one built properly delivers more */
+    const payout = mods => {
+      S.v8.works[w.id] = { status:'active', mode:'steady', cost:w.cost, spent:w.cost, started:1, overruns:0, sessions:1, idle:0, mods:mods, notes:[] };
+      const before = S.ind[Object.keys(w.done.ind)[0]];
+      v8CompleteWork(S, w, S.v8.works[w.id]);
+      const got = S.ind[Object.keys(w.done.ind)[0]] - before;
+      delete S.v8.works[w.id];
+      return Math.round(got * 1000) / 1000;
+    };
+    out.plain = payout({});
+    out.descoped = payout({ descope:true });
+    out.gilded = payout({ gild:true });
+    /* the instruments are exclusive where they should be */
+    S.v8.works[w.id] = { status:'active', mode:'steady', cost:w.cost, spent:0, started:1, overruns:0, sessions:0, idle:0, mods:{}, notes:[] };
+    v8WorkAction(w.id, 'descope');
+    const costAfterDescope = S.v8.works[w.id].cost;
+    v8WorkAction(w.id, 'gild');
+    out.exclusive = S.v8.works[w.id].cost === costAfterDescope && !S.v8.works[w.id].mods.gild;
+    /* a cost change never touches what is already spent */
+    S.v8.works[w.id] = { status:'active', mode:'steady', cost:100, spent:60, started:1, overruns:0, sessions:0, idle:0, mods:{}, notes:[] };
+    v8WorkAction(w.id, 'descope');
+    out.spentUntouched = S.v8.works[w.id].spent === 60 && S.v8.works[w.id].cost === Math.round(60 + 40 * .67);
+    S.v8.works = keep.works; S.ruling = keep.ruling; S.coalition = keep.coalition;
+    S.capital = keep.capital; S.treasury = keep.treasury; S.ind = keep.ind;
+    return out;
+  });
+  say(works.count >= 48 && works.everyRegion && works.impossible.length === 0,
+    'forty-eight works, every region', `${works.count} grand works across ${works.regions} regions incl. national; ` +
+    `every region has at least one: ${works.everyRegion}; none impossible to start: ${works.impossible.length === 0}`);
+  say(works.descoped < works.plain && works.gilded > works.plain && works.exclusive && works.spentUntouched,
+    'how it is built is what it gives',
+    `the same work opens at ${works.descoped} scaled back, ${works.plain} as specified, ${works.gilded} built properly; ` +
+    `scaled-back and built-properly are exclusive: ${works.exclusive}; a cost change leaves what is spent alone: ${works.spentUntouched}`);
+
+  /* S10e — THE COMMITTEES. The chair table was the literal
+     ['fp','lp','sd','cup','tvc','pnl','fp'] in every campaign at every seed. */
+  const chairs = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const keep = { seats: JSON.parse(JSON.stringify(S.seats)), ruling: S.ruling, coalition: S.coalition,
+      committees: JSON.parse(JSON.stringify(S.committees)), capital: S.capital };
+    out.named = PV5_COMMITTEES.filter(c => S.committees[c.id].chairName).length;
+    out.total = PV5_COMMITTEES.length;
+    const reapportion = () => { PV5_COMMITTEES.forEach(c => { S.committees[c.id].chair = null; }); pv5ApportionChairs(S); };
+    PARTIES.forEach(x => S.seats[x.id] = x.id === me ? 1200 : 15);
+    reapportion();
+    out.landslide = PV5_COMMITTEES.filter(c => S.committees[c.id].chair === me).length;
+    PARTIES.forEach(x => S.seats[x.id] = 0); S.seats[me] = CFG.seats;
+    reapportion();
+    out.soleParty = PV5_COMMITTEES.every(c => S.committees[c.id].chair === me);
+    PARTIES.forEach(x => S.seats[x.id] = Math.round(CFG.seats / PARTIES.length));
+    reapportion();
+    out.rsfCanChair = PV5_COMMITTEES.some(c => S.committees[c.id].chair === 'rsf');
+    out.spread = new Set(PV5_COMMITTEES.map(c => S.committees[c.id].chair)).size;
+    /* yours to give when you lead, refused when you do not */
+    S.ruling = me; S.coalition = [me]; S.capital = 80;
+    const cid = PV5_COMMITTEES[2].id, give = PARTIES.filter(x => x.id !== S.committees[cid].chair)[0].id;
+    pv5AssignChair(cid, give);
+    out.assigned = S.committees[cid].chair === give && !!S.committees[cid].chairName;
+    S.ruling = PARTIES.filter(x => x.id !== me)[0].id; S.coalition = [S.ruling];
+    const was = S.committees[cid].chair;
+    pv5AssignChair(cid, me);
+    out.refusedFromOpposition = S.committees[cid].chair === was;
+    S.seats = keep.seats; S.ruling = keep.ruling; S.coalition = keep.coalition;
+    S.committees = keep.committees; S.capital = keep.capital;
+    return out;
+  });
+  say(chairs.named === chairs.total && chairs.landslide === chairs.total && chairs.soleParty && chairs.rsfCanChair && chairs.spread > 1,
+    'the chamber decides the chairs',
+    `${chairs.named}/${chairs.total} chairs are named people · a landslide takes ${chairs.landslide}/${chairs.total} · ` +
+    `an even chamber spreads them over ${chairs.spread} parties and the RSF can chair: ${chairs.rsfCanChair}`);
+  say(chairs.assigned && chairs.refusedFromOpposition, 'chairs are yours when you lead',
+    `assigned while leading: ${chairs.assigned} · refused from opposition: ${chairs.refusedFromOpposition}`);
+
+  /* S10e — THE WORLD. The owner was allied with a power and at war with it.
+     That had four independent causes and a war-aware label would only have
+     hidden it. */
+  const world = await page.evaluate(() => {
+    const out = {};
+    /* 600 war rolls, and every declaration adds unrest and tension and moves
+       blocs. Restore ALL of it: a leak here pre-satisfies the toEmergency
+       ladder step (army >= 60 and unrest > 55), which is asserted below. */
+    const keep = { powers: JSON.parse(JSON.stringify(S.powers)), war: S.war,
+      treaties: JSON.parse(JSON.stringify(S.v6.treaties)), stats: JSON.parse(JSON.stringify(S.v6.stats || {})),
+      ind: JSON.parse(JSON.stringify(S.ind)), blocs: JSON.parse(JSON.stringify(S.blocs)),
+      pol: JSON.parse(JSON.stringify(S.pol)), unrest: S.unrest, capital: S.capital,
+      territories: S.ind.territories, log: S.log.length };
+
+    /* no war is declared on a power that is not hostile — but war is still
+       possible, or this assertion would pass by never declaring one */
+    let onFriend = 0, declaredFriendly = 0;
+    for (let i = 0; i < 300; i++) {
+      S.war = null; POWERS.forEach(x => S.powers[x.id] = 70);
+      S.ind.tension = 95; S.ind.military = 90; S.pol.missileForce = 4; S.pol.protectorates = 4;
+      /* the relation BEFORE the tick: declaring war clamps the target to 18,
+         so reading it afterwards says 'not a friend' about every target there
+         has ever been, and the assertion could not fail */
+      const before = {}; POWERS.forEach(x => before[x.id] = relOf(S, x.id));
+      warTick(S);
+      if (S.war) { declaredFriendly++; if (before[S.war.power] >= 55) onFriend++; }
+    }
+    out.declaredOnFriendly = declaredFriendly;
+    out.targetedAFriend = onFriend;
+    let declaredHostile = 0;
+    for (let i = 0; i < 300; i++) {
+      S.war = null; POWERS.forEach(x => S.powers[x.id] = 70); S.powers.sarath = 12;
+      S.ind.tension = 95; S.ind.military = 90; S.pol.missileForce = 4; S.pol.protectorates = 4;
+      warTick(S);
+      if (S.war) { declaredHostile++; if (S.war.power !== 'sarath') out.wrongTarget = S.war.power; }
+    }
+    out.declaredOnHostile = declaredHostile;
+
+    /* the label */
+    S.war = null; POWERS.forEach(x => S.powers[x.id] = 50);
+    S.powers.sarath = 88; S.war = { power:'sarath', year:2030, momentum:0, turns:0, cost:0 };
+    out.wordAtWar = relWord(relOf(S, 'sarath'), S, 'sarath');
+    out.wordOther = relWord(relOf(S, 'moya'), S, 'moya');
+
+    /* the treaty */
+    S.v6.treaties.sarath = { kind:'defence', since:2028 };
+    v6TreatiesTick(S);
+    out.treatyVoided = !S.v6.treaties.sarath;
+
+    /* a war won at the table is recorded */
+    S.war = { power:'sarath', year:2030, momentum:10, turns:4, cost:0 };
+    S.v6.stats = S.v6.stats || {}; const v0 = S.v6.stats.victories || 0;
+    const act = ACTIONS.filter(a => /sue for peace/i.test(a.name))[0];
+    if (act) act.run(S);
+    out.victoryRecorded = (S.v6.stats.victories || 0) === v0 + 1 && !S.war;
+
+    /* the five new powers, and the migration that keeps a NaN out of an old save */
+    out.powerCount = POWERS.length;
+    out.treatyKinds = Object.keys(V6_TREATIES).length;
+    out.allSeeded = POWERS.every(p => typeof S.powers[p.id] === 'number' && !isNaN(S.powers[p.id]));
+    /* through the LOAD PATH, not by calling the migration by hand: a v9-era
+       save is enriched by v8EnsureState, and it is that wiring the assertion
+       is about. Calling v10EnsurePowers directly proves only that the function
+       exists. */
+    const old6 = JSON.parse(JSON.stringify(S));
+    old6.powers = { ostmark:44, moya:52, sarath:31, calavera:62, alliance:74, meridian:66 };
+    const loaded = v8EnsureState(old6, false) || old6;
+    out.backfilled = POWERS.every(p => typeof loaded.powers[p.id] === 'number' && !isNaN(loaded.powers[p.id]));
+    S.powers = { ostmark:44 }; shiftRel(S, 'tarnow', 5);
+    out.noNaN = !isNaN(S.powers.tarnow);
+    S.powers = JSON.parse(JSON.stringify(keep.powers)); v10EnsurePowers(S);
+    S.powers = keep.powers; S.war = keep.war; S.v6.treaties = keep.treaties; S.v6.stats = keep.stats;
+    S.ind = keep.ind; S.blocs = keep.blocs; S.pol = keep.pol; S.unrest = keep.unrest; S.capital = keep.capital;
+    v10EnsurePowers(S);
+
+    /* The two effects the cards have always advertised. Measured AFTER the
+       restore and from a mid-range military: the war-roll loops above set it
+       to 90, and c100 saturates the target at 100, which reads as "the treaty
+       does nothing" when it is the ceiling doing it. */
+    /* The military TARGET is driven by the defence statutes and sits at the
+       100 ceiling in a built-out book, so +1.5 has nowhere to go while -1.5
+       still shows — which reads as "defence does nothing" when it is the
+       clamp. Measure from a quiet state. */
+    const keepMil = S.ind.military, keepTr = S.v6.treaties, keepPol = S.pol;
+    S.pol = {}; S.ind.military = 40; S.v6.treaties = {};
+    const m0 = indicatorTargets(S).military;
+    S.v6.treaties = { ostmark:{ kind:'defence', since:2030 } };
+    out.defenceMil = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
+    S.v6.treaties = { ostmark:{ kind:'arms', since:2030 } };
+    out.armsMil = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
+    S.ind.military = keepMil; S.v6.treaties = keepTr; S.pol = keepPol;
+    return out;
+  });
+  say(world.declaredOnFriendly === 0 && world.targetedAFriend === 0 && world.declaredOnHostile > 0 && !world.wrongTarget,
+    'war needs somebody to be hostile to',
+    `300 rolls at maximum risk with every power at 70 declared ${world.declaredOnFriendly} wars — there is nobody to fight; ` +
+    `300 identical rolls with one power at 12 declared ${world.declaredOnHostile}, every one of them on that power`);
+  say(world.wordAtWar === 'at war' && world.wordOther === 'correct', 'nobody is allied and at war',
+    `a power at 88 relations you are fighting reads "${world.wordAtWar}"; everyone else still reads normally ("${world.wordOther}")`);
+  say(world.treatyVoided, 'war annuls the treaty it contradicts',
+    'a defence pact with the country you are fighting is void, not still paying out');
+  say(world.powerCount >= 11 && world.allSeeded && world.backfilled && world.noNaN,
+    'eleven powers, none of them NaN',
+    `${world.powerCount} powers, all seeded: ${world.allSeeded}; a six-power save backfills: ${world.backfilled}; ` +
+    `shiftRel on an unknown power no longer produces NaN: ${world.noNaN}`);
+  say(world.defenceMil === 1.5 && world.armsMil === -1.5 && world.treatyKinds >= 8,
+    'a treaty does what its card says',
+    `${world.treatyKinds} instruments · a defence pact moves the armed-forces target by ${world.defenceMil} and an arms treaty by ${world.armsMil} — both advertised on their cards since v6 and implemented by nothing`);
+  say(world.victoryRecorded, 'a war won at the table counts',
+    'suing for peace records the victory instead of nulling the war before the tick that would have');
+
   say(paper.demandVariety >= 3, 'a party varies what it demands',
     paper.demandVariety + ' distinct statutes demanded across 40 draws (was 1, with no rand() in the function)');
+
+  /* S10f — QUESTION TIME. The whole pool was five sentences in one if/else
+     chain, and its gates made three of them nearly unreachable. */
+  const qt = await page.evaluate(() => {
+    const out = {}, keepTurn = S.turn, keepQt = JSON.parse(JSON.stringify(S.v8.qt));
+    out.pool = V10_QT.length;
+    out.papers = V10_PAPERS.length;
+    const subs = [...new Set(V10_QT.map(x => x.subject))];
+    out.subjects = subs.length;
+    /* every subject can be asked from both sides of the chamber */
+    out.bothSides = subs.filter(sb => V10_QT.some(x => x.subject === sb && x.side === 'power') &&
+                                      V10_QT.some(x => x.subject === sb && x.side === 'opposition')).length;
+    /* no question asks for a fact its own subject cannot supply — the fill map
+       leaves an unknown {brace} in the sentence, verbatim, on screen */
+    const GLOBAL = ['leader','party','opp','year'];
+    const SUPPLY = { issue:['issue','number'], scandal:['minister','number'], bill:['bill','number'],
+      work:['work','number'], minister:['minister','number'], governor:['governor','region','number'],
+      treaty:['power','number'], court:['number'], money:['number'], unrest:['number'],
+      promise:['number'], prices:['number'], order:['work','number'], byelection:['number','region'] };
+    out.badPlaceholders = [];
+    V10_QT.forEach(q => {
+      const ok = GLOBAL.concat(SUPPLY[q.subject] || []);
+      [q.body].concat(q.replies.map(r => r.label + ' ' + r.result)).join(' ')
+        .replace(/\{(\w+)\}/g, (m, k) => { if (ok.indexOf(k) < 0) out.badPlaceholders.push(q.id + ':' + k); return m; });
+    });
+    /* every tone maps onto an effect path that exists */
+    out.badTones = V10_QT.filter(q => q.replies.some(r =>
+      !V10_QT_TONE.power[r.tone] || !V10_QT_TONE.opposition[r.tone])).map(q => q.id);
+    /* the spread with every subject in play, and the rule that selection is
+       free: v8EnsureQuestion runs on the RENDER path, so a die here would make
+       a campaign's dice-spend depend on how often a tab was opened */
+    const base = v10QtContext;
+    v10QtContext = function (st) {
+      const c = base(st);
+      subs.forEach(sb => { if (c.subjects.indexOf(sb) < 0) { c.subjects.push(sb);
+        c.fill['_' + sb] = { minister:'Iyer', bill:'the Fuel Duty Bill', work:'the Rigel Viaduct',
+          issue:'housing', governor:'Halloran', region:'Cassian', power:'Ostmark', number:'41' }; } });
+      ['minister','bill','work','issue','governor','region','power','number'].forEach(k => {
+        if (c.fill[k] === undefined) c.fill[k] = '41'; });
+      return c;
+    };
+    /* both sides of the chamber, explicitly: which side you are on decides
+       which half of the pool is drawn from, and leaving it to whatever the
+       preceding tests left S.ruling as makes this number wander */
+    const keepRuling = S.ruling, keepCo = S.coalition, me = playParty(S);
+    const r0 = S.rngState;
+    const sweep = () => {
+      const seen = new Set(), seenSubs = new Set();
+      for (let t = 1; t <= 60; t++) {
+        S.turn = t; S.v8.qt.turn = -1; S.v8.qt.v10 = -1; v8EnsureQuestion(S);
+        if (S.v8.qt.question) { seen.add(S.v8.qt.question); seenSubs.add(S.v8.qt.subject); }
+      }
+      return { d: seen.size, s: seenSubs.size, leaks: [...seen].filter(q => /\{\w+\}/.test(q)).length };
+    };
+    S.ruling = me; S.coalition = [me];
+    const inPow = sweep();
+    S.ruling = PARTIES.filter(x => x.id !== me)[0].id; S.coalition = [S.ruling];
+    const inOpp = sweep();
+    S.ruling = keepRuling; S.coalition = keepCo;
+    out.distinctInPower = inPow.d; out.distinctInOpposition = inOpp.d;
+    out.distinct = Math.min(inPow.d, inOpp.d);
+    out.distinctSubjects = Math.min(inPow.s, inOpp.s);
+    out.leaks = inPow.leaks + inOpp.leaks;
+    out.diceSpent = S.rngState !== r0;
+    /* and the same session asked twice gives the same question */
+    S.turn = keepTurn; S.v8.qt.v10 = -1; v8EnsureQuestion(S); const a = S.v8.qt.question;
+    S.v8.qt.v10 = -1; v8EnsureQuestion(S); out.stable = a === S.v8.qt.question;
+    v10QtContext = base;
+    S.turn = keepTurn; S.v8.qt = keepQt;
+    return out;
+  });
+  say(qt.pool >= 90 && qt.subjects === 14 && qt.bothSides === 14 &&
+      !qt.badPlaceholders.length && !qt.badTones.length,
+    'the despatch box has more than one sentence',
+    `${qt.pool} questions over ${qt.subjects} subjects, all ${qt.bothSides} askable from either side ` +
+    `(was 5 sentences in one if/else chain, three of them behind gates that could not open); ` +
+    `placeholders no subject can supply: ${qt.badPlaceholders.length}; tones the engine cannot map: ${qt.badTones.length}`);
+  /* S10f — THE PAPERS. Eleven types arriving every other session for two
+     hundred sessions was the owner's other complaint about the red box. */
+  const papers = await page.evaluate(() => {
+    const out = { badChoices: [], dupTitles: [], templated: [], unpriced: [] };
+    out.pool = V10_PAPERS.length;
+    const t = {};
+    V10_PAPERS.forEach(pp => {
+      if (!pp.choices || pp.choices.length !== 3) out.badChoices.push(pp.id);
+      const k = String(pp.title).toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+      if (t[k]) out.dupTitles.push(pp.id); t[k] = 1;
+      if (/\{\w+\}/.test(pp.title + ' ' + pp.body)) out.templated.push(pp.id);
+      /* the engine prices a paper's buttons BY POSITION, so a paper the
+         renderer cannot price is a paper with a dead button */
+      const cs = inboxChoices({ v10paper: pp.id });
+      if (cs.length !== 3 || cs.some(c => typeof c.cost !== 'number' || !c.label || !c.note)) out.unpriced.push(pp.id);
+    });
+    return out;
+  });
+  say(papers.pool >= 30 && !papers.badChoices.length && !papers.dupTitles.length &&
+      !papers.templated.length && !papers.unpriced.length,
+    'the red box has more than a fortnight in it',
+    `${papers.pool} authored papers on top of the eleven the v4 base had; ` +
+    `wrong number of choices: ${papers.badChoices.length}; repeated titles: ${papers.dupTitles.length}; ` +
+    `templated where they should be written: ${papers.templated.length}; buttons the renderer cannot price: ${papers.unpriced.length}`);
+
+  say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent && qt.stable,
+    'a session picks its question without spending a die',
+    `60 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
+    `${qt.distinctInOpposition} in opposition, across ${qt.distinctSubjects} subjects, ` +
+    `${qt.leaks} of them showing an unfilled placeholder; rngState moved: ${qt.diceSpent}; asked twice, same answer: ${qt.stable}`);
 
 
   // 1. the authority ladder, precondition by precondition

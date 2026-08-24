@@ -4,7 +4,109 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S10b/c — The Order Paper and the Order Book** (PR #26). Two halves of the
+**S10d/e/f — The Works, the Ministry, the World and the Session** (PR #27).
+The last three slices of the owner's fifth order, shipped as one PR because
+they share a spine: each is a system with working machinery and almost no
+material on top of it.
+
+**The Works.** Sixteen distinct grand works became forty-eight, spread across
+every region and the national tier. A work under way is no longer only
+steady/crash/suspend/cancel: six instruments change what it *delivers* rather
+than just how fast it arrives — a public inquiry, a foreign contractor, a
+domestic labour clause, a scaled-back specification, building it properly, and
+taking the state in as a partner. Each trades money, time, quality and
+political cost against the others, and the card says how the thing is being
+built. Scaling back and building properly are mutually exclusive, and a change
+of specification never touches what has already been spent.
+
+**The Ministry and the committees.** Ministers gained five interactions beyond
+brief/initiative/empower/dismiss — shield, sacrifice, promote, sideline, train
+— all of them reading fields that were already on the object and doing nothing.
+The committee chairs were the literal `['fp','lp','sd','cup','tvc','pnl','fp']`
+in every campaign at every seed: the RSF could never chair anything and the FP
+always chaired two, whatever the election returned. Chairs are now apportioned
+to the chamber by largest remainder, they are named people with a party, a
+trait, an age and a year of appointment, and when you lead the government you
+hand them out yourself.
+
+**The World.** Being allied with a power and at war with it had four
+independent causes, and a war-aware label would have hidden three of them.
+`relWord` could not be made war-aware by a wrapper at all — it took a number
+and nothing else — so its signature changed in place. War is no longer
+declarable on a power at 74 relations: at maximum risk with every power at 70,
+no war is declared, because there is nobody to fight. A non-aggression pact
+removes its holder from the candidates rather than merely masking the number it
+is compared on. A treaty with the country you are fighting is annulled instead
+of continuing to charge upkeep and drift relations *toward* the enemy. Suing
+for peace records the victory it used to erase — the Victor record and the
+Conqueror epilogue were unreachable by that path. Five powers joined the six,
+backfilled into every save through the enrich chain, because `st.powers` is
+written as a whole literal in four places and two consumers read it raw. Four
+new treaty instruments join the four, and all eight now do what their cards
+have advertised since v6.
+
+**The session.** Question Time was five sentences in one if/else chain, and its
+gates made three of them nearly unreachable. It is ninety-four questions over
+fourteen subjects — three ways of asking each from the government benches and
+two from the opposition. Measured with every subject in play, sixty sessions
+draw around forty distinct questions on each side of the chamber, with nothing
+unfilled on screen. Selection still spends no dice: `v8EnsureQuestion` runs on
+the render path, so a roll there would make a campaign's dice-spend a function
+of how often a tab was opened. The political papers went from eleven types to
+forty-three, written one desk at a time; and `partyDemandPolicy`, which
+contained no `rand()` at all and so had a party demanding the same statute
+session after session until it got it, now draws from the top of its want list
+instead of always taking the head of it.
+
+**Two assertions in this PR could not fail, and were rewritten.** "War needs
+somebody to be hostile to" read the target's relation *after* the tick, and
+declaring war clamps that relation to 18 — so every target in history read "not
+a friend" and the assertion passed with the hostility floor deleted. "Eleven
+powers, none of them NaN" called the migration by hand, which proves the
+function exists and nothing about the wiring. Both now measure the property
+through the path a real campaign takes, and both go red when it is broken.
+Every new assertion in this PR ships with the one-line mutation that turns it
+red — sixteen of them, listed in the commits.
+
+What the harnesses hold on this branch:
+
+```
+ALL CHECKS PASS   11/11, 2,065,035 bytes of 2,100,000
+ROADS OK          64 assertions
+PLAYTEST PASS     39 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
+PACING            re-run after the questions and papers: unchanged — every
+                  length reaches its end year, records 10/11/12, crisis
+                  density flat at 0.8
+```
+
+**The fifth order, item by item.** All eleven, and the two the owner added
+after the plan was written:
+
+| # | The ask | Where it landed |
+|---|---|---|
+| 1 | Influence other parties' bills, scaled by standing; kill at an outright majority | S10b (#26) |
+| 2a | The duplicate Somnium Sea Wall | S10a (#25) |
+| 2b | Two to three times as many Great Works | S10d — 16 distinct → 48 |
+| 2c | Options while a work is under way | S10d — six instruments |
+| 2d | Very easy builds six at once | S10a (#25) |
+| 2e | Very easy starts richer and earns faster | S10a (#25) |
+| 3 | Ministers age, die, and can be interacted with; actions expanded | S10a (age, death, the age on the card) · S10e (five interactions) |
+| 4 | ≥36 unique standalone executive orders replacing the policy-raiser | S10b (#26) — 36 in eight categories |
+| 5 | Governors age and die; two regions to the ballot every two years; campaign influence | S10a (#25) |
+| 6 | The World: ally-at-war, thin diplomacy, boilerplate negotiation, new powers | S10e — four causes closed, 6 → 11 powers, 4 → 8 instruments |
+| 7 | Assign committee chairs when you lead; chairs are named people | S10e |
+| 8 | Greatly expand the unique-name pool | S10a — 1,600 → 39,400 pairs, deduplicated |
+| 9 | Question Time: expand | S10f — 5 sentences → 94 questions over 14 subjects |
+| 10 | The political papers: expand | S10f — 11 types → 43 |
+
+Next: nothing queued from the fifth order. The largest remaining stabilisation
+item is unchanged and still the owner's co-priority: **marker/seam
+consolidation** — 21 literal splice markers, and the dead-body ratchet from 5
+to 0.
+
+Previously: **S10b/c — The Order Paper and the Order Book** (PR #26). Two halves of the
 owner's biggest asks: what you can do about a bill you did not write, and
 executive orders as their own instrument.
 
@@ -82,9 +184,9 @@ reproduces its pre-S10a campaign. In-progress saves are unaffected — the RNG
 state rides the save — and load, migrate and render correctly. `maxBytes`
 1,900,000 → 2,100,000, raised here rather than when it binds.
 
-Next: **S10b**, the executive order book and influence over bills you do not
-own; then the Great Works, the Ministry/committees/diplomacy, and Question
-Time with the political papers.
+(At the time: next was **S10b**, the executive order book and influence over
+bills you do not own; then the Great Works, the Ministry/committees/diplomacy,
+and Question Time with the political papers. All of it is now shipped.)
 
 Previously: **The fourth order is complete** — S9f, S9g and S9h are all merged (#21, #22,
 #23). Every one of the 582 statutes has four levels, each with its own set of
@@ -520,6 +622,7 @@ ratchet 10 → 5, which is now its true floor.
 | S9h the curves | **merged** (#23) | all 451 pre-existing statutes authored to the same grammar; `tools/fullbuild-baseline.json` freezes every pre-S9h full build and `auth`, roads.js checks all of them; literal surgery with a byte-identical round-trip proof; `lin` and the save migration kept, with reasons; `maxBytes` 1.75M -> 1.9M |
 | S10a the Republic Ages | **in review (PR #25)** | the state ballot rebuilt in ballots not turns (four regions had never voted); ministers and governors join `ageRoster`/`ageSucceed`; the obituaries get a page; the duplicate sea wall retired and migrated; names 1,600 -> 39,400 pairs with dedupe; very easy builds six with the capital for it; four written-rule breaches fixed; `maxBytes` 1.9M -> 2.1M |
 | S10b/c the Order Paper and Order Book | **in review (PR #26)** | levers on other parties' bills scaled by standing, kill at an outright majority, a declared line finally seat-weighted; `partyDemandPolicy` and the private-members' path stop being deterministic; 36 standing executive orders replacing `orderPolicy`, bending targets rather than stocks, lapsing with their department |
+| S10d/e/f the Works, the Ministry, the World and the Session | **in review (PR #27)** | 16 distinct works -> 48, and six instruments that change what a work delivers rather than only its rate; five new ministerial interactions; committee chairs apportioned by largest remainder and made named people you assign when you lead; the four causes of ally-at-war closed, five powers and four treaty instruments added, treaty effects implemented; Question Time 5 sentences -> 94 questions over 14 subjects, papers 11 -> 43; two assertions that could not fail rewritten, sixteen new ones each shipped with the mutation that reddens it |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
