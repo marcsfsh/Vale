@@ -598,7 +598,7 @@ var PARTY_FACTIONS = {
 };
 
 var BILL_STAGES = ['committee','assembly','senate','assent'];
-var BILL_STAGE_NAMES = { committee:'Committee', assembly:'Assembly', senate:'Senate', assent:'Assent', passed:'Law', failed:'Failed', withdrawn:'Withdrawn' };
+var BILL_STAGE_NAMES = { committee:'Committee', assembly:'Assembly', senate:'Senate', assent:'Assent', passed:'Law', failed:'Failed', withdrawn:'Withdrawn', killed:'Killed' };
 
 var BLOC = {}; BLOCS.forEach(function (b) { BLOC[b.id] = b; });
 
@@ -5462,6 +5462,16 @@ function partyBillSupport(st, pid, bill) {
   if (st.cordon && st.cordon[pid] && pid !== bill.sponsor) score -= 8;
   if (st.coopted && st.coopted[pid]) score += 6;
   score += (factionAverage(st, pid) - 55) * .12;
+  /* A declared line is worth something in proportion to the party that
+     declares it. It used to be a flat +7/-8 on the Assembly forecast, applied
+     whether the player held nine hundred seats or none — or was banned.
+     Here it moves the DECLARING party's own score, and billForecast already
+     weights every party by its seats, so the whip count, the forecast and the
+     pass roll all move together and a party with no seats moves nothing. */
+  if (bill.playerPosition && pid === playParty(st)) {
+    score += bill.playerPosition === 'support' ? 24 : -28;
+  }
+  if (bill.lines && bill.lines[pid]) score += bill.lines[pid] === 'support' ? 16 : -18;
   if (st.banned && st.banned[pid]) return 0;
   return clamp(score, 3, 98);
 }
@@ -5493,8 +5503,6 @@ function billForecast(st, bill) {
   if (st.coalitionProcedure && bill.strategy === 'negotiated') lower += 4;
   if (st.senateConference && st.senateConference >= st.turn) upper += 8;
   if (bill.urgent) { lower += 5; upper -= 6; }
-  if (bill.playerPosition === 'support') lower += 7;
-  if (bill.playerPosition === 'oppose') lower -= 8;
   if (st.doctrine === 'operator' && bill.owner === 'player') lower += 7;
   if (st.doctrine === 'broker' && bill.strategy === 'negotiated') { lower += 4; upper += 5; }
   if (st.diff === 'easy') { lower += 28; upper += 34; }
@@ -5646,8 +5654,17 @@ function advanceBills(st) {
 
 function billAction(id, action) {
   var b = billById(S, id); if (!b) return;
-  var costs = { whip:4, bargain:5, amend:3, confidence:7, urgent:6, support:2, oppose:2, withdraw:0 };
-  var monies = { bargain:8 };
+  /* Gate at the point of effect, not only where the button is drawn. The
+     committee panel's four actions are the cautionary tale: they render for
+     every bill and their handler checks nothing, so an opposition player can
+     spend their own capital pushing the government's bills through. */
+  if (action === 'kill' && !outright(S)) { flash('Only a party that holds the Assembly outright can take a bill off the paper.'); return; }
+  if ((action === 'amendIt' || action === 'delayIt') && !inPower(S)) { flash('Only a government controls the order paper.'); return; }
+  if (action === 'talkOut' && inPower(S)) { flash('A government does not obstruct its own House.'); return; }
+  if (['kill', 'amendIt', 'delayIt', 'talkOut', 'pressure'].indexOf(action) >= 0 && b.owner === 'player') { flash('That is your own bill.'); return; }
+  var costs = { whip:4, bargain:5, amend:3, confidence:7, urgent:6, support:2, oppose:2, withdraw:0,
+    pressure:3, amendIt:4, delayIt:5, talkOut:4, kill:8 };
+  var monies = { bargain:8, pressure:5, amendIt:4 };
   var c = cst(costs[action] || 0), m = monies[action] || 0;
   if (S.capital < c || (m && S.treasury < m)) { flash('The resources are not available.'); return; }
   captureUndo('Work on ' + b.title);
@@ -5659,6 +5676,63 @@ function billAction(id, action) {
   if (action === 'urgent') { b.urgent = true; b.notes.push('Urgent procedure invoked'); S.unrest = clamp(S.unrest + 2, 0, 110); }
   if (action === 'support') { b.playerPosition = 'support'; shiftPartyRel(S, b.sponsor, 5); }
   if (action === 'oppose') { b.playerPosition = 'oppose'; shiftPartyRel(S, b.sponsor, -5); }
+  /* ---- S10b: the instruments you have against a bill that is not yours.
+     What is available scales with what you actually command: a line and the
+     public argument in opposition, the timetable and the committee in
+     government, and — only at an outright majority — the power to end it. */
+  if (action === 'pressure') {
+    /* Lean on the sponsoring party privately. Cheap, deniable, and it costs
+       you standing with them whichever way it goes. */
+    var sp = b.sponsor, rel = (S.partyRel && S.partyRel[sp] !== undefined ? S.partyRel[sp] : 50);
+    var bite = clamp(4 + (rel - 50) * .12 + (outright(S) ? 4 : (leads(S) ? 2 : 0)), 2, 12);
+    b.lines = b.lines || {}; b.lines[sp] = 'oppose';
+    b.notes.push('The sponsor was leaned on');
+    shiftPartyRel(S, sp, -6);
+    S.machine[playParty(S)] = clamp((S.machine[playParty(S)] || 0) + .01, -.8, 1);
+    logIt(S, 'The ' + PARTY[playParty(S)].short + ' put private pressure on the ' + PARTY[sp].short + ' over ' + b.title + '.');
+    if (bite < 4) { S.ind.corruption = c100(S.ind.corruption + .5); }
+  }
+  if (action === 'amendIt') {
+    /* Table an amendment of your own. The bill passes more easily and
+       delivers less of what its sponsor wanted — the classic trade. */
+    b.concessions++; b.whip += 3; b.upperDeal += 5;
+    b.amended = (b.amended || 0) + 1;
+    b.notes.push('Amended on the ' + PARTY[playParty(S)].short + ' motion');
+    shiftPartyRel(S, b.sponsor, -2);
+    logIt(S, 'An amendment from the ' + PARTY[playParty(S)].short + ' was written into ' + b.title + '.');
+  }
+  if (action === 'delayIt') {
+    /* Send it back. Costs the sponsor a session and some Senate goodwill. */
+    b.delayedBy = (b.delayedBy || 0) + 1;
+    b.stage = 'committee'; b.upperDeal = Math.max(0, b.upperDeal - 6);
+    b.notes.push('Referred back to committee');
+    shiftPartyRel(S, b.sponsor, -5); S.unity = c100((S.unity || 60) - 1);
+    logIt(S, b.title + ' was sent back to committee by the government.');
+  }
+  if (action === 'talkOut') {
+    /* The opposition's instrument: no votes, only time and noise. */
+    b.whip -= 8; b.upperDeal = Math.max(0, b.upperDeal - 4);
+    b.talkedOut = (b.talkedOut || 0) + 1;
+    b.notes.push('Obstructed on the floor');
+    S.unrest = clamp(S.unrest + 1.5, 0, 110);
+    var tiss = issueForPolicy(POL[b.policy]);
+    if (tiss) S.salience[tiss.id] = c100(S.salience[tiss.id] + 4);
+    shiftPartyRel(S, b.sponsor, -7);
+    mood(S, { prof:-.8 });
+    logIt(S, 'The ' + PARTY[playParty(S)].short + ' talked out ' + b.title + '.');
+  }
+  if (action === 'kill') {
+    /* Only at an outright majority. A government that commands the chamber
+       on its own does not have to win a vote it can simply refuse to hold. */
+    archiveBill(S, b, 'killed', 'Taken off the order paper by the government');
+    shiftPartyRel(S, b.sponsor, -14);
+    S.unity = c100((S.unity || 60) + 2);
+    S.ind.liberties = c100(S.ind.liberties - 1.2);
+    mood(S, { prof:-1.5, youth:-1 });
+    S.salience.integrity = c100((S.salience.integrity || 50) + 3);
+    logIt(S, b.title + ' was struck from the order paper. The government did not trouble the House with a vote.');
+    addNews(S, 'Parliament', b.title + ' killed', 'The majority took it off the paper without a division. The ' + PARTY[b.sponsor].short + ' called it an abuse of the House.', 'bad');
+  }
   if (action === 'withdraw') {
     archiveBill(S, b, 'withdrawn', 'Withdrawn by its sponsor');
     logIt(S, b.title + ' was withdrawn from the order paper.');
@@ -5684,8 +5758,20 @@ function partyDemandPolicy(st, pid) {
     var dir = tg > lv ? 1 : (tg < lv ? -1 : 0);
     if (dir) pool.push({ policy:id, dir:dir, gap:Math.abs(tg - lv) });
   }
+  if (!pool.length) return null;
+  /* Was a plain sort-and-take-the-top with no rand() anywhere, so a party
+     demanded the SAME statute session after session until it got it — which
+     is most of why the papers and the private members' bills read as one
+     thing on repeat. The gap still decides who is in the running; a weighted
+     draw decides which of them it is this time, so a party stays in
+     character without being a metronome. */
   pool.sort(function (a, b) { return b.gap - a.gap; });
-  return pool[0] || null;
+  var top = pool.slice(0, 5), tot = 0, i;
+  for (i = 0; i < top.length; i++) tot += top[i].gap * top[i].gap;
+  if (tot <= 0) return top[0];
+  var roll = rand() * tot;
+  for (i = 0; i < top.length; i++) { roll -= top[i].gap * top[i].gap; if (roll <= 0) return top[i]; }
+  return top[0];
 }
 
 function seedOpeningInbox(st) {
@@ -6215,6 +6301,16 @@ function standing(st) {
   return 'opposition';
 }
 function inPower(st) { return standing(st) !== 'opposition'; }
+/* An outright majority — the player's OWN party above half the Assembly, not
+   a coalition that adds up to one. Deliberately a separate predicate rather
+   than a fourth reading of standing(): standing() is consumed by twenty
+   sites, almost all of them string equality against 'leading', and a new
+   value would refuse a majority government the constitutional order and the
+   dissolution, lose it the working-majority record, and hand it the
+   opposition's opening inbox. Keyed to playParty, not st.ruling, or a junior
+   partner under a single-party majority would inherit the power to kill
+   other parties' bills. Assembly only; the Senate is read where it matters. */
+function outright(st) { return seatShare(st, [playParty(st)]) > .5; }
 function leads(st) { return standing(st) === 'leading'; }
 var AGENDA_DIRS = [
   { id:'left',    label:'Further left',        e:-.13, a:0,    note:'redistribution, public ownership, the unions' },
@@ -9042,9 +9138,26 @@ function billCard(b) {
     if (!b.confidence && lowerSits(S)) act('confidence','Make it confidence',7,0,false,'Raises Assembly support; defeat damages unity and capital.');
     if (b.stage === 'committee' && !b.urgent) act('urgent','Invoke urgency',6,0,false,'May clear committee and the Assembly in one session; antagonises the Senate.');
   }
-  if (b.owner === 'government' && !leads(S)) {
-    if (b.playerPosition !== 'support') act('support','Support the bill',2,0,false,'Your party will lend votes and improve relations with the sponsor.');
-    if (b.playerPosition !== 'oppose') act('oppose','Oppose the bill',2,0,false,'Your party will whip against the measure.');
+  /* S10b: a bill that is not yours. This block used to require
+     owner === 'government' AND that you were not leading — and aiGovern never
+     sponsors a government bill while you lead, while the private members'
+     path sponsors as 'opposition'. So the player who led a majority, which is
+     the case the whole feature is for, saw no controls on any other party's
+     bill at all. What is offered scales with what you actually command. */
+  if (b.owner !== 'player' && b.stage !== 'referendum') {
+    var mySeats = Math.round(seatShare(S, [playParty(S)]) * 100);
+    if (b.playerPosition !== 'support') act('support','Support the bill',2,0,false,'Your party votes for it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.');
+    if (b.playerPosition !== 'oppose') act('oppose','Oppose the bill',2,0,false,'Your party whips against it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.');
+    act('pressure','Press the sponsor',3,5,!!(b.lines && b.lines[b.sponsor]),'Lean on the sponsoring party privately. Cheap, deniable, and it costs you standing with them.');
+    if (inPower(S)) {
+      act('amendIt','Table an amendment',4,4,b.concessions >= 4,'It passes more easily and delivers less of what its sponsor wanted.');
+      act('delayIt','Send it back to committee',5,0,b.stage === 'committee' || (b.delayedBy || 0) >= 2,'Costs the sponsor a session and some Senate goodwill.');
+    } else {
+      act('talkOut','Talk it out',4,0,(b.talkedOut || 0) >= 2,'No votes, only time and noise. Raises the issue and the temperature.');
+    }
+    if (outright(S)) {
+      act('kill','Kill the bill',8,0,false,'Your party holds the Assembly alone. Take it off the paper without a division — and be seen to.');
+    }
   }
   if (b.owner === 'player') act('withdraw','Withdraw',0,0,false,'Remove the bill from the order paper.');
   var sponsor = PARTY[b.sponsor] ? PARTY[b.sponsor].short : 'Government';
@@ -10357,8 +10470,15 @@ sponsorBill=function(st,policy,dir,owner,strategy,free){
 };
 function pv5AiPrivateBill(st){
   if(!lowerSits(st)||!FORMS[st.form].elections||st.bills.length>=5||rand()>.46)return;
-  var opp=PARTIES.filter(function(p){return(st.coalition||[]).indexOf(p.id)<0&&!st.banned[p.id];})
-    .sort(function(a,b){return(st.seats[b.id]||0)-(st.seats[a.id]||0);})[0];
+  /* Was always the largest opposition party, so one party held the whole of
+     private members' time for the length of a campaign. Every unbanned party
+     outside the coalition now gets a look in, weighted by its seats — the big
+     ones still dominate the paper, the small ones are heard. */
+  var cands=PARTIES.filter(function(p){return(st.coalition||[]).indexOf(p.id)<0&&!st.banned[p.id]&&(st.seats[p.id]||0)>0;});
+  if(!cands.length)return;
+  var tot=0,i;for(i=0;i<cands.length;i++)tot+=st.seats[cands[i].id]||0;
+  var roll=rand()*tot,opp=cands[cands.length-1];
+  for(i=0;i<cands.length;i++){roll-=(st.seats[cands[i].id]||0);if(roll<=0){opp=cands[i];break;}}
   if(!opp)return;
   var pick=partyDemandPolicy(st,opp.id);if(!pick)return;
   var b=pv5SponsorBillV4(st,pick.policy,pick.dir,'opposition','clean',true);if(!b)return;

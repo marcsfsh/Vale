@@ -321,6 +321,92 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(republic.benchNamed.split('/')[0] === republic.benchNamed.split('/')[1], 'the bench is named on arrival',
     republic.benchNamed + ' justices named without the Judicial page being opened');
 
+  /* S10b — THE ORDER PAPER. What you can do about a bill that is not yours,
+     and how much it is worth. */
+  const paper = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const opp = PARTIES.filter(x => x.id !== me && !S.banned[x.id])[0];
+    const seatsBefore = JSON.parse(JSON.stringify(S.seats));
+    const donor = PARTIES.filter(x => x.id !== me && x.id !== opp.id)[0].id;
+
+    const mk = () => {
+      const pick = partyDemandPolicy(S, opp.id);
+      const b = sponsorBill(S, pick.policy, pick.dir, 'opposition', 'clean', true);
+      b.sponsor = opp.id; b.owner = 'opposition';
+      return b;
+    };
+    const acts = html => [...html.matchAll(/data-bill-action="([a-zA-Z]+)"/g)].map(m => m[1]);
+    const setSeats = frac => { S.seats[me] = Math.round(CFG.seats * frac); S.seats[donor] = Math.max(0, CFG.seats - S.seats[me] - (S.seats[opp.id] || 0)); };
+
+    /* 1. outright() tells a sole majority from a coalition that adds to one */
+    setSeats(.60); S.coalition = [me];
+    out.soleMajority = outright(S);
+    setSeats(.30); S.coalition = [me, donor, opp.id];
+    out.coalitionMajority = outright(S);
+    /* and it is keyed to the player, not the ruling party */
+    const keptRuling = S.ruling, keptPlay = S.playAs;
+    S.ruling = donor; S.playAs = me; S.seats[donor] = Math.round(CFG.seats * .6); S.seats[me] = 40;
+    out.juniorUnderMajority = outright(S);
+    S.ruling = keptRuling; S.playAs = keptPlay;
+
+    /* 2. an opposition bill has controls at all — the reported gap */
+    S.capital = 400; setSeats(.30); S.coalition = [me];
+    let b = mk();
+    out.oppositionBillControls = acts(billCard(b)).filter(a => ['support', 'oppose', 'pressure'].indexOf(a) >= 0).length;
+
+    /* 3. the lever set scales with what you command */
+    S.ruling = opp.id; S.playAs = me; S.coalition = [opp.id];
+    out.inOpposition = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
+    S.ruling = me; S.coalition = [me, donor]; setSeats(.30);
+    out.inGovernment = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
+    S.coalition = [me]; setSeats(.60);
+    out.atOutright = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
+
+    /* 4. a declared line is worth what the party declaring it is worth */
+    const delta = frac => {
+      setSeats(frac);
+      b.playerPosition = null; const a = billForecast(S, b).lower;
+      b.playerPosition = 'oppose'; const c = billForecast(S, b).lower;
+      b.playerPosition = null;
+      return Math.round((a - c) * 10) / 10;
+    };
+    out.d05 = delta(.05); out.d50 = delta(.50); out.d90 = delta(.90);
+
+    /* 5. the handler refuses the kill, not only the renderer */
+    setSeats(.30); S.coalition = [me, donor];
+    const n0 = S.bills.length; billAction(b.id, 'kill');
+    out.killRefused = S.bills.length === n0;
+    setSeats(.60); S.coalition = [me];
+    billAction(b.id, 'kill');
+    out.killWorks = S.bills.length === n0 - 1 && (S.billArchive[0] || {}).stage === 'killed';
+
+    /* 6. a party does not demand the same statute for ever */
+    const seen = {};
+    for (let i = 0; i < 40; i++) { const pk = partyDemandPolicy(S, opp.id); if (pk) seen[pk.policy] = 1; }
+    out.demandVariety = Object.keys(seen).length;
+
+    S.seats = seatsBefore;
+    return out;
+  });
+
+  say(paper.soleMajority && !paper.coalitionMajority && !paper.juniorUnderMajority,
+    'an outright majority is distinct',
+    `sole majority: ${paper.soleMajority} · coalition that adds to one: ${paper.coalitionMajority} · ` +
+    `junior partner under a majority government: ${paper.juniorUnderMajority}`);
+  say(paper.oppositionBillControls >= 3, 'another party\'s bill has controls',
+    paper.oppositionBillControls + ' of support/oppose/pressure offered on an opposition-sponsored bill');
+  say(paper.inOpposition === 'talkOut' && paper.inGovernment === 'amendIt,delayIt' && paper.atOutright === 'amendIt,delayIt,kill',
+    'the levers scale with standing',
+    `opposition: [${paper.inOpposition}] · in government: [${paper.inGovernment}] · outright: [${paper.atOutright}]`);
+  say(paper.d05 < paper.d50 && paper.d50 < paper.d90 && paper.d05 < 1.5 && paper.d90 > 6,
+    'a line is worth what its party is',
+    `opposing costs the bill ${paper.d05} at 5% of the Assembly, ${paper.d50} at 50%, ${paper.d90} at 90% (was a flat 8 at any size)`);
+  say(paper.killRefused && paper.killWorks, 'the kill is gated where it acts',
+    `refused without a majority: ${paper.killRefused} · archived as killed with one: ${paper.killWorks}`);
+  say(paper.demandVariety >= 3, 'a party varies what it demands',
+    paper.demandVariety + ' distinct statutes demanded across 40 draws (was 1, with no rand() in the function)');
+
+
   // 1. the authority ladder, precondition by precondition
   const ladder = await page.evaluate(() => {
     const out = [];
