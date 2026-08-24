@@ -84,6 +84,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      the rescale reads exactly what it read before. */
   const ladderParity = await page.evaluate(() => {
     const bad = { max: [], rows: [], needs: [], build: [], rung: [], seed: [] };
+    let checked = 0;
     const cats = {};
     const near = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
     const authored = (p, key) => p[key + '2'] !== undefined || p[key + '3'] !== undefined || p[key + '4'] !== undefined;
@@ -97,10 +98,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const m = p.lin;
       if (!(m >= 1 && m <= 4)) { bad.rows.push(p.id + ' lin ' + m); return; }
       if (!authored(p, 'eff')) for (const k in (p.eff || {})) {
+        checked++;
         if (!near(p._effAt[4][k] || 0, p.eff[k] * m)) bad.build.push(p.id + '.eff.' + k);
         for (let n = 0; n <= m; n++) if (!near(p._effAt[Math.round(n * 4 / m)][k] || 0, p.eff[k] * n)) bad.rung.push(p.id + '.eff.' + k + '@' + n);
       }
       if (!authored(p, 'mood')) for (const k in (p.mood || {})) {
+        checked++;
         if (!near(p._moodAt[4][k] || 0, p.mood[k] * m)) bad.build.push(p.id + '.mood.' + k);
         for (let n = 0; n <= m; n++) if (!near(p._moodAt[Math.round(n * 4 / m)][k] || 0, p.mood[k] * n)) bad.rung.push(p.id + '.mood.' + k + '@' + n);
       }
@@ -135,16 +138,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       if (!keys(3).some(k => keys(2).indexOf(k) < 0)) noNew3.push(p.id);
       if (!keys(4).some(k => keys(3).indexOf(k) < 0)) noNew4.push(p.id);
     });
-    return { bad, cats, n: POLICIES.length, catN: Object.keys(cats).length,
+    return { bad, cats, checked, n: POLICIES.length, catN: Object.keys(cats).length,
       authored: authoredSet.length, flat, noNew3: noNew3.length, noNew4: noNew4.length };
   });
   const lp = ladderParity.bad;
   say(lp.max.length === 0 && lp.rows.length === 0, 'four rungs on every statute',
     `${ladderParity.n} statutes, all max 4 with five rows on every channel` + (lp.max.length ? '; wrong max: ' + lp.max.slice(0, 4).join(', ') : '') + (lp.rows.length ? '; missing rows: ' + lp.rows.slice(0, 4).join(', ') : ''));
+  /* Both of these only look at channels still derived from `lin`. Once every
+     statute is authored they check nothing, so they state the count rather
+     than reading as a pass over an empty set — the frozen full-build baseline
+     below is what guards the authored ones. */
   say(lp.build.length === 0, 'the full build is unchanged',
-    lp.build.length ? lp.build.length + ' channels drifted: ' + lp.build.slice(0, 5).join(', ') : 'every unauthored channel still totals base x its old maximum at rung 4');
+    lp.build.length ? lp.build.length + ' channels drifted: ' + lp.build.slice(0, 5).join(', ')
+      : (ladderParity.checked ? ladderParity.checked + ' unauthored channels still total base x their old maximum at rung 4'
+        : 'no unauthored channel left to check — every statute carries an authored curve'));
   say(lp.rung.length === 0, 'every rescaled rung is exact',
-    lp.rung.length ? lp.rung.length + ' off: ' + lp.rung.slice(0, 5).join(', ') : 'interpolation reproduces the old ladder at every reachable position');
+    lp.rung.length ? lp.rung.length + ' off: ' + lp.rung.slice(0, 5).join(', ')
+      : (ladderParity.checked ? 'interpolation reproduces the old ladder at every reachable position'
+        : 'nothing interpolated — every statute carries an authored curve'));
   say(lp.needs.length === 0 && lp.seed.length === 0, 'nothing points off the ladder',
     lp.needs.length || lp.seed.length ? [...lp.needs, ...lp.seed].slice(0, 5).join('; ') : 'every needs: resolves; every want, programme target and scenario seed sits on a rung');
   /* S9g: the twenty CORE categories hold exactly twenty-four statutes each.
