@@ -11313,6 +11313,9 @@ function v6RegionVote(st, r, noise) {
     var v = (st.psupport[p.id] || .01) * v6RegionFit(st, p.id, r);
     if (g && g.party === p.id) v *= 1 + (g.approval - 50) / 160;
     if (g && g.challenge === p.id) v *= 1.08;
+    /* Money and organisers put into the state campaign, which decays if the
+       ballot is still years away. See v6GovernorAction's 'campaign'. */
+    if (g && g.pushBy === p.id && g.push) v *= 1 + Math.min(.2, g.push);
     if (noise) v *= .9 + rand() * .2;
     res[p.id] = v; tot += v;
   });
@@ -11328,7 +11331,7 @@ function v6MakeGovernor(st, r, pid) {
   var same = pid === playParty(st), allied = !same && (st.coalition || [st.ruling]).indexOf(pid) >= 0 && inPower(st);
   return { name:makeName(), party:pid, age:46 + Math.floor(rand() * 20), since:yearOf(st.turn),
     standing:clamp(50 + (same ? 12 : (allied ? 4 : -9)) + Math.floor(rand() * 12) - 6, 15, 85),
-    approval:48 + Math.floor(rand() * 14), challenge:null, terms:1 };
+    approval:48 + Math.floor(rand() * 14), challenge:null, terms:1, push:0, pushBy:null };
 }
 function v6GovernorsTick(st) {
   var v = st.v6, co = st.coalition || [st.ruling];
@@ -11346,6 +11349,9 @@ function v6GovernorsTick(st) {
     g.approval = c100(g.approval + (apTarget - g.approval) * .15 + (rand() - .5) * 2);
     /* Governors age in ageRoster with everybody else. Incrementing here as
        well is how they reached a hundred and twenty. */
+    /* A state campaign decays: organisers go home, and money spent seven
+       years before a ballot buys nothing at it. */
+    if (g.push) { g.push *= .72; if (g.push < .01) { g.push = 0; g.pushBy = null; } }
     /* Standing with the governor moves federal trust in the region, a little, every session. */
     if (power) q.federal = c100(q.federal + (g.standing - 50) * .03);
     if (v.autonomy[r.id]) { q.federal = c100(q.federal - .3); }
@@ -11385,6 +11391,7 @@ function v6GovernorElections(st, early) {
     var res = v6RegionVote(st, r, true), best = null;
     PARTIES.forEach(function (p) { if (!best || res[p.id] > res[best]) best = p.id; });
     if (g.challenge) g.challenge = null;
+    g.push = 0; g.pushBy = null;
     g.termEnds = st.turn + 8;
     if (best === g.party && g.age < 74 && rand() > .18) { g.terms += 1; held.push({ region:r, gov:g }); return; }
     var old = g;
@@ -11420,9 +11427,33 @@ function v6GovernorAction(id, action) {
     logIt(S, 'A joint federal and state works programme was signed for ' + r.name + '.');
   } else if (action === 'challenge') {
     if (g.party === me) { flash('The governor is already one of yours.'); return; }
+    if (v6BallotsUntilRegion(S, r) > 1) { flash('The ballot in ' + r.name + ' is too far off to run a challenger at it.'); return; }
     if (!pv5Spend(4, 6, 'Back a challenger in ' + r.name)) return;
     g.challenge = me; g.standing = c100(g.standing - 14); S.machine[me] = clamp((S.machine[me] || 0) + .02, -.8, 1);
     logIt(S, 'The ' + PARTY[me].short + ' put money and organisers behind a challenger to the governor of ' + r.name + '.');
+  } else if (action === 'campaign') {
+    /* The state campaign. Only worth running when the ballot is in sight —
+       and the weight decays every session, so committing early is wasted. */
+    if (!FORMS[S.form].elections) { flash('There is no state ballot to campaign for.'); return; }
+    if (v6BallotsUntilRegion(S, r) > 1) { flash('The ballot in ' + r.name + ' is too far off to campaign in.'); return; }
+    if (!pv5Spend(3, 7, 'Campaign in ' + r.name)) return;
+    if (g.pushBy !== me) { g.pushBy = me; g.push = 0; }
+    g.push = Math.min(.2, (g.push || 0) + .07);
+    S.machine[me] = clamp((S.machine[me] || 0) + .012, -.8, 1);
+    S.regions[r.id].attention = (S.regions[r.id].attention || 0) + 1;
+    logIt(S, 'The ' + PARTY[me].short + ' opened a state campaign in ' + r.name + ' ahead of the ballot.');
+  } else if (action === 'stump') {
+    /* The leader goes in person. Bigger, dearer, and it costs approval
+       elsewhere if the leader is nobody's idea of an asset. */
+    if (!FORMS[S.form].elections) { flash('There is no state ballot to campaign for.'); return; }
+    if (v6BallotsUntilRegion(S, r) > 0) { flash('The leader goes in only when the ballot is this session or the next.'); return; }
+    if (!pv5Spend(6, 4, 'Send the leader to ' + r.name)) return;
+    var ld = leaderOf(S, me), orator = ld.trait === 'orator' ? 1.7 : (ld.trait === 'invisible' ? .5 : 1);
+    if (g.pushBy !== me) { g.pushBy = me; g.push = 0; }
+    g.push = Math.min(.2, (g.push || 0) + .09 * orator);
+    S.regions[r.id].attention = (S.regions[r.id].attention || 0) + 2;
+    mood(S, { prof: orator > 1 ? .8 : -.4 });
+    logIt(S, ld.name + ' spent the week in ' + r.name + '. ' + (orator > 1 ? 'The halls were full.' : 'The halls were not full.'));
   } else if (action === 'override') {
     if (!inPower(S)) { flash('Only a government can override a state.'); return; }
     if (!pv5Spend(6, 0, 'Override ' + r.name)) return;
@@ -12960,11 +12991,18 @@ function v6GovStrip(r) {
      year advanced one year every year and the ballot was permanently nine
      years away. It now reads the same schedule the ballot itself uses. */
   var nextBallotTurn = v6NextRegionBallot(S, r);
+  var untilBallot = v6BallotsUntilRegion(S, r), near = untilBallot <= 1, due0 = untilBallot === 0;
   return '<div class="gov-strip"><div class="gov-seal" style="border-color:' + PARTY[g.party].color + '">' + esc(ini) + '</div><div>' +
     '<div class="gov-name">' + esc(g.name) + ', Governor</div><div class="gov-meta">' + esc(PARTY[g.party].short) + ' · aged ' + g.age + ' · since ' + g.since + ' · ' + (g.appointed ? 'appointed' : 'term ' + g.terms) + (FORMS[S.form].elections ? ' · state ballot ' + yearOf(nextBallotTurn) : '') + (g.challenge ? ' · challenger backed' : '') + (auto ? ' · autonomous since ' + yearOf(S.v6.autonomy[r.id]) : '') + '</div>' +
     '<div class="row"><span class="lab small">Standing with you</span><span class="bar ' + (g.standing >= 60 ? 'b-ok' : (g.standing < 30 ? 'b-bad' : 'b-ox')) + '"><i style="width:' + g.standing.toFixed(0) + '%"></i></span><span class="val">' + Math.round(g.standing) + '</span></div>' +
     '<div class="row"><span class="lab small">Approval at home</span><span class="bar ' + (g.approval >= 55 ? 'b-ok' : (g.approval < 40 ? 'b-bad' : 'b-ox')) + '"><i style="width:' + g.approval.toFixed(0) + '%"></i></span><span class="val">' + Math.round(g.approval) + '</span></div>' +
-    '<div class="btnrow">' + gb('meet', 'Meet', 2, 0) + gb('works', 'Joint works', 5, 8) + (same ? '' : gb('challenge', 'Back a challenger', 4, 6, !!g.challenge || !FORMS[S.form].elections)) + gb('override', 'Override', 6, 0, !inPower(S)) + (auto ? gb('autonomyTalks', 'Reintegration talks', 8, 10) : '') + '</div></div></div>';
+    (near ? '<div class="tagline"><span class="tag up">State ballot ' + (due0 ? 'this session' : 'next ballot') + '</span>' +
+      (g.challenge ? '<span class="tag">Challenger backed by ' + esc(PARTY[g.challenge].short) + '</span>' : '') +
+      (g.push && g.pushBy ? '<span class="tag">' + esc(PARTY[g.pushBy].short) + ' campaigning, +' + Math.round(g.push * 100) + '%</span>' : '') + '</div>' : '') +
+    '<div class="btnrow">' + gb('meet', 'Meet', 2, 0) + gb('works', 'Joint works', 5, 8) +
+    (near && FORMS[S.form].elections ? gb('campaign', 'Campaign', 3, 7) : '') +
+    (due0 && FORMS[S.form].elections ? gb('stump', 'Send the leader', 6, 4) : '') +
+    (same ? '' : gb('challenge', 'Back a challenger', 4, 6, !!g.challenge || !FORMS[S.form].elections || !near)) + gb('override', 'Override', 6, 0, !inPower(S)) + (auto ? gb('autonomyTalks', 'Reintegration talks', 8, 10) : '') + '</div></div></div>';
 }
 var v6ViewFederationV5 = viewFederation;
 viewFederation = function () {
@@ -19645,6 +19683,112 @@ function v10MergeSeaWall(st) {
   }
   logIt(st, 'The two Somnium Sea Wall projects were found to be the same sea wall. The works have been merged under one heading and the money already spent carried across.');
 }
+
+/* ============================================================
+   THE NAMES
+   GIVEN was forty entries and SURNAME forty — sixteen hundred pairs, drawn
+   without any check for a name already in use, for a cast of roughly
+   thirty-five living officials replaced over two hundred sessions. A repeat
+   somewhere in the government was near-certain in any long campaign, and the
+   opening bench of justices repeated within itself.
+
+   The pools are pushed, not rewritten: the arrays are plain top-level vars
+   and every generator reads them by reference, which is the same idiom
+   V10_POLICIES uses. Register spelling stays as it is — Vale is a
+   cosmopolitan federal republic and its officials always read that way.
+   ============================================================ */
+[
+  'Ottoline','Ferenc','Aurelia','Kwabena','Ingeborg','Matthias','Saoirse','Dmitri','Perpetua','Ansgar',
+  'Leocadia','Ravi','Theodora','Emeka','Wilhelmina','Cosimo','Annelies','Tarek','Georgiana','Piotr',
+  'Sunniva','Abebe','Rosamund','Ignatius','Yelena','Bartholomew','Xiomara','Fyodor','Cordelia','Hidalgo',
+  'Marisol','Aurelio','Britta','Chidi','Evangeline','Roald','Anneke','Zubair','Hyacinth','Casimir',
+  'Sigrid','Olamide','Antonia','Lorcan','Freya','Nikolai','Ximena','Bertram','Isolde','Amadou',
+  'Clementine','Stellan','Radhika','Augustin','Morwenna','Enzo','Katarzyna','Obadiah','Lucia','Torvald',
+  'Seraphina','Kofi','Adelaide','Wenceslas','Nuria','Erasmus','Yasmin','Aleksander','Philippa','Bassam',
+  'Ottilie','Ravindra','Magdalena','Cormac','Elke','Idris','Rosalie','Gunnar','Priya','Absalom',
+  'Camille','Zenobia','Hartley','Nadezhda','Emerich','Solveig','Kenji','Aurore','Barnaby','Thandiwe',
+  'Lazarus','Ottavia','Rurik','Genevieve','Malachy','Anouk','Sergei','Perpetue','Wilhelm','Oyelaran',
+  'Beatrice','Florian','Nkechi','Ludovic','Astrid','Rasheed','Vivienne','Tomasz','Elowen','Dario',
+  'Sunniyah','Ambrose','Ludmila','Fenwick','Chiara','Osgood','Marit','Jarrah','Honoria','Vitali',
+  'Sylvestre','Amelie','Kwesi','Roswitha','Emrys','Nadira','Lars','Ottoman','Belisarius','Anneli',
+  'Marcelline','Hew','Zsofia','Alaric','Ndidi','Grethe','Rustam','Perrine','Odhran','Vasilisa',
+  'Cuthbert','Naima','Leopold','Sanna','Bakari','Rowena','Aurel','Mirembe','Tiberius','Halina',
+  'Osgar','Delia','Kristoffer','Amara','Ruben','Sigfrid','Nnamdi','Ingrid','Valentin','Oksana'
+].forEach(function (n) { if (GIVEN.indexOf(n) < 0) GIVEN.push(n); });
+
+[
+  'Ashcombe','Balogun','Cavendish-Rowe','Drozdov','Eskilsson','Fontaine','Gilliatt','Hawksmoor','Ibarra','Jansson',
+  'Kirkbride','Lascelles','Mbeki','Northcote','Ollivant','Prendergast','Quillane','Ravensworth','Stanhope','Tremaine',
+  'Underhill','Voskuijlen','Wexford','Yaremenko','Zubiri','Aldworth','Bexley','Coldstream','Danforth','Ellersley',
+  'Fairweather','Glendinning','Haverford','Inchcape','Jerrold','Kettleby','Lockridge','Mainwaring','Nettlefold','Ormsby',
+  'Pemberton','Quarrington','Redmayne','Stallworth','Thackeray','Ulverston','Vandermeer','Wetherby','Yelverton','Zaragoza',
+  'Achebe','Bergqvist','Chukwuma','Dziedzic','Eyitayo','Falkenrath','Gustavsson','Hollingsworth','Iwasaki','Jokinen',
+  'Kowalczyk','Lindegaard','Mazzarella','Nikolaidis','Oyelowo','Pankhurst','Quintanilla','Rothbury','Saarinen','Tavares',
+  'Ueshiba','Vargas-Holm','Wilberforce','Yildirim','Zamorano','Ashworth','Blackwood','Carrington','Devereux','Ekstrand',
+  'Fitzalan','Grimsby','Hargreaves','Ivanenko','Jelinek','Karlsen','Lundberg','Merriweather','Nyquist','Ondaatje',
+  'Pettigrew','Quennell','Rutherford','Stavros','Thorvaldsen','Uriarte','Villanueva','Whitcombe','Yarborough','Zielinski',
+  'Adebowale','Brannigan','Cottingham','Delarosa','Engelbrecht','Forsythe','Groenewald','Hutchence','Ishikawa','Jankovic',
+  'Kensington','Lamontagne','Moriarty','Nordstrom','Okwuosa','Pirandello','Quenneville','Rasmusson','Silverbirch','Torrance',
+  'Ustinov','Verhoeven','Waverley','Yamashita','Zabala','Applegarth','Braithwaite','Chesterton','Dunmore','Ettinger',
+  'Fairholm','Gallowglass','Holbrooke','Ingersoll','Jourdain','Kilbride','Loxley','Marchbanks','Newcomen','Oldcastle',
+  'Pennington','Quarrie','Ravenscroft','Selkirk','Trelawney','Umberto','Vasconcelos','Wrenfield','Yeardley','Zetterlund',
+  'Amundsen','Bellweather','Cazalet','Draycott','Everard','Fenwicke','Gorodetsky','Hallesby','Ingleby','Jarnac'
+].forEach(function (n) { if (SURNAME.indexOf(n) < 0) SURNAME.push(n); });
+
+/* Regional colour. Every name remains possible in every region — this only
+   WEIGHTS the draw, so that the Marches and the Somnium Coast read like
+   different parts of one country rather than one shuffled list. Deliberately
+   not done by party: tying a name to a political tendency would say something
+   about Vale that Vale does not say about itself. */
+var V10_REGION_NAMES = {
+  somnium:  ['Cavendish-Rowe','Lascelles','Stanhope','Pemberton','Wilberforce','Hollingsworth','Carrington','Kensington','Fontaine','Tavares'],
+  thaxia:   ['Drozdov','Yaremenko','Kowalczyk','Dziedzic','Jelinek','Zielinski','Ivanenko','Jankovic','Gorodetsky','Zabala'],
+  rigel:    ['Ibarra','Zubiri','Quintanilla','Zamorano','Vargas-Holm','Villanueva','Uriarte','Delarosa','Vasconcelos','Torrance'],
+  tenebris: ['Eskilsson','Jansson','Bergqvist','Gustavsson','Lindegaard','Saarinen','Karlsen','Lundberg','Nordstrom','Amundsen'],
+  cassian:  ['Ashcombe','Kirkbride','Coldstream','Glendinning','Inchcape','Selkirk','Kilbride','Brannigan','Moriarty','Hallesby'],
+  meridian: ['Nikolaidis','Stavros','Iwasaki','Ueshiba','Yamashita','Ishikawa','Yildirim','Pirandello','Mazzarella','Ondaatje'],
+  marches:  ['Northcote','Ravensworth','Tremaine','Wexford','Yelverton','Grimsby','Oldcastle','Marchbanks','Ravenscroft','Trelawney'],
+  district: ['Prendergast','Mainwaring','Thackeray','Pankhurst','Rutherford','Pettigrew','Chesterton','Holbrooke','Ingersoll','Everard']
+};
+
+/* Every name currently attached to somebody alive and in public life. Used to
+   stop the government carrying two people with the same name — the one thing
+   makeName has never checked. */
+function v10LiveNames(st) {
+  var set = {};
+  function add(n) { if (n) set[n] = true; }
+  var f = st.figures;
+  if (f) {
+    for (var k in (f.leaders || {})) add(f.leaders[k] && f.leaders[k].name);
+    for (var e in (f.exec || {})) add(f.exec[e] && f.exec[e].name);
+  }
+  for (var m in (st.ministers || {})) add(st.ministers[m] && st.ministers[m].name);
+  if (st.v6 && st.v6.governors) for (var g in st.v6.governors) add(st.v6.governors[g] && st.v6.governors[g].name);
+  return set;
+}
+/* Bounded: six attempts, then take what we have. Unbounded retry against a
+   pool that could in principle be exhausted is how a save load hangs. */
+function v10UniqueName(st, pool) {
+  var used = v10LiveNames(st), n = '';
+  for (var i = 0; i < 6; i++) {
+    n = (pool && pool.length && rand() < .6) ? (rnd(GIVEN) + ' ' + rnd(pool)) : makeName();
+    if (!used[n]) return n;
+  }
+  return n;
+}
+
+var v10MakeFigureBase = makeFigure;
+makeFigure = function (st, pid, minAge) {
+  var f = v10MakeFigureBase(st, pid, minAge);
+  f.name = v10UniqueName(st, null);
+  return f;
+};
+var v10MakeGovernorBase = v6MakeGovernor;
+v6MakeGovernor = function (st, r, pid) {
+  var g = v10MakeGovernorBase(st, r, pid);
+  g.name = v10UniqueName(st, r && V10_REGION_NAMES[r.id]);
+  return g;
+};
 
 /* THE OBITUARIES. st.figures.obits has been written on every death and
    retirement since the v4 base, capped at forty, and carried in every save —
