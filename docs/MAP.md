@@ -329,7 +329,17 @@ ladder as `lin`, and expands four channels into five rows each:
   `eff2`..`eff4` (and `mood2..4`, `rev2..4`, `exp2..4`) are CUMULATIVE TOTALS
   at that rung, restating only the keys that change; anything not restated
   carries forward. Per channel: if any `<key>2..4` exists the channel is
-  authored, otherwise it is interpolated from `lin`.
+  authored, otherwise it is interpolated from `lin`. **Since S9h every one of
+  the 582 statutes is authored** — the interpolation is the fallback for
+  anything added later, not a live path, and roads.js reports when it has
+  nothing left to check rather than passing over an empty set.
+- **The curve grammar** every statute is written to: rung 1 the pilot, rung 2
+  the programme, rung 3 the second order (a key that appears only at scale),
+  rung 4 the whole instrument plus a cost it did not have lower down. Rung 4
+  on a key the statute already had must equal what that statute always
+  delivered at full build — `tools/fullbuild-baseline.json` froze all 451
+  pre-S9h full builds and their materialized `auth`, and roads.js checks
+  every one. Regenerating that file is a balance decision, not a chore.
 - **Interpolation** (`ladderMults`): a statute with old maximum m has its old
   rungs at new positions `round(n*4/m)`, and rows between them are linear.
   m=2 → 0/.5/1/1.5/2 of the base, m=3 → 0/1/1.5/2/3, m=1 → quarters, m=4 → the
@@ -344,7 +354,11 @@ ladder as `lin`, and expands four channels into five rows each:
 - **`auth` and `cost` are materialized at parse.** `auth` freezes from the
   rung-1 row so authoring a curve later cannot move a statute on the map;
   `cost` is scaled by `(1 + .6(m-1)) / 2.8` so a full build costs what it
-  always cost, in four instalments instead of m.
+  always cost, in four instalments instead of m. This is why `lin` survives
+  S9h: it is no longer read for effects, but the cost rescale needs it, so
+  the literals keep their original `max:` and P() reads the old ladder from
+  it. Do not "tidy" `max:2` to `max:4` in a literal — that silently makes the
+  statute more expensive to build out.
 - **Ladder-unit rule**: any term multiplying a raw ladder POSITION halved its
   coefficient in S9f (securityState 2→1, blocTarget's authority distance
   .9/.5→.45/.25, agendaStrain .15/.07→.075/.035). A rung is half what it was
