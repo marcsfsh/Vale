@@ -721,6 +721,26 @@
       "line": 17172,
       "aliasCaptured": true,
       "reason": "alias var v10ActCostBase captured above (S9e: the Offer arc's chartered-Senate discount)"
+    },
+    "pv5MakeMinister#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10MakeMinisterBase captured above (S10a: ministers gain an age at birth)"
+    },
+    "ageRoster#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10AgeRosterBase captured above (S10a: ministers and governors join the mortality roster)"
+    },
+    "ageSucceed#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10AgeSucceedBase captured above (S10a: succession arms for ministers and governors)"
+    },
+    "v8EnsureState#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10V8EnsureBase captured above (S10a: folds a pre-S10a save's retired 'coast' sea wall onto v9seawall, loudly)"
     }
   }
 }

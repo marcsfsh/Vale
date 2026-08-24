@@ -430,8 +430,8 @@ var DEPTS = {
 var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
-    capMult:3, capFlat:12, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
-    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:90, capCap:200, bond:150, resist:.25 },
+    capMult:4.2, capFlat:18, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
+    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:140, capCap:320, bond:150, resist:.25 },
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
@@ -4190,30 +4190,55 @@ function figureEffects(st) {
   });
 }
 
-function ageFigures(st) {
+/* The roster of people who age. Split out of ageFigures so that later chunks
+   can add their own kinds — ministers and governors both live in structures
+   this chunk cannot see. Anything added here MUST NOT be aged anywhere else:
+   v6GovernorsTick used to increment governors itself, and two increments a
+   session is how a governor reaches 120. */
+function ageRoster(st) {
   var all = [];
   PARTIES.forEach(function (p) { all.push({ f: leaderOf(st, p.id), kind:'leader', key:p.id }); });
   ['pres','vpres','chan','vchan'].forEach(function (o) { all.push({ f: holderOf(st, o), kind:'exec', key:o }); });
-  all.forEach(function (rec) {
+  return all;
+}
+/* What happens when one of them goes. Returns nothing; each kind is
+   responsible for seating its own successor. */
+function ageSucceed(st, rec, died) {
+  var f = rec.f;
+  if (rec.kind === 'leader') {
+    st.figures.leaders[rec.key] = makeFigure(st, rec.key, 41);
+    var nf = st.figures.leaders[rec.key];
+    logIt(st, (died ? 'Death of ' : 'Retirement of ') + f.name + ' of the ' + PARTY[rec.key].short +
+      '. ' + nf.name + ' takes the leadership, and is ' + (/^[aeiou]/i.test(TRAIT[nf.trait].name) ? 'an ' : 'a ') + TRAIT[nf.trait].name.toLowerCase() + '.');
+    if (rec.key === st.ruling) { st.capital = clamp(st.capital - 4, -5, capCap(st)); st.unrest += 3; }
+  } else if (rec.kind === 'exec') {
+    st.figures.exec[rec.key] = makeFigure(st, st.exec[rec.key], 46);
+    logIt(st, (died ? 'Death in office of ' : 'Resignation of ') + f.name + ', ' + DEPTS[rec.key].name +
+      '. ' + st.figures.exec[rec.key].name + ' is sworn in.');
+    st.capital = clamp(st.capital - 2, -5, capCap(st));
+  }
+}
+/* The trait vocabularies are disjoint registries that share three ids
+   ('technocrat', 'organiser', 'ideologue'), so an obituary cannot look a
+   trait up after the fact. Resolve the name at the moment of writing and keep
+   the raw id for the saves written before this existed. */
+function obitTraitName(f, kind) {
+  var reg = (kind === 'minister') ? (typeof PV5_MINISTER_TRAITS !== 'undefined' ? PV5_MINISTER_TRAITS : null) : TRAIT;
+  var t = reg && reg[f.trait];
+  return t ? t.name : '';
+}
+function ageFigures(st) {
+  ageRoster(st).forEach(function (rec) {
     var f = rec.f;
+    if (typeof f.age !== 'number') f.age = 52;
     f.age += 1;
     var risk = f.age > 78 ? .16 : (f.age > 70 ? .07 : (f.age > 62 ? .025 : .004));
     if (rand() > risk) return;
     var died = rand() < .45;
-    st.figures.obits.unshift({ name:f.name, party:f.party, year:yearOf(st.turn), died:died, trait:f.trait });
+    st.figures.obits.unshift({ name:f.name, party:f.party, year:yearOf(st.turn), died:died, trait:f.trait,
+      role:rec.kind, traitName:obitTraitName(f, rec.kind), age:f.age, office:rec.title || '' });
     if (st.figures.obits.length > 40) st.figures.obits.pop();
-    if (rec.kind === 'leader') {
-      st.figures.leaders[rec.key] = makeFigure(st, rec.key, 41);
-      var nf = st.figures.leaders[rec.key];
-      logIt(st, (died ? 'Death of ' : 'Retirement of ') + f.name + ' of the ' + PARTY[rec.key].short +
-        '. ' + nf.name + ' takes the leadership, and is ' + (/^[aeiou]/i.test(TRAIT[nf.trait].name) ? 'an ' : 'a ') + TRAIT[nf.trait].name.toLowerCase() + '.');
-      if (rec.key === st.ruling) { st.capital = clamp(st.capital - 4, -5, capCap(st)); st.unrest += 3; }
-    } else {
-      st.figures.exec[rec.key] = makeFigure(st, st.exec[rec.key], 46);
-      logIt(st, (died ? 'Death in office of ' : 'Resignation of ') + f.name + ', ' + DEPTS[rec.key].name +
-        '. ' + st.figures.exec[rec.key].name + ' is sworn in.');
-      st.capital = clamp(st.capital - 2, -5, capCap(st));
-    }
+    ageSucceed(st, rec, died);
   });
 }
 
@@ -10596,7 +10621,7 @@ function pv5CoalitionPanel(){
 function pv5MinisterCard(row){
   var m=S.ministers[row.key],q=cabQuality(S,row.key),controlled=holdsDept(S,row.office),sc=S.scandals.some(function(x){return x.status==='active'&&x.minister===row.key;});
   if(!m||!q)return '<article class="minister-card vacant"><div class="portrait">—</div><div class="statusline"><strong>'+esc(row.title)+'</strong><span>Vacant</span></div><p>'+esc(DEPTS[row.office].name+' · '+(controlled?'controlled by government':'outside government control'))+'</p><div class="btnrow"><button class="btn" data-appoint="'+row.key+'"'+(inPower(S)&&controlled?'':' disabled')+'>Shortlist candidates <span class="c">'+cst(4)+', '+fmc(4)+'</span></button></div></article>';
-  return '<article class="minister-card '+(sc?'scandal':'')+'"><div class="portrait">'+esc(pv5Initials(m.name))+'</div><div class="statusline"><strong>'+esc(row.title)+'</strong><span>'+esc(PARTY[m.party].short)+' · rank '+q+'</span></div><h3>'+esc(m.name)+'</h3><p>'+esc(PV5_MINISTER_TRAITS[m.trait].name+': '+PV5_MINISTER_TRAITS[m.trait].note)+'</p><div class="microstats"><span><b>'+Math.round(m.competence)+'</b>Competence</span><span><b>'+Math.round(m.loyalty)+'</b>Loyalty</span><span><b>'+Math.round(m.ambition)+'</b>Ambition</span></div><div class="tagline">'+Object.keys(row.effects).map(function(k){return '<span class="tag up">'+esc(IND[k].name)+' '+(row.effects[k]>0?'+':'')+row.effects[k]+'</span>';}).join('')+(sc?'<span class="tag down">Under investigation</span>':'')+'</div><div class="btnrow"><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="brief">Brief <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="launch">Initiative <span class="c">'+cst(3)+', '+fmc(3)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="empower"'+(q>=3?' disabled':'')+'>Empower <span class="c">'+cst(4)+', '+fmc(4)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="dismiss">Dismiss <span class="c">'+cst(2)+'</span></button></div></article>';
+  return '<article class="minister-card '+(sc?'scandal':'')+'"><div class="portrait">'+esc(pv5Initials(m.name))+'</div><div class="statusline"><strong>'+esc(row.title)+'</strong><span>'+esc(PARTY[m.party].short)+' · rank '+q+(typeof m.age==='number'?' · aged '+m.age:'')+'</span></div><h3>'+esc(m.name)+'</h3><p>'+esc(PV5_MINISTER_TRAITS[m.trait].name+': '+PV5_MINISTER_TRAITS[m.trait].note)+'</p><div class="microstats"><span><b>'+Math.round(m.competence)+'</b>Competence</span><span><b>'+Math.round(m.loyalty)+'</b>Loyalty</span><span><b>'+Math.round(m.ambition)+'</b>Ambition</span></div><div class="tagline">'+Object.keys(row.effects).map(function(k){return '<span class="tag up">'+esc(IND[k].name)+' '+(row.effects[k]>0?'+':'')+row.effects[k]+'</span>';}).join('')+(sc?'<span class="tag down">Under investigation</span>':'')+'</div><div class="btnrow"><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="brief">Brief <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="launch">Initiative <span class="c">'+cst(3)+', '+fmc(3)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="empower"'+(q>=3?' disabled':'')+'>Empower <span class="c">'+cst(4)+', '+fmc(4)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="dismiss">Dismiss <span class="c">'+cst(2)+'</span></button></div></article>';
 }
 function pv5ScandalPanel(){
   var active=S.scandals.filter(function(x){return x.status==='active';});
@@ -11319,28 +11344,65 @@ function v6GovernorsTick(st) {
     var fit = 1.1 - dist2(ppos(st, g.party), r.lean) * .2;
     var apTarget = 38 + q.prosperity * .16 + q.order * .12 + q.services * .1 + fit * 8 - Math.max(0, st.unrest - 40) * .12;
     g.approval = c100(g.approval + (apTarget - g.approval) * .15 + (rand() - .5) * 2);
-    g.age += 1;
+    /* Governors age in ageRoster with everybody else. Incrementing here as
+       well is how they reached a hundred and twenty. */
     /* Standing with the governor moves federal trust in the region, a little, every session. */
     if (power) q.federal = c100(q.federal + (g.standing - 50) * .03);
     if (v.autonomy[r.id]) { q.federal = c100(q.federal - .3); }
   });
 }
+/* Two of the eight regions go to the ballot at each federal ballot, so every
+   governorship is contested once every four ballots — eight years — and no
+   region is ever skipped.
+
+   The old test was `(st.turn + REGIONS.indexOf(r)) % 4 === 1`, evaluated only
+   on ballot turns, which are odd. For an odd turn `t % 4` is 1 or 3, so the
+   test could only ever be true for an EVEN region index: Thaxia, Tenebris,
+   Meridian and the Federal District never held a governor's election in any
+   campaign, their governors were never replaced and never stopped ageing, and
+   the card's ballot year slid forward a year every year for ever.
+
+   The cycle is now counted in BALLOTS, not turns, so an early election cannot
+   shift its parity and skip a region for the rest of the campaign. */
+function v6RegionSlot(r) { return Math.floor(REGIONS.indexOf(r) / 2) % 4; }
+function v6BallotsUntilRegion(st, r) {
+  var n = (st.v6 && st.v6.ballotNo) || 0;
+  return (v6RegionSlot(r) - (n % 4) + 4) % 4;
+}
+/* The turn a region's next state ballot falls on. Pure: it reads the ballot
+   counter and the federal calendar, never the current turn's distance from a
+   target it might never reach. */
+function v6NextRegionBallot(st, r) {
+  return nextBallot(st.turn) + v6BallotsUntilRegion(st, r) * 2;
+}
 function v6GovernorElections(st, early) {
-  var v = st.v6, changed = [];
+  var v = st.v6, changed = [], held = [];
+  var n = v.ballotNo || 0;
   REGIONS.forEach(function (r) {
     var g = v.governors[r.id];
-    var due = early || ((st.turn + REGIONS.indexOf(r)) % 4 === 1);
+    var due = early || (v6RegionSlot(r) === (n % 4));
     if (!due) return;
     var res = v6RegionVote(st, r, true), best = null;
     PARTIES.forEach(function (p) { if (!best || res[p.id] > res[best]) best = p.id; });
     if (g.challenge) g.challenge = null;
-    if (best === g.party && g.age < 74 && rand() > .18) { g.terms += 1; return; }
+    g.termEnds = st.turn + 8;
+    if (best === g.party && g.age < 74 && rand() > .18) { g.terms += 1; held.push({ region:r, gov:g }); return; }
     var old = g;
     v.governors[r.id] = v6MakeGovernor(st, r, best);
-    changed.push({ region:r, from:old, to:v.governors[r.id] });
+    v.governors[r.id].termEnds = st.turn + 8;
+    if (old.party === best) {
+      /* the party held the seat; the person changed */
+      held.push({ region:r, gov:v.governors[r.id], fresh:true });
+    } else {
+      changed.push({ region:r, from:old, to:v.governors[r.id] });
+    }
   });
+  v.ballotNo = n + 1;
   if (changed.length) {
     logIt(st, 'State ballots: ' + changed.map(function (c) { return c.region.name + ' passes from the ' + PARTY[c.from.party].short + ' to ' + c.to.name + ' of the ' + PARTY[c.to.party].short; }).join('; ') + '.');
+  }
+  if (held.length) {
+    logIt(st, 'State ballots: ' + held.map(function (h) { return PARTY[h.gov.party].short + ' holds ' + h.region.name + (h.fresh ? ' with ' + h.gov.name : ''); }).join('; ') + '.');
   }
   return changed;
 }
@@ -12893,7 +12955,11 @@ function v6GovStrip(r) {
     var ok = !disabled && S.capital >= cst(cost) && (!money || S.treasury >= money);
     return '<button class="btn ghost" data-governor="' + r.id + '" data-governor-action="' + action + '"' + (ok ? '' : ' disabled') + '>' + label + ' <span class="c">' + cst(cost) + (money ? ', ' + fmc(money) : '') + '</span></button>';
   }
-  var nextBallotTurn = S.turn; while (!(isBallotTurn(nextBallotTurn) && (nextBallotTurn + REGIONS.indexOf(r)) % 4 === 1)) { nextBallotTurn++; if (nextBallotTurn > S.turn + 8) break; }
+  /* Was a forward search for a turn matching the old modular test, giving up
+     after eight — so for the four regions that could never match, the printed
+     year advanced one year every year and the ballot was permanently nine
+     years away. It now reads the same schedule the ballot itself uses. */
+  var nextBallotTurn = v6NextRegionBallot(S, r);
   return '<div class="gov-strip"><div class="gov-seal" style="border-color:' + PARTY[g.party].color + '">' + esc(ini) + '</div><div>' +
     '<div class="gov-name">' + esc(g.name) + ', Governor</div><div class="gov-meta">' + esc(PARTY[g.party].short) + ' · aged ' + g.age + ' · since ' + g.since + ' · ' + (g.appointed ? 'appointed' : 'term ' + g.terms) + (FORMS[S.form].elections ? ' · state ballot ' + yearOf(nextBallotTurn) : '') + (g.challenge ? ' · challenger backed' : '') + (auto ? ' · autonomous since ' + yearOf(S.v6.autonomy[r.id]) : '') + '</div>' +
     '<div class="row"><span class="lab small">Standing with you</span><span class="bar ' + (g.standing >= 60 ? 'b-ok' : (g.standing < 30 ? 'b-bad' : 'b-ox')) + '"><i style="width:' + g.standing.toFixed(0) + '%"></i></span><span class="val">' + Math.round(g.standing) + '</span></div>' +
@@ -12999,14 +13065,14 @@ function viewRecord() {
   var stats = '<table><tbody>' + tr2('Sessions closed', Math.max(0, S.turn - 1)) + tr2('Dispatches answered', st.events) + tr2('Crises resolved', v.arcs.count) + tr2('Referendums won / lost', st.referendumsWon + ' / ' + st.referendumsLost) + tr2('Treaties signed', st.treaties) + tr2('Wars fought / won', st.wars + ' / ' + st.victories) + tr2('Governors met', st.governorsMet) + tr2('Coalitions negotiated', st.coalitionsNegotiated) + tr2('Longest run of balanced budgets', st.bestBalanceRun) + tr2('Your laws', S.legacy.playerLaws) + tr2('Years in government', S.legacy.yearsInGovernment) + tr2('Elections won', S.legacy.electionsWon) + '</tbody></table>';
   var programmes = Object.keys(v.programmesDone).map(function (id) { return '<span class="tag up">' + esc(V6_PROGRAMME[id] ? V6_PROGRAMME[id].name : id) + ', ' + yearOf(v.programmesDone[id]) + '</span>'; }).join('') || '<span class="muted small">None completed yet.</span>';
   var len = V6_LENGTHS[v.length] || V6_LENGTHS.epic, sc = V6_SCENARIO[v.scenario];
-  return '<div class="command-deck"><div class="eyebrow">The record of the government</div><div class="brief-head"><div><h2>What the Archives Will Say.</h2><p>' + esc((sc ? sc.name : 'A custom opening') + ', ' + len.name.toLowerCase() + ', ' + D().name.toLowerCase() + '. Began ' + CFG.startYear + ', ends ' + (S.endYear || CFG.endYear) + '.') + '</p></div><div class="headline"><div class="eyebrow">Records</div><b>' + unlocked + ' of ' + V6_ACHIEVEMENTS.length + '</b><span>' + v.arcs.count + ' crisis arc' + (v.arcs.count === 1 ? '' : 's') + ' resolved · ' + st.treaties + ' treat' + (st.treaties === 1 ? 'y' : 'ies') + '</span></div></div><div class="section-actions"><button class="btn ghost" data-gazette="1">Last session\'s Gazette</button><button class="btn ghost" data-jump="world">The chronicle</button></div></div>' +
+  return '<div class="command-deck"><div class="eyebrow">The record of the government</div><div class="brief-head"><div><h2>What the Archives Will Say.</h2><p>' + esc((sc ? sc.name : 'A custom opening') + ', ' + len.name.toLowerCase() + ', ' + D().name.toLowerCase() + '. Began ' + CFG.startYear + ', ends ' + (S.endYear || CFG.endYear) + '.') + '</p></div><div class="headline"><div class="eyebrow">Records</div><b>' + unlocked + ' of ' + V6_ACHIEVEMENTS.length + '</b><span>' + v.arcs.count + ' crisis arc' + (v.arcs.count === 1 ? '' : 's') + ' resolved · ' + st.treaties + ' treat' + (st.treaties === 1 ? 'y' : 'ies') + '</span></div></div><div class="section-actions"><button class="btn ghost" data-gazette="1">Last session\'s Gazette</button><button class="btn ghost" data-jump="record">The chronicle</button></div></div>' +
     '<div class="grid"><div><div class="panel"><h2>The Long Record</h2>' + v6HistoryChart() + '</div>' +
     '<div class="panel"><h2>Records and Honours</h2><div class="ach-grid">' + ach + '</div></div>' +
     '<div class="panel"><h2>Crises</h2>' + (arcs ? '<table class="arc-record"><thead><tr><th>Year</th><th>Crisis</th><th>Outcome</th></tr></thead><tbody>' + arcs + '</tbody></table>' : '<p class="note">No crisis arc has opened yet. They arrive unannounced and run for several sessions.</p>') + '</div></div>' +
     '<div><div class="panel"><h2>By the Numbers</h2>' + stats + '</div><div class="panel"><h2>Referendums</h2>' + (refs ? '<table><thead><tr><th>Year</th><th>Question</th><th class="num">Yes</th><th>Result</th></tr></thead><tbody>' + refs + '</tbody></table>' : '<p class="note">None held. Any measure can be put to the country from the drafting dialog when elections are on.</p>') + '</div><div class="panel"><h2>Programmes Completed</h2><div class="tagline">' + programmes + '</div></div>' +
     '<div class="panel"><h2>The Chronicle</h2><div class="log">' + ((S.chron || []).slice().reverse().slice(0, 14).map(function (c) {
       return '<div class="entry"><div class="when">' + c.year + '</div><p>' + esc(c.line) + '</p></div>';
-    }).join('') || '<p class="note muted">Nothing yet that a historian would record.</p>') + '</div></div>' + logPanel() + '</div></div>';
+    }).join('') || '<p class="note muted">Nothing yet that a historian would record.</p>') + '</div></div>' + (typeof v10ObituaryPanel === 'function' ? v10ObituaryPanel() : '') + logPanel() + '</div></div>';
 }
 
 /* ---------- the stats bar, with movement since the last session ---------- */
@@ -14557,19 +14623,31 @@ var V8_WORKS = [
     blurb:'A sovereign launch site and the satellite constellation to go on top of it. Prestige, with a price.',
     during:{ technology:.25, military:.1 },
     done:{ ind:{ technology:6, military:3, economy:2, tension:2 }, mood:{ tech:6, youth:4, veterans:3, prof:2 }, regions:{ meridian:7 }, capital:8, unity:3 },
-    req:function (st) { return st.ind.technology >= 60; }, reqText:'technology at 60' },
-  { id:'coast', name:'The Somnium Sea Wall', tag:'Environment', region:'somnium', cost:66, years:6,
-    blurb:'Barriers, pumps and managed retreat along the coast where a third of the country lives.',
-    during:{ environment:.2, infrastructure:.1 },
-    done:{ ind:{ environment:6, safety:3, infrastructure:3 }, mood:{ seniors:4, smallbiz:3, prof:3, youth:2 }, regions:{ somnium:7 }, capital:3, unity:1 },
-    req:function (st) { return true; }, reqText:'nothing' }
+    req:function (st) { return st.ind.technology >= 60; }, reqText:'technology at 60' }
+  /* 'coast' — a second Somnium Sea Wall — was retired in S10a. It and
+     V9_WORKS' 'v9seawall' carried the same NAME with different ids, so the
+     id-keyed merge guard at the bottom of V9_WORKS could not see the
+     collision and the Nation page printed two identical headings. The v9
+     entry survives; v10MergeSeaWall folds any save that was building this
+     one onto it. */
 ];
 var V8_WORK = {}; V8_WORKS.forEach(function (w) { V8_WORK[w.id] = w; });
 
-function v8WorkMax(st) { return st.diff === 'easy' || st.diff === 'gentle' ? 3 : 2; }
+/* S10a: the tier called "Very easy" builds six at once. Six commissions cost
+   five capital each, which is why the same slice raised that tier's opening
+   balance, its per-session income and — the one that would otherwise clamp
+   the other two away — its capital ceiling. */
+function v8WorkMax(st) { return st.diff === 'easy' ? 6 : (st.diff === 'gentle' ? 3 : 2); }
 function v8ActiveWorks(st) { if (!st.v8) return []; return V8_WORKS.filter(function (w) { var q = st.v8.works[w.id]; return q && q.status === 'active'; }); }
+/* The condition under which the Treasury stops paying for public works. Read
+   by BOTH the budget and the tick, because when they disagreed the session
+   that ran out of money charged a full round of instalments and then
+   suspended every site before any of them advanced: the money left and
+   nothing was built. */
+function v8WorksBroke(st) { return st.treasury <= 0 && st.debt > 600; }
 function v8WorkPerSession(st, w, q) {
   q = q || st.v8.works[w.id]; if (!q || q.status !== 'active' || q.mode === 'paused') return 0;
+  if (v8WorksBroke(st)) return 0;
   var base = q.cost / w.years;
   return q.mode === 'crash' ? base * 1.7 : base;
 }
@@ -14589,7 +14667,7 @@ budget = function (st) {
 
 function v8WorksTick(st) {
   var v = st.v8, over = { easy:.05, gentle:.07, normal:.1, hard:.14, brutal:.18 }[st.diff] || .1;
-  var broke = st.treasury <= 0 && st.debt > 600;
+  var broke = v8WorksBroke(st);
   v8ActiveWorks(st).forEach(function (w) {
     var q = v.works[w.id];
     if (q.mode === 'paused') { q.idle = (q.idle || 0) + 1; if (q.idle % 3 === 0) { q.cost = Math.round(q.cost * 1.03); } return; }
@@ -19521,6 +19599,139 @@ actCost = function (a) {
     c = Math.round(c * .67);
   }
   return c;
+};
+
+
+/* ============================================================
+   S10a — THE REPUBLIC AGES
+   Ministers and governors join the roster that already ages, dies and
+   writes an obituary. Both are added through ageRoster/ageSucceed rather
+   than through a second mortality system: same risk curve, same obituary
+   roll, one increment a session each.
+   ============================================================ */
+
+/* Ministers had no age at all. Backfill is PURE — no dice — because the
+   enrich chain runs inside v9's guard during readAutosave and undo, and a
+   roll there would make a campaign's dice depend on how often it was
+   reloaded. A minister is taken to have been 48 when appointed. */
+function v10MinisterAge(st, m) {
+  if (typeof m.age === 'number') return m.age;
+  m.age = clamp(48 + Math.max(0, (st.turn || 0) - (m.appointed || 0)), 30, 96);
+  return m.age;
+}
+var v10MakeMinisterBase = pv5MakeMinister;
+pv5MakeMinister = function (st, key, boost) {
+  var m = v10MakeMinisterBase(st, key, boost);
+  m.age = 42 + Math.floor(rand() * 21);
+  return m;
+};
+
+/* The retired sea wall. A save built before S10a may hold progress under the
+   old 'coast' id, whose literal no longer exists — the works panel maps over
+   V8_WORKS, so that record would simply stop appearing, which is exactly the
+   silent loss this project does not allow. Fold it onto the surviving entry
+   and say so. Pure arithmetic; safe inside the guarded enrich chain. */
+function v10MergeSeaWall(st) {
+  if (!st.v8 || !st.v8.works || !st.v8.works.coast) return;
+  var old = st.v8.works.coast, keep = st.v8.works.v9seawall, w = V8_WORK.v9seawall;
+  delete st.v8.works.coast;
+  if (!w) return;
+  if (!keep) {
+    st.v8.works.v9seawall = { status:old.status, mode:old.mode, cost:w.cost, spent:Math.min(old.spent || 0, w.cost),
+      started:old.started, done:old.done, cancelled:old.cancelled, overruns:old.overruns || 0, idle:0 };
+  } else {
+    keep.spent = Math.min((keep.spent || 0) + (old.spent || 0), keep.cost || w.cost);
+    keep.overruns = (keep.overruns || 0) + (old.overruns || 0);
+  }
+  logIt(st, 'The two Somnium Sea Wall projects were found to be the same sea wall. The works have been merged under one heading and the money already spent carried across.');
+}
+
+/* THE OBITUARIES. st.figures.obits has been written on every death and
+   retirement since the v4 base, capped at forty, and carried in every save —
+   and displayed nowhere at all. With ministers and governors now in the
+   roster it is the memory of a whole political generation, so it gets a page.
+   Saves written before S10a carry only {name, party, year, died, trait}; the
+   newer fields are read defensively. */
+function v10ObituaryPanel() {
+  var obs = (S.figures && S.figures.obits) || [];
+  if (!obs.length) return '<div class="panel"><h2>The Obituaries</h2><p class="note muted">Nobody has died or stood down yet.</p></div>';
+  var ROLE = { leader:'party leader', exec:'in office', minister:'minister', governor:'governor' };
+  var rows = obs.slice(0, 24).map(function (o) {
+    var who = ROLE[o.role] || '';
+    var tn = o.traitName || (TRAIT[o.trait] ? TRAIT[o.trait].name : '');
+    var meta = [PARTY[o.party] ? PARTY[o.party].short : '', who, o.office || '', tn,
+      (typeof o.age === 'number' ? 'aged ' + o.age : '')].filter(function (x) { return x; }).join(' · ');
+    return '<div class="entry"><div class="when">' + esc(String(o.year)) + '</div><p><b>' + esc(o.name) + '</b>' +
+      (o.died ? ' died' : ' stood down') + (meta ? '. <span class="muted">' + esc(meta) + '</span>' : '.') + '</p></div>';
+  }).join('');
+  var died = obs.filter(function (o) { return o.died; }).length;
+  return '<div class="panel"><h2>The Obituaries</h2><p class="note">' + obs.length + ' left public life' +
+    (died ? ', ' + died + ' of them in office' : '') + '. The roll keeps the last forty.</p><div class="log">' + rows + '</div></div>';
+}
+
+/* Hooked into v8's own ensure rather than enrichState: the v10 chunk
+   deliberately never wraps enrichState, so that v9's dice guard stays the
+   outermost link in the chain. This body spends no dice. */
+var v10V8EnsureBase = v8EnsureState;
+v8EnsureState = function (st, fresh) {
+  var out = v10V8EnsureBase(st, fresh);
+  if (out) v10MergeSeaWall(out);
+  return out;
+};
+
+var v10AgeRosterBase = ageRoster;
+ageRoster = function (st) {
+  var all = v10AgeRosterBase(st);
+  if (st.ministers && typeof pv5PortfolioRows === 'function') {
+    pv5PortfolioRows().forEach(function (row) {
+      var m = st.ministers[row.key];
+      if (!m) return;
+      v10MinisterAge(st, m);
+      all.push({ f: m, kind: 'minister', key: row.key, title: row.title });
+    });
+  }
+  if (st.v6 && st.v6.governors) {
+    REGIONS.forEach(function (r) {
+      var g = st.v6.governors[r.id];
+      if (!g) return;
+      if (typeof g.age !== 'number') g.age = 54;
+      all.push({ f: g, kind: 'governor', key: r.id, title: 'Governor of ' + r.name });
+    });
+  }
+  return all;
+};
+
+var v10AgeSucceedBase = ageSucceed;
+ageSucceed = function (st, rec, died) {
+  var f = rec.f;
+  if (rec.kind === 'minister') {
+    /* The portfolio is not refilled automatically: a department that loses
+       its minister is vacant until somebody appoints one, which is what the
+       Ministry page is for. The cabinet rank goes with them. */
+    delete st.ministers[rec.key];
+    if (st.cabinet) st.cabinet[rec.key] = 0;
+    logIt(st, (died ? 'Death in office of ' : 'Retirement of ') + f.name + ', ' + rec.title +
+      ', at ' + f.age + '. The post stands vacant.');
+    st.capital = clamp(st.capital - 2, -5, capCap(st));
+    if (typeof mood === 'function') mood(st, { prof: died ? -1.5 : -.6 });
+    return;
+  }
+  if (rec.kind === 'governor') {
+    var r = REGION[rec.key];
+    /* A governor who dies in office is replaced by their own party — the
+       lieutenant governor, in effect — and serves out the term. The ballot
+       clock is not reset by a death. */
+    var termEnds = f.termEnds;
+    var ng = v6MakeGovernor(st, r, f.party);
+    ng.terms = 1;
+    ng.termEnds = termEnds;
+    ng.appointed = true;
+    st.v6.governors[rec.key] = ng;
+    logIt(st, (died ? 'Death in office of ' : 'Retirement of ') + f.name + ', Governor of ' + r.name +
+      ', at ' + f.age + '. ' + ng.name + ' of the ' + PARTY[ng.party].short + ' serves out the term.');
+    return;
+  }
+  v10AgeSucceedBase(st, rec, died);
 };
 
 /* ---------- boot ---------- */
