@@ -476,6 +476,54 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(book.twoTargets === true, 'a targeted order is per target',
     'the same instrument stands separately in two regions: ' + book.twoTargets);
 
+  /* S10d — THE WORKS. Forty-eight distinct, and instruments that change what
+     a work turns out to be rather than only how fast it is paid for. */
+  const works = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const keep = { ruling: S.ruling, coalition: S.coalition, capital: S.capital, treasury: S.treasury,
+      works: JSON.parse(JSON.stringify(S.v8.works)), ind: JSON.parse(JSON.stringify(S.ind)) };
+    out.count = V8_WORKS.length;
+    out.regions = new Set(V8_WORKS.map(w => w.region || 'national')).size;
+    out.everyRegion = REGIONS.every(r => V8_WORKS.some(w => w.region === r.id));
+    /* every work must be buildable in principle: a req that can be met */
+    out.impossible = V8_WORKS.filter(w => { try { return !w.req({ ind: Object.fromEntries(Object.keys(IND).map(k => [k, 100])) }); } catch (e) { return true; } }).map(w => w.id);
+
+    S.ruling = me; S.coalition = [me]; S.capital = 400; S.treasury = 4000;
+    const w = V8_WORKS.filter(x => x.region && x.done && x.done.capital)[0];
+    /* a work scaled back delivers less; one built properly delivers more */
+    const payout = mods => {
+      S.v8.works[w.id] = { status:'active', mode:'steady', cost:w.cost, spent:w.cost, started:1, overruns:0, sessions:1, idle:0, mods:mods, notes:[] };
+      const before = S.ind[Object.keys(w.done.ind)[0]];
+      v8CompleteWork(S, w, S.v8.works[w.id]);
+      const got = S.ind[Object.keys(w.done.ind)[0]] - before;
+      delete S.v8.works[w.id];
+      return Math.round(got * 1000) / 1000;
+    };
+    out.plain = payout({});
+    out.descoped = payout({ descope:true });
+    out.gilded = payout({ gild:true });
+    /* the instruments are exclusive where they should be */
+    S.v8.works[w.id] = { status:'active', mode:'steady', cost:w.cost, spent:0, started:1, overruns:0, sessions:0, idle:0, mods:{}, notes:[] };
+    v8WorkAction(w.id, 'descope');
+    const costAfterDescope = S.v8.works[w.id].cost;
+    v8WorkAction(w.id, 'gild');
+    out.exclusive = S.v8.works[w.id].cost === costAfterDescope && !S.v8.works[w.id].mods.gild;
+    /* a cost change never touches what is already spent */
+    S.v8.works[w.id] = { status:'active', mode:'steady', cost:100, spent:60, started:1, overruns:0, sessions:0, idle:0, mods:{}, notes:[] };
+    v8WorkAction(w.id, 'descope');
+    out.spentUntouched = S.v8.works[w.id].spent === 60 && S.v8.works[w.id].cost === Math.round(60 + 40 * .67);
+    S.v8.works = keep.works; S.ruling = keep.ruling; S.coalition = keep.coalition;
+    S.capital = keep.capital; S.treasury = keep.treasury; S.ind = keep.ind;
+    return out;
+  });
+  say(works.count >= 48 && works.everyRegion && works.impossible.length === 0,
+    'forty-eight works, every region', `${works.count} grand works across ${works.regions} regions incl. national; ` +
+    `every region has at least one: ${works.everyRegion}; none impossible to start: ${works.impossible.length === 0}`);
+  say(works.descoped < works.plain && works.gilded > works.plain && works.exclusive && works.spentUntouched,
+    'how it is built is what it gives',
+    `the same work opens at ${works.descoped} scaled back, ${works.plain} as specified, ${works.gilded} built properly; ` +
+    `scaled-back and built-properly are exclusive: ${works.exclusive}; a cost change leaves what is spent alone: ${works.spentUntouched}`);
+
   /* S10e — THE COMMITTEES. The chair table was the literal
      ['fp','lp','sd','cup','tvc','pnl','fp'] in every campaign at every seed. */
   const chairs = await page.evaluate(() => {
