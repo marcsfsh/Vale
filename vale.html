@@ -607,37 +607,37 @@ var PARTIES = [
     auth:-0.3,
     blurb:'Far left populist socialists. Armed movement until 1931, in the legislature ever since.',
     aff:{ labour:.9, youth:.75, prof:.15, seniors:.1, smallbiz:-.3, faith:-.4, veterans:-.5, tech:-1 },
-    wants:{ wealthTax:3, unionRights:3, universalHealthcare:3, minimumWage:3, techAntitrust:3, defenceBudget:0 } },
+    wants:{ wealthTax:4, unionRights:4, universalHealthcare:4, minimumWage:4, techAntitrust:4, defenceBudget:0 } },
   { id:'lp', name:'Labor Party', short:'LP', color:'#FF0000', order:1,
     auth:-0.12,
     blurb:'The party of the unions since 1870. Workers rights, the welfare state, public services.',
     aff:{ labour:1, youth:.5, seniors:.45, prof:.3, faith:.15, smallbiz:-.15, tech:-.7, veterans:-.1 },
-    wants:{ minimumWage:2, unionRights:2, universalHealthcare:3, socialSecurity:3, jobTraining:2, tradeAgreements:0 } },
+    wants:{ minimumWage:3, unionRights:3, universalHealthcare:4, socialSecurity:4, jobTraining:3, tradeAgreements:0 } },
   { id:'sd', name:'Social Democrats', short:'SD', color:'#FFA097', order:2,
     auth:-0.38,
     blurb:'Centre left. Progressive policy on a free market footing, strongest among salaried graduates.',
     aff:{ prof:1, youth:.55, labour:.4, tech:.3, seniors:.2, smallbiz:-.1, faith:-.3, veterans:-.15 },
-    wants:{ renewables:3, publicSchools:3, universalHealthcare:2, campaignFinanceLimits:2, carbonTax:2, privacyLaw:2 } },
+    wants:{ renewables:4, publicSchools:4, universalHealthcare:3, campaignFinanceLimits:4, carbonTax:3, privacyLaw:4 } },
   { id:'fp', name:'Federal Party', short:'FP', color:'#FFFB00', order:3,
     auth:-0.62,
     blurb:'Founded 1799 and still standing. Secular, constitutionalist, pragmatic on everything else.',
     aff:{ prof:.6, smallbiz:.5, tech:.45, seniors:.3, labour:.15, faith:.1, veterans:.2, youth:.15 },
-    wants:{ balancedBudgetRule:1, lobbyingBan:2, tradeAgreements:2, researchFunding:2, federalGrants:2 } },
+    wants:{ balancedBudgetRule:4, lobbyingBan:4, tradeAgreements:3, researchFunding:3, federalGrants:3 } },
   { id:'cup', name:'Conservative Union Party', short:'CUP', color:'#03F2FF', order:4,
     auth:0.12,
     blurb:'Founded 1829 by the propertied classes. Deregulation, tax cuts, private sector growth.',
     aff:{ tech:.7, smallbiz:.75, seniors:.5, veterans:.5, prof:.25, faith:.35, labour:-.5, youth:-.3 },
-    wants:{ corporateTax:0, incomeTax:1, oilAndGas:3, tradeAgreements:3, unionRights:0, balancedBudgetRule:1 } },
+    wants:{ corporateTax:0, incomeTax:1, oilAndGas:4, tradeAgreements:4, unionRights:0, balancedBudgetRule:4 } },
   { id:'tvc', name:'Traditional Values Coalition', short:'TVC', color:'#00ABEF', order:5,
     auth:0.48,
     blurb:'Founded 1973. Social conservatism, religious liberty and a balanced budget.',
     aff:{ faith:1, smallbiz:.6, veterans:.65, seniors:.55, tech:.1, prof:-.2, youth:-.6, labour:-.35 },
-    wants:{ schoolChoice:2, policeFunding:3, borderSecurity:3, immigrationVisas:0, sentencingReform:0, defenceBudget:2 } },
+    wants:{ schoolChoice:4, policeFunding:4, borderSecurity:4, immigrationVisas:0, sentencingReform:0, defenceBudget:2 } },
   { id:'pnl', name:'Patriot Nationalist League', short:'PNL', color:'#1551FF', order:6,
     auth:0.86,
     blurb:'Founded 2002. Ultranationalist populism, immigration control and economic nationalism.',
     aff:{ veterans:.9, smallbiz:.7, faith:.7, seniors:.45, labour:.1, tech:-.2, prof:-.55, youth:-.7 },
-    wants:{ borderSecurity:3, tariffs:3, defenceBudget:4, immigrationVisas:0, foreignAid:0, surveillance:2 } }
+    wants:{ borderSecurity:4, tariffs:4, defenceBudget:4, immigrationVisas:0, foreignAid:0, surveillance:3 } }
 ];
 
 var PARTY = {}; PARTIES.forEach(function (p) { PARTY[p.id] = p; });
@@ -666,8 +666,96 @@ function polPos(p) {
   return { e: econ, a: auth };
 }
 
-/* ---------------- policies ---------------- */
-function P(o) { return o; }
+/* ---------------- policies ----------------
+   THE LADDER. Every statute has four rungs and no other number. `eff`,
+   `mood`, `rev` and `exp` are the rung-1 row; `eff2`..`eff4` (and the
+   mood/rev/exp equivalents) are CUMULATIVE TOTALS at that rung, restating
+   only the keys that change and carrying the rest forward. P() expands all
+   of it once, at parse, into _effAt/_moodAt/_revAt/_expAt[0..4]; nothing
+   downstream multiplies a base by a level ever again.
+
+   A statute whose curve is not yet authored carries `lin` — the ladder it
+   had before the four-rung order — and its rows are interpolated through
+   its own rescaled rungs. That is EXACT at every position an old save,
+   scenario seed, party want or programme target can occupy after the
+   rescale (m=2 gives 0/.5/1/1.5/2 of the base, m=3 gives 0/1/1.5/2/3,
+   m=1 gives quarters, m=4 is the identity), so the interpolation preserves
+   the old balance instead of inflating it. `cost` is rescaled the same
+   way: a full build costs what it always cost, in four instalments. */
+var LADDER_MULT = {};
+function ladderMults(m) {
+  if (LADDER_MULT[m]) return LADDER_MULT[m];
+  var pts = [], n, i, s;
+  for (n = 0; n <= m; n++) pts.push([Math.round(n * 4 / m), n]);
+  var out = [];
+  for (i = 0; i <= 4; i++) {
+    var k = 0;
+    for (s = 0; s < pts.length - 1; s++) if (i >= pts[s][0]) k = s;
+    var a = pts[k], b = pts[k + 1] || a, span = b[0] - a[0];
+    out.push(span ? a[1] + (b[1] - a[1]) * (i - a[0]) / span : a[1]);
+  }
+  return (LADDER_MULT[m] = out);
+}
+function ladderAuthored(o, key) {
+  return o[key + '2'] !== undefined || o[key + '3'] !== undefined || o[key + '4'] !== undefined;
+}
+function ladderRows(o, key, mult) {
+  var base = o[key] || {}, rows = [{}], i, k, cur;
+  if (!ladderAuthored(o, key)) {
+    for (i = 1; i <= 4; i++) rows.push(scaleObj(base, mult[i]));
+    return rows;
+  }
+  cur = base;
+  for (i = 1; i <= 4; i++) {
+    var over = i === 1 ? null : o[key + i];
+    if (over) { var c = {}; for (k in cur) c[k] = cur[k]; for (k in over) c[k] = over[k]; cur = c; }
+    rows.push(cur);
+  }
+  return rows;
+}
+function ladderNums(o, key, mult) {
+  var base = o[key] || 0, rows = [0], i, cur = base;
+  if (!ladderAuthored(o, key)) {
+    for (i = 1; i <= 4; i++) rows.push(base * mult[i]);
+    return rows;
+  }
+  for (i = 1; i <= 4; i++) { if (i > 1 && o[key + i] !== undefined) cur = o[key + i]; rows.push(cur); }
+  return rows;
+}
+function P(o) {
+  var m = o.max || 1, mult = ladderMults(m);
+  o.max = 4; o.lin = m;
+  o._effAt = ladderRows(o, 'eff', mult);
+  o._moodAt = ladderRows(o, 'mood', mult);
+  o._revAt = ladderNums(o, 'rev', mult);
+  o._expAt = ladderNums(o, 'exp', mult);
+  /* the authority valence is frozen here, from the rung-1 row, so that
+     authoring a curve later cannot silently move a statute on the map */
+  if (o.auth === undefined) o.auth = clamp(-((o.eff && o.eff.liberties) || 0) / 7, -1.3, 1.3);
+  if (o.cost && m !== 4) o.cost = Math.max(1, Math.round(o.cost * (1 + .6 * (m - 1)) / 2.8));
+  return o;
+}
+function polLv(lv) { return lv < 1 ? 0 : (lv > 4 ? 4 : Math.round(lv)); }
+function polEffAt(p, lv) { return p._effAt[polLv(lv)]; }
+function polMoodAt(p, lv) { return p._moodAt[polLv(lv)]; }
+function polRevAt(p, lv) { return p._revAt[polLv(lv)]; }
+function polExpAt(p, lv) { return p._expAt[polLv(lv)]; }
+/* the standing mood change of moving a statute from rung a to rung b,
+   optionally scaled: every one-shot impulse in the game is one of these */
+function polMoodDelta(p, a, b, k) {
+  var fa = polMoodAt(p, a), fb = polMoodAt(p, b), r = {}, x;
+  if (k === undefined) k = 1;
+  for (x in fa) r[x] = -fa[x] * k;
+  for (x in fb) r[x] = ((r[x] || 0) + fb[x] * k);
+  return r;
+}
+function polEffDelta(p, a, b) {
+  var fa = polEffAt(p, a), fb = polEffAt(p, b), r = {}, x;
+  for (x in fa) r[x] = -fa[x];
+  for (x in fb) r[x] = ((r[x] || 0) + fb[x]);
+  for (x in r) if (!r[x]) delete r[x];
+  return r;
+}
 var POLICIES = [
   /* taxation */
   P({ id:'incomeTax', grp:'Income and gains', name:'Federal Income Tax', cat:'Taxation', dept:'chan', max:4, cost:6, rev:6,
@@ -2142,7 +2230,7 @@ var TRANSITIONS = [
     } },
   { id:'toCorporate', to:'corporate', from:['federal','centralised','executive'], name:'Corporate Republic Act', cost:32,
     req:'Federal corporate charters at level 2, privatisation at level 2, and the technology and business blocs above 60',
-    ok:function (S) { return (S.pol.corporateCharters || 0) >= 2 && (S.pol.privatisation || 0) >= 2 &&
+    ok:function (S) { return (S.pol.corporateCharters || 0) >= 4 && (S.pol.privatisation || 0) >= 3 &&
       S.blocs.tech >= 60 && S.blocs.smallbiz >= 55; },
     desc:'Seat the chartered companies in the Senate by right and weight the federal franchise by property.',
     apply:function (S) {
@@ -2152,7 +2240,7 @@ var TRANSITIONS = [
     } },
   { id:'toImperial', to:'imperial', from:['federal','centralised','executive'], name:'Imperial Federation Act', cost:34,
     req:'Territories at 55, armed forces at 60, and protectorate administration at level 2',
-    ok:function (S) { return S.ind.territories >= 55 && S.armyLoyalty >= 60 && (S.pol.protectorates || 0) >= 2; },
+    ok:function (S) { return S.ind.territories >= 55 && S.armyLoyalty >= 60 && (S.pol.protectorates || 0) >= 3; },
     desc:'Federate Vale with its territories, seat their delegations, and vest the executive in a First Consul.',
     apply:function (S) {
       S.ind.territories += 10; S.ind.tension += 12; S.ind.military += 5; S.ind.liberties -= 8; S.unrest += 12;
@@ -2358,7 +2446,7 @@ var ACTS = [
   { id:'purgeService', house:'Authority', name:'Purge the Federal Service', cost:20, auth:1.1,
     req:'Loyalty oaths at level 2 and no elected lower house sitting, or emergency powers in force',
     desc:'Remove every official who will not sign, at every one of the six tiers.',
-    ok:function (S) { return (S.pol.loyaltyOaths || 0) >= 2 && (!lowerSits(S) || !FORMS[S.form].elections) && !S.acts.purgeService; },
+    ok:function (S) { return (S.pol.loyaltyOaths || 0) >= 4 && (!lowerSits(S) || !FORMS[S.form].elections) && !S.acts.purgeService; },
     done:function (S) { return !!S.acts.purgeService; },
     apply:function (S) {
       S.acts.purgeService = true; S.ind.corruption += 8; S.ind.liberties -= 12; S.unrest += 12;
@@ -2378,7 +2466,7 @@ var ACTS = [
   { id:'charteredSenate', house:'Capital', name:'Chartered Seats in the Senate', cost:20, auth:.6,
     req:'Federal corporate charters at level 1 and the technology bloc above 50',
     desc:'Reserve a bloc of Senate seats for the chartered companies, filled by their boards.',
-    ok:function (S) { return upperOn(S) && (S.pol.corporateCharters || 0) >= 1 && S.blocs.tech > 50 && !S.acts.charteredSenate; },
+    ok:function (S) { return upperOn(S) && (S.pol.corporateCharters || 0) >= 2 && S.blocs.tech > 50 && !S.acts.charteredSenate; },
     done:function (S) { return !!S.acts.charteredSenate; },
     apply:function (S) {
       S.acts.charteredSenate = true; shiftPeers(S, bestBusinessParty(S), 45);
@@ -2388,7 +2476,7 @@ var ACTS = [
   { id:'agencyCapture', house:'Capital', name:'Industry Boards for the Agencies', cost:16, auth:.4,
     req:'Deregulation at level 2',
     desc:'Every federal regulator governed by a board drawn from the industry it regulates.',
-    ok:function (S) { return (S.pol.deregulation || 0) >= 2 && !S.acts.agencyCapture; },
+    ok:function (S) { return (S.pol.deregulation || 0) >= 3 && !S.acts.agencyCapture; },
     done:function (S) { return !!S.acts.agencyCapture; },
     apply:function (S) {
       S.acts.agencyCapture = true; S.ind.corruption += 9; S.ind.economy += 4;
@@ -2398,7 +2486,7 @@ var ACTS = [
   { id:'wealthFranchise', house:'Capital', name:'Weight the Franchise by Property', cost:26, auth:.9,
     req:'Property qualification at level 2 and chartered seats already in the Senate',
     desc:'Votes in proportion to assessed holdings. The 1829 settlement, restored in full.',
-    ok:function (S) { return (S.pol.propertyFranchise || 0) >= 2 && S.acts.charteredSenate && !S.acts.wealthFranchise; },
+    ok:function (S) { return (S.pol.propertyFranchise || 0) >= 4 && S.acts.charteredSenate && !S.acts.wealthFranchise; },
     done:function (S) { return !!S.acts.wealthFranchise; },
     apply:function (S) {
       S.acts.wealthFranchise = true; S.ind.liberties -= 16; S.unrest += 16;
@@ -2408,7 +2496,7 @@ var ACTS = [
   { id:'annexation', house:'Empire', name:'Act of Annexation', cost:24, auth:.7,
     req:'Protectorate administration at level 2, territories at 40 and the armed forces at 55',
     desc:'Convert the protectorates into territories of Vale under federal law.',
-    ok:function (S) { return (S.pol.protectorates || 0) >= 2 && S.ind.territories >= 40 && S.armyLoyalty >= 55 && !S.acts.annexation; },
+    ok:function (S) { return (S.pol.protectorates || 0) >= 3 && S.ind.territories >= 40 && S.armyLoyalty >= 55 && !S.acts.annexation; },
     done:function (S) { return !!S.acts.annexation; },
     apply:function (S) {
       S.acts.annexation = true; S.ind.territories += 14; S.ind.tension += 12; S.ind.economy += 3;
@@ -2625,12 +2713,12 @@ function powersTick(st) {
   POWERS.forEach(function (p) {
     var drift = (50 - relOf(st, p.id)) * .018;
     drift -= (t - 50) * .10;
-    if (p.kind === 'alliance') drift += (st.pol.allianceCommitments || 0) * .8 - (st.pol.nonIntervention || 0) * .9;
-    if (p.kind === 'rival') drift -= (mil - 60) * .02 + (st.pol.missileForce || 0) * .5;
-    if (p.kind === 'bloc') drift += (st.pol.foreignAid || 0) * .6 - (st.pol.protectorates || 0) * 1.1;
-    if (p.kind === 'trade') drift += (st.pol.tradeAgreements || 0) * .5 - (st.pol.tariffs || 0) * .6;
-    if (p.kind === 'neighbour') drift -= (st.pol.borderSecurity || 0) * .35 + (terr > 40 ? .5 : 0);
-    if (p.kind === 'southern') drift += (st.pol.tradeAgreements || 0) * .3 - (st.pol.borderSecurity || 0) * .4;
+    if (p.kind === 'alliance') drift += (st.pol.allianceCommitments || 0) * .6 - (st.pol.nonIntervention || 0) * .45;
+    if (p.kind === 'rival') drift -= (mil - 60) * .02 + (st.pol.missileForce || 0) * .375;
+    if (p.kind === 'bloc') drift += (st.pol.foreignAid || 0) * .45 - (st.pol.protectorates || 0) * .825;
+    if (p.kind === 'trade') drift += (st.pol.tradeAgreements || 0) * .375 - (st.pol.tariffs || 0) * .45;
+    if (p.kind === 'neighbour') drift -= (st.pol.borderSecurity || 0) * .2625 + (terr > 40 ? .5 : 0);
+    if (p.kind === 'southern') drift += (st.pol.tradeAgreements || 0) * .225 - (st.pol.borderSecurity || 0) * .3;
     if (!FORMS[st.form].elections) drift -= 1.1;
     if (st.form === 'empire' || st.form === 'dpr') drift -= 1.2;
     st.powers[p.id] = c100(relOf(st, p.id) + drift);
@@ -2646,7 +2734,7 @@ function warTick(st) {
       if (r < 34) risk += (34 - r) * .0045;
     });
     risk += Math.max(0, st.ind.tension - 54) * .0075;
-    risk += (st.pol.missileForce || 0) * .004 + (st.pol.armsExports || 0) * .003 + (st.pol.protectorates || 0) * .004;
+    risk += (st.pol.missileForce || 0) * .003 + (st.pol.armsExports || 0) * .0023 + (st.pol.protectorates || 0) * .003;
     if (st.ind.military > 78) risk += .01;
     if (rand() < risk) {
       var worst = null;
@@ -3269,7 +3357,7 @@ var EVENTS = [
         f:function (S) { mood(S, { veterans:-6, prof:2 }); } }
     ] }),
   ev({ id:'unionbill', elective:true, w:5, title:'The Congress of Labour Demands a Vote',
-    cond:function (S) { return S.pol.unionRights < 2; },
+    cond:function (S) { return (S.pol.unionRights || 0) < 3; },
     text:'Nine million members have voted to campaign for sectoral bargaining, and they intend to fund candidates in a hundred and fifty districts.',
     ch:[
       { l:'Commit to a bill this session', s:'Costs capital.',
@@ -3673,7 +3761,7 @@ function newGame(diff) {
         military:76, energy:58, environment:44, tension:52, territories:8
       },
       blocs: { labour:56, tech:44, smallbiz:47, prof:54, faith:45, veterans:48, youth:50, seniors:52 },
-      pol: {},
+      pol: {}, polV2: true,
       exec: { pres:'tvc', vpres:'fp', chan:'sd', vchan:'lp' },
       cabinet: {},
       orders: {},
@@ -3711,13 +3799,13 @@ function newGame(diff) {
     st.pol.incomeTax = 2;
     st.pol.corporateTax = 1;
     st.pol.salesTax = 1;
-    st.pol.socialSecurity = 2;
+    st.pol.socialSecurity = 3;
     st.pol.universalHealthcare = 1;
-    st.pol.publicSchools = 2;
+    st.pol.publicSchools = 3;
     st.pol.policeFunding = 1;
     st.pol.defenceBudget = 3;
     st.pol.carrierProgramme = 1;
-    st.pol.allianceCommitments = 2;
+    st.pol.allianceCommitments = 3;
     st.pol.oilAndGas = 1;
     st.pol.highways = 1;
     st.pol.federalGrants = 1;
@@ -3755,6 +3843,28 @@ function enrichState(st, fresh) {
       if (!fresh && st.started) UI.seedMinted = true;
     }
     if (st.rngState === undefined || st.rngState === null) st.rngState = st.seed | 0;
+
+    /* THE FOUR-RUNG MIGRATION. Every statute had one to four rungs before
+       S9f and has four now, so a blob written earlier holds positions on a
+       ladder that no longer exists. They are rescaled here, once, onto the
+       new ladder — round(n / oldMax * 4), the same transform the gates,
+       seeds, wants and programme targets took — and the state is stamped so
+       it can never be rescaled twice. Pure arithmetic: it spends no dice and
+       is safe on the undo snapshots and on the blob readAutosave inspects.
+       An unrecognised statute is dropped rather than left on a ladder no
+       code can read; the drop is counted so the player is told. */
+    if (!st.polV2) {
+      st.pol = st.pol || {};
+      var lost = 0;
+      for (var pid in st.pol) {
+        var pp = POL[pid];
+        if (!pp) { delete st.pol[pid]; lost++; continue; }
+        var was = st.pol[pid] || 0;
+        st.pol[pid] = was > 0 ? Math.min(4, Math.max(1, Math.round(was * 4 / (pp.lin || 4)))) : 0;
+      }
+      st.polV2 = true;
+      if (!fresh && st.started) UI.polMigrated = lost ? -lost : 1;
+    }
     if (st.started === undefined) st.started = !fresh;
     if (st.doctrine === undefined) st.doctrine = fresh ? null : 'operator';
     st.partyRel = st.partyRel || {};
@@ -3907,15 +4017,15 @@ function macroTick(st) {
   growthTarget = clamp(growthTarget, -5.5, 7.5);
   m.growth = clamp(m.growth + (growthTarget - m.growth) * .36 + (rand() - .5) * .42, -7, 9);
 
-  var taxHeat = (st.pol.salesTax || 0) * .22 + (st.pol.tariffs || 0) * .28;
+  var taxHeat = (st.pol.salesTax || 0) * .165 + (st.pol.tariffs || 0) * .21;
   var inflationTarget = 1.8 + Math.max(0, m.growth - 2.2) * .36 + stimulus * .52 + taxHeat +
     Math.max(0, 52 - st.ind.energy) / 18 + (st.war ? 1.4 : 0);
   m.inflation = clamp(m.inflation + (inflationTarget - m.inflation) * .3 + (rand() - .5) * .3, -.5, 18);
 
   var unemploymentTarget = 7.7 - m.growth * .55 - (st.ind.economy - 50) / 19 - (st.ind.infrastructure - 50) / 60;
   m.unemployment = clamp(m.unemployment + (unemploymentTarget - m.unemployment) * .34 + (rand() - .5) * .22, 1.8, 19);
-  var inequalityTarget = 55 + (st.ind.poverty - 50) * .38 - (st.pol.wealthTax || 0) * 3 -
-    (st.pol.unionRights || 0) * 1.8 + (st.pol.flatTax || 0) * 3 + (st.pol.privatisation || 0) * 1.4;
+  var inequalityTarget = 55 + (st.ind.poverty - 50) * .38 - (st.pol.wealthTax || 0) * 2.25 -
+    (st.pol.unionRights || 0) * 1.35 + (st.pol.flatTax || 0) * 1.5 + (st.pol.privatisation || 0) * 1.05;
   m.inequality = c100(m.inequality + (inequalityTarget - m.inequality) * .18);
   var confidenceTarget = 72 + m.growth * 2.4 - m.inflation * 1.2 - Math.max(0, st.debt - 250) / 16 -
     (st.ind.corruption - 45) * .34 - st.unrest * .13;
@@ -3973,7 +4083,7 @@ function regionTick(st) {
     var orderTarget = st.ind.safety - st.unrest * .18 + (r.id === 'marches' ? st.ind.military * .12 : 0);
     q.order = c100(q.order + (orderTarget - q.order) * .19 + (rand() - .5));
     var federalTarget = st.crown + (q.services - 50) * .2 + (q.prosperity - 50) * .12 -
-      ((st.pol.federalPreemption || 0) * 4) + ((st.pol.federalGrants || 0) * 2);
+      ((st.pol.federalPreemption || 0) * 3) + ((st.pol.federalGrants || 0) * 1.5);
     q.federal = c100(q.federal + (federalTarget - q.federal) * .14);
     q.attention = Math.max(0, (q.attention || 0) * .62);
   });
@@ -4088,7 +4198,9 @@ function billForecast(st, bill) {
   var publicHeat = ((st.salience[issue.id] || 50) - 50) * .1;
   var directionMood = 0;
   if (POL[bill.policy].mood) {
-    BLOCS.forEach(function (b) { directionMood += (POL[bill.policy].mood[b.id] || 0) * b.pop * bill.dir; });
+    var flv = st.pol[bill.policy] || 0;
+    var fd = polMoodDelta(POL[bill.policy], flv, clamp(flv + bill.dir, 0, POL[bill.policy].max));
+    BLOCS.forEach(function (b) { directionMood += (fd[b.id] || 0) * b.pop; });
   }
   lower += publicHeat + directionMood * .35 + (bill.whip || 0) + (bill.confidence ? 12 : 0);
   upper += publicHeat * .45 + directionMood * .18 + (bill.upperDeal || 0);
@@ -4138,12 +4250,17 @@ function draftBillDialog(id, dir) {
   var fc = { clean:{lower:0,upper:0}, negotiated:{lower:5,upper:11}, urgent:{lower:5,upper:-6} };
   var preview = billForecast(S,{policy:id,dir:dir,sponsor:playParty(S),owner:'player',strategy:'clean',whip:0,upperDeal:0,committee:0,concessions:0,confidence:false,urgent:false,playerPosition:'support'});
   var verb = dir > 0 ? (lv ? 'extend' : 'enact') : (next ? 'reduce' : 'repeal');
+  /* the same row-delta the card offers, restated where the money is spent */
+  var draftDelta = [];
+  polStepTags(draftDelta, p, lv, next, 'Rung ' + lv + ' to ' + next);
+  if (!draftDelta.length) draftDelta.push('<span class="muted small">This rung moves no indicator and no constituency.</span>');
   showSheet('<div class="kicker">Drafting Office</div><h2 id="sheetTitle">' + esc(billTitle(id, dir)) + '</h2>' +
     '<p>You are asking Parliament to ' + esc(verb) + ' ' + esc(p.name) + '. Political capital is committed when the bill is introduced; passage then depends on committee, the Assembly and the Senate.</p>' +
     '<div class="result"><div><b>Current level</b><span>' + lv + ' / ' + p.max + '</span></div>' +
     '<div><b>Proposed level</b><span>' + next + ' / ' + p.max + '</span></div><div><b>Capital</b><span>' + cost + '</span></div>' +
     '<div><b>Assembly</b><span>' + Math.round(preview.lower) + '%</span></div><div><b>Senate</b><span>' + Math.round(preview.upper) + '%</span></div>' +
     '<div><b>Public issue</b><span style="font-size:13px">' + esc(issueForPolicy(p).name) + '</span></div></div>' +
+    '<div class="subhead">What this bill changes</div><div class="tagline" data-draft-delta="1">' + draftDelta.join('') + '</div>' +
     '<div class="choices">' +
     '<button class="choice" data-draft="clean">Introduce a clean government bill<small>The clearest policy and the least room for bargaining. Normal support in both houses.</small></button>' +
     '<button class="choice" data-draft="negotiated">Publish a negotiated text<small>Assembly +' + fc.negotiated.lower + ', Senate +' + fc.negotiated.upper + '. The final settlement carries one concession.</small></button>' +
@@ -4154,7 +4271,11 @@ function draftBillDialog(id, dir) {
           captureUndo('Introduce ' + p.name);
           var bill = sponsorBill(S, id, dir, 'player', b.getAttribute('data-draft'), false);
           if (!bill) { flash('The bill could not be introduced.'); return; }
-          hideSheet(); UI.tab = 'houses'; render(); toast('The ' + bill.title + ' has entered committee.');
+          /* You stay where you were. The bill's progress is on the card you
+             just used, in the Desk's active-bill panel and on the Lawmaking
+             badge; being thrown to another page to read it was the one thing
+             nobody asked for. */
+          hideSheet(); render(); toast('The ' + bill.title + ' has entered committee.');
         });
       });
     });
@@ -4179,7 +4300,8 @@ function enactBill(st, bill) {
   }
   st.pol[bill.policy] = clamp(before + bill.dir, 0, p.max);
   if (bill.policy === 'suffrageMale' && st.pol[bill.policy] === 0) st.pol.womensSuffrage = 0;
-  if (p.mood) mood(st, scaleObj(p.mood, bill.dir * .5 * Math.max(.55, 1 - bill.concessions * .12)));
+  if (p.mood) mood(st, polMoodDelta(p, before, st.pol[bill.policy],
+    .5 * Math.max(.55, 1 - bill.concessions * .12) * (bill.staged ? .5 : 1)));
   if (bill.dir > 0) st.recent.push(bill.policy);
   st.legacy.laws++;
   if (bill.owner === 'player' || bill.sponsor === playParty(st)) st.legacy.playerLaws++;
@@ -4273,8 +4395,9 @@ function partyDemandPolicy(st, pid) {
   var wants = PARTY[pid].wants || {}, pool = [];
   for (var id in wants) {
     if (!POL[id] || !policyOpen(st, POL[id]) || activeBillFor(st, id)) continue;
-    var lv = st.pol[id] || 0, dir = wants[id] > lv ? 1 : (wants[id] < lv ? -1 : 0);
-    if (dir) pool.push({ policy:id, dir:dir, gap:Math.abs(wants[id] - lv) });
+    var lv = st.pol[id] || 0, tg = Math.min(wants[id], POL[id].max);
+    var dir = tg > lv ? 1 : (tg < lv ? -1 : 0);
+    if (dir) pool.push({ policy:id, dir:dir, gap:Math.abs(tg - lv) });
   }
   pool.sort(function (a, b) { return b.gap - a.gap; });
   return pool[0] || null;
@@ -4549,6 +4672,7 @@ function readAutosave() {
      the session, including above an autosave that does carry a seed — the
      comment said the player is told once and they were told forever. */
   UI.seedMinted = false;
+  UI.polMigrated = 0;
   for (var i = 0; i < keys.length; i++) {
     var raw = null;
     try { raw = localStorage.getItem(keys[i]); } catch (e) { return null; }
@@ -4683,7 +4807,7 @@ function isExecTurn(t) { return t >= 5 && (t - 5) % 4 === 0; }
 function execPair(t) { return (Math.floor((t - 5) / 4) % 2 === 0) ? ['pres', 'vchan'] : ['chan', 'vpres']; }
 function nextBallot(t) { var n = t + 1; while (!isBallotTurn(n) && n <= lastTurn()) n++; return n; }
 function franchiseLevel(st) {
-  if ((st.pol.voterID || 0) >= 2) return 0;
+  if ((st.pol.voterID || 0) >= 4) return 0;
   if (st.pol.automaticRegistration) return 2;
   return 1;
 }
@@ -4943,7 +5067,7 @@ function policySum(st, key) {
   var n = 0;
   POLICIES.forEach(function (p) {
     var lv = st.pol[p.id] || 0;
-    if (lv && p.eff && p.eff[key] && policyOpen(st, p)) n += p.eff[key] * lv;
+    if (lv && p.eff && policyOpen(st, p)) n += polEffAt(p, lv)[key] || 0;
   });
   return n;
 }
@@ -4986,7 +5110,7 @@ function blocTarget(st, b) {
   for (var k in b.cares) v += b.cares[k] * (st.ind[k] - 50) * .55;
   POLICIES.forEach(function (p) {
     var lv = st.pol[p.id] || 0;
-    if (lv && p.mood && p.mood[b.id]) v += p.mood[b.id] * lv * .7;
+    if (lv && p.mood) v += (polMoodAt(p, lv)[b.id] || 0) * .7;
   });
   v += affOf(st, st.ruling, b.id) * 13;
   (st.coalition || []).forEach(function (id) { if (id !== st.ruling) v += affOf(st, id, b.id) * 3; });
@@ -4994,7 +5118,7 @@ function blocTarget(st, b) {
     var lv = st.pol[pp.id] || 0;
     if (!lv) return;
     var pa = polAuth(pp);
-    if (pa) v -= Math.abs(pa - b.pos.a) * Math.abs(pa) * lv * .9 - Math.abs(pa) * lv * .5;
+    if (pa) v -= Math.abs(pa - b.pos.a) * Math.abs(pa) * lv * .45 - Math.abs(pa) * lv * .25;
   });
   v -= st.unrest * .06;
   if (b.id === 'veterans') v += (st.armyLoyalty - 60) * .1;
@@ -5018,14 +5142,12 @@ function debtRate(st) {
 function budget(st) {
   var rev = 26 + st.ind.economy * .28 + st.ind.technology * .17 + st.ind.agriculture * .06;
   var mult = .7 + st.ind.economy / 160 - st.ind.corruption / 400;
-  POLICIES.forEach(function (p) {
-    var lv = st.pol[p.id] || 0;
-    if (lv && p.rev) rev += p.rev * lv * mult * REVSCALE;
-  });
   var exp = 14 + st.ind.military * .18 + st.ind.infrastructure * .06;
   POLICIES.forEach(function (p) {
     var lv = st.pol[p.id] || 0;
-    if (lv && p.exp) exp += p.exp * lv;
+    if (!lv) return;
+    if (p.rev) rev += polRevAt(p, lv) * mult * REVSCALE;
+    if (p.exp) exp += polExpAt(p, lv);
   });
   var interest = st.debt * debtRate(st);
   var d = DIFFS[st.diff] || DIFFS.normal;
@@ -5046,13 +5168,13 @@ function agendaStrain(st) {
   var w = PARTY[st.ruling].wants || {};
   for (var id in w) {
     if (!POL[id]) continue;
-    strain += Math.abs((st.pol[id] || 0) - w[id]) * .15;
+    strain += Math.abs((st.pol[id] || 0) - w[id]) * .075;
   }
   if (st.partner) {
     var w2 = PARTY[st.partner].wants || {};
     for (var id2 in w2) {
       if (!POL[id2]) continue;
-      strain += Math.abs((st.pol[id2] || 0) - w2[id2]) * .07;
+      strain += Math.abs((st.pol[id2] || 0) - w2[id2]) * .035;
     }
   }
   return Math.min(2.6, strain);
@@ -5099,7 +5221,7 @@ function securityState(st) {
   var v = 0;
   POLICIES.forEach(function (p) {
     if (p.cat !== 'Authority' && p.cat !== 'Security') return;
-    v += (st.pol[p.id] || 0) * polAuth(p) * 2;
+    v += (st.pol[p.id] || 0) * polAuth(p);
   });
   if (st.acts.stateOfSiege) v += 12;
   if (st.acts.purgeService) v += 6;
@@ -5155,7 +5277,7 @@ function tickTurn(st) {
 
   // crown and army
   var ct = 50 + (st.blocs.smallbiz + st.blocs.faith) / 2 - 50 + ((st.pol.federalGrants || 0) + (st.pol.stateRevenueSharing || 0)) * 3
-           - (st.pol.federalPreemption || 0) * 5 - (FORMS[st.form].crown ? 0 : 12);
+           - (st.pol.federalPreemption || 0) * 3.75 - (FORMS[st.form].crown ? 0 : 12);
   st.crown = c100(st.crown + (c100(ct) - st.crown) * .22);
   var at = 52 + (st.blocs.veterans - 50) * .7 + (st.ind.military - 60) * .2 + (FORMS[st.form].elections ? 0 : 5) - st.unrest * .1;
   st.armyLoyalty = c100(st.armyLoyalty + (c100(at) - st.armyLoyalty) * .25);
@@ -5176,11 +5298,12 @@ function tickTurn(st) {
     var worst = null, worstCost = 0;
     POLICIES.forEach(function (p) {
       var lv = st.pol[p.id] || 0;
-      if (lv && p.exp && p.exp * lv > worstCost) { worst = p; worstCost = p.exp * lv; }
+      if (lv && p.exp && polExpAt(p, lv) > worstCost) { worst = p; worstCost = polExpAt(p, lv); }
     });
     if (worst) {
+      var wlv = st.pol[worst.id];
       st.pol[worst.id] -= 1;
-      if (worst.mood) mood(st, scaleObj(worst.mood, -.5));
+      if (worst.mood) mood(st, polMoodDelta(worst, wlv, wlv - 1, .5));
       logIt(st, 'The Treasury struck the estimates for ' + worst.name + '. There is no money.');
     }
   }
@@ -5713,7 +5836,7 @@ function purgeStatutes(st) {
     var lv = st.pol[p.id] || 0;
     if (!lv || policyOpen(st, p)) return;
     st.pol[p.id] = 0;
-    if (p.mood) mood(st, scaleObj(p.mood, -.4 * lv));
+    if (p.mood) mood(st, polMoodDelta(p, lv, 0, .4));
     struck.push(p.name);
   });
   st.recent = st.recent.filter(function (id) { return policyOpen(st, POL[id]); });
@@ -5766,7 +5889,7 @@ function orderPolicy(id) {
   S.recent.push(id);
   S.ind.liberties = c100(S.ind.liberties - 1.5);
   S.crown = c100(S.crown - 2);
-  if (p.mood) mood(S, scaleObj(p.mood, .5));
+  if (p.mood) mood(S, polMoodDelta(p, lv, lv + 1, .5));
   mood(S, { prof:-2, youth:-1 });
   logIt(S, 'Executive order: ' + p.name + ', made without reference to either house.');
   render();
@@ -6946,8 +7069,8 @@ function aiGovern(st) {
   var w = PARTY[st.ruling].wants || {}, cands = [];
   for (var id in w) {
     if (!POL[id] || !policyOpen(st, POL[id])) continue;
-    var lv = st.pol[id] || 0;
-    if (lv !== w[id]) cands.push({ id: id, dir: w[id] > lv ? 1 : -1 });
+    var lv = st.pol[id] || 0, tg = Math.min(w[id], POL[id].max);
+    if (lv !== tg) cands.push({ id: id, dir: tg > lv ? 1 : -1 });
   }
   if (!cands.length) {
     POLICIES.forEach(function (p) {
@@ -6995,8 +7118,9 @@ function applyRuling(st, defy) {
     logIt(st, 'The government declined to give effect to the ruling on ' + POL[r.id].name + '. Four state governments say they will follow the court.');
     return;
   }
+  var rlv = st.pol[r.id] || 0;
   st.pol[r.id] -= 1;
-  if (POL[r.id].mood) mood(st, scaleObj(POL[r.id].mood, -.5));
+  if (POL[r.id].mood) mood(st, polMoodDelta(POL[r.id], rlv, rlv - 1, .5));
   st.capital = clamp(st.capital - 2, -5, capCap(st));
   st.recent = st.recent.filter(function (x) { return x !== r.id; });
   logIt(st, 'The Supreme Court struck down ' + POL[r.id].name + '.');
@@ -7011,7 +7135,8 @@ function rulingEvent(r) {
         f:function (S) { applyRuling(S, false); } },
       { l:'Seek a rehearing and amend the statute', s:'Costs capital, saves half the measure.',
         f:function (S) { S.capital = clamp(S.capital - 6, -5, capCap(S)); S.pendingRuling = null;
-          if (POL[r.id].mood) mood(S, scaleObj(POL[r.id].mood, -.2)); logIt(S, 'The statute was amended and re-enacted in narrower form.'); } },
+          var alv = S.pol[r.id] || 0;
+          if (POL[r.id].mood) mood(S, polMoodDelta(POL[r.id], alv, alv - 1, .2)); logIt(S, 'The statute was amended and re-enacted in narrower form.'); } },
       { l:'Decline to give effect to it', s:'A constitutional crisis. Liberties, unrest, the states and the services.',
         f:function (S) { applyRuling(S, true); } }
     ] };
@@ -7795,14 +7920,26 @@ function policyCard(p) {
       esc(DEPTS[p.dept].name) + (holdsDept(S, p.dept) ? '' : ' (opposed)') + '</span>');
     var pp = polPos(p);
     if (Math.abs(pp.a) > .25) tags.push('<span class="tag">' + (pp.a > 0 ? 'Authority +' : 'Liberty ') + pp.a.toFixed(2) + '</span>');
-    if (p.eff) for (var k in p.eff) tags.push('<span class="tag ' + effClass(k, p.eff[k]) + '">' + esc(IND[k].name) + ' ' + (p.eff[k] > 0 ? '+' : '') + p.eff[k] + '</span>');
-    if (p.rev) tags.push('<span class="tag up">Revenue ' + fmc(p.rev) + '</span>');
-    if (p.exp) tags.push('<span class="tag down">Cost ' + fmc(p.exp) + '</span>');
-    var moods = [];
-    if (p.mood) {
-      var ks = Object.keys(p.mood).sort(function (a, b) { return Math.abs(p.mood[b]) - Math.abs(p.mood[a]); }).slice(0, 4);
-      ks.forEach(function (m) { moods.push('<span class="tag ' + (p.mood[m] > 0 ? 'up' : 'down') + '">' + esc(BLOC[m].name) + ' ' + (p.mood[m] > 0 ? '+' : '') + p.mood[m] + '</span>'); });
-    }
+    /* The first tagline is the STANDING law: what this statute is doing at
+       the rung it currently sits on. At rung zero there is nothing standing,
+       so it previews the first rung instead and says so. */
+    var shown = polEffAt(p, lv || 1), shownRev = polRevAt(p, lv || 1), shownExp = polExpAt(p, lv || 1);
+    if (!lv) tags.push('<span class="tag">If enacted</span>');
+    for (var k in shown) if (shown[k]) tags.push('<span class="tag ' + effClass(k, shown[k]) + '">' + esc(IND[k].name) + ' ' + polNum(shown[k]) + '</span>');
+    if (shownRev) tags.push('<span class="tag up">Revenue ' + fmc(shownRev) + '</span>');
+    if (shownExp) tags.push('<span class="tag down">Cost ' + fmc(shownExp) + '</span>');
+    /* Then the OFFER, in the same row so that compact mode — which folds the
+       second tagline away — cannot hide it: what one more rung would add, and
+       what giving one back would take away. At rung zero the row above IS the
+       first rung's offer, so it is not said twice. */
+    if (lv > 0 && lv < p.max) polStepTags(tags, p, lv, lv + 1, 'One rung more', false);
+    if (lv > 0) polStepTags(tags, p, lv, lv - 1, lv === 1 ? 'If repealed' : 'If reduced', false);
+    /* The second tagline keeps the constituencies — now the standing total
+       this statute holds with each of them, not a per-step impulse. */
+    var moods = [], nowM = polMoodAt(p, lv || 1);
+    Object.keys(nowM).filter(function (m) { return BLOC[m] && Math.abs(nowM[m]) >= .5; })
+      .sort(function (a, b) { return Math.abs(nowM[b]) - Math.abs(nowM[a]); }).slice(0, 4)
+      .forEach(function (m) { moods.push('<span class="tag ' + (nowM[m] > 0 ? 'up' : 'down') + '">' + esc(BLOC[m].name) + ' ' + polNum(nowM[m]) + '</span>'); });
     var upCost = lv < p.max ? policyCost(p.id, 1) : 0;
     var dnCost = lv > 0 ? policyCost(p.id, -1) : 0;
     var liveBill = activeBillFor(S, p.id);
@@ -7814,6 +7951,9 @@ function policyCard(p) {
     if (liveBill) tags.unshift('<span class="tag up">' + esc(liveBill.id) + ' · ' + esc(BILL_STAGE_NAMES[liveBill.stage]) + '</span>');
     else if (upBlock) tags.unshift('<span class="tag down">Senate forecast hostile</span>');
     else if (upRes > .15) tags.unshift('<span class="tag down">Senate resists</span>');
+    /* a statute built to the top has no upward step to warn about, and the
+       Senate's view of giving one back was computed and never shown */
+    else if (dnBlock && lv === p.max) tags.unshift('<span class="tag down">Senate forecast hostile to repeal</span>');
     return '<div class="card" data-policy-card="1" data-search="' + esc((p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase()) + '"><h3>' + esc(p.name) + '</h3>' +
       '<p class="desc">' + esc(p.desc) + '</p>' +
       '<div class="lvl">' + pips + '</div>' +
@@ -7828,6 +7968,28 @@ function policyCard(p) {
 function effClass(k, v) {
   var good = IND[k].inv ? v < 0 : v > 0;
   return good ? 'up' : 'down';
+}
+/* Rungs carry fractions now — a half-built statute is a real position, not a
+   rounding error — so every number the cards and the dossier print goes
+   through here rather than being pasted raw. */
+function polNum(v) { var r = Math.round(v * 10) / 10; return (r > 0 ? '+' : '') + r; }
+/* One rung's worth of change, as a row of chips: the indicators first, then
+   the constituencies that move most. Used by the policy card and the drafting
+   desk, so the offer reads the same in both places. */
+function polStepTags(out, p, a, b, label, withMood) {
+  var de = polEffDelta(p, a, b), dm = polMoodDelta(p, a, b), bits = [], k;
+  var ik = Object.keys(de).sort(function (x, y) { return Math.abs(de[y]) - Math.abs(de[x]); }).slice(0, 3);
+  for (k = 0; k < ik.length; k++) bits.push('<span class="tag ' + effClass(ik[k], de[ik[k]]) + '">' + esc(IND[ik[k]].name) + ' ' + polNum(de[ik[k]]) + '</span>');
+  if (withMood !== false) {
+    var mk = Object.keys(dm).filter(function (x) { return Math.abs(dm[x]) >= .5 && BLOC[x]; })
+      .sort(function (x, y) { return Math.abs(dm[y]) - Math.abs(dm[x]); }).slice(0, 2);
+    for (k = 0; k < mk.length; k++) bits.push('<span class="tag ' + (dm[mk[k]] > 0 ? 'up' : 'down') + '">' + esc(BLOC[mk[k]].name) + ' ' + polNum(dm[mk[k]]) + '</span>');
+  }
+  var dr = polRevAt(p, b) - polRevAt(p, a), dx = polExpAt(p, b) - polExpAt(p, a);
+  if (Math.abs(dr) >= .05) bits.push('<span class="tag ' + (dr > 0 ? 'up' : 'down') + '">Revenue ' + polNum(dr) + '</span>');
+  if (Math.abs(dx) >= .05) bits.push('<span class="tag ' + (dx > 0 ? 'down' : 'up') + '">Cost ' + polNum(dx) + '</span>');
+  if (!bits.length) return;
+  out.push('<span class="tag">' + esc(label) + '</span>' + bits.join(''));
 }
 
 function macroPanel() {
@@ -8344,10 +8506,10 @@ function viewLedger() {
   var revRows = [], expRows = [];
   revRows.push(['Base federal receipts', 26 + S.ind.economy * .28 + S.ind.technology * .17 + S.ind.agriculture * .06]);
   var mult = .7 + S.ind.economy / 160 - S.ind.corruption / 400;
-  POLICIES.forEach(function (p) { var lv = S.pol[p.id] || 0; if (lv && p.rev) revRows.push([p.name + ' (level ' + lv + ')', p.rev * lv * mult * REVSCALE]); });
+  POLICIES.forEach(function (p) { var lv = S.pol[p.id] || 0; if (lv && p.rev) revRows.push([p.name + ' (level ' + lv + ')', polRevAt(p, lv) * mult * REVSCALE]); });
   expRows.push(['Federal administration', 14]);
   expRows.push(['Standing forces and installations', S.ind.military * .18 + S.ind.infrastructure * .06]);
-  POLICIES.forEach(function (p) { var lv = S.pol[p.id] || 0; if (lv && p.exp) expRows.push([p.name + ' (level ' + lv + ')', p.exp * lv]); });
+  POLICIES.forEach(function (p) { var lv = S.pol[p.id] || 0; if (lv && p.exp) expRows.push([p.name + ' (level ' + lv + ')', polExpAt(p, lv)]); });
   expRows.push(['Debt service', b.interest]);
   if (!FORMS[S.form].elections) expRows.push(['Emergency administration', 4]);
 
@@ -8908,7 +9070,7 @@ function pv5InterestDemand(st,g){
   var cands=[];
   POLICIES.forEach(function(p){
     if(!policyOpen(st,p)||activeBillFor(st,p.id))return;
-    var m=(p.mood&&p.mood[g.bloc])||0,lv=st.pol[p.id]||0;
+    var m=(polMoodAt(p,4)[g.bloc]||0)/2,lv=st.pol[p.id]||0;
     if(m>1&&lv<p.max)cands.push({policy:p.id,dir:1,score:m*(p.max-lv)});
     if(m<-1&&lv>0)cands.push({policy:p.id,dir:-1,score:-m*lv});
   });
@@ -9697,7 +9859,7 @@ var V6_SCENARIOS = [
       st.exec = { pres:'cup', vpres:'fp', chan:'fp', vchan:'sd' };
       st.ind.economy = 62; st.ind.corruption = 46; st.ind.liberties = 68; st.ind.poverty = 50;
       st.blocs = { labour:46, tech:58, smallbiz:55, prof:60, faith:47, veterans:50, youth:44, seniors:52 };
-      st.pol.balancedBudgetRule = 1; st.pol.tradeAgreements = 1; st.pol.researchFunding = 1; st.pol.lobbyingBan = 1;
+      st.pol.balancedBudgetRule = 4; st.pol.tradeAgreements = 1; st.pol.researchFunding = 1; st.pol.lobbyingBan = 2;
       st.pol.universalHealthcare = 0; st.pol.socialSecurity = 1;
       st.unrest = 16; st.crown = 63;
     },
@@ -9715,7 +9877,7 @@ var V6_SCENARIOS = [
       st.exec = { pres:'cup', vpres:'tvc', chan:'cup', vchan:'fp' };
       st.ind.economy = 66; st.ind.technology = 70; st.ind.poverty = 52; st.ind.environment = 38; st.ind.liberties = 60; st.ind.safety = 54;
       st.blocs = { labour:40, tech:64, smallbiz:64, prof:46, faith:62, veterans:58, youth:38, seniors:56 };
-      st.pol.incomeTax = 1; st.pol.corporateTax = 0; st.pol.oilAndGas = 2; st.pol.tradeAgreements = 2; st.pol.policeFunding = 2; st.pol.schoolChoice = 1; st.pol.universalHealthcare = 0; st.pol.socialSecurity = 1;
+      st.pol.incomeTax = 1; st.pol.corporateTax = 0; st.pol.oilAndGas = 3; st.pol.tradeAgreements = 3; st.pol.policeFunding = 3; st.pol.schoolChoice = 2; st.pol.universalHealthcare = 0; st.pol.socialSecurity = 1;
       st.treasury = Math.round(st.treasury * .8); st.debt = Math.round(st.debt * 1.3 + 60);
       st.unrest = 24; st.crown = 66; st.macro = null;
     },
@@ -9749,7 +9911,7 @@ var V6_SCENARIOS = [
       st.ind.liberties = 34; st.ind.safety = 60; st.ind.corruption = 62; st.ind.tension = 66; st.ind.military = 80; st.ind.economy = 52;
       st.blocs = { labour:36, tech:40, smallbiz:50, prof:30, faith:54, veterans:66, youth:28, seniors:50 };
       st.unrest = 46; st.crown = 38; st.armyLoyalty = 78;
-      st.pol.surveillance = 2; st.pol.borderSecurity = 3; st.pol.policeFunding = 2; st.pol.defenceBudget = 4;
+      st.pol.surveillance = 3; st.pol.borderSecurity = 4; st.pol.policeFunding = 3; st.pol.defenceBudget = 4;
       st.powers = { ostmark:30, moya:44, sarath:26, calavera:50, alliance:48, meridian:52 };
       st.movements = { democracyFront:52, nativist:48, youthRising:40 };
       v6Court(st, ['fp','cup','pnl','tvc','pnl','cup','fp','pnl','tvc','pnl','cup','pnl','fp','tvc','pnl','pnl']);
@@ -9768,7 +9930,7 @@ var V6_SCENARIOS = [
       st.exec = { pres:'rsf', vpres:'fp', chan:'rsf', vchan:'lp' };
       st.ind.economy = 44; st.ind.technology = 52; st.ind.poverty = 40; st.ind.liberties = 62; st.ind.corruption = 48;
       st.blocs = { labour:70, tech:22, smallbiz:36, prof:50, faith:40, veterans:40, youth:62, seniors:54 };
-      st.pol.wealthTax = 1; st.pol.unionRights = 2; st.pol.minimumWage = 2; st.pol.universalHealthcare = 2; st.pol.corporateTax = 2; st.pol.defenceBudget = 2;
+      st.pol.wealthTax = 1; st.pol.unionRights = 3; st.pol.minimumWage = 3; st.pol.universalHealthcare = 3; st.pol.corporateTax = 2; st.pol.defenceBudget = 2;
       st.unrest = 30; st.crown = 48; st.armyLoyalty = 58;
       st.movements = { strikeWave:30, techGuild:46, taxRevolt:38 };
       st.treasury = Math.round(st.treasury * .75); st.debt = Math.round(st.debt * 1.2);
@@ -9899,7 +10061,7 @@ function v6GovernorsTick(st) {
     if (!g) { g = v.governors[r.id] = v6MakeGovernor(st, r); }
     var me = playParty(st), power = inPower(st), same = g.party === me;
     var allied = !same && ((power && co.indexOf(g.party) >= 0) || (st.partyRel[g.party] || 50) >= 62);
-    var target = 50 + (same ? 16 : (allied ? 5 : -11)) + (q.federal - 50) * (power ? .22 : .08) + (q.services - 50) * .08 - (power ? (st.pol.federalPreemption || 0) * 5 : 0) + (power ? (st.pol.federalGrants || 0) * 2 : 0);
+    var target = 50 + (same ? 16 : (allied ? 5 : -11)) + (q.federal - 50) * (power ? .22 : .08) + (q.services - 50) * .08 - (power ? (st.pol.federalPreemption || 0) * 3.75 : 0) + (power ? (st.pol.federalGrants || 0) * 1.5 : 0);
     if (!FORMS[st.form].elections) target -= (same ? 0 : 12);
     if (g.appointed) target += 10;
     g.standing = c100(g.standing + (target - g.standing) * .12);
@@ -9987,7 +10149,7 @@ function v6TreatiesTick(st) {
     var t = v.treaties[pw.id]; if (!t) return;
     var rel = relOf(st, pw.id);
     if (t.kind === 'nonaggression') { shiftRel(st, pw.id, .6); if (rel < 30) { delete v.treaties[pw.id]; logIt(st, 'The non-aggression pact with ' + pw.short + ' lapsed. Relations had fallen too far to sustain it.'); } }
-    if (t.kind === 'trade') { mood(st, { tech:1, smallbiz:-.5 }); shiftRel(st, pw.id, .3); if ((st.pol.tariffs || 0) >= 2) { delete v.treaties[pw.id]; shiftRel(st, pw.id, -8); logIt(st, 'The trade agreement with ' + pw.short + ' was voided by the tariff schedule.'); } }
+    if (t.kind === 'trade') { mood(st, { tech:1, smallbiz:-.5 }); shiftRel(st, pw.id, .3); if ((st.pol.tariffs || 0) >= 3) { delete v.treaties[pw.id]; shiftRel(st, pw.id, -8); logIt(st, 'The trade agreement with ' + pw.short + ' was voided by the tariff schedule.'); } }
     if (t.kind === 'defence') { st.treasury -= V6_TREATIES.defence.upkeep; st.ind.tension = c100(st.ind.tension + 1); shiftRel(st, pw.id, .4); if (rel < 40) { delete v.treaties[pw.id]; logIt(st, pw.short + ' gave notice on the defence pact.'); } }
     if (t.kind === 'arms') { st.ind.tension = c100(st.ind.tension - 1.5); mood(st, { veterans:-.6 }); if (st.ind.military > 82) { delete v.treaties[pw.id]; shiftRel(st, pw.id, -10); logIt(st, 'The arms treaty with ' + pw.short + ' collapsed under the weight of the rearmament.'); } }
   });
@@ -10109,25 +10271,25 @@ function v6PeaceEvent(st) {
    ========================================================== */
 var V6_PROGRAMMES = [
   { id:'welfareState', name:'The Welfare Settlement', lean:'Left', blurb:'Universal coverage, a living pension, a wage floor and a child payment.',
-    items:{ universalHealthcare:2, socialSecurity:3, childBenefit:2, minimumWage:2, paidLeave:1 },
+    items:{ universalHealthcare:3, socialSecurity:4, childBenefit:3, minimumWage:3, paidLeave:2 },
     reward:{ capital:12, unity:10, mood:{ labour:8, seniors:8, youth:5, tech:-4 } }, line:'The welfare settlement was completed.' },
   { id:'freeMarket', name:'The Enterprise Charter', lean:'Right', blurb:'Lower rates, lighter rules, open trade and a balanced budget written into law.',
-    items:{ incomeTax:1, corporateTax:0, tradeAgreements:3, balancedBudgetRule:1, licensingRepeal:1 },
+    items:{ incomeTax:1, corporateTax:0, tradeAgreements:4, balancedBudgetRule:4, licensingRepeal:2 },
     reward:{ capital:12, unity:10, mood:{ tech:9, smallbiz:9, labour:-5 } }, line:'The enterprise charter was completed.' },
   { id:'greenTransition', name:'The Green Transition', lean:'Progressive', blurb:'A carbon price, renewables at scale, a grid that can carry them and the science to keep going.',
-    items:{ carbonTax:2, renewables:3, researchFunding:2, highways:1 },
+    items:{ carbonTax:3, renewables:4, researchFunding:3, highways:1 },
     reward:{ capital:10, unity:8, mood:{ youth:10, prof:6, smallbiz:-4 }, ind:{ environment:6 } }, line:'The green transition was completed.' },
   { id:'securitySettlement', name:'The Security Settlement', lean:'Conservative', blurb:'Funded police, a guarded frontier, a credible deterrent and the surveillance to back them.',
-    items:{ policeFunding:3, borderSecurity:3, defenceBudget:4, surveillance:2 },
+    items:{ policeFunding:4, borderSecurity:4, defenceBudget:4, surveillance:3 },
     reward:{ capital:10, unity:8, mood:{ veterans:9, faith:6, seniors:5, youth:-6 }, ind:{ safety:5 } }, line:'The security settlement was completed.' },
   { id:'cleanGovernment', name:'The Integrity Compact', lean:'Constitutional', blurb:'Lobbyists out, campaign money capped, the press protected and the service audited.',
-    items:{ lobbyingBan:2, campaignFinanceLimits:2, pressFreedom:1, whistleblowerProtection:1 },
+    items:{ lobbyingBan:4, campaignFinanceLimits:4, pressFreedom:2, whistleblowerProtection:2 },
     reward:{ capital:10, unity:8, mood:{ prof:10, youth:6, tech:-3 }, ind:{ corruption:-8 } }, line:'The integrity compact was completed.' },
   { id:'federalRenewal', name:'The Federal Renewal', lean:'Federalist', blurb:'Money and authority handed back to the fifty states, on terms the capital can live with.',
-    items:{ federalGrants:3, stateRevenueSharing:2, interstateCompacts:1 },
+    items:{ federalGrants:4, stateRevenueSharing:4, interstateCompacts:2 },
     reward:{ capital:9, unity:7, mood:{ smallbiz:8, faith:5 }, crown:12 }, line:'The federal renewal was completed.' },
   { id:'nationalWorks', name:'The National Works', lean:'Industrial', blurb:'Highways, ports, power and housing, built at federal expense and remembered for a century.',
-    items:{ highways:3, housingProgramme:2, oilAndGas:1, jobTraining:2 },
+    items:{ highways:4, housingProgramme:3, oilAndGas:1, jobTraining:3 },
     reward:{ capital:11, unity:8, mood:{ labour:9, smallbiz:5, prof:3 }, ind:{ infrastructure:7 } }, line:'The national works were completed.' }
 ];
 var V6_PROGRAMME = {}; V6_PROGRAMMES.forEach(function (p) { V6_PROGRAMME[p.id] = p; });
@@ -10219,8 +10381,9 @@ function v6SuccessionEvent(st) {
    REFERENDUMS
    ========================================================== */
 function v6ReferendumForecast(st, policy, dir) {
-  var p = POL[policy], yes = 50;
-  if (p.mood) BLOCS.forEach(function (b) { yes += (p.mood[b.id] || 0) * b.pop * dir * 1.1; });
+  var p = POL[policy], yes = 50, rlv = st.pol[policy] || 0;
+  var rd = polMoodDelta(p, rlv, clamp(rlv + dir, 0, p.max));
+  if (p.mood) BLOCS.forEach(function (b) { yes += (rd[b.id] || 0) * b.pop * 1.1; });
   var issue = issueForPolicy(p);
   yes += ((st.salience[issue.id] || 50) - 50) * .1;
   yes += (approval(st) - 50) * .15;
@@ -10248,7 +10411,7 @@ draftBillDialog = function (id, dir) {
     b.stage = 'referendum'; b.strategy = 'referendum'; b.due = S.turn + 1; b.cost = cost; b.campaign = 0;
     b.notes = ['National referendum']; b.title = p.name + ' Referendum';
     logIt(S, 'The question of ' + p.name + ' was put to a national referendum.');
-    hideSheet(); UI.tab = 'houses'; render(); toast('The referendum is called.');
+    hideSheet(); render(); toast('The referendum is called.');
   });
 };
 function v6ReferendumTick(st) {
@@ -10862,7 +11025,7 @@ var V6_EVENTS = [
       { l:'Close the crossings', s:'Public safety +2, tension +5, Calavera -10, liberties -3.', f:function (S) { S.ind.safety += 2; S.ind.tension += 5; S.ind.liberties -= 3; shiftRel(S, 'calavera', -10); mood(S, { veterans:6, smallbiz:4, faith:-5, youth:-5 }); } },
       { l:'Fund camps on the Calaveran side', s:'Treasury ' + fmc(-9) + '. Calavera +6, tension -2, the faith communities -2.', f:function (S) { S.treasury -= 9; shiftRel(S, 'calavera', 6); S.ind.tension -= 2; mood(S, { faith:-2, smallbiz:2 }); } }
     ] }),
-  ev({ id:'v6tradeWar', w:7, title:'Retaliation Against the Tariffs', cond:function (S) { return (S.pol.tariffs || 0) >= 2; },
+  ev({ id:'v6tradeWar', w:7, title:'Retaliation Against the Tariffs', cond:function (S) { return (S.pol.tariffs || 0) >= 3; },
     text:'The Sarath Federation and the Meridian League have matched the tariff schedule line for line. Grain exports from the plains have stopped at the ports.',
     ch:[
       { l:'Hold the line', s:'Economy -3, agriculture -3, farmers -5, labour +3.', f:function (S) { S.ind.economy -= 3; S.ind.agriculture -= 3; mood(S, { smallbiz:-5, labour:3 }); } },
@@ -11735,6 +11898,7 @@ var startScreen = function () {
   var html = '<div class="kicker">Republic of Vale, 2024</div><h2 id="sheetTitle">Take a Party and the Years That Follow</h2>' +
     (UI.saveReadError ? '<p class="note" data-save-warning="1" style="color:var(--bad)">A stored save could not be read (' + esc(UI.saveReadError) + '). It has been left untouched' + (auto ? '; an older save is offered below.' : '.') + '</p>' : '') +
     (UI.seedMinted ? '<p class="note" data-seed-warning="1" style="color:var(--brass)">That save was written before campaigns carried a seed. It will load, and it is reproducible from here on, but its earlier turns cannot be replayed.</p>' : '') +
+    (UI.polMigrated ? '<p class="note" data-ladder-warning="1" style="color:var(--brass)">That save was written when statutes had between one and four rungs. Every statute has four now, and the standing law in that save has been moved onto the new ladder at the same strength' + (UI.polMigrated < 0 ? '; ' + (-UI.polMigrated) + ' measure' + (UI.polMigrated === -1 ? '' : 's') + ' no longer in the statute book had to be dropped.' : '.') + '</p>' : '') +
     (auto ? '<div class="choices" style="margin-bottom:12px"><button class="choice" data-resume="1"><b>Resume the device autosave</b><small>' + esc(dateLabel(auto.turn)) + ' · ' + esc(PARTY[playParty(auto)].name) + ' · ' + esc(FORMS[auto.form].name) + (auto.endYear ? ' · ends ' + auto.endYear : '') + '</small></button></div>' : '') +
     '<p class="start-intro">Vale is a federal republic of six hundred and eighty million people, the first power of its hemisphere, and the most heavily checked constitution ever written: fifty states, two elected houses, four executive offices on staggered terms, sixteen justices nobody appoints, and eight regions with governors of their own. You lead a party. Whether that means you govern depends on the arithmetic, and the arithmetic depends on where you choose to begin.</p>' +
     /* Two questions decide the game, and both of them are interesting. Length,
@@ -12570,7 +12734,6 @@ function v7ChartsToEnd() {
 var v7RenderBase = render;
 render = function () {
   var prev = V7.tab, changed = UI.tab !== prev;
-  if (changed && prev) { UI.scrollPos = UI.scrollPos || {}; UI.scrollPos[prev] = window.scrollY || 0; }
   /* Same-tab renders had NO scroll handling at all: the full innerHTML rewrite
      let the browser clamp scrollY whenever the redrawn view came back shorter,
      so answering the last paper teleported the page. The window is the scroll
@@ -12583,11 +12746,15 @@ render = function () {
   document.body.classList.toggle('cards-compact', v7CompactOn());
   v7Folds(); v7Cards(); v7ChartsToEnd();
   if (keepY !== null && Math.abs((window.scrollY || 0) - keepY) > 1) window.scrollTo(0, keepY);
-  if (changed && prev && !(typeof V6M !== 'undefined' && V6M.locked)) {
-    var y = UI.scrollPos && UI.scrollPos[UI.tab];
-    if (y !== undefined) window.scrollTo(0, y);
-    else if (!v6mIs()) { var nav = document.getElementById('tabs'), top = nav.getBoundingClientRect().top + window.scrollY; if (window.scrollY > top) window.scrollTo(0, top); }
-  }
+  /* A main-tab change lands at the absolute top, every time. The old
+     cross-tab memory gave one gesture three different outcomes: a tab you had
+     left mid-page snapped back to that offset with the header row off-screen,
+     a first visit clamped to the sticky strip's top (header off-screen a
+     different way), and a tab left at the top showed it. Same-tab scroll
+     preservation above — the anti-jump fix that matters in play — is
+     untouched, and v7Jump still scrolls to the card it was asked for after
+     this runs. */
+  if (changed && prev && !(typeof V6M !== 'undefined' && V6M.locked) && (window.scrollY || 0) > 0) window.scrollTo(0, 0);
   V7.tab = UI.tab;
 };
 
@@ -12672,7 +12839,7 @@ function v7Jump(it) {
   }
   var tab = it.tab || v7Locate()[it.key] || V7_CAT_TAB[it.cat] || 'chamber';
   if (it.pol) { UI.polCat = it.pol.cat; UI.polSearch = ''; UI.polView = 'all'; UI.polOpen = UI.polOpen || {}; UI.polOpen[it.pol.grp || 'Other measures'] = true; }
-  UI.tab = tab; UI.scrollPos = UI.scrollPos || {}; delete UI.scrollPos[tab];
+  UI.tab = tab;
   hideSheet(); render();
   var el = null;
   if (it.sel) { try { el = document.querySelector(it.sel.split(',').map(function (s) { return '#view ' + s.trim(); }).join(',')); } catch (e) { el = null; } }
@@ -15195,17 +15362,15 @@ var V9_TIERS = {
 function v9TierName(p, lv) {
   if (!lv) return 'Not in force';
   var names = V9_TIERS[p.cat] || ['Modest', 'Standard', 'Strong', 'Total'];
-  if (p.max === 1) return 'In force';
-  if (p.max === 2) return lv === 1 ? names[0] : names[3];
-  if (p.max === 3) return [names[0], names[1], names[3]][lv - 1];
   return names[Math.min(3, lv - 1)];
 }
 /* Public support for moving a measure one step in a direction, from the blocs and the issue behind it. */
 function v9PublicSupport(st, p, dir) {
   dir = dir || 1;
-  var v = 50, w = 0;
+  var v = 50, w = 0, slv = st.pol[p.id] || 0;
+  var sd = polMoodDelta(p, slv, clamp(slv + dir, 0, p.max));
   if (p.mood) BLOCS.forEach(function (b) {
-    var m = (p.mood[b.id] || 0) * dir; if (!m) return;
+    var m = sd[b.id] || 0; if (!m) return;
     var warmth = (st.blocs[b.id] - 50) / 50;
     v += m * b.pop * 9 * (1 + warmth * .3); w += Math.abs(m) * b.pop;
   });
@@ -15228,9 +15393,10 @@ function v9PartyStance(st, pid, p, dir) {
 }
 function v9RegionalRead(st, p, dir) {
   dir = dir || 1;
+  var glv = st.pol[p.id] || 0, gd = polMoodDelta(p, glv, clamp(glv + dir, 0, p.max));
   return REGIONS.map(function (r) {
     var mix = V9_REGION_BLOCS[r.id] || {}, s = 0;
-    for (var b in mix) s += ((p.mood && p.mood[b]) || 0) * dir * mix[b];
+    for (var b in mix) s += (gd[b] || 0) * mix[b];
     return { r:r, s:s };
   }).sort(function (a, b) { return b.s - a.s; });
 }
@@ -15297,10 +15463,20 @@ function v9Dossier(id) {
   S.v9.stats.dossiers++;
   var ladder = '';
   for (var i = 0; i <= p.max; i++) {
-    var revI = p.rev ? p.rev * i : 0, expI = p.exp ? p.exp * i : 0;
-    var effs = []; if (p.eff) for (var k in p.eff) effs.push(esc(IND[k].name) + ' ' + v9Sign(Math.round(p.eff[k] * i * 10) / 10));
+    /* the real rows, not a base multiplied by a level: each rung prints the
+       standing total the statute would hold there */
+    var effI = polEffAt(p, i), revI = polRevAt(p, i), expI = polExpAt(p, i);
+    var effs = [], k;
+    for (k in effI) if (effI[k]) effs.push(esc(IND[k].name) + ' ' + v9Sign(Math.round(effI[k] * 10) / 10));
+    /* capital is state-dependent — the whip, the Senate, the department, the
+       agenda — so only the rung you can actually reach from here quotes it */
+    var stepI = (i === lv + 1 && lv < p.max) ? policyCost(id, 1) : ((i === lv - 1 && lv > 0) ? policyCost(id, -1) : 0);
+    /* no <b> here: the rung number beside it is a <b> and carries the big
+       display size, which a nested one would inherit */
+    var costNote = stepI ? ' · ' + stepI + ' capital from here' : '';
     ladder += '<div class="tier' + (i === lv ? ' now' : '') + (i < lv ? ' held' : '') + '"><b>' + i + '</b><span><strong>' + esc(v9TierName(p, i)) + '</strong>' +
-      (i ? '<small>' + (effs.length ? effs.join(', ') : 'No indicator effect') + (revI ? ' · revenue ' + fmc(revI) : '') + (expI ? ' · cost ' + fmc(expI) : '') + '</small>' : '<small>Repealed or never enacted</small>') + '</span></div>';
+      (i ? '<small>' + (effs.length ? effs.join(', ') : 'No indicator effect') + (revI ? ' · revenue ' + fmc(revI) : '') + (expI ? ' · cost ' + fmc(expI) : '') + costNote + '</small>'
+         : '<small>Repealed or never enacted' + costNote + '</small>') + '</span></div>';
   }
   var up = lv < p.max ? v9PublicSupport(S, p, 1) : null, dn = lv > 0 ? v9PublicSupport(S, p, -1) : null;
   var stances = PARTIES.slice().sort(function (a, b) { return (S.seats[b.id] || 0) - (S.seats[a.id] || 0); }).map(function (q) {
@@ -15311,11 +15487,23 @@ function v9Dossier(id) {
     var pp = polPos(p), d = dist2({ e:ppos(S, me).e + f.e, a:ppos(S, me).a + f.a }, pp);
     return '<span class="tag ' + (d < .5 ? 'up' : (d > 1 ? 'down' : '')) + '">' + esc(f.name) + ' ' + (d < .5 ? 'warm' : (d > 1 ? 'cold' : 'divided')) + '</span>';
   }).join('');
-  var blocs = BLOCS.map(function (b) { var m = (p.mood && p.mood[b.id]) || 0; return m ? '<span class="tag ' + (m > 0 ? 'up' : 'down') + '">' + esc(b.name) + ' ' + v9Sign(m) + '</span>' : ''; }).join('') || '<span class="muted small">No constituency moves on it.</span>';
+  /* What the constituencies hold BECAUSE of this statute at the rung it sits
+     on, and what one more rung would add. The old heading said "per level"
+     over a row that was really the one-shot shock of a single step. */
+  var nowM = polMoodAt(p, lv), nextM = lv < p.max ? polMoodDelta(p, lv, lv + 1) : {};
+  var blocs = BLOCS.map(function (b) {
+    var m = nowM[b.id] || 0, nx = nextM[b.id] || 0;
+    if (!m && !nx) return '';
+    return '<span class="tag ' + ((m || nx) > 0 ? 'up' : 'down') + '">' + esc(b.name) + ' ' + v9Sign(Math.round(m * 10) / 10) +
+      (nx ? '<span class="muted"> · ' + v9Sign(Math.round(nx * 10) / 10) + ' next</span>' : '') + '</span>';
+  }).join('') || '<span class="muted small">No constituency moves on it.</span>';
   var regs = v9RegionalRead(S, p, lv < p.max ? 1 : -1), top = regs.slice(0, 2), bottom = regs.slice(-2).reverse();
   var regHtml = (top.filter(function (x) { return x.s > .4; }).map(function (x) { return '<span class="tag up">' + esc(x.r.name) + ' welcomes it</span>'; }).join('') +
     bottom.filter(function (x) { return x.s < -.4; }).map(function (x) { return '<span class="tag down">' + esc(x.r.name) + ' resists it</span>'; }).join('')) || '<span class="muted small">The regions are indifferent.</span>';
-  var court = v9CourtExposure(S, p), sen = lv < p.max ? upperResist(S, polLean(p), 1, polAuth(p)) : 0;
+  var court = v9CourtExposure(S, p);
+  var sen = lv < p.max ? upperResist(S, polLean(p), 1, polAuth(p)) : null;
+  var senDn = lv > 0 ? upperResist(S, polLean(p), -1, polAuth(p)) : null;
+  var senWord = function (r) { return r > .3 ? 'hostile' : (r > .12 ? 'resists' : 'workable'); };
   var syn = v9SynergiesFor(id).map(function (s) {
     var other = s.a === id ? s.b : s.a, on = (S.pol[s.a] || 0) > 0 && (S.pol[s.b] || 0) > 0;
     var effs = []; for (var k in s.eff) effs.push(esc(IND[k].name) + ' ' + v9Sign(s.eff[k]));
@@ -15329,14 +15517,15 @@ function v9Dossier(id) {
     '<div class="result"><div><b>Level</b><span>' + lv + ' / ' + p.max + '</span></div><div><b>Tier</b><span style="font-size:13px">' + esc(v9TierName(p, lv)) + '</span></div>' +
     (up !== null ? '<div><b>Country, for more</b><span>' + v9Pct(up) + '</span></div>' : '') + (dn !== null ? '<div><b>Country, for less</b><span>' + v9Pct(dn) + '</span></div>' : '') +
     '<div><b>Court</b><span style="font-size:13px" class="' + (court.cls === 'down' ? 'neg' : '') + '">' + esc(court.word) + '</span></div>' +
-    '<div><b>Senate</b><span style="font-size:13px">' + (sen > .3 ? 'hostile' : (sen > .12 ? 'resists' : 'workable')) + '</span></div></div>' +
+    (sen !== null ? '<div><b>Senate, on more</b><span style="font-size:13px">' + senWord(sen) + '</span></div>' : '') +
+    (senDn !== null ? '<div><b>Senate, on less</b><span style="font-size:13px">' + senWord(senDn) + '</span></div>' : '') + '</div>' +
     (live ? '<p class="note">' + esc(live.id) + ' is before the houses now, at ' + esc(BILL_STAGE_NAMES[live.stage]) + '.</p>' : '') +
     (sunset ? '<p class="note">A sunset clause falls due in ' + esc(dateLabel(sunset)) + '.</p>' : '') +
     (S.orders[id] ? '<p class="note">Raised by executive order: the court treats it as half again as vulnerable.</p>' : '') +
     '<div class="subhead">The ladder</div><div class="ladder">' + ladder + '</div>' +
     '<div class="subhead">Where the parties stand on the next step</div><div class="tagline">' + stances + '</div>' +
     (facts ? '<div class="subhead">Inside your own party</div><div class="tagline">' + facts + '</div>' : '') +
-    '<div class="subhead">The constituencies, per level</div><div class="tagline">' + blocs + '</div>' +
+    '<div class="subhead">What the constituencies hold now</div><div class="tagline">' + blocs + '</div>' +
     '<div class="subhead">The regions</div><div class="tagline">' + regHtml + '</div>' +
     '<div class="subhead">Paired measures</div>' + syn +
     (hist ? '<div class="subhead">History</div><div class="tscroll"><table><thead><tr><th>Year</th><th>Bill</th><th>Sponsor</th><th>Result</th></tr></thead><tbody>' + hist + '</tbody></table></div>' : '') +
@@ -15418,9 +15607,9 @@ sponsorBill = function (st, policy, dir, owner, strategy, free) {
 };
 var v9EnactBillBase = enactBill;
 enactBill = function (st, bill) {
-  var p = POL[bill.policy], m0 = p ? p.mood : null;
-  if (bill.staged && m0) p.mood = scaleObj(m0, .5);
-  try { v9EnactBillBase(st, bill); } finally { if (bill.staged && m0) p.mood = m0; }
+  /* the staged half-shock is applied by enactBill itself, off the ladder
+     rows: swapping p.mood underneath it would not reach the tables */
+  v9EnactBillBase(st, bill);
   if (bill.staged && bill.dir > 0) { st.recent = st.recent.filter(function (x) { return x !== bill.policy; }); if (rand() < .5) st.recent.push(bill.policy); }
   if (bill.sunset && st.v9 && bill.dir > 0) { st.v9.sunsets[bill.policy] = st.turn + 10; }
 };
@@ -15475,7 +15664,7 @@ function v9SunsetEvents(st) {
           { l:'Make it permanent', s:'Capital -' + cst(Math.max(4, Math.round(p.cost * .6))) + ', unity +2. No sunset again.',
             f:function (S2) { S2.capital = clamp(S2.capital - cst(Math.max(4, Math.round(p.cost * .6))), -5, capCap(S2)); delete S2.v9.sunsets[pid]; S2.unity = c100((S2.unity || 60) + 2); logIt(S2, p.name + ' was made permanent.'); } },
           { l:'Let it lapse', s:'The measure falls one level. Its opponents are pleased and its supporters are not.',
-            f:function (S2) { delete S2.v9.sunsets[pid]; if ((S2.pol[pid] || 0) > 0) { S2.pol[pid] -= 1; if (p.mood) mood(S2, scaleObj(p.mood, -.4)); } logIt(S2, p.name + ' lapsed under its sunset clause.'); } }
+            f:function (S2) { delete S2.v9.sunsets[pid]; var slv = S2.pol[pid] || 0; if (slv > 0) { S2.pol[pid] -= 1; if (p.mood) mood(S2, polMoodDelta(p, slv, slv - 1, .4)); } logIt(S2, p.name + ' lapsed under its sunset clause.'); } }
         ] });
     })(id);
   }
@@ -15502,15 +15691,15 @@ var V9_CASES = [
     text:'The opposition has challenged the practice of governing by executive order. The question is whether a measure the houses never voted on can bind the country at all.',
     win:function (S2) { v9Cap(S2, 4); S2.ind.liberties = c100(S2.ind.liberties - 2); mood(S2, { prof:-4, youth:-2 }); }, winLine:'The court upheld the executive orders.',
     lose:function (S2) { var hit = null; for (var k in S2.orders) if (S2.orders[k] && S2.pol[k] > 0) { hit = k; break; } if (hit) { S2.pol[hit] -= 1; delete S2.orders[hit]; } S2.ind.liberties = c100(S2.ind.liberties + 3); v9Cap(S2, -3); mood(S2, { prof:5, youth:3 }); }, loseLine:'The court struck down an executive order and narrowed the power to make them.' },
-  { id:'speech', name:'The Speech Case', cond:function (st) { return (st.pol.censorshipAct || 0) >= 1 || (st.pol.obscenityStandards || 0) >= 1 || (st.pol.seditionAct || 0) >= 1; }, lean:{ e:0, a:-.7 },
+  { id:'speech', name:'The Speech Case', cond:function (st) { return (st.pol.censorshipAct || 0) >= 1 || (st.pol.obscenityStandards || 0) >= 2 || (st.pol.seditionAct || 0) >= 1; }, lean:{ e:0, a:-.7 },
     text:'A publisher prosecuted under the standards law has taken the statute to the court. The question is whether the state may decide what the country reads.',
     win:function (S2) { S2.ind.safety = c100(S2.ind.safety + 1); mood(S2, { faith:4, seniors:2, prof:-4, youth:-3 }); }, winLine:'The court upheld the standards law.',
     lose:function (S2) { v9StrikeFirst(S2, ['seditionAct', 'censorshipAct', 'obscenityStandards']); S2.ind.liberties = c100(S2.ind.liberties + 5); mood(S2, { prof:6, youth:5, faith:-4 }); }, loseLine:'The court struck the standards law down a level.' },
-  { id:'strike', name:'The Strike Case', cond:function (st) { return (st.pol.essentialServicesBan || 0) >= 1 || (st.pol.strikeBallotRules || 0) >= 1; }, lean:{ e:-.5, a:-.2 },
+  { id:'strike', name:'The Strike Case', cond:function (st) { return (st.pol.essentialServicesBan || 0) >= 2 || (st.pol.strikeBallotRules || 0) >= 2; }, lean:{ e:-.5, a:-.2 },
     text:'The Congress of Labour has challenged the limits on the right to strike. The question is whether the freedom to associate includes the freedom to stop work.',
     win:function (S2) { S2.ind.economy = c100(S2.ind.economy + 1); mood(S2, { tech:4, smallbiz:3, labour:-5 }); }, winLine:'The court upheld the limits on strikes.',
     lose:function (S2) { if (S2.pol.essentialServicesBan > 0) S2.pol.essentialServicesBan -= 1; else if (S2.pol.strikeBallotRules > 0) S2.pol.strikeBallotRules -= 1; mood(S2, { labour:8, youth:3, tech:-4, smallbiz:-3 }); }, loseLine:'The court struck down the limits on the right to strike.' },
-  { id:'franchise', name:'The Franchise Case', cond:function (st) { return (st.pol.voterID || 0) >= 2 || (st.pol.proofOfCitizenship || 0) >= 1 || (st.pol.propertyFranchise || 0) >= 1; }, lean:{ e:0, a:-.5 },
+  { id:'franchise', name:'The Franchise Case', cond:function (st) { return (st.pol.voterID || 0) >= 4 || (st.pol.proofOfCitizenship || 0) >= 2 || (st.pol.propertyFranchise || 0) >= 2; }, lean:{ e:0, a:-.5 },
     text:'A civil rights league has challenged the conditions placed on the vote. The question is whether the republic may ask its citizens to prove they are citizens before it lets them choose it.',
     win:function (S2) { S2.ind.corruption = c100(S2.ind.corruption - 1); mood(S2, { faith:3, seniors:3, youth:-4, prof:-3 }); }, winLine:'The court upheld the conditions on the franchise.',
     lose:function (S2) { v9StrikeFirst(S2, ['propertyFranchise', 'proofOfCitizenship', 'voterID']); S2.ind.liberties = c100(S2.ind.liberties + 4); mood(S2, { youth:6, prof:5, labour:3, faith:-2 }); }, loseLine:'The court struck down the conditions on the franchise.' },
@@ -15522,11 +15711,11 @@ var V9_CASES = [
     text:'The Constitutional Front has brought the emergency itself before the court. The question is whether an emergency that has lasted this long is an emergency at all.',
     win:function (S2) { v9Cap(S2, 5); S2.unrest = clamp(S2.unrest - 3, 0, 110); mood(S2, { veterans:4, prof:-5, youth:-4 }); }, winLine:'The court declined to question the emergency.',
     lose:function (S2) { S2.unrest = clamp(S2.unrest + 10, 0, 110); S2.ind.liberties = c100(S2.ind.liberties + 4); S2.crown = c100(S2.crown + 6); v9Cap(S2, -6); if (S2.movements) S2.movements.democracyFront = c100((S2.movements.democracyFront || 0) + 12); mood(S2, { prof:8, youth:8, veterans:-4 }); }, loseLine:'The court held the emergency unlawful. The government has not complied.' },
-  { id:'wealth', name:'The Takings Case', cond:function (st) { return (st.pol.wealthTax || 0) >= 2 || (st.pol.landValueTax || 0) >= 2 || (st.pol.nationalisation || 0) >= 1; }, lean:{ e:.5, a:-.3 },
+  { id:'wealth', name:'The Takings Case', cond:function (st) { return (st.pol.wealthTax || 0) >= 3 || (st.pol.landValueTax || 0) >= 3 || (st.pol.nationalisation || 0) >= 1; }, lean:{ e:.5, a:-.3 },
     text:'The chartered companies have challenged the levy on capital as a taking without compensation. The question is whether the republic may reach into what its citizens own, as well as what they earn.',
     win:function (S2) { S2.treasury += 10; mood(S2, { labour:4, youth:3, tech:-5 }); }, winLine:'The court upheld the levy on capital.',
     lose:function (S2) { if (S2.pol.wealthTax > 0) S2.pol.wealthTax -= 1; else if (S2.pol.landValueTax > 0) S2.pol.landValueTax -= 1; else if (S2.pol.nationalisation > 0) S2.pol.nationalisation -= 1; mood(S2, { tech:7, smallbiz:4, labour:-5, youth:-3 }); }, loseLine:'The court struck the levy on capital down a level.' },
-  { id:'church', name:'The Establishment Case', cond:function (st) { return (st.pol.blasphemyLaw || 0) >= 1 || (st.pol.religiousExemptions || 0) >= 2 || (st.pol.establishedChurch || 0) >= 1; }, lean:{ e:0, a:-.5 },
+  { id:'church', name:'The Establishment Case', cond:function (st) { return (st.pol.blasphemyLaw || 0) >= 2 || (st.pol.religiousExemptions || 0) >= 4 || (st.pol.establishedChurch || 0) >= 1; }, lean:{ e:0, a:-.5 },
     text:'A secular society has challenged the statutes that favour the congregations. The question is whether the republic has a faith.',
     win:function (S2) { mood(S2, { faith:6, seniors:2, prof:-3, youth:-4 }); }, winLine:'The court upheld the statutes favouring the congregations.',
     lose:function (S2) { v9StrikeFirst(S2, ['blasphemyLaw', 'establishedChurch', 'religiousExemptions']); S2.ind.liberties = c100(S2.ind.liberties + 3); mood(S2, { prof:5, youth:5, faith:-7 }); }, loseLine:'The court struck down the statutes favouring the congregations.' }
@@ -15779,7 +15968,7 @@ var V9_EVENTS = [
       { l:'Blame the crew', s:'Armed forces -8, veterans -9, capital +2. The board\u2019s report is sealed.', f:function (S2) { S2.armyLoyalty -= 8; S2.capital += 2; S2.ind.corruption += 2; mood(S2, { veterans:-9, prof:-4 }); } },
       { l:'Publish the report and sue the yard', s:'Corruption -3, the professions +5, the exchanges -4, treasury ' + fmc(6) + ' in damages.', f:function (S2) { S2.ind.corruption -= 3; S2.treasury += 6; mood(S2, { prof:5, veterans:2, tech:-4 }); } }
     ] }),
-  ev({ id:'v9pensionRow', w:7, cond:function (S2) { return (S2.pol.socialSecurity || 0) >= 2 || S2.blocs.seniors < 45; }, title:'The Pension Indexation Row',
+  ev({ id:'v9pensionRow', w:7, cond:function (S2) { return (S2.pol.socialSecurity || 0) >= 3 || S2.blocs.seniors < 45; }, title:'The Pension Indexation Row',
     text:'The actuaries have reported that the pension, indexed to wages since 1961, will cost a fifth of the budget within twenty years. The Pensioners Union has eleven million members and a telephone number for every deputy.',
     ch:[
       { l:'Index to prices instead', s:'Treasury ' + fmc(11) + ' a session in time. Seniors -12, unrest +4, the exchanges +5.', f:function (S2) { S2.treasury += 11; S2.unrest += 4; mood(S2, { seniors:-12, labour:-3, tech:5 }); } },
@@ -15803,7 +15992,7 @@ var V9_EVENTS = [
       { l:'Find the leak in the cabinet', s:'Capital -3, unity -4, corruption -3. Somebody in the room is finished.', f:function (S2) { S2.capital -= 3; S2.unity -= 4; S2.ind.corruption -= 3; mood(S2, { prof:4 }); } },
       { l:'Use him to feed Sarath the wrong minutes', s:'Tension -2, armed forces +3, corruption +3. Nobody is told, least of all the cabinet.', f:function (S2) { S2.ind.tension -= 2; S2.armyLoyalty += 3; S2.ind.corruption += 3; } }
     ] }),
-  ev({ id:'v9churchState', w:6, cond:function (S2) { return S2.blocs.faith > 55 || (S2.pol.religiousExemptions || 0) >= 1; }, title:'The Chaplaincy Bill',
+  ev({ id:'v9churchState', w:6, cond:function (S2) { return S2.blocs.faith > 55 || (S2.pol.religiousExemptions || 0) >= 2; }, title:'The Chaplaincy Bill',
     text:'A private member has proposed that every federal institution from the schools to the carriers carry a chaplaincy paid for by the state. The congregations have filled the galleries and the Constitutional Club has filled the lobby.',
     ch:[
       { l:'Adopt it as a government bill', s:'Faith +9, liberties -3, the professions -5, the young -5, treasury ' + fmc(-4) + '.', f:function (S2) { S2.treasury -= 4; S2.ind.liberties -= 3; mood(S2, { faith:9, seniors:3, prof:-5, youth:-5 }); } },
@@ -15912,28 +16101,28 @@ V9_WORKS.forEach(function (w) { if (!V8_WORK[w.id]) { V8_WORKS.push(w); V8_WORK[
    ========================================================== */
 var V9_PROGRAMMES = [
   { id:'v9hardState', name:'The Iron Settlement', lean:'Authoritarian', blurb:'A security bureau, standing emergency authority, assembly permits and the oath. Order before everything.',
-    items:{ politicalPolice:2, emergencyDecree:1, protestPermits:2, loyaltyOaths:1 },
+    items:{ politicalPolice:3, emergencyDecree:2, protestPermits:3, loyaltyOaths:2 },
     reward:{ capital:12, unity:9, mood:{ veterans:8, faith:4, seniors:3, youth:-8, prof:-8 }, ind:{ safety:6, liberties:-4 } }, line:'The iron settlement was completed.' },
   { id:'v9libertyCharter', name:'The Liberty Charter', lean:'Libertarian', blurb:'Speech without limit, a protected press, the police demilitarised and the security state under a board.',
-    items:{ speechAbsolutism:1, pressFreedom:2, policeDemilitarisation:1, intelligenceOversight:2 },
+    items:{ speechAbsolutism:4, pressFreedom:4, policeDemilitarisation:2, intelligenceOversight:4 },
     reward:{ capital:11, unity:8, mood:{ youth:10, prof:8, tech:3, veterans:-5, faith:-3 }, ind:{ liberties:8 } }, line:'The liberty charter was completed.' },
   { id:'v9nationalRenewal', name:'National Renewal', lean:'Nationalist', blurb:'Tariffs, a guarded frontier, national service and a flag in every classroom.',
-    items:{ tariffs:2, borderSecurity:3, nationalService:1, flagAndAnthem:1 },
+    items:{ tariffs:3, borderSecurity:4, nationalService:1, flagAndAnthem:2 },
     reward:{ capital:11, unity:9, mood:{ veterans:9, faith:7, smallbiz:5, prof:-6, tech:-7, youth:-5 }, ind:{ military:4, tension:3 } }, line:'National renewal was completed.' },
   { id:'v9openRepublic', name:'The Open Republic', lean:'Cosmopolitan', blurb:'Expanded immigration, faster citizenship, student visas and a cultural diplomacy to match.',
-    items:{ immigrationVisas:2, naturalisationReform:1, studentVisas:2, culturalDiplomacy:1 },
+    items:{ immigrationVisas:3, naturalisationReform:2, studentVisas:4, culturalDiplomacy:2 },
     reward:{ capital:10, unity:7, mood:{ prof:8, youth:8, tech:6, veterans:-5, faith:-4 }, ind:{ economy:4, technology:3 } }, line:'The open republic was completed.' },
   { id:'v9frontierSettlement', name:'The Frontier Settlement', lean:'Imperial', blurb:'Protectorates administered, territories settled, courts seated and a basing network to hold it all.',
-    items:{ protectorates:2, settlerProgramme:2, territorialCourts:1, overseasBases:2 },
+    items:{ protectorates:3, settlerProgramme:4, territorialCourts:2, overseasBases:3 },
     reward:{ capital:12, unity:8, mood:{ veterans:10, smallbiz:4, tech:4, youth:-8, prof:-6 }, ind:{ territories:8, military:3 } }, line:'The frontier settlement was completed.' },
   { id:'v9corporateCompact', name:'The Corporate Compact', lean:'Oligarchic', blurb:'Federal charters, the exchanges deregulated, liability shielded and a standing backstop for whoever is too big to fall.',
-    items:{ corporateCharters:2, exchangeDeregulation:2, corporateImmunity:1, marketBackstop:1 },
+    items:{ corporateCharters:4, exchangeDeregulation:3, corporateImmunity:1, marketBackstop:2 },
     reward:{ capital:12, unity:7, mood:{ tech:14, smallbiz:5, labour:-10, youth:-8, prof:-6 }, ind:{ economy:6, corruption:5 } }, line:'The corporate compact was completed.' },
   { id:'v9imperialOrder', name:'The Imperial Order', lean:'Imperium', form:'empire', blurb:'The legions, the prefects, the censorate and the cult. The Empire made permanent.',
-    items:{ legions:3, prefects:2, censorate:2, imperialCult:2 },
+    items:{ legions:3, prefects:3, censorate:3, imperialCult:3 },
     reward:{ capital:15, unity:10, mood:{ veterans:12, faith:8, youth:-12, prof:-12 }, ind:{ military:6, safety:5, liberties:-6 } }, line:'The imperial order was completed.' },
   { id:'v9socialistConstruction', name:'Socialist Construction', lean:'Vanguard', form:'dpr', blurb:'The plan, the commanding heights, the collectives and the people\u2019s bank. The economy made one.',
-    items:{ fiveYearPlan:2, nationalisation:2, collectivisation:1, peoplesBank:1 },
+    items:{ fiveYearPlan:2, nationalisation:2, collectivisation:1, peoplesBank:2 },
     reward:{ capital:15, unity:10, mood:{ labour:14, youth:6, tech:-14, smallbiz:-12 }, ind:{ poverty:-6, corruption:-4, economy:-2 } }, line:'Socialist construction was completed.' }
 ];
 V9_PROGRAMMES.forEach(function (p) { for (var id in p.items) { if (!POL[id]) delete p.items[id]; } if (!V6_PROGRAMME[p.id] && Object.keys(p.items).length) { V6_PROGRAMMES.push(p); V6_PROGRAMME[p.id] = p; } });
@@ -15960,7 +16149,7 @@ var V9_SCENARIOS = [
       st.exec = { pres:'pnl', vpres:'tvc', chan:'fp', vchan:'pnl' };
       st.ind.tension = 62; st.ind.military = 80; st.ind.liberties = 56; st.ind.safety = 56; st.ind.corruption = 54; st.ind.economy = 55;
       st.blocs = { labour:42, tech:36, smallbiz:58, prof:36, faith:60, veterans:70, youth:32, seniors:54 };
-      st.pol.borderSecurity = 3; st.pol.tariffs = 2; st.pol.defenceBudget = 4; st.pol.surveillance = 1; st.pol.nationalService = 1;
+      st.pol.borderSecurity = 4; st.pol.tariffs = 3; st.pol.defenceBudget = 4; st.pol.surveillance = 1; st.pol.nationalService = 1;
       st.unrest = 34; st.crown = 55; st.armyLoyalty = 76;
       st.powers = { ostmark:32, moya:46, sarath:24, calavera:50, alliance:56, meridian:58 };
       st.movements = { nativist:50, youthRising:44, democracyFront:36 };
@@ -15978,7 +16167,7 @@ var V9_SCENARIOS = [
       st.exec = { pres:'cup', vpres:'cup', chan:'cup', vchan:'fp' };
       st.ind.economy = 68; st.ind.technology = 74; st.ind.corruption = 70; st.ind.liberties = 48; st.ind.poverty = 58; st.ind.environment = 36;
       st.blocs = { labour:28, tech:76, smallbiz:58, prof:46, faith:48, veterans:50, youth:30, seniors:44 };
-      st.pol.corporateCharters = 2; st.pol.privatisation = 2; st.pol.exchangeDeregulation = 1; st.pol.deregulation = 2; st.pol.incomeTax = 1; st.pol.corporateTax = 0;
+      st.pol.corporateCharters = 4; st.pol.privatisation = 3; st.pol.exchangeDeregulation = 1; st.pol.deregulation = 3; st.pol.incomeTax = 1; st.pol.corporateTax = 0;
       st.acts.charteredSenate = true; st.acts.wealthFranchise = true;
       st.unrest = 40; st.crown = 50; st.armyLoyalty = 62;
       st.movements = { strikeWave:52, youthRising:40, techGuild:30 };
@@ -15996,7 +16185,7 @@ var V9_SCENARIOS = [
       st.exec = { pres:'cup', vpres:'pnl', chan:'cup', vchan:'tvc' };
       st.ind.territories = 62; st.ind.military = 84; st.ind.tension = 64; st.ind.liberties = 54; st.ind.economy = 60; st.ind.corruption = 56;
       st.blocs = { labour:40, tech:60, smallbiz:56, prof:40, faith:52, veterans:74, youth:32, seniors:52 };
-      st.pol.protectorates = 2; st.pol.overseasBases = 2; st.pol.carrierProgramme = 2; st.pol.defenceBudget = 4; st.pol.settlerProgramme = 1; st.pol.charteredCompanies = 1;
+      st.pol.protectorates = 3; st.pol.overseasBases = 3; st.pol.carrierProgramme = 3; st.pol.defenceBudget = 4; st.pol.settlerProgramme = 2; st.pol.charteredCompanies = 1;
       st.acts.consulate = true; st.acts.territorialSeats = true;
       st.unrest = 36; st.crown = 46; st.armyLoyalty = 80;
       st.powers = { ostmark:36, moya:40, sarath:22, calavera:48, alliance:60, meridian:56 };
@@ -16715,13 +16904,13 @@ V10_POLICIES.forEach(function (p) { if (!POL[p.id]) { POLICIES.push(p); POL[p.id
 /* ---------- programmes bundling the roads (AFTER the policy push) ---------- */
 [
   { id:'theApparatus', name:'The Apparatus', lean:'Authoritarian', blurb:'The full security state, assembled in order: the police, the files, the cameras, the paper.',
-    items:{ politicalPolice:2, surveillance:2, fusionCentres:1, informantNetwork:1, censorshipAct:1 },
+    items:{ politicalPolice:3, surveillance:3, fusionCentres:2, informantNetwork:1, censorshipAct:1 },
     reward:{ capital:12, unity:8, mood:{ veterans:8, seniors:4, youth:-10, prof:-8 }, ind:{ safety:6, liberties:-6 } }, line:'The apparatus was completed.' },
   { id:'theCharter', name:'The Charter Programme', lean:'Oligarchic', blurb:'The state prepared for sale: charters, privatisation, the census and the register.',
-    items:{ corporateCharters:2, privatisation:2, censusOfAssets:1, propertyFranchise:1, deregulation:1 },
+    items:{ corporateCharters:4, privatisation:3, censusOfAssets:2, propertyFranchise:2, deregulation:1 },
     reward:{ capital:12, unity:6, mood:{ tech:12, smallbiz:4, labour:-10 }, ind:{ economy:5, corruption:4 } }, line:'The charter programme was completed.' },
   { id:'theThaw', name:'The Thaw', lean:'Liberal', blurb:'The apparatus dismantled by statute: oversight, sunlight, and the police out of politics.',
-    items:{ intelligenceOversight:1, whistleblowerProtection:1, policeDemilitarisation:1, closeDetention:1 },
+    items:{ intelligenceOversight:2, whistleblowerProtection:2, policeDemilitarisation:2, closeDetention:4 },
     reward:{ capital:10, unity:6, mood:{ youth:10, prof:10, veterans:-4 }, ind:{ liberties:8 } }, line:'The thaw was completed.' }
 ].forEach(function (pr) { for (var id in pr.items) { if (!POL[id]) delete pr.items[id]; }
   if (!V6_PROGRAMME[pr.id] && Object.keys(pr.items).length) { V6_PROGRAMMES.push(pr); V6_PROGRAMME[pr.id] = pr; } });
@@ -17095,7 +17284,7 @@ V10_ROAD_EVENTS.forEach(function (e) { EVENTS.push(e); });
 /* ---------- the two arcs of the roads ---------- */
 [
   { id:'capitalCapture', name:'The Offer', weight:6,
-    trigger:function (st) { return FORMS[st.form].elections && (st.pol.corporateCharters || 0) >= 1 &&
+    trigger:function (st) { return FORMS[st.form].elections && (st.pol.corporateCharters || 0) >= 2 &&
       st.blocs.tech > 60 && st.ind.corruption > 55 && st.form !== 'corporate' && st.form !== 'syndicate'; },
     phases:[
       { id:'offer', title:'The Offer',

@@ -4,8 +4,59 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S9e — the Roads** (PR #20). The content the descent engine carries; with it,
-the owner's third order is complete.
+**S9f — the Ladder** (PR #21). Four rungs on every statute, and the two
+navigation complaints. First of three slices carrying the owner's fourth
+order: *every policy gets four levels with a unique set of modifiers at each,
+the card previews what extending or repealing would do, the Dossier shows
+every stage* — and, separately, *every category reaches 24 policies*.
+
+The engine. `P()` — the funnel all 451 policy literals already passed through
+— now expands each one at parse into `_effAt/_moodAt/_revAt/_expAt[0..4]`.
+`eff`/`mood`/`rev`/`exp` are the rung-1 row; `eff2`..`eff4` are cumulative
+totals, for the authored curves S9g and S9h bring. Until a curve is authored a
+statute carries `lin`, the ladder it had before, and its rows are interpolated
+through its own rescaled rungs — exact at every position an old save, seed,
+want or programme target can occupy, so the four-rung order cost nothing in
+balance. `cost` was rescaled the same way: a full build costs what it always
+cost, in four instalments.
+
+Nothing multiplies a base by a level any more. The seven one-shot mood
+impulses became row deltas, which also deleted v9's staged-bill patch (it
+swapped `p.mood` underneath `enactBill` and would never have reached the
+tables). 219 literals that encoded a position were rescaled by
+`round(n/oldMax*4)` — gates, court cases, events, 41 party wants, programme
+targets, scenario seeds — and 24 ad-hoc linear terms took `k*oldMax/4`. Terms
+multiplying a raw position halved their coefficient, a rung being half what it
+was for the 233 max-2 statutes. Old saves are migrated onto the new ladder,
+stamped `polV2`, and the player is told.
+
+The surfaces. The policy card's first tagline is now the STANDING law at the
+rung it sits on, followed by what one more rung would add and what giving one
+back would take away — in the same row, because compact mode folds the second
+one away. The Dossier's ladder reads the real rows, quotes capital on the
+rungs you can actually reach, reads the Senate in both directions, and its
+constituencies section says what it means (the old heading called a one-shot
+impulse a per-level stock). The drafting desk states the rung's own change.
+
+The navigation. A main-tab change lands at the absolute top, every time — the
+cross-tab scroll memory that gave one gesture three outcomes is gone, and the
+header row is always there when you arrive. Drafting an extension or a
+referendum no longer throws you to the Legislative tab.
+
+The morning-review items flagged in PR #20 are ratified as shipped: the
+securityState thresholds, BLOC_WEALTH, the Senate reservation, the territorial
+formula, the ritual deltas, the toSyndicate gates, the S9e costs and event
+weights are all the recommendation. The one deliberate change is
+securityState's per-statute coefficient, 2 → 1, which is the ladder-unit rule
+above and not a retune.
+
+Next: **S9g — the statute book** (131 new policies, every core category to 24,
+authored four-rung curves from birth, `maxBytes` 1.6M → 1.75M with the case),
+then **S9h — the curves** (authored rows for the 451 existing statutes, `lin`
+removed, the migration becomes a loud refusal).
+
+Previously: **S9e — the Roads** (PR #20, merged). The content the descent
+engine carries; with it, the owner's third order is complete.
 
 One new form: **the Chartered State** — the oligarchic terminal corporate
 never had (its only exit was back to federal; the capital road ended mid-air).
@@ -281,7 +332,8 @@ ratchet 10 → 5, which is now its true floor.
 | S9b the screen holds still | **merged** (#17) | nine jump mechanisms fixed in place; v7's restore is the single scroll owner; `scroll-keeps` step discriminates on three of them |
 | S9c the Atlas | **merged** (#18) | six coherent groups, ids collision-proof, Ministry relabel, 6-key keyboard covers all 15 views, misfiled panels rehomed with fold-pref migration, tabs.js rewritten |
 | S9d the Descent | **merged** (#19) | securityState + state-gated measures; nine latch acts get teeth; confirmation ritual + reckoning; terminal real; needs on all paths; v10 chunk (8/8); `tools/roads.js` ROADS OK |
-| S9e the Roads | **in review (PR #20)** | the Chartered State; 34 policies (first POLICIES.push); 33 events; 2 arcs; 11/11 goal parity; 6 records; 3 acts of repair; roads.js content proofs |
+| S9e the Roads | **merged** (#20) | the Chartered State; 34 policies (first POLICIES.push); 33 events; 2 arcs; 11/11 goal parity; 6 records; 3 acts of repair; roads.js content proofs |
+| S9f the Ladder | **in review (PR #21)** | four rungs on every statute via `P()`; `lin` interpolation parity-exact at every reachable rung; 7 impulses → row deltas; 219 position literals rescaled; loud save migration + `polV2`; card/Dossier/desk surfaces; tab changes land at the top; drafting stays on the policy page |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
