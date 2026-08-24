@@ -14817,10 +14817,45 @@ function v8ActiveWorks(st) { if (!st.v8) return []; return V8_WORKS.filter(funct
    suspended every site before any of them advanced: the money left and
    nothing was built. */
 function v8WorksBroke(st) { return st.treasury <= 0 && st.debt > 600; }
+/* S10d: what a government can do to a work ALREADY UNDER WAY. The four modes
+   that existed — steady, crash, suspend, cancel — only ever changed the RATE.
+   These change what the thing turns out to be: how much it costs, how long it
+   takes, how likely the estimate is to blow, and how much it delivers when the
+   ribbon is cut. One of each per work; several are mutually exclusive by
+   argument, and all of them are recorded on the card. */
+var V8_WORK_MODS = {
+  inquiry:   { name:'Order a public inquiry', cost:3, money:0, note:'A session lost and the estimate held. The professions approve of a government that asks first.',
+               rate:.55, overrun:.35, payout:1, mood:{ prof:3, tech:1, labour:-1 } },
+  foreign:   { name:'Bring in a foreign contractor', cost:2, money:0, note:'Faster and cheaper, and every trades hall in the country notices.',
+               rate:1.3, overrun:.8, payout:.92, mood:{ labour:-6, smallbiz:-3, tech:2 }, tension:2 },
+  domestic:  { name:'Write in a domestic labour clause', cost:3, money:6, note:'Slower and dearer, built by people who vote here.',
+               rate:.82, overrun:1.1, payout:1.08, mood:{ labour:6, smallbiz:3, tech:-2 } },
+  descope:   { name:'Scale back the specification', cost:2, money:0, note:'A third off the cost and a third off the thing. Honest, and it looks like a retreat.',
+               rate:1, overrun:.9, costMul:.67, payout:.67, mood:{ prof:-2, labour:-2 } },
+  gild:      { name:'Build it properly', cost:4, money:0, note:'Half again as much, and half again as much of it. Somebody will call it a palace.',
+               rate:1, overrun:1.2, costMul:1.45, payout:1.45, mood:{ prof:2, tech:2, smallbiz:-3 } },
+  partner:   { name:'Take the state in as a partner', cost:3, money:0, note:'The region pays a share and owns a share. Cheaper for the federation, and less of the credit.',
+               rate:1, overrun:1, costMul:.72, payout:1, regionMul:.45, mood:{ smallbiz:2 }, crown:6 }
+};
+function v8WorkFactors(q) {
+  var f = { rate:1, overrun:1, costMul:1, payout:1, regionMul:1 };
+  if (!q || !q.mods) return f;
+  for (var k in q.mods) {
+    var m = V8_WORK_MODS[k]; if (!m || !q.mods[k]) continue;
+    f.rate *= (m.rate === undefined ? 1 : m.rate);
+    f.overrun *= (m.overrun === undefined ? 1 : m.overrun);
+    f.costMul *= (m.costMul === undefined ? 1 : m.costMul);
+    f.payout *= (m.payout === undefined ? 1 : m.payout);
+    f.regionMul *= (m.regionMul === undefined ? 1 : m.regionMul);
+  }
+  return f;
+}
 function v8WorkPerSession(st, w, q) {
   q = q || st.v8.works[w.id]; if (!q || q.status !== 'active' || q.mode === 'paused') return 0;
   if (v8WorksBroke(st)) return 0;
   var base = q.cost / w.years;
+  if (q.inquiryUntil && st.turn < q.inquiryUntil) return 0;
+  base *= v8WorkFactors(q).rate;
   return q.mode === 'crash' ? base * 1.7 : base;
 }
 function v8WorksSpend(st) { var t = 0; v8ActiveWorks(st).forEach(function (w) { t += v8WorkPerSession(st, w); }); return t; }
@@ -14856,7 +14891,7 @@ function v8WorksTick(st) {
     mood(st, { labour:crash ? .6 : .35 });
     if (crash) { st.ind.corruption = c100(st.ind.corruption + .25); st.unrest = clamp(st.unrest + .15, 0, 110); }
     if (w.region && st.regions[w.region]) st.regions[w.region].attention = (st.regions[w.region].attention || 0) + .5;
-    if (rand() < over) {
+    if (rand() < over * v8WorkFactors(q).overrun) {
       q.cost = Math.round(q.cost * 1.12); q.overruns = (q.overruns || 0) + 1; v.stats.overruns++;
       logIt(st, 'The estimate for ' + w.name + ' rose by twelve percent. The contractor blames the ground.');
     }
@@ -14867,20 +14902,30 @@ function v8WorksTick(st) {
     if (q.spent >= q.cost) v8CompleteWork(st, w, q);
   });
 }
-function v8CompleteWork(st, w, q) {
+function v8CompleteWork(st, w, q, early) {
   q.status = 'done'; q.done = st.turn; st.v8.stats.worksDone++;
   var d = w.done || {};
-  for (var k in (d.ind || {})) st.ind[k] = c100(st.ind[k] + d.ind[k]);
-  if (d.mood) mood(st, d.mood);
+  /* What it turns out to be. A work scaled back delivers less, one built
+     properly delivers more, one built by a foreign contractor delivers
+     slightly less of the pride, and one the state paid a share of gives the
+     state a share of the credit. Opening it early takes a third off
+     everything. */
+  var f = v8WorkFactors(q), pay = f.payout * (early ? .68 : 1);
+  for (var k in (d.ind || {})) st.ind[k] = c100(st.ind[k] + d.ind[k] * pay);
+  if (d.mood) { var mm = {}; for (var b in d.mood) mm[b] = d.mood[b] * pay; mood(st, mm); }
   for (var r in (d.regions || {})) if (st.regions[r]) {
-    st.regions[r].prosperity = c100(st.regions[r].prosperity + d.regions[r]);
-    st.regions[r].services = c100(st.regions[r].services + d.regions[r] * .6);
-    st.regions[r].federal = c100(st.regions[r].federal + d.regions[r] * .4);
+    var rv = d.regions[r] * pay * f.regionMul;
+    st.regions[r].prosperity = c100(st.regions[r].prosperity + rv);
+    st.regions[r].services = c100(st.regions[r].services + rv * .6);
+    st.regions[r].federal = c100(st.regions[r].federal + rv * .4);
   }
-  st.capital = clamp(st.capital + (d.capital || 0), -5, capCap(st));
-  st.unity = c100((st.unity || 60) + (d.unity || 0));
-  st.unrest = clamp(st.unrest - 2, 0, 110);
-  logIt(st, w.name + ' was opened after ' + v8Plural(q.sessions || w.years, 'session') + ' of construction' + (q.overruns ? ' and ' + v8Plural(q.overruns, 'overrun') : '') + '. Capital +' + (d.capital || 0) + '.');
+  st.capital = clamp(st.capital + (d.capital || 0) * pay, -5, capCap(st));
+  st.unity = c100((st.unity || 60) + (d.unity || 0) * pay);
+  st.unrest = clamp(st.unrest - 2 * pay, 0, 110);
+  if (early) { st.unrest = clamp(st.unrest + 3, 0, 110); mood(st, { prof:-4, tech:-2 }); }
+  var howBuilt = Object.keys(q.mods || {}).filter(function (x) { return q.mods[x]; })
+    .map(function (x) { return V8_WORK_MODS[x] ? V8_WORK_MODS[x].name.toLowerCase() : x; });
+  logIt(st, w.name + ' was opened' + (early ? ' unfinished, to a crowd and a scaffold,' : '') + ' after ' + v8Plural(q.sessions || w.years, 'session') + ' of construction' + (q.overruns ? ' and ' + v8Plural(q.overruns, 'overrun') : '') + (howBuilt.length ? ' (' + howBuilt.join('; ') + ')' : '') + '. Capital +' + Math.round((d.capital || 0) * pay) + '.');
   addNews(st, 'Public Works', w.name + ' opens', 'Built over ' + v8Plural(q.sessions || w.years, 'session') + ' at ' + fmc(q.spent) + '. The ribbon was cut by the ' + PARTY[st.ruling].short + '.', 'good');
   chronicle(st, w.name + ' was completed.');
 }
@@ -14892,11 +14937,17 @@ function v8WorkAction(id, arg) {
     if (!inPower(S)) { flash('Only a party in government can commission public works.'); return; }
     if (q && q.status === 'active') { flash('It is already under construction.'); return; }
     if (q && q.status === 'done') { flash('It is already built.'); return; }
+    /* A cancelled work could be re-commissioned as though it had never been,
+       erasing the cancellation from the card while it still counted in the
+       statistics. Starting again is allowed — it costs more, and it says so. */
+    var restart = q && q.status === 'cancelled';
     if (!w.req(S)) { flash('The conditions are not met: ' + w.reqText + '.'); return; }
     if (v8ActiveWorks(S).length >= v8WorkMax(S)) { flash('The ministry can carry ' + v8WorkMax(S) + ' grand works at once.'); return; }
     var deposit = Math.round(w.cost * .1);
     if (!pv5Spend(5, deposit, 'Commission ' + w.name)) return;
-    v.works[id] = { status:'active', mode:'steady', cost:w.cost, spent:deposit, started:S.turn, overruns:0, sessions:0, idle:0 };
+    v.works[id] = { status:'active', mode:'steady', cost:Math.round(w.cost * (restart ? 1.15 : 1)), spent:deposit,
+      started:S.turn, overruns:0, sessions:0, idle:0, restarted:restart ? (q.restarted || 0) + 1 : 0,
+      mods:{}, notes:restart ? ['Begun again after cancellation'] : [] };
     mood(S, { labour:2, tech:1, smallbiz:1 });
     if (w.region && S.regions[w.region]) S.regions[w.region].federal = c100(S.regions[w.region].federal + 3);
     logIt(S, w.name + ' was commissioned. Deposit ' + fmc(deposit) + ', then ' + fmc(w.cost / w.years) + ' a session for ' + w.years + ' sessions at the steady rate.');
@@ -14907,8 +14958,39 @@ function v8WorkAction(id, arg) {
     if (q.mode === arg) return;
     if (arg === 'crash') { if (!pv5Spend(1, 0, 'Crash programme for ' + w.name)) return; }
     else captureUndo('Change the funding of ' + w.name);
+    /* q.idle counted for the lifetime of the work and was never reset when it
+       resumed, so the three-idle-sessions cost creep fired on the cumulative
+       count rather than the current suspension. */
+    if (arg !== 'paused') q.idle = 0;
     q.mode = arg; q.pausedBy = arg === 'paused' ? 'minister' : null;
     logIt(S, w.name + ': ' + (arg === 'crash' ? 'a crash programme, seventy percent more a session and finished in half the time.' : (arg === 'paused' ? 'spending suspended and the site secured.' : 'the steady rate resumed.')));
+  } else if (V8_WORK_MODS[arg]) {
+    /* the instruments that change what the thing turns out to be */
+    var m = V8_WORK_MODS[arg];
+    if (!q || q.status !== 'active') return;
+    if (!inPower(S)) { flash('The works belong to the government of the day.'); return; }
+    q.mods = q.mods || {};
+    if (q.mods[arg]) { flash('That has already been done to ' + w.name + '.'); return; }
+    if ((arg === 'descope' && q.mods.gild) || (arg === 'gild' && q.mods.descope)) { flash('It cannot be scaled back and built up at once.'); return; }
+    if ((arg === 'foreign' && q.mods.domestic) || (arg === 'domestic' && q.mods.foreign)) { flash('The contract cannot be both.'); return; }
+    if (!pv5Spend(m.cost, m.money || 0, m.name + ' — ' + w.name)) return;
+    q.mods[arg] = true;
+    /* cost changes apply to what is LEFT to build, never to what is spent */
+    if (m.costMul) { var left = Math.max(0, q.cost - q.spent); q.cost = Math.round(q.spent + left * m.costMul); }
+    if (arg === 'inquiry') q.inquiryUntil = S.turn + 1;
+    if (arg === 'partner' && w.region && S.regions[w.region]) S.regions[w.region].federal = c100(S.regions[w.region].federal + 4);
+    if (m.mood) mood(S, m.mood);
+    if (m.tension) S.ind.tension = c100(S.ind.tension + m.tension);
+    if (m.crown) S.crown = c100(S.crown + m.crown);
+    q.notes = q.notes || []; q.notes.push(m.name);
+    logIt(S, w.name + ': ' + m.name.toLowerCase() + '. ' + m.note);
+  } else if (arg === 'openEarly') {
+    if (!q || q.status !== 'active') return;
+    if (!inPower(S)) { flash('The works belong to the government of the day.'); return; }
+    if (q.spent / q.cost < .7) { flash('It is not far enough along to open, even badly.'); return; }
+    if (!pv5Spend(3, 0, 'Open ' + w.name + ' early')) return;
+    v8CompleteWork(S, w, q, true);
+    addNews(S, 'Public Works', w.name + ' opened unfinished', 'The ribbon was cut in front of a scaffold. The engineers were not asked.', 'watch');
   } else if (arg === 'cancel') {
     if (!q || q.status !== 'active') return;
     if (!inPower(S)) { flash('The works belong to the government of the day.'); return; }
@@ -14958,6 +15040,7 @@ function v8WorkCard(w) {
   var per = q && status === 'active' ? v8WorkPerSession(S, w, q) : w.cost / w.years;
   var left = q && status === 'active' && per > 0 ? Math.ceil((q.cost - q.spent) / per) : null;
   var effs = Object.keys(w.done.ind).map(function (k) { var val = w.done.ind[k], good = IND[k].inv ? val < 0 : val > 0; return '<span class="tag ' + (good ? 'up' : 'down') + '">' + esc(IND[k].name) + ' ' + (val > 0 ? '+' : '') + val + '</span>'; }).join('');
+  var built = (q && q.notes && q.notes.length) ? q.notes.map(function (n) { return '<span class="tag">' + esc(n) + '</span>'; }).join('') : '';
   var state = status === 'active'
     ? (mode === 'paused' ? '<span class="tag down">Suspended' + (q.pausedBy === 'treasury' ? ' by the Treasury' : '') + '</span>' : '<span class="tag up">' + (mode === 'crash' ? 'Crash programme' : 'Building') + ', ' + Math.round(frac * 100) + '%</span>')
     : status === 'done' ? '<span class="tag up">Opened ' + yearOf(q.done) + '</span>'
@@ -14970,13 +15053,25 @@ function v8WorkCard(w) {
     btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="crash"' + (mode === 'crash' || !can ? ' disabled' : '') + '>Crash programme <span class="c">' + cst(1) + '</span></button>';
     btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="paused"' + (mode === 'paused' || !can ? ' disabled' : '') + '>Suspend</button>';
     btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="cancel"' + (!can ? ' disabled' : '') + '>Cancel <span class="c">' + cst(2) + '</span></button>';
+    /* S10d: the instruments that change what it turns out to be, not the rate */
+    var done = q.mods || {};
+    Object.keys(V8_WORK_MODS).forEach(function (mk) {
+      var m = V8_WORK_MODS[mk], off = !can || done[mk] ||
+        (mk === 'descope' && done.gild) || (mk === 'gild' && done.descope) ||
+        (mk === 'foreign' && done.domestic) || (mk === 'domestic' && done.foreign) ||
+        (mk === 'partner' && !w.region);
+      btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="' + mk + '"' + (off ? ' disabled' : '') +
+        ' title="' + esc(m.note) + '">' + esc(m.name) + ' <span class="c">' + cst(m.cost) + (m.money ? ', ' + fmc(m.money) : '') + '</span></button>';
+    });
+    if (frac >= .7) btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="openEarly"' + (!can ? ' disabled' : '') +
+      ' title="Cut the ribbon in front of a scaffold. A third off everything it was going to deliver, and the professions notice."">Open it early <span class="c">' + cst(3) + '</span></button>';
   } else if (status !== 'done') {
     var dep = Math.round(w.cost * .1), ok = can && w.req(S) && v8ActiveWorks(S).length < v8WorkMax(S) && S.capital >= cst(5) && S.treasury >= dep;
     btns += '<button class="btn" data-v8act="work" data-id="' + w.id + '" data-arg="commission"' + (ok ? '' : ' disabled') + '>Commission <span class="c">' + cst(5) + ', ' + fmc(dep) + '</span></button>';
   }
   return '<article class="card work-card ' + cls + '" data-work="' + w.id + '"><div class="bill-title"><h3>' + esc(w.name) + '</h3><span class="bill-no">' + esc(w.tag) + (w.region ? ' \u00b7 ' + esc(REGION[w.region].name) : '') + '</span></div><p class="desc">' + esc(w.blurb) + '</p>' +
     '<div class="meter ' + (status === 'done' ? 'good' : (mode === 'paused' ? 'bad' : '')) + '"><i style="width:' + Math.round(frac * 100) + '%"></i></div>' + kpis +
-    '<div class="tagline">' + state + (q && q.overruns ? '<span class="tag down">' + v8Plural(q.overruns, 'overrun') + '</span>' : '') + effs + '<span class="tag">Capital +' + w.done.capital + ' on opening</span></div>' +
+    '<div class="tagline">' + state + (q && q.overruns ? '<span class="tag down">' + v8Plural(q.overruns, 'overrun') + '</span>' : '') + built + effs + '<span class="tag">Capital +' + w.done.capital + ' on opening</span></div>' +
     (btns ? '<div class="btnrow">' + btns + '</div>' : '') + '</article>';
 }
 function v8WorksPanel() {
@@ -14984,7 +15079,7 @@ function v8WorksPanel() {
   var summary = '<div class="works-summary"><span><b>' + active.length + '</b> of ' + v8WorkMax(S) + ' under construction</span><span><b>' + fmc(spend) + '</b> a session</span><span><b>' + done + '</b> opened</span></div>';
   function rank(q) { return !q ? 2 : (q.status === 'active' ? 0 : (q.status === 'done' ? 3 : 2)); }
   var order = V8_WORKS.slice().sort(function (a, b) { return rank(S.v8.works[a.id]) - rank(S.v8.works[b.id]); });
-  return '<div class="panel"><h2>Grand Works <span class="muted">' + active.length + '</span></h2><p class="note">Ten national projects that outlast a parliament. A work is paid for out of the budget every session until it opens, and the estimate rises when the ground disappoints. The ministry can carry ' + v8WorkMax(S) + ' at once. A crash programme finishes in half the time at seventy percent more a session, and the contractors know it.</p>' + summary + '<div class="works-list">' + order.map(v8WorkCard).join('') + '</div></div>';
+  return '<div class="panel"><h2>Grand Works <span class="muted">' + active.length + '</span></h2><p class="note">' + V8_WORKS.length + ' national projects that outlast a parliament. A work is paid for out of the budget every session until it opens, and the estimate rises when the ground disappoints. The ministry can carry ' + v8WorkMax(S) + ' at once. A crash programme finishes in half the time at seventy percent more a session, and the contractors know it — and once a work is under way there is more to decide than how fast to pay for it.</p>' + summary + '<div class="works-list">' + order.map(v8WorkCard).join('') + '</div></div>';
 }
 
 /* ==========================================================
