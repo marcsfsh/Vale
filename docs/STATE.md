@@ -60,6 +60,21 @@ rotation existed still loads and asks. Proved red by three separate mutations.
 
 `maxBytes` 2,100,000 -> 2,200,000, with the case in `baseline.json`.
 
+What the harnesses hold on this branch:
+
+```
+ALL CHECKS PASS   11/11, 2,161,802 bytes of 2,200,000
+ROADS OK          64 assertions
+PLAYTEST PASS     39 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
+PACING            re-run on the finished pool and unchanged
+```
+
+The measurement is published as a page, with the stride demo, the before/after
+figures and the whole pool readable by subject:
+https://claude.ai/code/artifact/746c46fe-70bb-41bf-aeb9-b8609a4c04cb
+
 Previously: **S10d/e/f — The Works, the Ministry, the World and the Session** (PR #27).
 The last three slices of the owner's fifth order, shipped as one PR because
 they share a spine: each is a system with working machinery and almost no

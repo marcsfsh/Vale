@@ -1,0 +1,668 @@
+<title>The Despatch Box</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,400;0,500;0,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --paper:      #FBFBFC;
+  --paper-sunk: #F1F2F5;
+  --paper-card: #FFFFFF;
+  --ink:        #14161B;
+  --ink-soft:   #4A5058;
+  --ink-faint:  #767D87;
+  --rule:       #DDE0E5;
+  --rule-firm:  #C3C8D0;
+  --claret:     #7A1F2B;
+  --claret-soft:#A83A48;
+  --claret-wash:#F6EDEE;
+  --good:       #2C5F4A;
+  --shadow:     0 1px 2px rgba(20,22,27,.05), 0 8px 24px -12px rgba(20,22,27,.12);
+  --display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #101216;
+    --paper-sunk: #16191F;
+    --paper-card: #191C22;
+    --ink:        #E8EAEE;
+    --ink-soft:   #A7AEB8;
+    --ink-faint:  #79808A;
+    --rule:       #262A31;
+    --rule-firm:  #363B44;
+    --claret:     #E0808C;
+    --claret-soft:#C4515F;
+    --claret-wash:#241416;
+    --good:       #6FBF9B;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:      #101216;
+  --paper-sunk: #16191F;
+  --paper-card: #191C22;
+  --ink:        #E8EAEE;
+  --ink-soft:   #A7AEB8;
+  --ink-faint:  #79808A;
+  --rule:       #262A31;
+  --rule-firm:  #363B44;
+  --claret:     #E0808C;
+  --claret-soft:#C4515F;
+  --claret-wash:#241416;
+  --good:       #6FBF9B;
+  --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--display);
+  font-optical-sizing: auto;
+  font-size: 18px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.col  { max-width: 660px; margin-left: auto; margin-right: auto; }
+
+/* ---------- masthead ---------- */
+header.top {
+  border-bottom: 1px solid var(--rule);
+  padding: 56px 0 30px;
+  margin-bottom: 44px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11.5px; font-weight: 500;
+  letter-spacing: .13em; text-transform: uppercase;
+  color: var(--claret);
+  margin: 0 0 18px;
+}
+h1 {
+  font-family: var(--display);
+  font-size: clamp(38px, 7vw, 62px);
+  font-weight: 400; line-height: 1.04;
+  letter-spacing: -.017em;
+  margin: 0 0 16px;
+  text-wrap: balance;
+}
+.standfirst {
+  font-size: clamp(19px, 2.2vw, 22px);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 46ch;
+  text-wrap: pretty;
+}
+.byline {
+  font-family: var(--mono);
+  font-size: 11.5px; letter-spacing: .06em;
+  color: var(--ink-faint);
+  margin-top: 26px;
+  display: flex; flex-wrap: wrap; gap: 6px 20px;
+}
+
+/* ---------- figure strip ---------- */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(154px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0 0 52px;
+}
+.stat { background: var(--paper-card); padding: 20px 18px 18px; }
+.stat b {
+  display: block;
+  font-family: var(--mono);
+  font-size: clamp(26px, 3.4vw, 34px);
+  font-weight: 500; font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em; line-height: 1;
+  color: var(--ink);
+}
+.stat b .was {
+  font-size: .5em; color: var(--ink-faint); font-weight: 400;
+  letter-spacing: 0; margin-left: 7px;
+}
+.stat span {
+  display: block; margin-top: 9px;
+  font-family: var(--mono);
+  font-size: 10.5px; letter-spacing: .085em; text-transform: uppercase;
+  color: var(--ink-faint); line-height: 1.45;
+}
+
+/* ---------- prose ---------- */
+h2 {
+  font-family: var(--display);
+  font-size: clamp(26px, 3.6vw, 33px);
+  font-weight: 400; letter-spacing: -.014em; line-height: 1.15;
+  margin: 68px 0 6px; text-wrap: balance;
+}
+h2 + .kicker {
+  font-family: var(--mono);
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--claret); margin: 0 0 22px;
+}
+h3 {
+  font-family: var(--mono);
+  font-size: 12px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 40px 0 12px;
+}
+p { margin: 0 0 20px; text-wrap: pretty; }
+strong { font-weight: 600; }
+em { font-style: italic; }
+code, .m {
+  font-family: var(--mono);
+  font-size: .855em;
+  font-variant-ligatures: none;
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: .08em .34em;
+  white-space: nowrap;
+}
+.lede { font-size: 1.06em; color: var(--ink-soft); }
+
+blockquote {
+  margin: 30px 0; padding: 2px 0 2px 24px;
+  border-left: 2px solid var(--claret);
+  font-size: 1.03em; color: var(--ink-soft); font-style: italic;
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ---------- the stride demo ---------- */
+.demo {
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 26px 26px 22px;
+  margin: 34px 0 40px;
+}
+.demo-head {
+  display: flex; flex-wrap: wrap; gap: 14px 22px;
+  align-items: baseline; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.demo-title {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft);
+}
+.ctrls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.ctrl { display: flex; align-items: center; gap: 9px; }
+.ctrl label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .05em;
+  color: var(--ink-faint); text-transform: uppercase;
+}
+.ctrl input[type=range] { width: 108px; accent-color: var(--claret-soft); }
+.ctrl output {
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+  min-width: 2.2ch; text-align: right;
+}
+.lanes { display: grid; gap: 18px; }
+.lane-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+  color: var(--ink-faint); margin-bottom: 8px;
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.lane-label .verdict { color: var(--ink-soft); }
+.lane-label .verdict.bad { color: var(--claret); }
+.lane-label .verdict.ok { color: var(--good); }
+.shelf { display: flex; gap: 5px; flex-wrap: wrap; }
+.slot {
+  flex: 1 1 20px; min-width: 20px; height: 40px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper-sunk);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 3px;
+  font-family: var(--mono); font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  position: relative; overflow: hidden;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+.slot .fill {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: var(--claret-soft); opacity: .19;
+  transition: height .18s ease;
+}
+.slot.hit { border-color: var(--claret-soft); color: var(--ink); }
+.slot.cold { opacity: .5; }
+.demo-note {
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
+  color: var(--ink-faint); margin: 18px 0 0;
+  padding-top: 15px; border-top: 1px solid var(--rule);
+}
+.demo-note b { color: var(--ink-soft); font-weight: 600; }
+
+/* ---------- tables ---------- */
+.tablewrap { overflow-x: auto; margin: 30px 0 34px; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+caption {
+  text-align: left; font-family: var(--mono);
+  font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-faint); padding-bottom: 11px;
+}
+th, td {
+  text-align: left; padding: 9px 16px 9px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: baseline;
+}
+th {
+  font-family: var(--mono); font-weight: 600;
+  font-size: 10.5px; letter-spacing: .085em; text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom-color: var(--rule-firm);
+  white-space: nowrap;
+}
+td.n, th.n {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  text-align: right; padding-right: 0; white-space: nowrap;
+}
+td.was { color: var(--ink-faint); }
+td.now { color: var(--ink); font-weight: 500; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* ---------- coverage grid ---------- */
+.coverage {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 1px; background: var(--rule);
+  border: 1px solid var(--rule); border-radius: 3px;
+  overflow: hidden; margin: 26px 0 34px;
+}
+.cov { background: var(--paper-card); padding: 13px 14px 12px; }
+.cov .name {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .05em;
+  color: var(--ink-soft); text-transform: uppercase; margin-bottom: 9px;
+}
+.pips { display: flex; gap: 3px; flex-wrap: wrap; }
+.pip { width: 9px; height: 9px; border-radius: 1px; background: var(--claret-soft); }
+.pip.opp { background: var(--rule-firm); }
+.cov .tot {
+  font-family: var(--mono); font-size: 10.5px;
+  font-variant-numeric: tabular-nums; color: var(--ink-faint); margin-top: 9px;
+}
+
+/* ---------- the pool ---------- */
+.poolbar {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  margin: 26px 0 22px;
+}
+.chip {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 6px 11px; border-radius: 2px;
+  border: 1px solid var(--rule-firm);
+  background: var(--paper-card); color: var(--ink-soft);
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease, border-color .14s ease;
+}
+.chip:hover { border-color: var(--claret-soft); color: var(--ink); }
+.chip[aria-pressed="true"] {
+  background: var(--claret); border-color: var(--claret);
+  color: #fff;
+}
+:root[data-theme="dark"] .chip[aria-pressed="true"],
+:root:not([data-theme="light"]) .chip[aria-pressed="true"] { color: #14161B; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .chip[aria-pressed="true"] { color: #fff; }
+}
+.chip:focus-visible, .qbtn:focus-visible, input:focus-visible {
+  outline: 2px solid var(--claret-soft); outline-offset: 2px;
+}
+.qlist { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.q { background: var(--paper-card); padding: 17px 19px; }
+.q .meta {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .075em;
+  text-transform: uppercase; color: var(--ink-faint);
+  margin-bottom: 8px; display: flex; gap: 12px; flex-wrap: wrap;
+}
+.q .meta .side { color: var(--claret); }
+.q .body { font-size: 16.5px; line-height: 1.55; color: var(--ink); }
+.q .body .ph {
+  font-family: var(--mono); font-size: .84em;
+  color: var(--claret); background: var(--claret-wash);
+  border-radius: 2px; padding: .04em .26em;
+}
+.poolfoot {
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint);
+  margin-top: 14px;
+}
+
+/* ---------- findings ---------- */
+.finding {
+  border-left: 2px solid var(--rule-firm);
+  padding: 3px 0 3px 20px; margin: 0 0 24px;
+}
+.finding.blocking { border-left-color: var(--claret); }
+.finding .tag {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .085em;
+  text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 6px;
+}
+.finding.blocking .tag { color: var(--claret); }
+.finding p { margin: 0; color: var(--ink-soft); font-size: 16.5px; }
+.finding p + p { margin-top: 8px; }
+
+hr.rule { border: none; border-top: 1px solid var(--rule); margin: 64px 0; }
+
+footer.end {
+  border-top: 1px solid var(--rule);
+  margin-top: 72px; padding: 30px 0 64px;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.7;
+  color: var(--ink-faint);
+}
+footer.end p { margin: 0 0 6px; }
+
+@media (max-width: 640px) {
+  body { font-size: 17px; }
+  header.top { padding-top: 40px; }
+  .demo { padding: 20px 16px 18px; }
+  .slot { height: 34px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<script id="qt-data" type="application/json">[{"id":"scandalWhoKnewWhen","subject":"scandal","side":"power","body":"{minister} was told in writing eleven days before this House was told anything at all. Will {leader} confirm that date at the despatch box, or does the government intend to let it be confirmed by someone else?"},{"id":"billNotMoved","subject":"bill","side":"power","body":"The {bill} has sat on the order paper for three sessions without a division. Is the {party} waiting for a majority, or waiting for the country to forget it was promised?"},{"id":"workFinalFigure","subject":"work","side":"power","body":"{work} was costed at one figure and now stands at {number}. Will the head of government give this House a final figure, or is the position that no such figure exists?"},{"id":"issueSurgeryAnswer","subject":"issue","side":"power","body":"{issue} is the first thing put to members in every surgery in this country, and the government's answer for a year has been that a review is under way. What does {leader} say to a household that cannot wait for the review?"},{"id":"ministerConfidence","subject":"minister","side":"power","body":"Does {leader} have full confidence in {minister}? The House will take a yes, a no, or a pause, and it will read all three the same way."},{"id":"governorVerdict","subject":"governor","side":"power","body":"{governor} took {region} on a promise to refuse this government's writ, and took it by a distance. Does {leader} regard that as a verdict on the {party}, or as a local difficulty?"},{"id":"treatyNoText","subject":"treaty","side":"power","body":"The negotiation with {power} has been described from that box as ongoing for eleven months. Is there a text, and has this House been shown a line of it?"},{"id":"courtBeyondPowers","subject":"court","side":"power","body":"The court has held that the government acted beyond its powers. Will {leader} comply with the judgment, or legislate around it?"},{"id":"moneyWhichNumber","subject":"money","side":"power","body":"The government's own accounts put the figure at {number}. Does {leader} accept that number, and if not, which number should the House be using instead?"},{"id":"byelectionWrit","subject":"byelection","side":"power","body":"{region} has had no member for some weeks and the writ has not been moved. How long does the government intend to leave a seat in this House empty?"},{"id":"orderNoVote","subject":"order","side":"power","body":"{work} was made without a vote in this House and has been in force ever since. Under what authority was it made, and on what date does it lapse?"},{"id":"unrestMeetThem","subject":"unrest","side":"power","body":"There are people outside this building who have not been paid since the stoppage began, and the government has met neither side. Will {leader} meet them this week?"},{"id":"promiseOrSentence","subject":"promise","side":"power","body":"In the manifesto of {year} the {party} put one commitment above all the others. It is not law and it is not before this House. Was it a promise, or was it a sentence?"},{"id":"priceOfALoaf","subject":"prices","side":"power","body":"What does a loaf cost? Not the index, the loaf. The House will wait for the figure."},{"id":"scandalDiaryDate","subject":"scandal","side":"opposition","body":"The file sat in the minister's private office for {number} days before this House was told anything at all. Will {leader} give the House the date on which he read it himself, or leave us to work it out from the diary?"},{"id":"ministerNotSeen","subject":"minister","side":"opposition","body":"{minister} has not answered a question at this despatch box for {number} sessions. Is the minister unwell, unwilling, or no longer trusted with the department?"},{"id":"billClausesUnreached","subject":"bill","side":"opposition","body":"The {bill} was given one afternoon in committee and {number} clauses were never reached. Will the government name the clause it did not want debated, or give back the days it took away?"},{"id":"workFourthDate","subject":"work","side":"opposition","body":"{work} was to open in {year}. The House has since been given three dates and no opening, so will the government name a fourth, and will it be a date it is prepared to be held to?"},{"id":"issueThreePositions","subject":"issue","side":"opposition","body":"On {issue} the government has told this House three different things in {number} sessions. Which of the three is the position of the government this afternoon?"},{"id":"pricesTheShopping","subject":"prices","side":"opposition","body":"A week's shopping for a family of four costs {number} per cent more than it did in {year}. I have not asked {leader} for the index; I have asked him what the shopping costs."},{"id":"courtWillYouComply","subject":"court","side":"opposition","body":"The court has ruled, and the government's order is struck down. Will {leader} tell the House, in terms the House can hold him to, that the government will comply?"},{"id":"treatyPrivateAssurance","subject":"treaty","side":"opposition","body":"Has any minister of this government given {power} an assurance, written or spoken, that has not been laid before this House? A yes or a no will do."},{"id":"orderUnderWhatStatute","subject":"order","side":"opposition","body":"The order was signed on {leader}'s authority and has never come before this House. Under which statute was it made, and if the answer is none, will he say so in one word?"},{"id":"promiseSameWords","subject":"promise","side":"opposition","body":"In {year} this was promised to the country in words that nobody could misread. Will {leader} repeat that promise now, at this despatch box, in the same words?"},{"id":"billWhoDraftedIt","subject":"bill","side":"power","body":"Clause four of the {bill} reached this House in the same words as a submission the department received from outside it, down to the misspelling. Will {leader} give the name of the person who put those words into a government bill?"},{"id":"billTheOfferAcrossTheFloor","subject":"bill","side":"power","body":"The {opp} will put its votes behind the {bill} tonight if clause seven goes; without them the whips' own forecast is {number} in a hundred. {leader} may have the bill or the clause, and the House would like to be told which before the division bell."},{"id":"billWhoIsWaiting","subject":"bill","side":"power","body":"People were told to wait for the {bill}, and they have waited through the whole of {year}. I am not asking {leader} whether it passes; I am asking what they are to do between now and the day it does."},{"id":"billTheWhipsCount","subject":"bill","side":"opposition","body":"The government's own forecast puts the {bill} at {number} in a hundred, and the members behind {leader} spent the weekend defending it in their constituencies. Will the head of government tell them, from the despatch box, whether it is going to a division at all?"},{"id":"billBeforeTheDivision","subject":"bill","side":"opposition","body":"The department has written to the councils and taken on staff on the strength of the {bill}, which this House has not passed. Will {leader} undertake that nothing further is done in its name until the House has divided?"},{"id":"byelectionStandInTheTown","subject":"byelection","side":"power","body":"There is a candidate about to fight that by-election on this government's record, whether or not the {party} cares to defend the record in this chamber. Will {leader} go to the town and put it in person, or is the candidate to carry it alone?"},{"id":"byelectionWhatMargin","subject":"byelection","side":"power","body":"A government that has watched {number} bills fall in this House is about to ask one town to renew its authority. What result would {leader} accept as an answer — the House will take a figure, and will hold the government to it on the night."},{"id":"byelectionNothingForTheTown","subject":"byelection","side":"power","body":"Between the moving of the writ and polling day, will this government announce any money, any road or any building for that town? One undertaking will do, and the House would rather have it before the campaign than read it afterwards."},{"id":"byelectionLeafletFace","subject":"byelection","side":"opposition","body":"The {party} have gone into the vacant seat with the candidate's face on every leaflet and not one photograph of {leader} anywhere on the paper. Will the leader be campaigning in that seat himself, or has his own party concluded he is worth more to it at a distance?"},{"id":"byelectionOfficeOfProfit","subject":"byelection","side":"opposition","body":"There is a by-election at all only because the member for that seat was given an office in the government's gift, three weeks after voting the way the {party} needed him to vote. Will the government publish the terms of that appointment, and name the person who proposed him for it?"},{"id":"courtToleratedNumber","subject":"court","side":"power","body":"The return puts at {number} the rulings of this court to which the government has declined to give effect. Will {leader} tell the House the number a lawful government is allowed, and whether he expects to reach it before {year} is out?"},{"id":"courtSheriffsOrder","subject":"court","side":"power","body":"A sheriff holding an order of this court and a contrary instruction from this government must obey one of them by morning. Will {leader} tell the House which one — the answer that man can act on, not the constitutional position?"},{"id":"courtBallotMoney","subject":"court","side":"power","body":"Seats on this court are returned at the next ballot and the senior senators are being visited already. Will {leader} undertake that no {party} money goes to a candidate for judicial office, or is his position that a court is a thing you campaign for?"},{"id":"courtHowManyIsTooMany","subject":"court","side":"opposition","body":"The number of judgments this government has declined to follow stands at {number}. Will {leader} name the figure at which he would accept that the government had put itself above the court, or is the position that no such figure exists?"},{"id":"courtWhatAJudgmentIsWorth","subject":"court","side":"opposition","body":"The court found for the applicants, and the department has since appealed, lost, applied for leave, been refused, and paid nothing. It is {year}; I ask {leader} what a judgment of this country's highest court is worth to the person who wins one."},{"id":"governorLastDayThere","subject":"governor","side":"power","body":"{governor} stands at {number} with the people of {region}, and the {party} stands where it stands. When did {leader} last spend a day there, and will there be another before the next state count?"},{"id":"governorPublishTheTable","subject":"governor","side":"power","body":"Will {leader} publish, state by state, what each has had from this government, and will {region} stand in the same table as the states the {party} governs? {governor} has written four times and had four acknowledgements."},{"id":"governorWhoClosedTheWard","subject":"governor","side":"power","body":"A maternity ward in {region} closed in the spring: the department says the state closed it, {governor} says the department cut the grant that paid for it. Will {leader} tell the House which of the two governments the mothers there are to write to?"},{"id":"governorLastSpokeDate","subject":"governor","side":"opposition","body":"Will {leader} give this House the date on which he last spoke to {governor} himself — not a letter, not a minister sent in his place. If he will not give a date, the House will take it that there is not one to give."},{"id":"governorManOrState","subject":"governor","side":"opposition","body":"The government is in dispute with {governor}, who stands at {number} in {region}. The grants, the state officers and the schools belong to the region and not to its governor, so will {leader} tell this House which of the two the capital has decided to be at odds with?"},{"id":"issueWhichCameFirst","subject":"issue","side":"power","body":"The country rates {issue} at {number} out of a hundred, and the {party}'s interest in it has tracked that figure with some precision. Will {leader} tell the House which came first: the policy, or the number?"},{"id":"issueNameTheTest","subject":"issue","side":"power","body":"Every government is judged on {issue} by whatever measure it selects after the fact. Will {leader} name now, before the result is in, the one figure by which this government is content to be judged when {year} is out?"},{"id":"issueAnyGovernmentAtAll","subject":"issue","side":"power","body":"Take {issue}. I am not asking for a policy: I am asking whether {leader} believes any government sitting in this building — this one, mine, any of them — can change it at all, or whether we have all been managing it and calling that government."},{"id":"issueReadTheReport","subject":"issue","side":"opposition","body":"The government's own paper on {issue} keeps its conclusions to the last twenty pages of four hundred, and I will take either answer to this. Has {leader} read those twenty pages himself, or has he read the summary that was written for him?"},{"id":"issueHigherOrLower","subject":"issue","side":"opposition","body":"The country puts {issue} at {number} out of a hundred, ahead of every other thing this government is asked about. Will {leader} say whether he expects that figure to be higher or lower when this House rises, and will he accept being held to the answer?"},{"id":"ministerWhoDecides","subject":"minister","side":"power","body":"Will {leader} name a single decision that {minister} took personally in {year}, against the written advice of the department's officials? One will do, and the House will wait while it is looked up."},{"id":"ministerAtWhatFigure","subject":"minister","side":"power","body":"The government's own review of {minister}'s department came back at {number}, and it was written by the department. I am not asking {leader} to move the minister: I am asking what figure would be low enough."},{"id":"ministerThreeDepartments","subject":"minister","side":"power","body":"Three departments have been folded into one office and one minister answers for all of them, which nobody alive could do well. Will the {party} split the office before {year} is out, or go on appointing one person to fail at three jobs?"},{"id":"ministerWhoseHandIsOnThePapers","subject":"minister","side":"opposition","body":"Is {minister} still taking the decisions in that department, or have the papers been moved quietly across to {leader}'s own office? The House would like to know which of the two it is putting its questions to."},{"id":"ministerTheThreeLetters","subject":"minister","side":"opposition","body":"The department's own return for {year} rates {minister}'s office at {number} out of a hundred for the work it is set, and three families in my constituency have waited eleven months on one decision from it. I do not want the minister's head; I want the date on which those three letters will be answered, and I will sit down as soon as I have it."},{"id":"moneyBorrowAgain","subject":"money","side":"power","body":"Before this session rises, will the government borrow again — yes, or no? The whole of the answer fits in one word, and the House will take either one from {leader}."},{"id":"moneyServiceFirst","subject":"money","side":"power","body":"Interest on {number} is paid before anything else the state buys, and it is the only spending in these accounts that cannot be shown to anybody. Will {leader} name one thing the country went without in {year} in order to pay it?"},{"id":"moneyWhoHoldsIt","subject":"money","side":"power","body":"Of the {number} outstanding, how much is held outside the country, and on what date was that last set out in writing for this House? {leader} may take the date first."},{"id":"moneyWhoHoldsItAsked","subject":"money","side":"opposition","body":"The debt stands at {number}, and this House has never once been told who holds it. Will {leader} lay a schedule of the creditors before members — how much of it is placed abroad, and on what terms — or would he rather the country learned that from them?"},{"id":"moneyLeaveItLower","subject":"money","side":"opposition","body":"A yes or a no will answer this, and the arithmetic can wait its turn: does {leader} expect to leave office with the debt lower than the {number} it stands at this afternoon? If he does not, the House would sooner be told so by him now than work it out from {year}'s accounts."},{"id":"orderHowManyStanding","subject":"order","side":"power","body":"The number of orders standing in the {party}'s name is {number}. What number would {leader} regard as too many, or does the government hold that there is no such number?"},{"id":"orderNoAppeal","subject":"order","side":"power","body":"Under {work}, a haulier with three lorries has been struck off, and the only appeal open to him is to the department that struck him off. Will {leader} give him an appeal that goes somewhere else, or tell the House plainly that the order provides none?"},{"id":"orderPutItToTheHouse","subject":"order","side":"power","body":"If {work} were put to a division in this House this afternoon, does {leader} believe it would carry? Nothing prevents the government moving it, and in all the time it has been in force nobody has."},{"id":"orderNameOneForDivision","subject":"order","side":"opposition","body":"The House has the number of orders standing on this government's own signature at {number}, and the number put to a division of this House at none. Will {leader} name one of them — one — that he is prepared to bring to a vote before the session ends?"},{"id":"orderWhatWouldEndIt","subject":"order","side":"opposition","body":"{work} is in force because the head of government signed it, and stays in force because he has signed nothing since. Setting the courts entirely aside, will he tell this House what would have to happen for him to revoke it himself?"},{"id":"pricesTheLetter","subject":"prices","side":"power","body":"The poverty figure stands at {number}. A woman in my constituency has written to ask which of her two bills she should leave unpaid this month, and I will send her whatever {leader} says next, word for word."},{"id":"pricesTheBasket","subject":"prices","side":"power","body":"The figure of {number} is drawn from a basket of goods whose contents the government itself decides. When was that basket last altered, and will {leader} lay its contents before this House before the rise?"},{"id":"pricesTheVotesAreThere","subject":"prices","side":"power","body":"The {opp} will vote tonight for a cap on fuel and bread, and will not ask for its name on the paper. Will the government put the motion down, or would {leader} sooner keep the argument than win the vote?"},{"id":"pricesWhoWritesTheBasket","subject":"prices","side":"opposition","body":"The department writes the basket, weighs it, and reads the figure eleven days before this House is allowed to see it. Will {leader} hand the weighting to an office he cannot telephone, or is the country to go on being told {number} by the same department that decides what {number} counts?"},{"id":"pricesTheOnesNotReached","subject":"prices","side":"opposition","body":"Every government decides which households it does not intend to reach, and this one has decided. Will {leader} name them from that box, or is the House to work out who has been given up on from what is missing in the estimates?"},{"id":"promiseWhoseDoor","subject":"promise","side":"power","body":"A commitment that belongs to the whole government belongs to nobody in it. Will {leader} tell the House which minister answers for each of the {party}'s commitments, so that when one of them is missed this House knows which minister to send for?"},{"id":"promiseTheHall","subject":"promise","side":"power","body":"Before the last count {leader} stood in a hall in my constituency and told six hundred people that the yard would not close. It closed in the spring, and I am not asking whether the decision was right; I am asking what that word is worth in that hall now."},{"id":"promiseNameTheCasualty","subject":"promise","side":"power","body":"The number of the {party}'s commitments still standing is {number}, and this House does not expect it to hold. Will {leader} name the one the government already knows will not be kept, or tell the chamber that the figure will be the same when {year} is out?"},{"id":"promiseLayTheAbandoned","subject":"promise","side":"opposition","body":"Since the {party} took office not one commitment in its programme has been formally withdrawn, and several of them have plainly been given up. Will {leader} lay before this House a list of the ones the government no longer intends to keep, so that the people waiting on them can stop waiting?"},{"id":"promiseLeafletOnTheMantelpiece","subject":"promise","side":"opposition","body":"I have here the leaflet the {party} put through every door at the last ballot, and a letter from a woman who has kept hers on the mantelpiece since. She has not asked me for an apology from {leader}; she has asked whether she should go on keeping it."},{"id":"scandalConfidenceInMinister","subject":"scandal","side":"power","body":"Does {minister} still enjoy the full confidence of the {party}? {leader} should know that this House has learned to hear that phrase as a date of departure, so the government may prefer to give us the date instead."},{"id":"scandalWhoPaidTheSettlement","subject":"scandal","side":"power","body":"The settlement in this affair came out of departmental funds and carries a clause forbidding the recipient to speak of it. Will {leader} publish that clause, or is the House to understand that money it voted has been spent buying silence with its own consent?"},{"id":"scandalNobodyHasWritten","subject":"scandal","side":"power","body":"Fourteen people were named on the list this affair was about, and not one of them has had a letter from the department in the whole of {year}. I am not asking {leader} for a resignation today; I am asking who writes to them, and in which week."},{"id":"scandalLayThePapers","subject":"scandal","side":"opposition","body":"The {party} have held the whole file since the affair broke; the House has had a summary and an assurance. Will the government lay the papers before it this session, or name now the parts it intends to keep back?"},{"id":"scandalTransferredOut","subject":"scandal","side":"opposition","body":"The official who first put this in writing was moved to another department within the month and has not been heard from since. Will the government say who ordered that transfer, and whether anyone in the private office of {minister} was consulted on it?"},{"id":"treatyGuaranteeTrap","subject":"treaty","side":"power","body":"If {power} moves against a neighbour tomorrow morning, does any instrument this government has signed oblige one soldier of ours to march? The House has read the paragraph and would like a yes or a no from {leader}, not a reading of it back."},{"id":"treatyLastSpoke","subject":"treaty","side":"power","body":"Relations with {power} stand at {number}, and the {party} continues to call that a working relationship. Has {leader} spoken to the head of government there — spoken, not written, not by way of an envoy — at any point since {year} began?"},{"id":"treatyRatifyOrPrerogative","subject":"treaty","side":"power","body":"When something is at last signed with {power}, will it be laid before this House for a division, or ratified under the prerogative in a recess week? The {opp} will take an undertaking; it will not take a nod from the front bench."},{"id":"treatyVoteBeforeCommitment","subject":"treaty","side":"opposition","body":"Relations with {power} stand at {number} out of a hundred, and this House has not been asked to vote on a single line of the government's policy toward them. Will {leader} undertake that nothing is committed — no ship, no man, no guarantee — until it has?"},{"id":"treatyWhenDidHeSpeak","subject":"treaty","side":"opposition","body":"When did {leader} last speak to his opposite number in {power} himself — not a note, not an official, himself — and was he answered? Relations stand at {number} out of a hundred, and the House would like to know whether anyone over there is still picking up."},{"id":"unrestWhoGaveTheOrder","subject":"unrest","side":"power","body":"The order that put mounted men into the square on Friday was either a minister's or a chief constable's, and the government has spent four days declining to say which. Will {leader} lay the instruction before this House, or is the position that nobody in particular gave it?"},{"id":"unrestAssessmentFigure","subject":"unrest","side":"power","body":"The public order assessment has stood at {number} for the whole of {year}, and the way it is compiled has been altered twice in that time. At what figure does this stop being an assessment and become an emergency, and who decides that?"},{"id":"unrestTheShopThatShut","subject":"unrest","side":"power","body":"A woman who has kept a shop for forty years has had her windows in three weeks running and has now stopped opening. She did not write to her member, she wrote to {leader} — has she had a reply, and from whom?"},{"id":"unrestFigureWhenWeRise","subject":"unrest","side":"opposition","body":"The government publishes this figure every session, and this session it publishes {number}. Before {leader} tells the House what he intends to do about it, will he tell the House what he expects it to read on the day we rise?"},{"id":"unrestRuleOutTheGuard","subject":"unrest","side":"opposition","body":"Will {leader} stand at that box and give this House an undertaking that the guard will not be put into the metros before the recess? If he will not give it, the House would rather have that from him now than from the metros later."},{"id":"workWhatWasDeferred","subject":"work","side":"power","body":"Every session {work} is paid for, something else is not: a road not resurfaced, a school roof given another year. Will the government publish the list of what has been deferred to keep {work} moving, or is the House to find it out constituency by constituency?"},{"id":"workRoadIsShut","subject":"work","side":"power","body":"Where I live {work} is not an argument about estimates; it is a road shut for three years and a row of houses the state bought and did not pull down. I am asking what the government's answer is to the people living beside the site, rather than to the people reading about it."},{"id":"workStartItToday","subject":"work","side":"power","body":"Knowing the ground, the contractor and the {number} now on the works line of the account, would {leader} sign the order to begin {work} today? The House will take a yes or a no, and will read a speech as one of them."},{"id":"workWhoSignedTheRevision","subject":"work","side":"opposition","body":"The department's account for {work} now stands at {number}, and the estimate has been revised since this House last voted a penny for it. Will {leader} name the person who approved that revision, or tell the House that he approved it himself?"},{"id":"workTheMenStoodDown","subject":"work","side":"opposition","body":"The men were stood down at {work} in the third week, and the lodging houses and the shops that live off that site have carried them on credit ever since. I am not asking {leader} for money this afternoon; I am asking him to tell those families whether the work will be finished, so that they can decide whether to stay."},{"id":"byelectionWhoChoseTheCandidate","subject":"byelection","side":"power","body":"The candidate fighting the vacant seat in {region} was selected in a room in the capital, and the town's own {party} members were shown a name rather than asked for one. Who chose that candidate, and was one person from the seat in the room?"},{"id":"byelectionPollingDay","subject":"byelection","side":"power","body":"Polling day in {region} has been fixed for a week when the schools are shut and a third of the register is away. Will {leader} tell the House who chose that date, and what turnout the government expects to have chosen along with it?"},{"id":"byelectionEmptyBenches","subject":"byelection","side":"power","body":"The count of bills this parliament has failed to carry stands at {number}, and the government now proposes to move its benches to one seat in {region} for a fortnight. Will divisions be arranged around the campaign, or the campaign around the divisions?"},{"id":"byelectionCandidateWhipped","subject":"byelection","side":"opposition","body":"The {party} candidate in {region} is fighting this by-election on a leaflet undertaking to vote against the government's own measure, and no minister has corrected it in three weeks. If that candidate is returned, does the whip apply to that vote, or is the leaflet the government's position now?"},{"id":"byelectionFuneralDates","subject":"byelection","side":"opposition","body":"That seat fell vacant on a death, and the {party} had a committee room open in {region} before the member was buried. Will {leader} give this House both dates — the funeral, and the day that room opened — and say plainly which of them came first?"},{"id":"courtSixteenYears","subject":"court","side":"power","body":"The justice seated at the next ballot sits for sixteen years and cannot be returned, which is four governments after this one. Will {leader} name a single judgment he would expect to lose before a bench he had a hand in seating, or is agreement the qualification he is looking for?"},{"id":"courtLawOfficersAdvice","subject":"court","side":"power","body":"Before the order this government is now defending was signed, somebody either asked the law officers whether it was lawful or decided not to ask. Will {leader} tell the House which of those two things happened, and if the advice was taken, name the minister who read it and went on?"},{"id":"courtNamingJudges","subject":"court","side":"power","body":"Members of the {party} have spent this week naming individual justices in the newspapers and inviting the country to consider their households. Will {leader} tell this House which members they are, and whether every one of them still carries his whip tonight?"},{"id":"courtBriefAgainstAdvice","subject":"court","side":"opposition","body":"The law officers advised that this case could not be won, and the department went outside for counsel who would say otherwise. Will {leader} lay that advice before the House, or, failing that, state what has been paid to outside counsel since {year} began?"},{"id":"courtNameOfTheJudge","subject":"court","side":"opposition","body":"The judge who gave the ruling has had his name on the front page for a fortnight and a police car outside his house for six nights. Will {leader} say, in his own words and from that box, that the judge did his job?"},{"id":"governorGrantsBeforeTheCount","subject":"governor","side":"power","body":"Federal grants to {region} have a way of arriving in the last fortnight of a state ballot, with {governor} on the platform when they do. Will {leader} undertake that this government announces no money in {region} inside the ninety days before a count there, or is the timing to remain a matter of administrative convenience?"},{"id":"governorHoldTheUnion","subject":"governor","side":"power","body":"{governor} was asked at a state convention what would happen if {region} voted to leave the federation, and gave no answer. Will {leader} do better and tell this House by what means a government holds a state that has voted to go, and whether soldiers are among the means?"},{"id":"governorOwnFigure","subject":"governor","side":"power","body":"{governor} stands at {number} with the people of {region}. Will {leader} give this House the government's own figure in {region}, or is that a number the country is not to be trusted with?"},{"id":"governorMoneyHeldBack","subject":"governor","side":"opposition","body":"The transfers due to {region} have sat in the department since {governor} took office, and every other region has been paid. Will {leader} name the day the money moves, or tell the House plainly that it is being held against the governor?"},{"id":"governorNeverInTheRoom","subject":"governor","side":"opposition","body":"The governor of {region} has never once been asked to a meeting of this government. Is {governor} an officer of this republic or an obstacle to it, and will {leader} answer that in words rather than in his diary?"},{"id":"moneyDivisionOrOrder","subject":"money","side":"power","body":"When the government borrows again — and it will, before {year} is out — will it come to a division of this House, or will it go by order? Members can be asked to vote for a debt; they cannot be asked to notice one."},{"id":"moneyWordForIt","subject":"money","side":"power","body":"Every party arrives here with a word for a debt half this size and mislays it on the way to the front bench. What is the {party}'s word for {number} — the House will take any word at all, provided {leader} says it himself and says it now."},{"id":"moneyAFigureAtWhich","subject":"money","side":"power","body":"The department plans for a bad harvest, a bad winter and a bad ballot. Has anyone in it ever written down the figure at which this state stops paying its creditors — {leader} need not read the number to the House, only say whether the paper exists."},{"id":"moneyWithoutTheNote","subject":"money","side":"opposition","body":"Every member has the figure in front of him and I do not intend to read it out. Will {leader} give it himself — the whole of it, as it stands this afternoon, without turning to the note that is already being written behind him?"},{"id":"moneyOfferOfCover","subject":"money","side":"opposition","body":"Debt of {number} will not be brought down by an undertaking to bring it down, so I will put an offer to {leader} instead: let the government name the economies before this session rises and they will not be divided against from these benches. Does he take it, or is the list one he would rather the country never saw written down at all?"},{"id":"orderNameOneLimit","subject":"order","side":"power","body":"Nothing this government has wanted since {year} began has needed a vote of this House to get it. Will {leader} tell the chamber what lies outside the reach of his own signature — a subject, a power, anything at all that this government accepts it could not do by order?"},{"id":"orderWhoAskedForIt","subject":"order","side":"power","body":"{work} did not begin in this House, and it did not begin in the department either — somebody outside government asked for it. Will {leader} name who asked, and say whether anybody who has to live under that order was in the room while it was drafted?"},{"id":"orderWhichVotePays","subject":"order","side":"power","body":"Enforcing {work} costs money, and this House has voted none of it. What is the annual figure, and out of which vote is it being found?"},{"id":"orderLapsesWithTheOffice","subject":"order","side":"opposition","body":"{work} stands only while this government holds the department that signed it, and ends the afternoon that department passes into other hands. Does {leader} regard a reshuffle as a proper substitute for a repeal, and if the country needs this, why has he never once asked this House for it in a bill?"},{"id":"orderHowManyAreBound","subject":"order","side":"opposition","body":"The government can say, down to the individual instrument, how many orders it has standing, and the figure is {number}. It has never been able to say how many people are living under them, so will {leader} give this House that number today, or confirm that nobody in his government has ever counted?"},{"id":"pricesTheStateSetsThese","subject":"prices","side":"power","body":"Fares, postage, the water charge and the licence are set by ministers and not by the weather, and every one of them has risen since {year} began. Will {leader} name one price this government sets itself that it intends to hold to the end of the year?"},{"id":"pricesWhichMeasurePaysHim","subject":"prices","side":"power","body":"The pension is uprated on one measure and the pay of ministers on another, and the two have not been the same number for years. Will {leader} tell this House which of the two he would sooner be paid on, or put both on the same measure before the rise?"},{"id":"pricesAtWhatFigure","subject":"prices","side":"power","body":"Poverty stands at {number} and this House has been told three times that the government is watching the figure closely. At what figure does watching become acting: the House would like a number rather than an adverb."},{"id":"pricesResidenceOnTheEstimates","subject":"prices","side":"opposition","body":"The residence, its heat, its table and its car are all carried on the estimates. With the figure standing at {number}, will {leader} name one thing his own household has gone without this year, and if there is nothing, will he say so rather than leave the House to guess at it?"},{"id":"pricesTheHousesThatSellIt","subject":"prices","side":"opposition","body":"Bread, coal and fuel oil reach this country through a handful of houses, and their accounts for {year} are the best they have filed in a decade. Will {leader} lay those margins before this House, or is a figure of {number} to go on being explained by the weather?"},{"id":"promiseTheCosting","subject":"promise","side":"power","body":"Before the count the {party} gave the country one figure for its whole programme. The departments are working to another figure entirely, so will {leader} lay both before this House and tell it which of the two is the government's?"},{"id":"promiseAfterTheCount","subject":"promise","side":"power","body":"This commitment was given to this parliament, and the date the departments are working to falls on the far side of the next count. Will {leader} confirm that the House which answers for it will not be this one?"},{"id":"promiseMarkedDelivered","subject":"promise","side":"power","body":"The {party}'s own papers record this commitment as met. Nobody it was made to has noticed, and when this House rises I have to stand in front of them and account for it; the government may tell me now what I am to say has changed."},{"id":"promiseNotInTheNextOne","subject":"promise","side":"opposition","body":"This commitment stood in the {party}'s last manifesto and, word for word, in the one before it, and it has been delivered under neither. Will {leader} undertake that it will not stand in a third, or is the country to be asked to vote for it again?"},{"id":"promiseHasAnyoneBegun","subject":"promise","side":"opposition","body":"Delivery dates and costings can wait; I am asking about something smaller. Will {leader} tell the House whether one officer in one department has yet been set to work on this commitment, and on what date the file was opened?"},{"id":"treatyNationalsHeld","subject":"treaty","side":"power","body":"Two hundred and eleven of our nationals cannot leave {power} tonight, and every answer this House has had for a month has been about the text. Are those people part of the negotiation, or are they waiting on the end of it?"},{"id":"treatyTakeOurVotes","subject":"treaty","side":"power","body":"Terms with {power} would not need one vote from behind {leader} to carry this House: they have ours already, and he knows it. Will he take them, or does this government need somebody to be against it?"},{"id":"treatyOneThingNotConceded","subject":"treaty","side":"power","body":"Will {leader} name one thing this government will not concede to {power}? One item, in his own words, and the House will not press him for the rest of it."},{"id":"treatyNameThePrice","subject":"treaty","side":"opposition","body":"Since {year} began the {party} has told the country a dozen times what it will not accept from {power}, and not once what it wants. Will {leader} name one thing this government is asking of them, and one thing it is prepared to give for it?"},{"id":"treatyThePeopleStillThere","subject":"treaty","side":"opposition","body":"Some hundreds of our own people are in {power} tonight — a mission, a school, two survey parties the department sent itself. If the border shuts on a Tuesday, who is responsible for bringing them out, and does that plan exist on paper?"},{"id":"unrestLastTimeYouWereThere","subject":"unrest","side":"power","body":"There is a difference between being briefed on a place and standing in it. Will {leader} give the House the date he was last in one of those streets himself, and say whether the road was closed for it?"},{"id":"unrestRegulationsBeforeTheVote","subject":"unrest","side":"power","body":"The regulations now in force were made under an Act of {year} and bite the moment they are signed; this House is invited to approve them forty days later, by which time they will have done whatever they were going to do. Will {leader} undertake that the next set is voted on before it takes effect?"},{"id":"unrestOurVotesIfHeAsks","subject":"unrest","side":"power","body":"If the government brings a settlement to the floor of this House — any settlement, this side of the recess — the {opp} will vote for it, and {leader} may have that undertaking from me now. Will he bring one, or is the position that there is nothing to bring?"},{"id":"unrestAFewHundredPeople","subject":"unrest","side":"opposition","body":"The {party}'s briefing said this was a few hundred people who would tire of it. They have not tired and the figure is {number} — does {leader} stand by that sentence at this box, or was it never his?"},{"id":"unrestWhoCanSettle","subject":"unrest","side":"opposition","body":"The figure is {number}, and somebody in this government must be able to settle this. Will {leader} name the minister who can agree terms without leaving the room, or is every offer made in his name to be carried back to him and returned a week later?"},{"id":"billFirstYearMoney","subject":"bill","side":"power","body":"The financial memorandum printed with the {bill} puts its first year at {number} and names no vote the money comes out of. Will {leader} tell the House which estimate that {number} is to be found in before it divides on the bill, or is the money a matter for the parliament after this one?"},{"id":"billReachInTenebris","subject":"bill","side":"power","body":"The department's own assessment puts the reach of the {bill} at {number} households in every hundred in Tenebris, which is the region it was said to be written for. The figure sits in an annexe and the leaflet posted through doors in Tenebris says the bill is for Tenebris: will {leader} tell the House which of those two documents the government is asking it to vote on?"},{"id":"billStillBeingDrafted","subject":"bill","side":"power","body":"The government has tabled sixty-one amendments to the {bill} since it was published, nineteen more than the {opp} has tabled against it. Will {leader} withdraw the bill and lay it again in the form the government wants, or is this House to pass a draft the department is still writing?"},{"id":"billCommencementDay","subject":"bill","side":"opposition","body":"Clause nineteen of the {bill} provides that it comes into force on such day as the minister may by order appoint, and two acts already carrying that sentence have not commenced in the whole of {year}. Will {leader} put a commencement date on the face of the bill, or is the House to pass a measure whose starting day it is not permitted to know?"},{"id":"billWhereItStops","subject":"bill","side":"opposition","body":"The {bill} extends to Somnium and the Federal District and no further, though the department's own survey put the same need {number} points higher in Thaxia and in the Marches. Will {leader} tell the House who drew that line, the officials who wrote the survey or the people who count the government's votes?"},{"id":"issueSameMoneyThirdTime","subject":"issue","side":"power","body":"The {number} for {issue} the {party} announced this month was announced in {year}, and announced again in the spring, and the department's account shows one sum leaving it. Will {leader} tell the House how much of that {number} has never been announced before, or are members to take the third announcement as the policy?"},{"id":"issueNineChairsOfTheCommittee","subject":"issue","side":"power","body":"The Cabinet committee on {issue} has met nine times, and the department's own annual report prints who took the chair at each. Will {leader} tell the House how many of the nine he took himself, before I read the nine names out?"},{"id":"issueWhichOfTheElevenHeTelephones","subject":"issue","side":"power","body":"Eleven bodies in Vale carry a statutory duty on {issue} — two of them sitting in Meridian, one in the Federal District, and not one of them answerable to this House. The country rates it {number} out of a hundred: when that figure moves, will {leader} tell members which of the eleven he telephones?"},{"id":"issueNotHeldCentrally","subject":"issue","side":"opposition","body":"Ninety-one written answers on {issue} have come back from that department since the spring with the same six words: the information is not held centrally. Will {leader} give the House the date on which the department stopped holding it, and the name on the minute that ended the return?"},{"id":"issuePerHeadFormula","subject":"issue","side":"opposition","body":"The department's own table rates {issue} in the Marches at three times what it rates it in the Federal District, and the money that answers it is still shared out per head on a formula that has not been recalculated since before the Marches had a census of their own. Will {leader} defend the formula, or the outcome? He cannot rise once and defend both."},{"id":"ministerTheUnminutedMeetings","subject":"minister","side":"power","body":"{minister} has met the largest firm his department licenses {number} times since {year}, and the department's own transparency return records one of those meetings. Will {leader} say who else was in the room at the others and whether any note was taken, or is the House to accept that a minister may meet whom he likes provided nobody writes it down?"},{"id":"ministerWhoTakesItNext","subject":"minister","side":"power","body":"If {minister} were to leave that department tomorrow, by illness or by any other road, who takes it? {leader} may name a member of this House, and the House will note whether the name arrives at once or after a search."},{"id":"ministerAppointedForWhat","subject":"minister","side":"power","body":"Will {leader} tell the House what {minister} was appointed for — not what the department does, what the minister was appointed for? The House has assumed an answer involving the seats the {party} holds in the Marches, and would be glad to be corrected."},{"id":"ministerCorrectTheRecord","subject":"minister","side":"opposition","body":"The written answer given in {minister}'s name earlier in {year} told this House that the Rigel yard contract had been put out to tender, and it had not been. The rule of this House is that a minister corrects the record at the earliest opportunity, and the minister has had eleven of those since, so will the correction be made this afternoon, and by whom?"},{"id":"ministerHasHeBeenThere","subject":"minister","side":"opposition","body":"Has {minister} set foot in the Thaxia depot that this department has been answering to the House for since {year}? A yes will need a date, and a no will need nothing further from me."},{"id":"scandalTermsOfReference","subject":"scandal","side":"power","body":"The inquiry into this affair was given its terms of reference by the department it is to inquire into, and those terms begin on the day the contract was signed and not on the day it was drawn. Will {leader} widen them to the whole of {year}, or tell the House who chose that starting date?"},{"id":"scandalPaymentsSinceItBroke","subject":"scandal","side":"power","body":"The department has paid the same contractor a further two hundred and forty thousand for work in the Marches, and three of those payments went out in the fortnight after the department's own auditors asked for the file. Will {leader} say who authorised each of them, and whether {minister} signed any?"},{"id":"scandalNoteBeforeSigning","subject":"scandal","side":"power","body":"Did the note reach {leader}'s desk before the department signed at Tenebris, or after? The House will take one view if the government knew and signed anyway, and a colder one if a department of state can sign a thing like that without telling the leader of the {party}."},{"id":"scandalCorrectTheRecord","subject":"scandal","side":"opposition","body":"The answer {minister} gave this House on the fourteenth of last month is now known to be wrong in its central particular, and the rule of this House is that a wrong answer is corrected by the member who gave it. Will {leader} name the sitting day on which that correction is made, and say whether it will stand in the minister's name or the department's?"},{"id":"scandalSignedSince","subject":"scandal","side":"opposition","body":"Since the affair broke — and it stands at {number} degrees on the government's own reckoning this afternoon — {minister} has signed eleven further decisions of exactly the kind now in question, among them the Meridian licences of the ninth. Will the government say which of those another minister will take again, or is the House to hold that a signature under inquiry is as good as any other?   [and layTheList label: Lay a list of the eleven decisions with the official who countersigned each]"},{"id":"workLayTheContract","subject":"work","side":"power","body":"The contract for {work} has never been laid before this House, and nor has the schedule of variations signed since; what members have seen of it is a press notice. Will the government lay both papers before the rise of the House on Thursday, and say whether the confidentiality clause in that contract was written by the department or by the contractor?"},{"id":"workSpentOnWhat","subject":"work","side":"power","body":"Of the {number} already spent on {work}, how much has gone on design, advisers and management, and how much on anything a member could go and stand on? The department keeps that split in its own ledger and has never once given it to this House."},{"id":"workWhatItCostsToKeep","subject":"work","side":"power","body":"Every paper before this House says what {work} costs to build, and not one says what it costs to keep once it is open. Will the government give the annual sum and the first estimate in which it falls, or is that a bill for the parliament after this one?"},{"id":"workWhoOwnsItAfter","subject":"work","side":"opposition","body":"When {work} opens, will it belong to the state or to the firm that built it, and for how many years does that firm take the receipts before this House is asked to buy it back? The country is paying {number} for it and has not been told which of those two things it is buying."},{"id":"workPriceOfStopping","subject":"work","side":"opposition","body":"This House is asked every session to vote another sum for {work}, on top of the {number} already gone, and it has never once been told what it would cost to stop: the break clause, the land the state cannot sell back, the plant standing idle under guard at the Rigel yard. Will the government put a figure on that, so that members may at least know the price of the choice they are not being offered?"}]</script>
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Parliament: Vale — slice S10g</p>
+    <h1>The Despatch Box</h1>
+    <p class="standfirst">Question Time was five sentences in an if/else chain. It is now a hundred and sixty-four questions — and the reason the pool was not being reached had nothing to do with how many there were.</p>
+    <p class="byline">
+      <span>164 questions · 14 subjects</span>
+      <span>70 authored, 51 defects caught</span>
+      <span>2,161,802 bytes, one file, no build step</span>
+    </p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="strip">
+    <div class="stat"><b>164<span class="was">was 5</span></b><span>Questions in the pool</span></div>
+    <div class="stat"><b>28<span class="was">was 7</span></b><span>Sessions before the soonest repeat</span></div>
+    <div class="stat"><b>3<span class="was">was 11</span></b><span>Most times one question is seen in 200 sessions</span></div>
+    <div class="stat"><b>12<span class="was">was 2</span></b><span>Questions the worst-served subject reaches</span></div>
+  </div>
+
+  <div class="col">
+    <p class="lede">A stale notification from a finished workflow turned out to be carrying work. The tail of the previous authoring run had rewritten eighteen shards <em>after</em> the first seventy questions were merged and shipped, leaving forty-five more on disk that no build had ever seen. Collecting them, and levelling the five subjects they left shallow, took the pool from ninety-four to a hundred and sixty-four.</p>
+
+    <p>Then measuring what a campaign actually sees turned up something worse, and something already shipped: <strong>the size of the pool was barely relevant.</strong> Over two hundred sessions one subject reached two of its twelve questions, and a single question came up eleven times.</p>
+
+    <h2>A hash of the turn is not variety</h2>
+    <p class="kicker">The defect</p>
+
+    <p>Selection deliberately spends no randomness. <code>v8EnsureQuestion</code> runs on the render path — every action, every tab change — so a die there would make a campaign's dice-spend depend on how often the player looked at a tab. The original answer was a hash of the session number:</p>
+
+    <blockquote><p><code>h = turn × 2654435761</code>, folded over the subject's characters, then <code>h mod n</code></p></blockquote>
+
+    <p>That looks like variety and is not. For a fixed subject the value moves by a <strong>constant stride</strong> every session. An arithmetic progression taken modulo <em>n</em> visits only <code>n ÷ gcd(stride, n)</code> of the residues — so wherever the stride shared a factor with the number of questions on that subject, the campaign landed on the same few for ever, and no amount of authoring could reach the rest.</p>
+
+    <p>The controls below are the whole mechanism. Sixty sessions, a shelf of <em>n</em> questions:</p>
+  </div>
+
+  <div class="demo" id="demo">
+    <div class="demo-head">
+      <span class="demo-title">Sixty sessions on one subject</span>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="n">Shelf</label>
+          <input type="range" id="n" min="4" max="12" value="12" step="1">
+          <output id="nOut">12</output>
+        </div>
+        <div class="ctrl">
+          <label for="s">Stride</label>
+          <input type="range" id="s" min="1" max="24" value="6" step="1">
+          <output id="sOut">6</output>
+        </div>
+      </div>
+    </div>
+    <div class="lanes">
+      <div>
+        <div class="lane-label">
+          <span>Chosen by hash — index = (session × stride) mod n</span>
+          <span class="verdict" id="hashVerdict"></span>
+        </div>
+        <div class="shelf" id="hashShelf"></div>
+      </div>
+      <div>
+        <div class="lane-label">
+          <span>Chosen by rotation — index = (offset + times raised) mod n</span>
+          <span class="verdict ok" id="rotVerdict"></span>
+        </div>
+        <div class="shelf" id="rotShelf"></div>
+      </div>
+    </div>
+    <p class="demo-note" id="demoNote"></p>
+  </div>
+
+  <div class="col">
+    <p>Set the shelf to twelve and the stride to six and the shelf collapses to two questions, whatever else is written on it. That is not a contrived setting: it is what the real hash did to the <span class="m">promise</span> subject.</p>
+
+    <h2>Count what has been asked</h2>
+    <p class="kicker">The fix</p>
+
+    <p>The item is no longer chosen by hash at all. Each subject keeps a count of how many times it has been raised, and the question is <code>(offset + count) mod n</code> — so a subject <strong>walks its whole shelf before repeating any of it</strong>, starting from a per-campaign offset so two seeds do not hear the same twelve questions in the same order.</p>
+
+    <p>Two properties had to survive. The count advances <em>inside</em> the guard that already makes the body run once a session, so re-rendering cannot move it — the same rule that keeps a die out of this path. And it rides the save, so a reload resumes mid-shelf; a campaign saved before the rotation existed has no counter at all, loads, and starts clean.</p>
+
+    <p>The hash still picks which <em>subject</em> comes up, so it was rebuilt too — avalanched through <code>Math.imul</code>, which is an exact 32-bit multiply and therefore identical in every engine.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Measured with every subject in play, each campaign length its own run</caption>
+        <thead>
+          <tr><th>Property</th><th class="n">Before</th><th class="n">After</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Distinct questions in 50 sessions</td><td class="n was">36</td><td class="n now">48 of 50 drawn</td></tr>
+          <tr><td>Distinct in 100 sessions</td><td class="n was">65</td><td class="n now">85</td></tr>
+          <tr><td>Distinct in 200 sessions</td><td class="n was">102</td><td class="n now">115</td></tr>
+          <tr><td>Sessions before the soonest repeat</td><td class="n was">7</td><td class="n now">28</td></tr>
+          <tr><td>Median gap between repeats</td><td class="n was">19</td><td class="n now">80</td></tr>
+          <tr><td>Most times one question is seen in 200</td><td class="n was">11</td><td class="n now">3</td></tr>
+          <tr><td>Questions the worst-served subject reaches</td><td class="n was">2 of 12</td><td class="n now">all 12</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A sixty-session sweep with every subject available now draws <strong>sixty distinct questions</strong> from the government benches. Nothing repeats at all.</p>
+
+    <h2>Seven readings, fifty-one defects</h2>
+    <p class="kicker">What the mechanical check could not see</p>
+
+    <p>The build already refused a question whose placeholders its subject cannot supply, or whose tone the engine cannot map. None of that catches a question that is simply another question wearing different nouns. Two rounds of adversarial readers — <em>reskin</em>, <em>voice</em>, <em>fit</em>, and for the second round <em>sibling collision</em> — read all seventy against the pool already shipped, each finding required to arrive with ready-to-paste replacement text.</p>
+
+    <div class="finding blocking">
+      <span class="tag">Sibling collision · blocking · ten items</span>
+      <p>Two agents write each subject — one for the government benches, one for the opposition — and neither can see the other. Four pairs chose the same <em>id</em>, and two more collided under different ones: both had independently written “name the figure at which you would stop” and “your written answers come back with the same stock phrase; give me a date.”</p>
+    </div>
+
+    <div class="finding blocking">
+      <span class="tag">Fit · blocking</span>
+      <p><span class="m">{number}</span> standing as the bare subject of a sentence in a question whose body never introduced a figure. Substituted, the line read: <em>“23 stopped being an opinion about relations and became a description of them.”</em></p>
+    </div>
+
+    <div class="finding blocking">
+      <span class="tag">Voice · blocking</span>
+      <p>A result line addressing the player as “you” — the only second person anywhere in the batch. Vale is written in the third person and the past tense: the House <em>noted</em>, <em>recorded</em>, <em>did the arithmetic</em>.</p>
+    </div>
+
+    <div class="finding">
+      <span class="tag">Voice · minor</span>
+      <p>A mobile telephone, in a corpus that otherwise runs on front pages, leaflets, minute books, warrants and the library. An invented verb. A duck that assessed the answer instead of naming a consequence. A spaced hyphen where the rest of the pool uses an em dash.</p>
+    </div>
+
+    <p>Twenty-two fixes were applied in the second round and five deliberately were not — four because the item they targeted was replaced whole, one because a second reader rewrote the same reply better. Each of those is named in the applier with its reason rather than dropped quietly.</p>
+
+    <h2>Seven ways of asking, on every subject</h2>
+    <p class="kicker">The pool</p>
+
+    <p>A subject is only offered when its facts exist — a question about a governor needs a governor's ballot in sight, a question about a work needs one in trouble. The five levelled last are the ones that fire <em>most</em> often, because the state they need almost always exists.</p>
+  </div>
+
+  <div class="coverage" id="coverage"></div>
+
+  <div class="col">
+    <p style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:-18px">
+      Filled marks are questions put to a government you lead; hollow marks are questions you put from the opposition benches.
+    </p>
+
+    <h3>Read the pool</h3>
+    <div class="poolbar" id="poolbar"></div>
+    <div class="qlist" id="qlist"></div>
+    <p class="poolfoot" id="poolfoot"></p>
+  </div>
+
+  <hr class="rule">
+
+  <div class="col">
+    <h2>An assertion that could not fail</h2>
+    <p class="kicker">The third this order</p>
+    <p>The test guarding all of this was checking nothing. It cleared <code>q.v10</code> — the guard that <em>provides</em> the stability — and then asked whether a forced re-selection re-selected. It now calls <code>v8EnsureQuestion</code> fifty times with the guard untouched, as fifty renders would; holds a subject to prove it walks its whole shelf; and strips the counter from a save to prove a campaign written before the rotation still loads and asks. It is proved red by three separate one-line mutations.</p>
+  </div>
+
+</div>
+
+<footer class="end">
+  <div class="wrap">
+    <p>ALL CHECKS PASS — 11/11, 2,161,802 bytes of 2,200,000</p>
+    <p>ROADS OK — 64 assertions&nbsp;&nbsp;·&nbsp;&nbsp;PLAYTEST PASS — 39 steps + the WebKit SKIP</p>
+    <p>DETERMINISM PASS — 8 properties&nbsp;&nbsp;·&nbsp;&nbsp;TABS / CHAMBER / TIERS clean</p>
+    <p>PACING — re-run on the finished pool and unchanged: every length reaches its end year, records 10 / 11 / 12, crisis density flat at 0.8</p>
+    <p style="margin-top:14px">The WebKit step is a SKIP, not a pass: the environment blocks the download, and Chromium at the phone viewport is the named substitute.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var DATA = JSON.parse(document.getElementById('qt-data').textContent);
+
+  /* ---------- the stride demo ---------- */
+  var nIn = document.getElementById('n'), sIn = document.getElementById('s');
+  var nOut = document.getElementById('nOut'), sOut = document.getElementById('sOut');
+  var hashShelf = document.getElementById('hashShelf'), rotShelf = document.getElementById('rotShelf');
+  var hashVerdict = document.getElementById('hashVerdict'), rotVerdict = document.getElementById('rotVerdict');
+  var demoNote = document.getElementById('demoNote');
+  var SESSIONS = 60;
+
+  function gcd(a, b) { while (b) { var t = a % b; a = b; b = t; } return a; }
+
+  function shelf(el, counts, n) {
+    el.textContent = '';
+    var max = Math.max.apply(null, counts) || 1;
+    for (var i = 0; i < n; i++) {
+      var d = document.createElement('div');
+      d.className = 'slot' + (counts[i] ? ' hit' : ' cold');
+      var f = document.createElement('div');
+      f.className = 'fill';
+      f.style.height = (counts[i] / max * 100) + '%';
+      d.appendChild(f);
+      var t = document.createElement('span');
+      t.style.position = 'relative';
+      t.textContent = counts[i] || '·';
+      d.appendChild(t);
+      d.title = 'Question ' + (i + 1) + ' — asked ' + (counts[i] || 0) + ' times in ' + SESSIONS + ' sessions';
+      el.appendChild(d);
+    }
+  }
+
+  function draw() {
+    var n = +nIn.value, s = +sIn.value;
+    nOut.textContent = n; sOut.textContent = s;
+
+    var h = new Array(n).fill(0), r = new Array(n).fill(0);
+    for (var t = 1; t <= SESSIONS; t++) h[(t * s) % n]++;
+    for (var i = 0; i < SESSIONS; i++) r[(3 + i) % n]++;
+
+    shelf(hashShelf, h, n);
+    shelf(rotShelf, r, n);
+
+    var reached = h.filter(function (x) { return x > 0; }).length;
+    var g = gcd(s, n);
+    hashVerdict.textContent = reached + ' of ' + n + ' questions reached';
+    hashVerdict.className = 'verdict' + (reached < n ? ' bad' : '');
+    rotVerdict.textContent = n + ' of ' + n + ' questions reached';
+
+    demoNote.innerHTML = g > 1
+      ? 'The stride and the shelf share a factor of <b>' + g + '</b>, so the hash can only ever land on <b>' + reached +
+        '</b> of the <b>' + n + '</b> questions — the other <b>' + (n - reached) + '</b> are unreachable for the life of the campaign, however well they are written. The rotation reaches every one, and no question is asked more than <b>' +
+        Math.max.apply(null, r) + '</b> times in sixty sessions.'
+      : 'The stride and the shelf are coprime, so this hash happens to reach all <b>' + n +
+        '</b> — but the spread is uneven (<b>' + Math.min.apply(null, h) + '</b> to <b>' + Math.max.apply(null, h) +
+        '</b> times each), and it only takes a shelf of a different size for it to collapse. Move the shelf and watch. The rotation is flat at <b>' +
+        Math.min.apply(null, r) + '</b>–<b>' + Math.max.apply(null, r) + '</b> whatever the numbers are.';
+  }
+  nIn.addEventListener('input', draw);
+  sIn.addEventListener('input', draw);
+  draw();
+
+  /* ---------- coverage grid ---------- */
+  var subs = [], byKey = {};
+  DATA.forEach(function (q) {
+    if (subs.indexOf(q.subject) < 0) subs.push(q.subject);
+    var k = q.subject + '|' + q.side;
+    byKey[k] = (byKey[k] || 0) + 1;
+  });
+  subs.sort();
+  var cov = document.getElementById('coverage');
+  subs.forEach(function (sb) {
+    var gov = byKey[sb + '|power'] || 0, opp = byKey[sb + '|opposition'] || 0;
+    var d = document.createElement('div'); d.className = 'cov';
+    var nm = document.createElement('div'); nm.className = 'name'; nm.textContent = sb;
+    var pips = document.createElement('div'); pips.className = 'pips';
+    for (var i = 0; i < gov; i++) { var p = document.createElement('i'); p.className = 'pip'; pips.appendChild(p); }
+    for (var j = 0; j < opp; j++) { var o = document.createElement('i'); o.className = 'pip opp'; pips.appendChild(o); }
+    var tot = document.createElement('div'); tot.className = 'tot';
+    tot.textContent = gov + ' gov · ' + opp + ' opp';
+    d.appendChild(nm); d.appendChild(pips); d.appendChild(tot);
+    cov.appendChild(d);
+  });
+
+  /* ---------- the pool ---------- */
+  var bar = document.getElementById('poolbar'), list = document.getElementById('qlist'), foot = document.getElementById('poolfoot');
+  var active = 'scandal';
+  try { var saved = localStorage.getItem('vale.qt.subject'); if (saved && subs.indexOf(saved) >= 0) active = saved; } catch (e) {}
+
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]; }); }
+  function mark(s) { return esc(s).replace(/\{(\w+)\}/g, function (m, k) { return '<span class="ph">' + k + '</span>'; }); }
+
+  function render() {
+    [].forEach.call(bar.children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.sub === active)); });
+    var rows = DATA.filter(function (q) { return q.subject === active; });
+    rows.sort(function (a, b) { return a.side === b.side ? 0 : (a.side === 'power' ? -1 : 1); });
+    list.textContent = '';
+    rows.forEach(function (q) {
+      var d = document.createElement('div'); d.className = 'q';
+      var m = document.createElement('div'); m.className = 'meta';
+      m.innerHTML = '<span class="side">' + (q.side === 'power' ? 'Put to a government you lead' : 'Put by you, from opposition') + '</span><span>' + esc(q.id) + '</span>';
+      var b = document.createElement('div'); b.className = 'body';
+      b.innerHTML = mark(q.body);
+      d.appendChild(m); d.appendChild(b); list.appendChild(d);
+    });
+    foot.textContent = rows.length + ' questions on ' + active + ' · ' + DATA.length + ' in the pool. Marked words are filled from the session — the minister actually under investigation, the bill actually stuck.';
+    try { localStorage.setItem('vale.qt.subject', active); } catch (e) {}
+  }
+
+  subs.forEach(function (sb) {
+    var b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.dataset.sub = sb; b.textContent = sb;
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function () { active = sb; render(); });
+    bar.appendChild(b);
+  });
+  render();
+})();
+</script>
