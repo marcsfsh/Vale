@@ -341,6 +341,7 @@ textarea{width:100%;height:150px;background:rgba(0,0,0,.4);color:var(--ivory);bo
 .modal-close{position:sticky;float:right;top:0;z-index:2;margin:-12px -12px 4px 8px}
 .toast{position:fixed;right:16px;bottom:82px;z-index:80;max-width:360px;background:var(--ink);border:1px solid var(--party);box-shadow:0 12px 40px rgba(0,0,0,.55);padding:10px 13px;font-family:var(--font-u);font-size:13px;transform:translateY(15px);opacity:0;pointer-events:none;transition:.18s ease}
 .toast.show{transform:none;opacity:1}
+.toast.refused{border-color:var(--bad);color:var(--bad)}
 .turnbar .session-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .turnbar .session-chip{font-family:var(--font-u);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(191,161,78,.23);padding:3px 7px;color:var(--ivory-dim)}
 .btn.danger{border-color:var(--bad);background:rgba(199,123,98,.12)}
@@ -4142,6 +4143,14 @@ function mintSeed() {
 }
 
 function rnd(a) { return a[Math.floor(rand() * a.length)]; }
+/* A sort with a random comparator draws a number of dice that depends on the
+   engine's sort algorithm, which makes a seeded campaign's stream a property
+   of the browser rather than of the seed. Fisher-Yates draws exactly n-1. */
+function shuffled(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rand() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
 function makeName() { return rnd(GIVEN) + ' ' + rnd(SURNAME); }
 function makeFigure(st, pid, minAge) {
   return { name: makeName(), party: pid, age: (minAge || 42) + Math.floor(rand() * 22),
@@ -5917,15 +5926,36 @@ function undoLast() {
   } catch (e) { UI.undo = null; flash('That decision could not be undone.'); }
 }
 
-function toast(msg) {
+function toast(msg, refused) {
   var t = document.getElementById('toast'); if (!t) return;
   t.textContent = msg; t.classList.add('show');
-  clearTimeout(UI.toastTimer); UI.toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  t.classList[refused ? 'add' : 'remove']('refused');
+  clearTimeout(UI.toastTimer); UI.toastTimer = setTimeout(function () { t.classList.remove('show'); }, refused ? 3000 : 2200);
 }
 
 function saveAutosave() {
   if (!S || !S.started) return;
   try {
+    /* The setup sheet promises an unreadable save has been "left untouched".
+       The very next autosave used to write straight over that key, so the
+       blob was destroyed moments after the promise. Move it aside first, and
+       say where it went — a save this game cannot read is still the player's,
+       and may be readable by something else. */
+    if (UI.saveReadError) {
+      var broken = UI.saveReadError;
+      UI.saveReadError = null;
+      try {
+        var raw = localStorage.getItem(broken);
+        if (raw) {
+          localStorage.setItem(broken + '.unreadable', raw);
+          toast('The save that could not be read has been copied to ' + broken + '.unreadable and left there. This session now autosaves over the original.');
+        }
+      } catch (e2) { /* if it cannot be moved it is not overwritten either */
+        UI.saveReadError = broken;
+        toast('The unreadable save could not be set aside, so it has not been written over. Use Save / load to keep a portable copy of this session.');
+        return;
+      }
+    }
     localStorage.setItem('parliamentVale.autosave.v5', JSON.stringify(S));
     UI.saveWriteFailed = false;
   } catch (e) {
@@ -9969,6 +9999,12 @@ function flash(msg) {
      1.6 seconds after the click. Restore the hint's own text instead; if a
      real render happened in between it already replaced the message. */
   var h = document.getElementById('turnHint');
+  /* The hint is display:none below 1180px, so on the phone and the tablet all
+     75 refusals in the game were silent while every success spoke through the
+     toast. Ask the element, not the viewport: no new breakpoint, and it stays
+     right if the CSS moves. */
+  var hidden = !h || !h.offsetParent;
+  if (hidden) { toast(msg, true); return; }
   var old = h.textContent;
   h.textContent = msg;
   h.style.color = '#C77B62';
@@ -11695,7 +11731,7 @@ ageFigures = function (st) {
   if (after !== before) {
     var ob = (st.figures.obits || [])[0];
     var cands = [];
-    var pool = TRAITS.slice().sort(function () { return rand() - .5; }).slice(0, 3);
+    var pool = shuffled(TRAITS).slice(0, 3);
     pool.forEach(function (t) { var f = makeFigure(st, me, 40); f.trait = t.id; f.loyalty = 70; cands.push(f); });
     st.v6.succession = { previous:before, died:!!(ob && ob.died && ob.name === before.name), candidates:cands, interim:after };
   }
@@ -13251,10 +13287,10 @@ var startScreen = function () {
   var lengths = Object.keys(V6_LENGTHS).map(function (k) { var L = V6_LENGTHS[k]; return '<button data-setup-length="' + k + '" aria-pressed="' + (s.length === k) + '"><b>' + esc(L.name) + '</b><small>' + esc(L.note) + '</small></button>'; }).join('');
   var diffs = V6_DIFF_ORDER.map(function (k) { var d = DIFFS[k]; return '<button data-setup-diff="' + k + '" aria-pressed="' + (s.diff === k) + '"><b>' + esc(d.name) + ': ' + esc(d.tag) + '</b><small>' + esc(d.blurb) + '</small></button>'; }).join('');
   var html = '<div class="kicker">Republic of Vale, 2024</div><h2 id="sheetTitle">Take a Party and the Years That Follow</h2>' +
-    (UI.saveReadError ? '<p class="note" data-save-warning="1" style="color:var(--bad)">A stored save could not be read (' + esc(UI.saveReadError) + '). It has been left untouched' + (auto ? '; an older save is offered below.' : '.') + '</p>' : '') +
+    (UI.saveReadError ? '<p class="note" data-save-warning="1" style="color:var(--bad)">A stored save could not be read (' + esc(UI.saveReadError) + '). It has been left untouched, and will be copied aside before this session writes anything' + (auto ? '; an older save is offered below.' : '.') + '</p>' : '') +
     (UI.seedMinted ? '<p class="note" data-seed-warning="1" style="color:var(--brass)">That save was written before campaigns carried a seed. It will load, and it is reproducible from here on, but its earlier turns cannot be replayed.</p>' : '') +
     (UI.polMigrated ? '<p class="note" data-ladder-warning="1" style="color:var(--brass)">That save was written when statutes had between one and four rungs. Every statute has four now, and the standing law in that save has been moved onto the new ladder at the same strength' + (UI.polMigrated < 0 ? '; ' + (-UI.polMigrated) + ' measure' + (UI.polMigrated === -1 ? '' : 's') + ' no longer in the statute book had to be dropped.' : '.') + '</p>' : '') +
-    (auto ? '<div class="choices" style="margin-bottom:12px"><button class="choice" data-resume="1"><b>Resume the device autosave</b><small>' + esc(dateLabel(auto.turn)) + ' · ' + esc(PARTY[playParty(auto)].name) + ' · ' + esc(FORMS[auto.form].name) + (auto.endYear ? ' · ends ' + auto.endYear : '') + '</small></button></div>' : '') +
+    (auto ? '<div class="choices" style="margin-bottom:12px"><button class="choice" data-resume="1"><b>' + (auto.over ? 'Reopen the finished campaign' : 'Resume the device autosave') + '</b><small>' + esc(dateLabel(auto.turn)) + ' · ' + esc(PARTY[playParty(auto)].name) + ' · ' + esc(FORMS[auto.form].name) + (auto.endYear ? ' · ends ' + auto.endYear : '') + (auto.over ? ' · OVER — the record can be read, but no session can be played' : '') + '</small></button></div>' : '') +
     '<p class="start-intro">Vale is a federal republic of six hundred and eighty million people, the first power of its hemisphere, and the most heavily checked constitution ever written: fifty states, two elected houses, four executive offices on staggered terms, sixteen justices nobody appoints, and eight regions with governors of their own. You lead a party. Whether that means you govern depends on the arithmetic, and the arithmetic depends on where you choose to begin.</p>' +
     /* Two questions decide the game, and both of them are interesting. Length,
        difficulty and the house rules all have defaults worth keeping and are
@@ -13278,7 +13314,7 @@ var startScreen = function () {
     '<div class="choices" style="margin-top:12px"><button class="choice" data-setup-begin="1"><b>Begin the government</b><small>' + esc(sc.standing(s.party)) + ' Then choose how you will exercise power.</small></button></div>';
   showSheet(html, function (node) {
     var keep = document.getElementById('sheet') ? document.getElementById('sheet').scrollTop : 0;
-    var resume = node.querySelector('[data-resume]'); if (resume) resume.addEventListener('click', function () { S = enrichState(auto, false); UI.undo = null; hideSheet(); render(); toast('Autosave resumed.'); });
+    var resume = node.querySelector('[data-resume]'); if (resume) resume.addEventListener('click', function () { S = enrichState(auto, false); UI.undo = null; hideSheet(); render(); toast(S.over ? 'That campaign is over. The record is open for reading; start a new campaign to play.' : 'Autosave resumed.'); });
     function redraw() { var top = document.getElementById('sheet').scrollTop; startScreen(); document.getElementById('sheet').scrollTop = top; }
     node.querySelectorAll('[data-setup-party]').forEach(function (b) { b.addEventListener('click', function () { s.party = b.getAttribute('data-setup-party'); redraw(); }); });
     node.querySelectorAll('[data-setup-scenario]').forEach(function (b) { b.addEventListener('click', function () { s.scenario = b.getAttribute('data-setup-scenario'); redraw(); }); });
@@ -15640,7 +15676,7 @@ var V8_ARCS = [
           { l:'Seek a vote of confidence from the caucus', s:'Unity +10 and capital +4 if the caucus is with you; unity -8 and capital -5 if it is not.',
             f:function (S2, v) { var me = playParty(S2), ok = factionAverage(S2, me) >= 52 || (v.conceded && factionAverage(S2, me) >= 45); if (ok) { S2.unity = c100((S2.unity || 60) + 10); S2.capital += 4; logIt(S2, 'The caucus gave the leadership its confidence.'); } else { S2.unity = c100((S2.unity || 60) - 8); S2.capital -= 5; logIt(S2, 'The caucus withheld its confidence. The leadership survived on the Speaker\'s count.'); v8Flag(S2, 'resignation'); } } },
           { l:'Announce the succession', s:'A leadership contest follows next session. Unity +3 now.',
-            f:function (S2) { var me = playParty(S2), before = leaderOf(S2, me), cands = []; TRAITS.slice().sort(function () { return rand() - .5; }).slice(0, 3).forEach(function (t) { var f = makeFigure(S2, me, 40); f.trait = t.id; f.loyalty = 70; cands.push(f); }); S2.unity = c100((S2.unity || 60) + 3); S2.v6.succession = { previous:before, died:false, candidates:cands, interim:before }; chronicle(S2, before.name + ' announced the succession after the cabinet letter.'); } }
+            f:function (S2) { var me = playParty(S2), before = leaderOf(S2, me), cands = []; shuffled(TRAITS).slice(0, 3).forEach(function (t) { var f = makeFigure(S2, me, 40); f.trait = t.id; f.loyalty = 70; cands.push(f); }); S2.unity = c100((S2.unity || 60) + 3); S2.v6.succession = { previous:before, died:false, candidates:cands, interim:before }; chronicle(S2, before.name + ' announced the succession after the cabinet letter.'); } }
         ], next:'aftermath' },
       { id:'aftermath', title:'After the Letter', wait:2,
         text:'The letter is history and the party is still in office. The question is what kind of party it is now.',
@@ -17137,12 +17173,20 @@ v6Sandbox = function (fn) { UI.v9Sim = true; try { return v9SandboxBase(fn); } f
 /* ==========================================================
    NAMED JUSTICES AND THEIR PROFILES
    ========================================================== */
-function v9JusticeName(j, idx) {
+function v9JusticeName(j, idx, st) {
   if (j.name) return j.name;
+  st = st || S;
   var pi = 0; PARTIES.forEach(function (p, i) { if (p.id === j.party) pi = i; });
-  var taken = {}; (S && S.court ? S.court.justices : []).forEach(function (o) { if (o.name) taken[o.name] = true; });
+  /* The uniqueness set is taken from the state that OWNS this justice, not
+     from the global one — naming a justice on a detached blob used to read
+     the live campaign's bench. */
+  var taken = {}; (st && st.court ? st.court.justices : []).forEach(function (o) { if (o.name) taken[o.name] = true; });
+  /* The campaign seed is in the hash, so two campaigns no longer open with
+     the same sixteen justices. Still a hash, so still dice-free and stable
+     across reloads. */
+  var camp = Math.abs((st && st.seed) || 0) % 100003;
   for (var k = 0; k < 64; k++) {
-    var seed = Math.abs((j.since || 2000) * 1009 + (idx + k) * 7919 + pi * 104729 + k * 31);
+    var seed = Math.abs((j.since || 2000) * 1009 + (idx + k) * 7919 + pi * 104729 + k * 31 + camp * 33391);
     var name = GIVEN[seed % GIVEN.length] + ' ' + SURNAME[Math.floor(seed / GIVEN.length) % SURNAME.length];
     if (!taken[name]) { j.name = name; return name; }
   }
@@ -19819,9 +19863,19 @@ function v10ObituaryPanel() {
 var v10V8EnsureBase = v8EnsureState;
 v8EnsureState = function (st, fresh) {
   var out = v10V8EnsureBase(st, fresh);
-  if (out) v10MergeSeaWall(out);
+  if (out) { v10MergeSeaWall(out); v10NameTheBench(out); }
   return out;
 };
+
+/* A justice had no name until somebody opened the Judicial page, which wrote
+   one into the save — so what a campaign was carrying depended on which tabs
+   the player had looked at, and a log line could never name a justice because
+   the name might not exist yet. Named at enrich instead. The naming is a hash,
+   not a roll, so this spends no dice and is safe inside the guard. */
+function v10NameTheBench(st) {
+  if (!st.court || !st.court.justices || typeof v9JusticeName !== 'function') return;
+  st.court.justices.forEach(function (j, i) { if (!j.name) v9JusticeName(j, i, st); });
+}
 
 var v10AgeRosterBase = ageRoster;
 ageRoster = function (st) {
