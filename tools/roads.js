@@ -111,7 +111,27 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       try { sc.apply(probe); } catch (e) { return; }
       for (const id in probe.pol) rungOk('scenario ' + sc.id, id, probe.pol[id]);
     });
-    return { bad, cats, n: POLICIES.length, catN: Object.keys(cats).length };
+    /* The owner's order was four levels each with its own set of modifiers.
+       For a statute whose curve is AUTHORED that is a real claim: no rung may
+       read the same as the rung below it, and the top two rungs should each
+       bring something the rung below does not have. */
+    const authoredSet = [], flat = [], noNew3 = [], noNew4 = [];
+    POLICIES.forEach(p => {
+      if (!['eff', 'mood', 'rev', 'exp'].some(k => authored(p, k))) return;
+      authoredSet.push(p.id);
+      const keys = i => Object.keys(p._effAt[i]).filter(k => p._effAt[i][k])
+        .concat(Object.keys(p._moodAt[i]).filter(k => p._moodAt[i][k]));
+      for (let i = 1; i < 4; i++) {
+        const same = JSON.stringify(p._effAt[i]) === JSON.stringify(p._effAt[i + 1]) &&
+          JSON.stringify(p._moodAt[i]) === JSON.stringify(p._moodAt[i + 1]) &&
+          p._revAt[i] === p._revAt[i + 1] && p._expAt[i] === p._expAt[i + 1];
+        if (same) flat.push(p.id + ' rungs ' + i + '/' + (i + 1));
+      }
+      if (!keys(3).some(k => keys(2).indexOf(k) < 0)) noNew3.push(p.id);
+      if (!keys(4).some(k => keys(3).indexOf(k) < 0)) noNew4.push(p.id);
+    });
+    return { bad, cats, n: POLICIES.length, catN: Object.keys(cats).length,
+      authored: authoredSet.length, flat, noNew3: noNew3.length, noNew4: noNew4.length };
   });
   const lp = ladderParity.bad;
   say(lp.max.length === 0 && lp.rows.length === 0, 'four rungs on every statute',
@@ -122,6 +142,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     lp.rung.length ? lp.rung.length + ' off: ' + lp.rung.slice(0, 5).join(', ') : 'interpolation reproduces the old ladder at every reachable position');
   say(lp.needs.length === 0 && lp.seed.length === 0, 'nothing points off the ladder',
     lp.needs.length || lp.seed.length ? [...lp.needs, ...lp.seed].slice(0, 5).join('; ') : 'every needs: resolves; every want, programme target and scenario seed sits on a rung');
+  /* S9g: the twenty CORE categories hold exactly twenty-four statutes each.
+     The three form books (Imperium, People's State, The Charter) are a
+     constitution's own vocabulary and are counted separately. */
+  const CORE = ['Authority', 'Capital', 'Culture', 'Defence', 'Education', 'Elections', 'Empire', 'Energy',
+    'Environment', 'Federalism', 'Foreign', 'Health', 'Immigration', 'Infrastructure', 'Justice', 'Labour',
+    'Security', 'Taxation', 'Technology', 'Welfare'];
+  const short = CORE.filter(c => ladderParity.cats[c] !== 24).map(c => c + ' ' + (ladderParity.cats[c] || 0));
+  const extra = Object.keys(ladderParity.cats).filter(c => CORE.indexOf(c) < 0);
+  say(short.length === 0, 'twenty-four to a category',
+    short.length ? short.join(', ') : `all ${CORE.length} core categories hold exactly 24 · form books: ` +
+      extra.sort().map(c => c + ' ' + ladderParity.cats[c]).join(', '));
+  say(ladderParity.flat.length === 0, 'no rung repeats the one below',
+    ladderParity.authored === 0 ? 'no authored curves yet' :
+      (ladderParity.flat.length ? ladderParity.flat.length + ' flat pair(s): ' + ladderParity.flat.slice(0, 5).join(', ')
+        : `${ladderParity.authored} authored statutes, every rung distinct; ` +
+          `${ladderParity.authored - ladderParity.noNew3} bring a new key at rung 3, ` +
+          `${ladderParity.authored - ladderParity.noNew4} a new cost at rung 4`));
   console.log('      census: ' + ladderParity.n + ' statutes across ' + ladderParity.catN + ' categories · ' +
     Object.keys(ladderParity.cats).sort().map(c => c + ' ' + ladderParity.cats[c]).join(', '));
 
