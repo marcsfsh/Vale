@@ -271,3 +271,32 @@ statutes only through the AI's own wants; a player has 131 more instruments
 and the tool cannot see that.
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
+
+================================================================================
+CHECKED AGAIN AFTER S9h — EVERY LADDER AUTHORED
+================================================================================
+
+All 582 statutes now carry authored four-rung curves. The tops of those
+ladders are unchanged and roads.js proves it statute by statute, but the
+rungs BELOW the top moved — that is the whole point of the slice — so the AI
+governs through a differently-shaped book and the trajectories differ.
+
+length    seed      sessions  years  ended                elections  crises  wars  achievements
+short     5EED1234  50        50     reached the end year 5          4       4     9/44
+standard  5EED1234  100       100    reached the end year 5          8       10    10/44
+epic      5EED1234  200       200    reached the end year 5          15      18    12/44
+
+length    crises/10 sessions  elections/10  events/session  records at the close
+short     0.8                 1.0           1.5             20%
+standard  0.8                 0.5           1.6             23%
+epic      0.8                 0.3           1.6             27%
+
+What the tool gates on still holds: every length option plays to its end year
+and delivers a complete arc, the longer options still earn more, and density
+stays flat across lengths (1.5 / 1.6 / 1.6 events a session). Crisis density
+is now flat at 0.8 across all three where it used to fall away in the longer
+games, which reads as the authored curves putting more consequence at the top
+of a ladder — a government that builds a statute out now reaps the second
+order and the cost, and the crises follow.
+
+This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
