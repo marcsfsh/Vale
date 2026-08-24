@@ -4250,12 +4250,17 @@ function draftBillDialog(id, dir) {
   var fc = { clean:{lower:0,upper:0}, negotiated:{lower:5,upper:11}, urgent:{lower:5,upper:-6} };
   var preview = billForecast(S,{policy:id,dir:dir,sponsor:playParty(S),owner:'player',strategy:'clean',whip:0,upperDeal:0,committee:0,concessions:0,confidence:false,urgent:false,playerPosition:'support'});
   var verb = dir > 0 ? (lv ? 'extend' : 'enact') : (next ? 'reduce' : 'repeal');
+  /* the same row-delta the card offers, restated where the money is spent */
+  var draftDelta = [];
+  polStepTags(draftDelta, p, lv, next, 'Rung ' + lv + ' to ' + next);
+  if (!draftDelta.length) draftDelta.push('<span class="muted small">This rung moves no indicator and no constituency.</span>');
   showSheet('<div class="kicker">Drafting Office</div><h2 id="sheetTitle">' + esc(billTitle(id, dir)) + '</h2>' +
     '<p>You are asking Parliament to ' + esc(verb) + ' ' + esc(p.name) + '. Political capital is committed when the bill is introduced; passage then depends on committee, the Assembly and the Senate.</p>' +
     '<div class="result"><div><b>Current level</b><span>' + lv + ' / ' + p.max + '</span></div>' +
     '<div><b>Proposed level</b><span>' + next + ' / ' + p.max + '</span></div><div><b>Capital</b><span>' + cost + '</span></div>' +
     '<div><b>Assembly</b><span>' + Math.round(preview.lower) + '%</span></div><div><b>Senate</b><span>' + Math.round(preview.upper) + '%</span></div>' +
     '<div><b>Public issue</b><span style="font-size:13px">' + esc(issueForPolicy(p).name) + '</span></div></div>' +
+    '<div class="subhead">What this bill changes</div><div class="tagline" data-draft-delta="1">' + draftDelta.join('') + '</div>' +
     '<div class="choices">' +
     '<button class="choice" data-draft="clean">Introduce a clean government bill<small>The clearest policy and the least room for bargaining. Normal support in both houses.</small></button>' +
     '<button class="choice" data-draft="negotiated">Publish a negotiated text<small>Assembly +' + fc.negotiated.lower + ', Senate +' + fc.negotiated.upper + '. The final settlement carries one concession.</small></button>' +
@@ -4266,7 +4271,11 @@ function draftBillDialog(id, dir) {
           captureUndo('Introduce ' + p.name);
           var bill = sponsorBill(S, id, dir, 'player', b.getAttribute('data-draft'), false);
           if (!bill) { flash('The bill could not be introduced.'); return; }
-          hideSheet(); UI.tab = 'houses'; render(); toast('The ' + bill.title + ' has entered committee.');
+          /* You stay where you were. The bill's progress is on the card you
+             just used, in the Desk's active-bill panel and on the Lawmaking
+             badge; being thrown to another page to read it was the one thing
+             nobody asked for. */
+          hideSheet(); render(); toast('The ' + bill.title + ' has entered committee.');
         });
       });
     });
@@ -7911,14 +7920,26 @@ function policyCard(p) {
       esc(DEPTS[p.dept].name) + (holdsDept(S, p.dept) ? '' : ' (opposed)') + '</span>');
     var pp = polPos(p);
     if (Math.abs(pp.a) > .25) tags.push('<span class="tag">' + (pp.a > 0 ? 'Authority +' : 'Liberty ') + pp.a.toFixed(2) + '</span>');
-    if (p.eff) for (var k in p.eff) tags.push('<span class="tag ' + effClass(k, p.eff[k]) + '">' + esc(IND[k].name) + ' ' + (p.eff[k] > 0 ? '+' : '') + p.eff[k] + '</span>');
-    if (p.rev) tags.push('<span class="tag up">Revenue ' + fmc(p.rev) + '</span>');
-    if (p.exp) tags.push('<span class="tag down">Cost ' + fmc(p.exp) + '</span>');
-    var moods = [];
-    if (p.mood) {
-      var ks = Object.keys(p.mood).sort(function (a, b) { return Math.abs(p.mood[b]) - Math.abs(p.mood[a]); }).slice(0, 4);
-      ks.forEach(function (m) { moods.push('<span class="tag ' + (p.mood[m] > 0 ? 'up' : 'down') + '">' + esc(BLOC[m].name) + ' ' + (p.mood[m] > 0 ? '+' : '') + p.mood[m] + '</span>'); });
-    }
+    /* The first tagline is the STANDING law: what this statute is doing at
+       the rung it currently sits on. At rung zero there is nothing standing,
+       so it previews the first rung instead and says so. */
+    var shown = polEffAt(p, lv || 1), shownRev = polRevAt(p, lv || 1), shownExp = polExpAt(p, lv || 1);
+    if (!lv) tags.push('<span class="tag">If enacted</span>');
+    for (var k in shown) if (shown[k]) tags.push('<span class="tag ' + effClass(k, shown[k]) + '">' + esc(IND[k].name) + ' ' + polNum(shown[k]) + '</span>');
+    if (shownRev) tags.push('<span class="tag up">Revenue ' + fmc(shownRev) + '</span>');
+    if (shownExp) tags.push('<span class="tag down">Cost ' + fmc(shownExp) + '</span>');
+    /* Then the OFFER, in the same row so that compact mode — which folds the
+       second tagline away — cannot hide it: what one more rung would add, and
+       what giving one back would take away. At rung zero the row above IS the
+       first rung's offer, so it is not said twice. */
+    if (lv > 0 && lv < p.max) polStepTags(tags, p, lv, lv + 1, 'One rung more', false);
+    if (lv > 0) polStepTags(tags, p, lv, lv - 1, lv === 1 ? 'If repealed' : 'If reduced', false);
+    /* The second tagline keeps the constituencies — now the standing total
+       this statute holds with each of them, not a per-step impulse. */
+    var moods = [], nowM = polMoodAt(p, lv || 1);
+    Object.keys(nowM).filter(function (m) { return BLOC[m] && Math.abs(nowM[m]) >= .5; })
+      .sort(function (a, b) { return Math.abs(nowM[b]) - Math.abs(nowM[a]); }).slice(0, 4)
+      .forEach(function (m) { moods.push('<span class="tag ' + (nowM[m] > 0 ? 'up' : 'down') + '">' + esc(BLOC[m].name) + ' ' + polNum(nowM[m]) + '</span>'); });
     var upCost = lv < p.max ? policyCost(p.id, 1) : 0;
     var dnCost = lv > 0 ? policyCost(p.id, -1) : 0;
     var liveBill = activeBillFor(S, p.id);
@@ -7930,6 +7951,9 @@ function policyCard(p) {
     if (liveBill) tags.unshift('<span class="tag up">' + esc(liveBill.id) + ' · ' + esc(BILL_STAGE_NAMES[liveBill.stage]) + '</span>');
     else if (upBlock) tags.unshift('<span class="tag down">Senate forecast hostile</span>');
     else if (upRes > .15) tags.unshift('<span class="tag down">Senate resists</span>');
+    /* a statute built to the top has no upward step to warn about, and the
+       Senate's view of giving one back was computed and never shown */
+    else if (dnBlock && lv === p.max) tags.unshift('<span class="tag down">Senate forecast hostile to repeal</span>');
     return '<div class="card" data-policy-card="1" data-search="' + esc((p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase()) + '"><h3>' + esc(p.name) + '</h3>' +
       '<p class="desc">' + esc(p.desc) + '</p>' +
       '<div class="lvl">' + pips + '</div>' +
@@ -7944,6 +7968,28 @@ function policyCard(p) {
 function effClass(k, v) {
   var good = IND[k].inv ? v < 0 : v > 0;
   return good ? 'up' : 'down';
+}
+/* Rungs carry fractions now — a half-built statute is a real position, not a
+   rounding error — so every number the cards and the dossier print goes
+   through here rather than being pasted raw. */
+function polNum(v) { var r = Math.round(v * 10) / 10; return (r > 0 ? '+' : '') + r; }
+/* One rung's worth of change, as a row of chips: the indicators first, then
+   the constituencies that move most. Used by the policy card and the drafting
+   desk, so the offer reads the same in both places. */
+function polStepTags(out, p, a, b, label, withMood) {
+  var de = polEffDelta(p, a, b), dm = polMoodDelta(p, a, b), bits = [], k;
+  var ik = Object.keys(de).sort(function (x, y) { return Math.abs(de[y]) - Math.abs(de[x]); }).slice(0, 3);
+  for (k = 0; k < ik.length; k++) bits.push('<span class="tag ' + effClass(ik[k], de[ik[k]]) + '">' + esc(IND[ik[k]].name) + ' ' + polNum(de[ik[k]]) + '</span>');
+  if (withMood !== false) {
+    var mk = Object.keys(dm).filter(function (x) { return Math.abs(dm[x]) >= .5 && BLOC[x]; })
+      .sort(function (x, y) { return Math.abs(dm[y]) - Math.abs(dm[x]); }).slice(0, 2);
+    for (k = 0; k < mk.length; k++) bits.push('<span class="tag ' + (dm[mk[k]] > 0 ? 'up' : 'down') + '">' + esc(BLOC[mk[k]].name) + ' ' + polNum(dm[mk[k]]) + '</span>');
+  }
+  var dr = polRevAt(p, b) - polRevAt(p, a), dx = polExpAt(p, b) - polExpAt(p, a);
+  if (Math.abs(dr) >= .05) bits.push('<span class="tag ' + (dr > 0 ? 'up' : 'down') + '">Revenue ' + polNum(dr) + '</span>');
+  if (Math.abs(dx) >= .05) bits.push('<span class="tag ' + (dx > 0 ? 'down' : 'up') + '">Cost ' + polNum(dx) + '</span>');
+  if (!bits.length) return;
+  out.push('<span class="tag">' + esc(label) + '</span>' + bits.join(''));
 }
 
 function macroPanel() {
@@ -10365,7 +10411,7 @@ draftBillDialog = function (id, dir) {
     b.stage = 'referendum'; b.strategy = 'referendum'; b.due = S.turn + 1; b.cost = cost; b.campaign = 0;
     b.notes = ['National referendum']; b.title = p.name + ' Referendum';
     logIt(S, 'The question of ' + p.name + ' was put to a national referendum.');
-    hideSheet(); UI.tab = 'houses'; render(); toast('The referendum is called.');
+    hideSheet(); render(); toast('The referendum is called.');
   });
 };
 function v6ReferendumTick(st) {
@@ -12688,7 +12734,6 @@ function v7ChartsToEnd() {
 var v7RenderBase = render;
 render = function () {
   var prev = V7.tab, changed = UI.tab !== prev;
-  if (changed && prev) { UI.scrollPos = UI.scrollPos || {}; UI.scrollPos[prev] = window.scrollY || 0; }
   /* Same-tab renders had NO scroll handling at all: the full innerHTML rewrite
      let the browser clamp scrollY whenever the redrawn view came back shorter,
      so answering the last paper teleported the page. The window is the scroll
@@ -12701,11 +12746,15 @@ render = function () {
   document.body.classList.toggle('cards-compact', v7CompactOn());
   v7Folds(); v7Cards(); v7ChartsToEnd();
   if (keepY !== null && Math.abs((window.scrollY || 0) - keepY) > 1) window.scrollTo(0, keepY);
-  if (changed && prev && !(typeof V6M !== 'undefined' && V6M.locked)) {
-    var y = UI.scrollPos && UI.scrollPos[UI.tab];
-    if (y !== undefined) window.scrollTo(0, y);
-    else if (!v6mIs()) { var nav = document.getElementById('tabs'), top = nav.getBoundingClientRect().top + window.scrollY; if (window.scrollY > top) window.scrollTo(0, top); }
-  }
+  /* A main-tab change lands at the absolute top, every time. The old
+     cross-tab memory gave one gesture three different outcomes: a tab you had
+     left mid-page snapped back to that offset with the header row off-screen,
+     a first visit clamped to the sticky strip's top (header off-screen a
+     different way), and a tab left at the top showed it. Same-tab scroll
+     preservation above — the anti-jump fix that matters in play — is
+     untouched, and v7Jump still scrolls to the card it was asked for after
+     this runs. */
+  if (changed && prev && !(typeof V6M !== 'undefined' && V6M.locked) && (window.scrollY || 0) > 0) window.scrollTo(0, 0);
   V7.tab = UI.tab;
 };
 
@@ -12790,7 +12839,7 @@ function v7Jump(it) {
   }
   var tab = it.tab || v7Locate()[it.key] || V7_CAT_TAB[it.cat] || 'chamber';
   if (it.pol) { UI.polCat = it.pol.cat; UI.polSearch = ''; UI.polView = 'all'; UI.polOpen = UI.polOpen || {}; UI.polOpen[it.pol.grp || 'Other measures'] = true; }
-  UI.tab = tab; UI.scrollPos = UI.scrollPos || {}; delete UI.scrollPos[tab];
+  UI.tab = tab;
   hideSheet(); render();
   var el = null;
   if (it.sel) { try { el = document.querySelector(it.sel.split(',').map(function (s) { return '#view ' + s.trim(); }).join(',')); } catch (e) { el = null; } }
@@ -15414,10 +15463,20 @@ function v9Dossier(id) {
   S.v9.stats.dossiers++;
   var ladder = '';
   for (var i = 0; i <= p.max; i++) {
-    var revI = p.rev ? p.rev * i : 0, expI = p.exp ? p.exp * i : 0;
-    var effs = []; if (p.eff) for (var k in p.eff) effs.push(esc(IND[k].name) + ' ' + v9Sign(Math.round(p.eff[k] * i * 10) / 10));
+    /* the real rows, not a base multiplied by a level: each rung prints the
+       standing total the statute would hold there */
+    var effI = polEffAt(p, i), revI = polRevAt(p, i), expI = polExpAt(p, i);
+    var effs = [], k;
+    for (k in effI) if (effI[k]) effs.push(esc(IND[k].name) + ' ' + v9Sign(Math.round(effI[k] * 10) / 10));
+    /* capital is state-dependent — the whip, the Senate, the department, the
+       agenda — so only the rung you can actually reach from here quotes it */
+    var stepI = (i === lv + 1 && lv < p.max) ? policyCost(id, 1) : ((i === lv - 1 && lv > 0) ? policyCost(id, -1) : 0);
+    /* no <b> here: the rung number beside it is a <b> and carries the big
+       display size, which a nested one would inherit */
+    var costNote = stepI ? ' · ' + stepI + ' capital from here' : '';
     ladder += '<div class="tier' + (i === lv ? ' now' : '') + (i < lv ? ' held' : '') + '"><b>' + i + '</b><span><strong>' + esc(v9TierName(p, i)) + '</strong>' +
-      (i ? '<small>' + (effs.length ? effs.join(', ') : 'No indicator effect') + (revI ? ' · revenue ' + fmc(revI) : '') + (expI ? ' · cost ' + fmc(expI) : '') + '</small>' : '<small>Repealed or never enacted</small>') + '</span></div>';
+      (i ? '<small>' + (effs.length ? effs.join(', ') : 'No indicator effect') + (revI ? ' · revenue ' + fmc(revI) : '') + (expI ? ' · cost ' + fmc(expI) : '') + costNote + '</small>'
+         : '<small>Repealed or never enacted' + costNote + '</small>') + '</span></div>';
   }
   var up = lv < p.max ? v9PublicSupport(S, p, 1) : null, dn = lv > 0 ? v9PublicSupport(S, p, -1) : null;
   var stances = PARTIES.slice().sort(function (a, b) { return (S.seats[b.id] || 0) - (S.seats[a.id] || 0); }).map(function (q) {
@@ -15428,11 +15487,23 @@ function v9Dossier(id) {
     var pp = polPos(p), d = dist2({ e:ppos(S, me).e + f.e, a:ppos(S, me).a + f.a }, pp);
     return '<span class="tag ' + (d < .5 ? 'up' : (d > 1 ? 'down' : '')) + '">' + esc(f.name) + ' ' + (d < .5 ? 'warm' : (d > 1 ? 'cold' : 'divided')) + '</span>';
   }).join('');
-  var blocs = BLOCS.map(function (b) { var m = (p.mood && p.mood[b.id]) || 0; return m ? '<span class="tag ' + (m > 0 ? 'up' : 'down') + '">' + esc(b.name) + ' ' + v9Sign(m) + '</span>' : ''; }).join('') || '<span class="muted small">No constituency moves on it.</span>';
+  /* What the constituencies hold BECAUSE of this statute at the rung it sits
+     on, and what one more rung would add. The old heading said "per level"
+     over a row that was really the one-shot shock of a single step. */
+  var nowM = polMoodAt(p, lv), nextM = lv < p.max ? polMoodDelta(p, lv, lv + 1) : {};
+  var blocs = BLOCS.map(function (b) {
+    var m = nowM[b.id] || 0, nx = nextM[b.id] || 0;
+    if (!m && !nx) return '';
+    return '<span class="tag ' + ((m || nx) > 0 ? 'up' : 'down') + '">' + esc(b.name) + ' ' + v9Sign(Math.round(m * 10) / 10) +
+      (nx ? '<span class="muted"> · ' + v9Sign(Math.round(nx * 10) / 10) + ' next</span>' : '') + '</span>';
+  }).join('') || '<span class="muted small">No constituency moves on it.</span>';
   var regs = v9RegionalRead(S, p, lv < p.max ? 1 : -1), top = regs.slice(0, 2), bottom = regs.slice(-2).reverse();
   var regHtml = (top.filter(function (x) { return x.s > .4; }).map(function (x) { return '<span class="tag up">' + esc(x.r.name) + ' welcomes it</span>'; }).join('') +
     bottom.filter(function (x) { return x.s < -.4; }).map(function (x) { return '<span class="tag down">' + esc(x.r.name) + ' resists it</span>'; }).join('')) || '<span class="muted small">The regions are indifferent.</span>';
-  var court = v9CourtExposure(S, p), sen = lv < p.max ? upperResist(S, polLean(p), 1, polAuth(p)) : 0;
+  var court = v9CourtExposure(S, p);
+  var sen = lv < p.max ? upperResist(S, polLean(p), 1, polAuth(p)) : null;
+  var senDn = lv > 0 ? upperResist(S, polLean(p), -1, polAuth(p)) : null;
+  var senWord = function (r) { return r > .3 ? 'hostile' : (r > .12 ? 'resists' : 'workable'); };
   var syn = v9SynergiesFor(id).map(function (s) {
     var other = s.a === id ? s.b : s.a, on = (S.pol[s.a] || 0) > 0 && (S.pol[s.b] || 0) > 0;
     var effs = []; for (var k in s.eff) effs.push(esc(IND[k].name) + ' ' + v9Sign(s.eff[k]));
@@ -15446,14 +15517,15 @@ function v9Dossier(id) {
     '<div class="result"><div><b>Level</b><span>' + lv + ' / ' + p.max + '</span></div><div><b>Tier</b><span style="font-size:13px">' + esc(v9TierName(p, lv)) + '</span></div>' +
     (up !== null ? '<div><b>Country, for more</b><span>' + v9Pct(up) + '</span></div>' : '') + (dn !== null ? '<div><b>Country, for less</b><span>' + v9Pct(dn) + '</span></div>' : '') +
     '<div><b>Court</b><span style="font-size:13px" class="' + (court.cls === 'down' ? 'neg' : '') + '">' + esc(court.word) + '</span></div>' +
-    '<div><b>Senate</b><span style="font-size:13px">' + (sen > .3 ? 'hostile' : (sen > .12 ? 'resists' : 'workable')) + '</span></div></div>' +
+    (sen !== null ? '<div><b>Senate, on more</b><span style="font-size:13px">' + senWord(sen) + '</span></div>' : '') +
+    (senDn !== null ? '<div><b>Senate, on less</b><span style="font-size:13px">' + senWord(senDn) + '</span></div>' : '') + '</div>' +
     (live ? '<p class="note">' + esc(live.id) + ' is before the houses now, at ' + esc(BILL_STAGE_NAMES[live.stage]) + '.</p>' : '') +
     (sunset ? '<p class="note">A sunset clause falls due in ' + esc(dateLabel(sunset)) + '.</p>' : '') +
     (S.orders[id] ? '<p class="note">Raised by executive order: the court treats it as half again as vulnerable.</p>' : '') +
     '<div class="subhead">The ladder</div><div class="ladder">' + ladder + '</div>' +
     '<div class="subhead">Where the parties stand on the next step</div><div class="tagline">' + stances + '</div>' +
     (facts ? '<div class="subhead">Inside your own party</div><div class="tagline">' + facts + '</div>' : '') +
-    '<div class="subhead">The constituencies, per level</div><div class="tagline">' + blocs + '</div>' +
+    '<div class="subhead">What the constituencies hold now</div><div class="tagline">' + blocs + '</div>' +
     '<div class="subhead">The regions</div><div class="tagline">' + regHtml + '</div>' +
     '<div class="subhead">Paired measures</div>' + syn +
     (hist ? '<div class="subhead">History</div><div class="tscroll"><table><thead><tr><th>Year</th><th>Bill</th><th>Sponsor</th><th>Result</th></tr></thead><tbody>' + hist + '</tbody></table></div>' : '') +

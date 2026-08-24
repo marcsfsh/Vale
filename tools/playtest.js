@@ -130,8 +130,53 @@ async function run() {
   await page.click('[data-pol][data-dir="1"]:not([disabled])');
   await page.waitForSelector('[data-draft]', { timeout: 10000 });
   await page.click('[data-draft="clean"]');
-  const bills = await page.evaluate(() => S.bills.filter(b => b.owner === 'player').length);
-  step('draft-bill', bills > 0, `${bills} player bill(s) before the houses`);
+  await page.waitForTimeout(150);
+  /* the draft sheet also has to say what the bill would change, and drafting
+     must leave you where you were: S9f removed the forced jump to Lawmaking */
+  const bills = await page.evaluate(() => ({
+    n: S.bills.filter(b => b.owner === 'player').length, tab: UI.tab, sheet: !!document.getElementById('sheet').className.match(/open/),
+  }));
+  step('draft-bill', bills.n > 0 && bills.tab === 'policy',
+    `${bills.n} player bill(s) before the houses; still on ${bills.tab} after drafting`);
+
+  // -- the drafting desk states the rung's own change --
+  const delta = await page.evaluate(async () => {
+    const btn = document.querySelector('[data-pol][data-dir="1"]:not([disabled])');
+    if (!btn) return { err: 'no draftable measure' };
+    btn.click();
+    await new Promise(r => setTimeout(r, 200));
+    const row = document.querySelector('#sheet [data-draft-delta]');
+    const out = { found: !!row, tags: row ? row.querySelectorAll('.tag').length : 0, text: row ? row.textContent.trim().slice(0, 90) : '' };
+    hideSheet();
+    return out;
+  });
+  step('draft-delta', !!delta.found && (delta.tags > 0 || /moves no indicator/.test(delta.text)),
+    delta.err || `"What this bill changes" present with ${delta.tags} chip(s): ${delta.text}`);
+
+  // -- the dossier reads the real ladder: five rungs, capital only on the
+  //    rung you can reach, both Senate directions, no template leaks --
+  const doss = await page.evaluate(async () => {
+    const btn = document.querySelector('#view [data-v9open="dossier"]');
+    if (!btn) return { err: 'no dossier button on the policy page' };
+    btn.click();
+    await new Promise(r => setTimeout(r, 250));
+    const sh = document.getElementById('sheet');
+    const txt = sh.textContent;
+    const p = POL[btn.getAttribute('data-id')], lv = S.pol[p.id] || 0;
+    const out = {
+      lv, want: (lv < p.max ? 1 : 0) + (lv > 0 ? 1 : 0),
+      rungs: sh.querySelectorAll('.ladder .tier').length,
+      costs: (txt.match(/capital from here/g) || []).length,
+      senate: (txt.match(/Senate, on (more|less)/g) || []).length,
+      constituencies: /What the constituencies hold now/.test(txt),
+      leak: /\{[nNd]\}|undefined|NaN/.test(txt),
+    };
+    hideSheet();
+    return out;
+  });
+  step('dossier-ladder', doss.rungs === 5 && doss.costs === doss.want && doss.senate >= 1 && doss.constituencies && !doss.leak,
+    doss.err || `${doss.rungs} rungs at level ${doss.lv}, ${doss.costs} of ${doss.want} reachable rungs quoting capital, ` +
+    `${doss.senate} Senate read(s), per-rung constituencies: ${doss.constituencies}, template leaks: ${doss.leak}`);
 
   // -- end the session via the BUTTON (S1: must reach the live v8 chain, not
   //    the frozen v4 body — the v8 wrapper's close-checklist is the tell) --
@@ -212,18 +257,42 @@ async function run() {
     // E: a long sheet opens at its own heading, not scrolled to a deep button
     const e1 = await page.evaluate(() => { helpDialog(); const sh = document.getElementById('sheet'); const st = sh.scrollTop; hideSheet(); return st; });
     if (e1 > 2) holds.push(`sheet opened pre-scrolled to ${e1}px`);
-    // F: keyboard navigation goes through the single scroll owner — the
-    //    remembered position of the destination tab is restored, with no
-    //    forced smooth-to-top afterwards
+    // F: a main-tab change lands at the ABSOLUTE top, every time, and the
+    //    header row is on screen when it gets there. S9f replaced the
+    //    cross-tab scroll memory that gave one gesture three outcomes: a tab
+    //    left mid-page snapped back with the header off screen, a first visit
+    //    clamped to the sticky strip, a tab left at the top showed it. Both
+    //    routes in — the keyboard/group buttons and a page button — are
+    //    asserted, twice over, on a tab that has been scrolled and left.
     await page.evaluate(() => {
       UI.tab = 'policy'; render(); window.scrollTo(0, 500);
       UI.tab = 'chamber'; render();
     });
     await page.keyboard.press('2');
     await page.waitForTimeout(350);
-    const f1 = await page.evaluate(() => ({ tab: UI.tab, y: window.scrollY }));
+    const f1 = await page.evaluate(() => ({ tab: UI.tab, y: window.scrollY,
+      head: document.querySelector('header.topbar').getBoundingClientRect().top }));
     if (f1.tab !== 'policy') holds.push(`key 2 landed on ${f1.tab}, expected policy`);
-    else if (Math.abs(f1.y - 500) > 60) holds.push(`owner did not restore policy's 500: ${f1.y}`);
+    else if (f1.y > 2) holds.push(`tab change did not land at the top: scrollY ${f1.y}`);
+    else if (f1.head < -1) holds.push(`header row off screen after a tab change: ${Math.round(f1.head)}px`);
+    const f2 = await page.evaluate(async () => {
+      window.scrollTo(0, 500);
+      const nav = document.getElementById('tabs');
+      const grouped = nav.classList.contains('grouped');
+      const go = sel => { const b = nav.querySelector(sel); if (b) b.click(); };
+      go(grouped ? '[data-group="gDesk"]' : '[data-tab="chamber"]');
+      await new Promise(r => setTimeout(r, 120));
+      const away = { tab: UI.tab, y: window.scrollY };
+      go(grouped ? '[data-group="gLaw"]' : '[data-tab="policy"]');
+      await new Promise(r => setTimeout(r, 60));
+      go('[data-tab="policy"]');
+      await new Promise(r => setTimeout(r, 120));
+      return { away, back: { tab: UI.tab, y: window.scrollY, head: document.querySelector('header.topbar').getBoundingClientRect().top } };
+    });
+    if (f2.away.y > 2) holds.push(`leaving a scrolled tab did not land at the top: ${f2.away.y}`);
+    if (f2.back.tab !== 'policy') holds.push(`nav buttons landed on ${f2.back.tab}, expected policy`);
+    else if (f2.back.y > 2) holds.push(`returning to policy restored an old offset: ${f2.back.y}`);
+    else if (f2.back.head < -1) holds.push(`header row off screen on the second visit: ${Math.round(f2.back.head)}px`);
     // H: flash() no longer schedules a delayed full render
     const h1 = await page.evaluate(async () => {
       window.__renders = 0;
@@ -392,6 +461,42 @@ async function run() {
   await page.click('[data-resume]');
   const v4Resumed = await page.evaluate(() => S.turn);
   step('corrupt-save-fallthrough', v4Resumed === turnAfter, `resumed from the .v4 key at turn ${v4Resumed}`);
+
+  // -- the four-rung migration (S9f): a save written on the old one-to-four
+  //    ladder is rescaled onto the new one, said out loud, stamped so it can
+  //    never be rescaled twice, and a statute no longer in the book is
+  //    dropped and counted rather than left on a ladder nothing can read --
+  {
+    const old = JSON.parse(blob);
+    delete old.polV2;
+    old.pol = { universalHealthcare: 2, corporateCharters: 1, balancedBudgetRule: 1, incomeTax: 3, aRepealedMeasure: 2 };
+    await page.evaluate(b => {
+      localStorage.setItem('parliamentVale.autosave.v5', b);
+      localStorage.removeItem('parliamentVale.autosave.v4');
+    }, JSON.stringify(old));
+    await page.reload();
+    await page.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    const notice = await page.evaluate(() => {
+      const n = document.querySelector('[data-ladder-warning]');
+      return { shown: !!n, text: n ? n.textContent : '' };
+    });
+    await page.click('[data-resume]');
+    await page.waitForTimeout(200);
+    const moved = await page.evaluate(() => ({
+      pol: JSON.parse(JSON.stringify(S.pol)), stamped: S.polV2 === true,
+      /* second pass over the same state must be a no-op */
+      again: (function () { enrichState(S, false); return JSON.parse(JSON.stringify(S.pol)); })(),
+    }));
+    const want = { universalHealthcare: 3, corporateCharters: 2, balancedBudgetRule: 4, incomeTax: 3 };
+    const wrong = Object.keys(want).filter(k => moved.pol[k] !== want[k]).map(k => `${k} ${moved.pol[k]} != ${want[k]}`);
+    const twice = Object.keys(moved.pol).filter(k => moved.again[k] !== moved.pol[k]);
+    step('ladder-migrates-loud',
+      notice.shown && /dropped/.test(notice.text) && wrong.length === 0 && moved.stamped && twice.length === 0 &&
+      moved.pol.aRepealedMeasure === undefined,
+      `notice shown: ${notice.shown}; drop reported: ${/dropped/.test(notice.text)}; ` +
+      `rescaled: ${wrong.length ? wrong.join(', ') : 'max 3 -> 3, max 2 -> 2, max 1 -> 4, max 4 unmoved'}; ` +
+      `stamped: ${moved.stamped}; second pass moved: ${twice.length}`);
+  }
 
   // -- fold prefs follow their relocated panels (S9c)
   {

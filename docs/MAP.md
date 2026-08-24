@@ -183,17 +183,21 @@ Relocating a panel means adding its old`{tab}|{h2}` key to `V7_FOLD_REMAP` —
 saved fold prefs follow their panels. tools/tabs.js asserts the strip;
 playtest's nav-tree/nav-reach/nav-keys assert the invariants.
 
-## Scroll ownership (S9b)
+## Scroll ownership (S9b, amended S9f)
 
 The window is the scroll container at every tier — `#view` has no CSS rule of
 its own and nothing overflows vertically inside it. v7's render wrapper is the
-SINGLE owner of programmatic vertical scroll: it saves the outgoing tab's
-position on a tab change, restores the incoming tab's (or clamps to the nav),
-and on a same-tab render restores the exact scrollY around the innerHTML
+SINGLE owner of programmatic vertical scroll: **a main-tab change lands at the
+absolute top, always** (S9f — the cross-tab `UI.scrollPos` memory is gone; it
+gave one gesture three outcomes and hid the header row two of the three ways),
+and on a same-tab render it restores the exact scrollY around the innerHTML
 rewrite. Do not add `window.scrollTo` after `render()` anywhere — that
 reintroduces the double-motion S9b removed (seven sites had it). The two
 exceptions that remain by design: `v7Jump`'s scrollIntoView (jump-to-a-thing)
-and the phone tab-change topbar clamp in the mobile wrapper. `flash()` must
+and the phone tab-change topbar clamp in the mobile wrapper.
+Nothing may navigate the player away from where they acted, either: the draft
+and referendum paths used to set `UI.tab = 'houses'` on confirmation and no
+longer do. `flash()` must
 never call `render()` — 74 call sites would each schedule an unprompted full
 rewrite 1.6s after the click; it restores `#turnHint`'s text only.
 
@@ -314,6 +318,48 @@ too, as isolation for any stray call the file grows later.
   queue: which queued sheets a UI run pumps depends on click interleaving, so a
   UI-level comparison measures the harness, not the game.
 
+## The ladder (S9f) — four rungs on every statute
+
+`P(o)` (~670) is the funnel every policy literal passes through and the ONLY
+place a level curve is built. It sets `max = 4` on everything, records the old
+ladder as `lin`, and expands four channels into five rows each:
+`_effAt` / `_moodAt` / `_revAt` / `_expAt`, indices 0-4.
+
+- **Authoring form**: `eff`/`mood`/`rev`/`exp` are the rung-1 row.
+  `eff2`..`eff4` (and `mood2..4`, `rev2..4`, `exp2..4`) are CUMULATIVE TOTALS
+  at that rung, restating only the keys that change; anything not restated
+  carries forward. Per channel: if any `<key>2..4` exists the channel is
+  authored, otherwise it is interpolated from `lin`.
+- **Interpolation** (`ladderMults`): a statute with old maximum m has its old
+  rungs at new positions `round(n*4/m)`, and rows between them are linear.
+  m=2 → 0/.5/1/1.5/2 of the base, m=3 → 0/1/1.5/2/3, m=1 → quarters, m=4 → the
+  identity. Exact at every position a rescaled save, seed, want or programme
+  target can occupy — `tools/roads.js` asserts this per statute per channel.
+- **Read the rows, never a base × a level**: `polEffAt/polMoodAt/polRevAt/
+  polExpAt(p, lv)`, `polEffDelta(p, a, b)` and `polMoodDelta(p, a, b, k)`.
+  Every one-shot mood impulse in the game is a `polMoodDelta`; there are seven
+  (assent, sequestration, purge, executive order, two court paths, sunset
+  lapse) and five step-readers that quote one (bill forecast, referendum
+  forecast, `v9PublicSupport`, `v9RegionalRead`, interest-group demand).
+- **`auth` and `cost` are materialized at parse.** `auth` freezes from the
+  rung-1 row so authoring a curve later cannot move a statute on the map;
+  `cost` is scaled by `(1 + .6(m-1)) / 2.8` so a full build costs what it
+  always cost, in four instalments instead of m.
+- **Ladder-unit rule**: any term multiplying a raw ladder POSITION halved its
+  coefficient in S9f (securityState 2→1, blocTarget's authority distance
+  .9/.5→.45/.25, agendaStrain .15/.07→.075/.035). A rung is half what it was
+  for the 233 statutes that had two.
+- **Positions in literals are on the new ladder.** Gates, court-case
+  conditions, event conditions, `franchiseLevel`, party `wants`, programme
+  `items` and scenario seeds were all rescaled by `round(n*4/m)` in S9f — 219
+  sites — and the 24 ad-hoc linear terms took `k*m/4`. Adding a gate means
+  writing it against four rungs.
+- **Saves**: `enrichState` rescales `st.pol` once and stamps `st.polV2`;
+  unstamped blobs are migrated and the player is told on the setup sheet
+  (`[data-ladder-warning]`), including a count of statutes dropped because
+  they are no longer in the book. Fresh states carry `polV2: true` in the
+  literal, so a new game is never rescaled.
+
 ## The descent engine (S9d)
 
 The machinery that makes leaving the republic a real system rather than nine
@@ -321,7 +367,8 @@ inert latches. All of it drives through EXISTING registries and functions —
 the owner's "integrate, don't bolt on".
 
 - **`securityState(st)`** (v4, beside `unrestTarget`): derived, never stored —
-  Σ level×`polAuth`×2 over Authority+Security statutes, +12 stateOfSiege, +6
+  Σ level×`polAuth` over Authority+Security statutes (the coefficient was 2
+  before S9f halved the rung), +12 stateOfSiege, +6
   purgeService, +6 ironHand, +8 elections-off; clamp 0-100. Thresholds 30/45/65
   ("surveillance state in outline" / "police state" / "the total state",
   `securityLabel`). A fresh default opening measures 0 (roads.js asserts it) —

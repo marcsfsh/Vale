@@ -208,3 +208,41 @@ Trajectory (every 20 sessions): year / elections won / years governing / crises 
   epic C0FFEE42       2025:0/1/0/0   2045:10/21/2/4   2065:11/32/2/6   2085:11/32/3/7   2105:11/41/5/9   2125:11/59/7/11   2145:11/66/8/11   2165:11/70/8/12   2185:11/70/10/12   2205:11/70/11/12
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
+
+================================================================================
+RE-BASELINED AFTER S9f — THE FOUR-RUNG LADDER
+================================================================================
+
+Every statute now has four rungs where it had between one and four. The rows
+are parity-exact at every position an old save, seed, want or programme target
+could occupy (tools/roads.js asserts this, statute by statute and channel by
+channel), but the AI does not legislate to old positions: its wants were
+rescaled with everything else, a full build is four bills instead of two, and
+the per-rung capital price moved to match. The trajectories below are therefore
+DIFFERENT ON PURPOSE. That is the order being carried out, not a regression.
+
+What the tool gates on is unchanged and still holds: every length option plays
+to its end year and delivers a complete arc.
+
+playing short/standard/epic from seed 5EED1234:
+
+length    seed      sessions  years  ended                elections  crises  wars  achievements
+short     5EED1234  50        50     reached the end year 7          4       3     9/44
+standard  5EED1234  100       100    reached the end year 7          6       11    11/44
+epic      5EED1234  200       200    reached the end year 7          12      30    12/44
+
+length    crises/10 sessions  elections/10  events/session  records at the close
+short     0.8                 1.4           1.6             20%
+standard  0.6                 0.7           1.7             25%
+epic      0.6                 0.4           1.8             27%
+
+  short 5EED1234      aaa beloved centenary crisisManager longReign packed quiet veteran victor
+  standard 5EED1234   + balanced v8story
+  epic 5EED1234       + balanced openRepublic v8story
+
+The shape holds: the longer options still earn more and the density stays flat
+across lengths (1.6 / 1.7 / 1.8 events per session). The harness plays
+first-choice-always and loses government early, so these remain a floor on what
+the game offers rather than a measure of what a player reaches.
+
+This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
