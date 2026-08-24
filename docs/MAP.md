@@ -372,6 +372,31 @@ ladder as `lin`, and expands four channels into five rows each:
   `items` and scenario seeds were all rescaled by `round(n*4/m)` in S9f — 219
   sites — and the 24 ad-hoc linear terms took `k*m/4`. Adding a gate means
   writing it against four rungs.
+- **The works** (S10d). 48 distinct. `V8_WORK_MODS` are the mid-flight
+  instruments; `v8WorkFactors(q)` folds a work's `q.mods` into one factor set
+  (rate, overrun, costMul, payout, regionMul) read by `v8WorkPerSession`, the
+  overrun roll and `v8CompleteWork` together — so a scaled-back work delivers
+  less of everything at once. A cost change applies only to what is LEFT to
+  build. **No two works may share a NAME**: the id-keyed merge guard cannot
+  see that collision, which is how two Somnium Sea Walls shipped, and roads.js
+  asserts it.
+- **Committee chairs** (S10e) are apportioned by seats (`pv5ApportionChairs`,
+  largest remainder) and are NAMED people with a party, a temperament and a
+  year. `pv5AssignChair` hands one out while you lead. Four older affordances
+  promise a chair and touch no committee state — they are the reason the
+  feature looked implemented.
+- **Powers** (S10e): 11. `st.powers` is written as a whole literal in FOUR
+  places and two consumers read it raw, so a new power needs `v10EnsurePowers`
+  in the enrich chain or an old save yields `Math.max(undefined, n)` = NaN,
+  which `clamp` passes through. Treaty effects reach the game through
+  `indicatorTargets`, like orders.
+- **Question Time** (S10f): 24 authored questions over 14 subjects, plus
+  variants. **Selection must never spend a die** — `v8EnsureQuestion` is called
+  from the RENDER path (`v8Badges`, the chamber view), and `render()` runs on
+  every action and tab change, so a roll there makes a campaign's dice depend
+  on how often the player looked at a tab. The pick is a hash of turn, subject
+  and seed. Each authored reply's `tone` maps onto one of the four effect paths
+  that already existed; the material is new, the arithmetic is not.
 - **The order book** (S10c). `V10_ORDERS` / `V10_ORDER`, registered through
   `v10RegisterOrders`. An order is NOT a statute: three rules decide what
   belongs — it TARGETS state no statute reaches (region, power, work, issue,

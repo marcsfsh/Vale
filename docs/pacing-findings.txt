@@ -370,3 +370,38 @@ reflects the 36 orders. Their effect on an arc is unmeasured here and is named
 as such.
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
+
+================================================================================
+RE-BASELINED AFTER S10d/e/f — WORKS, THE WORLD, THE SESSION
+================================================================================
+
+length    seed      sessions  years  ended                elections  crises  wars  achievements
+short     5EED1234  50        50     reached the end year 2          4       8     10/44
+standard  5EED1234  100       100    reached the end year 2          8       17    11/44
+epic      5EED1234  200       200    reached the end year 2          15      39    12/44
+
+length    crises/10 sessions  elections/10  events/session  records at the close
+short     0.8                 0.4           1.6             23%
+standard  0.8                 0.2           1.8             25%
+epic      0.8                 0.1           1.9             27%
+
+The gated properties hold: every length reaches its end year with a complete
+arc, the longer options earn more (10 -> 11 -> 12), crisis density is flat at
+0.8 across all three, and records at the close rose to 23/25/27%.
+
+WARS ROSE, and the cause is known rather than guessed: there are now eleven
+powers instead of six, so the war roll has more candidates, and the roll itself
+changed — it will no longer declare on a friendly power, but it will still fire
+when tension is high and somebody is cool. The harness drives tension up
+(first-choice-always), never signs a non-aggression pact, and never sues for
+peace unless the option happens to be first. A player has four more treaty
+instruments to keep a power off the list entirely, and the harness uses none of
+them.
+
+Named as unmeasured, again: the harness never opens the Executive tab, so the
+36 orders are absent from these numbers; it does not commission grand works
+beyond the first choice offered, so the 32 new ones and the six mid-flight
+instruments are barely exercised; and it answers Question Time with whatever
+button is first.
+
+This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
