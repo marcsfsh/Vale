@@ -776,6 +776,16 @@
       "line": 12686,
       "aliasCaptured": true,
       "reason": "alias var v8CapitalBase captured above"
+    },
+    "cabinetBonus#2": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10CabinetBonusBase captured above (S10c: an order that speeds or slows what the ministries deliver)"
+    },
+    "v8WorkPerSession#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10WorkPerSessionBase captured above (S10c: an order that changes the pace of the public works)"
     }
   }
 }

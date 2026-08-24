@@ -20165,6 +20165,23 @@ capitalIncome = function (st) {
   var m = v10OrderMods(st);
   return v - m.upkeep;
 };
+/* `delivery` is how well the machinery executes what the cabinet is trying to
+   do; `works` is the pace of the grand works. Both were in the modifier layer
+   and read by nothing until now — a modifier nothing consults is a lie on the
+   card. */
+var v10CabinetBonusBase = cabinetBonus;
+cabinetBonus = function (st) {
+  var out = v10CabinetBonusBase(st), d = v10OrderMods(st).delivery;
+  if (!d) return out;
+  for (var k in out) out[k] = out[k] * (1 + d);
+  return out;
+};
+var v10WorkPerSessionBase = v8WorkPerSession;
+v8WorkPerSession = function (st, w, q) {
+  var v = v10WorkPerSessionBase(st, w, q), m = v10OrderMods(st).works;
+  return m ? Math.max(0, v * (1 + m)) : v;
+};
+
 var v10PolicyCostBase = policyCost;
 policyCost = function (id, dir) {
   var c = v10PolicyCostBase(id, dir);
@@ -20290,6 +20307,157 @@ function v10OrderReview(st) {
 }
 
 
+/* ---------- the book itself: thirty-six standing orders ---------- */
+v10RegisterOrders([
+  O({ id:'maritimeExclusion', name:'The Maritime Exclusion Zone', cat:'Abroad by proclamation', dept:'pres',
+    blurb:'A line is drawn on the chart, published in the gazette, and the fleet is ordered to keep station on it: inside it, ships under the named flag are turned back. The navy calls it a standing patrol. The shipping lists call it what it is.',
+    cost:7, upkeep:0.85, exposure:0.35, target:'power', needs:'carrierProgramme',
+    ind:{ military:2, tension:4, economy:-1 }, mood:{ veterans:6, faith:2, prof:-3, youth:-4, tech:-2 }, exp:5, mods:{ army:0.3 }, salience:{ defence:6, world:4 }, powerEff:-2.2 }),
+  O({ id:'embargoProclamation', name:'The Embargo Proclamation', cat:'Abroad by proclamation', dept:'vpres',
+    blurb:'Every licence to trade with the named power is revoked by proclamation and no new one is granted. The customs houses understand within the hour, the shipping agents take a fortnight, and the smugglers understood before it was signed.',
+    cost:8, upkeep:1.1, exposure:0.5, target:'power', needs:'sanctionsRegime',
+    ind:{ economy:-2, tension:3, corruption:1 }, mood:{ veterans:5, faith:2, labour:-2, smallbiz:-5, tech:-4 }, rev:-3, mods:{ polCost:{ Foreign:1.25 } }, salience:{ world:8, prices:3 }, powerEff:-2.8 }),
+  O({ id:'openDoorProclamation', name:'The Open Door', cat:'Abroad by proclamation', dept:'chan',
+    blurb:'The berths, the pipeline head and the northern interconnector are opened to one flag by proclamation, and the duties on it are simply not collected. Cheap heat before winter, and a very cold letter from the yards that used to sell it.',
+    cost:3, upkeep:0.35, exposure:0.4, target:'power', needs:'tradeAgreements',
+    ind:{ economy:2, energy:3, environment:-1 }, mood:{ tech:4, seniors:3, prof:2, smallbiz:-3, labour:-5 }, rev:-2, salience:{ prices:5 }, powerEff:1.8 }),
+  O({ id:'standingAirlift', name:'The Standing Airlift', cat:'Abroad by proclamation', dept:'vchan',
+    blurb:'Transports leave the northern fields every week with grain, fuel oil and the federal medical stock aboard, and they land where the roads no longer go. The pilots stopped counting sorties in the second month; the hospitals at home started counting shortages in the third.',
+    cost:5, upkeep:0.6, exposure:0.2, target:'power', needs:'foreignAid',
+    ind:{ tension:2, healthcare:-1 }, mood:{ faith:6, youth:4, prof:3, veterans:-3, seniors:-2 }, exp:6, salience:{ world:6, health:2 }, powerEff:2.5 }),
+  O({ id:'establishmentFreeze', name:'A Freeze on the Establishment', cat:'Directives to the administration', dept:'chan',
+    blurb:'No post in the federal service is refilled without the Chancellor\'s own signature. The saving shows up in the first quarter\'s accounts; the queues show up later.',
+    cost:3, upkeep:0.2, exposure:0.1,
+    ind:{ economy:0.5, poverty:1, safety:-1 }, mood:{ labour:-4, prof:-3, smallbiz:2, seniors:-1 }, exp:-5, mods:{ delivery:-0.4, unrest:0.3, polCost:{ Welfare:1.2, Health:1.15 } } }),
+  O({ id:'deliveryUnit', name:'The Delivery Unit', cat:'Directives to the administration', dept:'vchan',
+    blurb:'Twenty people and a telephone at the centre, holding every regional director to two numbers: the clinic waiting list and the school attendance figure. Both are published every session, whatever they say.',
+    cost:6, upkeep:0.6, exposure:0.15,
+    ind:{ healthcare:2, education:2 }, mood:{ prof:-3, seniors:2, youth:1, labour:-1 }, exp:2.5, mods:{ delivery:0.4, polCost:{ Health:0.88, Education:0.88 } }, salience:{ health:3 } }),
+  O({ id:'debarmentList', name:'The Debarment List', cat:'Directives to the administration', dept:'chan',
+    blurb:'While a fraud referral stands open against a firm, that firm may bid for nothing the federal government buys. The list is published; the appeal is to the courts, and they take it.',
+    cost:5, upkeep:0.5, exposure:0.55, needs:'procurementStandards',
+    ind:{ corruption:-4, infrastructure:-1 }, mood:{ smallbiz:3, tech:-4, prof:2, labour:-1 }, exp:1.5, rev:0.8, mods:{ works:-0.2, delivery:-0.1 }, salience:{ integrity:3 } }),
+  O({ id:'twoYearBar', name:'The Two Year Bar', cat:'Directives to the administration', dept:'vpres',
+    blurb:'Two years between the desk and the industry it regulated, for ministers and for officials alike, written into every letter of appointment the government signs. The people who write the letters are the people it binds.',
+    cost:4, upkeep:0.9, exposure:0.4,
+    ind:{ corruption:-3 }, mood:{ prof:-5, tech:-3, youth:3, labour:2, faith:1 }, mods:{ delivery:-0.2 }, salience:{ integrity:4 } }),
+  O({ id:'careerLegations', name:'Career Officers to the Legations', cat:'Directives to the administration', dept:'pres',
+    blurb:'Every vacant mission goes to a serving officer of the foreign service, and no letter of credence is signed for a donor. The service notices, and so do the capitals.',
+    cost:3, upkeep:0.15, exposure:0.1,
+    ind:{ tension:-1.5, corruption:-1.5 }, mood:{ prof:3, tech:1, veterans:1, smallbiz:-1 }, exp:1, mods:{ delivery:0.2 } }),
+  O({ id:'disperseAgencies', name:'Disperse the Agencies', cat:'Directives to the administration', dept:'vchan',
+    blurb:'The pensions bureau, the schools inspectorate and the health authority take their headquarters out of the District and into the region named in the order. The capital stays where it is; the jobs do not.',
+    cost:7, upkeep:0.7, exposure:0.2, target:'region',
+    mood:{ labour:3, prof:-4, smallbiz:2, youth:-1 }, exp:3.5, mods:{ delivery:-0.4, polCost:{ Federalism:0.85 } }, salience:{ federal:2 }, regionEff:{ prosperity:0.8, services:0.6, federal:0.5 },
+    reqText:'a region other than the District' }),
+  O({ id:'hardshipStay', name:'Stay of Collection in Hardship', cat:'Enforcement discretion', dept:'chan',
+    blurb:'The Revenue is directed to seize nothing, garnish nothing and force no sale in the named region while the arrears stand. Every assessment is still owed, still accruing, still on the file. The knock on the door simply stops.',
+    cost:5, upkeep:0.5, exposure:0.35, target:'region', needs:'incomeTax',
+    ind:{ poverty:-2, economy:0.5, corruption:1 }, mood:{ labour:4, seniors:3, smallbiz:3, faith:2, prof:-2, tech:-4 }, rev:-3, mods:{ polCost:{ Taxation:1.2 } }, salience:{ prices:8 }, regionEff:{ prosperity:1.2, federal:2, order:0.6 } }),
+  O({ id:'noCellForFine', name:'No Cell for a Fine', cat:'Enforcement discretion', dept:'vpres',
+    blurb:'The Attorney General directs that no warrant issue and no term of custody be sought for the non-payment of a fine, a fee or a court cost. The debt stands and the notices keep going out. Only the cell comes off the table.',
+    cost:3, upkeep:0.15, exposure:0.2,
+    ind:{ liberties:2, poverty:-1, safety:-1 }, mood:{ youth:5, labour:3, prof:3, faith:2, smallbiz:-2, veterans:-3, seniors:-4 }, exp:-1.5, rev:-1, mods:{ unrest:-0.4 }, salience:{ rights:6 } }),
+  O({ id:'wagesFirst', name:'Wages Before Paperwork', cat:'Enforcement discretion', dept:'vchan',
+    blurb:'Every labour inspector is pulled off routine premises checks and put on unpaid wage complaints, oldest first. Same statute, same staff, a different queue. The filing cabinets go unopened and the guards on the machines go unlooked at.',
+    cost:5, upkeep:0.45, exposure:0.15, needs:'workplaceSafety',
+    ind:{ poverty:-1.5, safety:-1.5, economy:-0.5, corruption:-0.5 }, mood:{ labour:7, youth:3, prof:1, tech:-3, smallbiz:-6 }, exp:1.5, rev:0.5, mods:{ delivery:-0.05, polCost:{ Labour:0.85 } }, salience:{ jobs:8 } }),
+  O({ id:'noWaivers', name:'No Waiver, No Exception', cat:'Enforcement discretion', dept:'pres',
+    blurb:'The licensing office is directed to refuse every exemption, hardship application and humanitarian carve-out under the sanctions regime, for one power only. Not a line of the prohibited list has changed. Everything on it now actually stops at the dock.',
+    cost:8, upkeep:1.1, exposure:0.5, target:'power', needs:'sanctionsRegime',
+    ind:{ tension:3, economy:-1.5, technology:-1 }, mood:{ veterans:6, faith:3, labour:2, prof:-2, smallbiz:-5, tech:-8 }, exp:3, rev:-2.5, mods:{ army:0.3, crown:-0.3 }, salience:{ world:9, defence:5 }, powerEff:-2.5 }),
+  O({ id:'inspectorGeneral', name:'An Inspector General in Every Department', cat:'The executive\'s own house', dept:'chan',
+    blurb:'Each department is given an inspector general the executive appoints and the department cannot dismiss, with a warrant to open any file and an obligation to publish every quarter. Permanent secretaries begin writing rather less down, and the contractors begin reading their own invoices.',
+    cost:5, upkeep:0.5, exposure:0.35,
+    ind:{ corruption:-4, infrastructure:1 }, mood:{ prof:3, smallbiz:2, tech:1, labour:-1 }, exp:1.5, rev:1, mods:{ delivery:-0.04, crown:-0.3, polCost:{ Security:1.15 } }, salience:{ integrity:6 } }),
+  O({ id:'thirtyYearRule', name:'The Thirty Year Rule', cat:'The executive\'s own house', dept:'pres',
+    blurb:'Every file the state holds goes to the archive on its thirtieth birthday, reviewed or not, and any agency wanting an exemption must argue for it in writing, by name. Historians arrive with trolleys. Three former ministers ask, separately and quietly, whether the rule is retrospective.',
+    cost:7, upkeep:0.5, exposure:0.7, needs:'nationalLibraries',
+    ind:{ liberties:4, corruption:-3, tension:2, military:-1 }, mood:{ youth:3, prof:3, tech:2, seniors:-2, veterans:-4 }, exp:3, mods:{ delivery:-0.02, army:-0.3, polCost:{ Foreign:1.12 } }, salience:{ rights:8 } }),
+  O({ id:'compartmentOrder', name:'The Compartment Order', cat:'The executive\'s own house', dept:'pres',
+    blurb:'Access to the state’s secrets is rebuilt around need-to-know: clearances re-examined on a rolling basis, readerships cut to named lists, nothing leaving its compartment without a signature in a ledger. Nothing new is classified. A great deal less is read.',
+    cost:4, upkeep:0.75, exposure:0.15,
+    ind:{ liberties:-3, corruption:2, technology:-1, military:1 }, mood:{ veterans:3, seniors:1, prof:-2, youth:-2, tech:-3 }, exp:1, mods:{ delivery:-0.06, army:0.4, polCost:{ Security:0.9 } } }),
+  O({ id:'clemencyDocket', name:'The Standing Clemency Docket', cat:'The executive\'s own house', dept:'vpres',
+    blurb:'The pardon attorney is directed to bring forward, every session, every sentence in a standing class — the old drug tariffs, committals for unpaid fines, the tail of a repealed offence — and to commute on the schedule, by rule, without a list of names. The wings empty slowly. The evening papers fill rather faster.',
+    cost:6, upkeep:0.4, exposure:0.55,
+    ind:{ liberties:4, safety:-2, poverty:-1 }, mood:{ youth:4, labour:2, prof:2, veterans:-2, faith:-3, seniors:-3 }, exp:-2, mods:{ unrest:-0.2 }, salience:{ safety:6 } }),
+  O({ id:'rollOfPublicService', name:'The Roll of Public Service', cat:'The executive\'s own house', dept:'vchan',
+    blurb:'The honours of the state are redirected by decree: no more ribbons for donors and retiring generals, and a small pension for the ward sister, the school caretaker and the meat inspector who turned out to be right. The roll is read in the chamber every session, and the men who expected to be on it are not.',
+    cost:3, upkeep:0.25, exposure:0.1,
+    mood:{ labour:3, prof:3, seniors:2, faith:-2, veterans:-4 }, exp:2, mods:{ polCost:{ Imperium:1.25 } } }),
+  O({ id:'orderRegister', name:'The Register of Standing Orders', cat:'Orders about orders', dept:'vpres',
+    blurb:'Every direction this executive has signed and not revoked is printed in one volume — its authority, its author, what it costs the purse, the date it was made — and reprinted each session with the changes marked in the margin. The opposition buys the first copy. The bench buys the second, and an application to have a page struck out of it is filed before the third.',
+    cost:4, upkeep:0.35, exposure:0.7,
+    ind:{ corruption:-3, liberties:2 }, mood:{ prof:4, youth:3, smallbiz:2, labour:1, tech:-2, veterans:-3 }, exp:1, mods:{ delivery:-0.03, crown:0.2, polCost:{ Justice:0.9, Security:1.1 } }, salience:{ integrity:7 } }),
+  O({ id:'orderExpiry', name:'Every Order Shall Expire', cat:'Orders about orders', dept:'chan',
+    blurb:'No direction of this executive is to stand beyond its second session: at the end of it the thing dies of its own accord unless a minister signs it again in person, with a fresh costing attached and the old one printed beside it. Departments stop treating a circular as furniture. The Chancellery\'s costing clerks discover they have become the most powerful people in the building, and the cabinet discovers it is spending its Thursdays re-signing its own work.',
+    cost:7, upkeep:1.1, exposure:0.12,
+    ind:{ liberties:3, corruption:-2, safety:-1, economy:0.5 }, mood:{ smallbiz:5, youth:3, faith:2, veterans:-2, seniors:-2, labour:-3, prof:-5 }, exp:-1.5, mods:{ delivery:-0.07, crown:0.4, polCost:{ Authority:1.2 } }, salience:{ rights:4 } }),
+  O({ id:'openTheReserves', name:'The Reserves Are Opened', cat:'Money without appropriation', dept:'chan',
+    blurb:'Fuel from the salt domes, grain from the federal silos and medicine from the depots go onto the market at last quarter\'s price, and keep going while the order stands. The hauliers notice within a week; the general staff notice too.',
+    cost:5, upkeep:0.5, exposure:0.35, needs:'strategicReserve',
+    ind:{ economy:2, poverty:-2, agriculture:-2, energy:-4, military:-1.5 }, mood:{ smallbiz:5, labour:3, seniors:3, faith:2, veterans:-4 }, rev:2.5, mods:{ unrest:-0.6 }, salience:{ prices:10 } }),
+  O({ id:'ceilingSchedule', name:'The Schedule of Ceiling Prices', cat:'Money without appropriation', dept:'vchan',
+    blurb:'Every department publishes the most it will pay for a dose, a desk, a meal or a mile, and pays not one penny over it. Suppliers may take the schedule or take their trucks home; two of the largest have already taken their trucks home.',
+    cost:6, upkeep:0.75, exposure:0.65,
+    ind:{ healthcare:2, education:1.5, technology:-3, economy:-1.5 }, mood:{ seniors:5, youth:3, tech:-5, smallbiz:-4, labour:-2, prof:-2 }, exp:-4, mods:{ delivery:-0.08, polCost:{ Health:1.2 } }, salience:{ health:8 } }),
+  O({ id:'claimsWarrant', name:'The Standing Claims Warrant', cat:'Money without appropriation', dept:'vpres',
+    blurb:'The Attorney may settle any claim against the state out of a permanent account, at his own valuation, before it is ever filed. The cheques go out quietly and the files close quietly with them.',
+    cost:4, upkeep:0.25, exposure:0.2,
+    ind:{ corruption:2.5, liberties:-1 }, mood:{ smallbiz:2, prof:-3, youth:-2 }, exp:2, mods:{ polCost:{ Justice:0.85 } }, salience:{ integrity:8 } }),
+  O({ id:'worksShallContinue', name:'The Works Shall Continue', cat:'Money without appropriation', dept:'chan',
+    blurb:'The House struck the line and the cranes did not come down. The department finds the money in its own balances, session after session, and the site foreman has been told to keep hiring.',
+    cost:8, upkeep:1.05, exposure:0.75, target:'work',
+    ind:{ infrastructure:3, corruption:2, economy:1 }, mood:{ labour:6, smallbiz:3, prof:-4, tech:-1 }, exp:6, mods:{ works:0.35, crown:-0.5 }, salience:{ jobs:7 },
+    reqText:'a public work under construction' }),
+  O({ id:'theSubvention', name:'The Subvention', cat:'Money without appropriation', dept:'pres',
+    blurb:'A sum is paid every quarter into the treasury of a friendly capital, drawn on defence balances and entered in the accounts as maintenance. Their foreign minister thanks you warmly; yours reads about it in a newspaper.',
+    cost:7, upkeep:0.6, exposure:0.3, target:'power',
+    ind:{ tension:1.5, military:-1 }, mood:{ veterans:-4, youth:-3, faith:-2, prof:-2 }, exp:4, mods:{ army:-0.3 }, salience:{ world:7 }, powerEff:3.5 }),
+  O({ id:'contractWageFloor', name:'The Wage Floor in Federal Contracts', cat:'The federal purse as a customer', dept:'vchan',
+    blurb:'No firm may take federal money and pay the people doing the federal work less than the floor written into the contract, whatever it pays everybody else. The cleaners in the federal buildings hear about it first; the firms that employ them hear about it at the next tender.',
+    cost:5, upkeep:0.55, exposure:0.3, needs:'minimumWage',
+    ind:{ poverty:-2.5, economy:0.5 }, mood:{ labour:5, youth:3, faith:1, smallbiz:-5, tech:-2, prof:-1 }, exp:4, rev:0.5, mods:{ works:-0.1, delivery:-0.1, polCost:{ Labour:0.85, Welfare:0.92 } }, salience:{ jobs:8 } }),
+  O({ id:'boughtInVale', name:'Bought in Vale', cat:'The federal purse as a customer', dept:'chan',
+    blurb:'Steel, rolling stock, cement, uniforms and cable bought with federal money are to be made in Vale, and every waiver carries the Chancellor\'s own signature. The mills put a shift back on; the invoices come in a third higher, and the embassies come in the same week.',
+    cost:7, upkeep:0.8, exposure:0.45, needs:'procurementStandards',
+    ind:{ economy:1, infrastructure:-1.5, technology:-1.5, tension:2 }, mood:{ labour:5, veterans:2, seniors:1, smallbiz:-1, prof:-2, tech:-4 }, exp:6, mods:{ works:-0.2, delivery:-0.1, polCost:{ Foreign:1.2, Infrastructure:1.1 } }, salience:{ jobs:10 } }),
+  O({ id:'openSchedule', name:'The Open Schedule', cat:'The federal purse as a customer', dept:'vpres',
+    blurb:'The standing supply frameworks are broken up and the federal schedule is opened to any firm that meets the standard, foreign houses included, with the state paying inside thirty days. The four families that have sold to the government for a generation are told at the same hour as everybody else.',
+    cost:3, upkeep:0.2, exposure:0.15,
+    ind:{ economy:1, corruption:-2, technology:1 }, mood:{ smallbiz:6, tech:3, labour:-3, prof:-2 }, exp:-2.5, mods:{ works:0.1, delivery:0.1, polCost:{ Infrastructure:0.92 } }, salience:{ integrity:4 },
+    reqText:'no domestic content rule of this government standing' }),
+  O({ id:'supplyListsClosed', name:'Struck from the Supply Lists', cat:'The federal purse as a customer', dept:'pres',
+    blurb:'No department, agency or command may buy from a firm of the named power, nor from anyone selling that power\'s parts on under another badge. Citizens may buy what they like from them; the state may not, and the state says so in public.',
+    cost:6, upkeep:0.9, exposure:0.5, target:'power',
+    ind:{ tension:3, military:-1, technology:-1.5, economy:-0.5 }, mood:{ veterans:4, faith:2, labour:2, prof:-2, smallbiz:-3, tech:-4 }, exp:2.5, rev:-1.5, mods:{ works:-0.1, delivery:-0.1, polCost:{ Foreign:1.2 } }, salience:{ world:8 }, powerEff:-1.2 }),
+  O({ id:'disasterArea', name:'Declaration of a Disaster Area', cat:'Emergency and territory', dept:'chan',
+    blurb:'The region is declared a disaster area: federal money moves without waiting for the state to ask, and the relief agency answers to the capital until the declaration is withdrawn. The governors who did not get one are counting.',
+    cost:4, upkeep:0.35, exposure:0.12, target:'region', needs:'disasterAgency',
+    ind:{ infrastructure:2, poverty:-1, safety:1 }, mood:{ seniors:3, labour:2, faith:2, smallbiz:1 }, exp:4, mods:{ unrest:-0.4, delivery:0.3 }, salience:{ climate:9 }, regionEff:{ services:2, prosperity:1, federal:1.5 } }),
+  O({ id:'stateAdministration', name:'The State Under Federal Administration', cat:'Emergency and territory', dept:'vpres',
+    blurb:'A federal administrator takes the seals of a state government that can no longer meet its obligations or keep its own peace. The legislature still sits; it no longer signs anything.',
+    cost:8, upkeep:1.1, exposure:0.75, target:'region', needs:'stateReceivership',
+    ind:{ corruption:-2, liberties:-3, safety:1 }, mood:{ faith:-3, prof:-2, smallbiz:-2, labour:1 }, exp:3, mods:{ crown:0.7, unrest:1.1, delivery:-0.4, polCost:{ Federalism:1.35 } }, salience:{ federal:18 }, regionEff:{ federal:-2.5, services:2, order:1.5, prosperity:0.5 } }),
+  O({ id:'portClosure', name:'Closure of the Port and the Crossings', cat:'Emergency and territory', dept:'pres',
+    blurb:'The frontier stations and the deep-water berths in the region are shut to traffic from beyond, and stay shut. The freight forwarders find another country; the towns that lived off the crossing do not.',
+    cost:6, upkeep:0.7, exposure:0.5, target:'region', needs:'borderSecurity',
+    ind:{ tension:3, safety:2, economy:-2, territories:-2 }, mood:{ veterans:3, faith:2, smallbiz:-4, tech:-3, youth:-2 }, exp:1, rev:-3, mods:{ unrest:0.6 }, salience:{ migration:12 }, regionEff:{ prosperity:-2.5, order:1, federal:-1 } }),
+  O({ id:'standingGarrison', name:'A Standing Garrison', cat:'Emergency and territory', dept:'pres',
+    blurb:'Regular troops are quartered in the region under federal command rather than the governor\'s, and no date is set for their leaving. The streets are quieter, and nobody mistakes why.',
+    cost:7, upkeep:0.95, exposure:0.68, target:'region',
+    ind:{ safety:3, liberties:-4, military:1 }, mood:{ veterans:4, youth:-5, prof:-3, labour:-2 }, exp:5, mods:{ unrest:0.9, army:-0.4, crown:0.4 }, salience:{ safety:14 }, regionEff:{ order:2.5, federal:-2, prosperity:-0.8 } }),
+  O({ id:'worksEmergency', name:'The Federal Works Emergency', cat:'Emergency and territory', dept:'chan',
+    blurb:'Federal crews, federal money and federal timetables descend on one region\'s roads, water and rail, with the permitting waived for the duration. Every other region reads the map and draws the obvious conclusion.',
+    cost:5, upkeep:0.55, exposure:0.22, target:'region', needs:'regionalDevelopment',
+    ind:{ infrastructure:4, economy:2, poverty:-1 }, mood:{ labour:5, smallbiz:3, youth:2, tech:1 }, exp:9, mods:{ works:0.1, delivery:0.4 }, salience:{ jobs:12 }, regionEff:{ prosperity:2.5, services:1.2, federal:1.5 } }),
+  O({ id:'regionCordon', name:'A Cordon and Movement Control', cat:'Emergency and territory', dept:'vchan',
+    blurb:'Movement in and out of the region is licensed rather than free, and its clinics take their orders from the capital. It works, and the region will not forgive it quickly.',
+    cost:6, upkeep:0.6, exposure:0.55, target:'region', needs:'quarantinePowers',
+    ind:{ healthcare:3, liberties:-3, economy:-2 }, mood:{ seniors:4, prof:2, faith:1, youth:-4, smallbiz:-5 }, exp:3, rev:-2, mods:{ unrest:1, polCost:{ Health:0.85 } }, salience:{ health:15 }, regionEff:{ services:1.5, prosperity:-2.2, order:-1, federal:-1.5 } })
+]);
+
 /* ---------- the Executive tab's order book ---------- */
 function v10OrderTargets(o) {
   if (o.target === 'region') return REGIONS.map(function (r) { return { id:r.id, name:r.name }; });
@@ -20304,7 +20472,8 @@ function v10OrderTags(o) {
   for (k in (o.mood || {})) t.push('<span class="tag ' + (o.mood[k] > 0 ? 'up' : 'down') + '">' + esc(BLOC[k] ? BLOC[k].name : k) + ' ' + (o.mood[k] > 0 ? '+' : '') + o.mood[k] + '</span>');
   if (o.exp) t.push('<span class="tag ' + (o.exp > 0 ? 'down' : 'up') + '">' + (o.exp > 0 ? 'Costs ' : 'Saves ') + fmc(Math.abs(o.exp)) + ' a session</span>');
   if (o.rev) t.push('<span class="tag ' + (o.rev > 0 ? 'up' : 'down') + '">' + (o.rev > 0 ? 'Raises ' : 'Loses ') + fmc(Math.abs(o.rev)) + ' a session</span>');
-  if (o.mods && o.mods.delivery) t.push('<span class="tag ' + (o.mods.delivery > 0 ? 'up' : 'down') + '">Delivery ' + (o.mods.delivery > 0 ? '+' : '') + Math.round(o.mods.delivery * 100) + '%</span>');
+  if (o.mods && o.mods.delivery) t.push('<span class="tag ' + (o.mods.delivery > 0 ? 'up' : 'down') + '">What the ministries deliver ' + (o.mods.delivery > 0 ? '+' : '') + Math.round(o.mods.delivery * 100) + '%</span>');
+  if (o.mods && o.mods.works) t.push('<span class="tag ' + (o.mods.works > 0 ? 'up' : 'down') + '">Public works ' + (o.mods.works > 0 ? '+' : '') + Math.round(o.mods.works * 100) + '%</span>');
   for (k in ((o.mods && o.mods.polCost) || {})) t.push('<span class="tag ' + (o.mods.polCost[k] < 1 ? 'up' : 'down') + '">' + esc(k) + ' measures ' + Math.round((o.mods.polCost[k] - 1) * 100) + '%</span>');
   for (k in (o.salience || {})) t.push('<span class="tag">' + esc(ISSUE[k] ? ISSUE[k].name : k) + ' held at ' + Math.round(50 + o.salience[k]) + '</span>');
   return t.join('');

@@ -327,6 +327,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     const out = {}, me = playParty(S);
     const opp = PARTIES.filter(x => x.id !== me && !S.banned[x.id])[0];
     const seatsBefore = JSON.parse(JSON.stringify(S.seats));
+    const keptCo = S.coalition;
     const donor = PARTIES.filter(x => x.id !== me && x.id !== opp.id)[0].id;
 
     const mk = () => {
@@ -385,7 +386,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     for (let i = 0; i < 40; i++) { const pk = partyDemandPolicy(S, opp.id); if (pk) seen[pk.policy] = 1; }
     out.demandVariety = Object.keys(seen).length;
 
-    S.seats = seatsBefore;
+    S.seats = seatsBefore; S.ruling = keptRuling; S.playAs = keptPlay; S.coalition = keptCo;
     return out;
   });
 
@@ -403,6 +404,78 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `opposing costs the bill ${paper.d05} at 5% of the Assembly, ${paper.d50} at 50%, ${paper.d90} at 90% (was a flat 8 at any size)`);
   say(paper.killRefused && paper.killWorks, 'the kill is gated where it acts',
     `refused without a majority: ${paper.killRefused} · archived as killed with one: ${paper.killWorks}`);
+  /* S10c — THE ORDER BOOK. The three rules, mechanically. */
+  const book = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    /* This block hands the player every office, which is exactly the
+       precondition the toExecutive ladder step asserts is FALSE before it is
+       constructed. Snapshot and put it all back, or a test earlier in the file
+       silently satisfies a test later in it. */
+    const keep = { ruling: S.ruling, coalition: S.coalition, exec: JSON.parse(JSON.stringify(S.exec)),
+      capital: S.capital, orders: JSON.parse(JSON.stringify((S.v10 && S.v10.orders) || {})) };
+    S.ruling = me; S.coalition = [me];
+    ['pres', 'vpres', 'chan', 'vchan'].forEach(d => S.exec[d] = me);
+    S.capital = 400;
+    out.count = V10_ORDERS.length;
+    out.cats = [...new Set(V10_ORDERS.map(o => o.cat))].length;
+    out.depts = [...new Set(V10_ORDERS.map(o => o.dept))].sort().join(',');
+    out.targeted = V10_ORDERS.filter(o => o.target).length;
+    /* VERB: every entry does something STANDING, or it is an action wearing a hat */
+    out.noStanding = V10_ORDERS.filter(o => !(Object.keys(o.ind || {}).length || Object.keys(o.mood || {}).length ||
+      o.exp || o.rev || Object.keys(o.mods || {}).length || Object.keys(o.salience || {}).length ||
+      o.regionEff || o.powerEff !== undefined)).map(o => o.id);
+    /* no name may collide with a statute, an action or an extraordinary measure */
+    const pol = new Set(POLICIES.map(p => p.name.toLowerCase()));
+    const act = new Set(ACTIONS.map(a => a.name.toLowerCase()));
+    const ext = new Set(EXTRA.map(e => e.name.toLowerCase()));
+    out.collisions = V10_ORDERS.filter(o => pol.has(o.name.toLowerCase()) || act.has(o.name.toLowerCase()) || ext.has(o.name.toLowerCase())).map(o => o.name);
+
+    /* the country drifts toward an order and back again, exactly */
+    const o = V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0];
+    const key = Object.keys(o.ind)[0];
+    const t0 = indicatorTargets(S)[key];
+    v10IssueOrder(o.id, null);
+    out.shift = Math.round((indicatorTargets(S)[key] - t0) * 1000) / 1000;
+    out.authored = o.ind[key];
+    const inc0 = capitalIncome(S);
+    v10RevokeOrder(o.id);
+    out.upkeepCharged = Math.round((capitalIncome(S) - inc0) * 100) / 100;
+    out.restored = Math.abs(indicatorTargets(S)[key] - t0) < 1e-9;
+
+    /* LIFE: it lapses when the department changes hands. A DIFFERENT order —
+       re-issuing the same one this session is refused, which would make this
+       pass over nothing. */
+    const o2 = V10_ORDERS.filter(x => !x.target && !x.needs && x.id !== o.id)[0];
+    v10IssueOrder(o2.id, null);
+    out.issued = v10OrderCount(S) === 1;
+    S.exec[o2.dept] = PARTIES.filter(x => x.id !== me)[0].id;
+    v10OrdersTick(S);
+    out.lapsed = out.issued && v10OrderCount(S) === 0;
+    out.lapseTold = (S.log || []).some(l => /lapsed: the authority/.test(l.text));
+    S.exec[o2.dept] = me;
+
+    /* TARGET: the same instrument stands separately in two regions */
+    const rt = V10_ORDERS.filter(x => x.target === 'region' && !x.needs)[0];
+    if (rt) { v10IssueOrder(rt.id, 'somnium'); v10IssueOrder(rt.id, 'thaxia'); out.twoTargets = v10OrderCount(S) === 2; }
+    S.ruling = keep.ruling; S.coalition = keep.coalition; S.exec = keep.exec;
+    S.capital = keep.capital; S.v10.orders = keep.orders;
+    return out;
+  });
+  say(book.count >= 36 && book.cats === 8 && book.depts === 'chan,pres,vchan,vpres',
+    'the order book is stocked', `${book.count} orders in ${book.cats} categories across all four offices · ${book.targeted} targeted`);
+  say(book.noStanding.length === 0 && book.collisions.length === 0, 'every order is an order',
+    book.noStanding.length ? book.noStanding.length + ' with no standing effect: ' + book.noStanding.join(', ')
+      : (book.collisions.length ? 'name collisions: ' + book.collisions.join(', ')
+        : 'all standing, none sharing a name with a statute, an action or an extraordinary measure'));
+  say(book.shift === book.authored && book.restored && book.upkeepCharged > 0,
+    'orders bend targets, not stocks',
+    `issuing moved the target by ${book.shift} (authored ${book.authored}), it cost ${book.upkeepCharged} capital a session, ` +
+    `and revoking put the target back exactly: ${book.restored}`);
+  say(book.issued && book.lapsed && book.lapseTold, 'an order dies with its department',
+    `in force: ${book.issued} · lapsed when the office changed hands: ${book.lapsed} · said so: ${book.lapseTold}`);
+  say(book.twoTargets === true, 'a targeted order is per target',
+    'the same instrument stands separately in two regions: ' + book.twoTargets);
+
   say(paper.demandVariety >= 3, 'a party varies what it demands',
     paper.demandVariety + ' distinct statutes demanded across 40 draws (was 1, with no rand() in the function)');
 
