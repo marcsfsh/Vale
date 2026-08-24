@@ -410,3 +410,10 @@ Re-run at the close of S10d/e/f, after the question pool went to 94 and the
 papers to 43: unchanged. Both are content in slots the tick already visited, so
 the arc does not move — every length still reaches its end year, the records
 still come out 10 / 11 / 12, and crisis density is still flat at 0.8.
+
+Re-run at the close of S10g, after the question pool went to 164 and the item
+was chosen by a saved rotation instead of a hash: unchanged. Records still come
+out 10 / 11 / 12, every length still reaches its end year, crisis density is
+still flat at 0.8, and the trajectories are the same year by year. The
+rotation changes WHICH question is asked, not how many or what the tones cost,
+and the harness answers with whatever button is first either way.

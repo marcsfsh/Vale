@@ -740,14 +740,58 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.distinctSubjects = Math.min(inPow.s, inOpp.s);
     out.leaks = inPow.leaks + inOpp.leaks;
     out.diceSpent = S.rngState !== r0;
-    /* and the same session asked twice gives the same question */
-    S.turn = keepTurn; S.v8.qt.v10 = -1; v8EnsureQuestion(S); const a = S.v8.qt.question;
-    S.v8.qt.v10 = -1; v8EnsureQuestion(S); out.stable = a === S.v8.qt.question;
+    /* The real property: RE-RENDERING inside one session must not move the
+       question or the rotation. The old form of this test cleared q.v10 first
+       — the very guard that provides the stability — so it was asking whether
+       a forced re-selection re-selected, which is not a property anybody
+       wants. Fifty calls, guard untouched, as fifty renders would make. */
+    S.turn = keepTurn; S.v8.qt.pending = true; S.v8.qt.v10 = -1;
+    v8EnsureQuestion(S);
+    const a = S.v8.qt.question;
+    const c0 = JSON.stringify((S.v10 && S.v10.qtSeen) || {});
+    for (let i = 0; i < 50; i++) v8EnsureQuestion(S);
+    out.stable = a === S.v8.qt.question;
+    out.rotationHeld = c0 === JSON.stringify((S.v10 && S.v10.qtSeen) || {});
+    /* A subject walks its whole shelf before it repeats anything. The subject
+       has to be HELD for this — advancing the turn moves the subject too, so a
+       naive loop lands elsewhere and never revisits the one being counted. */
+    const sub0 = 'scandal';
+    const side0 = inPower(S) ? 'power' : 'opposition';
+    const shelf = V10_QT.filter(x => x.subject === sub0 && x.side === side0).length;
+    const held = v10QtContext;
+    v10QtContext = function (st) {
+      const c = held(st);
+      c.subjects = [sub0];
+      c.fill['_' + sub0] = c.fill['_' + sub0] ||
+        { minister:'Iyer', bill:'a bill', work:'a work', issue:'housing',
+          governor:'Halloran', region:'Cassian', power:'Ostmark', number:'41' };
+      return c;
+    };
+    if (S.v10) S.v10.qtSeen = {};
+    const walk = [];
+    for (let i = 0; i < shelf; i++) {
+      S.turn = keepTurn + i; S.v8.qt.pending = true; S.v8.qt.v10 = -1;
+      v8EnsureQuestion(S);
+      walk.push(S.v8.qt.question);
+    }
+    v10QtContext = held;
+    out.shelf = shelf; out.walked = new Set(walk).size;
+    /* the rotation is NEW SAVE STATE. A campaign saved before it existed has
+       no v10.qtSeen at all, and must load, ask a question and start clean
+       rather than throwing on the first render. */
+    const blob = JSON.parse(JSON.stringify(S));
+    if (blob.v10) delete blob.v10.qtSeen;
+    blob.turn = 40; blob.v8.qt.pending = true; blob.v8.qt.v10 = -1;
+    const loaded = v8EnsureState(blob, false) || blob;
+    try { v8EnsureQuestion(loaded); out.oldSaveThrew = false; }
+    catch (e) { out.oldSaveThrew = String(e); }
+    out.oldSaveAsks = !!(loaded.v8.qt && loaded.v8.qt.question);
+    out.rotationRidesTheSave = /qtSeen/.test(JSON.stringify(S));
     v10QtContext = base;
     S.turn = keepTurn; S.v8.qt = keepQt;
     return out;
   });
-  say(qt.pool >= 90 && qt.subjects === 14 && qt.bothSides === 14 &&
+  say(qt.pool >= 160 && qt.subjects === 14 && qt.bothSides === 14 &&
       !qt.badPlaceholders.length && !qt.badTones.length,
     'the despatch box has more than one sentence',
     `${qt.pool} questions over ${qt.subjects} subjects, all ${qt.bothSides} askable from either side ` +
@@ -778,11 +822,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `wrong number of choices: ${papers.badChoices.length}; repeated titles: ${papers.dupTitles.length}; ` +
     `templated where they should be written: ${papers.templated.length}; buttons the renderer cannot price: ${papers.unpriced.length}`);
 
-  say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent && qt.stable,
+  say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent &&
+      qt.stable && qt.rotationHeld && qt.walked === qt.shelf &&
+      qt.oldSaveThrew === false && qt.oldSaveAsks && qt.rotationRidesTheSave,
     'a session picks its question without spending a die',
     `60 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
     `${qt.distinctInOpposition} in opposition, across ${qt.distinctSubjects} subjects, ` +
-    `${qt.leaks} of them showing an unfilled placeholder; rngState moved: ${qt.diceSpent}; asked twice, same answer: ${qt.stable}`);
+    `${qt.leaks} of them showing an unfilled placeholder; rngState moved: ${qt.diceSpent}; ` +
+    `fifty renders in one session left the question and the rotation alone: ${qt.stable && qt.rotationHeld}; ` +
+    `a subject walks all ${qt.shelf} of its questions before repeating one: ${qt.walked === qt.shelf}; ` +
+    `the rotation rides the save: ${qt.rotationRidesTheSave}, and a campaign saved before it existed still asks: ${qt.oldSaveAsks}`);
 
 
   // 1. the authority ladder, precondition by precondition
