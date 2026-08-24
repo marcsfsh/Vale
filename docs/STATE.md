@@ -4,10 +4,31 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S9h — the curves** (PR #23). The last of the owner's fourth order, and with
-it the order is complete: every one of the 582 statutes has four levels, each
-with its own set of modifiers, the card previews what extending or repealing
-would do, and the Dossier shows every stage.
+**The fourth order is complete** — S9f, S9g and S9h are all merged (#21, #22,
+#23). Every one of the 582 statutes has four levels, each with its own set of
+modifiers; the card preview says what extending or repealing would do; the
+Dossier shows every stage; every one of the twenty core categories holds
+exactly twenty-four statutes; and both navigation complaints are fixed.
+
+What the harnesses hold, on main:
+
+```
+ALL CHECKS PASS   11/11, 1,784,985 bytes of 1,900,000
+ROADS OK          31 assertions, including the four-rung, category-count and
+                  balance-preservation steps
+PLAYTEST PASS     34 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
+```
+
+Nothing is queued. Open questions that remain the owner's, unchanged: the
+localStorage-persistence probe visit, the WebKit host allowlist, and the two
+party-palette collapses `tools/seats.js` reports under colour-vision
+simulation.
+
+Previously: **S9h — the curves** (PR #23, merged). The last of the fourth
+order: every one of the 582 statutes has four levels, each with its own set
+of modifiers.
 
 The 451 statutes that were already in the book had interpolated ladders since
 S9f. They are now authored, to the same grammar the 131 new ones were born
@@ -414,7 +435,7 @@ ratchet 10 → 5, which is now its true floor.
 | S9e the Roads | **merged** (#20) | the Chartered State; 34 policies (first POLICIES.push); 33 events; 2 arcs; 11/11 goal parity; 6 records; 3 acts of repair; roads.js content proofs |
 | S9f the Ladder | **merged** (#21) | four rungs on every statute via `P()`; `lin` interpolation parity-exact at every reachable rung; 7 impulses → row deltas; 219 position literals rescaled; loud save migration + `polV2`; card/Dossier/desk surfaces; tab changes land at the top; drafting stays on the policy page |
 | S9g the statute book | **merged** (#22) | 131 new statutes, every core category to 24; four authored rungs from birth with a written curve grammar; 11 prose conditions turned into real `req:`/`reqText:`; `maxBytes` 1.6M -> 1.75M with the case; roads.js counts the categories and checks no rung repeats the one below |
-| S9h the curves | **in review (PR #23)** | all 451 pre-existing statutes authored to the same grammar; `tools/fullbuild-baseline.json` freezes every pre-S9h full build and `auth`, roads.js checks all of them; literal surgery with a byte-identical round-trip proof; `lin` and the save migration kept, with reasons; `maxBytes` 1.75M -> 1.9M |
+| S9h the curves | **merged** (#23) | all 451 pre-existing statutes authored to the same grammar; `tools/fullbuild-baseline.json` freezes every pre-S9h full build and `auth`, roads.js checks all of them; literal surgery with a byte-identical round-trip proof; `lin` and the save migration kept, with reasons; `maxBytes` 1.75M -> 1.9M |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
