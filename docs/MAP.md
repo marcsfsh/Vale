@@ -354,6 +354,15 @@ ladder as `lin`, and expands four channels into five rows each:
   `items` and scenario seeds were all rescaled by `round(n*4/m)` in S9f — 219
   sites — and the 24 ad-hoc linear terms took `k*m/4`. Adding a gate means
   writing it against four rungs.
+- **Two policy pushes** now follow the array literal: `V10_POLICIES` (S9e, 34)
+  and `V10_POLICIES_II` (S9g, 131 — the twenty core categories brought to 24
+  each). Both use the same `if (!POL[p.id])` guard; both must stay AHEAD of
+  the programme pushes, which drop unknown item ids. The S9g entries are
+  authored on four rungs from birth, so their `lin` is 4 and every channel
+  carries an override — an unauthored channel would fall back to the identity
+  interpolation and scale a flat effect up the ladder, which is why the
+  generator emits `eff2:{}` rather than nothing for a channel that never
+  changes.
 - **Saves**: `enrichState` rescales `st.pol` once and stamps `st.polV2`;
   unstamped blobs are migrated and the player is told on the setup sheet
   (`[data-ladder-warning]`), including a count of statutes dropped because

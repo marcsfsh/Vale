@@ -12,7 +12,8 @@
   ],
   "_mathRandomComment": "S3 routed all 93 call sites through the seeded engine. The one that remains is rand()'s own pre-game fallback, for the window before S exists where there is nothing to be reproducible about. The sandbox's Math.random swap is an assignment, not a call, so it does not count here \u2014 it stays as isolation for any stray call this file grows later. A rise means a new unseeded source of randomness: route it through rand() instead.",
   "mathRandomCount": 1,
-  "maxBytes": 1600000,
+  "_sizeComment": "S9g moved this from 1,600,000. The binding invariant is self-containment, not bytes: one file, no build step, no external reference, opens from file://. The ratchet exists to catch growth nobody decided on, and this growth was decided on — the owner ordered every one of the twenty core policy categories to hold twenty-four statutes, which is 131 new ones, each carrying four authored rungs. That content is 95 KB and there is no way to add it without adding it. Headroom is deliberately ~130 KB so the ratchet still bites on anything unplanned.",
+  "maxBytes": 1750000,
   "_tiersComment": "S6a collapsed 13 accreted width thresholds to these five, one per tier edge plus the small-phone refinement the user sanctioned. Six chunks each picking its own 'narrow' number is how the tablet band ended up half-dressed, so a new threshold fails this check. Adding one is a design decision: make the case in the PR, then add the number here.",
   "widthThresholds": [
     420,

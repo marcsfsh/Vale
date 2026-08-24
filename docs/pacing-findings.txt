@@ -246,3 +246,28 @@ first-choice-always and loses government early, so these remain a floor on what
 the game offers rather than a measure of what a player reaches.
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
+
+================================================================================
+CHECKED AGAIN AFTER S9g — THE DOUBLED STATUTE BOOK
+================================================================================
+
+131 new statutes, every core category at twenty-four. The arc did not move:
+
+length    seed      sessions  years  ended                elections  crises  wars  achievements
+short     5EED1234  50        50     reached the end year 7          4       3     9/44
+standard  5EED1234  100       100    reached the end year 7          5       12    11/44
+epic      5EED1234  200       200    reached the end year 7          11      18    11/44
+
+length    crises/10 sessions  elections/10  events/session  records at the close
+short     0.8                 1.4           1.6             20%
+standard  0.5                 0.7           1.7             25%
+epic      0.6                 0.4           1.6             25%
+
+Against the S9f baseline directly above (9 / 11 / 12 records, 1.6 / 1.7 / 1.8
+events per session), this is the same game with a larger book to legislate
+from — which is what a content addition should look like. The harness plays
+first-choice-always and never adopts a programme, so it exercises the new
+statutes only through the AI's own wants; a player has 131 more instruments
+and the tool cannot see that.
+
+This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
