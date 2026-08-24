@@ -4,7 +4,37 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S9d — the Descent** (PR #19). The engine half of the owner's third order:
+**S9e — the Roads** (PR #20). The content the descent engine carries; with it,
+the owner's third order is complete.
+
+One new form: **the Chartered State** — the oligarchic terminal corporate
+never had (its only exit was back to federal; the capital road ended mid-air).
+Elections stay on; the weighted register is the sham. 34 new policies through
+the FIRST `POLICIES.push` in the file's history: the Charter book (20 —
+charter courts, company towns, scrip wages, the census of assets, franchise
+audits, tax farming, the assessment pass...), six open-book descent enablers
+laddered by `needs:`, four party-state and four emergency exclusives; plus
+eight `needs:` ladders on the existing Authority/Security book, so how you
+build the police state now has an order. 33 turn-by-turn events: the
+repression spiral (the crackdown radicalises them; the disappeared name; the
+bureau inventing its numbers), the capital road (the strike against scrip, the
+board moving on your Chancellor, the state margin-called), sham-election
+theatre (choose the number; the district that votes wrong anyway), the
+praetorian question (the colonels' petition; the exercise on the ring road),
+and the roads back (the succession, the plan's arithmetic, the charters'
+flight, the thaw's dividend). Two arcs: The Offer (capital captures the
+state from inside normal play) and The Guardians (the army becomes a
+creditor). Opening goals for the four scenarios that had none (11/11 parity).
+Six new records — the only sanctioned change to the epic pacing set. Three
+acts of repair: lift the siege, open the archives, revoke the charters — the
+descent is playable in reverse.
+
+`tools/roads.js` grew the content proofs: the corporate→syndicate road through
+its real gates and home again via the charter flight; ALL 33 events
+constructed against the real `eventOpen`; both arcs triggering; every record
+and goal throw-free at three lengths; registries at 11/11, 3/3, 3/3, 6/6.
+
+Previously: **S9d — the Descent** (PR #19, merged). The engine half of the owner's third order:
 "expanded options and means of changing/altering the course of government...
 integrating it into existing functions rather than bolting on new systems...
 policies should vary based on the state the country is in."
@@ -250,7 +280,8 @@ ratchet 10 → 5, which is now its true floor.
 | S9a nothing lost quietly | **merged** (#16) | hall gets the S1 loudness contract; collapse endings bank their session; the one raw `note` read site fixed; year clamps; 4 new playtest steps, each proven to fail pre-fix |
 | S9b the screen holds still | **merged** (#17) | nine jump mechanisms fixed in place; v7's restore is the single scroll owner; `scroll-keeps` step discriminates on three of them |
 | S9c the Atlas | **merged** (#18) | six coherent groups, ids collision-proof, Ministry relabel, 6-key keyboard covers all 15 views, misfiled panels rehomed with fold-pref migration, tabs.js rewritten |
-| S9d the Descent | **in review (PR #19)** | securityState + state-gated measures; nine latch acts get teeth; confirmation ritual + reckoning; terminal real; needs on all paths; v10 chunk (8/8); `tools/roads.js` ROADS OK |
+| S9d the Descent | **merged** (#19) | securityState + state-gated measures; nine latch acts get teeth; confirmation ritual + reckoning; terminal real; needs on all paths; v10 chunk (8/8); `tools/roads.js` ROADS OK |
+| S9e the Roads | **in review (PR #20)** | the Chartered State; 34 policies (first POLICIES.push); 33 events; 2 arcs; 11/11 goal parity; 6 records; 3 acts of repair; roads.js content proofs |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts

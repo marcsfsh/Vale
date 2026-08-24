@@ -934,10 +934,10 @@ var POLICIES = [
   P({ id:'loyaltyOaths', grp:'Loyalty and speech', name:'Loyalty Oaths', cat:'Authority', dept:'vpres', max:2, cost:6, exp:2, auth:1,
       desc:'Every federal employee, contractor and licensee signs, or does not work.',
       eff:{ liberties:-9, corruption:2, safety:2 }, mood:{ veterans:6, faith:5, prof:-11, youth:-10, tech:-7 } }),
-  P({ id:'internment', grp:'The security state', name:'Preventive Detention', cat:'Authority', dept:'pres', max:2, cost:9, exp:4, auth:1.2,
+  P({ id:'internment', needs:'politicalPolice', grp:'The security state', name:'Preventive Detention', cat:'Authority', dept:'pres', max:2, cost:9, exp:4, auth:1.2,
       desc:'Detention without charge on the certificate of a federal officer.',
       eff:{ safety:7, liberties:-15 }, mood:{ veterans:6, seniors:3, youth:-15, prof:-14, labour:-8, faith:-4 } }),
-  P({ id:'partyMilitia', grp:'Emergency and force', name:'Auxiliary Volunteer Corps', cat:'Authority', dept:'pres', max:2, cost:9, exp:4, auth:1.15,
+  P({ id:'partyMilitia', needs:'loyaltyOaths', grp:'Emergency and force', name:'Auxiliary Volunteer Corps', cat:'Authority', dept:'pres', max:2, cost:9, exp:4, auth:1.15,
       desc:'A uniformed volunteer body outside the chain of command, loyal to the government of the day.',
       eff:{ safety:3, liberties:-10, military:2 }, mood:{ veterans:4, faith:3, prof:-13, youth:-12, labour:-7, tech:-6 } }),
   P({ id:'censorshipAct', grp:'Loyalty and speech', name:'Information Standards Act', cat:'Authority', dept:'vpres', max:3, cost:6, exp:3, auth:.95,
@@ -1646,13 +1646,13 @@ var POLICIES = [
       eff:{ liberties:-5 }, mood:{ smallbiz:7, faith:5, seniors:5, youth:-11, labour:-6, prof:-4 } }),
 
   /* authority */
-  P({ id:'informantNetwork', grp:'The security state', name:'Informant Network', cat:'Authority', dept:'pres', max:3, cost:7, exp:4, auth:1.15,
+  P({ id:'informantNetwork', needs:'politicalPolice', grp:'The security state', name:'Informant Network', cat:'Authority', dept:'pres', max:3, cost:7, exp:4, auth:1.15,
       desc:'A paid reporter in every block, workplace and congregation.',
       eff:{ safety:5, liberties:-14, corruption:4 }, mood:{ prof:-13, youth:-12, labour:-7, faith:-5, veterans:4 } }),
-  P({ id:'curfewAuthority', grp:'The security state', name:'Standing Curfew Powers', cat:'Authority', dept:'pres', max:2, cost:6, exp:2, auth:1.05,
+  P({ id:'curfewAuthority', needs:'emergencyDecree', grp:'The security state', name:'Standing Curfew Powers', cat:'Authority', dept:'pres', max:2, cost:6, exp:2, auth:1.05,
       desc:'Curfew declared by any regional commander without reference to the capital.',
       eff:{ safety:6, liberties:-11 }, mood:{ veterans:6, seniors:3, youth:-13, prof:-10, labour:-6 } }),
-  P({ id:'seditionAct', grp:'Loyalty and speech', name:'Sedition Act', cat:'Authority', dept:'vpres', max:3, cost:7, exp:2, auth:1.25,
+  P({ id:'seditionAct', needs:'censorshipAct', grp:'Loyalty and speech', name:'Sedition Act', cat:'Authority', dept:'vpres', max:3, cost:7, exp:2, auth:1.25,
       desc:'Speech tending to bring the government into contempt made an offence.',
       eff:{ liberties:-16, safety:3 }, mood:{ prof:-16, youth:-14, tech:-8, faith:-4, veterans:5 } }),
 
@@ -1990,13 +1990,13 @@ var POLICIES = [
       eff:{ liberties:3, corruption:-2 }, mood:{ youth:6, smallbiz:5, labour:4, prof:-2 } }),
 
   /* ---- authority ---- */
-  P({ id:'militaryTribunals', grp:'Emergency and force', name:'Military Tribunals', cat:'Authority', dept:'pres', max:2, cost:8, exp:3, auth:1.2,
+  P({ id:'militaryTribunals', needs:'emergencyDecree', grp:'Emergency and force', name:'Military Tribunals', cat:'Authority', dept:'pres', max:2, cost:8, exp:3, auth:1.2,
       desc:'Civilians tried before officers, without appeal to any civil court.',
       eff:{ liberties:-16, safety:4 }, mood:{ veterans:7, prof:-15, youth:-13, labour:-6 } }),
-  P({ id:'communicationsShutdown', grp:'Identity and access', name:'Communications Shutdown Powers', cat:'Authority', dept:'pres', max:2, cost:7, exp:2, auth:1.15,
+  P({ id:'communicationsShutdown', needs:'surveillance', grp:'Identity and access', name:'Communications Shutdown Powers', cat:'Authority', dept:'pres', max:2, cost:7, exp:2, auth:1.15,
       desc:'Authority to close networks in a region by order, without notice.',
       eff:{ liberties:-14, safety:3, technology:-3, economy:-2 }, mood:{ tech:-12, youth:-12, prof:-10, veterans:4 } }),
-  P({ id:'exitPermits', grp:'Identity and access', name:'Exit Permits', cat:'Authority', dept:'vpres', max:2, cost:7, exp:2, auth:1.2,
+  P({ id:'exitPermits', needs:'digitalID', grp:'Identity and access', name:'Exit Permits', cat:'Authority', dept:'vpres', max:2, cost:7, exp:2, auth:1.2,
       desc:'Departure from Vale on the authority of the ministry.',
       eff:{ liberties:-15, economy:-3, tension:2 }, mood:{ tech:-13, prof:-13, youth:-12 } }),
   P({ id:'protestPermits', grp:'The security state', name:'Assembly Permits', cat:'Authority', dept:'vpres', max:3, cost:5, exp:2, auth:.95,
@@ -2115,7 +2115,7 @@ var TRANSITIONS = [
       S.ind.liberties -= 6; S.unrest += 10; S.crown -= 14;
       mood(S, { smallbiz:-12, faith:-8, prof:4, tech:6, labour:3 });
     } },
-  { id:'toFederal', to:'federal', from:['centralised','executive','emergency','corporate','imperial','empire','dpr','oneparty'], name:'Restore the Federal Constitution', cost:20,
+  { id:'toFederal', to:'federal', from:['centralised','executive','emergency','corporate','imperial','empire','dpr','oneparty','syndicate'], name:'Restore the Federal Constitution', cost:20,
     req:'From the Empire or the People\u2019s Republic, only after the restoration crisis has opened the door.',
     ok:function (S) { return !FORMS[S.form].terminal || !!(S.v6 && S.v6.flags && S.v6.flags.restoration); },
     desc:'Return the enumerated powers to the states and the legislature.',
@@ -7086,6 +7086,7 @@ function finish() {
   var pathNote = '';
   if (S.form === 'empire') pathNote = 'Vale ends the period an Empire, with an Emperor by descent, prefects over the fifty states and a Senate that exists to be addressed. ';
   else if (S.form === 'dpr') pathNote = "Vale ends the period a People's Republic, with the plan, the party and a Congress that has never once divided. ";
+  else if (S.form === 'syndicate') pathNote = 'Vale ends the period the property of its charters, a state with shareholders instead of citizens and a board where a cabinet used to sit. ';
   else if (path === 'authority') pathNote = 'Vale ends the period without a free federal ballot, and the men who run it were all appointed by you. ';
   else if (path === 'capital') pathNote = 'Vale ends the period governed from a boardroom, with the franchise weighted by assessment and the Senate seating companies. ';
   else if (path === 'empire') pathNote = 'Vale ends the period a federation of territories, with the flag over four continents and the bill still coming in. ';
@@ -16527,6 +16528,652 @@ viewState = function () {
     '</div>';
   var mk = '<div class="grid"><div>';
   return html.indexOf(mk) >= 0 ? html.replace(mk, mk + strip) : strip + html;
+};
+
+/* ==========================================================
+   THE ROADS (S9e): the content the engine carries.
+   Everything below is an addition through a proven push idiom; nothing
+   redefines an existing entry, and every dedupe guard follows the v8/v9
+   precedent for its registry.
+   ========================================================== */
+
+/* ---------- the Chartered State: the oligarchic terminal ---------- */
+FORMS.syndicate = { name:'The Chartered State', path:'capital', elections:true, crown:false,
+  capBonus:10, unrest:20, terminal:true,
+  note:'The charters own the state outright: the Senate is a board, the franchise is a shareholding, and the government reports quarterly.' };
+CLOSED.syndicate = { cats:['Elections','Federalism'],
+  ids:LIBERAL_IDS.concat(['unionRights','wealthTax','lobbyingBan','compulsoryVoting']).filter(function (id) { return !!POL[id]; }) };
+RITUAL.syndicate = ['The annual meeting of the charters confirmed the board of governors.',
+  'The assessment rolls were re-certified and the weighted register closed.'];
+TRANSITIONS.push({ id:'toSyndicate', to:'syndicate', from:['corporate'],
+  name:'The Charter Consolidation Act', cost:36,
+  req:'Chartered Senate seats and the weighted franchise both in force, the technology bloc at 65, the treasury above $200B, and the security state at 30',
+  ok:function (S) { return !!S.acts.charteredSenate && !!S.acts.wealthFranchise &&
+    S.blocs.tech >= 65 && S.treasury >= 200 && securityState(S) >= 30; },
+  desc:'Vest the state in its charters: the board becomes the cabinet, the register becomes the roll, and the question of who owns Vale is settled by answering it.',
+  apply:function (S) {
+    S.ind.liberties = c100(S.ind.liberties - 18); S.ind.corruption = c100(S.ind.corruption + 10);
+    S.ind.economy = c100(S.ind.economy + 6); S.unrest = clamp(S.unrest + 14, 0, 110);
+    mood(S, { tech:18, smallbiz:-4, labour:-22, youth:-18, prof:-14 });
+    shiftPeers(S, bestBusinessParty(S), 70);
+  } });
+
+/* ---------- the statute books ---------- */
+CATS.push('The Charter');
+var V10_POLICIES = [
+  /* The Charter book: government by the chartered companies, playable under
+     corporate and syndicate alike. */
+  P({ id:'charterCourts', grp:'The Bench of Trade', name:'Charter Courts', cat:'The Charter', dept:'vpres', max:2, cost:6, auth:.7, forms:['corporate','syndicate'],
+      eff:{ liberties:-3, corruption:2, economy:2 }, mood:{ tech:8, prof:-8, labour:-6 },
+      desc:'Private arbitration replaces the circuits for any dispute a charter is party to.' }),
+  P({ id:'companyTownsAct', grp:'The Company Country', name:'Company Towns', cat:'The Charter', dept:'chan', max:2, cost:5, auth:.6, forms:['corporate','syndicate'],
+      eff:{ economy:2, poverty:2, liberties:-2 }, mood:{ tech:6, smallbiz:4, labour:-10 }, rev:2,
+      desc:'The charter provides the housing, the store, the school and the constable.' }),
+  P({ id:'scripCurrency', grp:'The Company Country', name:'Scrip Wages', cat:'The Charter', dept:'chan', max:1, cost:6, auth:.8, needs:'companyTownsAct', forms:['corporate','syndicate'],
+      eff:{ poverty:3, corruption:2 }, mood:{ labour:-14, youth:-6, tech:4 }, rev:3,
+      desc:'Wages in company scrip, redeemable where the company says.' }),
+  P({ id:'yellowUnions', grp:'The Company Country', name:'Company Unions', cat:'The Charter', dept:'vchan', max:2, cost:4, auth:.6, forms:['corporate','syndicate'],
+      eff:{ liberties:-2 }, mood:{ labour:-12, tech:6, smallbiz:2 },
+      desc:'One union per charter, chartered by the charter.' }),
+  P({ id:'censusOfAssets', grp:'The Register', name:'The Census of Assets', cat:'The Charter', dept:'chan', max:2, cost:5, auth:.5, forms:['corporate','syndicate'],
+      eff:{ technology:2, corruption:1 }, mood:{ prof:-4, smallbiz:-3, tech:5 },
+      desc:'Every holding assessed and entered on the register the franchise is weighted by.' }),
+  P({ id:'franchiseAudits', grp:'The Register', name:'Franchise Audits', cat:'The Charter', dept:'vpres', max:2, cost:5, auth:.8, needs:'censusOfAssets', forms:['corporate','syndicate'],
+      eff:{ liberties:-4, corruption:2 }, mood:{ labour:-8, youth:-8, tech:6 },
+      desc:'The register is audited before every count, and the audits always find something.' }),
+  P({ id:'boardOfTrade', grp:'The Bench of Trade', name:'The Board of Trade', cat:'The Charter', dept:'pres', max:2, cost:6, auth:.5, forms:['corporate','syndicate'],
+      eff:{ economy:3, corruption:2 }, mood:{ tech:8, smallbiz:4, labour:-6 },
+      desc:'The charters sit as a board with the standing right to be consulted before any bill of trade.' }),
+  P({ id:'concessionsAct', grp:'The Bench of Trade', name:'Federal Concessions', cat:'The Charter', dept:'chan', max:3, cost:5, auth:.4, forms:['corporate','syndicate'],
+      eff:{ economy:2, environment:-2, corruption:2 }, mood:{ tech:6, smallbiz:-4 }, rev:4,
+      desc:'Exclusive federal concessions, sold by sealed tender to the charters that wrote the tender.' }),
+  P({ id:'privatePolice', grp:'The Company Country', name:'Chartered Constabulary', cat:'The Charter', dept:'vpres', max:2, cost:6, auth:.9, forms:['corporate','syndicate'],
+      eff:{ safety:3, liberties:-4 }, mood:{ tech:5, labour:-8, youth:-6 },
+      desc:'The charters police their own towns, their own works and, increasingly, their own critics.' }),
+  P({ id:'debtBondage', grp:'The Company Country', name:'Indenture Enforcement', cat:'The Charter', dept:'vpres', max:1, cost:7, auth:1.1, needs:'scripCurrency', forms:['corporate','syndicate'],
+      eff:{ poverty:4, liberties:-5, corruption:2 }, mood:{ labour:-16, youth:-10, prof:-8, tech:5 },
+      desc:'A debt to the company store is enforceable against the person.' }),
+  P({ id:'companyMedicine', grp:'The Company Country', name:'Company Medicine', cat:'The Charter', dept:'vchan', max:2, cost:4, auth:.4, forms:['corporate','syndicate'],
+      eff:{ healthcare:2, poverty:1 }, mood:{ labour:-4, tech:4, seniors:-3 },
+      desc:'Care through the charter, for as long as the employment lasts.' }),
+  P({ id:'charterSchools10', grp:'The Company Country', name:'Charter Schooling', cat:'The Charter', dept:'vchan', max:2, cost:4, auth:.4, forms:['corporate','syndicate'],
+      eff:{ education:2, liberties:-1 }, mood:{ tech:5, prof:-4, faith:2 },
+      desc:'The syllabus the charter needs, taught to the children it will one day employ.' }),
+  P({ id:'exchangeCourts', grp:'The Bench of Trade', name:'Exchange Courts', cat:'The Charter', dept:'chan', max:1, cost:5, auth:.5, needs:'charterCourts', forms:['corporate','syndicate'],
+      eff:{ economy:2, corruption:2 }, mood:{ tech:7, prof:-5 },
+      desc:'Disputes of the exchanges heard by the exchanges, with a right of appeal to the exchanges.' }),
+  P({ id:'patentEnclosure', grp:'The Register', name:'Patent Enclosure', cat:'The Charter', dept:'chan', max:2, cost:5, auth:.5, forms:['corporate','syndicate'],
+      eff:{ technology:3, economy:1, corruption:1 }, mood:{ tech:8, smallbiz:-6, prof:-3 },
+      desc:'The commons of invention fenced, registered and let by the charters.' }),
+  P({ id:'landEnclosure', grp:'The Register', name:'Land Enclosure', cat:'The Charter', dept:'chan', max:2, cost:6, auth:.6, forms:['corporate','syndicate'],
+      eff:{ agriculture:3, poverty:2, liberties:-2 }, mood:{ tech:5, smallbiz:-8, labour:-6 }, rev:3,
+      desc:'The public lands surveyed, titled and conveyed to those with standing on the register.' }),
+  P({ id:'taxFarming', grp:'The Register', name:'Tax Farming', cat:'The Charter', dept:'chan', max:2, cost:5, auth:.6, forms:['corporate','syndicate'],
+      eff:{ corruption:3, poverty:2 }, mood:{ smallbiz:-8, labour:-6, tech:5 }, rev:5,
+      desc:'The revenue sold forward: the charters collect, and keep the difference.' }),
+  P({ id:'sumptuaryPass', grp:'The Register', name:'The Assessment Pass', cat:'The Charter', dept:'vpres', max:1, cost:6, auth:1.0, needs:'censusOfAssets', forms:['corporate','syndicate'],
+      eff:{ liberties:-5, safety:2 }, mood:{ labour:-10, youth:-12, tech:4 },
+      desc:'Movement between districts priced by assessment class. The register decides who travels.' }),
+  P({ id:'charteredPress', grp:'The Bench of Trade', name:'The Chartered Press', cat:'The Charter', dept:'pres', max:2, cost:5, auth:.8, forms:['corporate','syndicate'],
+      eff:{ liberties:-4, corruption:2 }, mood:{ prof:-8, tech:5, youth:-6 },
+      desc:'A licence to print, issued and renewed by the Board of Trade.' }),
+  P({ id:'pensionRaids', grp:'The Register', name:'Pension Consolidation', cat:'The Charter', dept:'chan', max:1, cost:6, auth:.5, forms:['corporate','syndicate'],
+      eff:{ poverty:3, corruption:2, economy:2 }, mood:{ seniors:-14, labour:-8, tech:6 }, rev:5,
+      desc:'The pension funds consolidated into the charters\u2019 own paper.' }),
+  P({ id:'goldenSharesAct', grp:'The Bench of Trade', name:'The Golden Share', cat:'The Charter', dept:'pres', max:1, cost:7, auth:-.4, forms:['corporate','syndicate'],
+      eff:{ corruption:-2, liberties:1 }, mood:{ prof:4, labour:3, tech:-6 },
+      desc:'The one reform lever in the book: a state share in every charter, with a veto worth using.' }),
+
+  /* the open-book descent enablers: the road starts under a free constitution */
+  P({ id:'fusionCentres', grp:'The Apparatus', name:'Fusion Centres', cat:'Security', dept:'vpres', max:2, cost:5, auth:.5, needs:'surveillance',
+      eff:{ safety:2, liberties:-2 }, mood:{ veterans:4, youth:-5, prof:-3 },
+      desc:'Every agency\u2019s files, one building, no questions between friends.' }),
+  P({ id:'facialRegister', grp:'The Apparatus', name:'The Facial Register', cat:'Security', dept:'vpres', max:2, cost:5, auth:.6, needs:'digitalID',
+      eff:{ safety:2, liberties:-3 }, mood:{ youth:-8, prof:-4, seniors:3 },
+      desc:'A camera that knows the name of everyone it sees, and a register that remembers where.' }),
+  P({ id:'predictivePolicing', grp:'The Apparatus', name:'Predictive Policing', cat:'Security', dept:'vpres', max:2, cost:5, auth:.6, needs:'fusionCentres',
+      eff:{ safety:3, liberties:-3, corruption:1 }, mood:{ seniors:4, youth:-8, labour:-4 },
+      desc:'The algorithm decides where the vans wait. It learns from its own arrests.' }),
+  P({ id:'protestDatabase', grp:'The Apparatus', name:'The Assembly Register', cat:'Authority', dept:'vpres', max:1, cost:4, auth:.7, needs:'fusionCentres',
+      eff:{ liberties:-3, safety:1 }, mood:{ youth:-8, prof:-5, veterans:3 },
+      desc:'Every march catalogued, every organiser indexed, every employer informed on request.' }),
+  P({ id:'secretDockets', grp:'The Apparatus', name:'Secret Dockets', cat:'Authority', dept:'vpres', max:1, cost:6, auth:1.0, needs:'politicalPolice',
+      req:function (st) { return st.acts.courtStripping || !FORMS[st.form].elections; },
+      reqText:'The courts would strike this under a free constitution \u2014 strip their jurisdiction or suspend elections first.',
+      eff:{ liberties:-5, safety:2, corruption:2 }, mood:{ prof:-10, youth:-8, veterans:4 },
+      desc:'Trials the public never hears of, on a docket the bar cannot see.' }),
+  P({ id:'passportControl', grp:'The Apparatus', name:'Internal Passports', cat:'Authority', dept:'vpres', max:2, cost:5, auth:.8, needs:'digitalID',
+      eff:{ liberties:-4, safety:2 }, mood:{ labour:-6, youth:-8, seniors:2 },
+      desc:'Papers to travel between the states of a federation that once had none.' }),
+
+  /* the party-state deepened */
+  P({ id:'vanguardYouth', grp:'The Party', name:'The Vanguard Youth', cat:"People's State", dept:'vchan', max:2, cost:4, auth:.8, forms:['oneparty','dpr'],
+      eff:{ education:1, liberties:-2 }, mood:{ youth:-4, faith:-4, veterans:3 },
+      desc:'The uniforms are smart, the camps are free, and the reports on the parents are thorough.' }),
+  P({ id:'cadreRotation', grp:'The Party', name:'Cadre Rotation', cat:"People's State", dept:'pres', max:2, cost:4, auth:.5, forms:['oneparty','dpr'],
+      eff:{ corruption:-2, economy:-1 }, mood:{ prof:2 },
+      desc:'No official sits anywhere long enough to build anything of his own.' }),
+  P({ id:'selfCriticismAct', grp:'The Party', name:'The Self-Criticism Sessions', cat:"People's State", dept:'pres', max:1, cost:5, auth:.9, forms:['oneparty','dpr'],
+      eff:{ liberties:-3 }, mood:{ prof:-6, youth:-4, labour:-2 },
+      desc:'Every cadre confesses something. The confessions are filed.' }),
+  P({ id:'heroOfVale', grp:'The Party', name:'Hero of Vale', cat:"People's State", dept:'pres', max:1, cost:3, auth:.3, forms:['oneparty','dpr'],
+      eff:{ }, mood:{ labour:5, veterans:5, youth:-2 },
+      desc:'A medal, a stipend, and a portrait in the district hall. Cheaper than wages.' }),
+
+  /* the emergency's own statutes */
+  P({ id:'rationBooks', grp:'The Emergency', name:'Ration Books', cat:'Authority', dept:'chan', max:2, cost:4, auth:.5, forms:['emergency'],
+      eff:{ poverty:-2, economy:-2, liberties:-1 }, mood:{ labour:3, seniors:3, smallbiz:-6 },
+      desc:'Fair shares, queues, and a black market the inspectors join.' }),
+  P({ id:'requisitionTribunals', grp:'The Emergency', name:'Requisition Tribunals', cat:'Authority', dept:'chan', max:2, cost:5, auth:.7, forms:['emergency'],
+      eff:{ economy:1, liberties:-3, corruption:2 }, mood:{ smallbiz:-10, tech:-4, veterans:4 }, rev:3,
+      desc:'What the emergency needs, the tribunal takes, at a price the tribunal sets.' }),
+  P({ id:'curfewPasses', grp:'The Emergency', name:'Curfew Passes', cat:'Authority', dept:'vpres', max:1, cost:4, auth:.6, needs:'curfewAuthority', forms:['emergency'],
+      eff:{ safety:2, liberties:-2, corruption:1 }, mood:{ youth:-6, smallbiz:-4 },
+      desc:'The night belongs to those with the stamp, and the stamp has a price.' }),
+  P({ id:'emergencyCensor', grp:'The Emergency', name:'The Emergency Censor', cat:'Authority', dept:'pres', max:1, cost:5, auth:.8, needs:'censorshipAct', forms:['emergency'],
+      eff:{ liberties:-4 }, mood:{ prof:-8, youth:-6, seniors:2 },
+      desc:'An office that reads everything before the country does, for the duration.' })
+];
+/* the first POLICIES push in the file's history: every consumer iterates the
+   live array, so an append is complete integration. Programme pushes must
+   come AFTER this block (unknown item ids are dropped from programmes). */
+V10_POLICIES.forEach(function (p) { if (!POL[p.id]) { POLICIES.push(p); POL[p.id] = p; } });
+
+/* ---------- the acts of repair and repeal ---------- */
+[
+  { id:'liftSiege', house:'Authority', name:'Lift the State of Siege', cost:8, auth:-.6,
+    req:'The state of siege in force',
+    desc:'End the siege. The streets fill for a season, and then the country breathes.',
+    ok:function (S2) { return !!S2.acts.stateOfSiege; },
+    done:function (S2) { return false; },
+    apply:function (S2) { S2.acts.stateOfSiege = false; S2.unrest = clamp(S2.unrest + 6, 0, 110);
+      S2.ind.liberties = c100(S2.ind.liberties + 10); mood(S2, { youth:8, prof:6, labour:4 });
+      logIt(S2, 'The state of siege was lifted.'); chronicle(S2, 'The state of siege was lifted.'); } },
+  { id:'openArchives', house:'Authority', name:'Open the Archives', cost:10, auth:-.8,
+    req:'The apparatus dismantled (security state below 20) after a police-state past (high-water 45 or above)',
+    desc:'The truth commission: the files opened, the informants named, the record faced.',
+    ok:function (S2) { return securityState(S2) < 20 && (S2.ssPeak || 0) >= 45; },
+    done:function (S2) { return !!(S2.v6 && S2.v6.flags && S2.v6.flags.archivesOpened); },
+    apply:function (S2) { if (S2.v6) (S2.v6.flags = S2.v6.flags || {}).archivesOpened = true;
+      S2.ind.corruption = c100(S2.ind.corruption - 8); S2.ind.liberties = c100(S2.ind.liberties + 8);
+      S2.unrest = clamp(S2.unrest + 4, 0, 110); mood(S2, { prof:10, youth:8, veterans:-6 });
+      logIt(S2, 'The archives were opened and the country read its own file.');
+      chronicle(S2, 'The archives of the security state were opened.'); } },
+  { id:'charterRevocation', house:'Capital', name:'Revoke the Charters', cost:12, auth:-.7,
+    req:'The chartered Senate or the weighted franchise in force, and the labour bloc above 55 or the strike wave past 55',
+    desc:'Strike the charters from the Senate and the weights from the register.',
+    ok:function (S2) { return (S2.acts.charteredSenate || S2.acts.wealthFranchise) &&
+      (S2.blocs.labour >= 55 || movStrength(S2, 'strikeWave') > 55); },
+    done:function (S2) { return false; },
+    apply:function (S2) { S2.acts.charteredSenate = false; S2.acts.wealthFranchise = false;
+      S2.ind.liberties = c100(S2.ind.liberties + 8); S2.ind.economy = c100(S2.ind.economy - 3);
+      mood(S2, { labour:14, youth:8, prof:6, tech:-16 });
+      logIt(S2, 'The charters were revoked and the register unweighted.');
+      chronicle(S2, 'The charters lost their seats and their weights.'); } }
+].forEach(function (a) { if (!ACTS.some(function (x) { return x.id === a.id; })) ACTS.push(a); });
+
+/* ---------- programmes bundling the roads (AFTER the policy push) ---------- */
+[
+  { id:'theApparatus', name:'The Apparatus', lean:'Authoritarian', blurb:'The full security state, assembled in order: the police, the files, the cameras, the paper.',
+    items:{ politicalPolice:2, surveillance:2, fusionCentres:1, informantNetwork:1, censorshipAct:1 },
+    reward:{ capital:12, unity:8, mood:{ veterans:8, seniors:4, youth:-10, prof:-8 }, ind:{ safety:6, liberties:-6 } }, line:'The apparatus was completed.' },
+  { id:'theCharter', name:'The Charter Programme', lean:'Oligarchic', blurb:'The state prepared for sale: charters, privatisation, the census and the register.',
+    items:{ corporateCharters:2, privatisation:2, censusOfAssets:1, propertyFranchise:1, deregulation:1 },
+    reward:{ capital:12, unity:6, mood:{ tech:12, smallbiz:4, labour:-10 }, ind:{ economy:5, corruption:4 } }, line:'The charter programme was completed.' },
+  { id:'theThaw', name:'The Thaw', lean:'Liberal', blurb:'The apparatus dismantled by statute: oversight, sunlight, and the police out of politics.',
+    items:{ intelligenceOversight:1, whistleblowerProtection:1, policeDemilitarisation:1, closeDetention:1 },
+    reward:{ capital:10, unity:6, mood:{ youth:10, prof:10, veterans:-4 }, ind:{ liberties:8 } }, line:'The thaw was completed.' }
+].forEach(function (pr) { for (var id in pr.items) { if (!POL[id]) delete pr.items[id]; }
+  if (!V6_PROGRAMME[pr.id] && Object.keys(pr.items).length) { V6_PROGRAMMES.push(pr); V6_PROGRAMME[pr.id] = pr; } });
+
+/* ---------- opening goals for the four scenarios that had none ---------- */
+if (!V8_GOALS.v9patriotMajority) V8_GOALS.v9patriotMajority = [
+  { id:'pm_frontier', name:'The frontier held', note:'Border security and the defence budget both delivered in full.',
+    test:function (st) { return v8PolMax(st, 'borderSecurity') >= 1 && v8PolMax(st, 'defenceBudget') >= 1; },
+    prog:function (st) { return (v8PolMax(st, 'borderSecurity') + v8PolMax(st, 'defenceBudget')) * 50; } },
+  { id:'pm_order', name:'Order kept', note:'Unrest below 30 with the armed forces above 60.',
+    test:function (st) { return st.unrest < 30 && st.armyLoyalty > 60; },
+    prog:function (st) { return clamp((110 - st.unrest) / 80 * 60 + Math.max(0, st.armyLoyalty - 40), 0, 100); } },
+  { id:'pm_second', name:'A second mandate', note:'Win a federal ballot from government.',
+    test:function (st) { return st.legacy.electionsWon >= 2; },
+    prog:function (st) { return Math.min(100, st.legacy.electionsWon * 50); } }
+];
+if (!V8_GOALS.v9corporateRepublic) V8_GOALS.v9corporateRepublic = [
+  { id:'cr_books', name:'The books kept', note:'The credit rating at AA or better.',
+    test:function (st) { return ['AAA', 'AA'].indexOf(st.macro.rating) >= 0; },
+    prog:function (st) { return { AAA:100, AA:100, A:75, BBB:50, BB:25, B:0 }[st.macro.rating] || 0; } },
+  { id:'cr_labour', name:'The bargain kept', note:'Organised labour back above 40 without losing the exchanges.',
+    test:function (st) { return st.blocs.labour >= 40 && st.blocs.tech >= 55; },
+    prog:function (st) { return clamp((st.blocs.labour / 40) * 60 + (st.blocs.tech / 55) * 40, 0, 100); } },
+  { id:'cr_settle', name:'The question settled', note:'Carry the republic to a terminal settlement, or restore the federal constitution.',
+    test:function (st) { return !!FORMS[st.form].terminal || (st.form === 'federal' && st.turn > 6); },
+    prog:function (st) { return FORMS[st.form].terminal || st.form === 'federal' ? 100 : 30; } }
+];
+if (!V8_GOALS.v9imperialFederation) V8_GOALS.v9imperialFederation = [
+  { id:'if_territories', name:'The territories governed', note:'Territorial administration at 70.',
+    test:function (st) { return st.ind.territories >= 70; },
+    prog:function (st) { return st.ind.territories / 70 * 100; } },
+  { id:'if_decade', name:'{N} years at the helm', note:'{N} years in government.', req:function (st) { return v6Scale(st, 10); },
+    test:function (st) { return st.legacy.yearsInGovernment >= v6Scale(st, 10); },
+    prog:function (st) { return st.legacy.yearsInGovernment / v6Scale(st, 10) * 100; } },
+  { id:'if_answer', name:'The question answered', note:'Crown the federation an Empire, or bring it home federal.',
+    test:function (st) { return st.form === 'empire' || (st.form === 'federal' && st.turn > 6); },
+    prog:function (st) { return (st.form === 'empire' || st.form === 'federal') ? 100 : 30; } }
+];
+if (!V8_GOALS.v9twoVales) V8_GOALS.v9twoVales = [
+  { id:'tv_centre', name:'The centre held', note:'Govern {n} years with neither the RSF nor the PNL in the coalition.', req:function (st) { return v6Scale(st, 10); },
+    test:function (st) { return st.legacy.yearsInGovernment >= v6Scale(st, 10) &&
+      (st.coalition || []).indexOf('rsf') < 0 && (st.coalition || []).indexOf('pnl') < 0; },
+    prog:function (st) { return st.legacy.yearsInGovernment / v6Scale(st, 10) * 100; } },
+  { id:'tv_calm', name:'The temperature down', note:'Unrest below 35.',
+    test:function (st) { return st.unrest < 35; },
+    prog:function (st) { return clamp((110 - st.unrest) / 75 * 100, 0, 100); } },
+  { id:'tv_contain', name:'The extremes contained', note:'The RSF and PNL together below 45 percent of the Assembly.',
+    test:function (st) { return seatShare(st, ['rsf', 'pnl']) < .45; },
+    prog:function (st) { return clamp((1 - seatShare(st, ['rsf', 'pnl'])) / .55 * 100, 0, 100); } }
+];
+
+/* ---------- records for the roads (throw-safe tests; templated notes) ---------- */
+[
+  { id:'chartered', name:'The Chartered State', note:'Proclaimed the Chartered State.', test:function (st) { return st.form === 'syndicate'; } },
+  { id:'apparatus', name:'The Total State', note:'The security state reached 65.', test:function (st) { return (typeof securityState === 'function' ? securityState(st) : 0) >= 65 || (st.ssPeak || 0) >= 65; } },
+  { id:'ballotTheatre', name:'Ballot Theatre', note:'{N} confirmations stage-managed.', req:function (st) { return v6Scale(st, 5, 2); }, test:function (st) { return (st.rigCount || 0) >= v6Scale(st, 5, 2); } },
+  { id:'praetorianPact', name:'The Praetorian Pact', note:'Survived the Guardians with the constitution intact.', test:function (st) { return !!(st.v6 && st.v6.flags && st.v6.flags.praetorianPact); } },
+  { id:'openRepublic', name:'The Open Republic', note:'Past the midpoint with liberties at 75 and not one Authority statute on the books.', test:function (st) {
+      if (yearOf(st.turn) < v6Midpoint(st) || st.ind.liberties < 75) return false;
+      return POLICIES.every(function (p) { return p.cat !== 'Authority' || !(st.pol[p.id] || 0); }); } }
+].forEach(function (a) { if (!V6_ACHIEVEMENT[a.id]) { V6_ACHIEVEMENTS.push(a); V6_ACHIEVEMENT[a.id] = a; } });
+
+/* ---------- the turn-by-turn events of the roads ---------- */
+var V10_ROAD_EVENTS = [
+  /* -- the repression spiral: the apparatus generates its own weather -- */
+  ev({ id:'v10crackdownRadicals', w:9, cond:function (S) { return securityState(S) >= 45 && S.suppressed &&
+      MOVEMENTS.some(function (m) { return S.suppressed[m.id] && S.turn - S.suppressed[m.id] < 4; }); },
+    title:'The Crackdown Has Radicalised Them',
+    text:'The movement you broke up has reformed smaller, harder and quieter. The moderates who used to answer the telephone have been replaced by people who do not have telephones.',
+    ch:[
+      { l:'Break them again, harder', s:'Unrest -4 now; the Front +8 and the youth harden. The spiral turns.',
+        f:function (S) { S.unrest = clamp(S.unrest - 4, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 8, 0, 100); mood(S, { youth:-8 }); logIt(S, 'The second crackdown was harder than the first, and so was what it left behind.'); } },
+      { l:'Open a channel to what is left', s:'Unrest +2; the Front -6; liberties +2. Talking to them admits they exist.',
+        f:function (S) { S.unrest = clamp(S.unrest + 2, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') - 6, 0, 100); S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'A channel was opened to the remnant, quietly.'); } }
+    ] }),
+  ev({ id:'v10disappearance', w:8, cond:function (S) { return securityState(S) >= 45; },
+    title:'A Name the Bureau Cannot Produce',
+    text:'A schoolteacher was taken at the border in October. The family has a receipt for his watch and nothing else. A newspaper abroad has the receipt.',
+    ch:[
+      { l:'Produce him, whatever state he is in', s:'Unrest +4, liberties +2, the professions +4. The bureau resents daylight.',
+        f:function (S) { S.unrest = clamp(S.unrest + 4, 0, 110); S.ind.liberties = c100(S.ind.liberties + 2); mood(S, { prof:4, youth:2 }); logIt(S, 'The man was produced, thinner. The receipt was returned.'); } },
+      { l:'The state has no record of any such person', s:'Tension +2, corruption +2, the Front +4. Files can be unmade; families cannot.',
+        f:function (S) { S.ind.tension = c100(S.ind.tension + 2); S.ind.corruption = c100(S.ind.corruption + 2); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The state had no record, and everyone understood exactly what that meant.'); } }
+    ] }),
+  ev({ id:'v10informantFile', w:7, cond:function (S) { return securityState(S) >= 30 && (S.pol.informantNetwork || 0) > 0; },
+    title:'The File on Your Own Minister',
+    text:'The informant network has produced a file on a serving minister: an indiscretion, a foreign account, a meeting that should not have happened. The bureau chief brought it to you personally, which is the point.',
+    ch:[
+      { l:'Use it', s:'Capital +5, corruption +3. The bureau now knows what you will accept.',
+        f:function (S) { S.capital = clamp(S.capital + 5, -5, capCap(S)); S.ind.corruption = c100(S.ind.corruption + 3); logIt(S, 'The file was used. The bureau filed that too.'); } },
+      { l:'Burn it and warn the chief', s:'Capital -2; unity +4. Somewhere a copy survives.',
+        f:function (S) { S.capital = clamp(S.capital - 2, -5, capCap(S)); S.unity = clamp((S.unity || 60) + 4, 5, 100); logIt(S, 'The file was burned in front of its author.'); } }
+    ] }),
+  ev({ id:'v10quotaArrests', w:7, cond:function (S) { return securityState(S) >= 45; },
+    title:'The Bureau Invents Its Numbers',
+    text:'The quarterly return shows four hundred subversives processed. A district officer, drunk, has told a foreign correspondent that the district invents its quota and arrests to fit.',
+    ch:[
+      { l:'Abolish the quotas', s:'Safety -2, liberties +3. The bureau measures itself some other way.',
+        f:function (S) { S.ind.safety = c100(S.ind.safety - 2); S.ind.liberties = c100(S.ind.liberties + 3); logIt(S, 'The quotas were abolished, to the bureau\u2019s quiet grief.'); } },
+      { l:'Raise them', s:'Unrest -3 now; the Front +5; corruption +2. The machine eats what it is fed.',
+        f:function (S) { S.unrest = clamp(S.unrest - 3, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 5, 0, 100); S.ind.corruption = c100(S.ind.corruption + 2); logIt(S, 'The quotas were raised, and met.'); } }
+    ] }),
+  ev({ id:'v10torturePhotos', w:6, cond:function (S) { return securityState(S) >= 55; },
+    title:'The Photographs',
+    text:'Photographs from a holding facility have reached three foreign capitals. An allied government has asked, formally, whether they are genuine.',
+    ch:[
+      { l:'A commission, with sentences', s:'Tension -2, liberties +3, the services -4. Somebody senior goes down.',
+        f:function (S) { S.ind.tension = c100(S.ind.tension - 2); S.ind.liberties = c100(S.ind.liberties + 3); S.armyLoyalty = c100(S.armyLoyalty - 4); logIt(S, 'The commission sat, and for once it sentenced.'); } },
+      { l:'Fakes, and an insult to Vale', s:'Tension +4, the alliance cools. Nobody abroad believes it; nobody at home says so.',
+        f:function (S) { S.ind.tension = c100(S.ind.tension + 4); mood(S, { prof:-4 }); logIt(S, 'The photographs were declared fakes, in a statement nobody kept.'); } }
+    ] }),
+  ev({ id:'v10securityBudget', w:7, cond:function (S) { return securityState(S) >= 30; },
+    title:'The Bureau Asks Double',
+    text:'The security estimate arrives at twice last year\u2019s figure, with an annex explaining that the threat has also doubled. The annex is classified, including from you.',
+    ch:[
+      { l:'Pay it', s:'Treasury -8, safety +2. The apparatus grows because it is fed.',
+        f:function (S) { S.treasury -= 8; S.ind.safety = c100(S.ind.safety + 2); logIt(S, 'The estimate was met in full.'); } },
+      { l:'Cut it and demand the annex', s:'Capital -2, safety -2; corruption -3. The bureau remembers.',
+        f:function (S) { S.capital = clamp(S.capital - 2, -5, capCap(S)); S.ind.safety = c100(S.ind.safety - 2); S.ind.corruption = c100(S.ind.corruption - 3); logIt(S, 'The estimate was halved and the annex, eventually, produced.'); } }
+    ] }),
+  ev({ id:'v10watchlistLeak', w:6, elective:true, cond:function (S) { return securityState(S) >= 30; },
+    title:'The Register Was Public for Nine Hours',
+    text:'A contractor misconfigured the watchlist and for nine hours anyone could search it. Forty thousand citizens now know they are on it, including two judges and a bishop.',
+    ch:[
+      { l:'Apologise and prune the list', s:'Liberties +3, safety -1, the professions +4.',
+        f:function (S) { S.ind.liberties = c100(S.ind.liberties + 3); S.ind.safety = c100(S.ind.safety - 1); mood(S, { prof:4 }); logIt(S, 'The list was pruned and the pruning, unusually, was real.'); } },
+      { l:'The list is the list', s:'Unrest +4, the Front +4. The bishop preaches on it Sunday.',
+        f:function (S) { S.unrest = clamp(S.unrest + 4, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The list stood, and so did the bishop.'); } }
+    ] }),
+  ev({ id:'v10defectorAbroad', w:6, cond:function (S) { return securityState(S) >= 45; },
+    title:'The Colonel Gives Interviews',
+    text:'A colonel of the bureau has surfaced abroad with a suitcase of files and a publisher. The first excerpt names the officers who run the informant network, district by district.',
+    ch:[
+      { l:'Let it burn out', s:'Liberties +2, the network -1 level. Yesterday\u2019s papers.',
+        f:function (S) { S.ind.liberties = c100(S.ind.liberties + 2); if ((S.pol.informantNetwork || 0) > 0) { S.pol.informantNetwork--; } logIt(S, 'The excerpts ran their course. The network needed rebuilding regardless.'); } },
+      { l:'Ask the host country for him', s:'Tension +3, capital -2. They will say no, publicly.',
+        f:function (S) { S.ind.tension = c100(S.ind.tension + 3); S.capital = clamp(S.capital - 2, -5, capCap(S)); logIt(S, 'The request was made and declined, both at press conferences.'); } }
+    ] }),
+
+  /* -- the capital road -- */
+  ev({ id:'v10charterStrike', w:8, only:['corporate','syndicate'],
+    title:'The Strike Against Scrip',
+    text:'Three company towns are out. Their demand is not wages: it is to be paid in money.',
+    ch:[
+      { l:'Money wages by order', s:'The charters -8 with tech, labour +10, economy -2.',
+        f:function (S) { mood(S, { tech:-8, labour:10 }); S.ind.economy = c100(S.ind.economy - 2); logIt(S, 'The towns won money wages by federal order.'); } },
+      { l:'The charter\u2019s town, the charter\u2019s rules', s:'Unrest +6, labour -8, the charters content.',
+        f:function (S) { S.unrest = clamp(S.unrest + 6, 0, 110); mood(S, { labour:-8, tech:6 }); logIt(S, 'The strike was the charter\u2019s problem, and the charter solved it its way.'); } }
+    ] }),
+  ev({ id:'v10boardCoup', w:6, only:['corporate','syndicate'], cond:function (S) { return !!S.acts.charteredSenate; },
+    title:'The Board Moves Against Your Chancellor',
+    text:'The chartered senators have let it be known that supply will be difficult while the present Chancellor holds the seals. They have a candidate. He is competent, and he is theirs.',
+    ch:[
+      { l:'Keep your Chancellor', s:'Capital -5; the charters test the point. Unity +4.',
+        f:function (S) { S.capital = clamp(S.capital - 5, -5, capCap(S)); S.unity = clamp((S.unity || 60) + 4, 5, 100); logIt(S, 'The Chancellor kept the seals, at a price paid in supply.'); } },
+      { l:'Take their man', s:'Capital +4, corruption +3, labour -6. The board notes the precedent.',
+        f:function (S) { S.capital = clamp(S.capital + 4, -5, capCap(S)); S.ind.corruption = c100(S.ind.corruption + 3); mood(S, { labour:-6, tech:8 }); logIt(S, 'The board\u2019s man took the seals and supply flowed.'); } }
+    ] }),
+  ev({ id:'v10auditScandal', w:7, only:['corporate','syndicate'],
+    title:'The Auditors Audited',
+    text:'The firm that certifies the assessment rolls has been caught certifying its own partners\u2019 holdings at a tenth of value. The register the franchise stands on is crooked, and now provably.',
+    ch:[
+      { l:'A federal recount of the rolls', s:'Corruption -4, tech -6, capital -3. The honest number costs.',
+        f:function (S) { S.ind.corruption = c100(S.ind.corruption - 4); mood(S, { tech:-6 }); S.capital = clamp(S.capital - 3, -5, capCap(S)); logIt(S, 'The rolls were recounted federally, to general fury.'); } },
+      { l:'A fine, and the same firm next year', s:'Corruption +3, the Front +4.',
+        f:function (S) { S.ind.corruption = c100(S.ind.corruption + 3); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The firm was fined a week\u2019s fees and retained.'); } }
+    ] }),
+  ev({ id:'v10townRebellion', w:6, only:['corporate','syndicate'], cond:function (S) { return (S.pol.companyTownsAct || 0) > 0; },
+    title:'A Town Votes to Exist',
+    text:'A company town has petitioned to incorporate as an ordinary municipality: its own council, its own constable, its own store. The charter calls this expropriation.',
+    ch:[
+      { l:'Let the town incorporate', s:'Labour +8, liberties +3, tech -6.',
+        f:function (S) { mood(S, { labour:8, tech:-6 }); S.ind.liberties = c100(S.ind.liberties + 3); logIt(S, 'The town incorporated, and others noticed it could be done.'); } },
+      { l:'The petition is refused', s:'Unrest +4, the strike wave stirs.',
+        f:function (S) { S.unrest = clamp(S.unrest + 4, 0, 110); S.movements.strikeWave = clamp(movStrength(S, 'strikeWave') + 5, 0, 100); logIt(S, 'The petition was refused as an interference with the charter.'); } }
+    ] }),
+  ev({ id:'v10foreignBuyout', w:6, only:['corporate','syndicate'],
+    title:'A Foreign Power Buys a Charter',
+    text:'The Somnium sovereign fund has quietly acquired a controlling interest in one of the great charters \u2014 and with it, under your own constitution, a seat at the board that advises the state.',
+    ch:[
+      { l:'Force divestment', s:'Tension +3, economy -2, the constitution means something.',
+        f:function (S) { S.ind.tension = c100(S.ind.tension + 3); S.ind.economy = c100(S.ind.economy - 2); logIt(S, 'The interest was ordered divested, over formal protest.'); } },
+      { l:'Welcome the capital', s:'Treasury +12, corruption +3, tension +1. A foreign vote on the board.',
+        f:function (S) { S.treasury += 12; S.ind.corruption = c100(S.ind.corruption + 3); S.ind.tension = c100(S.ind.tension + 1); logIt(S, 'The capital was welcomed and the board\u2019s new member seated.'); } }
+    ] }),
+  ev({ id:'v10marketPanic', w:6, only:['syndicate'],
+    title:'The State Is Margin-Called',
+    text:'The exchanges have repriced the charters and the charters ARE the state: the treasury\u2019s paper, the pension consolidations, the concession revenues, all of it moving together, downward.',
+    ch:[
+      { l:'The treasury stands behind the charters', s:'Treasury -25, the fall arrested, the precedent eternal.',
+        f:function (S) { S.treasury -= 25; S.ind.economy = c100(S.ind.economy + 2); logIt(S, 'The treasury stood behind the charters, as everyone had always assumed it would.'); } },
+      { l:'Let the weakest charter fail', s:'Economy -5, unrest +6, tech -10; the survivors are chastened.',
+        f:function (S) { S.ind.economy = c100(S.ind.economy - 5); S.unrest = clamp(S.unrest + 6, 0, 110); mood(S, { tech:-10 }); S.ind.corruption = c100(S.ind.corruption - 3); logIt(S, 'A charter was allowed to fail, and the exchange learned the word no.'); } }
+    ] }),
+  ev({ id:'v10philanthropyBid', w:5, only:['corporate','syndicate'],
+    title:'The Charter\u2019s Gift',
+    text:'The greatest of the charters offers to fund the entire school estate for a decade. The gift has one condition, in small print: the syllabus board.',
+    ch:[
+      { l:'Refuse the condition', s:'Education -1, capital -1, the syllabus stays the state\u2019s.',
+        f:function (S) { S.ind.education = c100(S.ind.education - 1); S.capital = clamp(S.capital - 1, -5, capCap(S)); logIt(S, 'The gift was declined at the small print.'); } },
+      { l:'Take the gift', s:'Education +3, treasury +8, liberties -2. The syllabus is theirs.',
+        f:function (S) { S.ind.education = c100(S.ind.education + 3); S.treasury += 8; S.ind.liberties = c100(S.ind.liberties - 2); logIt(S, 'The gift was accepted, syllabus and all.'); } }
+    ] }),
+  ev({ id:'v10smallholderSqueeze', w:6, only:['corporate','syndicate'], cond:function (S) { return (S.pol.landEnclosure || 0) > 0 || (S.pol.taxFarming || 0) > 0; },
+    title:'The Smallholders Petition',
+    text:'Ten thousand smallholders, farmers and shopkeepers have signed against the enclosures and the tax farmers. They are not radicals. They voted for you.',
+    ch:[
+      { l:'Relief for the small', s:'Smallbiz +10, tech -5, revenue -2.',
+        f:function (S) { mood(S, { smallbiz:10, tech:-5 }); S.treasury -= 2; logIt(S, 'A relief schedule for smallholders was written into the farm.'); } },
+      { l:'The register is blind', s:'Smallbiz -10, the strike wave and the Front both stir.',
+        f:function (S) { mood(S, { smallbiz:-10 }); S.movements.strikeWave = clamp(movStrength(S, 'strikeWave') + 4, 0, 100); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 3, 0, 100); logIt(S, 'The petition was noted and filed.'); } }
+    ] }),
+  ev({ id:'v10charterCourtDefiance', w:5, only:['corporate','syndicate'], cond:function (S) { return (S.pol.charterCourts || 0) > 0; },
+    title:'Their Court Voids Your Order',
+    text:'A charter court has held that an executive order of the federal government does not bind a charter within its concession. Your marshals and their constables are looking at each other across a gate.',
+    ch:[
+      { l:'Send the marshals through', s:'Capital -3, tech -8, the state is still the state.',
+        f:function (S) { S.capital = clamp(S.capital - 3, -5, capCap(S)); mood(S, { tech:-8 }); S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'The marshals went through the gate and the order was enforced.'); } },
+      { l:'Concede the concession', s:'Corruption +3, liberties -2; inside the fence, their law.',
+        f:function (S) { S.ind.corruption = c100(S.ind.corruption + 3); S.ind.liberties = c100(S.ind.liberties - 2); logIt(S, 'The concession was conceded. Maps were quietly redrawn.'); } }
+    ] }),
+  ev({ id:'v10goldenJubilee', w:4, only:['syndicate'],
+    title:'The Jubilee of the Charters',
+    text:'The board proposes a jubilee: a week of pageantry for the founding of the Chartered State, at public expense, with the register\u2019s great names in the reviewing stand.',
+    ch:[
+      { l:'Fund the jubilee', s:'Treasury -6, unrest -3, tech +6. Bread and drone displays.',
+        f:function (S) { S.treasury -= 6; S.unrest = clamp(S.unrest - 3, 0, 110); mood(S, { tech:6 }); logIt(S, 'The jubilee was splendid, and is already being invoiced.'); } },
+      { l:'A working day like any other', s:'Tech -4. The board sulks in marble.',
+        f:function (S) { mood(S, { tech:-4 }); logIt(S, 'The jubilee was declined as an economy.'); } }
+    ] }),
+
+  /* -- sham-election theatre -- */
+  ev({ id:'v10turnoutOrder', w:7, closed:true,
+    title:'Choose the Number',
+    text:'The registrar of the confirmation, an honest man in a dishonest office, asks what turnout the government would like reported. He has brought three drafts.',
+    ch:[
+      { l:'Ninety-eight percent', s:'Capital +2; the Front +3. Nobody believes it, which is the message.',
+        f:function (S) { S.capital = clamp(S.capital + 2, -5, capCap(S)); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 3, 0, 100); logIt(S, 'Ninety-eight percent, the registrar wrote, and signed.'); } },
+      { l:'The real number', s:'Unrest +3; liberties +2. The real number is sixty-one.',
+        f:function (S) { S.unrest = clamp(S.unrest + 3, 0, 110); S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'Sixty-one percent was reported, to general astonishment at the honesty.'); } }
+    ] }),
+  ev({ id:'v10foreignObservers', w:6, closed:true,
+    title:'The Observers Ask to Come',
+    text:'An international commission requests access to observe the confirmation. Refusal is a headline; admission is a risk; a guided tour is both.',
+    ch:[
+      { l:'Refuse them', s:'Tension +2. The refusal is the story for a week.',
+        f:function (S) { S.ind.tension = c100(S.ind.tension + 2); logIt(S, 'The observers were refused visas, with regret.'); } },
+      { l:'The guided tour', s:'Tension -1, corruption +2. They see the district that works.',
+        f:function (S) { S.ind.tension = c100(S.ind.tension - 1); S.ind.corruption = c100(S.ind.corruption + 2); logIt(S, 'The observers observed what had been prepared for observation.'); } }
+    ] }),
+  ev({ id:'v10spoiledBallots', w:6, closed:true,
+    title:'A District Votes Wrong Anyway',
+    text:'In one river district, a third of the ballots came back spoiled \u2014 the same word written across each in the same three inks. The word is the name of a dissolved party.',
+    ch:[
+      { l:'Publish the spoilage', s:'Unrest +3, liberties +2; the district respects the nerve.',
+        f:function (S) { S.unrest = clamp(S.unrest + 3, 0, 110); S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'The spoilage was published in the return, uncorrected.'); } },
+      { l:'Reprint the district\u2019s return', s:'Rigging +1; the Front +4. The inks were counted anyway.',
+        f:function (S) { S.rigging = (S.rigging || 0) + 1; S.rigCount = (S.rigCount || 0) + 1; S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The district\u2019s return was reprinted clean.'); } }
+    ] }),
+  ev({ id:'v10listPurge', w:6, closed:true, only:['oneparty','dpr'],
+    title:'Who Comes Off the List',
+    text:'The single list has three more names than places. The secretariat asks which three careers end this morning.',
+    ch:[
+      { l:'The three least loyal', s:'Unity +5, corruption +2. The list learns what loyalty is worth.',
+        f:function (S) { S.unity = clamp((S.unity || 60) + 5, 5, 100); S.ind.corruption = c100(S.ind.corruption + 2); logIt(S, 'Three names came off the list, and the rest drew the lesson.'); } },
+      { l:'The three least able', s:'Capital +2; economy +1. Competence, of a kind.',
+        f:function (S) { S.capital = clamp(S.capital + 2, -5, capCap(S)); S.ind.economy = c100(S.ind.economy + 1); logIt(S, 'The list was pruned for ability, a novelty that unsettled everyone.'); } }
+    ] }),
+  ev({ id:'v10confessionShow', w:5, closed:true, cond:function (S) { return securityState(S) >= 45; },
+    title:'A Trial for the Cameras',
+    text:'The bureau has prepared a televised trial: a saboteur, a confession, a schedule. The confession is word-perfect, which is the problem with it.',
+    ch:[
+      { l:'Cancel the broadcast', s:'Safety -1, liberties +2. The bureau\u2019s producers sulk.',
+        f:function (S) { S.ind.safety = c100(S.ind.safety - 1); S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'The trial proceeded untelevised, and therefore almost fairly.'); } },
+      { l:'Air it', s:'Unrest -3, the Front +5, tension +2. Abroad, clips circulate.',
+        f:function (S) { S.unrest = clamp(S.unrest - 3, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 5, 0, 100); S.ind.tension = c100(S.ind.tension + 2); logIt(S, 'The confession aired to schedule.'); } }
+    ] }),
+
+  /* -- the praetorian question -- */
+  ev({ id:'v10colonelsDemand', w:7, cond:function (S) { return S.armyLoyalty >= 45 && S.armyLoyalty <= 65 && FORMS[S.form].path === 'authority'; },
+    title:'The Colonels Petition',
+    text:'Forty junior officers have signed a respectful memorandum: pay, housing, and \u2014 in the last paragraph, carefully worded \u2014 a request that the constitution be \u201cclarified\u201d.',
+    ch:[
+      { l:'Pay and housing, silence on the rest', s:'Treasury -6, army +6. The last paragraph waits.',
+        f:function (S) { S.treasury -= 6; S.armyLoyalty = c100(S.armyLoyalty + 6); logIt(S, 'The memorandum was answered in full, except its last paragraph.'); } },
+      { l:'Break the forty', s:'Army -8, unrest +2. The next memorandum will not be signed.',
+        f:function (S) { S.armyLoyalty = c100(S.armyLoyalty - 8); S.unrest = clamp(S.unrest + 2, 0, 110); logIt(S, 'The signatories were scattered to the garrisons.'); } }
+    ] }),
+  ev({ id:'v10barracksMutiny', w:6, cond:function (S) { return S.armyLoyalty < 40 && securityState(S) >= 40; },
+    title:'A Barracks Refuses an Order',
+    text:'A garrison ordered to reinforce the bureau\u2019s marshals has locked its gates instead. The commander\u2019s message is one sentence: soldiers are not police.',
+    ch:[
+      { l:'Withdraw the order', s:'Army +6, the bureau -; safety -2. The line holds because you stepped back from it.',
+        f:function (S) { S.armyLoyalty = c100(S.armyLoyalty + 6); S.ind.safety = c100(S.ind.safety - 2); logIt(S, 'The order was withdrawn. The gates opened by evening.'); } },
+      { l:'Relieve the commander', s:'Army -6, unrest +4. The next commander opens the gates, slowly.',
+        f:function (S) { S.armyLoyalty = c100(S.armyLoyalty - 6); S.unrest = clamp(S.unrest + 4, 0, 110); logIt(S, 'The commander was relieved, to silence in every mess in the country.'); } }
+    ] }),
+  ev({ id:'v10praetorianPrice', w:6, cond:function (S) { return FORMS[S.form].path === 'authority' && S.armyLoyalty >= 60; },
+    title:'The Guard Names Its Price',
+    text:'The capital garrison\u2019s officers, who make everything you have done possible, have submitted an estimate for what their continued reliability will cost this year.',
+    ch:[
+      { l:'Pay the guard', s:'Treasury -10, army +5. The invoice will return, larger.',
+        f:function (S) { S.treasury -= 10; S.armyLoyalty = c100(S.armyLoyalty + 5); logIt(S, 'The guard\u2019s estimate was met.'); } },
+      { l:'Rotate the garrison', s:'Army -4, unrest +2; the new garrison owes you its posting.',
+        f:function (S) { S.armyLoyalty = c100(S.armyLoyalty - 4); S.unrest = clamp(S.unrest + 2, 0, 110); logIt(S, 'The garrison was rotated before the invoice fell due.'); } }
+    ] }),
+  ev({ id:'v10retiredMarshal', w:5, cond:function (S) { return !FORMS[S.form].elections || FORMS[S.form].path === 'authority'; },
+    title:'The Marshal Enters Politics',
+    text:'A retired marshal, beloved of the veterans and photographed on horseback, has begun giving speeches about \u201cthe restoration of seriousness\u201d. He mentions no names. He does not need to.',
+    ch:[
+      { l:'Bring him inside', s:'Capital +3, army +4, veterans +6; he now speaks from your platform.',
+        f:function (S) { S.capital = clamp(S.capital + 3, -5, capCap(S)); S.armyLoyalty = c100(S.armyLoyalty + 4); mood(S, { veterans:6 }); logIt(S, 'The marshal accepted a commission of honour and a car.'); } },
+      { l:'Audit his pension fund', s:'Veterans -6, army -3; the speeches stop, the letters begin.',
+        f:function (S) { mood(S, { veterans:-6 }); S.armyLoyalty = c100(S.armyLoyalty - 3); logIt(S, 'The marshal\u2019s foundation received auditors and the marshal received the message.'); } }
+    ] }),
+  ev({ id:'v10tanksExercise', w:5, cond:function (S) { return securityState(S) >= 45 && S.armyLoyalty >= 55; },
+    title:'An Exercise Near the Capital',
+    text:'The armour has scheduled a night exercise on the ring road. The staff calls it routine. The route passes the broadcasting house, the exchange, and your residence, in that order.',
+    ch:[
+      { l:'Attend the exercise personally', s:'Army +4, capital +2. Whatever it was, it is now a parade.',
+        f:function (S) { S.armyLoyalty = c100(S.armyLoyalty + 4); S.capital = clamp(S.capital + 2, -5, capCap(S)); logIt(S, 'The head of government reviewed the exercise from the lead vehicle.'); } },
+      { l:'Cancel it and move the armour', s:'Army -5. The staff notes that you noticed.',
+        f:function (S) { S.armyLoyalty = c100(S.armyLoyalty - 5); logIt(S, 'The exercise was cancelled and the armour re-garrisoned inland.'); } }
+    ] }),
+
+  /* -- the road back down -- */
+  ev({ id:'v10succession', w:8, only:['empire'], once:true,
+    title:'The Question of What Comes After',
+    text:'The Emperor will not live forever; the constitution says nothing that survives him; and three prefects have begun, discreetly, to canvass. The state that answered every question has none for this one.',
+    ch:[
+      { l:'Open the restoration door', s:'The federal constitution becomes restorable. History will call it wisdom.',
+        f:function (S) { if (S.v6) (S.v6.flags = S.v6.flags || {}).restoration = true; S.ind.liberties = c100(S.ind.liberties + 2);
+          logIt(S, 'A commission on the succession was empowered to consider every constitution, including the old one.'); } },
+      { l:'Name an heir and forbid the question', s:'Unity -4, unrest +4, the prefects keep canvassing.',
+        f:function (S) { S.unity = clamp((S.unity || 60) - 4, 5, 100); S.unrest = clamp(S.unrest + 4, 0, 110); logIt(S, 'An heir was named. The canvassing continued, more discreetly.'); } }
+    ] }),
+  ev({ id:'v10planFails', w:8, only:['dpr'], once:true,
+    title:'The Arithmetic of the Plan',
+    text:'The plan\u2019s own statisticians have concluded, in a paper marked for your eyes, that the plan\u2019s figures have been fictional for six years and the real economy is a third smaller than the Congress was told.',
+    ch:[
+      { l:'Open the restoration door', s:'The federal constitution becomes restorable. The paper becomes policy.',
+        f:function (S) { if (S.v6) (S.v6.flags = S.v6.flags || {}).restoration = true; S.ind.economy = c100(S.ind.economy - 2);
+          logIt(S, 'The paper was accepted, and with it the question it implied.'); } },
+      { l:'Shoot the messenger\u2019s career', s:'Corruption +3, economy -3; the fiction continues, compounding.',
+        f:function (S) { S.ind.corruption = c100(S.ind.corruption + 3); S.ind.economy = c100(S.ind.economy - 3); logIt(S, 'The statisticians were reassigned to the provinces and the figures improved at once.'); } }
+    ] }),
+  ev({ id:'v10charterFlight', w:8, only:['syndicate'], once:true,
+    title:'The Charters Leave',
+    text:'Two of the five great charters have re-domiciled abroad in a single week, taking their registers, their courts and their tax farms with them. The Chartered State is being asset-stripped by its own shareholders.',
+    ch:[
+      { l:'Open the restoration door', s:'The federal constitution becomes restorable. What the charters left, the citizens may have back.',
+        f:function (S) { if (S.v6) (S.v6.flags = S.v6.flags || {}).restoration = true; S.ind.economy = c100(S.ind.economy - 3);
+          logIt(S, 'With the charters gone, the question of what the state is for reopened itself.'); } },
+      { l:'Exit controls on capital', s:'Economy -4, tech -10, tension +2; the remaining charters price the risk.',
+        f:function (S) { S.ind.economy = c100(S.ind.economy - 4); mood(S, { tech:-10 }); S.ind.tension = c100(S.ind.tension + 2); logIt(S, 'The exits were barred, which told every charter what its shares were now worth.'); } }
+    ] }),
+  ev({ id:'v10amnestyDividend', w:7, once:true, cond:function (S) { return securityState(S) < 30 && (S.ssPeak || 0) >= 45; },
+    title:'The Thaw Pays Its Dividend',
+    text:'The apparatus is smaller than it has been in years, and the country has noticed: the exiles are writing home, the professions are hiring, and a man who used to inform on his neighbours has apologised to them, publicly, at the market.',
+    ch:[
+      { l:'An amnesty to seal it', s:'Liberties +5, unrest -5, the Front stands down by half.',
+        f:function (S) { S.ind.liberties = c100(S.ind.liberties + 5); S.unrest = clamp(S.unrest - 5, 0, 110);
+          S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') * .5, 0, 100); mood(S, { youth:8, prof:8 });
+          logIt(S, 'The amnesty was signed and the thaw became the weather.'); } },
+      { l:'Quiet consolidation', s:'Liberties +2. The thaw continues unannounced.',
+        f:function (S) { S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'The thaw continued without a name.'); } }
+    ] })
+];
+V10_ROAD_EVENTS.forEach(function (e) { EVENTS.push(e); });
+
+/* ---------- the two arcs of the roads ---------- */
+[
+  { id:'capitalCapture', name:'The Offer', weight:6,
+    trigger:function (st) { return FORMS[st.form].elections && (st.pol.corporateCharters || 0) >= 1 &&
+      st.blocs.tech > 60 && st.ind.corruption > 55 && st.form !== 'corporate' && st.form !== 'syndicate'; },
+    phases:[
+      { id:'offer', title:'The Offer',
+        text:'The five great charters, through a lawyer of consummate politeness, offer to fund the government\u2019s entire programme for a parliament. No conditions are stated. That is what makes it an offer.',
+        ch:[
+          { l:'Take the money', s:'Treasury +30, corruption +4. The conditions arrive later, as conditions do.',
+            f:function (S2, v) { S2.treasury += 30; S2.ind.corruption = c100(S2.ind.corruption + 4); v.taken = true; } },
+          { l:'Decline, publicly', s:'Capital -3, tech -8, and the offer is not repeated.',
+            f:function (S2, v) { S2.capital = clamp(S2.capital - 3, -5, capCap(S2)); mood(S2, { tech:-8 }); v.declined = true; } }
+        ], next:'price' },
+      { id:'price', title:'The Price', wait:2,
+        text:function (st, v) { return v.declined ?
+          'Declining the offer had a price of its own: the charters\u2019 papers have turned, their candidates are funded, and their auditors have discovered irregularities in three ministries.' :
+          'The lawyer returns, still polite. The charters\u2019 one request: the chief regulator of the exchanges, an able and troublesome person, would be happier in an ambassadorship.'; },
+        ch:[
+          { l:'Protect the regulator', when:function (st, v) { return !v.declined; }, s:'Corruption -3, tech -8. The money stops.',
+            f:function (S2, v) { S2.ind.corruption = c100(S2.ind.corruption - 3); mood(S2, { tech:-8 }); v.protected2 = true; } },
+          { l:'The ambassadorship', when:function (st, v) { return !v.declined; }, s:'Corruption +5, capital +4. The exchanges celebrate quietly.',
+            f:function (S2, v) { S2.ind.corruption = c100(S2.ind.corruption + 5); S2.capital = clamp(S2.capital + 4, -5, capCap(S2)); v.sold = true; } },
+          { l:'Weather it', when:function (st, v) { return !!v.declined; }, s:'Unity +4, capital -2. The audit season passes.',
+            f:function (S2) { S2.unity = clamp((S2.unity || 60) + 4, 5, 100); S2.capital = clamp(S2.capital - 2, -5, capCap(S2)); } }
+        ], next:'merger' },
+      { id:'merger', title:'The Merger', wait:2,
+        text:function (st, v) { return v.sold ?
+          'The charters propose the settlement they always intended: their seats in the Senate, by statute. They believe the government they have funded will oblige. They have priced obliging.' :
+          'The charters\u2019 interest has cooled, but the episode has left a draft act in a drawer \u2014 and a public that now knows the offer was made.'; },
+        ch:[
+          { l:'Open the Capital road', when:function (st, v) { return !!v.sold; }, s:'The chartered Senate becomes cheap: its act costs a third less this parliament.',
+            f:function (S2) { S2.v6.flags = S2.v6.flags || {}; S2.v6.flags.charterDiscount = S2.turn + 8;
+              logIt(S2, 'The chartered Senate act was drafted in the charters\u2019 own chambers.'); } },
+          { l:'Repudiate the whole affair', s:'Liberties +3, labour +8, tech -10; the drawer is emptied.',
+            f:function (S2) { S2.ind.liberties = c100(S2.ind.liberties + 3); mood(S2, { labour:8, tech:-10 });
+              logIt(S2, 'The draft act was read aloud in the Assembly and then burned, procedurally.'); } }
+        ] } ] },
+  { id:'praetorian', name:'The Guardians', weight:6,
+    trigger:function (st) { return st.armyLoyalty >= 70 && securityState(st) >= 40 &&
+      FORMS[st.form].path === 'authority' && !FORMS[st.form].terminal; },
+    phases:[
+      { id:'toast', title:'The Toast',
+        text:'At the staff college dinner, the commandant proposed a toast: \u201cTo the state \u2014 not the government, the state.\u201d The applause lasted a fraction too long, and every officer in the room measured it.',
+        ch:[
+          { l:'Attend next year\u2019s dinner yourself', s:'Army +3. You propose the toast.',
+            f:function (S2, v) { S2.armyLoyalty = c100(S2.armyLoyalty + 3); v.engaged = true; } },
+          { l:'Retire the commandant', s:'Army -4. The toast is not repeated. Aloud.',
+            f:function (S2, v) { S2.armyLoyalty = c100(S2.armyLoyalty - 4); v.pruned = true; } }
+        ], next:'list' },
+      { id:'list', title:'The List', wait:2,
+        text:'The bureau has assembled a list of officers whose loyalty it rates \u201cconditional\u201d. It is long. The bureau\u2019s own director is not on it, which tells you who wrote it.',
+        ch:[
+          { l:'Purge by the list', s:'Army -8, safety +2; the bureau\u2019s army now.',
+            f:function (S2, v) { S2.armyLoyalty = c100(S2.armyLoyalty - 8); S2.ind.safety = c100(S2.ind.safety + 2); v.purged = true; } },
+          { l:'Burn the list, promote two names on it', s:'Army +6; the bureau notes the insult.',
+            f:function (S2, v) { S2.armyLoyalty = c100(S2.armyLoyalty + 6); v.backed = true; } },
+          { l:'File it', s:'Nothing today. Lists keep.',
+            f:function (S2, v) { v.filed = true; } }
+        ], next:'guarantee' },
+      { id:'guarantee', title:'The Guarantee', wait:2,
+        text:'Three marshals request an audience and make, with great correctness, an offer: the services will guarantee the constitutional order \u2014 this order, your order \u2014 permanently. They do not say against whom. The guarantee is the threat.',
+        ch:[
+          { l:'Accept the guarantee', s:'Army +8, capital +5 now; the services acquire a veto they will one day use.',
+            f:function (S2) { S2.armyLoyalty = c100(S2.armyLoyalty + 8); S2.capital = clamp(S2.capital + 5, -5, capCap(S2));
+              S2.v6.flags = S2.v6.flags || {}; S2.v6.flags.praetorianGuarantee = true;
+              logIt(S2, 'The guarantee was accepted. The marshals withdrew, satisfied, for now.'); } },
+          { l:'Refuse it and thank them', s:'Army -6, unrest -4; the constitution remains yours to lose. The Pact is survived.',
+            f:function (S2) { S2.armyLoyalty = c100(S2.armyLoyalty - 6); S2.unrest = clamp(S2.unrest - 4, 0, 110);
+              S2.v6.flags = S2.v6.flags || {}; S2.v6.flags.praetorianPact = true;
+              logIt(S2, 'The offer was declined with honours. The marshals filed out in step.'); } }
+        ] } ] }
+].forEach(function (a) { if (!V6_ARC[a.id]) { V6_ARCS.push(a); V6_ARC[a.id] = a; } });
+
+/* the charter discount the Offer arc grants */
+var v10ActCostBase = actCost;
+actCost = function (a) {
+  var c = v10ActCostBase(a);
+  if (a.id === 'charteredSenate' && S.v6 && S.v6.flags && S.v6.flags.charterDiscount && S.turn <= S.v6.flags.charterDiscount) {
+    c = Math.round(c * .67);
+  }
+  return c;
 };
 
 /* ---------- boot ---------- */

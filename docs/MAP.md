@@ -374,6 +374,46 @@ the owner's "integrate, don't bolt on".
   orders and at assent, terminal refusal + restoration + surcharge, and seat
   conservation under the reapportioning acts.
 
+## The roads (S9e)
+
+The content the descent engine carries, ALL of it added through the proven
+push idioms from the v10 chunk — nothing redefines an existing entry.
+
+- **`FORMS.syndicate`** "The Chartered State": the oligarchic terminal that
+  corporate was missing (its only exit used to be back to federal). Elections
+  stay ON — the weighted register is the sham. Full row: CLOSED.syndicate,
+  RITUAL.syndicate, `toSyndicate` from corporate (charteredSenate +
+  wealthFranchise + tech 65 + treasury 200 + securityState 30), its own ending
+  line in finish(), restoration-only exit.
+- **The first POLICIES push in the file's history** (34 new): The Charter book
+  (20, `forms:['corporate','syndicate']`, cat 'The Charter' — CATS.push), the
+  open-book descent enablers (6, needs-laddered: fusionCentres, facialRegister,
+  predictivePolicing, protestDatabase, secretDockets (req: courts stripped or
+  elections off, with reqText), passportControl), oneparty/dpr deepening (4),
+  emergency exclusives (4). Programme pushes MUST follow policy pushes (9985
+  drops unknown item ids). Plus 8 `needs:` ladders added to the existing
+  Authority/Security book (internment←politicalPolice etc.).
+- **33 road events** (V10_ROAD_EVENTS → EVENTS.push): repression spiral ×8
+  (incl. `v10crackdownRadicals` — the crackdown radicalises them), capital
+  road ×10, sham-election theatre ×5, praetorian ×5, road-back ×4
+  (`v10succession`/`v10planFails`/`v10charterFlight` open the restoration;
+  `v10amnestyDividend` pays the thaw). tools/roads.js constructs every one
+  against the REAL `eventOpen`.
+- **Two arcs**: `capitalCapture` "The Offer" (the charters fund the programme →
+  the regulator's price → the merger or the repudiation; grants a time-boxed
+  charteredSenate discount via a v10 `actCost` wrapper) and `praetorian` "The
+  Guardians" (the toast → the list → the guarantee; refusing sets
+  `praetorianPact`, accepting sets `praetorianGuarantee`).
+- **Opening goals for the four scenarios that had none** (V8_GOALS parity
+  11/11): patriotMajority, corporateRepublic, imperialFederation, twoVales —
+  three each, v6Scale-aware where scaled, existing 6-capital/3-unity reward.
+- **Six records**: chartered, apparatus (ss 65), restorer, ballotTheatre
+  (rigCount, scaled 5 floor 2), praetorianPact, openRepublic. These six are
+  the ONLY sanctioned change to the epic pacing id set.
+- **Three acts of repair**: liftSiege (the siege un-latches), openArchives
+  (the truth commission: ss<20 after ssPeak≥45), charterRevocation. All in
+  existing houses, so pathPanels renders them with no array change.
+
 ## The record (S8c)
 
 Thresholds are authored against the **epic** span and scaled down for shorter

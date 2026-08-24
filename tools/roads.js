@@ -254,6 +254,123 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(seats.reserved >= seats.want, 'the charters keep their seats',
     `${seats.reserved} Senate seats for the business party against a floor of ${seats.want}`);
 
+  // ---- S9e: the content, proven reachable ----
+  const p3 = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await p3.addInitScript(() => { window.confirm = () => true; });
+  await p3.goto(URL);
+  await p3.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+  await p3.click('[data-setup-begin]');
+  await p3.waitForSelector('[data-doctrine]', { timeout: 10000 });
+  await p3.click('[data-doctrine]');
+  await p3.waitForTimeout(400);
+
+  // Road 2: corporate -> syndicate through the real gates, then the flight home
+  const road2 = await p3.evaluate(() => {
+    const T = {}; TRANSITIONS.forEach(t => { T[t.id] = t; });
+    S.ruling = playParty(S); S.coalition = [S.ruling]; S.capital = 99;
+    S.form = 'corporate';
+    const before = T.toSyndicate.ok(S);
+    S.acts.charteredSenate = true; S.acts.wealthFranchise = true;
+    S.blocs.tech = 70; S.treasury = 250;
+    const authPols = POLICIES.filter(p => (p.cat === 'Authority' || p.cat === 'Security') && polAuth(p) > 0);
+    for (const p of authPols) { S.pol[p.id] = p.max; if (securityState(S) >= 30) break; }
+    const after = T.toSyndicate.ok(S);
+    doTransition(T.toSyndicate);
+    if (typeof hideSheet === 'function') hideSheet();
+    const landed = S.form === 'syndicate';
+    const closedBook = !policyOpen(S, POL.unionRights);
+    const charterOpen = policyOpen(S, POL.charterCourts);
+    const flight = EVENTS.filter(e => e.id === 'v10charterFlight')[0];
+    const flightOpen = eventOpen(S, flight);
+    flight.ch[0].f(S);
+    S.capital = 99;
+    const okBack = T.toFederal.ok(S);
+    doTransition(T.toFederal);
+    if (typeof hideSheet === 'function') hideSheet();
+    const home = S.form === 'federal';
+    const charterShut = !policyOpen(S, POL.charterCourts);
+    return { before, after, landed, closedBook, charterOpen, flightOpen, okBack, home, charterShut,
+      ritual: !!RITUAL.syndicate, closed: !!CLOSED.syndicate };
+  });
+  say(!road2.before && road2.after && road2.landed, 'road 2: the Chartered State',
+    `toSyndicate false before (${!road2.before}), true after charters+franchise+tech+treasury+apparatus (${road2.after}), landed: ${road2.landed}`);
+  say(road2.closedBook && road2.charterOpen, 'the syndicate statute book',
+    `unionRights closed: ${road2.closedBook}; the Charter book open: ${road2.charterOpen}`);
+  say(road2.flightOpen && road2.okBack && road2.home && road2.charterShut, 'road 2 comes home',
+    `charterFlight reachable: ${road2.flightOpen}; restoration opened: ${road2.okBack}; landed federal: ${road2.home}; Charter book purged shut: ${road2.charterShut}`);
+
+  // every new event constructible against the REAL predicate
+  const evTable = await p3.evaluate(() => {
+    const misses = [];
+    const mk = {
+      v10crackdownRadicals: S => { S.form = 'oneparty'; POLICIES.filter(p => p.cat === 'Authority' && polAuth(p) > 0).forEach(p => { S.pol[p.id] = p.max; }); S.suppressed = { democracyFront: Math.max(1, S.turn - 1) }; },
+      v10disappearance: S => {}, v10quotaArrests: S => {}, v10torturePhotos: S => {},
+      v10informantFile: S => { S.pol.informantNetwork = 1; },
+      v10securityBudget: S => {}, v10defectorAbroad: S => {},
+      v10watchlistLeak: S => { S.form = 'federal'; },
+      v10charterStrike: S => { S.form = 'corporate'; },
+      v10boardCoup: S => { S.acts.charteredSenate = true; },
+      v10auditScandal: S => {},
+      v10townRebellion: S => { S.pol.companyTownsAct = 1; },
+      v10foreignBuyout: S => {}, v10philanthropyBid: S => {},
+      v10marketPanic: S => { S.form = 'syndicate'; },
+      v10smallholderSqueeze: S => { S.pol.landEnclosure = 1; S.form = 'corporate'; },
+      v10charterCourtDefiance: S => { S.pol.charterCourts = 1; },
+      v10goldenJubilee: S => { S.form = 'syndicate'; },
+      v10turnoutOrder: S => { S.form = 'emergency'; }, v10foreignObservers: S => {}, v10spoiledBallots: S => {},
+      v10listPurge: S => { S.form = 'oneparty'; }, v10confessionShow: S => {},
+      v10colonelsDemand: S => { S.form = 'executive'; S.armyLoyalty = 55; },
+      v10barracksMutiny: S => { S.armyLoyalty = 35; },
+      v10praetorianPrice: S => { S.armyLoyalty = 65; },
+      v10retiredMarshal: S => {},
+      v10tanksExercise: S => { S.armyLoyalty = 60; },
+      v10succession: S => { S.form = 'empire'; },
+      v10planFails: S => { S.form = 'dpr'; },
+      v10charterFlight: S => { S.form = 'syndicate'; },
+      v10amnestyDividend: S => { S.form = 'federal'; S.ssPeak = 50; POLICIES.forEach(p => { if (p.cat === 'Authority' || p.cat === 'Security') S.pol[p.id] = 0; }); },
+      v10reckoning: S => { S.form = 'federal'; S.rigging = 1; },
+    };
+    for (const id in mk) {
+      const e = EVENTS.filter(x => x.id === id)[0];
+      if (!e) { misses.push(id + ': not in EVENTS'); continue; }
+      S.seen[id] = false; delete S.seen[id];
+      mk[id](S);
+      if (!eventOpen(S, e)) misses.push(id);
+    }
+    return { count: Object.keys(mk).length, misses };
+  });
+  say(evTable.misses.length === 0, 'every road event constructible',
+    `${evTable.count - evTable.misses.length} of ${evTable.count} pass the real eventOpen` + (evTable.misses.length ? '; failed: ' + evTable.misses.join(', ') : ''));
+
+  // both arcs trigger under constructed conditions; goals and records never throw
+  const rest = await p3.evaluate(() => {
+    const out = { arcs: [], throws: [] };
+    S.form = 'federal'; S.pol.corporateCharters = 1; S.blocs.tech = 65; S.ind.corruption = 60;
+    out.arcs.push({ id: 'capitalCapture', fires: V6_ARC.capitalCapture.trigger(S) });
+    S.armyLoyalty = 75; S.form = 'executive';
+    POLICIES.filter(p => p.cat === 'Authority' && polAuth(p) > 0).forEach(p => { S.pol[p.id] = p.max; });
+    out.arcs.push({ id: 'praetorian', fires: V6_ARC.praetorian.trigger(S) });
+    for (const y of [2074, 2124, 2224]) {
+      S.endYear = y;
+      V6_ACHIEVEMENTS.forEach(a => { try { a.test(S); } catch (e) { out.throws.push(y + ' ' + a.id + ': ' + e.message); }
+        const t = v6Note(a, S); if (/\{[nNd]\}/.test(t)) out.throws.push(y + ' ' + a.id + ' leaked'); });
+      Object.keys(V8_GOALS).forEach(k => V8_GOALS[k].forEach(g => {
+        try { g.test(S); } catch (e) { out.throws.push(y + ' ' + g.id + ' test: ' + e.message); }
+        try { if (g.prog) g.prog(S); } catch (e) { out.throws.push(y + ' ' + g.id + ' prog: ' + e.message); }
+        const t = v6Note(g, S); if (/\{[nNd]\}/.test(t)) out.throws.push(y + ' ' + g.id + ' leaked'); }));
+    }
+    out.goalSets = Object.keys(V8_GOALS).length;
+    out.programmes = ['theApparatus', 'theCharter', 'theThaw'].filter(id => !!V6_PROGRAMME[id]).length;
+    out.acts = ['liftSiege', 'openArchives', 'charterRevocation'].filter(id => ACTS.some(a => a.id === id)).length;
+    out.records = ['chartered', 'apparatus', 'restorer', 'ballotTheatre', 'praetorianPact', 'openRepublic'].filter(id => !!V6_ACHIEVEMENT[id]).length;
+    return out;
+  });
+  say(rest.arcs.every(a => a.fires), 'both arcs trigger', rest.arcs.map(a => a.id + ':' + a.fires).join(' '));
+  say(rest.throws.length === 0, 'no test throws, no note leaks',
+    rest.throws.length ? rest.throws.slice(0, 3).join('; ') : 'all records + all goal sets at three lengths');
+  say(rest.goalSets === 11 && rest.programmes === 3 && rest.acts === 3 && rest.records === 6, 'the registries carry the content',
+    `goal sets ${rest.goalSets}/11, programmes ${rest.programmes}/3, acts ${rest.acts}/3, records ${rest.records}/6`);
+
   await browser.close();
   console.log(fail ? '\n' + fail + ' CHECK(S) FAILED' : '\nROADS OK');
   process.exit(fail ? 1 : 0);
