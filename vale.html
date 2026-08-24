@@ -6751,6 +6751,19 @@ function callElection() {
 /* ============================================================
    TURN RESOLUTION
    ============================================================ */
+function v6BankSession(st) {
+  /* The dying session's results are banked BEFORE any gameOver runs: both
+     gameOver wrappers read S.v6.achievements synchronously and v8HallRecord
+     persists the count, so a tick afterwards would show — and permanently
+     store — a stale record. Called from the natural close in endTurn and from
+     every collapse ending in checkCollapse; the Gazette is suppressed for
+     this one call so v6Later cannot race the end card. */
+  var rep0 = st.uiPrefs.report;
+  st.uiPrefs.report = false;
+  try { if (typeof v6AfterTurn === 'function') v6AfterTurn(st, null); }
+  finally { st.uiPrefs.report = rep0; }
+}
+
 function endTurn() {
   if (S.over || UI.busy) return;
   UI.undo = null;
@@ -6785,19 +6798,7 @@ function endTurn() {
       if (electionResult.changed || electionResult.exec || Math.abs(electionResult.swing) >= 45) showElection(electionResult);
       else quietElection(electionResult);
     } else if (S.turn > lastTurn()) {
-      /* The last session's results are banked BEFORE finish(). Both gameOver
-         wrappers read S.v6.achievements synchronously and v8HallRecord writes
-         the count into localStorage, so a tick afterwards would show — and
-         permanently store — a stale record. Until this was fixed the `return`
-         below skipped v6AfterTurn entirely and nothing earned on the closing
-         session was ever banked, at any length.
-         The Gazette is suppressed for this one call so v6Later cannot race the
-         end card with it; the report is still built and still waits in the
-         menu, and the player's own preference is put back either way. */
-      var rep0 = S.uiPrefs.report;
-      S.uiPrefs.report = false;
-      try { if (typeof v6AfterTurn === 'function') v6AfterTurn(S, null); }
-      finally { S.uiPrefs.report = rep0; }
+      v6BankSession(S);
       finish();
       return;
     }
@@ -6928,9 +6929,10 @@ function checkCollapse() {
   if (D().noCollapse) { S.revolutionCount = 0; return false; }
   if (S.unrest >= 95) {
     S.revolutionCount++;
-    if (S.revolutionCount >= 2) { gameOver('The Government Falls', 'Six weeks of general strike, four state governments in open refusal, and a capital that no federal agency can secure. The coalition dissolved this morning. Whatever governs Vale next, it will not be you.'); return true; }
+    if (S.revolutionCount >= 2) { v6BankSession(S); gameOver('The Government Falls', 'Six weeks of general strike, four state governments in open refusal, and a capital that no federal agency can secure. The coalition dissolved this morning. Whatever governs Vale next, it will not be you.'); return true; }
   } else { S.revolutionCount = 0; }
   if (S.armyLoyalty < 22 && S.unrest > 50) {
+    v6BankSession(S);
     gameOver('The Services Refuse', 'The joint chiefs went to the court rather than to you. Within a day the theatre commands had acknowledged the ruling and not the order. A government that cannot be obeyed is not a government.');
     return true;
   }
@@ -6949,8 +6951,8 @@ function finish() {
     (S.legacy.promisesKept * 3 - S.legacy.promisesBroken * 4 + S.legacy.playerLaws * .35) / v6Span(S));
   var path = FORMS[S.form].path;
   var pathNote = '';
-  if (S.form === 'empire') pathNote = 'Vale ends the two centuries an Empire, with an Emperor by descent, prefects over the fifty states and a Senate that exists to be addressed. ';
-  else if (S.form === 'dpr') pathNote = "Vale ends the two centuries a People's Republic, with the plan, the party and a Congress that has never once divided. ";
+  if (S.form === 'empire') pathNote = 'Vale ends the period an Empire, with an Emperor by descent, prefects over the fifty states and a Senate that exists to be addressed. ';
+  else if (S.form === 'dpr') pathNote = "Vale ends the period a People's Republic, with the plan, the party and a Congress that has never once divided. ";
   else if (path === 'authority') pathNote = 'Vale ends the period without a free federal ballot, and the men who run it were all appointed by you. ';
   else if (path === 'capital') pathNote = 'Vale ends the period governed from a boardroom, with the franchise weighted by assessment and the Senate seating companies. ';
   else if (path === 'imperial') pathNote = 'Vale ends the period a federation of territories, with the flag over four continents and the bill still coming in. ';
@@ -11425,7 +11427,7 @@ function v6HistoryChart() {
 }
 function viewRecord() {
   var v = S.v6, st = S.v6.stats, unlocked = Object.keys(v.achievements).length;
-  var ach = V6_ACHIEVEMENTS.map(function (a) { var on = v.achievements[a.id] !== undefined; return '<div class="ach ' + (on ? 'on' : '') + '"><div class="medal">' + (on ? '&#10003;' : '&middot;') + '</div><div><b>' + esc(a.name) + '</b><small>' + esc(v6Note(a, S)) + (on ? ' ' + yearOf(v.achievements[a.id]) + '.' : '') + '</small></div></div>'; }).join('');
+  var ach = V6_ACHIEVEMENTS.map(function (a) { var on = v.achievements[a.id] !== undefined; return '<div class="ach ' + (on ? 'on' : '') + '"><div class="medal">' + (on ? '&#10003;' : '&middot;') + '</div><div><b>' + esc(a.name) + '</b><small>' + esc(v6Note(a, S)) + (on ? ' ' + yearOf(Math.min(v.achievements[a.id], lastTurn())) + '.' : '') + '</small></div></div>'; }).join('');
   var arcs = Object.keys(v.arcs.done).sort(function (a, b) { return v.arcs.done[a] - v.arcs.done[b]; }).map(function (id) { return V6_ARC[id] ? '<tr><td>' + yearOf(v.arcs.done[id]) + '</td><td>' + esc(V6_ARC[id].name) + '</td><td>Resolved</td></tr>' : ''; }).join('');
   if (v.arcs.active && V6_ARC[v.arcs.active.id]) arcs += '<tr><td>' + yearOf(v.arcs.active.started) + '</td><td>' + esc(V6_ARC[v.arcs.active.id].name) + '</td><td>In progress</td></tr>';
   var refs = v.referendums.map(function (r) { return '<tr><td>' + r.year + '</td><td>' + esc(POL[r.policy] ? POL[r.policy].name : r.policy) + '</td><td class="num">' + Math.round(r.yes) + '%</td><td>' + (r.won ? 'Carried' : 'Rejected') + '</td></tr>'; }).join('');
@@ -12749,6 +12751,9 @@ nav.tabs.grouped .pages .nbadge{min-width:15px;height:15px;font-size:9px;margin-
 }
 @media(min-width:761px){.swipe-hint{display:none}}
 body.ironman #btnUndo{display:none}
+.goal-row{grid-template-columns:auto minmax(0,1fr)}
+.goal-mark{min-width:34px;text-align:right;font-family:var(--font-n);font-size:11px;color:var(--slate);font-variant-numeric:tabular-nums}
+.goal-row.done .goal-mark{color:var(--ok)}
 </style>
 <script>
 'use strict';
@@ -13453,7 +13458,7 @@ var V8_GOALS = {
   redDawn:[
     { id:'rd_programme', name:'The programme delivered', note:'The wealth tax and union rights both at their highest level.', test:function (st) { return v8PolMax(st, 'wealthTax') >= 1 && v8PolMax(st, 'unionRights') >= 1; }, prog:function (st) { return (v8PolMax(st, 'wealthTax') + v8PolMax(st, 'unionRights')) * 50; } },
     { id:'rd_exchanges', name:'Peace with the exchanges', note:'Technology and finance back above 40.', test:function (st) { return st.blocs.tech >= 40; }, prog:function (st) { return st.blocs.tech / 40 * 100; } },
-    { id:'rd_decade', name:'A decade of the Front', note:'{N} years in government.', req:function (st) { return v6Scale(st, 12); }, test:function (st) { return st.legacy.yearsInGovernment >= v6Scale(st, 12); }, prog:function (st) { return st.legacy.yearsInGovernment / v6Scale(st, 12) * 100; } }
+    { id:'rd_decade', name:'Years of the Front', note:'{N} years in government.', req:function (st) { return v6Scale(st, 12); }, test:function (st) { return st.legacy.yearsInGovernment >= v6Scale(st, 12); }, prog:function (st) { return st.legacy.yearsInGovernment / v6Scale(st, 12) * 100; } }
   ],
   longDepression:[
     { id:'ld_growth', name:'Recovery', note:'Growth at two and a half percent.', test:function (st) { return st.macro.growth >= 2.5; }, prog:function (st) { return clamp((st.macro.growth + 3) / 5.5 * 100, 0, 100); } },
@@ -13482,7 +13487,7 @@ pv5Objectives = function (st) {
   v8ScenarioGoals(st).forEach(function (g) {
     var done = !!st.v8.goals[g.id], value = 0;
     if (!done) { try { value = clamp(g.prog(st), 0, 100); } catch (e) { value = 0; } } else value = 100;
-    out.push({ name:'Opening: ' + g.name, detail:v6Note(g, st) + (done ? ' Met in ' + yearOf(st.v8.goals[g.id]) + '.' : ''), value:Math.round(value), target:100, done:done, risk:false, jump:'record' });
+    out.push({ name:'Opening: ' + g.name, detail:v6Note(g, st) + (done ? ' Met in ' + yearOf(Math.min(st.v8.goals[g.id], lastTurn())) + '.' : ''), value:Math.round(value), target:100, done:done, risk:false, jump:'record' });
   });
   return out;
 };
@@ -13500,13 +13505,32 @@ function v8GoalsPanel() {
   var rows = v8ScenarioGoals(S).map(function (g) {
     var done = !!v.goals[g.id], val = 100;
     if (!done) { try { val = clamp(g.prog(S), 0, 100); } catch (e) { val = 0; } }
-    return '<div class="goal-row ' + (done ? 'done' : '') + '"><div class="goal-mark">' + (done ? '\u2713' : Math.round(val) + '%') + '</div><div><b>' + esc(g.name) + '</b><small>' + esc(g.note) + (done ? ' Met ' + yearOf(v.goals[g.id]) + '.' : '') + '</small><div class="meter ' + (done ? 'good' : '') + '"><i style="width:' + Math.round(val) + '%"></i></div></div></div>';
+    return '<div class="goal-row ' + (done ? 'done' : '') + '"><div class="goal-mark">' + (done ? '\u2713' : Math.round(val) + '%') + '</div><div><b>' + esc(g.name) + '</b><small>' + esc(v6Note(g, S)) + (done ? ' Met ' + yearOf(Math.min(v.goals[g.id], lastTurn())) + '.' : '') + '</small><div class="meter ' + (done ? 'good' : '') + '"><i style="width:' + Math.round(val) + '%"></i></div></div></div>';
   }).join('');
   return '<div class="panel"><h2>The Opening</h2><p class="note">Three goals set by ' + esc(sc ? sc.name.toLowerCase() : 'the opening') + '. Each pays six capital and three unity when it is met, and all three together earn a record.</p>' + rows + '</div>';
 }
 
-function v8HallRead() { try { var raw = localStorage.getItem('parliamentVale.hall'); var l = raw ? JSON.parse(raw) : []; return Array.isArray(l) ? l : []; } catch (e) { return []; } }
-function v8HallWrite(list) { try { localStorage.setItem('parliamentVale.hall', JSON.stringify(list.slice(0, 40))); } catch (e) {} }
+function v8HallRead() {
+  /* The hall is the one blob a player cannot re-earn, so it gets the same
+     loudness contract the autosave got in S1: a stored value that cannot be
+     read is REPORTED and LEFT UNTOUCHED, never silently replaced by [].
+     UI.hallReadError marks this read; v8HallWrite refuses while it stands. */
+  UI.hallReadError = false;
+  var raw = null;
+  try { raw = localStorage.getItem('parliamentVale.hall'); } catch (e) { UI.hallReadError = true; return []; }
+  if (raw === null) return [];
+  try { var l = JSON.parse(raw); if (Array.isArray(l)) return l; } catch (e) {}
+  UI.hallReadError = true;
+  return [];
+}
+function v8HallWrite(list, force) {
+  if (UI.hallReadError && !force) {
+    toast('The stored hall of fame could not be read, so it was not overwritten. This campaign\u2019s entry was not recorded.');
+    return;
+  }
+  try { localStorage.setItem('parliamentVale.hall', JSON.stringify(list.slice(0, 40))); }
+  catch (e) { toast('The hall of fame could not be written. Storage is full or blocked.'); }
+}
 function v8HallRecord(st, title, score) {
   if (!st.v8 || st.v8.flags.recorded) return;
   st.v8.flags.recorded = true;
@@ -13521,13 +13545,14 @@ var v8GameOverBase = gameOver;
 gameOver = function (title, text, score) { try { v8HallRecord(S, title, score); } catch (e) {} v8Vibrate([30, 40, 30]); v8GameOverBase(title, text, score); };
 function v8HallHtml(limit) {
   var list = v8HallRead().slice();
-  if (!list.length) return '<div class="hall-empty">No government has yet reached the end of its period on this device.</div>';
+  var warn = UI.hallReadError ? '<p class="note" data-hall-warning="1" style="color:var(--bad)">The stored hall of fame could not be read. It has been left untouched; new campaigns are not being recorded over it.</p>' : '';
+  if (!list.length) return warn + '<div class="hall-empty">No government has yet reached the end of its period on this device.</div>';
   list.sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
   var rows = list.slice(0, limit || 12).map(function (e, i) {
     var p = PARTY[e.party];
     return '<tr><td class="rank">' + (i + 1) + '</td><td><span class="dot" style="background:' + (p ? p.color : '#888') + '"></span> ' + esc(p ? p.short : String(e.party)) + '</td><td>' + esc(e.scenario || '') + '</td><td>' + esc(e.epithet || e.title || '') + '</td><td class="num">' + esc(String(e.year || '')) + '</td><td class="num">' + (e.score === null || e.score === undefined ? '\u2014' : e.score) + '</td></tr>';
   }).join('');
-  return '<table class="hall"><thead><tr><th></th><th>Party</th><th>Opening</th><th>Verdict</th><th class="num">Ended</th><th class="num">Score</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  return warn + '<table class="hall"><thead><tr><th></th><th>Party</th><th>Opening</th><th>Verdict</th><th class="num">Ended</th><th class="num">Score</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }
 function v8HallMini(list) {
   var top = list.slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, 3);
@@ -13536,7 +13561,7 @@ function v8HallMini(list) {
 function v8HallSheet() {
   showSheet('<div class="sheet-head"><h2>The Hall of Fame</h2><span class="muted">Every government that reached the end of its period on this device</span></div>' + v8HallHtml(20) +
     '<div class="btnrow"><button class="btn ghost" data-v8hall="clear">Clear the hall</button><button class="btn" data-close>Close</button></div>', function (sh) {
-      var b = sh.querySelector('[data-v8hall="clear"]'); if (b) b.addEventListener('click', function () { if (confirm('Clear every record in the hall of fame?')) { v8HallWrite([]); hideSheet(); toast('The hall is empty.'); } });
+      var b = sh.querySelector('[data-v8hall="clear"]'); if (b) b.addEventListener('click', function () { if (confirm('Clear every record in the hall of fame?')) { v8HallWrite([], true); UI.hallReadError = false; hideSheet(); toast('The hall is empty.'); } });
     });
 }
 
