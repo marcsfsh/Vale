@@ -50,6 +50,11 @@ try { playwright = require('playwright'); } catch (e) {
   }
 }
 
+/* The full build of every statute as it stood before S9h authored the curves.
+   Frozen on disk rather than derived, because after the authoring the file no
+   longer contains the per-step values it was derived from. */
+const FULLBUILD = require('./fullbuild-baseline.json');
+
 let fail = 0;
 const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(34) + detail); };
 
@@ -153,6 +158,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(short.length === 0, 'twenty-four to a category',
     short.length ? short.join(', ') : `all ${CORE.length} core categories hold exactly 24 · form books: ` +
       extra.sort().map(c => c + ' ' + ladderParity.cats[c]).join(', '));
+  /* S9h: authoring a curve changes the SHAPE of a ladder. It must not change
+     the balance at the top of it, nor move a statute on the political map. */
+  const preserved = await page.evaluate(frozen => {
+    const bad = [], missing = [];
+    const near = (a, b, tol) => Math.abs((a || 0) - (b || 0)) <= Math.max(tol * Math.abs(b || 0), 0.06);
+    for (const id in frozen) {
+      if (id[0] === '_') continue;
+      const p = POL[id];
+      if (!p) { missing.push(id); continue; }
+      const f = frozen[id];
+      for (const k in (f.eff || {})) if (!near(p._effAt[4][k], f.eff[k], .1)) bad.push(id + '.eff.' + k + ' ' + (p._effAt[4][k] || 0) + ' vs ' + f.eff[k]);
+      for (const k in (f.mood || {})) if (!near(p._moodAt[4][k], f.mood[k], .1)) bad.push(id + '.mood.' + k + ' ' + (p._moodAt[4][k] || 0) + ' vs ' + f.mood[k]);
+      if (f.rev !== undefined && !near(p._revAt[4], f.rev, .1)) bad.push(id + '.rev ' + p._revAt[4] + ' vs ' + f.rev);
+      if (f.exp !== undefined && !near(p._expAt[4], f.exp, .1)) bad.push(id + '.exp ' + p._expAt[4] + ' vs ' + f.exp);
+      if (!near(p.auth, f.auth, .001)) bad.push(id + '.auth ' + p.auth + ' vs ' + f.auth);
+    }
+    return { bad, missing, n: Object.keys(frozen).length - 1 };
+  }, FULLBUILD);
+  say(preserved.bad.length === 0 && preserved.missing.length === 0, 'the top of the ladder is unmoved',
+    preserved.missing.length ? preserved.missing.length + ' statute(s) vanished from the book: ' + preserved.missing.slice(0, 4).join(', ')
+      : (preserved.bad.length ? preserved.bad.length + ' drifted: ' + preserved.bad.slice(0, 5).join('; ')
+        : `all ${preserved.n} statutes that predate S9h still reach the same full build, and none moved on the map`));
+
   say(ladderParity.flat.length === 0, 'no rung repeats the one below',
     ladderParity.authored === 0 ? 'no authored curves yet' :
       (ladderParity.flat.length ? ladderParity.flat.length + ' flat pair(s): ' + ladderParity.flat.slice(0, 5).join(', ')
