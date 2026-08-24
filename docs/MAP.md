@@ -158,6 +158,29 @@ banked, at any length. The Gazette is suppressed for that one call
 Undo: `captureUndo` (v8 ~12405, stack max 8, ironman disables) at the start of
 player actions; cleared every turn.
 
+## Navigation (S9c, "the Atlas")
+
+Fifteen tab ids, frozen forever (fold keys `{tabId}|{h2}` ride the save; 55
+`jump:`/`data-jump`/`data-v8jump` literals; `v8Badges` keys). Grouping lives in
+ONE array — v7's `V7_GROUPS` — six groups with g-prefixed ids so a group id can
+never collide with a tab id again (the old `government` group contained the
+`government` tab, and the old `parliament` group id silently broke
+tools/chamber.js): gDesk[chamber,record], gLaw[policy,houses,ledger],
+gGov[exec,government], gConst[state,judicial],
+gPolitics[parties,interests,campaign], gCountry[nation,federation,world]. Tab
+`government` is LABELLED "Ministry" (id unchanged). Group buttons carry
+`data-group` ONLY; page buttons carry `data-tab`; the v4 click delegate handles
+both. Keyboard: `v7KeyNav` — digits 1-6 pick a group, pressing again cycles its
+pages; the map, the field guide's key table and the council menu all derive
+from `V7_GROUPS`, so a grouping change updates them for free. `V6_KEYMAP` is
+gone. Panel canon (S9c): logPanel renders on chamber+record only, the full
+inbox on parties (chamber keeps a 3-item preview), the manifesto on
+chamber+campaign, movements+Society deck on nation, the Chronicle on record,
+the States deck on federation, the Ministry deck on the Ministry page.
+Relocating a panel means adding its old`{tab}|{h2}` key to `V7_FOLD_REMAP` —
+saved fold prefs follow their panels. tools/tabs.js asserts the strip;
+playtest's nav-tree/nav-reach/nav-keys assert the invariants.
+
 ## Scroll ownership (S9b)
 
 The window is the scroll container at every tier — `#view` has no CSS rule of

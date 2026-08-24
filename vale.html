@@ -370,7 +370,7 @@ textarea{width:100%;height:150px;background:rgba(0,0,0,.4);color:var(--ivory);bo
     <div class="stats" id="stats"></div>
   </header>
 
-  <nav class="tabs" id="tabs" aria-label="Government sections"></nav>
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
   <main id="view"></main>
 </div>
 
@@ -380,7 +380,7 @@ textarea{width:100%;height:150px;background:rgba(0,0,0,.4);color:var(--ivory);bo
     <div class="session-meta" id="sessionMeta"></div>
     <div class="hint" id="turnHint" aria-live="polite"></div>
     <div class="sp"></div>
-    <button class="btn ghost" id="btnBrief" title="Return to the overview (1)">Briefing</button>
+    <button class="btn ghost" id="btnBrief" title="Return to the desk (1)">Briefing</button>
     <button class="btn ghost" id="btnMenu" title="Council menu (Ctrl K)">Menu</button>
     <button class="btn ghost" id="btnHelp" title="Open the field guide">Guide</button>
     <button class="btn ghost" id="btnUndo" disabled title="Undo the last decision in this session">Undo</button>
@@ -7432,10 +7432,10 @@ function viewChamber() {
     'You cannot move a measure. What you can do is build the machine, wreck theirs, work the movements, force a confidence vote when their standing collapses, ' +
     'or cross the floor and take the leadership of whoever is winning.</p>' +
     '<div class="cards">' + actionsIn('Agenda').map(actionCard).join('') + '</div></div>';
-  var quick = oppNote + ['Ministry', 'States', 'Society'].map(function (c) {
-    return '<div class="panel"><h2>' + esc(c === 'Ministry' ? 'The Ministry' : (c === 'States' ? 'The States' : 'The Country')) +
-      '</h2><div class="cards">' + actionsIn(c).map(actionCard).join('') + '</div></div>';
-  }).join('');
+  /* S9c: the Ministry deck lives on the Ministry page, the States deck on
+     Federation (it rendered identically in both places), the Society deck on
+     Nation beside the movements it works. The Overview keeps the brief. */
+  var quick = oppNote;
 
   return briefingDeck() + '<div class="grid"><div>' + politicalInboxPanel(3) + activeBillsMiniPanel() + top + sen + gov + quick +
     '</div><div>' + strategicRisksPanel() + manifestoPanel() + logPanel() + '</div></div>';
@@ -7550,7 +7550,7 @@ function viewHouses() {
     return '<div class="panel"><h2>Acts touching the ' + esc(h) + '</h2><div class="cards">' + items + '</div></div>';
   }).join('');
 
-  return '<div class="grid"><div>' + legislationPanel() + lower + upper + legTools + groups + '</div><div>' + politicalInboxPanel(2) + logPanel() + '</div></div>';
+  return '<div class="grid"><div>' + legislationPanel() + lower + upper + legTools + '</div><div>' + groups + '</div></div>';
 }
 
 function pathPanels() {
@@ -7743,11 +7743,30 @@ function viewNation() {
       '<span class="tag">Leverage ' + Math.round(b.power * 100) + '</span></div></div>';
   }).join('');
 
+  var movs = MOVEMENTS.slice().sort(function (a, b) { return movStrength(S, b.id) - movStrength(S, a.id); }).map(function (m) {
+    var v = movStrength(S, m.id);
+    if (v < 6) return '';
+    return '<div class="card"><h3>' + esc(m.name) + '</h3><p class="desc">' + esc(m.note) + '</p>' +
+      '<div class="row"><span class="lab small">Strength</span><span class="bar ' +
+        (v > 55 ? 'b-bad' : 'b-ox') + '"><i style="width:' + v.toFixed(0) + '%"></i></span><span class="val">' + Math.round(v) + '</span></div>' +
+      '<div class="tagline"><span class="tag">Speaks for ' + esc(BLOC[m.bloc].name) + '</span>' +
+      '<span class="tag">' + (v > 55 ? 'A national movement' : (v > 30 ? 'Organising' : 'Marginal')) + '</span>' +
+      (S.suppressed && S.suppressed[m.id] && S.turn - S.suppressed[m.id] < 4 ? '<span class="tag down">Recently broken up</span>' : '') +
+      '</div><p class="desc" style="margin-top:6px">Demands ' + esc(m.demand) + '.</p></div>';
+  }).join('');
+  var movPanel = '<div class="panel"><h2>Movements Outside the Chamber</h2>' +
+    '<p class="note">Movements grow out of constituencies the government has lost and shrink when it wins them back. ' +
+    'Past fifty five they become national, and under a constitution without elections the Constitutional Front grows whatever you do.</p>' +
+    '<div class="cards">' + (movs || '<span class="muted small">Nothing is organising against you worth the name.</span>') +
+    ACTIONS.filter(function (a) { return ['negotiateMov','suppressMov','coOptMov'].indexOf(a.id) >= 0; }).map(actionCard).join('') + '</div></div>';
+
   return '<div class="grid"><div>' +
     macroPanel() + issuePanel() +
     '<div class="panel"><h2>The State of the Union</h2><p class="note">Arrows show the direction each indicator is moving under the current statute book, cabinet and cross-effects.</p><div class="rows">' + indRows + '</div></div>' +
     '<div class="panel"><h2>Constituencies</h2><div class="cards">' + blocRows + '</div></div>' +
-    '</div><div>' + logPanel() + '</div></div>';
+    '</div><div>' +
+    '<div class="panel"><h2>The Country</h2><div class="cards">' + actionsIn('Society').map(actionCard).join('') + '</div></div>' +
+    movPanel + '</div></div>';
 }
 
 function regionLeadingParty(r) {
@@ -7783,7 +7802,7 @@ function viewFederation() {
   return '<div class="grid"><div><div class="command-deck"><div class="eyebrow">The fifty states, grouped for government</div><div class="brief-head"><div><h2>The Federation Is a Political System of Its Own.</h2><p>Regional prosperity, services, order and trust now move separately. They shape national elections, state resistance and the practical reach of federal policy.</p></div>'+
     '<div class="headline"><div class="eyebrow">Federal balance</div><b>'+Math.round(federal/pop)+' average trust</b><span>'+Math.round(prosperity/pop)+' prosperity · '+Math.round(services/pop)+' services · '+Math.round(order/pop)+' order</span></div></div></div>'+
     '<div class="panel"><h2>Regional Briefs</h2><div class="cards">'+cards+'</div></div>'+
-    '<div class="panel"><h2>Whole-of-Federation Actions</h2><div class="cards">'+actionsIn('States').map(actionCard).join('')+'</div></div></div><div>'+politicalInboxPanel(2)+strategicRisksPanel()+logPanel()+'</div></div>';
+    '<div class="panel"><h2>Whole-of-Federation Actions</h2><div class="cards">'+actionsIn('States').map(actionCard).join('')+'</div></div></div><div>'+strategicRisksPanel()+'</div></div>';
 }
 
 function factionPanel() {
@@ -7947,7 +7966,7 @@ function viewParties() {
     '</tbody></table>' +
     '<div class="cards" style="margin-top:14px">' + actionsIn('Agenda').map(actionCard).join('') + '</div></div>';
 
-  return politicalInboxPanel() + agendaPanel + manifestoPanel() + factionPanel() + projPanel + ownPanel + leaders +
+  return politicalInboxPanel() + agendaPanel + factionPanel() + projPanel + ownPanel + leaders +
     '<div class="panel"><h2>Parties</h2>' +
     '<p class="note">You govern as whichever party holds the government. Money, favours, newspapers and boundaries move the rest, and any of them can be lifted into power and played from the inside.</p>' +
     '<div class="cards">' + cards + '</div></div>' +
@@ -8002,7 +8021,7 @@ function viewExec() {
 
   return '<div class="grid"><div>' +
     '<div class="panel"><h2>The Executive Offices</h2>' + next + '<div class="cards">' + cards + '</div></div>' +
-    cabPanel + execPanel + prerogativePanel() + '</div><div>' + logPanel() + '</div></div>';
+    cabPanel + execPanel + '</div><div>' + prerogativePanel() + '</div></div>';
 }
 
 function extraCard(m) {
@@ -8102,7 +8121,7 @@ function viewJudicial() {
     '<div class="panel"><h2>Acts Touching the Court</h2><div class="cards">' +
     ACTS.filter(function (a) { return a.house === 'Supreme Court'; }).map(actCard).join('') + '</div></div>';
 
-  return '<div class="grid"><div>' + bench + review + proc + acts + roll + '</div><div>' + logPanel() + '</div></div>';
+  return '<div class="grid"><div>' + bench + review + proc + acts + '</div><div>' + roll + '</div></div>';
 }
 
 
@@ -8138,35 +8157,12 @@ function viewWorld() {
         : 'No power is hostile enough for war, though international tension stands at ' + Math.round(S.ind.tension) + '.') + '</p></div>';
   }
 
-  var movs = MOVEMENTS.slice().sort(function (a, b) { return movStrength(S, b.id) - movStrength(S, a.id); }).map(function (m) {
-    var v = movStrength(S, m.id);
-    if (v < 6) return '';
-    return '<div class="card"><h3>' + esc(m.name) + '</h3><p class="desc">' + esc(m.note) + '</p>' +
-      '<div class="row"><span class="lab small">Strength</span><span class="bar ' +
-        (v > 55 ? 'b-bad' : 'b-ox') + '"><i style="width:' + v.toFixed(0) + '%"></i></span><span class="val">' + Math.round(v) + '</span></div>' +
-      '<div class="tagline"><span class="tag">Speaks for ' + esc(BLOC[m.bloc].name) + '</span>' +
-      '<span class="tag">' + (v > 55 ? 'A national movement' : (v > 30 ? 'Organising' : 'Marginal')) + '</span>' +
-      (S.suppressed && S.suppressed[m.id] && S.turn - S.suppressed[m.id] < 4 ? '<span class="tag down">Recently broken up</span>' : '') +
-      '</div><p class="desc" style="margin-top:6px">Demands ' + esc(m.demand) + '.</p></div>';
-  }).join('');
-
-  var chron = (S.chron || []).slice().reverse().slice(0, 14).map(function (c) {
-    return '<div class="entry"><div class="when">' + c.year + '</div><p>' + esc(c.line) + '</p></div>';
-  }).join('') || '<p class="note muted">Nothing yet that a historian would record.</p>';
-
   return '<div class="grid"><div>' +
     warPanel +
     '<div class="panel"><h2>The Powers</h2><div class="cards">' + rows + '</div></div>' +
-    '<div class="panel"><h2>Movements Outside the Chamber</h2>' +
-    '<p class="note">Movements grow out of constituencies the government has lost and shrink when it wins them back. ' +
-    'Past fifty five they become national, and under a constitution without elections the Constitutional Front grows whatever you do.</p>' +
-    '<div class="cards">' + (movs || '<span class="muted small">Nothing is organising against you worth the name.</span>') + '</div></div>' +
-    '<div class="panel"><h2>Diplomacy</h2><div class="cards">' + actionsIn('Diplomacy').map(actionCard).join('') + '</div></div>' +
-    '<div class="panel"><h2>Handling the Movements</h2><div class="cards">' +
-      ACTIONS.filter(function (a) { return ['negotiateMov','suppressMov','coOptMov'].indexOf(a.id) >= 0; }).map(actionCard).join('') + '</div></div>' +
     '</div><div>' +
-    '<div class="panel"><h2>The Chronicle</h2><div class="log">' + chron + '</div></div>' +
-    logPanel() + '</div></div>';
+    '<div class="panel"><h2>Diplomacy</h2><div class="cards">' + actionsIn('Diplomacy').map(actionCard).join('') + '</div></div>' +
+    '</div></div>';
 }
 
 function viewState() {
@@ -8256,7 +8252,7 @@ function viewLedger() {
     tr('Market confidence', Math.round(S.macro.confidence) + ' out of 100') +
     tr('Drag on the economy', '-' + Math.min(24, debtStrain(S) * .025).toFixed(1) + ' economy') +
     tr('Drag on capital', '-' + Math.min(3, debtStrain(S) / 384).toFixed(1) + ' per session') + '</tbody></table></div>' +
-    legacyPanel() + manifestoPanel() + '</div><div>' + strategicRisksPanel() + logPanel() + '</div></div>';
+    legacyPanel() + '</div><div>' + strategicRisksPanel() + '</div></div>';
 }
 
 /* ============================================================
@@ -8332,6 +8328,13 @@ function wire(root) {
 }
 
 document.getElementById('tabs').addEventListener('click', function (e) {
+  var g = e.target.closest('[data-group]');
+  if (g && typeof V7_GROUPS !== 'undefined') {
+    var gid = g.getAttribute('data-group');
+    var grp = V7_GROUPS.filter(function (x) { return x.id === gid; })[0];
+    if (grp) { UI.tab = (UI.lastInGroup && UI.lastInGroup[gid]) || grp.tabs[0]; render(); }
+    return;
+  }
   var b = e.target.closest('[data-tab]');
   if (!b) return;
   UI.tab = b.getAttribute('data-tab');
@@ -8352,8 +8355,7 @@ document.addEventListener('keydown', function (e) {
     return;
   }
   if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s') { e.preventDefault(); saveDialog(); return; }
-  var map=(typeof V6_KEYMAP!=='undefined')?V6_KEYMAP:{'1':'chamber','2':'policy','3':'houses','4':'exec','5':'judicial','6':'parties','7':'world','8':'nation','9':'federation','0':'ledger'};
-  if (map[e.key]) { UI.tab=map[e.key]; render(); }
+  if (typeof v7KeyNav === 'function' && v7KeyNav(e.key)) return;
   if (e.key.toLowerCase()==='u') undoLast();
   if (e.key.toLowerCase()==='e') confirmEndTurn();
 });
@@ -9055,7 +9057,7 @@ function pv5ScandalPanel(){
 }
 function viewGovernment(){
   var rows=pv5PortfolioRows();var avg=rows.reduce(function(n,r){return n+(S.ministers[r.key]?S.ministers[r.key].competence:0);},0)/Math.max(1,cabinetFilled(S));
-  return '<div class="command-deck"><div class="eyebrow">Collective government</div><div class="brief-head"><div><h2>A Government Is More Than Its Leader.</h2><p>Sixteen named ministers now carry competence, loyalty, ambition and exposure. Coalition partners carry a written programme. They can be managed, never made costless.</p></div><div class="headline"><div class="eyebrow">Cabinet capacity</div><b>'+cabinetFilled(S)+' of 16 offices filled</b><span>Average competence '+Math.round(avg||0)+' · '+S.scandals.filter(function(x){return x.status==='active';}).length+' active standards case'+(S.scandals.filter(function(x){return x.status==='active';}).length===1?'':'s')+'</span></div></div></div><div class="grid"><div>'+pv5CoalitionPanel()+'<div class="panel"><h2>The Ministry</h2><div class="minister-grid">'+rows.map(pv5MinisterCard).join('')+'</div></div>'+pv5ScandalPanel()+'</div><div>'+politicalInboxPanel(3)+manifestoPanel()+logPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Collective government</div><div class="brief-head"><div><h2>A Government Is More Than Its Leader.</h2><p>Sixteen named ministers now carry competence, loyalty, ambition and exposure. Coalition partners carry a written programme. They can be managed, never made costless.</p></div><div class="headline"><div class="eyebrow">Cabinet capacity</div><b>'+cabinetFilled(S)+' of 16 offices filled</b><span>Average competence '+Math.round(avg||0)+' · '+S.scandals.filter(function(x){return x.status==='active';}).length+' active standards case'+(S.scandals.filter(function(x){return x.status==='active';}).length===1?'':'s')+'</span></div></div></div><div class="grid"><div>'+pv5CoalitionPanel()+'<div class="panel"><h2>The Ministry</h2><div class="minister-grid">'+rows.map(pv5MinisterCard).join('')+'</div></div>'+pv5ScandalPanel()+'</div><div>'+'<div class="panel"><h2>Ministerial Actions</h2><div class="cards">'+actionsIn('Ministry').map(actionCard).join('')+'</div></div>'+'</div></div>';
 }
 function pv5CommitteePanel(){
   var cards=PV5_COMMITTEES.map(function(def){var c=S.committees[def.id],share=pv5CommitteeShare(S,def.id),live=S.bills.filter(function(b){return b.committeeId===def.id&&b.stage==='committee';});return '<article class="committee-card"><div class="statusline"><strong>'+esc(def.name)+'</strong><span>'+Math.round(share)+'% government</span></div><p>'+esc(def.brief)+'</p><div class="committee-seatbar"><span style="width:'+share+'%;background:var(--party)"></span><span style="width:'+(100-share)+'%;background:rgba(255,255,255,.12)"></span></div><div class="microstats"><span><b>'+Math.round(c.expertise)+'</b>Expertise</span><span><b>'+c.backlog.toFixed(1)+'</b>Backlog</span><span><b><span class="dot" style="background:'+PARTY[c.chair].color+'"></span> '+esc(PARTY[c.chair].short)+'</b>Chair</span></div><div class="btnrow"><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="staff">Add staff <span class="c">'+cst(2)+', '+fmc(5)+'</span></button><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="court">Court chair <span class="c">'+cst(3)+', '+fmc(2)+'</span></button></div>'+live.map(function(b){return '<div class="redline"><b>'+esc(b.id+' · '+b.title)+'</b><div class="btnrow"><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="hearing" data-committee-bill="'+b.id+'">Hear evidence <span class="c">'+cst(2)+', '+fmc(2)+'</span></button><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="draft" data-committee-bill="'+b.id+'">Draft substitute <span class="c">'+cst(3)+'</span></button></div></div>';}).join('')+'</article>';}).join('');
@@ -9067,7 +9069,7 @@ viewHouses=function(){var html=pv5ViewHousesV4();return html.replace('<div class
 function viewInterests(){
   var cards=PV5_INTERESTS.map(function(g){var q=S.interests[g.id],d=q.demand;return '<article class="interest-card"><div class="influence-ring" style="--value:'+Math.round(q.influence)+'"><span>'+Math.round(q.influence)+'</span></div><div class="eyebrow">'+esc(g.kind)+'</div><h3>'+esc(g.name)+'</h3><p>'+esc(g.note)+'</p><div class="statusline"><strong>Relationship '+Math.round(q.relation)+'</strong><span>Access '+Math.round(q.access||0)+'</span></div><div class="meter '+(q.relation<35?'bad':(q.relation>65?'good':''))+'"><i style="width:'+Math.round(q.relation)+'%"></i></div><div class="tagline"><span class="tag">'+esc(BLOC[g.bloc].name)+'</span>'+(q.endorsement?'<span class="endorsement">◆ Endorsed</span>':'')+(d&&POL[d.policy]?'<span class="tag down">Demand: '+esc(POL[d.policy].name)+'</span>':'')+'</div><div class="btnrow"><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="meet">Meet <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="access">Grant access <span class="c">'+cst(3)+', '+fmc(3)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="endorse"'+(q.relation<58?' disabled':'')+'>Seek endorsement <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="distance">Close access <span class="c">'+cst(1)+'</span></button></div></article>';}).join('');
   var influence=PV5_INTERESTS.reduce(function(n,g){return n+S.interests[g.id].influence;},0),endorsed=PV5_INTERESTS.filter(function(g){return S.interests[g.id].endorsement;}).length;
-  return '<div class="command-deck"><div class="eyebrow">Organised society</div><div class="brief-head"><div><h2>Votes Are Counted. Influence Is Negotiated.</h2><p>Eight permanent organisations now pursue their own access, policy demands and endorsements. Their relationship feeds the public bloc they organise; their endorsement feeds the campaign.</p></div><div class="headline"><div class="eyebrow">Balance of influence</div><b>'+influence+' combined influence</b><span>'+endorsed+' current endorsement'+(endorsed===1?'':'s')+' · integrity '+Math.round(100-S.ind.corruption)+'</span></div></div></div><div class="grid"><div><div class="panel"><h2>National Organisations</h2><div class="interest-grid">'+cards+'</div></div></div><div>'+issuePanel()+politicalInboxPanel(3)+logPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Organised society</div><div class="brief-head"><div><h2>Votes Are Counted. Influence Is Negotiated.</h2><p>Eight permanent organisations now pursue their own access, policy demands and endorsements. Their relationship feeds the public bloc they organise; their endorsement feeds the campaign.</p></div><div class="headline"><div class="eyebrow">Balance of influence</div><b>'+influence+' combined influence</b><span>'+endorsed+' current endorsement'+(endorsed===1?'':'s')+' · integrity '+Math.round(100-S.ind.corruption)+'</span></div></div></div><div class="grid"><div><div class="panel"><h2>National Organisations</h2><div class="interest-grid">'+cards+'</div></div></div><div>'+issuePanel()+'</div></div>';
 }
 /* Push labels that want the same height apart until none overlap, keeping every
    one inside the box and as near its true value as the crowding allows. Seven
@@ -9182,7 +9184,7 @@ function viewCampaign(){
   var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td></tr>';}).join('');
   var regionRows=REGIONS.map(function(r){var n=S.campaign.targets[r.id]||0;return '<div class="region-target"><div><b>'+esc(r.name)+'</b><div class="small muted">'+r.pop+'% of Vale · '+esc(r.issues[0])+'</div></div><div class="target-dots">'+[0,1,2].map(function(i){return '<i class="'+(i<n?'on':'')+'"></i>';}).join('')+'</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+'>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
   var messages=topIssues(S,6).map(function(i){return '<button class="strategy-choice" data-campaign-action="message" data-campaign-id="'+i.id+'" aria-pressed="'+(S.campaign.message===i.id)+'"><b>'+esc(i.name)+'</b><small>Salience '+Math.round(S.salience[i.id])+' · '+esc(i.source)+'</small></button>';}).join('');
-  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>War chest</b><strong>'+Math.round(S.campaign.warChest)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+politicalInboxPanel(2)+logPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>War chest</b><strong>'+Math.round(S.campaign.warChest)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
 }
 function pv5FiscalPanel(){
   var f=S.fiscal,b=budget(S);function options(kind){return Object.keys(PV5_FISCAL[kind]).map(function(id){var q=PV5_FISCAL[kind][id];return '<button class="strategy-choice" data-fiscal-kind="'+kind+'" data-fiscal-id="'+id+'" aria-pressed="'+(f[kind]===id)+'"><b>'+esc(q.name)+'</b><small>'+esc(q.note)+'</small></button>';}).join('');}
@@ -9195,7 +9197,7 @@ var pv5ViewChamberV4=viewChamber;
 viewChamber=function(){var html=pv5ViewChamberV4();var pos=html.indexOf('</section>');if(pos>=0)html=html.slice(0,pos+10)+pv5ObjectivesPanel()+html.slice(pos+10);return html;};
 
 /* ---------- navigation, rendering and wiring ---------- */
-TABS.splice(4,0,{id:'government',name:'Government'});
+TABS.splice(4,0,{id:'government',name:'Ministry'});
 TABS.splice(8,0,{id:'interests',name:'Interests'});
 TABS.splice(9,0,{id:'campaign',name:'Campaign'});
 
@@ -11448,7 +11450,10 @@ function viewRecord() {
     '<div class="grid"><div><div class="panel"><h2>The Long Record</h2>' + v6HistoryChart() + '</div>' +
     '<div class="panel"><h2>Records and Honours</h2><div class="ach-grid">' + ach + '</div></div>' +
     '<div class="panel"><h2>Crises</h2>' + (arcs ? '<table class="arc-record"><thead><tr><th>Year</th><th>Crisis</th><th>Outcome</th></tr></thead><tbody>' + arcs + '</tbody></table>' : '<p class="note">No crisis arc has opened yet. They arrive unannounced and run for several sessions.</p>') + '</div></div>' +
-    '<div><div class="panel"><h2>By the Numbers</h2>' + stats + '</div><div class="panel"><h2>Referendums</h2>' + (refs ? '<table><thead><tr><th>Year</th><th>Question</th><th class="num">Yes</th><th>Result</th></tr></thead><tbody>' + refs + '</tbody></table>' : '<p class="note">None held. Any measure can be put to the country from the drafting dialog when elections are on.</p>') + '</div><div class="panel"><h2>Programmes Completed</h2><div class="tagline">' + programmes + '</div></div>' + logPanel() + '</div></div>';
+    '<div><div class="panel"><h2>By the Numbers</h2>' + stats + '</div><div class="panel"><h2>Referendums</h2>' + (refs ? '<table><thead><tr><th>Year</th><th>Question</th><th class="num">Yes</th><th>Result</th></tr></thead><tbody>' + refs + '</tbody></table>' : '<p class="note">None held. Any measure can be put to the country from the drafting dialog when elections are on.</p>') + '</div><div class="panel"><h2>Programmes Completed</h2><div class="tagline">' + programmes + '</div></div>' +
+    '<div class="panel"><h2>The Chronicle</h2><div class="log">' + ((S.chron || []).slice().reverse().slice(0, 14).map(function (c) {
+      return '<div class="entry"><div class="when">' + c.year + '</div><p>' + esc(c.line) + '</p></div>';
+    }).join('') || '<p class="note muted">Nothing yet that a historian would record.</p>') + '</div></div>' + logPanel() + '</div></div>';
 }
 
 /* ---------- the stats bar, with movement since the last session ---------- */
@@ -11480,7 +11485,6 @@ renderStats = function () {
 
 /* ---------- navigation and rendering ---------- */
 TABS.push({ id:'record', name:'Record' });
-var V6_KEYMAP = {}; TABS.slice(0, 10).forEach(function (t, i) { V6_KEYMAP[String((i + 1) % 10)] = t.id; });
 
 var v6WireV5 = wire;
 wire = function (root) {
@@ -11516,8 +11520,10 @@ render = function () {
 
 /* ---------- field guide ---------- */
 var helpDialog = function () {
-  var keys = Object.keys(V6_KEYMAP).sort(function (a, b) { return (a === '0' ? 10 : +a) - (b === '0' ? 10 : +b); });
-  var keyRows = keys.map(function (k) { var t = TABS.filter(function (x) { return x.id === V6_KEYMAP[k]; })[0]; return t ? tr(k, t.name) : ''; }).join('');
+  var known = {}; TABS.forEach(function (t) { known[t.id] = t; });
+  var keyRows = V7_GROUPS.map(function (g, i) {
+    return tr(String(i + 1), g.name + ' \u2014 ' + g.tabs.map(function (id) { return known[id] ? known[id].name : id; }).join(' \u00b7 '));
+  }).join('');
   showSheet('<div class="kicker">Field Guide</div><h2 id="sheetTitle">How the Government Works</h2>' +
     '<div class="cards">' +
     '<div class="card"><h3>The session</h3><p class="desc">One session is one year. Spend capital on legislation, the party, the states and the world, then close the session. Bills advance, the economy moves, events arrive, and every second year the country votes. The Gazette reports what changed.</p></div>' +
@@ -11530,7 +11536,7 @@ var helpDialog = function () {
     '<div class="card"><h3>Programmes</h3><p class="desc">Adopt one of seven published programmes from Policy. Its measures cost fifteen percent less to draft, and completing it pays capital, unity and the gratitude of the blocs it was written for.</p></div>' +
     '<div class="card"><h3>Succession</h3><p class="desc">When your leader dies or retires, you choose the successor from three candidates. Their temperament shapes the party\'s drift for years.</p></div>' +
     '<div class="card"><h3>The record</h3><p class="desc">' + V6_ACHIEVEMENTS.length + ' records, the long chart, every crisis and referendum, and the numbers the archives will keep. At the end of the period the verdict of history grades the government by domain.</p></div>' +
-    '</div><div class="subhead">Useful controls</div><table><tbody>' + keyRows + tr('E', 'End-session review') + tr('U', 'Undo the last decision') + tr('Ctrl / Cmd + K', 'Council menu') + tr('Ctrl / Cmd + S', 'Save and export') + tr('Escape', 'Close any dialog') + '</tbody></table>' +
+    '</div><div class="subhead">Useful controls</div><p class="note">Press a number for its section; press it again to step through the pages.</p><table><tbody>' + keyRows + tr('E', 'End-session review') + tr('U', 'Undo the last decision') + tr('Ctrl / Cmd + K', 'Council menu') + tr('Ctrl / Cmd + S', 'Save and export') + tr('Escape', 'Close any dialog') + '</tbody></table>' +
     '<div class="choices"><button class="choice" data-close="1">Return to government</button></div>');
 };
 
@@ -12183,14 +12189,34 @@ var V7 = { tab:null, loc:null };
 function v7Clean() { return !(S && S.uiPrefs && S.uiPrefs.layout === 'classic'); }
 
 /* ---------- grouped navigation ---------- */
+/* Six groups, ONE organising principle each, and group ids g-prefixed so they
+   can never collide with a tab id again (the old 'government' group contained
+   the 'government' tab — two stacked buttons reading the same word — and the
+   old 'parliament' group id broke tools/chamber.js, which set it as a tab).
+   Tab IDS are frozen (fold keys ride the save; 55 jump literals; badges);
+   grouping, labels, order and keys are the free variables. */
 var V7_GROUPS = [
-  { id:'desk', name:'Desk', tabs:['chamber', 'record'] },
-  { id:'parliament', name:'Parliament', tabs:['policy', 'houses', 'judicial', 'state'] },
-  { id:'government', name:'Government', tabs:['exec', 'government', 'ledger'] },
-  { id:'politics', name:'Politics', tabs:['parties', 'interests', 'campaign'] },
-  { id:'country', name:'Country', tabs:['nation', 'federation', 'world'] }
+  { id:'gDesk', name:'Desk', tabs:['chamber', 'record'] },
+  { id:'gLaw', name:'Lawmaking', tabs:['policy', 'houses', 'ledger'] },
+  { id:'gGov', name:'Government', tabs:['exec', 'government'] },
+  { id:'gConst', name:'Constitution', tabs:['state', 'judicial'] },
+  { id:'gPolitics', name:'Politics', tabs:['parties', 'interests', 'campaign'] },
+  { id:'gCountry', name:'Country', tabs:['nation', 'federation', 'world'] }
 ];
 function v7GroupOf(tab) { return V7_GROUPS.filter(function (g) { return g.tabs.indexOf(tab) >= 0; })[0] || V7_GROUPS[0]; }
+function v7KeyNav(key) {
+  /* One key per group; pressing it again steps through that group's pages.
+     Six keys cover all fifteen views and the map derives from V7_GROUPS
+     alone, so the field guide and the council menu stay truthful for free.
+     No scrollTo here: v7's render wrapper is the single scroll owner (S9b). */
+  var i = '123456789'.indexOf(key);
+  if (i < 0 || i >= V7_GROUPS.length) return false;
+  var g = V7_GROUPS[i], cur = v7GroupOf(UI.tab);
+  if (cur.id === g.id) { var j = g.tabs.indexOf(UI.tab); UI.tab = g.tabs[(j + 1) % g.tabs.length]; }
+  else UI.tab = (UI.lastInGroup && UI.lastInGroup[g.id]) || g.tabs[0];
+  render();
+  return true;
+}
 var v7RenderTabsBase = renderTabs;
 renderTabs = function () {
   var nav = document.getElementById('tabs');
@@ -12200,7 +12226,7 @@ renderTabs = function () {
   var cur = v7GroupOf(UI.tab); UI.lastInGroup[cur.id] = UI.tab;
   var known = {}; TABS.forEach(function (t) { known[t.id] = t; });
   var groups = V7_GROUPS.map(function (g) {
-    return '<button class="grp" data-tab="' + (UI.lastInGroup[g.id] || g.tabs[0]) + '" data-group="' + g.id + '" aria-current="' + (g.id === cur.id) + '">' + esc(g.name) + '</button>';
+    return '<button class="grp" data-group="' + g.id + '" aria-current="' + (g.id === cur.id) + '">' + esc(g.name) + '</button>';
   }).join('');
   var pages = cur.tabs.map(function (id) { var t = known[id]; return t ? '<button class="pg" data-tab="' + id + '" aria-current="' + (UI.tab === id) + '">' + esc(t.name) + '</button>' : ''; }).join('');
   var extra = TABS.filter(function (t) { return !V7_GROUPS.some(function (g) { return g.tabs.indexOf(t.id) >= 0; }); }).map(function (t) { return '<button class="pg" data-tab="' + t.id + '" aria-current="' + (UI.tab === t.id) + '">' + esc(t.name) + '</button>'; }).join('');
@@ -12303,15 +12329,30 @@ v6mPolicyFolds = function () {
 /* ---------- panels fold and remember ---------- */
 function v7DefaultCollapsed(tab, title) {
   if (title === 'dispatches') return tab !== 'record';
-  if (title === 'the chronicle') return true;
-  if (title === 'mandate commitments') return ['chamber', 'policy'].indexOf(tab) < 0;
-  if (title === 'political papers') return ['chamber', 'parties', 'government'].indexOf(tab) < 0;
+  if (title === 'the chronicle') return tab !== 'record';
+  if (title === 'mandate commitments') return ['chamber', 'campaign'].indexOf(tab) < 0;
+  if (title === 'political papers') return ['chamber', 'parties'].indexOf(tab) < 0;
   if (title === 'polling trend' || title === 'closed cases') return true;
   return false;
 }
+var V7_FOLD_REMAP = {
+  /* S9c relocations: a saved fold preference follows its panel to the new
+     page. Keys for panels that no longer render anywhere are left in place —
+     never read again, harmless in the blob, noted in the PR. */
+  'world|movements outside the chamber':'nation|movements outside the chamber',
+  'world|the chronicle':'record|the chronicle',
+  'chamber|the country':'nation|the country',
+  'chamber|the ministry':'government|ministerial actions'
+};
 function v7Folds() {
   var view = document.getElementById('view'); if (!view || !S || !S.uiPrefs) return;
   var prefs = S.uiPrefs.folds || (S.uiPrefs.folds = {});
+  for (var old in V7_FOLD_REMAP) {
+    if (prefs[old] !== undefined) {
+      if (prefs[V7_FOLD_REMAP[old]] === undefined) prefs[V7_FOLD_REMAP[old]] = prefs[old];
+      delete prefs[old];
+    }
+  }
   view.querySelectorAll('.panel').forEach(function (panel) {
     var h = panel.firstElementChild; if (!h || h.tagName !== 'H2') return;
     var title = h.textContent.replace(/\s+/g, ' ').replace(/\s*\d+\s*$/, '').trim().toLowerCase();
@@ -12422,7 +12463,7 @@ confirmEndTurn = function () {
 function v7Views() {
   return { chamber:viewChamber, policy:viewPolicy, houses:viewHouses, exec:viewExec, government:viewGovernment, judicial:viewJudicial, parties:viewParties, interests:viewInterests, campaign:viewCampaign, world:viewWorld, nation:viewNation, federation:viewFederation, state:viewState, ledger:viewLedger, record:viewRecord };
 }
-var V7_CAT_TAB = { Ministry:'chamber', States:'chamber', Society:'chamber', Agenda:'chamber', Diplomacy:'world', Court:'judicial', Legislative:'houses', Figures:'parties', Cabinet:'exec', Security:'exec', Treasury:'ledger' };
+var V7_CAT_TAB = { Ministry:'government', States:'federation', Society:'nation', Agenda:'chamber', Diplomacy:'world', Court:'judicial', Legislative:'houses', Figures:'parties', Cabinet:'exec', Security:'exec', Treasury:'ledger' };
 function v7Locate(force) {
   var key = [S.turn, S.form, playParty(S), standing(S), UI.polCat, UI.polSearch, UI.polView].join(':');
   if (!force && V7.loc && V7.loc.key === key) return V7.loc.map;
@@ -12504,11 +12545,11 @@ function v7Jump(it) {
   } else window.scrollTo({ top:0, behavior:'smooth' });
 }
 function v7MenuList() {
-  var keys = Object.keys(V6_KEYMAP).sort(function (a, b) { return (a === '0' ? 10 : +a) - (b === '0' ? 10 : +b); });
-  var cmds = keys.map(function (k) { var t = TABS.filter(function (x) { return x.id === V6_KEYMAP[k]; })[0]; return t ? '<button data-command-tab="' + t.id + '"><kbd>' + k + '</kbd><span>' + esc(t.name) + '</span><small>' + esc(v7GroupOf(t.id).name) + '</small></button>' : ''; }).join('');
-  var rest = TABS.filter(function (t) { return keys.every(function (k) { return V6_KEYMAP[k] !== t.id; }); }).map(function (t) { return '<button data-command-tab="' + t.id + '"><kbd>\u00b7</kbd><span>' + esc(t.name) + '</span><small>' + esc(v7GroupOf(t.id).name) + '</small></button>'; }).join('');
+  var V7_TAB_KEY = {};
+  V7_GROUPS.forEach(function (g, i) { g.tabs.forEach(function (id) { V7_TAB_KEY[id] = String(i + 1); }); });
+  var cmds = TABS.slice().sort(function (a, b) { return (V7_TAB_KEY[a.id] || '9') === (V7_TAB_KEY[b.id] || '9') ? 0 : ((V7_TAB_KEY[a.id] || '9') < (V7_TAB_KEY[b.id] || '9') ? -1 : 1); }).map(function (t) { return '<button data-command-tab="' + t.id + '"><kbd>' + (V7_TAB_KEY[t.id] || '\u00b7') + '</kbd><span>' + esc(t.name) + '</span><small>' + esc(v7GroupOf(t.id).name) + '</small></button>'; }).join('');
   var clean = v7Clean(), terse = clean && S.uiPrefs.terse !== false;
-  return '<div class="command-list">' + cmds + rest +
+  return '<div class="command-list">' + cmds +
     '<button data-command-gazette="1"><kbd>G</kbd><span>Last session\'s Gazette</span><small>Open</small></button>' +
     '<button data-command-urgent="1"><kbd>!</kbd><span>Most urgent unresolved file</span><small>Open</small></button>' +
     '<button data-command-layout="1"><kbd>\u00b7</kbd><span>' + (clean ? 'Use the classic layout: fifteen tabs, every panel open' : 'Use the clean layout: grouped pages, one desk, folded panels') + '</span><small>Switch</small></button>' +
@@ -12583,7 +12624,7 @@ helpDialog = function () {
   v7HelpBase();
   var cards = document.querySelector('#sheet .cards'); if (!cards) return;
   cards.insertAdjacentHTML('afterbegin',
-    '<div class="card"><h3>The desk</h3><p class="desc">Five groups of pages instead of fifteen tabs. The Overview opens on one desk: what needs you this session, what to watch, and the standing objectives. Every panel folds by tapping its title, every card shows its levers and effects with the prose one tap away, and the layout remembers. The classic layout, full cards and full explanations are each one switch away in the menu.</p></div>' +
+    '<div class="card"><h3>The desk</h3><p class="desc">Six groups of pages instead of fifteen tabs. The Overview opens on one desk: what needs you this session, what to watch, and the standing objectives. Every panel folds by tapping its title, every card shows its levers and effects with the prose one tap away, and the layout remembers. The classic layout, full cards and full explanations are each one switch away in the menu.</p></div>' +
     '<div class="card"><h3>The finder</h3><p class="desc">Menu, or the slash key, opens a search across every page, action, measure, region, party, power and programme. Show jumps to the thing and lights it up; Do it acts at once where nothing needs choosing.</p></div>');
 };
 
