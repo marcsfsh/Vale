@@ -706,6 +706,16 @@
       "line": 14333,
       "aliasCaptured": true,
       "reason": "alias var v9EnrichGuarded captured above. The outermost wrapper of the enrich chain, and it must STAY outermost: it points the dice at the state being enriched, and any wrapper installed after it would run its backfill rolls outside that guard, spending the live campaign's stream on a detached object. tools/determinism.js asserts the property."
+    },
+    "tickTurn#4": {
+      "line": 16507,
+      "aliasCaptured": true,
+      "reason": "alias var v10TickBase captured above (S9d: records ssPeak after the base tick)"
+    },
+    "viewState#1": {
+      "line": 16516,
+      "aliasCaptured": true,
+      "reason": "alias var v10ViewStateBase captured above (S9d: prepends the security-state strip)"
     }
   }
 }

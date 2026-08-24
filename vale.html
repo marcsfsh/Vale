@@ -465,6 +465,10 @@ var IND = {
 };
 
 /* ---------------- blocs ---------------- */
+/* What the register is worth under acts.wealthFranchise: support is weighted
+   by assessment, so the propertied blocs outvote their numbers. Read in
+   supportTargets, which ballots and projections both ease toward. */
+var BLOC_WEALTH = { tech:1.8, smallbiz:1.35, prof:1.25, seniors:1.0, faith:.9, veterans:.9, labour:.55, youth:.5 };
 var BLOCS = [
   { id:'labour', name:'Organised Labour', pop:.16, power:.8, fr:[.82,1,1.1],
     pos:{e:-.62,a:-.10},
@@ -2112,8 +2116,8 @@ var TRANSITIONS = [
       mood(S, { smallbiz:-12, faith:-8, prof:4, tech:6, labour:3 });
     } },
   { id:'toFederal', to:'federal', from:['centralised','executive','emergency','corporate','imperial','empire','dpr','oneparty'], name:'Restore the Federal Constitution', cost:20,
-    req:'None',
-    ok:function () { return true; },
+    req:'From the Empire or the People\u2019s Republic, only after the restoration crisis has opened the door.',
+    ok:function (S) { return !FORMS[S.form].terminal || !!(S.v6 && S.v6.flags && S.v6.flags.restoration); },
     desc:'Return the enumerated powers to the states and the legislature.',
     apply:function (S) {
       S.ind.liberties += 12; S.unrest -= 14; S.crown += 16;
@@ -2546,9 +2550,15 @@ function movementsTick(st) {
     var mood0 = st.blocs[m.bloc], cur = movStrength(st, m.id), d = 0;
     if (mood0 < 44) d += (44 - mood0) * .22;
     else d -= (mood0 - 44) * .13;
+    var ssM = securityState(st);
     if (m.lean === 'liberty') {
       if (!FORMS[st.form].elections) d += 3.2;
+      else if (FORMS[st.form].path === 'authority') d += 1.2;
       if (st.ind.liberties < 40) d += (40 - st.ind.liberties) * .12;
+      if (ssM > 45) d += (ssM - 45) * .06;
+      d += (st.rigging || 0) * 1.5;
+    } else {
+      d -= ssM * .04;
     }
     d += Math.max(0, st.unrest - 45) * .06;
     if (st.suppressed && st.suppressed[m.id] && st.turn - st.suppressed[m.id] < 4) d -= 6;
@@ -2944,9 +2954,17 @@ var EXTRA = [
 var EXTRA_BY = {}; EXTRA.forEach(function (x) { EXTRA_BY[x.id] = x; });
 
 function extraTierAllowed(st, tier) {
+  /* Until S9d this was gated by ruling party alone: an FP, CUP or SD
+     government could NEVER sign one, at any liberties level, under any form —
+     including as Emperor — while a PNL government could sign on turn one of a
+     healthy republic. The door now also opens by the state of the STATE. */
   if (!leads(st)) return false;
-  if (tier === 1) return EXTREME1.indexOf(st.ruling) >= 0;
-  return EXTREME2.indexOf(st.ruling) >= 0;
+  if (st.acts.conventionLimits && tier === 2) return false;
+  var ss = securityState(st);
+  if (tier === 1) return EXTREME1.indexOf(st.ruling) >= 0 || ss >= 30 ||
+    FORMS[st.form].path === 'authority' || !FORMS[st.form].elections;
+  return EXTREME2.indexOf(st.ruling) >= 0 || !!FORMS[st.form].terminal ||
+    ((st.precedents || 0) >= 2 && (ss >= 50 || !FORMS[st.form].elections));
 }
 function extraAvailable(st, m) {
   if (!extraTierAllowed(st, m.tier)) return false;
@@ -3002,7 +3020,7 @@ function extraReview(st) {
   var m = EXTRA_BY[id];
   var friendly = st.court.justices.length ? courtWith(st) / st.court.justices.length : .5;
   var hold = clamp(friendly * 1.3 - (m.tier === 2 ? .38 : .12) + (st.precedents || 0) * .04 +
-    (st.acts.courtStripping ? .25 : 0), .04, .96);
+    (st.acts.courtStripping ? .25 : 0) + securityState(st) * .002, .04, .96);
   if (rand() < hold) {
     st.extra[id] = 'upheld';
     st.precedents = (st.precedents || 0) + 1;
@@ -4153,6 +4171,12 @@ function archiveBill(st, bill, result, detail) {
 
 function enactBill(st, bill) {
   var p = POL[bill.policy], before = st.pol[bill.policy] || 0;
+  if (p.needs && bill.dir > 0 && !before && !st.pol[p.needs]) {
+    archiveBill(st, bill, 'failed', 'Lapsed at assent: its prerequisite was no longer law');
+    st.legacy.billsFailed++;
+    logIt(st, bill.title + ' could not take effect: it requires ' + (POL[p.needs] ? POL[p.needs].name : p.needs) + ', which is no longer law.');
+    return;
+  }
   st.pol[bill.policy] = clamp(before + bill.dir, 0, p.max);
   if (bill.policy === 'suffrageMale' && st.pol[bill.policy] === 0) st.pol.womensSuffrage = 0;
   if (p.mood) mood(st, scaleObj(p.mood, bill.dir * .5 * Math.max(.55, 1 - bill.concessions * .12)));
@@ -4877,7 +4901,9 @@ function upperResist(st, lean, dir, auth) {
 }
 function deptFactor(st, p) {
   if (!p.dept) return 1;
-  return holdsDept(st, p.dept) ? .78 : 1.55;
+  var f = holdsDept(st, p.dept) ? .78 : 1.55;
+  if (st.acts.purgeService) f *= .92;
+  return f;
 }
 function upperBlocks(st, lean, dir, auth) {
   return upperOn(st) && st.upper.veto === 2 && upperResist(st, lean, dir, auth) >= 1;
@@ -4945,6 +4971,13 @@ function indicatorTargets(st) {
   t.healthcare = c100(t.healthcare - (st.ind.poverty - 50) * .1);
   if (!FORMS[st.form].elections) { t.liberties = c100(t.liberties - 20); t.safety = c100(t.safety + 6); }
   if (st.form === 'executive') t.liberties = c100(t.liberties - 8);
+  var ss = securityState(st);
+  t.liberties = c100(t.liberties - ss * .18);
+  t.safety = c100(t.safety + Math.min(8, ss * .08));
+  if (ss > 45) t.corruption = c100(t.corruption + (ss - 45) * .06);
+  if (st.acts.stateOfSiege) t.liberties = c100(t.liberties - 6);
+  if (st.acts.agencyCapture) { t.corruption = c100(t.corruption + 5); t.environment = c100(t.environment - 3); t.economy = c100(t.economy + 2); }
+  if (st.acts.annexation) { t.territories = c100(t.territories + 4); t.tension = c100(t.tension + 2); }
   return t;
 }
 
@@ -5003,6 +5036,8 @@ function budget(st) {
   }
   exp += interest;
   if (!FORMS[st.form].elections) exp += 4;
+  if (st.acts.stateOfSiege) exp += 4;
+  if (st.acts.annexation) rev += 3;
   return { rev: rev, exp: exp, net: rev - exp, interest: interest };
 }
 
@@ -5025,7 +5060,7 @@ function agendaStrain(st) {
 
 function capitalIncome(st) {
   var a = approval(st);
-  var v = 5 + (a - 45) / 10 + FORMS[st.form].capBonus;
+  var v = 5 + (a - 45) / 10 + FORMS[st.form].capBonus + (st.acts.consulate ? 1 : 0);
   if (seatShare(st, [st.ruling]) > .5) v += 1.4;
   else if (st.partner) v -= .8;
   v -= agendaStrain(st);
@@ -5054,6 +5089,28 @@ function capitalIncome(st) {
   return Math.max(-2, v);
 }
 
+/* The security state, derived — never stored, so no save-shape change, and a
+   fresh Federal Republic measures 0 (no base scenario seeds Authority or
+   Security statutes). Every Authority/Security policy prices in through its
+   own auth valence, so future additions feed it with no further wiring.
+   Published thresholds, used by gates and copy alike:
+   30 a surveillance state in outline / 45 a police state / 65 the total state. */
+function securityState(st) {
+  var v = 0;
+  POLICIES.forEach(function (p) {
+    if (p.cat !== 'Authority' && p.cat !== 'Security') return;
+    v += (st.pol[p.id] || 0) * polAuth(p) * 2;
+  });
+  if (st.acts.stateOfSiege) v += 12;
+  if (st.acts.purgeService) v += 6;
+  if (st.doctrine === 'ironHand') v += 6;
+  if (!FORMS[st.form].elections) v += 8;
+  return clamp(v, 0, 100);
+}
+function securityLabel(v) {
+  return v >= 65 ? 'the total state' : v >= 45 ? 'a police state' : v >= 30 ? 'a surveillance state in outline' : 'a free state';
+}
+
 function unrestTarget(st) {
   var d = 0;
   BLOCS.forEach(function (b) {
@@ -5064,6 +5121,10 @@ function unrestTarget(st) {
   v += Math.max(0, st.ind.poverty - 50) * .35;
   v -= (st.ind.safety - 50) * .3;
   v += FORMS[st.form].unrest;
+  var ss = securityState(st);
+  v -= Math.min(18, ss * .22);
+  if (ss > 45) v += (ss - 45) * .10;
+  if (st.acts.stateOfSiege) v -= 10;
   v += Math.max(0, 40 - st.armyLoyalty) * .2;
   if (st.treasury < 0) v += 10;
   v += Math.max(0, 55 - st.crown) * .12;
@@ -5158,7 +5219,8 @@ function supportTargets(st) {
     BLOCS.forEach(function (b) {
       var a = affOf(st, p.id, b.id);
       if (a <= 0) return;
-      var weight = b.pop * b.fr[fr] * (.55 + st.blocs[b.id] / 100 * .95);
+      var weight = b.pop * b.fr[fr] * (.55 + st.blocs[b.id] / 100 * .95) *
+        (st.acts.wealthFranchise ? BLOC_WEALTH[b.id] || 1 : 1);
       var m = st.blocs[b.id];
       var appeal;
       if (p.id === st.ruling) appeal = .915 + (m - 50) / 80;
@@ -5387,7 +5449,7 @@ var RITUAL = {
 };
 
 function regimeCycle(st) {
-  var g = govPos(st), seats = st.acts.courtTerms ? 3 : 2;
+  var g = govPos(st), seats = (st.acts.courtTerms ? 3 : 2) + (st.acts.lifeTerms ? 1 : 0);
   st.court.justices.sort(function (x, y) { return x.since - y.since; });
   for (var i = 0; i < seats; i++) {
     st.court.justices.shift();
@@ -5397,9 +5459,17 @@ function regimeCycle(st) {
   var lines = RITUAL[st.form] || ['The government confirmed itself in office.'];
   logIt(st, lines[Math.floor(rand() * lines.length)] +
     ' ' + seats + ' seats on the court were filled by appointment.');
-  st.capital = clamp(st.capital + 2, -5, capCap(st));
-  st.unrest = clamp(st.unrest + 2, 0, 110);
   mood(st, { prof:-2, youth:-2 });
+  if (typeof v10RitualEvent === 'function') {
+    /* The confirmation ritual (S9d): the sham ballot becomes a dispatch with a
+       rigging dial, opened at the top of the next session through the same
+       pending-event door the court uses. The old flat constants live in the
+       ritual's default choice. */
+    st.pendingRitual = true;
+  } else {
+    st.capital = clamp(st.capital + 2, -5, capCap(st));
+    st.unrest = clamp(st.unrest + 2, 0, 110);
+  }
   st.lastElection = st.turn;
 }
 
@@ -5503,8 +5573,40 @@ function runElection(st, early) {
     });
     while (su < CFG.senate) { sn[sl] += 1; su++; }
     while (su > CFG.senate) { sn[sl] -= 1; su--; }
+    /* acts.charteredSenate: a fifth of the Senate is reserved for the party of
+       the charters BEFORE the count settles — until S9d this was a one-shot
+       shiftPeers the next ballot quietly washed out. Total preserved (the
+       chamber tool asserts both houses sum to their constitutional size). */
+    if (st.acts.charteredSenate) {
+      var bparty = bestBusinessParty(st), want = Math.floor(CFG.senate * .2);
+      if ((sn[bparty] || 0) < want) {
+        var need = want - (sn[bparty] || 0);
+        PARTIES.slice().sort(function (a, b) { return (sn[b.id] || 0) - (sn[a.id] || 0); }).forEach(function (p) {
+          if (!need || p.id === bparty) return;
+          var take = Math.min(need, Math.max(0, (sn[p.id] || 0) - 1));
+          sn[p.id] -= take; need -= take;
+        });
+        sn[bparty] = (sn[bparty] || 0) + (want - (sn[bparty] || 0)) - need;
+      }
+    }
     st.upper.seats = sn;
     senateChanged = true;
+  }
+  /* acts.territorialSeats: the delegations return for the government of the
+     day, floor(60 x territories/100) seats, transferred from the largest
+     other parties, total preserved. */
+  if (st.acts.territorialSeats) {
+    var tseats = Math.floor(60 * (st.ind.territories || 0) / 100);
+    if (tseats > 0 && (st.seats[lead] || 0) < CFG.seats - 1) {
+      var tneed = tseats;
+      PARTIES.slice().sort(function (a, b) { return (st.seats[b.id] || 0) - (st.seats[a.id] || 0); }).forEach(function (p) {
+        if (!tneed || p.id === lead) return;
+        var take = Math.min(tneed, Math.max(0, (st.seats[p.id] || 0) - 1));
+        st.seats[p.id] -= take; tneed -= take;
+      });
+      st.seats[lead] = (st.seats[lead] || 0) + (tseats - tneed);
+      if (tseats - tneed > 0) logIt(st, 'The territorial delegations returned ' + (tseats - tneed) + ' members for the government, as the annexation statutes provide.');
+    }
   }
 
   var courtSeats = courtElection(st);
@@ -5513,6 +5615,9 @@ function runElection(st, early) {
   var oldRuling = st.ruling;
   if (lead !== oldRuling && playParty(st) === lead) carryOver(st, oldRuling, lead);
   st.ruling = lead;
+  /* acts.consulate: every executive office is the ruling party's, whoever the
+     returns favoured — the one-shot apply() is now a standing fact. */
+  if (st.acts.consulate) { st.exec.pres = lead; st.exec.vpres = lead; st.exec.chan = lead; st.exec.vchan = lead; }
   formCoalition(st, lead);
   st.lastElection = st.turn;
   st.capital = clamp(st.capital + 4, -5, capCap(st));
@@ -5576,12 +5681,30 @@ var CLOSED = {
 };
 
 function policyOpen(st, p) {
-  if (p.form) return st.form === p.form;
+  if (p.form || p.forms) { if (p.form !== st.form && (!p.forms || p.forms.indexOf(st.form) < 0)) return false; }
   var c = CLOSED[st.form];
-  if (!c) return true;
-  if (c.cats && c.cats.indexOf(p.cat) >= 0) return false;
-  if (c.ids && c.ids.indexOf(p.id) >= 0) return false;
+  if (c) {
+    if (c.cats && c.cats.indexOf(p.cat) >= 0) return false;
+    if (c.ids && c.ids.indexOf(p.id) >= 0) return false;
+  }
+  if (p.req && !p.req(st)) return false;
   return true;
+}
+/* Why a measure is closed, in words the player can act on. Every disabled
+   flash and locked card routes through this: a gate with no stated reason
+   reads as a bug, not a mechanic. Policies with req: MUST carry reqText. */
+function policyWhy(st, p) {
+  if (p.form || p.forms) { if (p.form !== st.form && (!p.forms || p.forms.indexOf(st.form) < 0)) {
+    var names = (p.forms || [p.form]).map(function (f) { return FORMS[f] ? FORMS[f].name : f; });
+    return 'Only under the ' + names.join(' or the ') + '.';
+  } }
+  var c = CLOSED[st.form];
+  if (c && ((c.cats && c.cats.indexOf(p.cat) >= 0) || (c.ids && c.ids.indexOf(p.id) >= 0))) {
+    return 'Struck under a ' + FORMS[st.form].name + ': the ' + p.cat + ' book is closed here.';
+  }
+  if (p.req && !p.req(st)) return p.reqText || 'The conditions are not yet met.';
+  if (p.needs && !st.pol[p.needs]) return 'Requires ' + (POL[p.needs] ? POL[p.needs].name : p.needs) + '.';
+  return '';
 }
 
 function purgeStatutes(st) {
@@ -5615,6 +5738,7 @@ function policyCost(id, dir) {
   c *= 1 + upperResist(S, polLean(p), dir, polAuth(p));
   c *= deptFactor(S, p);
   if (S.agenda && p.cat === S.agenda) c *= .67;
+  if (p.cat === 'Authority') c *= 1 - Math.min(.3, securityState(S) * .004);
   return cst(c);
 }
 
@@ -5628,7 +5752,8 @@ function orderPolicy(id) {
   var p = POL[id], lv = S.pol[id] || 0;
   if (!inPower(S)) { flash('Opposition parties cannot issue executive orders.'); return; }
   if (lv >= p.max) return;
-  if (!policyOpen(S, p)) { flash('That measure has no place under this constitution.'); return; }
+  if (!policyOpen(S, p)) { flash(policyWhy(S, p) || 'That measure has no place under this constitution.'); return; }
+  if (p.needs && !lv && !S.pol[p.needs]) { flash('Requires ' + POL[p.needs].name + '. An order cannot outrun its own statute book.'); return; }
   if (!holdsDept(S, p.dept)) { flash('That department is in other hands.'); return; }
   if (S.changed[id]) { flash('That measure has already moved this session.'); return; }
   var cost = orderPolicyCost(id);
@@ -5653,7 +5778,7 @@ function changePolicy(id, dir) {
   if (next < 0 || next > p.max) return;
   if (p.needs && next > 0 && !S.pol[p.needs]) { flash('Requires ' + POL[p.needs].name + '.'); return; }
   if (S.changed[id]) { flash('That measure has already been before Parliament this session.'); return; }
-  if (!policyOpen(S, p)) { flash('That measure has no place under this constitution.'); return; }
+  if (!policyOpen(S, p)) { flash(policyWhy(S, p) || 'That measure has no place under this constitution.'); return; }
   if (!inPower(S)) { flash('You are in opposition. You cannot introduce government legislation.'); return; }
   var cost = policyCost(id, dir);
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
@@ -6501,7 +6626,7 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
       } });
     list.push({ id:'ban', name:'Ban the party', cost:16,
       desc:'Dissolution by decree. Only where no elected house sits, or under an autocratic constitution.',
-      can:function () { return (S.form === 'absolute' || S.form === 'empire' || !lowerSits(S)) && !S.banned[pid]; },
+      can:function () { return (FORMS[S.form].terminal || !lowerSits(S)) && !S.banned[pid]; },
       run:function () {
         S.banned[pid] = true; S.unrest += 16; S.ind.liberties -= 8;
         var m = {}; for (var b in p.aff) { if (p.aff[b] > 0) m[b] = -12 * p.aff[b]; }
@@ -6714,12 +6839,17 @@ function doAction(a, opt) {
 
 function doTransition(tr) {
   if (!leads(S)) { flash('Only the leading party of government can change the constitutional order.'); return; }
-  if (S.capital < cst(tr.cost)) { flash('Not enough political capital.'); return; }
   if (!tr.ok(S)) { flash('The conditions are not met.'); return; }
+  var wasTerminal = !!FORMS[S.form].terminal;
+  /* Terminal forms are hard to leave (the restoration surcharge), and the
+     convention settlement makes every authority-road move dearer. */
+  var surcharge = (wasTerminal ? 20 : 0) + (S.acts.conventionLimits && FORMS[tr.to].path === 'authority' ? 8 : 0);
+  if (S.capital < cst(tr.cost) + surcharge) { flash('Not enough political capital for this order of change.'); return; }
   captureUndo(tr.name);
-  S.capital -= cst(tr.cost);
+  S.capital -= cst(tr.cost) + surcharge;
   var hadElections = electionsOn(S);
   S.form = tr.to;
+  if (wasTerminal && tr.to === 'federal' && S.v6) (S.v6.flags = S.v6.flags || {}).restored = true;
   tr.apply(S);
   if (!FORMS[tr.to].elections && lowerOn(S)) S.lower.suspended = true;
   if (FORMS[tr.to].elections && lowerOn(S)) S.lower.suspended = false;
@@ -6785,6 +6915,7 @@ function endTurn() {
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
   if (S.pendingExtra) fired.unshift(extraEvent(S.pendingExtra));
+  if (S.pendingRitual) { if (typeof v10RitualEvent === 'function') fired.unshift(v10RitualEvent(S)); S.pendingRitual = null; }
   if (typeof v6ExtraEvents === 'function') fired = v6ExtraEvents(S).concat(fired);
   UI.queue = fired.slice();
   S.turn += 1;
@@ -6886,16 +7017,17 @@ function rulingEvent(r) {
     ] };
 }
 
+function eventOpen(st, e) {
+  if (e.once && st.seen[e.id]) return false;
+  if (e.elective && !electionsOn(st)) return false;
+  if (e.only && e.only.indexOf(st.form) < 0) return false;
+  if (e.not && e.not.indexOf(st.form) >= 0) return false;
+  if (e.closed && FORMS[st.form].elections) return false;
+  if (e.cond && !e.cond(st)) return false;
+  return true;
+}
 function pickEvents() {
-  var pool = EVENTS.filter(function (e) {
-    if (e.once && S.seen[e.id]) return false;
-    if (e.elective && !electionsOn(S)) return false;
-    if (e.only && e.only.indexOf(S.form) < 0) return false;
-    if (e.not && e.not.indexOf(S.form) >= 0) return false;
-    if (e.closed && FORMS[S.form].elections) return false;
-    if (e.cond && !e.cond(S)) return false;
-    return true;
-  });
+  var pool = EVENTS.filter(function (e) { return eventOpen(S, e); });
   var out = [];
   var n = rand() < .55 ? 1 : (rand() < .75 ? 2 : 0);
   for (var i = 0; i < n && pool.length; i++) {
@@ -6956,7 +7088,7 @@ function finish() {
   else if (S.form === 'dpr') pathNote = "Vale ends the period a People's Republic, with the plan, the party and a Congress that has never once divided. ";
   else if (path === 'authority') pathNote = 'Vale ends the period without a free federal ballot, and the men who run it were all appointed by you. ';
   else if (path === 'capital') pathNote = 'Vale ends the period governed from a boardroom, with the franchise weighted by assessment and the Senate seating companies. ';
-  else if (path === 'imperial') pathNote = 'Vale ends the period a federation of territories, with the flag over four continents and the bill still coming in. ';
+  else if (path === 'empire') pathNote = 'Vale ends the period a federation of territories, with the flag over four continents and the bill still coming in. ';
   else if (S.acts.wealthFranchise || S.acts.purgeService || S.acts.consulate) pathNote = 'The constitution survived, which is more than can be said for some of what was done under it. ';
   var verdict;
   if (score > 200) verdict = 'Vale leaves your period richer, healthier and freer than you found it, and still the first power of its hemisphere. This is the era the histories will be named after.';
@@ -7559,7 +7691,9 @@ function pathPanels() {
     var blurb = h === 'Authority' ? 'The hard state. Emergency rule, a purged service, and offices held for life.'
       : h === 'Capital' ? 'Government by the chartered companies, with the franchise weighted by what a citizen owns.'
       : 'Vale and its possessions federated into one state, with an executive to match.';
-    return '<div class="panel"><h2>The ' + esc(h) + ' Road</h2><p class="note">' + esc(blurb) + '</p>' +
+    var pathKey = h === 'Authority' ? 'authority' : (h === 'Capital' ? 'capital' : 'empire');
+    var onRoad = FORMS[S.form].path === pathKey;
+    return '<div class="panel"><h2>The ' + esc(h) + ' Road' + (onRoad ? ' <span class="tag up">You are on this road</span>' : '') + '</h2><p class="note">' + esc(blurb) + '</p>' +
       '<div class="cards">' + items + '</div></div>';
   }).join('');
 }
@@ -8045,9 +8179,10 @@ function prerogativePanel() {
   var t1 = extraTierAllowed(S, 1), t2 = extraTierAllowed(S, 2);
   var head = '<div class="panel"><h2>Extraordinary Measures</h2>';
   if (!t1) {
-    return head + '<p class="note">Measures of this kind are open only to a government led by the Revolutionary Socialist Front, ' +
-      'the Labor Party, the Traditional Values Coalition or the Patriot Nationalist League. A ' + esc(PARTY[S.ruling].short) +
-      ' government has no constituency for them and no appetite to try.</p></div>';
+    return head + '<p class="note">Measures of this kind are open to the parties of the extremes \u2014 the Revolutionary Socialist Front, ' +
+      'the Labor Party, the Traditional Values Coalition or the Patriot Nationalist League \u2014 and to ANY government once the state itself has ' +
+      'moved: a built security apparatus (Security State 30; it stands at ' + Math.round(securityState(S)) + '), a constitution on the authority road, ' +
+      'or no elections at all. A ' + esc(PARTY[S.ruling].short) + ' government under this constitution has neither the constituency nor the machinery.</p></div>';
   }
   var note = '<p class="note">Each of these contends with the law rather than following it. Signing one takes effect at once and pays capital every year it stands, ' +
     'but it goes on the docket: the court may take it up, and it either upholds it, which makes the next one easier, or strikes it, ' +
@@ -10475,7 +10610,8 @@ var V6_ARCS = [
     ] },
 
   { id:'convention', name:'The Constitutional Convention', weight:5,
-    trigger:function (st) { return st.ind.liberties < 42 && movStrength(st, 'democracyFront') > 40 && st.form !== 'empire' && st.form !== 'dpr'; },
+    trigger:function (st) { return st.ind.liberties < 42 && movStrength(st, 'democracyFront') > 40 &&
+      (!FORMS[st.form].terminal || movStrength(st, 'democracyFront') > 55); },
     phases:[
       { id:'call', title:'The States Call a Convention',
         text:'Twenty-six state legislatures have called a constitutional convention, which under the founding document the federal government cannot prevent. Its stated purpose is to restrain the executive.',
@@ -10505,7 +10641,9 @@ var V6_ARCS = [
         },
         ch:[
           { l:'Accept the new settlement', when:function (st, v) { return v.ratified; }, s:'Liberties +10, state governments +10, unrest -8, capital income slightly lower for the rest of the game.',
-            f:function (S2) { S2.ind.liberties += 10; S2.crown += 10; S2.unrest -= 8; S2.acts.conventionLimits = true; mood(S2, { prof:8, youth:6, smallbiz:3 }); chronicle(S2, 'The constitutional convention amended the founding document.'); } },
+            f:function (S2) { S2.ind.liberties += 10; S2.crown += 10; S2.unrest -= 8; S2.acts.conventionLimits = true;
+              if (FORMS[S2.form].terminal && S2.v6) { (S2.v6.flags = S2.v6.flags || {}).restoration = true; logIt(S2, 'The settlement opens the road back: the federal constitution can be restored.'); }
+              mood(S2, { prof:8, youth:6, smallbiz:3 }); chronicle(S2, 'The constitutional convention amended the founding document.'); } },
           { l:'Implement it slowly', when:function (st, v) { return v.ratified; }, s:'Liberties +5, state governments +4, corruption +3.',
             f:function (S2) { S2.ind.liberties += 5; S2.crown += 4; S2.ind.corruption += 3; chronicle(S2, 'The convention amendments were ratified and half implemented.'); } },
           { l:'Thank the delegates and close the file', when:function (st, v) { return !v.ratified; }, s:'Unrest +3, the professions -3.',
@@ -16287,6 +16425,115 @@ render = function () {
   if (modal && !modal.hidden && sh && sh.querySelector('[data-setup-begin]') && !sh.querySelector('[data-setup-scenario="v9twoVales"]')) startScreen();
 })();
 
+</script>
+<style>
+/* ==========================================================
+   V10 - THE DESCENT (chunk 8, S9d). Style layer: the security-state strip.
+   New rules only, at the end of the cascade per the standing rule.
+   ========================================================== */
+.sec-state .val-big{font-family:var(--font-n);font-size:26px;font-weight:600;letter-spacing:.02em}
+.sec-state .thresh{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+</style>
+<script>
+'use strict';
+/* ==========================================================
+   V10 - THE DESCENT (S9d)
+   The engine slice: the confirmation-ritual event the sham ballot queues, the
+   reckoning when elections return, the security-state strip on the
+   Constitution page, and the ssPeak high-water mark. This chunk defines NO
+   ensure function and never wraps enrichState - the S3 dice guard stays
+   outermost by construction. Everything v10 stores is created-on-write and
+   read with ||0 / ||{} fallbacks (S.rigging, S.rigCount, S.ssPeak), so no
+   save migration exists and none is needed.
+   ========================================================== */
+
+function v10RitualEvent(st) {
+  var lines = RITUAL[st.form] || ['The government confirmed itself in office.'];
+  var turnout = Math.min(99, 92 + (st.rigging || 0) * 2 + (st.acts.lifeTerms ? 2 : 0));
+  var ch = [
+    { l:'A modest ceremony', s:'Capital +2, unrest +2. The old observances, nothing claimed.',
+      f:function (S) { S.capital = clamp(S.capital + 2, -5, capCap(S)); S.unrest = clamp(S.unrest + 2, 0, 110);
+        logIt(S, 'The confirmation was held with the usual observances.'); } },
+    { l:'Stage-manage it fully', s:'Capital +5, unrest +4, liberties -2, corruption +2. Every staged count goes into an archive somebody keeps.',
+      f:function (S) { S.capital = clamp(S.capital + 5, -5, capCap(S)); S.unrest = clamp(S.unrest + 4, 0, 110);
+        S.ind.liberties = c100(S.ind.liberties - 2); S.ind.corruption = c100(S.ind.corruption + 2);
+        S.rigging = (S.rigging || 0) + 1; S.rigCount = (S.rigCount || 0) + 1;
+        logIt(S, 'The count was managed and the reported turnout admired.'); } },
+    { l:'Let the count be honest this once', s:'Capital -2, unrest -6, liberties +3, state governments +4. A risk the honest number embarrasses.',
+      f:function (S) { S.capital = clamp(S.capital - 2, -5, capCap(S)); S.unrest = clamp(S.unrest - 6, 0, 110);
+        S.ind.liberties = c100(S.ind.liberties + 3); S.crown = c100(S.crown + 4);
+        if (rand() < .2 + S.unrest / 300) {
+          S.unrest = clamp(S.unrest + 8, 0, 110); S.armyLoyalty = c100(S.armyLoyalty - 3);
+          logIt(S, 'The honest count was held, and the spoiled ballots outnumbered the list.');
+        } else {
+          logIt(S, 'The count was held honestly, and the number was believed for once.');
+        } } }
+  ];
+  if (securityState(st) >= 45) {
+    ch.push({ l:'Make the turnout a weapon', s:'Unrest -8 now. Rigging +2, liberties -4, tension +2. The apparatus delivers the number it is told to.',
+      f:function (S) { S.unrest = clamp(S.unrest - 8, 0, 110); S.rigging = (S.rigging || 0) + 2; S.rigCount = (S.rigCount || 0) + 1;
+        S.ind.liberties = c100(S.ind.liberties - 4); S.ind.tension = c100(S.ind.tension + 2);
+        logIt(S, 'The bureau delivered the turnout, block by block.'); } });
+  }
+  return { id:'v10ritual', w:0, title:'The Confirmation of the Government',
+    text: lines[Math.floor(rand() * lines.length)] + ' The reported turnout will be ' + turnout +
+      ' percent. How the ceremony is run is a decision of the government.',
+    ch: ch };
+}
+
+/* Rigging is a loan against the restoration: when elections return, the
+   archive of the staged counts surfaces once. */
+var V10_EVENTS = [
+  ev({ id:'v10reckoning', w:9, once:true, elective:true,
+    cond:function (S) { return (S.rigging || 0) > 0; },
+    title:'The Archive of the Counts',
+    text:'A registrar kept the true returns of every stage-managed confirmation, and this morning a newspaper has the file. The reported turnouts, the real ones, and the initials of the men who signed the difference.',
+    ch:[
+      { l:'Publish everything and take the blow', s:'Unrest +4 for every staged count, then the ledger is clean. Liberties +4, the professions remember it kindly.',
+        f:function (S) { S.unrest = clamp(S.unrest + 4 * (S.rigging || 0), 0, 110); S.ind.liberties = c100(S.ind.liberties + 4);
+          mood(S, { prof:6, youth:4 }); S.rigging = 0;
+          logIt(S, 'The archive was published in full. The counts are settled, at a price.');
+          chronicle(S, 'The archive of the staged counts was published.'); } },
+      { l:'Deny the documents', s:'Corruption +4, the press hardens, and the ledger STAYS OPEN - the Front keeps its grievance.',
+        f:function (S) { S.ind.corruption = c100(S.ind.corruption + 4); mood(S, { prof:-5, youth:-4 });
+          S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) - .05, -.8, 1);
+          logIt(S, 'The documents were denied. Nobody who read them believed the denial.'); } }
+    ] })
+];
+V10_EVENTS.forEach(function (e) { EVENTS.push(e); });
+
+/* the high-water mark of the apparatus, for the record and the thaw */
+var v10TickBase = tickTurn;
+tickTurn = function (st) {
+  v10TickBase(st);
+  st.ssPeak = Math.max(st.ssPeak || 0, securityState(st));
+};
+
+/* the Constitution page carries the apparatus reading */
+var v10ViewStateBase = viewState;
+viewState = function () {
+  var html = v10ViewStateBase();
+  var ss = Math.round(securityState(S));
+  var contrib = POLICIES.filter(function (p) { return (p.cat === 'Authority' || p.cat === 'Security') && (S.pol[p.id] || 0) > 0 && polAuth(p) > 0; })
+    .sort(function (a, b) { return (S.pol[b.id] || 0) * polAuth(b) - (S.pol[a.id] || 0) * polAuth(a); }).slice(0, 3);
+  var strip = '<div class="panel sec-state"><h2>The Security State</h2>' +
+    '<p class="note">The apparatus, measured: every Authority and Security statute weighted by how much authority it claims, plus the acts and the constitution itself. It suppresses unrest (less and less past 45), erodes liberties, cows the court, cheapens the next Authority measure, and past 30 it opens the extraordinary measures to ANY government.</p>' +
+    '<div class="val-big">' + ss + ' <span class="muted" style="font-size:13px">' + securityLabel(ss) + '</span></div>' +
+    '<div class="thresh"><span class="tag' + (ss >= 30 ? ' up' : '') + '">30 surveillance state</span>' +
+    '<span class="tag' + (ss >= 45 ? ' up' : '') + '">45 police state</span>' +
+    '<span class="tag' + (ss >= 65 ? ' up' : '') + '">65 the total state</span>' +
+    ((S.ssPeak || 0) > ss ? '<span class="tag">high-water ' + Math.round(S.ssPeak) + '</span>' : '') + '</div>' +
+    (contrib.length ? '<p class="note" style="margin-top:6px">Carried chiefly by ' + contrib.map(function (p) { return p.name; }).join(', ') + '.</p>' : '') +
+    '</div>';
+  var mk = '<div class="grid"><div>';
+  return html.indexOf(mk) >= 0 ? html.replace(mk, mk + strip) : strip + html;
+};
+
+/* ---------- boot ---------- */
+(function () {
+  S = enrichState(S, false);
+  render();
+})();
 </script>
 </body>
 </html>

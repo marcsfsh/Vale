@@ -4,7 +4,44 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S9c — the Atlas** (PR #18). The navigation overhaul the owner ordered:
+**S9d — the Descent** (PR #19). The engine half of the owner's third order:
+"expanded options and means of changing/altering the course of government...
+integrating it into existing functions rather than bolting on new systems...
+policies should vary based on the state the country is in."
+
+What was inert, made real. Nine of eleven constitutional acts were pure
+latches — `wealthFranchise`, the signature oligarchy move, weighted NO vote
+anywhere; all nine now have standing effects (the franchise is genuinely
+weighted via BLOC_WEALTH in supportTargets; the chartered Senate holds its
+fifth of the seats through every election, totals preserved; the consulate
+pins the offices; the siege, the purge, life terms, agency capture, annexation
+and the territorial seats all read every turn). The extraordinary measures
+were gated by RULING PARTY alone — most governments could never descend,
+however far the country had; the door now also opens by the state itself:
+`securityState(st)`, a derived scalar over the Authority/Security statute
+book (thresholds 30/45/65), feeds unrest suppression with diminishing
+returns, liberties/safety/corruption targets, movement fear and the Front's
+growth, the court's deference, the price of the next Authority measure, and
+the measures gate. A fresh republic measures 0 — the default game is
+untouched, and `tools/pacing.js` is byte-identical before and after, id for
+id, on every length. The sham election became the confirmation ritual: a
+dispatch with a rigging dial, an honest-count gamble, and at police-state
+levels the turnout-as-weapon; staged counts are a loan the reckoning calls in
+when elections return. `terminal:true` is finally read — leaving the Empire
+or the People's Republic needs the restoration crisis (the convention arc
+opens the door) and pays a surcharge. `needs:` is enforced on all three
+enactment paths (a bill whose prerequisite fell while before the houses now
+lapses loudly at assent). `policyOpen` gained `forms:[…]` and per-policy
+`req(st)` with `policyWhy` giving every refusal its reason. Dead branches
+fixed: the never-printed imperial ending, the `'absolute'` party-ban gate,
+write-only conventionLimits. New chunk v10 (baseline 8/8, no ensure function,
+dice guard stays outermost by construction). `tools/roads.js` drives the full
+authority ladder rung by rung through the REAL guards, proves the state gate
+for a centre party, the ritual, the reckoning, the weighted franchise, needs,
+terminal refusal + restoration + surcharge, and seat conservation — ROADS OK,
+and it fails on the pre-S9d file at its first assertion.
+
+Previously: **S9c — the Atlas** (PR #18, merged). The navigation overhaul the owner ordered:
 "Government is both a tab and subtab... things don't seem to logically or
 intuitively be grouped together."
 
@@ -212,7 +249,8 @@ ratchet 10 → 5, which is now its true floor.
 | S8d the leftovers | **merged** (#15) | breakpoint check made a partition test (5 proofs); hemiMap's false `total` dropped and the guarantee moved into `tools/chamber.js`; seed copy tightened; this board corrected |
 | S9a nothing lost quietly | **merged** (#16) | hall gets the S1 loudness contract; collapse endings bank their session; the one raw `note` read site fixed; year clamps; 4 new playtest steps, each proven to fail pre-fix |
 | S9b the screen holds still | **merged** (#17) | nine jump mechanisms fixed in place; v7's restore is the single scroll owner; `scroll-keeps` step discriminates on three of them |
-| S9c the Atlas | **in review (PR #18)** | six coherent groups, ids collision-proof, Ministry relabel, 6-key keyboard covers all 15 views, misfiled panels rehomed with fold-pref migration, tabs.js rewritten |
+| S9c the Atlas | **merged** (#18) | six coherent groups, ids collision-proof, Ministry relabel, 6-key keyboard covers all 15 views, misfiled panels rehomed with fold-pref migration, tabs.js rewritten |
+| S9d the Descent | **in review (PR #19)** | securityState + state-gated measures; nine latch acts get teeth; confirmation ritual + reckoning; terminal real; needs on all paths; v10 chunk (8/8); `tools/roads.js` ROADS OK |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
