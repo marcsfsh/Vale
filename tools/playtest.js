@@ -533,7 +533,7 @@ async function run() {
     });
     step('works-instruments', late.instrumentButtons >= 4 && late.builtTagShown && late.worksCount >= 48,
       `${late.worksCount} works; a work under way offers ${late.instrumentButtons} instruments and the card says how it is being built: ${late.builtTagShown}`);
-    step('chairs-and-pools', late.chairButtons > 0 && late.chairNamed && late.questionPool >= 90 && late.paperPool >= 16 && late.powers >= 11,
+    step('chairs-and-pools', late.chairButtons > 0 && late.chairNamed && late.questionPool >= 90 && late.paperPool >= 32 && late.powers >= 11,
       `${late.chairButtons} chair controls while leading, chairs are named: ${late.chairNamed}; ` +
       `${late.questionPool} questions, ${late.paperPool} papers, ${late.powers} powers`);
   }

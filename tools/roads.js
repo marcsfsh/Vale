@@ -753,6 +753,31 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${qt.pool} questions over ${qt.subjects} subjects, all ${qt.bothSides} askable from either side ` +
     `(was 5 sentences in one if/else chain, three of them behind gates that could not open); ` +
     `placeholders no subject can supply: ${qt.badPlaceholders.length}; tones the engine cannot map: ${qt.badTones.length}`);
+  /* S10f — THE PAPERS. Eleven types arriving every other session for two
+     hundred sessions was the owner's other complaint about the red box. */
+  const papers = await page.evaluate(() => {
+    const out = { badChoices: [], dupTitles: [], templated: [], unpriced: [] };
+    out.pool = V10_PAPERS.length;
+    const t = {};
+    V10_PAPERS.forEach(pp => {
+      if (!pp.choices || pp.choices.length !== 3) out.badChoices.push(pp.id);
+      const k = String(pp.title).toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+      if (t[k]) out.dupTitles.push(pp.id); t[k] = 1;
+      if (/\{\w+\}/.test(pp.title + ' ' + pp.body)) out.templated.push(pp.id);
+      /* the engine prices a paper's buttons BY POSITION, so a paper the
+         renderer cannot price is a paper with a dead button */
+      const cs = inboxChoices({ v10paper: pp.id });
+      if (cs.length !== 3 || cs.some(c => typeof c.cost !== 'number' || !c.label || !c.note)) out.unpriced.push(pp.id);
+    });
+    return out;
+  });
+  say(papers.pool >= 30 && !papers.badChoices.length && !papers.dupTitles.length &&
+      !papers.templated.length && !papers.unpriced.length,
+    'the red box has more than a fortnight in it',
+    `${papers.pool} authored papers on top of the eleven the v4 base had; ` +
+    `wrong number of choices: ${papers.badChoices.length}; repeated titles: ${papers.dupTitles.length}; ` +
+    `templated where they should be written: ${papers.templated.length}; buttons the renderer cannot price: ${papers.unpriced.length}`);
+
   say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent && qt.stable,
     'a session picks its question without spending a die',
     `60 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +

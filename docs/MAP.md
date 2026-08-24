@@ -390,13 +390,24 @@ ladder as `lin`, and expands four channels into five rows each:
   in the enrich chain or an old save yields `Math.max(undefined, n)` = NaN,
   which `clamp` passes through. Treaty effects reach the game through
   `indicatorTargets`, like orders.
-- **Question Time** (S10f): 24 authored questions over 14 subjects, plus
-  variants. **Selection must never spend a die** — `v8EnsureQuestion` is called
+- **Question Time** (S10f): 94 authored questions over 14 subjects — three
+  ways of asking each from the government benches and two from the opposition,
+  so a subject that comes round twice does not come round in the same words.
+  Every question's `{placeholders}` must be ones its own SUBJECT supplies
+  (`v10QtContext`'s per-subject fill, plus the four globals `leader` `party`
+  `opp` `year`); anything else prints the braces verbatim at the despatch box,
+  and `roads.js` refuses it. **Selection must never spend a die** — `v8EnsureQuestion` is called
   from the RENDER path (`v8Badges`, the chamber view), and `render()` runs on
   every action and tab change, so a roll there makes a campaign's dice depend
   on how often the player looked at a tab. The pick is a hash of turn, subject
   and seed. Each authored reply's `tone` maps onto one of the four effect paths
   that already existed; the material is new, the arithmetic is not.
+- **The political papers** (S10f): 32 authored types on top of the eleven the
+  v4 base had, on the proven three-edit seam — `addInbox` with a type, an
+  `inboxChoices` arm, a `respondInbox` arm. The engine prices a paper's buttons
+  BY POSITION and reads EXACTLY THREE choices, so a paper with two or four
+  loses a button silently; `roads.js` refuses one. Papers are written, not
+  templated: a `{placeholder}` in a title or body is a defect, not a feature.
 - **The order book** (S10c). `V10_ORDERS` / `V10_ORDER`, registered through
   `v10RegisterOrders`. An order is NOT a statute: three rules decide what
   belongs — it TARGETS state no statute reaches (region, power, work, issue,
