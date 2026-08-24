@@ -300,3 +300,38 @@ of a ladder — a government that builds a statute out now reaps the second
 order and the cost, and the crises follow.
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
+
+================================================================================
+RE-BASELINED AFTER S10a — THE SEEDED STREAM MOVED
+================================================================================
+
+This is a re-baseline, not a comparison. S10a deliberately changes how many
+dice a campaign spends: ministers are born with an age, names are re-rolled
+when they collide with somebody already in public life, and two shuffles that
+used a random comparator (whose draw count depends on the engine's sort) are
+now Fisher-Yates. Seed 5EED1234 therefore plays a DIFFERENT campaign than it
+did before this slice, by design and with the break announced.
+
+length    seed      sessions  years  ended                elections  crises  wars  achievements
+short     5EED1234  50        50     reached the end year 2          4       2     8/44
+standard  5EED1234  100       100    reached the end year 2          6       7     10/44
+epic      5EED1234  200       200    reached the end year 2          11      22    12/44
+
+length    crises/10 sessions  elections/10  events/session  records at the close
+short     0.8                 0.4           1.5             18%
+standard  0.6                 0.2           1.5             23%
+epic      0.6                 0.1           1.6             27%
+
+What this tool gates on still holds: every length option plays to its end year
+and delivers a complete arc, the longer options still earn more (8 -> 10 -> 12),
+and density stays flat across lengths at 1.5/1.5/1.6 events a session.
+
+The `elections` column counts elections WON, not elections held. It fell from
+5/5/11 to 2/2/11 — the harness plays first-choice-always and loses government
+readily, and on a different trajectory it loses it earlier. Federal ballots
+themselves are untouched by this slice: nothing in S10a goes near
+`runElection` or `isBallotTurn`, and the governor schedule rides on federal
+ballots rather than driving them. `tools/roads.js` asserts the state ballot
+independently — two regions at each of eight ballots, all eight contested.
+
+This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).

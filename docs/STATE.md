@@ -4,7 +4,61 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**The fourth order is complete** — S9f, S9g and S9h are all merged (#21, #22,
+**S10a — The Republic Ages** (PR #25). First of five slices carrying the
+owner's fifth order: eleven items across the parts of the game you *operate*
+rather than the statute book you legislate from. This slice takes the three
+reported defects, the person layer they exposed, and four promises the game
+was not keeping.
+
+Four of the eight regions had never held a governor's election, in any
+campaign, at any seed. `v6GovernorElections` tested `(turn + regionIndex) % 4 === 1` on
+ballot turns, which are odd, so it could only ever be true for an even index.
+Thaxia, Tenebris, Meridian and the Federal District were frozen for the whole
+campaign, ageing without anything that could replace them, and the same
+expression drove a forward search for the printed ballot year that gave up
+after eight turns — so their year receded by one every year. The schedule is
+now counted in ballots: two regions at each federal ballot, every region every
+fourth ballot, no parity to be knocked out of step by an early election.
+
+Ministers and governors joined the mortality that already existed for party
+leaders and the four executive offices. `ageFigures` split into `ageRoster`
+and `ageSucceed` so a later chunk can extend the list — its roster was a local
+array, so a wrapper could only watch. `v6GovernorsTick`'s own `g.age += 1`
+went in the same commit: governors were being aged twice a session. A
+minister's death leaves the post vacant; a governor's is filled by their own
+party for the rest of the term. The obituary roll — written on every death
+since the v4 base, capped at forty, saved with every campaign and displayed
+nowhere — is now a panel on the Record.
+
+There was one Somnium Sea Wall too many: `coast` and `v9seawall` shared a NAME
+under different ids, and the merge guard is keyed on id. The v9 entry survives
+and any save building the other is folded onto it with the money carried
+across.
+
+Names went from 1,600 pairs to 39,400, deduplicated against the living cast in
+the factories rather than in `makeName()`, and weighted by region for
+governors. Very easy builds six grand works and has the capital to commission
+them — opening balance, income and the ceiling all moved, because the ceiling
+would otherwise have clamped the rest away.
+
+Four things nobody asked for, three of which broke written rules: an
+unreadable save was destroyed by the first autosave after the setup sheet
+promised it untouched; every one of the game's 75 refusals was silent on phone
+and tablet while every success spoke; a finished campaign was offered for
+resume with no hint that nothing would work; and the seeded stream depended on
+which tabs you had opened and on the browser's sort algorithm.
+
+**The seeded stream has moved.** New rolls for minister ages and name dedupe,
+and two random comparators replaced with Fisher-Yates, mean a seed no longer
+reproduces its pre-S10a campaign. In-progress saves are unaffected — the RNG
+state rides the save — and load, migrate and render correctly. `maxBytes`
+1,900,000 → 2,100,000, raised here rather than when it binds.
+
+Next: **S10b**, the executive order book and influence over bills you do not
+own; then the Great Works, the Ministry/committees/diplomacy, and Question
+Time with the political papers.
+
+Previously: **The fourth order is complete** — S9f, S9g and S9h are all merged (#21, #22,
 #23). Every one of the 582 statutes has four levels, each with its own set of
 modifiers; the card preview says what extending or repealing would do; the
 Dossier shows every stage; every one of the twenty core categories holds
@@ -436,6 +490,7 @@ ratchet 10 → 5, which is now its true floor.
 | S9f the Ladder | **merged** (#21) | four rungs on every statute via `P()`; `lin` interpolation parity-exact at every reachable rung; 7 impulses → row deltas; 219 position literals rescaled; loud save migration + `polV2`; card/Dossier/desk surfaces; tab changes land at the top; drafting stays on the policy page |
 | S9g the statute book | **merged** (#22) | 131 new statutes, every core category to 24; four authored rungs from birth with a written curve grammar; 11 prose conditions turned into real `req:`/`reqText:`; `maxBytes` 1.6M -> 1.75M with the case; roads.js counts the categories and checks no rung repeats the one below |
 | S9h the curves | **merged** (#23) | all 451 pre-existing statutes authored to the same grammar; `tools/fullbuild-baseline.json` freezes every pre-S9h full build and `auth`, roads.js checks all of them; literal surgery with a byte-identical round-trip proof; `lin` and the save migration kept, with reasons; `maxBytes` 1.75M -> 1.9M |
+| S10a the Republic Ages | **in review (PR #25)** | the state ballot rebuilt in ballots not turns (four regions had never voted); ministers and governors join `ageRoster`/`ageSucceed`; the obituaries get a page; the duplicate sea wall retired and migrated; names 1,600 -> 39,400 pairs with dedupe; very easy builds six with the capital for it; four written-rule breaches fixed; `maxBytes` 1.9M -> 2.1M |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
