@@ -583,8 +583,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     for (let i = 0; i < 300; i++) {
       S.war = null; POWERS.forEach(x => S.powers[x.id] = 70);
       S.ind.tension = 95; S.ind.military = 90; S.pol.missileForce = 4; S.pol.protectorates = 4;
+      /* the relation BEFORE the tick: declaring war clamps the target to 18,
+         so reading it afterwards says 'not a friend' about every target there
+         has ever been, and the assertion could not fail */
+      const before = {}; POWERS.forEach(x => before[x.id] = relOf(S, x.id));
       warTick(S);
-      if (S.war) { declaredFriendly++; if (relOf(S, S.war.power) >= 55) onFriend++; }
+      if (S.war) { declaredFriendly++; if (before[S.war.power] >= 55) onFriend++; }
     }
     out.declaredOnFriendly = declaredFriendly;
     out.targetedAFriend = onFriend;
@@ -619,9 +623,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.powerCount = POWERS.length;
     out.treatyKinds = Object.keys(V6_TREATIES).length;
     out.allSeeded = POWERS.every(p => typeof S.powers[p.id] === 'number' && !isNaN(S.powers[p.id]));
-    S.powers = { ostmark:44, moya:52, sarath:31, calavera:62, alliance:74, meridian:66 };
-    v10EnsurePowers(S);
-    out.backfilled = POWERS.every(p => typeof S.powers[p.id] === 'number' && !isNaN(S.powers[p.id]));
+    /* through the LOAD PATH, not by calling the migration by hand: a v9-era
+       save is enriched by v8EnsureState, and it is that wiring the assertion
+       is about. Calling v10EnsurePowers directly proves only that the function
+       exists. */
+    const old6 = JSON.parse(JSON.stringify(S));
+    old6.powers = { ostmark:44, moya:52, sarath:31, calavera:62, alliance:74, meridian:66 };
+    const loaded = v8EnsureState(old6, false) || old6;
+    out.backfilled = POWERS.every(p => typeof loaded.powers[p.id] === 'number' && !isNaN(loaded.powers[p.id]));
     S.powers = { ostmark:44 }; shiftRel(S, 'tarnow', 5);
     out.noNaN = !isNaN(S.powers.tarnow);
     S.powers = JSON.parse(JSON.stringify(keep.powers)); v10EnsurePowers(S);
@@ -647,10 +656,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.ind.military = keepMil; S.v6.treaties = keepTr; S.pol = keepPol;
     return out;
   });
-  say(world.targetedAFriend === 0 && world.declaredOnHostile > 0 && !world.wrongTarget,
+  say(world.declaredOnFriendly === 0 && world.targetedAFriend === 0 && world.declaredOnHostile > 0 && !world.wrongTarget,
     'war needs somebody to be hostile to',
-    `300 rolls with every power friendly declared ${world.declaredOnFriendly} wars, ${world.targetedAFriend} of them on a friend; ` +
-    `300 rolls with one power at 12 declared ${world.declaredOnHostile}, all on that power`);
+    `300 rolls at maximum risk with every power at 70 declared ${world.declaredOnFriendly} wars — there is nobody to fight; ` +
+    `300 identical rolls with one power at 12 declared ${world.declaredOnHostile}, every one of them on that power`);
   say(world.wordAtWar === 'at war' && world.wordOther === 'correct', 'nobody is allied and at war',
     `a power at 88 relations you are fighting reads "${world.wordAtWar}"; everyone else still reads normally ("${world.wordOther}")`);
   say(world.treatyVoided, 'war annuls the treaty it contradicts',
