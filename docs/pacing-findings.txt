@@ -405,3 +405,8 @@ instruments are barely exercised; and it answers Question Time with whatever
 button is first.
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
+
+Re-run at the close of S10d/e/f, after the question pool went to 94 and the
+papers to 43: unchanged. Both are content in slots the tick already visited, so
+the arc does not move — every length still reaches its end year, the records
+still come out 10 / 11 / 12, and crisis density is still flat at 0.8.
