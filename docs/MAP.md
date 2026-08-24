@@ -6,9 +6,10 @@ that changes structure. Consolidation PRs shrink it; that is the goal.
 
 ## The shape
 
-A v4 base plus six appended `<style>`+`<script>` chunk pairs, each
+A v4 base plus seven appended `<style>`+`<script>` chunk pairs, each
 monkey-patching the last through shared top-level globals. All scripts inline,
-synchronous, no defer/async, no DOM-ready handlers.
+synchronous, no defer/async, no DOM-ready handlers. (Line numbers in this
+table rot with every slice — trust the chunk ORDER and grep for boundaries.)
 
 | Chunk | style | script | strict? | ensure fn | alias prefix |
 |---|---|---|---|---|---|
@@ -19,6 +20,7 @@ synchronous, no defer/async, no DOM-ready handlers.
 | "The Clean Desk" (v7) | 11588–11734 | 11735–12172 | yes (S1) | — | `v7*Base` |
 | v8 "The Living Republic" | 12173–12306 | 12307–13868 | yes | v8EnsureState (~12343) | `v8*Base` |
 | v9 "The Deep State" | 13869–13903 | 13904–15714 | yes | v9EnsureState (~13923) | `v9*Base` |
+| v10 "The Descent" (S9d) | end | end | yes | — (deliberate: no ensure, never wraps enrichState, so the S3 dice guard stays outermost; all v10 state is created-on-write with fallback reads) | `v10*Base` |
 
 Static DOM shell (body 336–368): `#app` (`.topbar` with `#stats`, `nav#tabs`,
 `main#view`), `.turnbar` (`#btnBrief #btnMenu #btnHelp #btnUndo #btnSave
@@ -311,6 +313,66 @@ too, as isolation for any stray call the file grows later.
   pass. Drive it through the model (`v6Sandbox` + `tickTurn`), not the modal
   queue: which queued sheets a UI run pumps depends on click interleaving, so a
   UI-level comparison measures the harness, not the game.
+
+## The descent engine (S9d)
+
+The machinery that makes leaving the republic a real system rather than nine
+inert latches. All of it drives through EXISTING registries and functions —
+the owner's "integrate, don't bolt on".
+
+- **`securityState(st)`** (v4, beside `unrestTarget`): derived, never stored —
+  Σ level×`polAuth`×2 over Authority+Security statutes, +12 stateOfSiege, +6
+  purgeService, +6 ironHand, +8 elections-off; clamp 0-100. Thresholds 30/45/65
+  ("surveillance state in outline" / "police state" / "the total state",
+  `securityLabel`). A fresh default opening measures 0 (roads.js asserts it) —
+  a player who never legislates the apparatus feels nothing. Consumers:
+  unrestTarget (suppression, diminishing past 45), indicatorTargets (liberties
+  −.18/pt, safety +, corruption past 45), movementsTick (fear breaks
+  organising; the Front grows past 45, on authority-path forms, and +1.5/turn
+  per rigging notch), extraReview hold, policyCost (Authority book cheapens up
+  to 30%), extraTierAllowed, the Constitution page's strip (v10 wrapper).
+  `st.ssPeak` high-water rides the save (created-on-write, v10 tickTurn wrap).
+- **The measures gate** (`extraTierAllowed`): party OR state — tier 1 opens at
+  ss≥30, authority-path, or elections off; tier 2 by terminal form or
+  precedents≥2 + (ss≥50 or elections off); `acts.conventionLimits` bars tier 2.
+- **The nine latch acts now read**: stateOfSiege → unrest −10/turn, liberties
+  −6, a budget expense; purgeService → deptFactor ×.92 + corruption; lifeTerms
+  → +1 ritual court seat; charteredSenate → 20% Senate reservation for
+  `bestBusinessParty` INSIDE runElection (totals preserved — chamber.js
+  asserts); agencyCapture → corruption/environment/economy targets;
+  wealthFranchise → `BLOC_WEALTH` weighting in supportTargets (the franchise
+  genuinely weighted); annexation → territories/tension/revenue; territorial-
+  Seats → floor(60×territories/100) Assembly seats to the government post-
+  allocation; consulate → offices pinned to the ruling party after every
+  election, +1 capital.
+- **needs: on all three enactment paths**: changePolicy (was already there),
+  orderPolicy ("an order cannot outrun its own statute book"), and enactment
+  time — a bill whose prerequisite fell while it was before the houses LAPSES
+  loudly at assent (referendums enact through enactBill, so they inherit it).
+- **`policyOpen`** gains `forms:[…]` multi-form locks and per-policy `req(st)`;
+  **`policyWhy(st,p)`** gives every disabled flash its reason — a `req:` policy
+  MUST ship `reqText`.
+- **`eventOpen(st,e)`** — pickEvents' filter, extracted verbatim so
+  tools/roads.js can assert reachability with the REAL predicate.
+- **The confirmation ritual**: regimeCycle keeps its court mechanics and sets
+  `S.pendingRitual`; endTurn's pending door (beside pendingRuling/pendingExtra)
+  opens `v10RitualEvent(S)` next session — turnout theatre, a rigging dial
+  (`S.rigging`, `S.rigCount`), an honest-count gamble, and at ss≥45 the
+  turnout-as-weapon choice. `v10reckoning` (elective, once) surfaces the
+  archive when elections return: +4 unrest per staged count or a denial that
+  keeps the ledger open. Rigging is a loan against the restoration.
+- **terminal is real**: toFederal from a terminal form requires
+  `S.v6.flags.restoration` — set ONLY by the convention arc's ratified
+  settlement (trigger widened to terminal forms at Front>55) and, from S9e,
+  the road-back events — and costs a +20 surcharge; `flags.restored` marks the
+  way out (an S9e achievement reads it). Dead branches fixed: the imperial
+  ending (`path==='empire'`), the party-ban gate (`FORMS[..].terminal` for the
+  dead `'absolute'`), conventionLimits (now read twice).
+- **tools/roads.js** proves all of it end-to-end: the full authority ladder
+  with per-rung ok() flips, the state gate for a centre party, ritual + 
+  reckoning reachability, the weighted franchise moving real support, needs on
+  orders and at assent, terminal refusal + restoration + surcharge, and seat
+  conservation under the reapportioning acts.
 
 ## The record (S8c)
 

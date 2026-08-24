@@ -1,0 +1,260 @@
+#!/usr/bin/env node
+'use strict';
+/*
+ * The roads out of the republic, driven end to end.
+ *
+ *   node tools/roads.js
+ *
+ * Model-driven per the determinism rule: it drives doTransition, doExtra and
+ * the act applies through their REAL guards (capital topped up between steps,
+ * preconditions constructed, never bypassed), not the modal queue. What it
+ * proves, per road:
+ *
+ *   1. The authority ladder federal -> centralised -> executive -> emergency
+ *      -> oneparty -> empire: each transition's ok() is FALSE before its
+ *      documented preconditions are constructed and TRUE after, and
+ *      doTransition actually moves S.form at every rung.
+ *   2. The state gate on extraordinary measures: a government of the
+ *      constitutional centre (FP) can sign once the STATE has descended
+ *      (securityState >= 30), and tier 2 opens by precedents + apparatus —
+ *      the S9d door that party identity used to bolt shut.
+ *   3. The confirmation ritual queues under a closed constitution, carries
+ *      its rigging choices, and the reckoning event becomes reachable when
+ *      elections return with staged counts on the books.
+ *   4. The weighted franchise: with acts.wealthFranchise, supportTargets
+ *      shifts toward the propertied blocs' parties on the same fixed seed.
+ *   5. needs: an executive order cannot outrun its statute book, and a bill
+ *      whose prerequisite fell while it was before the houses lapses loudly.
+ *   6. The restoration gate: a terminal form refuses toFederal until the
+ *      restoration flag is set by crisis, and the surcharge is levied.
+ *   7. The guardrail: a fresh default opening measures securityState 0 and
+ *      the extraordinary measures stay locked for a centre party.
+ *   8. Seat conservation: charteredSenate and territorialSeats reapportion
+ *      without ever changing a chamber's constitutional total.
+ */
+const { execSync } = require('child_process');
+const { createRequire } = require('module');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+const URL = 'file://' + (process.env.VALE_FILE || path.join(ROOT, 'vale.html'));
+
+let playwright;
+try { playwright = require('playwright'); } catch (e) {
+  try {
+    const g = execSync('npm root -g', { encoding: 'utf8' }).trim();
+    playwright = createRequire(path.join(g, 'noop.js'))('playwright');
+  } catch (e2) {
+    console.log('SKIP  playwright is not resolvable here — run this in a cloud session.');
+    process.exit(2);
+  }
+}
+
+let fail = 0;
+const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(34) + detail); };
+
+(async () => {
+  const browser = await playwright.chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.addInitScript(() => { window.confirm = () => true; });
+  await page.goto(URL);
+  await page.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+  await page.click('[data-setup-begin]');
+  await page.waitForSelector('[data-doctrine]', { timeout: 10000 });
+  await page.click('[data-doctrine]');
+  await page.waitForTimeout(400);
+
+  // 7. the guardrail first, on the untouched opening
+  const fresh = await page.evaluate(() => ({
+    ss: securityState(S),
+    tier1Centre: (function () { const r = S.ruling; S.ruling = 'fp'; const v = extraTierAllowed(S, 1); S.ruling = r; return v; })(),
+  }));
+  say(fresh.ss === 0, 'fresh republic measures zero', `securityState ${fresh.ss}`);
+  say(fresh.tier1Centre === false, 'measures locked for the centre', `FP tier-1 allowed on turn 1: ${fresh.tier1Centre}`);
+
+  // 1. the authority ladder, precondition by precondition
+  const ladder = await page.evaluate(() => {
+    const out = [];
+    const T = {}; TRANSITIONS.forEach(t => { T[t.id] = t; });
+    const step = (id, breakName, make, flowOk) => {
+      const t = T[id];
+      const before = t.ok(S);
+      make();
+      const after = t.ok(S);
+      S.capital = 99;
+      doTransition(t);
+      out.push({ id, breakName, falseBefore: !before || !!flowOk, trueAfter: after, landed: S.form === t.to });
+      if (typeof hideSheet === 'function') hideSheet();
+    };
+    // make the player lead a majority government
+    S.ruling = playParty(S);
+    step('toCentral', 'crown<=45 & govShare>=.45', () => {
+      S.crown = 40;
+      const mine = playParty(S); const seats = {};
+      PARTIES.forEach(p => { seats[p.id] = 10; });
+      seats[mine] = CFG.seats - 10 * (PARTIES.length - 1);
+      S.seats = seats; S.coalition = [mine];
+    });
+    step('toExecutive', 'execHeld>=3 & army>=55', () => {
+      S.armyLoyalty = 60;
+      S.exec.pres = S.ruling; S.exec.vpres = S.ruling; S.exec.chan = S.ruling; S.exec.vchan = S.ruling;
+    });
+    step('toEmergency', 'army>=60 & unrest>55', () => { S.armyLoyalty = 65; S.unrest = 60; });
+    /* toOneParty's gate (army 65, no sitting Assembly) is already satisfied on
+       arrival from the emergency, which suspended the house and raised the
+       services — the ladder FLOWS, which is the design. No false-before here. */
+    step('toOneParty', 'army>=65 & !lowerSits', () => { S.armyLoyalty = 70; }, true);
+    step('toEmpire', 'pnl 4 offices, 3 precedents, army 70', () => {
+      S.ruling = 'pnl'; S.playAs = 'pnl'; S.coalition = ['pnl'];
+      S.exec.pres = 'pnl'; S.exec.vpres = 'pnl'; S.exec.chan = 'pnl'; S.exec.vchan = 'pnl';
+      S.precedents = 3; S.armyLoyalty = 75;
+    });
+    return out;
+  });
+  for (const r of ladder) {
+    say(r.falseBefore && r.trueAfter && r.landed, 'ladder: ' + r.id,
+      `ok() false before (${r.falseBefore}), true after ${r.breakName} (${r.trueAfter}), form moved: ${r.landed}`);
+  }
+
+  // 3a. the ritual queues under the closed constitution we just built
+  const ritual = await page.evaluate(() => {
+    S.pendingRitual = null;
+    regimeCycle(S);
+    const queued = !!S.pendingRitual;
+    const ev1 = v10RitualEvent(S);
+    const ssNow = securityState(S);
+    return { queued, title: ev1.title, choices: ev1.ch.length, ssNow,
+      weaponChoice: ev1.ch.length === (ssNow >= 45 ? 4 : 3) };
+  });
+  say(ritual.queued && ritual.choices >= 3 && ritual.weaponChoice, 'the confirmation ritual',
+    `queued: ${ritual.queued}; "${ritual.title}" with ${ritual.choices} choices at securityState ${Math.round(ritual.ssNow)}`);
+
+  // 3b. rig a count, restore elections, and the reckoning becomes reachable
+  const reckon = await page.evaluate(() => {
+    S.rigging = 2; S.rigCount = 2;
+    const ev2 = EVENTS.filter(e => e.id === 'v10reckoning')[0];
+    const closedNow = eventOpen(S, ev2);
+    S.v6.flags = S.v6.flags || {}; S.v6.flags.restoration = true;
+    const t = TRANSITIONS.filter(x => x.id === 'toFederal')[0];
+    const okNow = t.ok(S);
+    const capBefore = (S.capital = 99);
+    doTransition(t);
+    if (typeof hideSheet === 'function') hideSheet();
+    return { closedNow, okNow, restored: S.form === 'federal', flagSet: !!(S.v6.flags.restored),
+      surcharged: S.capital < capBefore - t.cost, open: eventOpen(S, ev2) };
+  });
+  say(!reckon.closedNow && reckon.open, 'the reckoning waits for elections',
+    `closed while no elections: ${!reckon.closedNow}; open after restoration: ${reckon.open}`);
+  say(reckon.okNow && reckon.restored && reckon.flagSet && reckon.surcharged, 'the restoration road back',
+    `ok with flag: ${reckon.okNow}; landed federal: ${reckon.restored}; restored flag: ${reckon.flagSet}; terminal surcharge levied: ${reckon.surcharged}`);
+
+  // 6. and it REFUSES without the flag (fresh page)
+  const p2 = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await p2.addInitScript(() => { window.confirm = () => true; });
+  await p2.goto(URL);
+  await p2.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+  await p2.click('[data-setup-begin]');
+  await p2.waitForSelector('[data-doctrine]', { timeout: 10000 });
+  await p2.click('[data-doctrine]');
+  await p2.waitForTimeout(400);
+  const locked = await p2.evaluate(() => {
+    S.form = 'empire';
+    const t = TRANSITIONS.filter(x => x.id === 'toFederal')[0];
+    const refused = !t.ok(S);
+    S.v6.flags = S.v6.flags || {}; S.v6.flags.restoration = true;
+    const opened = t.ok(S);
+    S.form = 'federal'; S.v6.flags.restoration = false;
+    return { refused, opened };
+  });
+  say(locked.refused && locked.opened, 'terminal means terminal',
+    `empire refuses toFederal without the flag: ${locked.refused}; opens with it: ${locked.opened}`);
+
+  // 2. the state gate on the measures
+  const gate = await p2.evaluate(() => {
+    const r0 = S.ruling, a0 = S.playAs;
+    S.ruling = 'fp'; S.playAs = 'fp';
+    const before = extraTierAllowed(S, 1);
+    // legislate the apparatus: raise Authority statutes until ss >= 30
+    const auth = POLICIES.filter(p => (p.cat === 'Authority' || p.cat === 'Security') && polAuth(p) > 0);
+    for (const p of auth) { S.pol[p.id] = p.max; if (securityState(S) >= 34) break; }
+    const ss = securityState(S);
+    const t1 = extraTierAllowed(S, 1);
+    const t2before = extraTierAllowed(S, 2);
+    S.precedents = 2;
+    for (const p of auth) { S.pol[p.id] = p.max; }
+    const ss2 = securityState(S);
+    const t2 = extraTierAllowed(S, 2);
+    // clean up
+    auth.forEach(p => { S.pol[p.id] = 0; }); S.precedents = 0; S.ruling = r0; S.playAs = a0;
+    return { before, ss, t1, t2before, ss2, t2 };
+  });
+  say(!gate.before && gate.t1, 'tier 1 opens by the state', `FP locked at ss 0: ${!gate.before}; open at ss ${Math.round(gate.ss)}: ${gate.t1}`);
+  say(!gate.t2before && gate.t2, 'tier 2 opens by precedent + apparatus', `locked before: ${!gate.t2before}; open at 2 precedents and ss ${Math.round(gate.ss2)}: ${gate.t2}`);
+
+  // 4. the weighted franchise moves the count
+  const franchise = await p2.evaluate(() => {
+    const tally = () => {
+      const t = supportTargets(S);
+      let bus = 0, lab = 0;
+      PARTIES.forEach(p => {
+        const share = t[p.id] || 0;
+        if (p.id === bestBusinessParty(S)) bus += share;
+        if (p.id === 'lp' || p.id === 'rsf') lab += share;
+      });
+      return { bus, lab };
+    };
+    const before = tally();
+    S.acts.wealthFranchise = true;
+    const after = tally();
+    S.acts.wealthFranchise = false;
+    return { busBefore: before.bus, busAfter: after.bus, labBefore: before.lab, labAfter: after.lab };
+  });
+  say(franchise.busAfter > franchise.busBefore && franchise.labAfter < franchise.labBefore,
+    'the franchise is weighted', `business party ${franchise.busBefore.toFixed(3)} -> ${franchise.busAfter.toFixed(3)}; labour bloc parties ${franchise.labBefore.toFixed(3)} -> ${franchise.labAfter.toFixed(3)}`);
+
+  // 5. needs: the order cannot outrun the statute book
+  const needs = await p2.evaluate(() => {
+    // fabricate a needs pair on live policies without touching the registry:
+    const p = POLICIES.filter(x => x.dept && !x.needs && (S.pol[x.id] || 0) === 0)[0];
+    const pre = POLICIES.filter(x => x.id !== p.id && (S.pol[x.id] || 0) === 0)[0];
+    p.needs = pre.id;
+    S.ruling = playParty(S); S.coalition = [S.ruling];
+    S.exec.pres = S.ruling; S.exec.vpres = S.ruling; S.exec.chan = S.ruling; S.exec.vchan = S.ruling;
+    S.capital = 99; S.changed = {};
+    const before = S.pol[p.id] || 0;
+    orderPolicy(p.id);
+    const blocked = (S.pol[p.id] || 0) === before;
+    // enactment-time lapse: prerequisite falls while the bill is live
+    S.pol[pre.id] = 1;
+    const bill = { policy: p.id, dir: 1, owner: 'player', title: 'Test Measure Bill', concessions: 0, stage: 'assent' };
+    S.pol[pre.id] = 0;
+    const failedBefore = S.legacy.billsFailed;
+    enactBill(S, bill);
+    const lapsed = (S.pol[p.id] || 0) === before && S.legacy.billsFailed === failedBefore + 1;
+    delete p.needs;
+    return { blocked, lapsed };
+  });
+  say(needs.blocked, 'an order cannot outrun the book', `orderPolicy refused without the prerequisite: ${needs.blocked}`);
+  say(needs.lapsed, 'a bill lapses with its prerequisite', `enactBill refused and archived as failed: ${needs.lapsed}`);
+
+  // 8. seat conservation under the reapportioning acts
+  const seats = await p2.evaluate(() => {
+    S.acts.charteredSenate = true; S.acts.territorialSeats = true; S.ind.territories = 70;
+    runElection(S, true);
+    if (typeof hideSheet === 'function') hideSheet();
+    const lower = Object.values(S.seats).reduce((a, b) => a + b, 0);
+    const upper = Object.values(S.upper.seats).reduce((a, b) => a + b, 0);
+    const bparty = bestBusinessParty(S);
+    const reserved = S.upper.seats[bparty] || 0;
+    S.acts.charteredSenate = false; S.acts.territorialSeats = false;
+    return { lower, upper, reserved, want: Math.floor(CFG.senate * .2) };
+  });
+  say(seats.lower === 1305 && seats.upper === 300, 'the constitution holds the totals',
+    `Assembly ${seats.lower}/1305, Senate ${seats.upper}/300 after a chartered, territorial election`);
+  say(seats.reserved >= seats.want, 'the charters keep their seats',
+    `${seats.reserved} Senate seats for the business party against a floor of ${seats.want}`);
+
+  await browser.close();
+  console.log(fail ? '\n' + fail + ' CHECK(S) FAILED' : '\nROADS OK');
+  process.exit(fail ? 1 : 0);
+})().catch(e => { console.log('FAIL  ' + e.message); process.exit(1); });

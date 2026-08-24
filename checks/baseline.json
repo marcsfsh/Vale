@@ -1,7 +1,7 @@
 {
   "_comment": "Ratchet baselines for checks/run.js. Baselines only move toward the target, with the reason recorded in the PR that moves them. allowedExternalPrefixes is EMPTY and stays empty: since S5 the game embeds its own fonts and references nothing off-origin (invariant 4).",
-  "scriptBlocks": 7,
-  "strictBlocksMin": 7,
+  "scriptBlocks": 8,
+  "strictBlocksMin": 8,
   "allowedExternalPrefixes": [],
   "staleBindingsMax": 0,
   "saveKeys": [
@@ -24,5 +24,6 @@
   "_heightComment": "The one height threshold in the file: the landscape/short-window turn bar. It was governed by nothing until the breakpoint check learned about the height axis.",
   "heightThresholds": [
     460
-  ]
+  ],
+  "_tenthComment": "S9d added the v10 Descent chunk (7->8): the engine that makes the descent roads real. The case is in PR #19; the chunk defines no ensure function and never wraps enrichState, so the S3 dice guard stays outermost."
 }
