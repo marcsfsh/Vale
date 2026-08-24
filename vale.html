@@ -16777,7 +16777,6 @@ if (!V8_GOALS.v9twoVales) V8_GOALS.v9twoVales = [
 [
   { id:'chartered', name:'The Chartered State', note:'Proclaimed the Chartered State.', test:function (st) { return st.form === 'syndicate'; } },
   { id:'apparatus', name:'The Total State', note:'The security state reached 65.', test:function (st) { return (typeof securityState === 'function' ? securityState(st) : 0) >= 65 || (st.ssPeak || 0) >= 65; } },
-  { id:'restorer', name:'The Restorer', note:'Restored the federal constitution from a terminal form.', test:function (st) { return !!(st.v6 && st.v6.flags && st.v6.flags.restored); } },
   { id:'ballotTheatre', name:'Ballot Theatre', note:'{N} confirmations stage-managed.', req:function (st) { return v6Scale(st, 5, 2); }, test:function (st) { return (st.rigCount || 0) >= v6Scale(st, 5, 2); } },
   { id:'praetorianPact', name:'The Praetorian Pact', note:'Survived the Guardians with the constitution intact.', test:function (st) { return !!(st.v6 && st.v6.flags && st.v6.flags.praetorianPact); } },
   { id:'openRepublic', name:'The Open Republic', note:'Past the midpoint with liberties at 75 and not one Authority statute on the books.', test:function (st) {
