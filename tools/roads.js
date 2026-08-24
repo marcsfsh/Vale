@@ -72,6 +72,59 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(fresh.ss === 0, 'fresh republic measures zero', `securityState ${fresh.ss}`);
   say(fresh.tier1Centre === false, 'measures locked for the centre', `FP tier-1 allowed on turn 1: ${fresh.tier1Centre}`);
 
+  /* 9. THE LADDER. Four rungs on every statute, five rows on every channel,
+     and — for any channel whose curve is not yet authored — the old balance
+     preserved exactly: the full build is still base x the old maximum, and
+     every rung an old save, seed, want or programme target can land on after
+     the rescale reads exactly what it read before. */
+  const ladderParity = await page.evaluate(() => {
+    const bad = { max: [], rows: [], needs: [], build: [], rung: [], seed: [] };
+    const cats = {};
+    const near = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+    const authored = (p, key) => p[key + '2'] !== undefined || p[key + '3'] !== undefined || p[key + '4'] !== undefined;
+    POLICIES.forEach(p => {
+      cats[p.cat] = (cats[p.cat] || 0) + 1;
+      if (p.max !== 4) bad.max.push(p.id + ' max ' + p.max);
+      for (let i = 0; i <= 4; i++) {
+        if (!p._effAt[i] || !p._moodAt[i] || typeof p._revAt[i] !== 'number' || typeof p._expAt[i] !== 'number') bad.rows.push(p.id + '@' + i);
+      }
+      if (p.needs && !POL[p.needs]) bad.needs.push(p.id + ' -> ' + p.needs);
+      const m = p.lin;
+      if (!(m >= 1 && m <= 4)) { bad.rows.push(p.id + ' lin ' + m); return; }
+      if (!authored(p, 'eff')) for (const k in (p.eff || {})) {
+        if (!near(p._effAt[4][k] || 0, p.eff[k] * m)) bad.build.push(p.id + '.eff.' + k);
+        for (let n = 0; n <= m; n++) if (!near(p._effAt[Math.round(n * 4 / m)][k] || 0, p.eff[k] * n)) bad.rung.push(p.id + '.eff.' + k + '@' + n);
+      }
+      if (!authored(p, 'mood')) for (const k in (p.mood || {})) {
+        if (!near(p._moodAt[4][k] || 0, p.mood[k] * m)) bad.build.push(p.id + '.mood.' + k);
+        for (let n = 0; n <= m; n++) if (!near(p._moodAt[Math.round(n * 4 / m)][k] || 0, p.mood[k] * n)) bad.rung.push(p.id + '.mood.' + k + '@' + n);
+      }
+      if (!authored(p, 'rev') && !near(p._revAt[4], (p.rev || 0) * m)) bad.build.push(p.id + '.rev');
+      if (!authored(p, 'exp') && !near(p._expAt[4], (p.exp || 0) * m)) bad.build.push(p.id + '.exp');
+    });
+    /* nothing may seed, want or promise a rung off the ladder */
+    const rungOk = (where, id, v) => { if (!POL[id]) bad.seed.push(where + ': unknown ' + id); else if (!(v >= 0 && v <= 4 && v === Math.round(v))) bad.seed.push(where + ' ' + id + '=' + v); };
+    PARTIES.forEach(pt => { const w = pt.wants || {}; for (const id in w) rungOk(pt.short + ' wants', id, w[id]); });
+    (typeof V6_PROGRAMMES !== 'undefined' ? V6_PROGRAMMES : []).forEach(pr => { for (const id in (pr.items || {})) rungOk('programme ' + pr.id, id, pr.items[id]); });
+    V6_SCENARIOS.forEach(sc => {
+      const probe = { pol: {}, ind: {}, blocs: {}, acts: {}, upper: { seats: {} }, seats: {}, macro: null };
+      try { sc.apply(probe); } catch (e) { return; }
+      for (const id in probe.pol) rungOk('scenario ' + sc.id, id, probe.pol[id]);
+    });
+    return { bad, cats, n: POLICIES.length, catN: Object.keys(cats).length };
+  });
+  const lp = ladderParity.bad;
+  say(lp.max.length === 0 && lp.rows.length === 0, 'four rungs on every statute',
+    `${ladderParity.n} statutes, all max 4 with five rows on every channel` + (lp.max.length ? '; wrong max: ' + lp.max.slice(0, 4).join(', ') : '') + (lp.rows.length ? '; missing rows: ' + lp.rows.slice(0, 4).join(', ') : ''));
+  say(lp.build.length === 0, 'the full build is unchanged',
+    lp.build.length ? lp.build.length + ' channels drifted: ' + lp.build.slice(0, 5).join(', ') : 'every unauthored channel still totals base x its old maximum at rung 4');
+  say(lp.rung.length === 0, 'every rescaled rung is exact',
+    lp.rung.length ? lp.rung.length + ' off: ' + lp.rung.slice(0, 5).join(', ') : 'interpolation reproduces the old ladder at every reachable position');
+  say(lp.needs.length === 0 && lp.seed.length === 0, 'nothing points off the ladder',
+    lp.needs.length || lp.seed.length ? [...lp.needs, ...lp.seed].slice(0, 5).join('; ') : 'every needs: resolves; every want, programme target and scenario seed sits on a rung');
+  console.log('      census: ' + ladderParity.n + ' statutes across ' + ladderParity.catN + ' categories · ' +
+    Object.keys(ladderParity.cats).sort().map(c => c + ' ' + ladderParity.cats[c]).join(', '));
+
   // 1. the authority ladder, precondition by precondition
   const ladder = await page.evaluate(() => {
     const out = [];
@@ -345,7 +398,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   // both arcs trigger under constructed conditions; goals and records never throw
   const rest = await p3.evaluate(() => {
     const out = { arcs: [], throws: [] };
-    S.form = 'federal'; S.pol.corporateCharters = 1; S.blocs.tech = 65; S.ind.corruption = 60;
+    /* the charters gate reads >= 2 of 4 rungs since S9f rescaled the ladder */
+    S.form = 'federal'; S.pol.corporateCharters = 2; S.blocs.tech = 65; S.ind.corruption = 60;
     out.arcs.push({ id: 'capitalCapture', fires: V6_ARC.capitalCapture.trigger(S) });
     S.armyLoyalty = 75; S.form = 'executive';
     POLICIES.filter(p => p.cat === 'Authority' && polAuth(p) > 0).forEach(p => { S.pol[p.id] = p.max; });
