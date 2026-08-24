@@ -498,6 +498,37 @@ async function run() {
       `stamped: ${moved.stamped}; second pass moved: ${twice.length}`);
   }
 
+  // -- S10c: the order book issues, stands, lapses and revokes
+  {
+    const ord = await page.evaluate(() => {
+      const me = playParty(S);
+      const keep = { ruling: S.ruling, coalition: S.coalition, exec: JSON.parse(JSON.stringify(S.exec)), capital: S.capital };
+      S.ruling = me; S.coalition = [me];
+      ['pres', 'vpres', 'chan', 'vchan'].forEach(d => S.exec[d] = me);
+      S.capital = 300;
+      UI.tab = 'exec'; render();
+      const panel = [...document.querySelectorAll('.panel h2')].some(h => /Order Book/.test(h.textContent));
+      const buttons = document.querySelectorAll('[data-order]').length;
+      const o = V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0];
+      const key = Object.keys(o.ind)[0];
+      const t0 = indicatorTargets(S)[key];
+      v10IssueOrder(o.id, null);
+      const inForce = v10OrderCount(S) === 1;
+      const bent = Math.abs(indicatorTargets(S)[key] - t0 - o.ind[key]) < 1e-9;
+      render();
+      const revokeBtn = document.querySelectorAll('[data-order-revoke]').length > 0;
+      v10RevokeOrder(o.id);
+      const back = v10OrderCount(S) === 0 && Math.abs(indicatorTargets(S)[key] - t0) < 1e-9;
+      S.ruling = keep.ruling; S.coalition = keep.coalition; S.exec = keep.exec; S.capital = keep.capital;
+      if (S.v10) S.v10.orders = {};
+      UI.tab = 'chamber'; render();
+      return { panel, buttons, inForce, bent, revokeBtn, back };
+    });
+    step('order-book', ord.panel && ord.buttons > 20 && ord.inForce && ord.bent && ord.revokeBtn && ord.back,
+      `panel renders with ${ord.buttons} sign buttons; issuing bends the target exactly: ${ord.bent}; ` +
+      `a revoke control appears: ${ord.revokeBtn}; revoking puts it back: ${ord.back}`);
+  }
+
   // -- S10a: an unreadable save is not written over after being promised untouched
   {
     const kept = await page.evaluate(() => {

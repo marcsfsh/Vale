@@ -321,6 +321,165 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(republic.benchNamed.split('/')[0] === republic.benchNamed.split('/')[1], 'the bench is named on arrival',
     republic.benchNamed + ' justices named without the Judicial page being opened');
 
+  /* S10b — THE ORDER PAPER. What you can do about a bill that is not yours,
+     and how much it is worth. */
+  const paper = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const opp = PARTIES.filter(x => x.id !== me && !S.banned[x.id])[0];
+    const seatsBefore = JSON.parse(JSON.stringify(S.seats));
+    const keptCo = S.coalition;
+    const donor = PARTIES.filter(x => x.id !== me && x.id !== opp.id)[0].id;
+
+    const mk = () => {
+      const pick = partyDemandPolicy(S, opp.id);
+      const b = sponsorBill(S, pick.policy, pick.dir, 'opposition', 'clean', true);
+      b.sponsor = opp.id; b.owner = 'opposition';
+      return b;
+    };
+    const acts = html => [...html.matchAll(/data-bill-action="([a-zA-Z]+)"/g)].map(m => m[1]);
+    const setSeats = frac => { S.seats[me] = Math.round(CFG.seats * frac); S.seats[donor] = Math.max(0, CFG.seats - S.seats[me] - (S.seats[opp.id] || 0)); };
+
+    /* 1. outright() tells a sole majority from a coalition that adds to one */
+    setSeats(.60); S.coalition = [me];
+    out.soleMajority = outright(S);
+    setSeats(.30); S.coalition = [me, donor, opp.id];
+    out.coalitionMajority = outright(S);
+    /* and it is keyed to the player, not the ruling party */
+    const keptRuling = S.ruling, keptPlay = S.playAs;
+    S.ruling = donor; S.playAs = me; S.seats[donor] = Math.round(CFG.seats * .6); S.seats[me] = 40;
+    out.juniorUnderMajority = outright(S);
+    S.ruling = keptRuling; S.playAs = keptPlay;
+
+    /* 2. an opposition bill has controls at all — the reported gap */
+    S.capital = 400; setSeats(.30); S.coalition = [me];
+    let b = mk();
+    out.oppositionBillControls = acts(billCard(b)).filter(a => ['support', 'oppose', 'pressure'].indexOf(a) >= 0).length;
+
+    /* 3. the lever set scales with what you command */
+    S.ruling = opp.id; S.playAs = me; S.coalition = [opp.id];
+    out.inOpposition = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
+    S.ruling = me; S.coalition = [me, donor]; setSeats(.30);
+    out.inGovernment = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
+    S.coalition = [me]; setSeats(.60);
+    out.atOutright = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
+
+    /* 4. a declared line is worth what the party declaring it is worth */
+    const delta = frac => {
+      setSeats(frac);
+      b.playerPosition = null; const a = billForecast(S, b).lower;
+      b.playerPosition = 'oppose'; const c = billForecast(S, b).lower;
+      b.playerPosition = null;
+      return Math.round((a - c) * 10) / 10;
+    };
+    out.d05 = delta(.05); out.d50 = delta(.50); out.d90 = delta(.90);
+
+    /* 5. the handler refuses the kill, not only the renderer */
+    setSeats(.30); S.coalition = [me, donor];
+    const n0 = S.bills.length; billAction(b.id, 'kill');
+    out.killRefused = S.bills.length === n0;
+    setSeats(.60); S.coalition = [me];
+    billAction(b.id, 'kill');
+    out.killWorks = S.bills.length === n0 - 1 && (S.billArchive[0] || {}).stage === 'killed';
+
+    /* 6. a party does not demand the same statute for ever */
+    const seen = {};
+    for (let i = 0; i < 40; i++) { const pk = partyDemandPolicy(S, opp.id); if (pk) seen[pk.policy] = 1; }
+    out.demandVariety = Object.keys(seen).length;
+
+    S.seats = seatsBefore; S.ruling = keptRuling; S.playAs = keptPlay; S.coalition = keptCo;
+    return out;
+  });
+
+  say(paper.soleMajority && !paper.coalitionMajority && !paper.juniorUnderMajority,
+    'an outright majority is distinct',
+    `sole majority: ${paper.soleMajority} · coalition that adds to one: ${paper.coalitionMajority} · ` +
+    `junior partner under a majority government: ${paper.juniorUnderMajority}`);
+  say(paper.oppositionBillControls >= 3, 'another party\'s bill has controls',
+    paper.oppositionBillControls + ' of support/oppose/pressure offered on an opposition-sponsored bill');
+  say(paper.inOpposition === 'talkOut' && paper.inGovernment === 'amendIt,delayIt' && paper.atOutright === 'amendIt,delayIt,kill',
+    'the levers scale with standing',
+    `opposition: [${paper.inOpposition}] · in government: [${paper.inGovernment}] · outright: [${paper.atOutright}]`);
+  say(paper.d05 < paper.d50 && paper.d50 < paper.d90 && paper.d05 < 1.5 && paper.d90 > 6,
+    'a line is worth what its party is',
+    `opposing costs the bill ${paper.d05} at 5% of the Assembly, ${paper.d50} at 50%, ${paper.d90} at 90% (was a flat 8 at any size)`);
+  say(paper.killRefused && paper.killWorks, 'the kill is gated where it acts',
+    `refused without a majority: ${paper.killRefused} · archived as killed with one: ${paper.killWorks}`);
+  /* S10c — THE ORDER BOOK. The three rules, mechanically. */
+  const book = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    /* This block hands the player every office, which is exactly the
+       precondition the toExecutive ladder step asserts is FALSE before it is
+       constructed. Snapshot and put it all back, or a test earlier in the file
+       silently satisfies a test later in it. */
+    const keep = { ruling: S.ruling, coalition: S.coalition, exec: JSON.parse(JSON.stringify(S.exec)),
+      capital: S.capital, orders: JSON.parse(JSON.stringify((S.v10 && S.v10.orders) || {})) };
+    S.ruling = me; S.coalition = [me];
+    ['pres', 'vpres', 'chan', 'vchan'].forEach(d => S.exec[d] = me);
+    S.capital = 400;
+    out.count = V10_ORDERS.length;
+    out.cats = [...new Set(V10_ORDERS.map(o => o.cat))].length;
+    out.depts = [...new Set(V10_ORDERS.map(o => o.dept))].sort().join(',');
+    out.targeted = V10_ORDERS.filter(o => o.target).length;
+    /* VERB: every entry does something STANDING, or it is an action wearing a hat */
+    out.noStanding = V10_ORDERS.filter(o => !(Object.keys(o.ind || {}).length || Object.keys(o.mood || {}).length ||
+      o.exp || o.rev || Object.keys(o.mods || {}).length || Object.keys(o.salience || {}).length ||
+      o.regionEff || o.powerEff !== undefined)).map(o => o.id);
+    /* no name may collide with a statute, an action or an extraordinary measure */
+    const pol = new Set(POLICIES.map(p => p.name.toLowerCase()));
+    const act = new Set(ACTIONS.map(a => a.name.toLowerCase()));
+    const ext = new Set(EXTRA.map(e => e.name.toLowerCase()));
+    out.collisions = V10_ORDERS.filter(o => pol.has(o.name.toLowerCase()) || act.has(o.name.toLowerCase()) || ext.has(o.name.toLowerCase())).map(o => o.name);
+
+    /* the country drifts toward an order and back again, exactly */
+    const o = V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0];
+    const key = Object.keys(o.ind)[0];
+    const t0 = indicatorTargets(S)[key];
+    v10IssueOrder(o.id, null);
+    out.shift = Math.round((indicatorTargets(S)[key] - t0) * 1000) / 1000;
+    out.authored = o.ind[key];
+    const inc0 = capitalIncome(S);
+    v10RevokeOrder(o.id);
+    out.upkeepCharged = Math.round((capitalIncome(S) - inc0) * 100) / 100;
+    out.restored = Math.abs(indicatorTargets(S)[key] - t0) < 1e-9;
+
+    /* LIFE: it lapses when the department changes hands. A DIFFERENT order —
+       re-issuing the same one this session is refused, which would make this
+       pass over nothing. */
+    const o2 = V10_ORDERS.filter(x => !x.target && !x.needs && x.id !== o.id)[0];
+    v10IssueOrder(o2.id, null);
+    out.issued = v10OrderCount(S) === 1;
+    S.exec[o2.dept] = PARTIES.filter(x => x.id !== me)[0].id;
+    v10OrdersTick(S);
+    out.lapsed = out.issued && v10OrderCount(S) === 0;
+    out.lapseTold = (S.log || []).some(l => /lapsed: the authority/.test(l.text));
+    S.exec[o2.dept] = me;
+
+    /* TARGET: the same instrument stands separately in two regions */
+    const rt = V10_ORDERS.filter(x => x.target === 'region' && !x.needs)[0];
+    if (rt) { v10IssueOrder(rt.id, 'somnium'); v10IssueOrder(rt.id, 'thaxia'); out.twoTargets = v10OrderCount(S) === 2; }
+    S.ruling = keep.ruling; S.coalition = keep.coalition; S.exec = keep.exec;
+    S.capital = keep.capital; S.v10.orders = keep.orders;
+    return out;
+  });
+  say(book.count >= 36 && book.cats === 8 && book.depts === 'chan,pres,vchan,vpres',
+    'the order book is stocked', `${book.count} orders in ${book.cats} categories across all four offices · ${book.targeted} targeted`);
+  say(book.noStanding.length === 0 && book.collisions.length === 0, 'every order is an order',
+    book.noStanding.length ? book.noStanding.length + ' with no standing effect: ' + book.noStanding.join(', ')
+      : (book.collisions.length ? 'name collisions: ' + book.collisions.join(', ')
+        : 'all standing, none sharing a name with a statute, an action or an extraordinary measure'));
+  say(book.shift === book.authored && book.restored && book.upkeepCharged > 0,
+    'orders bend targets, not stocks',
+    `issuing moved the target by ${book.shift} (authored ${book.authored}), it cost ${book.upkeepCharged} capital a session, ` +
+    `and revoking put the target back exactly: ${book.restored}`);
+  say(book.issued && book.lapsed && book.lapseTold, 'an order dies with its department',
+    `in force: ${book.issued} · lapsed when the office changed hands: ${book.lapsed} · said so: ${book.lapseTold}`);
+  say(book.twoTargets === true, 'a targeted order is per target',
+    'the same instrument stands separately in two regions: ' + book.twoTargets);
+
+  say(paper.demandVariety >= 3, 'a party varies what it demands',
+    paper.demandVariety + ' distinct statutes demanded across 40 draws (was 1, with no rand() in the function)');
+
+
   // 1. the authority ladder, precondition by precondition
   const ladder = await page.evaluate(() => {
     const out = [];
@@ -471,8 +630,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.exec.pres = S.ruling; S.exec.vpres = S.ruling; S.exec.chan = S.ruling; S.exec.vchan = S.ruling;
     S.capital = 99; S.changed = {};
     const before = S.pol[p.id] || 0;
-    orderPolicy(p.id);
-    const blocked = (S.pol[p.id] || 0) === before;
+    /* S10c retired orderPolicy — an order no longer raises a statute. The rule
+       it carried ("an order cannot outrun its own statute book") survives as
+       `needs:` on an ORDER, so the gate is asserted against the new book. */
+    const ord = V10_ORDERS.filter(o => o.needs)[0];
+    let blocked = true;
+    if (ord) {
+      S.pol[ord.needs] = 0;
+      blocked = !!v10OrderOpen(S, ord, null);
+      S.pol[ord.needs] = 1;
+      const nowOpen = v10OrderOpen(S, ord, null);
+      blocked = blocked && (nowOpen === null || !/statute book/.test(nowOpen));
+      S.pol[ord.needs] = 0;
+    }
     // enactment-time lapse: prerequisite falls while the bill is live
     S.pol[pre.id] = 1;
     const bill = { policy: p.id, dir: 1, owner: 'player', title: 'Test Measure Bill', concessions: 0, stage: 'assent' };
@@ -483,7 +653,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     delete p.needs;
     return { blocked, lapsed };
   });
-  say(needs.blocked, 'an order cannot outrun the book', `orderPolicy refused without the prerequisite: ${needs.blocked}`);
+  say(needs.blocked, 'an order cannot outrun the book', `an order with a statute prerequisite is refused without it and opens with it: ${needs.blocked}`);
   say(needs.lapsed, 'a bill lapses with its prerequisite', `enactBill refused and archived as failed: ${needs.lapsed}`);
 
   // 8. seat conservation under the reapportioning acts
