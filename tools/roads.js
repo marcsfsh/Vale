@@ -677,6 +677,88 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(paper.demandVariety >= 3, 'a party varies what it demands',
     paper.demandVariety + ' distinct statutes demanded across 40 draws (was 1, with no rand() in the function)');
 
+  /* S10f — QUESTION TIME. The whole pool was five sentences in one if/else
+     chain, and its gates made three of them nearly unreachable. */
+  const qt = await page.evaluate(() => {
+    const out = {}, keepTurn = S.turn, keepQt = JSON.parse(JSON.stringify(S.v8.qt));
+    out.pool = V10_QT.length;
+    out.papers = V10_PAPERS.length;
+    const subs = [...new Set(V10_QT.map(x => x.subject))];
+    out.subjects = subs.length;
+    /* every subject can be asked from both sides of the chamber */
+    out.bothSides = subs.filter(sb => V10_QT.some(x => x.subject === sb && x.side === 'power') &&
+                                      V10_QT.some(x => x.subject === sb && x.side === 'opposition')).length;
+    /* no question asks for a fact its own subject cannot supply — the fill map
+       leaves an unknown {brace} in the sentence, verbatim, on screen */
+    const GLOBAL = ['leader','party','opp','year'];
+    const SUPPLY = { issue:['issue','number'], scandal:['minister','number'], bill:['bill','number'],
+      work:['work','number'], minister:['minister','number'], governor:['governor','region','number'],
+      treaty:['power','number'], court:['number'], money:['number'], unrest:['number'],
+      promise:['number'], prices:['number'], order:['work','number'], byelection:['number','region'] };
+    out.badPlaceholders = [];
+    V10_QT.forEach(q => {
+      const ok = GLOBAL.concat(SUPPLY[q.subject] || []);
+      [q.body].concat(q.replies.map(r => r.label + ' ' + r.result)).join(' ')
+        .replace(/\{(\w+)\}/g, (m, k) => { if (ok.indexOf(k) < 0) out.badPlaceholders.push(q.id + ':' + k); return m; });
+    });
+    /* every tone maps onto an effect path that exists */
+    out.badTones = V10_QT.filter(q => q.replies.some(r =>
+      !V10_QT_TONE.power[r.tone] || !V10_QT_TONE.opposition[r.tone])).map(q => q.id);
+    /* the spread with every subject in play, and the rule that selection is
+       free: v8EnsureQuestion runs on the RENDER path, so a die here would make
+       a campaign's dice-spend depend on how often a tab was opened */
+    const base = v10QtContext;
+    v10QtContext = function (st) {
+      const c = base(st);
+      subs.forEach(sb => { if (c.subjects.indexOf(sb) < 0) { c.subjects.push(sb);
+        c.fill['_' + sb] = { minister:'Iyer', bill:'the Fuel Duty Bill', work:'the Rigel Viaduct',
+          issue:'housing', governor:'Halloran', region:'Cassian', power:'Ostmark', number:'41' }; } });
+      ['minister','bill','work','issue','governor','region','power','number'].forEach(k => {
+        if (c.fill[k] === undefined) c.fill[k] = '41'; });
+      return c;
+    };
+    /* both sides of the chamber, explicitly: which side you are on decides
+       which half of the pool is drawn from, and leaving it to whatever the
+       preceding tests left S.ruling as makes this number wander */
+    const keepRuling = S.ruling, keepCo = S.coalition, me = playParty(S);
+    const r0 = S.rngState;
+    const sweep = () => {
+      const seen = new Set(), seenSubs = new Set();
+      for (let t = 1; t <= 60; t++) {
+        S.turn = t; S.v8.qt.turn = -1; S.v8.qt.v10 = -1; v8EnsureQuestion(S);
+        if (S.v8.qt.question) { seen.add(S.v8.qt.question); seenSubs.add(S.v8.qt.subject); }
+      }
+      return { d: seen.size, s: seenSubs.size, leaks: [...seen].filter(q => /\{\w+\}/.test(q)).length };
+    };
+    S.ruling = me; S.coalition = [me];
+    const inPow = sweep();
+    S.ruling = PARTIES.filter(x => x.id !== me)[0].id; S.coalition = [S.ruling];
+    const inOpp = sweep();
+    S.ruling = keepRuling; S.coalition = keepCo;
+    out.distinctInPower = inPow.d; out.distinctInOpposition = inOpp.d;
+    out.distinct = Math.min(inPow.d, inOpp.d);
+    out.distinctSubjects = Math.min(inPow.s, inOpp.s);
+    out.leaks = inPow.leaks + inOpp.leaks;
+    out.diceSpent = S.rngState !== r0;
+    /* and the same session asked twice gives the same question */
+    S.turn = keepTurn; S.v8.qt.v10 = -1; v8EnsureQuestion(S); const a = S.v8.qt.question;
+    S.v8.qt.v10 = -1; v8EnsureQuestion(S); out.stable = a === S.v8.qt.question;
+    v10QtContext = base;
+    S.turn = keepTurn; S.v8.qt = keepQt;
+    return out;
+  });
+  say(qt.pool >= 90 && qt.subjects === 14 && qt.bothSides === 14 &&
+      !qt.badPlaceholders.length && !qt.badTones.length,
+    'the despatch box has more than one sentence',
+    `${qt.pool} questions over ${qt.subjects} subjects, all ${qt.bothSides} askable from either side ` +
+    `(was 5 sentences in one if/else chain, three of them behind gates that could not open); ` +
+    `placeholders no subject can supply: ${qt.badPlaceholders.length}; tones the engine cannot map: ${qt.badTones.length}`);
+  say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent && qt.stable,
+    'a session picks its question without spending a die',
+    `60 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
+    `${qt.distinctInOpposition} in opposition, across ${qt.distinctSubjects} subjects, ` +
+    `${qt.leaks} of them showing an unfilled placeholder; rngState moved: ${qt.diceSpent}; asked twice, same answer: ${qt.stable}`);
+
 
   // 1. the authority ladder, precondition by precondition
   const ladder = await page.evaluate(() => {
