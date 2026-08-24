@@ -10331,6 +10331,26 @@ var PV5_FISCAL = {
 function pv5Initials(name) {
   return String(name || '?').split(/\s+/).slice(0,2).map(function (x) { return x.charAt(0); }).join('').toUpperCase();
 }
+/* Chairs by seats, largest remainder — the same arithmetic a real chamber
+   uses. A party that wins nine hundred of thirteen hundred seats chairs most
+   of the committees; a party with none chairs none. */
+function pv5ApportionChairs(st) {
+  var live = PARTIES.filter(function (p) { return !st.banned[p.id] && (st.seats[p.id] || 0) > 0; });
+  if (!live.length) { PV5_COMMITTEES.forEach(function (c) { st.committees[c.id].chair = st.ruling; }); return; }
+  var total = 0; live.forEach(function (p) { total += st.seats[p.id] || 0; });
+  var n = PV5_COMMITTEES.length, quota = [], seatsLeft = [];
+  live.forEach(function (p) {
+    var exact = (st.seats[p.id] || 0) / total * n;
+    quota.push({ id:p.id, whole:Math.floor(exact), rem:exact - Math.floor(exact) });
+  });
+  var given = 0; quota.forEach(function (q) { given += q.whole; });
+  quota.sort(function (a, b) { return b.rem - a.rem; });
+  for (var i = 0; given < n; i++, given++) quota[i % quota.length].whole += 1;
+  quota.forEach(function (q) { for (var k = 0; k < q.whole; k++) seatsLeft.push(q.id); });
+  /* the biggest committees to the biggest party, in the order the list runs */
+  seatsLeft.sort(function (a, b) { return (st.seats[b] || 0) - (st.seats[a] || 0); });
+  PV5_COMMITTEES.forEach(function (c, i) { st.committees[c.id].chair = seatsLeft[i] || st.ruling; });
+}
 function pv5CommitteeForPolicy(p) {
   var found = PV5_COMMITTEES.filter(function (c) { return c.cats.indexOf((p || {}).cat) >= 0; })[0];
   return found || PV5_COMMITTEE.ways;
@@ -10362,9 +10382,23 @@ function pv5EnsureState(st, fresh) {
     if ((st.cabinet[row.key]||0)>0 && !st.ministers[row.key]) st.ministers[row.key]=pv5MakeMinister(st,row.key,0);
   });
   st.committees=st.committees||{};
-  var chairs=['fp','lp','sd','cup','tvc','pnl','fp'];
+  /* The chair table used to be the literal ['fp','lp','sd','cup','tvc','pnl','fp']
+     — the same seven in every campaign, at every seed, under every
+     constitution, whatever the election returned. The RSF could never chair
+     anything and the FP always chaired two. Chairs are now apportioned by
+     seats, largest remainder, so the chamber the country elected decides. */
   PV5_COMMITTEES.forEach(function(c,i){
-    if(!st.committees[c.id]) st.committees[c.id]={chair:chairs[i%chairs.length],expertise:48+((i*7)%22),access:0,backlog:i%3,hearings:0};
+    if(!st.committees[c.id]) st.committees[c.id]={chair:null,expertise:48+((i*7)%22),access:0,backlog:i%3,hearings:0};
+  });
+  if(PV5_COMMITTEES.some(function(c){return !st.committees[c.id].chair;})) pv5ApportionChairs(st);
+  /* every committee gets a named chair with a career, not a party dot */
+  PV5_COMMITTEES.forEach(function(c){
+    var cm=st.committees[c.id];
+    if(!cm.chairName||cm.chairParty!==cm.chair){
+      var f=makeFigure(st,cm.chair,49);
+      cm.chairName=f.name; cm.chairParty=cm.chair; cm.chairTrait=f.trait;
+      cm.chairSince=yearOf(st.turn||1); cm.chairAge=f.age;
+    }
   });
   (st.bills||[]).forEach(function(b){
     if(!b.committeeId)b.committeeId=pv5CommitteeForPolicy(POL[b.policy]).id;
@@ -10687,6 +10721,49 @@ function pv5MinisterAction(key,action){
     if(!pv5Spend(2,0,'Dismiss '+m.name))return;S.cabinet[key]=0;delete S.ministers[key];shiftPartyRel(S,m.party,-5);S.capital=clamp(S.capital+1,-5,capCap(S));logIt(S,m.name+' was dismissed from '+row.title+'.');
   }else if(action==='launch'){
     if(!pv5Spend(3,3,'Launch initiative with '+m.name))return;for(var k in row.effects){S.ind[k]=c100(S.ind[k]+Math.sign(row.effects[k])*Math.max(1,m.competence/25));}m.exposure+=5;m.loyalty+=2;logIt(S,m.name+' launched a departmental initiative.');
+  /* ---- S10e: a cabinet is managed, not merely filled. These use the fields
+     the minister object has always carried — ambition, loyalty, exposure,
+     experience, trait, party — and which almost nothing read. ---- */
+  }else if(action==='shield'){
+    /* spend your own standing to take the heat off them */
+    var sc=(S.scandals||[]).filter(function(x){return x.status==='active'&&x.minister===key;})[0];
+    if(!sc){flash('There is nothing against '+m.name+' to answer.');return;}
+    if(!pv5Spend(4,0,'Shield '+m.name))return;
+    sc.heat=clamp(sc.heat-18,0,100);m.loyalty=clamp(m.loyalty+14,0,100);m.exposure+=4;
+    S.ind.corruption=c100(S.ind.corruption+1.2);mood(S,{prof:-2});
+    logIt(S,'The leadership stood behind '+m.name+'. The story cooled and the smell did not.');
+  }else if(action==='sacrifice'){
+    /* the opposite: hand them to the press and take the credit for it */
+    var sc2=(S.scandals||[]).filter(function(x){return x.status==='active'&&x.minister===key;})[0];
+    if(!pv5Spend(1,0,'Give up '+m.name))return;
+    if(sc2){sc2.status='closed';sc2.heat=0;S.ind.corruption=c100(S.ind.corruption-2);}
+    S.cabinet[key]=0;delete S.ministers[key];
+    shiftPartyRel(S,m.party,-9);S.unity=c100((S.unity||60)-4);
+    mood(S,{prof:3,youth:2});S.salience.integrity=c100((S.salience.integrity||50)-4);
+    logIt(S,m.name+' resigned "to spend more time with their family". The affair went with them.');
+    addNews(S,'The Ministry',m.name+' resigns','The letter was gracious. The timing was not an accident.','watch');
+  }else if(action==='promote'){
+    /* an ambitious minister is a rival; give them a bigger office and they are
+       a loyal rival for a while */
+    if(m.ambition<55){flash(m.name+' is not looking for anything more.');return;}
+    if(!pv5Spend(5,0,'Promote '+m.name))return;
+    m.loyalty=clamp(m.loyalty+22,0,100);m.ambition=clamp(m.ambition-18,0,100);
+    S.cabinet[key]=Math.min(3,(S.cabinet[key]||1)+1);
+    S.unity=c100((S.unity||60)+3);shiftPartyRel(S,m.party,4);
+    logIt(S,m.name+' was promoted, and is grateful, and will be grateful for about four years.');
+  }else if(action==='sideline'){
+    /* the other way to handle a rival: leave them in post with nothing to do */
+    if(!pv5Spend(3,0,'Sideline '+m.name))return;
+    m.ambition=clamp(m.ambition-10,0,100);m.loyalty=clamp(m.loyalty-16,0,100);
+    S.cabinet[key]=Math.max(1,(S.cabinet[key]||1)-1);
+    S.unity=c100((S.unity||60)-2);
+    logIt(S,m.name+' keeps the title and loses the papers.');
+  }else if(action==='train'){
+    /* the long game: experience compounds where briefings do not */
+    if(!pv5Spend(2,4,'Send '+m.name+' to the college'))return;
+    m.experience=(m.experience||0)+3;
+    m.competence=clamp(m.competence+Math.max(2,8-(m.experience||0)),0,100);
+    logIt(S,m.name+' spent the recess at the college of administration.');
   }
   render();
 }
@@ -10698,6 +10775,38 @@ function pv5ResolveScandal(id,action){
   if(action==='deny'){if(rand()*100>sc.evidence){sc.status='faded';sc.heat=5;}else{sc.heat=clamp(sc.heat+24,0,100);sc.evidence=clamp(sc.evidence+12,0,100);S.capital-=3;}}
   if(action==='cooperate'){sc.status='admitted';sc.heat=22;S.ind.corruption=c100(S.ind.corruption-4);S.unity=c100(S.unity-3);}
   sc.resolved=S.turn;S.v5Stats.ministerialCrises++;logIt(S,sc.title+': the government chose to '+action+'.');render();
+}
+/* THE CHAIRS ARE YOURS TO GIVE when you lead the government — outright or at
+   the head of a coalition. Four things in this game already PROMISE a
+   committee chair and none of them touched committee state: an inbox paper
+   literally titled "The Government Offers You a Committee Chair", the
+   Legislative action "Hand Out Committee Chairs", a v9 action that
+   "distributed committee chairs across the parties", and a choice in the
+   opposition conference tipped "institutional standing and committee
+   influence". They all move partyRel and capital and nothing else. */
+function pv5CanAssignChairs(st) { return leads(st); }
+function pv5AssignChair(cid, pid) {
+  var c = PV5_COMMITTEE[cid], cm = S.committees[cid];
+  if (!c || !cm) return;
+  if (!pv5CanAssignChairs(S)) { flash('Only the party at the head of the government hands out chairs.'); return; }
+  if (S.banned[pid]) { flash('That party is dissolved.'); return; }
+  if (cm.chair === pid) return;
+  if (!(S.seats[pid] > 0)) { flash(PARTY[pid].short + ' holds no seats to chair from.'); return; }
+  var cost = (pid === playParty(S)) ? 3 : 2;
+  if (!pv5Spend(cost, 0, 'Chair of ' + c.name)) return;
+  var was = cm.chair;
+  cm.chair = pid; cm.chairName = null;
+  /* re-name the chair from the new party */
+  var f = makeFigure(S, pid, 49);
+  cm.chairName = f.name; cm.chairParty = pid; cm.chairTrait = f.trait;
+  cm.chairSince = yearOf(S.turn); cm.chairAge = f.age;
+  cm.access = 0;
+  if (was && was !== pid) shiftPartyRel(S, was, -8);
+  if (pid !== playParty(S)) { shiftPartyRel(S, pid, 11); S.unity = c100((S.unity || 60) - 2); }
+  else { S.unity = c100((S.unity || 60) + 2); mood(S, { prof:-1 }); }
+  S.ind.corruption = c100(S.ind.corruption + (pid === playParty(S) ? .8 : 0));
+  logIt(S, 'The chair of ' + c.name + ' went to ' + cm.chairName + ' of the ' + PARTY[pid].short + '.');
+  render();
 }
 function pv5CommitteeAction(cid,action,billId){
   var c=S.committees[cid],b=billId&&billById(S,billId);if(!c)return;
@@ -10791,7 +10900,7 @@ function pv5CoalitionPanel(){
 function pv5MinisterCard(row){
   var m=S.ministers[row.key],q=cabQuality(S,row.key),controlled=holdsDept(S,row.office),sc=S.scandals.some(function(x){return x.status==='active'&&x.minister===row.key;});
   if(!m||!q)return '<article class="minister-card vacant"><div class="portrait">—</div><div class="statusline"><strong>'+esc(row.title)+'</strong><span>Vacant</span></div><p>'+esc(DEPTS[row.office].name+' · '+(controlled?'controlled by government':'outside government control'))+'</p><div class="btnrow"><button class="btn" data-appoint="'+row.key+'"'+(inPower(S)&&controlled?'':' disabled')+'>Shortlist candidates <span class="c">'+cst(4)+', '+fmc(4)+'</span></button></div></article>';
-  return '<article class="minister-card '+(sc?'scandal':'')+'"><div class="portrait">'+esc(pv5Initials(m.name))+'</div><div class="statusline"><strong>'+esc(row.title)+'</strong><span>'+esc(PARTY[m.party].short)+' · rank '+q+(typeof m.age==='number'?' · aged '+m.age:'')+'</span></div><h3>'+esc(m.name)+'</h3><p>'+esc(PV5_MINISTER_TRAITS[m.trait].name+': '+PV5_MINISTER_TRAITS[m.trait].note)+'</p><div class="microstats"><span><b>'+Math.round(m.competence)+'</b>Competence</span><span><b>'+Math.round(m.loyalty)+'</b>Loyalty</span><span><b>'+Math.round(m.ambition)+'</b>Ambition</span></div><div class="tagline">'+Object.keys(row.effects).map(function(k){return '<span class="tag up">'+esc(IND[k].name)+' '+(row.effects[k]>0?'+':'')+row.effects[k]+'</span>';}).join('')+(sc?'<span class="tag down">Under investigation</span>':'')+'</div><div class="btnrow"><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="brief">Brief <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="launch">Initiative <span class="c">'+cst(3)+', '+fmc(3)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="empower"'+(q>=3?' disabled':'')+'>Empower <span class="c">'+cst(4)+', '+fmc(4)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="dismiss">Dismiss <span class="c">'+cst(2)+'</span></button></div></article>';
+  return '<article class="minister-card '+(sc?'scandal':'')+'"><div class="portrait">'+esc(pv5Initials(m.name))+'</div><div class="statusline"><strong>'+esc(row.title)+'</strong><span>'+esc(PARTY[m.party].short)+' · rank '+q+(typeof m.age==='number'?' · aged '+m.age:'')+'</span></div><h3>'+esc(m.name)+'</h3><p>'+esc(PV5_MINISTER_TRAITS[m.trait].name+': '+PV5_MINISTER_TRAITS[m.trait].note)+'</p><div class="microstats"><span><b>'+Math.round(m.competence)+'</b>Competence</span><span><b>'+Math.round(m.loyalty)+'</b>Loyalty</span><span><b>'+Math.round(m.ambition)+'</b>Ambition</span></div><div class="tagline">'+Object.keys(row.effects).map(function(k){return '<span class="tag up">'+esc(IND[k].name)+' '+(row.effects[k]>0?'+':'')+row.effects[k]+'</span>';}).join('')+(sc?'<span class="tag down">Under investigation</span>':'')+'</div><div class="btnrow"><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="brief">Brief <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="launch">Initiative <span class="c">'+cst(3)+', '+fmc(3)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="empower"'+(q>=3?' disabled':'')+'>Empower <span class="c">'+cst(4)+', '+fmc(4)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="train" title="The college of administration. Slower than a briefing and it does not wear off.">Send to the college <span class="c">'+cst(2)+', '+fmc(4)+'</span></button>'+(m.ambition>=55?'<button class="btn ghost" data-minister="'+row.key+'" data-minister-action="promote" title="An ambitious minister is a rival. A bigger office buys four years of gratitude.">Promote <span class="c">'+cst(5)+'</span></button>':'')+'<button class="btn ghost" data-minister="'+row.key+'" data-minister-action="sideline" title="Leave them the title and take the papers.">Sideline <span class="c">'+cst(3)+'</span></button>'+(sc?'<button class="btn ghost" data-minister="'+row.key+'" data-minister-action="shield" title="Spend your own standing to take the heat off them.">Stand behind them <span class="c">'+cst(4)+'</span></button><button class="btn ghost" data-minister="'+row.key+'" data-minister-action="sacrifice" title="Hand them to the press, and the affair goes with them.">Accept the resignation <span class="c">'+cst(1)+'</span></button>':'')+'<button class="btn ghost" data-minister="'+row.key+'" data-minister-action="dismiss">Dismiss <span class="c">'+cst(2)+'</span></button></div></article>';
 }
 function pv5ScandalPanel(){
   var active=S.scandals.filter(function(x){return x.status==='active';});
@@ -10804,8 +10913,10 @@ function viewGovernment(){
   return '<div class="command-deck"><div class="eyebrow">Collective government</div><div class="brief-head"><div><h2>A Government Is More Than Its Leader.</h2><p>Sixteen named ministers now carry competence, loyalty, ambition and exposure. Coalition partners carry a written programme. They can be managed, never made costless.</p></div><div class="headline"><div class="eyebrow">Cabinet capacity</div><b>'+cabinetFilled(S)+' of 16 offices filled</b><span>Average competence '+Math.round(avg||0)+' · '+S.scandals.filter(function(x){return x.status==='active';}).length+' active standards case'+(S.scandals.filter(function(x){return x.status==='active';}).length===1?'':'s')+'</span></div></div></div><div class="grid"><div>'+pv5CoalitionPanel()+'<div class="panel"><h2>The Ministry</h2><div class="minister-grid">'+rows.map(pv5MinisterCard).join('')+'</div></div>'+pv5ScandalPanel()+'</div><div>'+'<div class="panel"><h2>Ministerial Actions</h2><div class="cards">'+actionsIn('Ministry').map(actionCard).join('')+'</div></div>'+'</div></div>';
 }
 function pv5CommitteePanel(){
-  var cards=PV5_COMMITTEES.map(function(def){var c=S.committees[def.id],share=pv5CommitteeShare(S,def.id),live=S.bills.filter(function(b){return b.committeeId===def.id&&b.stage==='committee';});return '<article class="committee-card"><div class="statusline"><strong>'+esc(def.name)+'</strong><span>'+Math.round(share)+'% government</span></div><p>'+esc(def.brief)+'</p><div class="committee-seatbar"><span style="width:'+share+'%;background:var(--party)"></span><span style="width:'+(100-share)+'%;background:rgba(255,255,255,.12)"></span></div><div class="microstats"><span><b>'+Math.round(c.expertise)+'</b>Expertise</span><span><b>'+c.backlog.toFixed(1)+'</b>Backlog</span><span><b><span class="dot" style="background:'+PARTY[c.chair].color+'"></span> '+esc(PARTY[c.chair].short)+'</b>Chair</span></div><div class="btnrow"><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="staff">Add staff <span class="c">'+cst(2)+', '+fmc(5)+'</span></button><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="court">Court chair <span class="c">'+cst(3)+', '+fmc(2)+'</span></button></div>'+live.map(function(b){return '<div class="redline"><b>'+esc(b.id+' · '+b.title)+'</b><div class="btnrow"><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="hearing" data-committee-bill="'+b.id+'">Hear evidence <span class="c">'+cst(2)+', '+fmc(2)+'</span></button><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="draft" data-committee-bill="'+b.id+'">Draft substitute <span class="c">'+cst(3)+'</span></button></div></div>';}).join('')+'</article>';}).join('');
-  return '<div class="panel"><h2>Standing Committees</h2><p class="note">Every bill is assigned by subject. Chairs, government share, expertise, access and backlog now change the committee forecast before a measure can reach the floor.</p><div class="committee-grid">'+cards+'</div></div>';
+  var cards=PV5_COMMITTEES.map(function(def){var c=S.committees[def.id],share=pv5CommitteeShare(S,def.id),live=S.bills.filter(function(b){return b.committeeId===def.id&&b.stage==='committee';});var chairBtns=pv5CanAssignChairs(S)?('<div class="btnrow">'+PARTIES.filter(function(pp){return !S.banned[pp.id]&&(S.seats[pp.id]||0)>0;}).map(function(pp){return '<button class="btn ghost" data-chair="'+def.id+'" data-chair-party="'+pp.id+'"'+(c.chair===pp.id?' disabled':'')+' title="Give the chair of '+esc(def.name)+' to the '+esc(pp.short)+'."><span class="dot" style="background:'+pp.color+'"></span> '+esc(pp.short)+' <span class="c">'+cst(pp.id===playParty(S)?3:2)+'</span></button>';}).join('')+'</div>'):'';
+    return '<article class="committee-card"><div class="statusline"><strong>'+esc(def.name)+'</strong><span>'+Math.round(share)+'% government</span></div><p>'+esc(def.brief)+'</p>'+
+    '<div class="tagline"><span class="tag"><span class="dot" style="background:'+PARTY[c.chair].color+'"></span> '+esc(c.chairName||'The chair')+', '+esc(PARTY[c.chair].short)+'</span>'+(c.chairSince?'<span class="tag">in the chair since '+c.chairSince+'</span>':'')+(c.chairTrait&&TRAIT[c.chairTrait]?'<span class="tag">'+esc(TRAIT[c.chairTrait].name)+'</span>':'')+'</div>'+chairBtns+'<div class="committee-seatbar"><span style="width:'+share+'%;background:var(--party)"></span><span style="width:'+(100-share)+'%;background:rgba(255,255,255,.12)"></span></div><div class="microstats"><span><b>'+Math.round(c.expertise)+'</b>Expertise</span><span><b>'+c.backlog.toFixed(1)+'</b>Backlog</span><span><b><span class="dot" style="background:'+PARTY[c.chair].color+'"></span> '+esc(PARTY[c.chair].short)+'</b>Chair</span></div><div class="btnrow"><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="staff">Add staff <span class="c">'+cst(2)+', '+fmc(5)+'</span></button><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="court">Court chair <span class="c">'+cst(3)+', '+fmc(2)+'</span></button></div>'+live.map(function(b){return '<div class="redline"><b>'+esc(b.id+' · '+b.title)+'</b><div class="btnrow"><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="hearing" data-committee-bill="'+b.id+'">Hear evidence <span class="c">'+cst(2)+', '+fmc(2)+'</span></button><button class="btn ghost" data-committee="'+def.id+'" data-committee-action="draft" data-committee-bill="'+b.id+'">Draft substitute <span class="c">'+cst(3)+'</span></button></div></div>';}).join('')+'</article>';}).join('');
+  return '<div class="panel"><h2>Standing Committees</h2><p class="note">Every bill is assigned by subject. Chairs, government share, expertise, access and backlog change the committee forecast before a measure can reach the floor. Chairs are apportioned by seats at each election'+(pv5CanAssignChairs(S)?', and while you lead the government they are yours to hand out':'')+'.</p><div class="committee-grid">'+cards+'</div></div>';
 }
 var pv5ViewHousesV4=viewHouses;
 viewHouses=function(){var html=pv5ViewHousesV4();return html.replace('<div class="grid"><div>','<div class="grid"><div>'+pv5CommitteePanel());};
@@ -10951,6 +11062,7 @@ wire=function(root){
   root.querySelectorAll('[data-appoint]').forEach(function(b){b.addEventListener('click',function(){pv5OpenAppointment(b.getAttribute('data-appoint'));});});
   root.querySelectorAll('[data-minister]').forEach(function(b){b.addEventListener('click',function(){pv5MinisterAction(b.getAttribute('data-minister'),b.getAttribute('data-minister-action'));});});
   root.querySelectorAll('[data-scandal]').forEach(function(b){b.addEventListener('click',function(){pv5ResolveScandal(b.getAttribute('data-scandal'),b.getAttribute('data-scandal-action'));});});
+  root.querySelectorAll('[data-chair]').forEach(function(b){b.addEventListener('click',function(){pv5AssignChair(b.getAttribute('data-chair'),b.getAttribute('data-chair-party'));});});
   root.querySelectorAll('[data-committee]').forEach(function(b){b.addEventListener('click',function(){pv5CommitteeAction(b.getAttribute('data-committee'),b.getAttribute('data-committee-action'),b.getAttribute('data-committee-bill'));});});
   root.querySelectorAll('[data-interest]').forEach(function(b){b.addEventListener('click',function(){pv5InterestAction(b.getAttribute('data-interest'),b.getAttribute('data-interest-action'));});});
   root.querySelectorAll('[data-coalition]').forEach(function(b){b.addEventListener('click',function(){pv5CoalitionAction(b.getAttribute('data-coalition'),b.getAttribute('data-coalition-action'));});});

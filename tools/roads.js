@@ -476,13 +476,58 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(book.twoTargets === true, 'a targeted order is per target',
     'the same instrument stands separately in two regions: ' + book.twoTargets);
 
+  /* S10e — THE COMMITTEES. The chair table was the literal
+     ['fp','lp','sd','cup','tvc','pnl','fp'] in every campaign at every seed. */
+  const chairs = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const keep = { seats: JSON.parse(JSON.stringify(S.seats)), ruling: S.ruling, coalition: S.coalition,
+      committees: JSON.parse(JSON.stringify(S.committees)), capital: S.capital };
+    out.named = PV5_COMMITTEES.filter(c => S.committees[c.id].chairName).length;
+    out.total = PV5_COMMITTEES.length;
+    const reapportion = () => { PV5_COMMITTEES.forEach(c => { S.committees[c.id].chair = null; }); pv5ApportionChairs(S); };
+    PARTIES.forEach(x => S.seats[x.id] = x.id === me ? 1200 : 15);
+    reapportion();
+    out.landslide = PV5_COMMITTEES.filter(c => S.committees[c.id].chair === me).length;
+    PARTIES.forEach(x => S.seats[x.id] = 0); S.seats[me] = CFG.seats;
+    reapportion();
+    out.soleParty = PV5_COMMITTEES.every(c => S.committees[c.id].chair === me);
+    PARTIES.forEach(x => S.seats[x.id] = Math.round(CFG.seats / PARTIES.length));
+    reapportion();
+    out.rsfCanChair = PV5_COMMITTEES.some(c => S.committees[c.id].chair === 'rsf');
+    out.spread = new Set(PV5_COMMITTEES.map(c => S.committees[c.id].chair)).size;
+    /* yours to give when you lead, refused when you do not */
+    S.ruling = me; S.coalition = [me]; S.capital = 80;
+    const cid = PV5_COMMITTEES[2].id, give = PARTIES.filter(x => x.id !== S.committees[cid].chair)[0].id;
+    pv5AssignChair(cid, give);
+    out.assigned = S.committees[cid].chair === give && !!S.committees[cid].chairName;
+    S.ruling = PARTIES.filter(x => x.id !== me)[0].id; S.coalition = [S.ruling];
+    const was = S.committees[cid].chair;
+    pv5AssignChair(cid, me);
+    out.refusedFromOpposition = S.committees[cid].chair === was;
+    S.seats = keep.seats; S.ruling = keep.ruling; S.coalition = keep.coalition;
+    S.committees = keep.committees; S.capital = keep.capital;
+    return out;
+  });
+  say(chairs.named === chairs.total && chairs.landslide === chairs.total && chairs.soleParty && chairs.rsfCanChair && chairs.spread > 1,
+    'the chamber decides the chairs',
+    `${chairs.named}/${chairs.total} chairs are named people · a landslide takes ${chairs.landslide}/${chairs.total} · ` +
+    `an even chamber spreads them over ${chairs.spread} parties and the RSF can chair: ${chairs.rsfCanChair}`);
+  say(chairs.assigned && chairs.refusedFromOpposition, 'chairs are yours when you lead',
+    `assigned while leading: ${chairs.assigned} · refused from opposition: ${chairs.refusedFromOpposition}`);
+
   /* S10e — THE WORLD. The owner was allied with a power and at war with it.
      That had four independent causes and a war-aware label would only have
      hidden it. */
   const world = await page.evaluate(() => {
     const out = {};
+    /* 600 war rolls, and every declaration adds unrest and tension and moves
+       blocs. Restore ALL of it: a leak here pre-satisfies the toEmergency
+       ladder step (army >= 60 and unrest > 55), which is asserted below. */
     const keep = { powers: JSON.parse(JSON.stringify(S.powers)), war: S.war,
-      treaties: JSON.parse(JSON.stringify(S.v6.treaties)), stats: JSON.parse(JSON.stringify(S.v6.stats || {})) };
+      treaties: JSON.parse(JSON.stringify(S.v6.treaties)), stats: JSON.parse(JSON.stringify(S.v6.stats || {})),
+      ind: JSON.parse(JSON.stringify(S.ind)), blocs: JSON.parse(JSON.stringify(S.blocs)),
+      pol: JSON.parse(JSON.stringify(S.pol)), unrest: S.unrest, capital: S.capital,
+      territories: S.ind.territories, log: S.log.length };
 
     /* no war is declared on a power that is not hostile — but war is still
        possible, or this assertion would pass by never declaring one */
@@ -523,6 +568,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.victoryRecorded = (S.v6.stats.victories || 0) === v0 + 1 && !S.war;
 
     S.powers = keep.powers; S.war = keep.war; S.v6.treaties = keep.treaties; S.v6.stats = keep.stats;
+    S.ind = keep.ind; S.blocs = keep.blocs; S.pol = keep.pol; S.unrest = keep.unrest; S.capital = keep.capital;
     return out;
   });
   say(world.targetedAFriend === 0 && world.declaredOnHostile > 0 && !world.wrongTarget,
