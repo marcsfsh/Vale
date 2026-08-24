@@ -158,6 +158,20 @@ banked, at any length. The Gazette is suppressed for that one call
 Undo: `captureUndo` (v8 ~12405, stack max 8, ironman disables) at the start of
 player actions; cleared every turn.
 
+## Scroll ownership (S9b)
+
+The window is the scroll container at every tier — `#view` has no CSS rule of
+its own and nothing overflows vertically inside it. v7's render wrapper is the
+SINGLE owner of programmatic vertical scroll: it saves the outgoing tab's
+position on a tab change, restores the incoming tab's (or clamps to the nav),
+and on a same-tab render restores the exact scrollY around the innerHTML
+rewrite. Do not add `window.scrollTo` after `render()` anywhere — that
+reintroduces the double-motion S9b removed (seven sites had it). The two
+exceptions that remain by design: `v7Jump`'s scrollIntoView (jump-to-a-thing)
+and the phone tab-change topbar clamp in the mobile wrapper. `flash()` must
+never call `render()` — 74 call sites would each schedule an unprompted full
+rewrite 1.6s after the click; it restores `#turnHint`'s text only.
+
 ## Layout
 
 - Tiers as ruled: phone ≤760 (the JS gate is `V6M.mq =

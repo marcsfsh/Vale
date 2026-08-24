@@ -187,6 +187,88 @@ async function run() {
     (empty.length ? `; empty: ${empty.join(', ')}` : '') +
     (tabs.length < 15 ? `; only ${tabs.length} views exist, expected at least 15` : ''));
 
+  // -- the screen holds still (S9b). Each sub-assertion targets one of the
+  //    named jump mechanisms; the step fails wholesale on the pre-fix file.
+  {
+    const holds = [];
+    // B: a same-tab render keeps the window where it was, even when the view
+    //    comes back shorter (the browser used to clamp scrollY and nothing
+    //    put it back)
+    await page.setViewportSize({ width: 1280, height: 700 });
+    await page.evaluate(() => { UI.tab = 'record'; render(); window.scrollTo(0, 600); });
+    await page.waitForTimeout(80);
+    const b1 = await page.evaluate(() => {
+      const y0 = window.scrollY;
+      const keep = S.log; S.log = []; render(); S.log = keep;
+      const y1 = window.scrollY;
+      render();
+      return { y0, y1, y2: window.scrollY };
+    });
+    if (Math.abs(b1.y1 - b1.y0) > 2) holds.push(`same-tab render moved scrollY ${b1.y0} -> ${b1.y1}`);
+    // E: a long sheet opens at its own heading, not scrolled to a deep button
+    const e1 = await page.evaluate(() => { helpDialog(); const sh = document.getElementById('sheet'); const st = sh.scrollTop; hideSheet(); return st; });
+    if (e1 > 2) holds.push(`sheet opened pre-scrolled to ${e1}px`);
+    // F: re-pressing the current tab's own key no longer forces the page to top
+    const fkey = await page.evaluate(() => {
+      const map = typeof V6_KEYMAP !== 'undefined' ? V6_KEYMAP : { '1':'chamber' };
+      const k = Object.keys(map)[2] || '1';
+      UI.tab = map[k]; render(); window.scrollTo(0, 500);
+      return k;
+    });
+    await page.keyboard.press(fkey);
+    await page.waitForTimeout(350);
+    const f1 = await page.evaluate(() => window.scrollY);
+    if (f1 < 400) holds.push(`same-tab key press scrolled 500 -> ${f1}`);
+    // H: flash() no longer schedules a delayed full render
+    const h1 = await page.evaluate(async () => {
+      window.__renders = 0;
+      const base = render; render = function () { window.__renders++; return base.apply(this, arguments); };
+      flash('held for the test');
+      await new Promise(r => setTimeout(r, 1900));
+      render = base;
+      const hint = document.getElementById('turnHint').textContent;
+      return { renders: window.__renders, restored: hint !== 'held for the test' };
+    });
+    if (h1.renders > 0) holds.push(`flash() triggered ${h1.renders} delayed render(s)`);
+    if (!h1.restored) holds.push('flash() left its message on the hint');
+    // G: the scrollbar gutter is reserved, so modals stop shifting the page
+    const g1 = await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter || '');
+    if (g1.indexOf('stable') < 0) holds.push(`scrollbar-gutter is '${g1 || 'auto'}' at desktop`);
+    // D + C: the phone strips survive a render — stats scrollLeft restored,
+    //    nav re-centred instantly (not animated from zero) on a same-tab render
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => { UI.tab = 'ledger'; render(); });
+    await page.waitForTimeout(250);
+    const d1 = await page.evaluate(async () => {
+      const layout0 = S.uiPrefs.layout;
+      S.uiPrefs.layout = 'classic';
+      UI.tab = 'ledger'; render();
+      await new Promise(r => setTimeout(r, 250));
+      const st = document.getElementById('stats');
+      /* snap off for the measurement: the assertion is that the position
+         survives the innerHTML rewrite, not where proximity-snap rounds it */
+      st.style.scrollSnapType = 'none';
+      st.scrollLeft = 120;
+      await new Promise(r => setTimeout(r, 50));
+      if (!st.scrollLeft) st.scrollLeft = 120;
+      render();
+      await new Promise(r => setTimeout(r, 30));
+      const nav = document.getElementById('tabs');
+      const st2 = document.getElementById('stats');
+      const out = { stats: st2 ? st2.scrollLeft : -1, nav: nav.scrollLeft, navMax: nav.scrollWidth - nav.clientWidth,
+        sw: st2 ? st2.scrollWidth : -1, cw: st2 ? st2.clientWidth : -1, phone: v6mIs(), set: st.scrollLeft };
+      st.style.scrollSnapType = '';
+      S.uiPrefs.layout = layout0; render();
+      return out;
+    });
+    if (d1.stats < 40) holds.push(`phone stats strip snapped home: 120 -> ${d1.stats} (set read back ${d1.set}; ${d1.sw}/${d1.cw} phone:${d1.phone})`);
+    if (d1.nav === 0 && d1.navMax > 30) holds.push('phone nav sat at 0 right after a same-tab render (animating from home)');
+    await page.setViewportSize({ width: 1500, height: 950 });
+    await page.evaluate(() => { UI.tab = 'chamber'; render(); window.scrollTo(0, 0); });
+    step('scroll-keeps', holds.length === 0,
+      holds.length ? holds.join('; ') : 'same-tab renders, sheets, key re-press, flash, gutter, phone strips: all hold still');
+  }
+
   for (const [name, open] of [['menu', () => v6Menu()], ['guide', () => helpDialog()], ['save dialog', () => saveDialog()]]) {
     await page.evaluate(fn => { try { eval('(' + fn + ')()'); } catch (e) { window.__sheetErr = String(e); } }, open.toString());
     await page.waitForTimeout(120);

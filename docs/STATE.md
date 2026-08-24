@@ -4,7 +4,37 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S9a — nothing is lost quietly** (PR #16). An independent survey after S8d
+**S9b — the screen stops jumping** (PR #17). The owner's report — "I click
+something and the screen jumps around or resets" — decomposed into nine
+mechanisms, each fixed in place:
+
+The window is the scroll container at every tier and same-tab renders had no
+scroll handling at all, so the full innerHTML rewrite let the browser clamp
+scrollY whenever a view came back shorter; v7's wrapper now saves and restores
+around every same-tab render. `flash()` — 74 call sites — scheduled an
+unprompted FULL render 1.6 seconds after every "you can't do that" message; it
+now restores the hint's own text and nothing else. Seven jump/menu/keyboard
+sites forced a smooth scroll-to-top after render, fighting v7's restore with a
+double motion (and the phone swipe overrode the restore entirely); v7's
+restore is now the single scroll owner. `focus()` without preventScroll at
+showSheet/hideSheet/policy-search — long sheets opened pre-scrolled past their
+own heading (the old fallback grabbed the first button ANYWHERE in the sheet),
+and closing a sheet scrolled to a node the next render destroyed. The phone
+nav animated a smooth re-centre on EVERY render (now only when the tab
+changed) and the phone stat strip forgot its position (now remembered across
+the rewrite). Stat chips changed width when a delta appeared, moving the wrap
+point and everything under the cursor (delta slot reserved + min-width ≥761).
+The modal toggled body overflow with no scrollbar-gutter, shifting the page
+15px on open and close (gutter reserved, scoped ≥761 so the phone keeps its
+width). The turnbar ResizeObserver now writes --turnbar-h only on real change.
+
+New playtest step `scroll-keeps`: the pre-fix file fails it on three named
+mechanisms (key re-press forced 500→4, flash triggered a delayed render,
+gutter auto); the same-tab-render, sheet-open and stats-strip sub-assertions
+pass on both files and are regression pins, not proofs — stated here so the
+step's evidence is not overread.
+
+Previously: **S9a — nothing is lost quietly** (PR #16, merged). An independent survey after S8d
 found a cluster of defects on the one thing the agreement calls the worst
 possible failure — the player's record lost silently — and the worst of them
 was not the one S8c fixed.
@@ -151,7 +181,8 @@ ratchet 10 → 5, which is now its true floor.
 | S8b the instrument | **merged** (#13) | pacing tool read the latched map instead of recomputing; the PR states plainly that PR #10's published figures measured the wrong quantity |
 | S8c the record scales | **merged** (#14) | thresholds scale with `endYear`, requirements rendered not hard-coded; closing session now banked; hall score made span-relative; epic byte-identical |
 | S8d the leftovers | **merged** (#15) | breakpoint check made a partition test (5 proofs); hemiMap's false `total` dropped and the guarantee moved into `tools/chamber.js`; seed copy tightened; this board corrected |
-| S9a nothing lost quietly | **in review (PR #16)** | hall gets the S1 loudness contract; collapse endings bank their session; the one raw `note` read site fixed; year clamps; 4 new playtest steps, each proven to fail pre-fix |
+| S9a nothing lost quietly | **merged** (#16) | hall gets the S1 loudness contract; collapse endings bank their session; the one raw `note` read site fixed; year clamps; 4 new playtest steps, each proven to fail pre-fix |
+| S9b the screen holds still | **in review (PR #17)** | nine jump mechanisms fixed in place; v7's restore is the single scroll owner; `scroll-keeps` step discriminates on three of them |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
