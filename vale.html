@@ -43,6 +43,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+@media(min-width:761px){html{scrollbar-gutter:stable}}
 body{
   background:var(--baize-2);
   background-image:
@@ -8263,7 +8264,7 @@ function viewLedger() {
    ============================================================ */
 function wire(root) {
   root.querySelectorAll('[data-jump]').forEach(function (b) {
-    b.addEventListener('click', function () { UI.tab=b.getAttribute('data-jump'); render(); window.scrollTo({top:0,behavior:'smooth'}); });
+    b.addEventListener('click', function () { UI.tab=b.getAttribute('data-jump'); render(); });
   });
   root.querySelectorAll('[data-inbox]').forEach(function (b) {
     b.addEventListener('click', function () { respondInbox(b.getAttribute('data-inbox'), b.getAttribute('data-answer')); });
@@ -8279,7 +8280,7 @@ function wire(root) {
   });
   var ps = root.querySelector('#policySearch');
   if (ps) ps.addEventListener('input', function () {
-    UI.polSearch=ps.value; clearTimeout(UI.searchTimer); UI.searchTimer=setTimeout(function () { render(); var n=document.getElementById('policySearch'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);} },180);
+    UI.polSearch=ps.value; clearTimeout(UI.searchTimer); UI.searchTimer=setTimeout(function () { render(); var n=document.getElementById('policySearch'); if(n){try{n.focus({preventScroll:true});}catch(e){n.focus();}n.setSelectionRange(n.value.length,n.value.length);} },180);
   });
   var pv = root.querySelector('#policyView');
   if (pv) pv.addEventListener('change', function () { UI.polView=pv.value; render(); });
@@ -8339,7 +8340,7 @@ document.getElementById('tabs').addEventListener('click', function (e) {
 /* Call through the identifier: later chunks reassign these names, and passing
    the function value here would freeze the v4 body on the button forever. */
 document.getElementById('btnEnd').addEventListener('click', function () { confirmEndTurn(); });
-document.getElementById('btnBrief').addEventListener('click', function () { UI.tab='chamber'; render(); window.scrollTo({top:0,behavior:'smooth'}); });
+document.getElementById('btnBrief').addEventListener('click', function () { UI.tab='chamber'; render(); });
 document.getElementById('btnHelp').addEventListener('click', function () { helpDialog(); });
 document.getElementById('btnUndo').addEventListener('click', function () { undoLast(); });
 document.getElementById('btnSave').addEventListener('click', saveDialog);
@@ -8352,7 +8353,7 @@ document.addEventListener('keydown', function (e) {
   }
   if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s') { e.preventDefault(); saveDialog(); return; }
   var map=(typeof V6_KEYMAP!=='undefined')?V6_KEYMAP:{'1':'chamber','2':'policy','3':'houses','4':'exec','5':'judicial','6':'parties','7':'world','8':'nation','9':'federation','0':'ledger'};
-  if (map[e.key]) { UI.tab=map[e.key]; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+  if (map[e.key]) { UI.tab=map[e.key]; render(); }
   if (e.key.toLowerCase()==='u') undoLast();
   if (e.key.toLowerCase()==='e') confirmEndTurn();
 });
@@ -8370,12 +8371,16 @@ function showSheet(html, after) {
   document.body.style.overflow='hidden';
   sh.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', hideSheet); });
   if (after) after(sh);
-  var f = sh.querySelector('.choices button:not([data-close]),button:not([data-close])');
-  if (f) f.focus();
+  /* Focus must not scroll: the old fallback grabbed the first button anywhere
+     in the sheet, so long sheets opened already scrolled past their heading
+     (masked on phone by v6mLock's scrollTop reset, visible above it). */
+  var f = sh.querySelector('.choices button:not([data-close])') || sh.querySelector('.modal-close') || sh.querySelector('button:not([data-close])');
+  if (f) { try { f.focus({ preventScroll:true }); } catch (e) { f.focus(); } }
+  sh.scrollTop = 0;
 }
 function hideSheet() {
   document.getElementById('modal').hidden = true; document.body.style.overflow='';
-  if (UI.lastFocus && UI.lastFocus.focus) { try { UI.lastFocus.focus(); } catch(e){} }
+  if (UI.lastFocus && UI.lastFocus.focus) { try { UI.lastFocus.focus({ preventScroll:true }); } catch(e){ try { UI.lastFocus.focus(); } catch(e2){} } }
   UI.lastFocus=null;
 }
 document.getElementById('modal').addEventListener('click',function(e){
@@ -8383,11 +8388,15 @@ document.getElementById('modal').addEventListener('click',function(e){
 });
 
 function flash(msg) {
+  /* 74 call sites. The trailing render() existed only to put the hint's normal
+     text back, and every one of them was an unprompted full-screen rewrite
+     1.6 seconds after the click. Restore the hint's own text instead; if a
+     real render happened in between it already replaced the message. */
   var h = document.getElementById('turnHint');
   var old = h.textContent;
   h.textContent = msg;
   h.style.color = '#C77B62';
-  setTimeout(function () { h.style.color = ''; render(); }, 1600);
+  setTimeout(function () { h.style.color = ''; if (h.textContent === msg) h.textContent = old; }, 1600);
 }
 
 
@@ -11447,7 +11456,7 @@ renderStats = function () {
   var a = approval(S), p = S.v6 && S.v6.prev;
   function dl(cur, prev, inv, fmt) {
     if (!p || prev === undefined || prev === null) return '';
-    var d = cur - prev; if (Math.abs(d) < (fmt === 'pct' ? .05 : .5)) return '';
+    var d = cur - prev; if (Math.abs(d) < (fmt === 'pct' ? .05 : .5)) return '<span class="delta"></span>';
     var txt = fmt === 'money' ? fm(d) : (fmt === 'pct' ? d.toFixed(1) : String(Math.round(d)));
     return '<span class="delta ' + ((inv ? d < 0 : d > 0) ? 'up' : 'down') + '">' + (d > 0 ? '+' : '') + txt + '</span>';
   }
@@ -11884,7 +11893,12 @@ function v6mIs() { return V6M.mq.matches; }
 /* The turn bar's height is a CSS variable, so content and toasts clear it. */
 (function () {
   var bar = document.querySelector('.turnbar'); if (!bar) return;
-  function setH() { document.documentElement.style.setProperty('--turnbar-h', bar.offsetHeight + 'px'); }
+  function setH() {
+    var h = bar.offsetHeight + 'px';
+    if (h === V6M.barH) return;
+    V6M.barH = h;
+    document.documentElement.style.setProperty('--turnbar-h', h);
+  }
   if (window.ResizeObserver) { new ResizeObserver(setH).observe(bar); } else { window.addEventListener('resize', setH); }
   window.addEventListener('orientationchange', function () { setTimeout(setH, 120); });
   setH();
@@ -11928,16 +11942,26 @@ function v6mCenterFilter() {
 function v6mCenterTab() {
   var nav = document.getElementById('tabs'), b = nav && nav.querySelector('[aria-current="true"]'); if (!b || !v6mIs()) return;
   var target = Math.max(0, b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2);
-  try { nav.scrollTo({ left:target, behavior:V6M.first ? 'auto' : 'smooth' }); } catch (e) { nav.scrollLeft = target; }
+  /* Smooth only when the tab actually changed: this runs on EVERY render, and
+     an animated re-centre after a mere state change reads as the nav sliding
+     around on its own. */
+  var mode = (V6M.first || !V6M.navChanged) ? 'auto' : 'smooth';
+  try { nav.scrollTo({ left:target, behavior:mode }); } catch (e) { nav.scrollLeft = target; }
 }
 
 var v6mRenderBase = render;
 render = function () {
-  var changed = UI.tab !== V6M.lastTab; V6M.lastTab = UI.tab;
+  var changed = UI.tab !== V6M.lastTab; V6M.lastTab = UI.tab; V6M.navChanged = changed;
+  /* The stat strip is a snap scroller on phone and its innerHTML rewrite
+     snapped it home on every render; nav and filters had centring passes,
+     stats had nothing. Remember and put back. */
+  var statsEl = v6mIs() ? document.getElementById('stats') : null;
+  var statsLeft = statsEl ? statsEl.scrollLeft : 0;
   v6mRenderBase();
   v6mWrapTables(document.getElementById('view'));
   v6mPolicyFolds();
   if (v6mIs()) {
+    if (statsEl && statsLeft) { var se = document.getElementById('stats'); if (se) se.scrollLeft = statsLeft; }
     v6mCenterTab(); v6mCenterFilter();
     if (changed && !V6M.first && !V6M.locked) {
       var head = document.querySelector('.topbar'), top = head ? Math.round(head.getBoundingClientRect().bottom + window.scrollY) : 0;
@@ -12189,7 +12213,8 @@ v6mCenterTab = function () {
   Array.prototype.forEach.call(rows, function (row) {
     var b = row.querySelector('[aria-current="true"]'); if (!b) return;
     var target = Math.max(0, b.offsetLeft - (row.clientWidth - b.offsetWidth) / 2);
-    try { row.scrollTo({ left:target, behavior:V6M.first ? 'auto' : 'smooth' }); } catch (e) { row.scrollLeft = target; }
+    var mode = (V6M.first || !V6M.navChanged) ? 'auto' : 'smooth';
+    try { row.scrollTo({ left:target, behavior:mode }); } catch (e) { row.scrollLeft = target; }
   });
 };
 
@@ -12366,11 +12391,18 @@ var v7RenderBase = render;
 render = function () {
   var prev = V7.tab, changed = UI.tab !== prev;
   if (changed && prev) { UI.scrollPos = UI.scrollPos || {}; UI.scrollPos[prev] = window.scrollY || 0; }
+  /* Same-tab renders had NO scroll handling at all: the full innerHTML rewrite
+     let the browser clamp scrollY whenever the redrawn view came back shorter,
+     so answering the last paper teleported the page. The window is the scroll
+     container at every tier (no inner overflow box), so one save/restore pair
+     around the rewrite is the whole fix. */
+  var keepY = (!changed && !(typeof V6M !== 'undefined' && V6M.locked)) ? (window.scrollY || 0) : null;
   v7RenderBase();
   document.body.classList.toggle('clean', v7Clean());
   document.body.classList.toggle('terse', v7Clean() && !!(S.uiPrefs && S.uiPrefs.terse !== false));
   document.body.classList.toggle('cards-compact', v7CompactOn());
   v7Folds(); v7Cards(); v7ChartsToEnd();
+  if (keepY !== null && Math.abs((window.scrollY || 0) - keepY) > 1) window.scrollTo(0, keepY);
   if (changed && prev && !(typeof V6M !== 'undefined' && V6M.locked)) {
     var y = UI.scrollPos && UI.scrollPos[UI.tab];
     if (y !== undefined) window.scrollTo(0, y);
@@ -12500,10 +12532,10 @@ function v7Menu() {
     '<div class="choices"><button class="choice" data-close="1">Close the menu</button></div>', function (node) {
       var input = node.querySelector('#finder'), out = node.querySelector('#finderOut'), results = [];
       function wireList() {
-        node.querySelectorAll('[data-command-tab]').forEach(function (b) { b.addEventListener('click', function () { UI.tab = b.getAttribute('data-command-tab'); hideSheet(); render(); window.scrollTo({ top:0, behavior:'smooth' }); }); });
+        node.querySelectorAll('[data-command-tab]').forEach(function (b) { b.addEventListener('click', function () { UI.tab = b.getAttribute('data-command-tab'); hideSheet(); render(); }); });
         var q = function (sel, fn) { var b = node.querySelector(sel); if (b) b.addEventListener('click', fn); };
         q('[data-command-gazette]', function () { hideSheet(); v6ShowReport(S.v6.report); });
-        q('[data-command-urgent]', function () { var o = v6Advisors(S)[0]; UI.tab = o ? o.jump : 'chamber'; hideSheet(); render(); window.scrollTo({ top:0, behavior:'smooth' }); });
+        q('[data-command-urgent]', function () { var o = v6Advisors(S)[0]; UI.tab = o ? o.jump : 'chamber'; hideSheet(); render(); });
         q('[data-command-layout]', function () { S.uiPrefs.layout = v7Clean() ? 'classic' : 'clean'; hideSheet(); render(); toast(v7Clean() ? 'The clean layout is on.' : 'The classic layout is back.'); });
         q('[data-command-terse]', function () { S.uiPrefs.terse = S.uiPrefs.terse === false; hideSheet(); render(); });
         q('[data-command-cards]', function () { S.uiPrefs.fullCards = !S.uiPrefs.fullCards; hideSheet(); render(); });
@@ -12751,6 +12783,8 @@ nav.tabs.grouped .pages .nbadge{min-width:15px;height:15px;font-size:9px;margin-
 }
 @media(min-width:761px){.swipe-hint{display:none}}
 body.ironman #btnUndo{display:none}
+@media(min-width:761px){.stats .stat{min-width:78px}}
+.stats .delta.up,.stats .delta.down,.stats .delta:empty{display:inline-block;min-width:26px;text-align:right}
 .goal-row{grid-template-columns:auto minmax(0,1fr)}
 .goal-mark{min-width:34px;text-align:right;font-family:var(--font-n);font-size:11px;color:var(--slate);font-variant-numeric:tabular-nums}
 .goal-row.done .goal-mark{color:var(--ok)}
@@ -14133,7 +14167,7 @@ function v8StatSheet(label) {
     '<div class="glossary-list"><b>What moves it</b><ul>' + g.moves.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul></div>' +
     '<div class="glossary-list"><b>Watch for</b><p>' + esc(g.watch) + '</p></div></div>' +
     '<div class="btnrow"><button class="btn ghost" data-v8jump="' + g.jump + '">Open the page</button><button class="btn" data-close>Close</button></div>', function (sh) {
-      var b = sh.querySelector('[data-v8jump]'); if (b) b.addEventListener('click', function () { UI.tab = b.getAttribute('data-v8jump'); hideSheet(); render(); window.scrollTo({ top:0, behavior:'smooth' }); });
+      var b = sh.querySelector('[data-v8jump]'); if (b) b.addEventListener('click', function () { UI.tab = b.getAttribute('data-v8jump'); hideSheet(); render(); });
     });
 }
 (function () {
@@ -14168,7 +14202,7 @@ function v8StatSheet(label) {
     if (i < 0) return;
     var j = dx < 0 ? i + 1 : i - 1;
     if (j < 0 || j >= g.length) { v8Vibrate(8); return; }
-    UI.tab = g[j]; v8Vibrate(10); render(); window.scrollTo({ top:0 });
+    UI.tab = g[j]; v8Vibrate(10); render();
     var hint = document.createElement('div'); hint.className = 'swipe-hint'; hint.textContent = (TABS.filter(function (x) { return x.id === g[j]; })[0] || {}).name || '';
     document.body.appendChild(hint); setTimeout(function () { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 900);
   }, { passive:true });
