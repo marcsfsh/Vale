@@ -122,12 +122,16 @@ the live chain — fine, but know they re-bind per sheet.
   the flag resets on success — S1), `.v4` and `parliamentVale.autosave`
   (legacy reads; since S1 each key parses independently, so a corrupt `.v5`
   falls through to older intact saves, is left untouched, and surfaces as
-  `UI.saveReadError` → a warning line on the setup sheet), `parliamentVale.hall`
-  (~13062–13063, cap 40).
+  `UI.saveReadError` → a warning line on the setup sheet; **S10a**: the next
+  autosave copies it to `<key>.unreadable` before writing over it, because
+  "left untouched" was a promise the very next render used to break),
+  `parliamentVale.hall` (~13062–13063, cap 40).
 - **The live autosave** is v6 render's debounce (~11093): `setTimeout(
   saveAutosave, 160)` after every render. The v4/v5 render debounces are dead.
-  Game end does NOT clear the autosave; nothing guards resuming a finished
-  game (the resumed corpse is inert: End disabled, captureUndo blocked).
+  Game end does NOT clear the autosave. Resuming a finished game is still
+  allowed — the record is worth reading — but since **S10a** the setup sheet
+  says so on the button and the toast says it again on the way in, instead of
+  handing the player an inert corpse with no explanation.
 
 ## Turn loop (live chains; identifier calls get the last assignment)
 
@@ -368,6 +372,28 @@ ladder as `lin`, and expands four channels into five rows each:
   `items` and scenario seeds were all rescaled by `round(n*4/m)` in S9f — 219
   sites — and the 24 ad-hoc linear terms took `k*m/4`. Adding a gate means
   writing it against four rungs.
+- **Who ages.** `ageRoster(st)` returns the list of people who age each session
+  and `ageSucceed(st, rec, died)` seats their successors; `ageFigures` walks
+  the one and calls the other. The v10 chunk wraps BOTH to add ministers and
+  governors. Anything added to the roster must not be aged anywhere else —
+  `v6GovernorsTick` used to increment governors itself, and two increments a
+  session is how a governor reached 120. A minister's death leaves the post
+  vacant; a governor's is filled by their own party for the rest of the term.
+- **The state ballot** is counted in BALLOTS, not turns: `st.v6.ballotNo`
+  increments once per federal ballot and `v6RegionSlot(r)` (region index / 2)
+  picks the two regions due. `v6NextRegionBallot` is the one place the next
+  ballot turn is derived — the card reads it rather than searching forward for
+  a turn that matches, which is what made the printed year recede.
+- **Names**: `GIVEN`/`SURNAME` are pushed, never rewritten. Dedupe against the
+  living cast happens in the FACTORIES (`makeFigure`, `v6MakeGovernor`), not in
+  `makeName()`, which takes no arguments and cannot see the state. Retries are
+  bounded at six. `V10_REGION_NAMES` weights a governor's surname by region and
+  never restricts it.
+- **`flash()` falls through to `toast(msg, true)`** when `#turnHint` has no
+  `offsetParent` — the hint is `display:none` below 1180px. Ask the element,
+  never the viewport: a width test here would be a sixth breakpoint.
+- **An unreadable save is copied to `<key>.unreadable`** before the session
+  writes over its key, because the setup sheet promises it was left untouched.
 - **Two policy pushes** now follow the array literal: `V10_POLICIES` (S9e, 34)
   and `V10_POLICIES_II` (S9g, 131 — the twenty core categories brought to 24
   each). Both use the same `if (!POL[p.id])` guard; both must stay AHEAD of

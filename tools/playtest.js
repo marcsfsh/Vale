@@ -498,6 +498,58 @@ async function run() {
       `stamped: ${moved.stamped}; second pass moved: ${twice.length}`);
   }
 
+  // -- S10a: an unreadable save is not written over after being promised untouched
+  {
+    const kept = await page.evaluate(() => {
+      const KEY = 'parliamentVale.autosave.v5';
+      const BROKEN = '{ this is not json';
+      try { localStorage.setItem(KEY, BROKEN); } catch (e) { return { skip: true }; }
+      try { localStorage.removeItem(KEY + '.unreadable'); } catch (e) {}
+      /* the state readAutosave would have left behind */
+      UI.saveReadError = KEY;
+      saveAutosave();
+      let rescued = null, live = null;
+      try { rescued = localStorage.getItem(KEY + '.unreadable'); live = localStorage.getItem(KEY); } catch (e) {}
+      const ok = rescued === BROKEN && live !== BROKEN && !!live;
+      try { localStorage.removeItem(KEY + '.unreadable'); } catch (e) {}
+      return { ok, rescuedIntact: rescued === BROKEN, overwritten: live !== BROKEN, cleared: !UI.saveReadError };
+    });
+    if (kept.skip) step('unreadable-save-kept', false, 'localStorage refused the fixture');
+    else step('unreadable-save-kept', kept.ok && kept.cleared,
+      `the unreadable blob survives at .unreadable: ${kept.rescuedIntact}; the session then autosaves normally: ${kept.overwritten}`);
+  }
+
+  // -- S10a: a refusal is audible at every tier, not just where the hint shows
+  {
+    /* Both branches, whatever this run's viewport: the hint when it is on
+       screen, the toast when it is not. The second case is the one that was
+       broken — 75 refusal sites, silent on the phone and the tablet, while
+       every success spoke. Hiding the element reproduces exactly what
+       `@media(max-width:1179px){.turnbar .hint{display:none}}` does. */
+    const spoke = await page.evaluate(() => {
+      const t = document.getElementById('toast'), h = document.getElementById('turnHint');
+      const out = {};
+      const prev = h.style.display;
+
+      h.style.display = '';
+      t.classList.remove('show', 'refused');
+      flash('SHOWN HINT REFUSAL');
+      out.hintOnScreen = !!h.offsetParent;
+      out.hintCarried = !out.hintOnScreen || h.textContent === 'SHOWN HINT REFUSAL';
+
+      h.style.display = 'none';
+      t.classList.remove('show', 'refused');
+      flash('HIDDEN HINT REFUSAL');
+      out.toastCarried = t.classList.contains('show') && t.textContent === 'HIDDEN HINT REFUSAL' &&
+        t.classList.contains('refused');
+      h.style.display = prev;
+      t.classList.remove('show', 'refused');
+      return out;
+    });
+    step('refusal-is-audible', spoke.hintCarried && spoke.toastCarried,
+      `hint on screen carries it: ${spoke.hintCarried}; hint hidden, the toast carries it as a refusal: ${spoke.toastCarried}`);
+  }
+
   // -- fold prefs follow their relocated panels (S9c)
   {
     const mig = await page.evaluate(() => {

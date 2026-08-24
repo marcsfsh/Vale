@@ -201,6 +201,126 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   console.log('      census: ' + ladderParity.n + ' statutes across ' + ladderParity.catN + ' categories · ' +
     Object.keys(ladderParity.cats).sort().map(c => c + ' ' + ladderParity.cats[c]).join(', '));
 
+  /* S10a — THE REPUBLIC AGES.
+     Four of the eight regions had never held a governor's election, their
+     governors aged without bound, and the printed ballot year slid forward a
+     year every year. Each of those is asserted here against the real
+     functions, not against a re-derivation of the schedule. */
+  const republic = await page.evaluate(() => {
+    const out = {};
+
+    /* Every region contested exactly once per four-ballot cycle, and two
+       regions at each ballot. */
+    const held = {}; REGIONS.forEach(r => held[r.id] = 0);
+    const perBallot = [];
+    for (let b = 0; b < 8; b++) {
+      let n = 0;
+      REGIONS.forEach(r => { if (v6BallotsUntilRegion(S, r) === 0) { held[r.id]++; n++; } });
+      perBallot.push(n);
+      S.v6.ballotNo = (S.v6.ballotNo || 0) + 1;
+    }
+    out.perBallot = perBallot;
+    out.everyRegionTwice = REGIONS.every(r => held[r.id] === 2);
+    out.neverContested = REGIONS.filter(r => held[r.id] === 0).map(r => r.id);
+
+    /* The printed ballot year must be a fixed point in the future, not a
+       distance from now that recedes as now advances. */
+    const y0 = {}; REGIONS.forEach(r => y0[r.id] = v6NextRegionBallot(S, r));
+    const t0 = S.turn; S.turn += 1;
+    const slid = REGIONS.filter(r => v6NextRegionBallot(S, r) !== y0[r.id] && v6BallotsUntilRegion(S, r) > 0);
+    S.turn = t0;
+    out.slidingYears = slid.map(r => r.id);
+
+    /* One increment a session, from one place. */
+    const before = {}; REGIONS.forEach(r => before[r.id] = S.v6.governors[r.id].age);
+    v6GovernorsTick(S); ageFigures(S);
+    out.ageSteps = REGIONS.map(r => S.v6.governors[r.id].age - before[r.id])
+      .filter((v, i, a) => a.indexOf(v) === i);
+
+    /* Ministers are in the roster too, and carry an age at all. A fresh
+       republic has an empty cabinet, so seat three the way the game does —
+       rank first, then the ensure pass that fills the post. */
+    pv5PortfolioRows().slice(0, 3).forEach(row => { S.cabinet[row.key] = 1; });
+    pv5EnsureState(S, false);
+    const rows = pv5PortfolioRows().filter(row => S.ministers[row.key]);
+    out.ministersSeated = rows.length;
+    out.ministersAged = rows.filter(row => typeof S.ministers[row.key].age === 'number').length;
+    const roster = ageRoster(S);
+    out.rosterKinds = roster.map(r => r.kind).filter((v, i, a) => a.indexOf(v) === i).sort();
+    /* and a minister who goes leaves the post vacant rather than being
+       silently replaced by somebody nobody appointed */
+    const victim = rows[0].key, had = S.ministers[victim].name;
+    ageSucceed(S, { f: S.ministers[victim], kind: 'minister', key: victim, title: rows[0].title }, true);
+    out.vacatedOnDeath = !S.ministers[victim] && !S.cabinet[victim] && !!had;
+
+    /* No two grand works may share a NAME. The merge guard is keyed on id, so
+       it cannot see this — which is how two Somnium Sea Walls shipped. */
+    const byName = {}; V8_WORKS.forEach(w => { (byName[w.name] = byName[w.name] || []).push(w.id); });
+    out.dupWorkNames = Object.keys(byName).filter(n => byName[n].length > 1).map(n => n + ' (' + byName[n].join(', ') + ')');
+    out.workCount = V8_WORKS.length;
+
+    /* Nobody in public life shares a name with anybody else in public life —
+       and not just at the opening, where 39,400 pairs make a chance collision
+       rare. Churn the whole cast the way a century of play does and take the
+       worst moment. */
+    const liveList = () => {
+      const a = [];
+      PARTIES.forEach(p => a.push(S.figures.leaders[p.id].name));
+      ['pres', 'vpres', 'chan', 'vchan'].forEach(o => a.push(S.figures.exec[o].name));
+      REGIONS.forEach(r => a.push(S.v6.governors[r.id].name));
+      Object.keys(S.ministers || {}).forEach(k => a.push(S.ministers[k].name));
+      return a;
+    };
+    out.castSize = liveList().length;
+    let worst = 0;
+    for (let i = 0; i < 200; i++) {
+      const pid = PARTIES[i % PARTIES.length].id;
+      S.figures.leaders[pid] = makeFigure(S, pid, 44);
+      const r = REGIONS[i % REGIONS.length];
+      S.v6.governors[r.id] = v6MakeGovernor(S, r, pid);
+      const a = liveList();
+      const d = a.length - new Set(a).size;
+      if (d > worst) worst = d;
+    }
+    out.castDupes = worst;
+    out.castChurn = 200;
+
+    /* Very easy: six works, and the capital numbers that make six affordable.
+       Every other tier untouched. */
+    out.workMax = ['easy', 'gentle', 'normal', 'hard', 'brutal'].map(k => k + ':' + v8WorkMax({ diff: k })).join(' ');
+    out.easyCap = DIFFS.easy.capital + '/' + DIFFS.easy.capMult + '/' + DIFFS.easy.capFlat + '/' + DIFFS.easy.capCap;
+    out.othersUnmoved = DIFFS.normal.capital === 18 && DIFFS.normal.capCap === 70 &&
+      DIFFS.gentle.capital === 40 && DIFFS.brutal.capital === 8;
+
+    /* Every justice is named before anybody opens the Judicial page. */
+    out.benchNamed = S.court.justices.filter(j => j.name).length + '/' + S.court.justices.length;
+    return out;
+  });
+
+  say(republic.everyRegionTwice && republic.neverContested.length === 0 && republic.perBallot.every(n => n === 2),
+    'every region goes to the ballot',
+    republic.neverContested.length ? republic.neverContested.length + ' never contested: ' + republic.neverContested.join(', ')
+      : `two regions at each of eight ballots [${republic.perBallot.join(',')}], all eight contested exactly twice`);
+  say(republic.slidingYears.length === 0, 'the ballot year does not recede',
+    republic.slidingYears.length ? 'slides in ' + republic.slidingYears.join(', ')
+      : 'a year passes and every region\'s printed ballot year stays where it was');
+  say(republic.ageSteps.length === 1 && republic.ageSteps[0] === 1, 'one year a session, once',
+    'governor age advanced by ' + republic.ageSteps.join('/') + ' over a session that ran both the governors tick and ageFigures');
+  say(republic.ministersSeated > 0 && republic.ministersAged === republic.ministersSeated &&
+    republic.rosterKinds.join(',') === 'exec,governor,leader,minister' && republic.vacatedOnDeath,
+    'the whole cast ages', `${republic.ministersAged}/${republic.ministersSeated} ministers carry an age · roster: ` +
+      `${republic.rosterKinds.join(', ')} · a minister's death leaves the post vacant: ${republic.vacatedOnDeath}`);
+  say(republic.dupWorkNames.length === 0, 'no two works share a name',
+    republic.dupWorkNames.length ? republic.dupWorkNames.join('; ') : republic.workCount + ' grand works, every name its own');
+  say(republic.castDupes === 0, 'no two officials share a name',
+    republic.castDupes ? republic.castDupes + ' duplicate(s) among ' + republic.castSize
+      : republic.castSize + ' in public life, no name twice, through ' + republic.castChurn + ' replacements');
+  say(republic.workMax === 'easy:6 gentle:3 normal:2 hard:2 brutal:2' && republic.othersUnmoved,
+    'very easy builds six', republic.workMax + ' · easy capital/mult/flat/cap ' + republic.easyCap +
+      ' · other tiers unmoved: ' + republic.othersUnmoved);
+  say(republic.benchNamed.split('/')[0] === republic.benchNamed.split('/')[1], 'the bench is named on arrival',
+    republic.benchNamed + ' justices named without the Judicial page being opened');
+
   // 1. the authority ladder, precondition by precondition
   const ladder = await page.evaluate(() => {
     const out = [];
