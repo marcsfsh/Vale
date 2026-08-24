@@ -476,6 +476,66 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(book.twoTargets === true, 'a targeted order is per target',
     'the same instrument stands separately in two regions: ' + book.twoTargets);
 
+  /* S10e — THE WORLD. The owner was allied with a power and at war with it.
+     That had four independent causes and a war-aware label would only have
+     hidden it. */
+  const world = await page.evaluate(() => {
+    const out = {};
+    const keep = { powers: JSON.parse(JSON.stringify(S.powers)), war: S.war,
+      treaties: JSON.parse(JSON.stringify(S.v6.treaties)), stats: JSON.parse(JSON.stringify(S.v6.stats || {})) };
+
+    /* no war is declared on a power that is not hostile — but war is still
+       possible, or this assertion would pass by never declaring one */
+    let onFriend = 0, declaredFriendly = 0;
+    for (let i = 0; i < 300; i++) {
+      S.war = null; POWERS.forEach(x => S.powers[x.id] = 70);
+      S.ind.tension = 95; S.ind.military = 90; S.pol.missileForce = 4; S.pol.protectorates = 4;
+      warTick(S);
+      if (S.war) { declaredFriendly++; if (relOf(S, S.war.power) >= 55) onFriend++; }
+    }
+    out.declaredOnFriendly = declaredFriendly;
+    out.targetedAFriend = onFriend;
+    let declaredHostile = 0;
+    for (let i = 0; i < 300; i++) {
+      S.war = null; POWERS.forEach(x => S.powers[x.id] = 70); S.powers.sarath = 12;
+      S.ind.tension = 95; S.ind.military = 90; S.pol.missileForce = 4; S.pol.protectorates = 4;
+      warTick(S);
+      if (S.war) { declaredHostile++; if (S.war.power !== 'sarath') out.wrongTarget = S.war.power; }
+    }
+    out.declaredOnHostile = declaredHostile;
+
+    /* the label */
+    S.war = null; POWERS.forEach(x => S.powers[x.id] = 50);
+    S.powers.sarath = 88; S.war = { power:'sarath', year:2030, momentum:0, turns:0, cost:0 };
+    out.wordAtWar = relWord(relOf(S, 'sarath'), S, 'sarath');
+    out.wordOther = relWord(relOf(S, 'moya'), S, 'moya');
+
+    /* the treaty */
+    S.v6.treaties.sarath = { kind:'defence', since:2028 };
+    v6TreatiesTick(S);
+    out.treatyVoided = !S.v6.treaties.sarath;
+
+    /* a war won at the table is recorded */
+    S.war = { power:'sarath', year:2030, momentum:10, turns:4, cost:0 };
+    S.v6.stats = S.v6.stats || {}; const v0 = S.v6.stats.victories || 0;
+    const act = ACTIONS.filter(a => /sue for peace/i.test(a.name))[0];
+    if (act) act.run(S);
+    out.victoryRecorded = (S.v6.stats.victories || 0) === v0 + 1 && !S.war;
+
+    S.powers = keep.powers; S.war = keep.war; S.v6.treaties = keep.treaties; S.v6.stats = keep.stats;
+    return out;
+  });
+  say(world.targetedAFriend === 0 && world.declaredOnHostile > 0 && !world.wrongTarget,
+    'war needs somebody to be hostile to',
+    `300 rolls with every power friendly declared ${world.declaredOnFriendly} wars, ${world.targetedAFriend} of them on a friend; ` +
+    `300 rolls with one power at 12 declared ${world.declaredOnHostile}, all on that power`);
+  say(world.wordAtWar === 'at war' && world.wordOther === 'correct', 'nobody is allied and at war',
+    `a power at 88 relations you are fighting reads "${world.wordAtWar}"; everyone else still reads normally ("${world.wordOther}")`);
+  say(world.treatyVoided, 'war annuls the treaty it contradicts',
+    'a defence pact with the country you are fighting is void, not still paying out');
+  say(world.victoryRecorded, 'a war won at the table counts',
+    'suing for peace records the victory instead of nulling the war before the tick that would have');
+
   say(paper.demandVariety >= 3, 'a party varies what it demands',
     paper.demandVariety + ' distinct statutes demanded across 40 draws (was 1, with no rand() in the function)');
 

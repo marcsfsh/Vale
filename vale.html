@@ -3951,7 +3951,12 @@ var POWERS = [
 var POWER = {}; POWERS.forEach(function (p) { POWER[p.id] = p; });
 
 function relOf(st, id) { return (st.powers && st.powers[id] !== undefined) ? st.powers[id] : 50; }
-function relWord(v) {
+/* Takes the state and the power, not a bare number: a wrapper could never
+   have learned WHICH power it was describing, so a war-aware version of the
+   old one-argument signature would have compiled, shipped, passed every check
+   and never fired. No power you are fighting reads as anything but at war. */
+function relWord(v, st, id) {
+  if (st && id && st.war && st.war.power === id) return 'at war';
   return v >= 78 ? 'allied' : v >= 60 ? 'friendly' : v >= 42 ? 'correct' : v >= 25 ? 'cold' : 'hostile';
 }
 function seedPowers(st) {
@@ -3989,12 +3994,25 @@ function warTick(st) {
     risk += (st.pol.missileForce || 0) * .003 + (st.pol.armsExports || 0) * .0023 + (st.pol.protectorates || 0) * .003;
     if (st.ind.military > 78) risk += .01;
     if (rand() < risk) {
-      var worst = null;
+      /* The target used to be the plain argmin with NO FLOOR, over powers
+         whose relations had nothing to do with the roll — so war could be
+         declared on a power at 74, which then still read "allied" beside "at
+         war since". A war needs somebody to actually be hostile to, and a
+         non-aggression pact must remove its holder from the candidates, not
+         merely mask the number it is compared on. */
+      var worst = null, cands = [];
       POWERS.forEach(function (p) {
         if (p.kind === 'alliance' || p.kind === 'trade') return;
-        if (!worst || relOf(st, p.id) < relOf(st, worst)) worst = p.id;
+        if (st.v6 && st.v6.treaties && st.v6.treaties[p.id] &&
+            (st.v6.treaties[p.id].kind === 'nonaggression' || st.v6.treaties[p.id].kind === 'defence')) return;
+        if (relOf(st, p.id) >= 55) return;
+        cands.push(p.id);
       });
+      cands.forEach(function (id) { if (!worst || relOf(st, id) < relOf(st, worst)) worst = id; });
+      if (!worst) return;
       st.war = { power: worst, year: yearOf(st.turn), momentum: 0, turns: 0, cost: 0 };
+      /* going to war moves the relation, which it never used to */
+      st.powers[worst] = c100(Math.min(relOf(st, worst), 18));
       st.ind.tension = c100(st.ind.tension + 14);
       st.unrest += 6;
       mood(st, { veterans:9, faith:4, youth:-6, prof:-4, tech:-4 });
@@ -7683,6 +7701,18 @@ var ACTIONS = [
       shiftRel(S, w.power, 18);
       logIt(S, 'Peace was signed with ' + p.short + ' after ' + w.turns + ' years.');
       chronicle(S, 'Peace with ' + p.short + '.');
+      /* This used to null S.war outright. The v6 war tick records an outcome
+         in its `else if (wasWar)` branch, and `wasWar` is snapshotted at the
+         top of the NEXT tick — by which time the war was already gone. So a
+         war won at the negotiating table was never recorded: stats.victories
+         never rose, which is the sole test for the `victor` record and the
+         sole condition for the Conqueror epilogue. A player who won every war
+         by suing for peace could not earn either. Record it here. */
+      if (S.v6) {
+        S.v6.stats = S.v6.stats || {};
+        if (good) S.v6.stats.victories = (S.v6.stats.victories || 0) + 1;
+        S.v6.lastWar = { power:w.power, years:w.turns, won:good, ended:yearOf(S.turn), terms:'negotiated' };
+      }
       S.war = null;
     } }),
   A({ id:'warBonds', cat:'Treasury', name:'Issue War Bonds', cost:3, cool:1,
@@ -9821,7 +9851,7 @@ function viewWorld() {
       '<div class="row"><span class="lab small">Relations</span><span class="bar ' +
         (r > 60 ? 'b-ok' : (r < 30 ? 'b-bad' : 'b-ox')) + '"><i style="width:' + r.toFixed(0) + '%"></i></span>' +
         '<span class="val">' + Math.round(r) + '</span></div>' +
-      '<div class="tagline"><span class="tag ' + (r > 60 ? 'up' : (r < 30 ? 'down' : '')) + '">' + relWord(r) + '</span>' +
+      '<div class="tagline"><span class="tag ' + (S.war && S.war.power === pw.id ? 'down' : (r > 60 ? 'up' : (r < 30 ? 'down' : ''))) + '">' + relWord(r, S, pw.id) + '</span>' +
       (S.war && S.war.power === pw.id ? '<span class="tag down">At war since ' + S.war.year + '</span>' : '') + '</div></div>';
   }).join('');
 
@@ -9838,12 +9868,21 @@ function viewWorld() {
       tr('Years fought', String(w.turns)) +
       '</tbody></table></div>';
   } else {
-    var risk = 0;
+    /* The panel counted "hostile" as below 22 while the war roll accumulates
+       risk from everything below 34 and only picks a target below 55, so the
+       page told the player there was no war risk when there was a real one.
+       Both now read the same numbers the roll does. */
+    var risk = 0, watch = 0;
     POWERS.forEach(function (pw) { if (pw.kind === 'alliance' || pw.kind === 'trade') return;
-      if (relOf(S, pw.id) < 22) risk += 1; });
+      var t = S.v6 && S.v6.treaties && S.v6.treaties[pw.id];
+      if (t && (t.kind === 'nonaggression' || t.kind === 'defence')) return;
+      var r = relOf(S, pw.id);
+      if (r < 34) risk += 1; else if (r < 55) watch += 1; });
     warPanel = '<div class="panel"><h2>Vale Is at Peace</h2>' +
-      '<p class="note">' + (risk ? risk + ' power' + (risk > 1 ? 's are' : ' is') + ' hostile enough that war is a live possibility, and international tension stands at ' + Math.round(S.ind.tension) + '.'
-        : 'No power is hostile enough for war, though international tension stands at ' + Math.round(S.ind.tension) + '.') + '</p></div>';
+      '<p class="note">' + (risk ? risk + ' power' + (risk > 1 ? 's are' : ' is') + ' hostile enough that war is a live possibility'
+        : 'No power is hostile enough to start a war') +
+        (watch ? ', and ' + watch + ' more ' + (watch > 1 ? 'are' : 'is') + ' cool enough to become the target of one' : '') +
+        '. International tension stands at ' + Math.round(S.ind.tension) + '. A non-aggression or defence pact takes a power off the list entirely.</p></div>';
   }
 
   return '<div class="grid"><div>' +
@@ -11622,6 +11661,17 @@ function v6TreatiesTick(st) {
   var v = st.v6;
   POWERS.forEach(function (pw) {
     var t = v.treaties[pw.id]; if (!t) return;
+    /* A treaty with the country you are FIGHTING used to stay in force and
+       keep paying out — a mutual-defence pact charging its upkeep every
+       session and shifting relations +0.4 TOWARD the enemy, which is most of
+       how a power ended up reading "allied" and "at war" at once. War annuls
+       the instrument, loudly. */
+    if (st.war && st.war.power === pw.id) {
+      delete v.treaties[pw.id];
+      logIt(st, 'The ' + V6_TREATIES[t.kind].name.toLowerCase() + ' with ' + pw.short + ' is void. The two countries are at war.');
+      addNews(st, 'Foreign Affairs', 'Treaty with ' + pw.short + ' void', 'A state of war annuls it. The lawyers will argue about the clauses for a decade.', 'bad');
+      return;
+    }
     var rel = relOf(st, pw.id);
     if (t.kind === 'nonaggression') { shiftRel(st, pw.id, .6); if (rel < 30) { delete v.treaties[pw.id]; logIt(st, 'The non-aggression pact with ' + pw.short + ' lapsed. Relations had fallen too far to sustain it.'); } }
     if (t.kind === 'trade') { mood(st, { tech:1, smallbiz:-.5 }); shiftRel(st, pw.id, .3); if ((st.pol.tariffs || 0) >= 3) { delete v.treaties[pw.id]; shiftRel(st, pw.id, -8); logIt(st, 'The trade agreement with ' + pw.short + ' was voided by the tariff schedule.'); } }
@@ -11636,14 +11686,23 @@ function v6TreatyDialog(pid) {
     var t = V6_TREATIES[k], ok = rel >= t.min && !(have && have.kind === k) && !(pw.kind === 'alliance' && (k === 'nonaggression'));
     return '<button class="choice" data-treaty-kind="' + k + '"' + (ok ? '' : ' disabled') + '><b>' + esc(t.name) + '</b> <span class="c">' + cst(t.cost) + ' cap, ' + fmc(t.money) + '</span><small>' + esc(t.note) + (rel < t.min ? ' Needs relations at ' + t.min + '; they stand at ' + Math.round(rel) + '.' : '') + '</small><span class="fx">' + t.tags.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</span></button>';
   }).join('');
-  showSheet('<div class="kicker">Foreign Office</div><h2 id="sheetTitle">Negotiate with ' + esc(pw.name) + '</h2><p>' + esc(pw.note) + ' Relations stand at ' + Math.round(rel) + ', ' + relWord(rel) + '.' + (have ? ' A ' + V6_TREATIES[have.kind].name.toLowerCase() + ' has been in force since ' + have.since + '.' : '') + '</p><div class="choices">' + opts +
+  showSheet('<div class="kicker">Foreign Office</div><h2 id="sheetTitle">Negotiate with ' + esc(pw.name) + '</h2><p>' + esc(pw.note) + ' Relations stand at ' + Math.round(rel) + ', ' + relWord(rel, S, pw.id) + '.' + (have ? ' A ' + V6_TREATIES[have.kind].name.toLowerCase() + ' has been in force since ' + have.since + '.' : '') + '</p><div class="choices">' + opts +
     (have ? '<button class="choice" data-treaty-annul="1">Annul the ' + esc(V6_TREATIES[have.kind].name.toLowerCase()) + ' <span class="c">' + cst(3) + ' cap</span><small>Relations fall by 15 and the country notices.</small></button>' : '') +
     '<button class="choice" data-close="1">Return</button></div>', function (node) {
       node.querySelectorAll('[data-treaty-kind]').forEach(function (b) {
         b.addEventListener('click', function () {
           var k = b.getAttribute('data-treaty-kind'), t = V6_TREATIES[k];
           if (!pv5Spend(t.cost, t.money, 'Treaty with ' + pw.short)) return;
-          S.v6.treaties[pid] = { kind:k, since:yearOf(S.turn) }; shiftRel(S, pid, 12); S.v6.stats.treaties++;
+          /* Replacing a treaty used to be a bare overwrite: the old instrument was
+     dropped with no penalty, no log line naming it and no chronicle entry,
+     while still counting as a new treaty — where ANNULLING one costs capital
+     and fifteen points of relations. Say what is being torn up. */
+  var had = S.v6.treaties[pid];
+  if (had) {
+    logIt(S, 'The ' + V6_TREATIES[had.kind].name.toLowerCase() + ' with ' + POWER[pid].short + ' of ' + had.since + ' was superseded.');
+    shiftRel(S, pid, -5);
+  }
+  S.v6.treaties[pid] = { kind:k, since:yearOf(S.turn) }; shiftRel(S, pid, 12); S.v6.stats.treaties++;
           mood(S, k === 'defence' ? { veterans:5, prof:2, youth:-3 } : (k === 'arms' ? { prof:5, youth:4, veterans:-4 } : { prof:3, tech:3 }));
           logIt(S, 'A ' + t.name.toLowerCase() + ' was signed with ' + pw.name + '.'); chronicle(S, t.name + ' with ' + pw.short + '.');
           hideSheet(); render(); toast('Treaty signed.');
