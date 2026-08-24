@@ -4,8 +4,35 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S8d — the flagged leftovers** (PR #15). Four small items, none a design
-decision, each carried forward from an earlier slice's notes.
+**S9a — nothing is lost quietly** (PR #16). An independent survey after S8d
+found a cluster of defects on the one thing the agreement calls the worst
+possible failure — the player's record lost silently — and the worst of them
+was not the one S8c fixed.
+
+The hall of fame silently destroyed itself: `v8HallRead` caught to `[]` and
+`v8HallWrite` caught to nothing, so an unreadable `parliamentVale.hall` blob
+read as empty with no warning and the next campaign ending overwrote it — the
+one blob a player cannot re-earn. It now has the autosave's S1 contract: an
+unreadable blob is reported (in the hall's own render and by toast), left
+untouched, and never overwritten; the player's explicit "clear the hall" still
+works. A campaign that ended in collapse banked nothing from its dying
+session: `checkCollapse`'s two `gameOver` calls fired before any tick — the
+same defect class S8c fixed, on the branch S8c did not touch; both endings now
+bank first through a shared `v6BankSession` helper. The Record page printed a
+raw template: the goal panel was the ONE note read site not going through
+`v6Note`, so the default opening showed "Put {n} of your bills on the statute
+book". Records and goals could be dated one year after the republic ended
+(unclamped `yearOf` at three sites). Smaller truths: `rd_decade` renamed ("A
+decade" while requiring `v6Scale(st,12)`), `.goal-mark` finally has a CSS rule
+(the percentage was taking the wide grid column), the ending copy no longer
+says "the two centuries" on a fifty-year campaign, and the playtest's modal
+drain no longer races `v6Pump`'s 40 ms re-open. Every fix ships with the
+assertion that would have caught it; all four new steps FAIL against the
+pre-fix file.
+
+Previously: **S8d — the flagged leftovers** (PR #15, merged). Four small
+items, none a design decision, each carried forward from an earlier slice's
+notes.
 
 `breakpoint-tiers` was a membership test wearing a partition test's name, and
 five ways past it are now closed with a proof of each: a number used as both a
@@ -123,7 +150,8 @@ ratchet 10 → 5, which is now its true floor.
 | S6b the chamber | **merged** (#6) | aisles, direct labels, ground rim, two hue-locked lifts, seats +75% on desktop; `tools/chamber.js` + `tools/seats.js` |
 | S8b the instrument | **merged** (#13) | pacing tool read the latched map instead of recomputing; the PR states plainly that PR #10's published figures measured the wrong quantity |
 | S8c the record scales | **merged** (#14) | thresholds scale with `endYear`, requirements rendered not hard-coded; closing session now banked; hall score made span-relative; epic byte-identical |
-| S8d the leftovers | **in review (PR #15)** | breakpoint check made a partition test (5 proofs); hemiMap's false `total` dropped and the guarantee moved into `tools/chamber.js`; seed copy tightened; this board corrected |
+| S8d the leftovers | **merged** (#15) | breakpoint check made a partition test (5 proofs); hemiMap's false `total` dropped and the guarantee moved into `tools/chamber.js`; seed copy tightened; this board corrected |
+| S9a nothing lost quietly | **in review (PR #16)** | hall gets the S1 loudness contract; collapse endings bank their session; the one raw `note` read site fixed; year clamps; 4 new playtest steps, each proven to fail pre-fix |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts

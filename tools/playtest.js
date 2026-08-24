@@ -42,9 +42,18 @@ function step(name, ok, detail) { steps.push({ name, ok, detail }); console.log(
 async function drainModals(page, maxClicks) {
   // After endTurn the v6 queue shows one sheet per event; the gazette and
   // coalition dialogs may follow. Click event choices, then closes, until quiet.
+  let quiet = 0;
   for (let i = 0; i < maxClicks; i++) {
     const open = await page.evaluate(() => !document.getElementById('modal').hidden);
-    if (!open) return true;
+    if (!open) {
+      /* v6Pump re-opens the next queued sheet on a 40ms setTimeout after a
+         close, so one hidden reading is not an empty queue. Require it to
+         STAY hidden across two readings that straddle the pump window. */
+      if (++quiet >= 2) return true;
+      await page.waitForTimeout(150);
+      continue;
+    }
+    quiet = 0;
     const clicked = await page.evaluate(() => {
       const sh = document.getElementById('sheet');
       const b = sh.querySelector('[data-ev]') || sh.querySelector('[data-close]');
@@ -158,6 +167,20 @@ async function run() {
     });
     if (!filled) empty.push(t);
   }
+  const leaks = [];
+  for (const t of tabs) {
+    await page.evaluate(id => { UI.tab = id; render(); }, t);
+    await page.waitForTimeout(25);
+    const hit = await page.evaluate(() => {
+      const v = document.getElementById('view');
+      const m = v && v.textContent.match(/[^\s]{0,30}\{[nNd]\}[^\s]{0,30}/);
+      return m ? m[0] : null;
+    });
+    if (hit) leaks.push(`${t}: ${hit}`);
+  }
+  step('no-placeholder-leaks', leaks.length === 0,
+    leaks.length ? `template braces reached the screen — ${leaks.join('; ')}`
+      : 'no {n}/{N}/{d} in any rendered view');
   await page.evaluate(() => { UI.tab = 'chamber'; render(); });
   step('tab-tour', tabs.length >= 15 && empty.length === 0,
     `${tabs.length - empty.length} of ${tabs.length} views rendered content` +
@@ -290,6 +313,56 @@ async function run() {
 
   step('console-errors', errors.length === 0, `${errors.length} error(s)` + (errors.length ? ': ' + errors.slice(0, 2).join(' | ') : '') +
     (offline.length ? `; ${offline.length} expected-offline resource failure(s) (fonts — exemption dies with the external-ref allowlist)` : ''));
+
+  // -- endings are not allowed to lose anything (fresh page: this one corrupts
+  //    the hall and ends the game). The hall gets the autosave's S1 loudness
+  //    contract; the collapse ending must bank its own session before the
+  //    gameOver chain latches the hall entry.
+  {
+    const ep = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+    await ep.addInitScript(() => { window.confirm = () => true; });
+    await ep.goto(URL);
+    await ep.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    const CORRUPT = '[{"party":"lp","score":181,"year":"2071"';
+    await ep.evaluate(c => localStorage.setItem('parliamentVale.hall', c), CORRUPT);
+    await ep.click('[data-setup-begin]');
+    await ep.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await ep.click('[data-doctrine]');
+    await drainModals(ep, 20);
+    // give the run a record that can only be banked by the dying session
+    await ep.evaluate(() => { S.legacy.playerLaws = 999; });
+    // force the services-refuse ending through the REAL checkCollapse: the
+    // forcing happens inside its own call because tickTurn recomputes both
+    // levers, so a value set before endTurn is gone by the time it reads them
+    await ep.evaluate(() => {
+      var base = checkCollapse;
+      checkCollapse = function () { S.armyLoyalty = 0; S.unrest = 99; return base.apply(this, arguments); };
+      endTurn();
+    });
+    await ep.waitForTimeout(900);
+    await drainModals(ep, 20);
+    const end = await ep.evaluate(c => {
+      const raw = localStorage.getItem('parliamentVale.hall');
+      const sheetText = (document.getElementById('sheet') || {}).textContent || '';
+      return {
+        over: !!S.over,
+        blobUntouched: raw === c,
+        banked: S.v6.achievements.firstLaw !== undefined,
+        card: (sheetText.match(/(\d+)\s+of\s+(\d+)\s+records/i) || []).slice(1),
+        recorded: !!(S.v8 && S.v8.flags && S.v8.flags.recorded)
+      };
+    }, CORRUPT);
+    step('hall-corrupt-loud', end.over && end.blobUntouched,
+      `game over: ${end.over}; corrupt hall blob untouched after the ending: ${end.blobUntouched}`);
+    step('collapse-banks', end.banked && Number(end.card[0]) > 0,
+      `record earned on the dying session banked: ${end.banked}; end card reads ${end.card[0] || '?'} of ${end.card[1] || '?'}`);
+    // the hall's own render says why nothing was recorded
+    await ep.evaluate(() => { UI.tab = 'record'; render(); });
+    await ep.waitForTimeout(150);
+    const warn = await ep.evaluate(() => !!document.querySelector('[data-hall-warning]'));
+    step('hall-warns-on-screen', warn, 'record view shows the unreadable-hall notice');
+    await ep.close();
+  }
   await browser.close();
 
   // -- WebKit phone pass (the ruled phone reference engine) --

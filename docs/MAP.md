@@ -141,9 +141,11 @@ hideSheet wrapper) → `render` (v9→v8→v7→mobile→v6 full redraw; v6's bo
 full rewrite that redraws `#stats`+`#tabs`+active view via innerHTML, then
 `wire()` re-binds).
 
-The **closing branch** (`S.turn > lastTurn()`, ~6787) runs `v6AfterTurn` itself
-and then `finish()`→`gameOver` (v8 hall→v6 grades→v4 sets `S.over`), and
-returns. Order is load-bearing in both directions: the tick must come first,
+The **closing branch** (`S.turn > lastTurn()`) calls `v6BankSession(S)` — the
+shared bank-the-dying-session helper defined beside `endTurn` — then
+`finish()`→`gameOver` (v8 hall→v6 grades→v4 sets `S.over`), and returns.
+`checkCollapse`'s two `gameOver` sites call the same helper first (S9a): EVERY
+ending banks before the hall latches, not only the natural close. Order is load-bearing in both directions: the tick must come first,
 because `gameOver` reads `S.v6.achievements` synchronously (~11556) and
 `v8HallRecord` (~13505) *persists* the count to localStorage — a tick after
 `finish()` would show and permanently store a stale number; and it must be this
