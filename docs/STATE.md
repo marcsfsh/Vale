@@ -4,11 +4,47 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S9f — the Ladder** (PR #21). Four rungs on every statute, and the two
-navigation complaints. First of three slices carrying the owner's fourth
-order: *every policy gets four levels with a unique set of modifiers at each,
-the card previews what extending or repealing would do, the Dossier shows
-every stage* — and, separately, *every category reaches 24 policies*.
+**S9g — the statute book** (PR #22). Every one of the twenty core policy
+categories now holds exactly twenty-four statutes: 131 new ones, all authored
+on the four-rung ladder from birth. `tools/roads.js` asserts the count rather
+than trusting it, and asserts that no rung of an authored statute reads the
+same as the rung below it.
+
+They were designed against the complete existing roster — one designer per
+category, cluster critics across the collision-prone pairs — and three
+residual collisions were replaced outright (Labour's duplicate of
+`yellowUnions` became the hiring halls; the Authority/Culture clash over
+opening the files became `lustrationAct` in Culture and, in Authority, the
+`lapseRule` that makes every Authority statute expire with its parliament).
+Empire gets tribute rolls, client heirs schooled in the capital, the
+militarised marches, treaty ports, naval reprisals and two liberty-lean exits
+— dominion status and a relinquishment commission. Federalism gets the
+governors' council, state receivership, the articles of separation, the
+commandeering act, a relocated capital. Elections gets a boundary commission,
+a federal election service, allocated airtime, international observers.
+
+Each carries four cumulative standing rows built to a written grammar: rung 1
+the pilot, rung 2 the programme, rung 3 the second order (a key that only
+appears at scale), rung 4 the whole instrument plus a cost it did not have
+lower down. Every rung-4 value on a design key lands within 20% of that
+design's intended full build, so the new statutes sit on the same scale as
+the old. Generation was assertion-guarded: unknown keys, invented revenue, a
+repeated rung, a full build off its anchor or an unresolved `needs:` abort
+the build before a byte is written.
+
+`maxBytes` moved 1,600,000 → 1,750,000 with the case recorded in
+`baseline.json`: the binding invariant is self-containment, not bytes, and
+this growth was ordered. 1,617,357 bytes, ~130 KB of headroom.
+
+Next: **S9h — the curves**, authored rows for the 451 statutes that were
+already here, `lin` removed, the save migration becoming a loud refusal.
+
+Previously: **S9f — the Ladder** (PR #21, merged). Four rungs on every
+statute, and the two navigation complaints. First of three slices carrying
+the owner's fourth order: *every policy gets four levels with a unique set of
+modifiers at each, the card previews what extending or repealing would do,
+the Dossier shows every stage* — and, separately, *every category reaches 24
+policies*.
 
 The engine. `P()` — the funnel all 451 policy literals already passed through
 — now expands each one at parse into `_effAt/_moodAt/_revAt/_expAt[0..4]`.
@@ -333,7 +369,8 @@ ratchet 10 → 5, which is now its true floor.
 | S9c the Atlas | **merged** (#18) | six coherent groups, ids collision-proof, Ministry relabel, 6-key keyboard covers all 15 views, misfiled panels rehomed with fold-pref migration, tabs.js rewritten |
 | S9d the Descent | **merged** (#19) | securityState + state-gated measures; nine latch acts get teeth; confirmation ritual + reckoning; terminal real; needs on all paths; v10 chunk (8/8); `tools/roads.js` ROADS OK |
 | S9e the Roads | **merged** (#20) | the Chartered State; 34 policies (first POLICIES.push); 33 events; 2 arcs; 11/11 goal parity; 6 records; 3 acts of repair; roads.js content proofs |
-| S9f the Ladder | **in review (PR #21)** | four rungs on every statute via `P()`; `lin` interpolation parity-exact at every reachable rung; 7 impulses → row deltas; 219 position literals rescaled; loud save migration + `polV2`; card/Dossier/desk surfaces; tab changes land at the top; drafting stays on the policy page |
+| S9f the Ladder | **merged** (#21) | four rungs on every statute via `P()`; `lin` interpolation parity-exact at every reachable rung; 7 impulses → row deltas; 219 position literals rescaled; loud save migration + `polV2`; card/Dossier/desk surfaces; tab changes land at the top; drafting stays on the policy page |
+| S9g the statute book | **in review (PR #22)** | 131 new statutes, every core category to 24; four authored rungs from birth with a written curve grammar; 11 prose conditions turned into real `req:`/`reqText:`; `maxBytes` 1.6M -> 1.75M with the case; roads.js counts the categories and checks no rung repeats the one below |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
