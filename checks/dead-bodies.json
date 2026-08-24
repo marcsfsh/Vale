@@ -816,6 +816,21 @@
       "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10PoliticsTickBase captured above (S10f: a new paper can arrive in place of the old eleven-type cycle)"
+    },
+    "v8EnsureState#2": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10PowersEnsureBase captured above (S10e: backfills every POWERS id so a raw read cannot produce NaN)"
+    },
+    "shiftRel#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10ShiftRelBase captured above (S10e: the same guard on the one writer that never checked)"
+    },
+    "indicatorTargets#4": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10TreatyTargetsBase captured above (S10e: treaties in force finally move the indicator targets their own cards advertise)"
     }
   }
 }

@@ -11761,12 +11761,26 @@ var V6_TREATIES = {
   trade: { name:'Trade agreement', min:50, cost:6, money:4, upkeep:0,
     note:'Receipts rise and the exchanges approve. Tariffs at level 2 or above void it.',
     tags:['Revenue +$150B a session', 'Technology and finance +1 a session', 'Farmers -0.5 a session'] },
-  defence: { name:'Defence pact', min:64, cost:8, money:6, upkeep:4,
+  defence: { name:'Defence pact', min:64, cost:8, money:6, upkeep:4, mil:1.5,
     note:'A mutual guarantee. They fight beside you and you pay for the bases.',
     tags:['War momentum +1 a session', 'Armed forces +1.5 target', 'Tension +1 a session', 'Upkeep $200B a session'] },
-  arms: { name:'Arms limitation treaty', min:48, cost:6, money:2, upkeep:0,
+  arms: { name:'Arms limitation treaty', min:48, cost:6, money:2, upkeep:0, mil:-1.5,
     note:'Both sides cap the force they keep on the frontier.',
-    tags:['Tension -1.5 a session', 'Armed forces -1.5 target', 'Veterans -0.6 a session'] }
+    tags:['Tension -1.5 a session', 'Armed forces -1.5 target', 'Veterans -0.6 a session'] },
+  /* S10e: four more instruments, so a relationship has somewhere to go
+     between "correct" and a mutual guarantee. */
+  transit: { name:'Transit and passage accord', min:44, cost:5, money:3, upkeep:0, econ:1.2,
+    note:'Our shipping through their water and their freight across our rail, at published rates.',
+    tags:['Economy +1.2 target', 'Infrastructure +0.6 target', 'Relations drift +0.4 a session'] },
+  science: { name:'Scientific exchange', min:52, cost:5, money:4, upkeep:1, tech:1.4,
+    note:'Their laboratories and ours, on paper at least, and a great many visiting fellowships.',
+    tags:['Technology +1.4 target', 'Education +0.7 target', 'The professions approve'] },
+  labour: { name:'Labour movement convention', min:46, cost:4, money:2, upkeep:0, pov:-1.1,
+    note:'Their people may work here and ours there, with the papers recognised on both sides.',
+    tags:['Poverty -1.1 target', 'Organised labour uneasy', 'Small business pleased'] },
+  extradition: { name:'Extradition and legal assistance', min:40, cost:4, money:1, upkeep:0, corr:-1.3,
+    note:'Neither capital is a place to keep money that should be somewhere else.',
+    tags:['Corruption -1.3 target', 'Civil liberties -0.5 target', 'The exchanges dislike it'] }
 };
 function v6TreatyWith(st, pid) { return st.v6 && st.v6.treaties[pid] ? st.v6.treaties[pid] : null; }
 function v6TreatiesTick(st) {
@@ -20405,6 +20419,26 @@ function v10OrderMods(st) {
 }
 
 /* Standing effects reach the country through the TARGETS, so they reverse. */
+/* Treaties in force move the indicator TARGETS. Two of them advertised effects
+   on their own cards that nothing in the file implemented: the defence pact
+   promised "Armed forces +1.5 target" and the arms treaty "-1.5", and grepping
+   every read of v6.treaties found no writer of military anywhere. Now every
+   treaty's tags are true, and the four new ones work the same way. */
+var v10TreatyTargetsBase = indicatorTargets;
+indicatorTargets = function (st) {
+  var t = v10TreatyTargetsBase(st);
+  var tr = st.v6 && st.v6.treaties; if (!tr) return t;
+  for (var pid in tr) {
+    var d = V6_TREATIES[tr[pid].kind]; if (!d) continue;
+    if (d.mil) t.military = c100(t.military + d.mil);
+    if (d.econ) t.economy = c100(t.economy + d.econ);
+    if (d.tech) { t.technology = c100(t.technology + d.tech); t.education = c100(t.education + d.tech * .5); }
+    if (d.pov) t.poverty = c100(t.poverty + d.pov);
+    if (d.corr) { t.corruption = c100(t.corruption + d.corr); t.liberties = c100(t.liberties - .5); }
+  }
+  return t;
+};
+
 var v10IndTargetsBase = indicatorTargets;
 indicatorTargets = function (st) {
   var t = v10IndTargetsBase(st);
@@ -20846,6 +20880,53 @@ politicsTick = function (st) {
   var others = PARTIES.filter(function (p) { return p.id !== playParty(st) && !st.banned[p.id]; });
   addInbox(st, { type:'v10paper', v10paper:d.id, from:others.length ? others[Math.floor(rand() * others.length)].id : null,
     title:d.title, body:d.body });
+};
+
+/* ============================================================
+   S10e — FIVE MORE POWERS, AND SOMETHING TO SAY TO THEM
+   Six powers, and `kind` was the only field on any of them with behaviour.
+   These five are pushed onto the same array, so every existing consumer —
+   the drift terms, the war roll, the sanction lists, the treaty sheet — picks
+   them up without a change. They are BACKFILLED into st.powers on enrich,
+   because st.powers is written as a whole literal in four places and two
+   consumers read it raw: a missing key gave Math.max(undefined, n) = NaN,
+   which clamp passes straight through.
+   ============================================================ */
+[
+  { id:'valdenmark', name:'The Valdenmark Confederacy', short:'Valdenmark', kind:'neighbour',
+    note:'Three hundred miles of border, a shared language on both sides of it, and a standing argument about which side the river belongs to.' },
+  { id:'zhenkai', name:'The Zhen-Kai Compact', short:'Zhen-Kai', kind:'trade',
+    note:'The largest manufacturing economy east of the ocean. It sells to everyone, lends to everyone, and has never once explained itself.' },
+  { id:'oranje', name:'The Oranje Dominions', short:'Oranje', kind:'bloc',
+    note:'A former empire that kept the flag, the navy and the accent, and gave away almost everything else.' },
+  { id:'khoraz', name:'The Khoraz Emirates', short:'Khoraz', kind:'southern',
+    note:'Seven emirates on the strait, holding the pipeline and the passage, and playing every power against the others with great patience.' },
+  { id:'tarnow', name:'The Tarnow Republic', short:'Tarnow', kind:'rival',
+    note:'Small, armed, and convinced Vale has been the author of its misfortunes since 1912. It may not be entirely wrong.' }
+].forEach(function (p) { if (!POWER[p.id]) { POWERS.push(p); POWER[p.id] = p; } });
+
+var V10_POWER_OPENING = { valdenmark:56, zhenkai:60, oranje:48, khoraz:40, tarnow:27 };
+/* Backfill: pure, no dice, safe inside the guarded enrich chain. Every id in
+   POWERS gets a number, so nothing can read undefined out of the map. */
+function v10EnsurePowers(st) {
+  if (!st.powers) return;
+  POWERS.forEach(function (p) {
+    if (typeof st.powers[p.id] !== 'number' || isNaN(st.powers[p.id])) {
+      st.powers[p.id] = V10_POWER_OPENING[p.id] !== undefined ? V10_POWER_OPENING[p.id] : 50;
+    }
+  });
+}
+var v10PowersEnsureBase = v8EnsureState;
+v8EnsureState = function (st, fresh) {
+  var out = v10PowersEnsureBase(st, fresh);
+  if (out) v10EnsurePowers(out);
+  return out;
+};
+/* the two raw reads that would have produced NaN */
+var v10ShiftRelBase = shiftRel;
+shiftRel = function (st, id, n) {
+  if (st.powers && typeof st.powers[id] !== 'number') st.powers[id] = V10_POWER_OPENING[id] !== undefined ? V10_POWER_OPENING[id] : 50;
+  return v10ShiftRelBase(st, id, n);
 };
 
 /* ---------- thirty-two more grand works ---------- */

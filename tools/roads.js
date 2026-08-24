@@ -615,8 +615,36 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     if (act) act.run(S);
     out.victoryRecorded = (S.v6.stats.victories || 0) === v0 + 1 && !S.war;
 
+    /* the five new powers, and the migration that keeps a NaN out of an old save */
+    out.powerCount = POWERS.length;
+    out.treatyKinds = Object.keys(V6_TREATIES).length;
+    out.allSeeded = POWERS.every(p => typeof S.powers[p.id] === 'number' && !isNaN(S.powers[p.id]));
+    S.powers = { ostmark:44, moya:52, sarath:31, calavera:62, alliance:74, meridian:66 };
+    v10EnsurePowers(S);
+    out.backfilled = POWERS.every(p => typeof S.powers[p.id] === 'number' && !isNaN(S.powers[p.id]));
+    S.powers = { ostmark:44 }; shiftRel(S, 'tarnow', 5);
+    out.noNaN = !isNaN(S.powers.tarnow);
+    S.powers = JSON.parse(JSON.stringify(keep.powers)); v10EnsurePowers(S);
     S.powers = keep.powers; S.war = keep.war; S.v6.treaties = keep.treaties; S.v6.stats = keep.stats;
     S.ind = keep.ind; S.blocs = keep.blocs; S.pol = keep.pol; S.unrest = keep.unrest; S.capital = keep.capital;
+    v10EnsurePowers(S);
+
+    /* The two effects the cards have always advertised. Measured AFTER the
+       restore and from a mid-range military: the war-roll loops above set it
+       to 90, and c100 saturates the target at 100, which reads as "the treaty
+       does nothing" when it is the ceiling doing it. */
+    /* The military TARGET is driven by the defence statutes and sits at the
+       100 ceiling in a built-out book, so +1.5 has nowhere to go while -1.5
+       still shows — which reads as "defence does nothing" when it is the
+       clamp. Measure from a quiet state. */
+    const keepMil = S.ind.military, keepTr = S.v6.treaties, keepPol = S.pol;
+    S.pol = {}; S.ind.military = 40; S.v6.treaties = {};
+    const m0 = indicatorTargets(S).military;
+    S.v6.treaties = { ostmark:{ kind:'defence', since:2030 } };
+    out.defenceMil = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
+    S.v6.treaties = { ostmark:{ kind:'arms', since:2030 } };
+    out.armsMil = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
+    S.ind.military = keepMil; S.v6.treaties = keepTr; S.pol = keepPol;
     return out;
   });
   say(world.targetedAFriend === 0 && world.declaredOnHostile > 0 && !world.wrongTarget,
@@ -627,6 +655,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `a power at 88 relations you are fighting reads "${world.wordAtWar}"; everyone else still reads normally ("${world.wordOther}")`);
   say(world.treatyVoided, 'war annuls the treaty it contradicts',
     'a defence pact with the country you are fighting is void, not still paying out');
+  say(world.powerCount >= 11 && world.allSeeded && world.backfilled && world.noNaN,
+    'eleven powers, none of them NaN',
+    `${world.powerCount} powers, all seeded: ${world.allSeeded}; a six-power save backfills: ${world.backfilled}; ` +
+    `shiftRel on an unknown power no longer produces NaN: ${world.noNaN}`);
+  say(world.defenceMil === 1.5 && world.armsMil === -1.5 && world.treatyKinds >= 8,
+    'a treaty does what its card says',
+    `${world.treatyKinds} instruments · a defence pact moves the armed-forces target by ${world.defenceMil} and an arms treaty by ${world.armsMil} — both advertised on their cards since v6 and implemented by nothing`);
   say(world.victoryRecorded, 'a war won at the table counts',
     'suing for peace records the victory instead of nulling the war before the tick that would have');
 
