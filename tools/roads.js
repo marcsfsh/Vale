@@ -791,7 +791,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.turn = keepTurn; S.v8.qt = keepQt;
     return out;
   });
-  say(qt.pool >= 90 && qt.subjects === 14 && qt.bothSides === 14 &&
+  say(qt.pool >= 160 && qt.subjects === 14 && qt.bothSides === 14 &&
       !qt.badPlaceholders.length && !qt.badTones.length,
     'the despatch box has more than one sentence',
     `${qt.pool} questions over ${qt.subjects} subjects, all ${qt.bothSides} askable from either side ` +

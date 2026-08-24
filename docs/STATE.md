@@ -4,7 +4,63 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S10d/e/f — The Works, the Ministry, the World and the Session** (PR #27).
+**S10g — The Despatch Box** (PR #28). A stale workflow notification turned out
+to be carrying work: the tail of the S10f authoring run rewrote eighteen shards
+AFTER the first seventy questions had been merged and shipped, leaving
+forty-five more on disk that no build had seen. Levelling the five subjects
+those had left shallow — scandal, bill, work, issue and minister, which are the
+ones that fire MOST often, because the state they need almost always exists —
+added twenty-five more. Question Time is 164 questions, seven from the
+government benches on every one of its fourteen subjects.
+
+**Seventy new questions, fifty-one defects, all of them invisible to the
+mechanical validator.** Seven adversarial readings across two rounds — reskin,
+voice, fit, and for the second round sibling collision — returned nineteen
+findings on the forty-five and thirty-two on the twenty-five, each with
+ready-to-paste replacement text. Ten were whole questions written twice: two
+agents shard the same subject and neither can see the other, so four pairs
+chose the same id and two more collided under different ids. The rest were a
+result line addressing the player as "you", `{number}` standing as the bare
+subject of a sentence whose body never introduced a figure, a mobile telephone
+in a corpus of minute books and warrants, and reply sets offering three ways of
+saying the same thing. Every fix is recorded; the ones deliberately not applied
+are named with their reason.
+
+**The pool was not being reached, and that was already shipped.** `v10QtHash`
+was `turn * 2654435761` folded over the subject's characters, which looks like
+variety and is not: for a fixed subject the value moves by a constant stride
+each session, so the whole result is `(stride mod n)`, and wherever that shares
+a factor with `n` the campaign lands on a few residues for ever. Measured over
+two hundred sessions with every subject in play, the promise subject reached
+TWO of its twelve questions and one question came up eleven times. The hash now
+avalanches through `Math.imul`, and the item is not chosen by hash at all: each
+subject keeps a count of how many times it has been raised and walks its whole
+shelf before repeating any of it, from a per-campaign offset. The count
+advances inside the guard that already makes the body run once a session, so
+re-rendering cannot move it — the same rule that keeps a die out of this path —
+and it rides the save.
+
+```
+                        before        after
+  50 sessions           36 distinct   48 of 50 drawn, soonest repeat at 39
+  100 sessions          65            85, nothing seen more than twice
+  200 sessions          102           115 (70% of the pool)
+  soonest repeat        7 sessions    28
+  median gap            19            80
+  most-repeated in 200  11 times      3
+  worst-served subject  2 of 12       every subject walks its whole shelf
+```
+
+**A third assertion of mine could not fail.** The stability test cleared
+`q.v10` — the guard that PROVIDES the stability — and then asked whether a
+forced re-selection re-selected. It now calls `v8EnsureQuestion` fifty times
+with the guard untouched, holds a subject to prove it walks its whole shelf,
+and strips `v10.qtSeen` from a save to prove a campaign written before the
+rotation existed still loads and asks. Proved red by three separate mutations.
+
+`maxBytes` 2,100,000 -> 2,200,000, with the case in `baseline.json`.
+
+Previously: **S10d/e/f — The Works, the Ministry, the World and the Session** (PR #27).
 The last three slices of the owner's fifth order, shipped as one PR because
 they share a spine: each is a system with working machinery and almost no
 material on top of it.
@@ -623,6 +679,7 @@ ratchet 10 → 5, which is now its true floor.
 | S10a the Republic Ages | **in review (PR #25)** | the state ballot rebuilt in ballots not turns (four regions had never voted); ministers and governors join `ageRoster`/`ageSucceed`; the obituaries get a page; the duplicate sea wall retired and migrated; names 1,600 -> 39,400 pairs with dedupe; very easy builds six with the capital for it; four written-rule breaches fixed; `maxBytes` 1.9M -> 2.1M |
 | S10b/c the Order Paper and Order Book | **in review (PR #26)** | levers on other parties' bills scaled by standing, kill at an outright majority, a declared line finally seat-weighted; `partyDemandPolicy` and the private-members' path stop being deterministic; 36 standing executive orders replacing `orderPolicy`, bending targets rather than stocks, lapsing with their department |
 | S10d/e/f the Works, the Ministry, the World and the Session | **in review (PR #27)** | 16 distinct works -> 48, and six instruments that change what a work delivers rather than only its rate; five new ministerial interactions; committee chairs apportioned by largest remainder and made named people you assign when you lead; the four causes of ally-at-war closed, five powers and four treaty instruments added, treaty effects implemented; Question Time 5 sentences -> 94 questions over 14 subjects, papers 11 -> 43; two assertions that could not fail rewritten, sixteen new ones each shipped with the mutation that reddens it |
+| S10g the Despatch Box | **in review (PR #28)** | 45 questions authored by the tail of the S10f run and never merged, plus 25 levelling the five subjects that fire most often; pool 94 -> 164, seven per subject on the government benches; 51 defects found by seven adversarial readings, ten of them the same question written twice by sibling agents; the item chosen by a saved ROTATION instead of a hash whose constant stride left one subject reaching 2 of its 12 questions in 200 sessions; `maxBytes` 2.1M -> 2.2M |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts

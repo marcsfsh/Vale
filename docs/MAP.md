@@ -390,9 +390,20 @@ ladder as `lin`, and expands four channels into five rows each:
   in the enrich chain or an old save yields `Math.max(undefined, n)` = NaN,
   which `clamp` passes through. Treaty effects reach the game through
   `indicatorTargets`, like orders.
-- **Question Time** (S10f): 94 authored questions over 14 subjects — three
-  ways of asking each from the government benches and two from the opposition,
-  so a subject that comes round twice does not come round in the same words.
+- **Question Time** (S10f/g): 164 authored questions over 14 subjects — SEVEN
+  ways of asking each from the government benches and four or five from the
+  opposition, so a subject that comes round twice does not come round in the
+  same words.
+  **The item is chosen by ROTATION, not by hash, and that is deliberate.**
+  `v10QtHash` used to pick it, and a hash of the turn only looks like variety:
+  for a fixed subject the value moves by a CONSTANT STRIDE each session, so the
+  result is `(stride mod n)` and wherever that shares a factor with `n` the
+  campaign lands on a few residues for ever — measured, one subject reached two
+  of its twelve questions in two hundred sessions. Each subject now keeps a
+  count in `st.v10.qtSeen` and walks its whole shelf before repeating any of
+  it, from a per-campaign offset. The count advances INSIDE the once-a-session
+  guard, so re-rendering cannot move it, and it rides the save; a save written
+  before it existed has no `qtSeen` and starts clean.
   Every question's `{placeholders}` must be ones its own SUBJECT supplies
   (`v10QtContext`'s per-subject fill, plus the four globals `leader` `party`
   `opp` `year`); anything else prints the braces verbatim at the despatch box,
