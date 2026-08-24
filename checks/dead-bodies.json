@@ -27,11 +27,6 @@
       "aliasCaptured": true,
       "reason": "alias var pv5AiGovernV4 captured above"
     },
-    "blocTarget#1": {
-      "line": 8462,
-      "aliasCaptured": true,
-      "reason": "alias var pv5BlocTargetV4 captured above"
-    },
     "ballot#1": {
       "line": 8493,
       "aliasCaptured": true,
@@ -102,20 +97,10 @@
       "aliasCaptured": true,
       "reason": "alias var v6EnrichV5 captured above"
     },
-    "budget#2": {
-      "line": 9399,
-      "aliasCaptured": true,
-      "reason": "alias var v6BudgetV5 captured above"
-    },
     "warTick#1": {
       "line": 9409,
       "aliasCaptured": true,
       "reason": "alias var v6WarTickBase captured above"
-    },
-    "policyCost#1": {
-      "line": 9546,
-      "aliasCaptured": true,
-      "reason": "alias var v6PolicyCostV5 captured above"
     },
     "ageFigures#1": {
       "line": 9560,
@@ -336,11 +321,6 @@
       "line": 12684,
       "aliasCaptured": true,
       "reason": "alias var v8BlocTargetBase captured above"
-    },
-    "capitalIncome#1": {
-      "line": 12686,
-      "aliasCaptured": true,
-      "reason": "alias var v8CapitalBase captured above"
     },
     "pv5CampaignPower#1": {
       "line": 12688,
@@ -751,6 +731,51 @@
       "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10MakeGovernorBase captured above (S10a: regionally weighted, deduplicated governor names)"
+    },
+    "indicatorTargets#3": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10IndTargetsBase captured above (S10c: an order in force bends the indicator TARGET, so revoking it lets the country drift back)"
+    },
+    "blocTarget#3": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10BlocTargetBase captured above (S10c: same, for bloc targets)"
+    },
+    "budget#5": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10BudgetBase captured above (S10c: orders that spend or raise money without an appropriation)"
+    },
+    "capitalIncome#3": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10CapIncomeBase captured above (S10c: standing orders cost capital every session they stand)"
+    },
+    "policyCost#3": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10PolicyCostBase captured above (S10c: orders that make a category of statute cheaper or dearer to move)"
+    },
+    "blocTarget#1": {
+      "line": 8462,
+      "aliasCaptured": true,
+      "reason": "alias var pv5BlocTargetV4 captured above"
+    },
+    "budget#2": {
+      "line": 9399,
+      "aliasCaptured": true,
+      "reason": "alias var v6BudgetV5 captured above"
+    },
+    "policyCost#1": {
+      "line": 9546,
+      "aliasCaptured": true,
+      "reason": "alias var v6PolicyCostV5 captured above"
+    },
+    "capitalIncome#1": {
+      "line": 12686,
+      "aliasCaptured": true,
+      "reason": "alias var v8CapitalBase captured above"
     }
   }
 }

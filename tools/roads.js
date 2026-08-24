@@ -557,8 +557,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.exec.pres = S.ruling; S.exec.vpres = S.ruling; S.exec.chan = S.ruling; S.exec.vchan = S.ruling;
     S.capital = 99; S.changed = {};
     const before = S.pol[p.id] || 0;
-    orderPolicy(p.id);
-    const blocked = (S.pol[p.id] || 0) === before;
+    /* S10c retired orderPolicy — an order no longer raises a statute. The rule
+       it carried ("an order cannot outrun its own statute book") survives as
+       `needs:` on an ORDER, so the gate is asserted against the new book. */
+    const ord = V10_ORDERS.filter(o => o.needs)[0];
+    let blocked = true;
+    if (ord) {
+      S.pol[ord.needs] = 0;
+      blocked = !!v10OrderOpen(S, ord, null);
+      S.pol[ord.needs] = 1;
+      const nowOpen = v10OrderOpen(S, ord, null);
+      blocked = blocked && (nowOpen === null || !/statute book/.test(nowOpen));
+      S.pol[ord.needs] = 0;
+    }
     // enactment-time lapse: prerequisite falls while the bill is live
     S.pol[pre.id] = 1;
     const bill = { policy: p.id, dir: 1, owner: 'player', title: 'Test Measure Bill', concessions: 0, stage: 'assent' };
@@ -569,7 +580,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     delete p.needs;
     return { blocked, lapsed };
   });
-  say(needs.blocked, 'an order cannot outrun the book', `orderPolicy refused without the prerequisite: ${needs.blocked}`);
+  say(needs.blocked, 'an order cannot outrun the book', `an order with a statute prerequisite is refused without it and opens with it: ${needs.blocked}`);
   say(needs.lapsed, 'a bill lapses with its prerequisite', `enactBill refused and archived as failed: ${needs.lapsed}`);
 
   // 8. seat conservation under the reapportioning acts
