@@ -4,7 +4,35 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S10a — The Republic Ages** (PR #25). First of five slices carrying the
+**S10b/c — The Order Paper and the Order Book** (PR #26). Two halves of the
+owner's biggest asks: what you can do about a bill you did not write, and
+executive orders as their own instrument.
+
+**Bills that are not yours.** `billCard` offered Support and Oppose only when
+`b.owner === 'government' && !leads(S)` — but `aiGovern` returns early the
+moment you lead, so no government-owned bill exists while you are head of
+government, and the private members' path sponsors as `'opposition'`, which
+that condition excludes. An opposition bill therefore rendered NO controls at
+all, ever. The lever set now scales with what you command: positions and the
+public argument in opposition, amendments and the committee timetable in
+government, and at an outright majority the power to kill a bill. A declared
+line is worth what the party declaring it is worth — 0.9 points of Assembly
+forecast at 5% of the chamber, 8.8 at 50%, 15.9 at 90%, where it was a flat 8
+at any size. `outright(st)` is a predicate BESIDE `standing()`, never a fourth
+value of it, and keys on `playParty` so a junior partner under a majority
+government does not inherit the kill.
+
+**The order book.** An executive order was a flag on a statute. There are now
+36 standing orders in eight categories across all four offices, sixteen of
+them targeted at a region, a power, a public work or an issue. Three rules
+decide what belongs: it targets state no statute reaches, it is standing
+rather than one-shot, and it lapses when you lose the department that signed
+it. Standing effects bend indicator and bloc TARGETS rather than stocks, so
+revoking an order lets the country drift back and nothing accumulates in the
+save. The court can strike one; the Executive Strategist doctrine finally has
+the drawback its own note has always advertised.
+
+Previously: **S10a — The Republic Ages** (PR #25). First of five slices carrying the
 owner's fifth order: eleven items across the parts of the game you *operate*
 rather than the statute book you legislate from. This slice takes the three
 reported defects, the person layer they exposed, and four promises the game
@@ -491,6 +519,7 @@ ratchet 10 → 5, which is now its true floor.
 | S9g the statute book | **merged** (#22) | 131 new statutes, every core category to 24; four authored rungs from birth with a written curve grammar; 11 prose conditions turned into real `req:`/`reqText:`; `maxBytes` 1.6M -> 1.75M with the case; roads.js counts the categories and checks no rung repeats the one below |
 | S9h the curves | **merged** (#23) | all 451 pre-existing statutes authored to the same grammar; `tools/fullbuild-baseline.json` freezes every pre-S9h full build and `auth`, roads.js checks all of them; literal surgery with a byte-identical round-trip proof; `lin` and the save migration kept, with reasons; `maxBytes` 1.75M -> 1.9M |
 | S10a the Republic Ages | **in review (PR #25)** | the state ballot rebuilt in ballots not turns (four regions had never voted); ministers and governors join `ageRoster`/`ageSucceed`; the obituaries get a page; the duplicate sea wall retired and migrated; names 1,600 -> 39,400 pairs with dedupe; very easy builds six with the capital for it; four written-rule breaches fixed; `maxBytes` 1.9M -> 2.1M |
+| S10b/c the Order Paper and Order Book | **in review (PR #26)** | levers on other parties' bills scaled by standing, kill at an outright majority, a declared line finally seat-weighted; `partyDemandPolicy` and the private-members' path stop being deterministic; 36 standing executive orders replacing `orderPolicy`, bending targets rather than stocks, lapsing with their department |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts

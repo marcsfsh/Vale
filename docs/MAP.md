@@ -372,6 +372,35 @@ ladder as `lin`, and expands four channels into five rows each:
   `items` and scenario seeds were all rescaled by `round(n*4/m)` in S9f — 219
   sites — and the 24 ad-hoc linear terms took `k*m/4`. Adding a gate means
   writing it against four rungs.
+- **The order book** (S10c). `V10_ORDERS` / `V10_ORDER`, registered through
+  `v10RegisterOrders`. An order is NOT a statute: three rules decide what
+  belongs — it TARGETS state no statute reaches (region, power, work, issue,
+  contractor, committee); it is a STANDING modifier, not a one-shot (that is
+  the line against the 72 `ACTIONS`); and it LAPSES when you lose the
+  department that signed it (the line against the 23 `EXTRA`, which are
+  permanent). A candidate that fails any of the three is a reskin.
+- **Standing effects bend TARGETS, never stocks.** `tickTurn` moves each
+  indicator a quarter of the way toward `indicatorTargets(st)` per session, so
+  an order in force shifts the target and the country drifts; revoke it and
+  the country drifts back. `v10OrderMods(st)` is rebuilt from the orders in
+  force on every call and CONSULTED, never accumulated — that is what makes
+  revocation exact and an old save free of drift. Never write an order effect
+  as a per-session delta on `st.ind`.
+- **A modifier nothing reads is a lie on the card.** `delivery` scales
+  `cabinetBonus`, `works` scales `v8WorkPerSession`; both were computed and
+  consumed by nothing when first written. Anything added to `v10OrderMods`
+  needs a consumer in the same commit.
+- **`orderPolicy` is retired.** An order no longer raises a statute. The rule
+  it carried survives as `needs:` on an order and `tools/roads.js` asserts it
+  against the new book. Its panel heading was a saved fold key, remapped
+  `exec|executive orders` → `exec|the order book` in `V7_FOLD_REMAP`.
+- **`outright(st)`** is a predicate BESIDE `standing()`, never a fourth value
+  of it: `standing()` has twenty consumers testing string equality against
+  `'leading'`. It keys on `playParty`, not `st.ruling`, or a junior partner
+  under a majority government inherits the power to kill bills.
+- **Gate a bill lever where it ACTS, not only where its button is drawn.** The
+  committee panel is the cautionary tale: four actions rendered for every bill
+  with a handler that checks nothing.
 - **Who ages.** `ageRoster(st)` returns the list of people who age each session
   and `ageSucceed(st, rec, died)` seats their successors; `ageFigures` walks
   the one and calls the other. The v10 chunk wraps BOTH to add ministers and

@@ -20214,7 +20214,8 @@ function v10IssueOrder(id, target) {
   v10Orders(S)[key] = { status:'inforce', issued:S.turn, dept:o.dept, target:target || null };
   S.v10.orderTurn = S.v10.orderTurn || {}; S.v10.orderTurn[key] = S.turn;
   S.ind.liberties = c100(S.ind.liberties - 1);
-  S.crown = c100(S.crown - 1.5);
+  /* and the states watch this doctrine more closely too */
+  S.crown = c100(S.crown - (S.doctrine === 'executive' ? 2.6 : 1.5));
   if (o.onIssue) o.onIssue(S, target);
   logIt(S, 'Executive order: ' + v10OrderTitle(o, target) + ', signed without reference to either house.');
   render();
@@ -20277,6 +20278,15 @@ function v10OrdersTick(st) {
     addNews(st, 'The Executive', (o ? o.name : 'An order') + ' lapses', 'The department that signed it is in other hands, and an order cannot outlive the office that made it.', 'watch');
   });
 
+  /* An old save's policy-keyed order flags. st.orders[id] was written by the
+     retired orderPolicy and deleted in exactly one place in the whole file, so
+     the 1.5x court exposure it carries attached to the STATUTE for ever — it
+     survived the statute being repealed, struck, lapsed or purged. Clear it
+     when the measure it marks is no longer on the books; the three things that
+     read it (courtReview's weighting, the card's note, the landmark case) then
+     mean what they say. */
+  for (var oid in (st.orders || {})) if (st.orders[oid] && !(st.pol[oid] > 0)) delete st.orders[oid];
+
   /* the court takes an interest in the boldest thing standing */
   v10OrderReview(st);
 }
@@ -20296,7 +20306,13 @@ function v10OrderReview(st) {
     if (x > worstX) { worstX = x; worst = k; }
   });
   if (!worst) return;
-  var hold = clamp(.5 - worstX * .55 + (st.acts && st.acts.courtStripping ? .3 : 0) + securityState(st) * .003, .05, .95);
+  /* The Executive Strategist doctrine says: "Executive orders are cheaper and
+     cabinet capacity is stronger, but the court and the states watch you more
+     closely." The cheapness was implemented; the watching never was — grepping
+     doctrine === 'executive' returned three sites and not one was a penalty.
+     Here it is: the court is likelier to strike what this doctrine signs. */
+  var hold = clamp(.5 - worstX * .55 + (st.acts && st.acts.courtStripping ? .3 : 0) + securityState(st) * .003
+    - (st.doctrine === 'executive' ? .12 : 0), .05, .95);
   if (rand() < hold) {
     st.v10.orders[worst].upheld = true;
     logIt(st, 'The court reviewed ' + v10OrderTitle(v10OrderOf(worst), v10OrderTargetOf(worst)) + ' and let it stand.');

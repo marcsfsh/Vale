@@ -335,3 +335,38 @@ ballots rather than driving them. `tools/roads.js` asserts the state ballot
 independently — two regions at each of eight ballots, all eight contested.
 
 This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
+
+================================================================================
+RE-BASELINED AFTER S10b/S10c — THE ORDER PAPER AND THE ORDER BOOK
+================================================================================
+
+Another deliberate move of the seeded stream: `partyDemandPolicy` and
+`pv5AiPrivateBill` both draw dice now, where before they sorted and took the
+top. Seed 5EED1234 plays a different campaign again, and this is a
+re-baseline rather than a comparison.
+
+length    seed      sessions  years  ended                elections  crises  wars  achievements
+short     5EED1234  50        50     reached the end year 2          5       8     8/44
+standard  5EED1234  100       100    reached the end year 2          8       16    11/44
+epic      5EED1234  200       200    reached the end year 2          14      28    12/44
+
+length    crises/10 sessions  elections/10  events/session  records at the close
+short     1.0                 0.4           2.0             18%
+standard  0.8                 0.2           1.9             25%
+epic      0.7                 0.1           1.8             27%
+
+Every length still reaches its end year with a complete arc and the longer
+options still earn more (8 -> 11 -> 12).
+
+Events per session rose from 1.5/1.5/1.6 to 2.0/1.9/1.8. That is the intended
+consequence of the order-paper work, not drift: every unbanned opposition party
+now gets private members' time weighted by its seats, and each picks from a
+weighted draw over what it wants rather than returning the same statute for
+ever. More parties legislating means more bills, and a bill is an event.
+
+The harness never issues an executive order — it plays first-choice-always and
+the order book is a panel it does not touch — so nothing in these numbers
+reflects the 36 orders. Their effect on an arc is unmeasured here and is named
+as such.
+
+This tool measures. Balance is the user's to rule (docs/AGREEMENT.md).
