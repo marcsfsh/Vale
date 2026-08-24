@@ -786,6 +786,36 @@
       "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10WorkPerSessionBase captured above (S10c: an order that changes the pace of the public works)"
+    },
+    "v8EnsureQuestion#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10EnsureQuestionBase captured above (S10f: 24 authored questions across 14 subjects replace five hard-coded sentences)"
+    },
+    "v8Question#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10QuestionBase captured above (S10f: an authored reply maps onto the effect path its tone names)"
+    },
+    "v8QuestionPanel#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10QuestionPanelBase captured above (S10f: the authored replies replace the fixed button row)"
+    },
+    "inboxChoices#3": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10InboxChoicesBase captured above (S10f: sixteen new political papers)"
+    },
+    "respondInbox#3": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10RespondInboxBase captured above (S10f: their effects, through the shared debit-and-archive tail)"
+    },
+    "politicsTick#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "alias var v10PoliticsTickBase captured above (S10f: a new paper can arrive in place of the old eleven-type cycle)"
     }
   }
 }

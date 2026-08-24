@@ -20589,6 +20589,265 @@ function v10OrderReview(st) {
 }
 
 
+var V10_QT = [
+  { id:'scandalWhoKnewWhen', side:'power', subject:'scandal', body:'{minister} was told in writing eleven days before this House was told anything at all. Will {leader} confirm that date at the despatch box, or does the government intend to let it be confirmed by someone else?',
+    replies:[{ id:'giveTheDate', label:'Confirm the date', tone:'record', result:'The date went on the record and it was worse than the rumour. Accuracy bought the government nothing except the right to be believed next time.' }, { id:'denyTheNote', label:'Deny there was a note', tone:'counter', result:'A denial is now on the record. It can be checked, and somebody holds the copy.' }, { id:'referToInquiry', label:'Refer it to the inquiry', tone:'duck', result:'The House understood that an answer exists and will arrive after it can do any good.' }, { id:'ministerHasGone', label:'Confirm the date and say {minister} has gone', tone:'concede', result:'A resignation given at the despatch box. The affair has a body now, and the chamber began working out who is next.' }] },
+  { id:'billNotMoved', side:'power', subject:'bill', body:'The {bill} has sat on the order paper for three sessions without a division. Is the {party} waiting for a majority, or waiting for the country to forget it was promised?',
+    replies:[{ id:'nameDivisionDay', label:'Name a division day', tone:'promise', result:'A date was given. The whips heard it at the same moment the {opp} did.' }, { id:'defendClauses', label:'Defend it clause by clause', tone:'record', result:'The detail was correct and very dull. Not one vote moved in either direction.' }, { id:'blameAmendments', label:'Blame the wrecking amendments', tone:'counter', result:'The blame settled on the amendments rather than the government, which is the most that could be got.' }, { id:'withdrawIt', label:'Withdraw the bill', tone:'concede', result:'The bill is dead. The benches that wanted it are counting who killed it.' }] },
+  { id:'workFinalFigure', side:'power', subject:'work', body:'{work} was costed at one figure and now stands at {number}. Will the head of government give this House a final figure, or is the position that no such figure exists?',
+    replies:[{ id:'stateFinalFigure', label:'Give a final figure', tone:'record', result:'A number went on the record. Every overrun after this one will be measured against it in public.' }, { id:'commerciallyConfidential', label:'Say the figure is commercially confidential', tone:'duck', result:'The House heard that the government either does not know the cost or will not say it. Both readings were printed.' }, { id:'whatWouldYouCancel', label:'Ask what the {opp} would cancel instead', tone:'attack', result:'The question was returned across the floor and not answered, which the benches counted as a win on points and nothing more.' }, { id:'pauseThework', label:'Pause the work pending review', tone:'concede', result:'The site stops. The members whose seats it runs through were on their feet before the answer finished.' }] },
+  { id:'issueSurgeryAnswer', side:'power', subject:'issue', body:'{issue} is the first thing put to members in every surgery in this country, and the government\'s answer for a year has been that a review is under way. What does {leader} say to a household that cannot wait for the review?',
+    replies:[{ id:'oneMeasureOneDate', label:'Name one measure and a date', tone:'promise', result:'One measure, one date. It is now the only thing the government will be asked about until it happens or does not.' }, { id:'readTheRecord', label:'Read out what has been done already', tone:'record', result:'The list was accurate. Nobody in the country has felt any of it, and the House knew that as it was read.' }, { id:'whoLeftItLikeThis', label:'Say who left it in this state', tone:'attack', result:'The past was blamed. The government has been in office long enough that the blame had to travel some distance.' }, { id:'sayItPlainly', label:'Say plainly it will not be fixed this year', tone:'concede', result:'An honest answer at the despatch box, rare enough that it was believed. Being believed is not the same as being forgiven.' }] },
+  { id:'ministerConfidence', side:'power', subject:'minister', body:'Does {leader} have full confidence in {minister}? The House will take a yes, a no, or a pause, and it will read all three the same way.',
+    replies:[{ id:'yesAtSpeed', label:'Say yes, without pausing', tone:'record', result:'Full confidence, given at speed. It is the phrase that traditionally precedes a resignation and every member present knows it.' }, { id:'confidenceOfTheGovernment', label:'Say the minister has the confidence of the whole government', tone:'duck', result:'The plural was noticed. {minister} spent the rest of the session looking at the floor.' }, { id:'declineToGiveIt', label:'Decline to give it', tone:'concede', result:'A minister was left hanging in public. The rest of the cabinet drew the lesson individually and privately.' }, { id:'theirFrontBench', label:'Ask about the {opp} front bench', tone:'attack', result:'The counter-attack landed on somebody else\'s expenses. No question of confidence was settled.' }] },
+  { id:'governorVerdict', side:'power', subject:'governor', body:'{governor} took {region} on a promise to refuse this government\'s writ, and took it by a distance. Does {leader} regard that as a verdict on the {party}, or as a local difficulty?',
+    replies:[{ id:'localDifficulty', label:'Call it a local matter', tone:'duck', result:'The word local will be read back at the next state count, in the government\'s own voice.' }, { id:'acceptTheVerdict', label:'Accept it as a verdict', tone:'concede', result:'Humility on the record. {governor} has been handed a mandate by the government that lost to it.' }, { id:'offerAMeeting', label:'Offer {governor} a meeting', tone:'promise', result:'A meeting offered in public can only be refused in public. The offer was the whole manoeuvre.' }, { id:'whereTheyLost', label:'Point at where the {opp} lost the same night', tone:'counter', result:'Two defeats were set side by side and the House compared the margins, which did not help.' }] },
+  { id:'treatyNoText', side:'power', subject:'treaty', body:'The negotiation with {power} has been described from that box as ongoing for eleven months. Is there a text, and has this House been shown a line of it?',
+    replies:[{ id:'layTheText', label:'Undertake to lay the text before the House', tone:'promise', result:'The text is coming. Whatever is in it belongs to the government now, in advance.' }, { id:'notInPublic', label:'Say a negotiation cannot be conducted in public', tone:'duck', result:'The House accepted the principle and drew its own conclusion about the progress.' }, { id:'setOutTheAsk', label:'Set out what the government is asking for', tone:'record', result:'The terms went on the record in this chamber, which means they went on the record in {power} as well.' }, { id:'whoSignedTheLast', label:'Recall which government signed the last one', tone:'attack', result:'An old signature was produced. The current one is still missing and the House said so.' }] },
+  { id:'courtBeyondPowers', side:'power', subject:'court', body:'The court has held that the government acted beyond its powers. Will {leader} comply with the judgment, or legislate around it?',
+    replies:[{ id:'complyInFull', label:'Say the government will comply in full', tone:'record', result:'Compliance stated plainly. Counsel on both sides wrote the sentence down word for word.' }, { id:'restoreThePower', label:'Announce a bill to restore the power', tone:'promise', result:'The government intends to overturn a court by statute. That is the story now, and the judgment is not.' }, { id:'judgesInPolitics', label:'Say the judges have strayed into politics', tone:'attack', result:'The bench was attacked from the despatch box. It will be remembered in the next case, and there is always a next case.' }, { id:'beingStudied', label:'Say the judgment is being studied', tone:'duck', result:'Studied. The House has heard that verb used about judgments before.' }] },
+  { id:'moneyWhichNumber', side:'power', subject:'money', body:'The government\'s own accounts put the figure at {number}. Does {leader} accept that number, and if not, which number should the House be using instead?',
+    replies:[{ id:'acceptTheFigure', label:'Accept the figure', tone:'record', result:'The number is the government\'s number now. It will be quoted back on every session it moves the wrong way.' }, { id:'aDifferentMeasure', label:'Offer a different measure', tone:'counter', result:'Two figures are in circulation. The House will use whichever of them is worse.' }, { id:'whoRanTheAccounts', label:'Say who was running the accounts before', tone:'attack', result:'The blame was placed accurately and the number did not move a decimal.' }, { id:'downWithinTheTerm', label:'Undertake to bring it down within the term', tone:'promise', result:'A commitment with a deadline inside the government\'s own life. It has been written down by people who will be here.' }] },
+  { id:'byelectionWrit', side:'power', subject:'byelection', body:'{region} has had no member for some weeks and the writ has not been moved. How long does the government intend to leave a seat in this House empty?',
+    replies:[{ id:'moveItThisSession', label:'Move the writ this session', tone:'promise', result:'A date. The campaign begins tonight and the government at least chose the ground it will lose or hold on.' }, { id:'atTheProperTime', label:'Say the writ will be moved at the proper time', tone:'duck', result:'The proper time was understood by everyone present to mean when the polling improves.' }, { id:'theirVacancies', label:'List the seats the {opp} left vacant', tone:'counter', result:'Precedent was produced and read out. It did not put a member in the seat.' }] },
+  { id:'orderNoVote', side:'power', subject:'order', body:'The order standing in {minister}\'s department was made without a vote in this House and has been in force ever since. Under what authority was it made, and on what date does it lapse?',
+    replies:[{ id:'citeTheSection', label:'Cite the section it was made under', tone:'record', result:'The authority was cited correctly, which told the House exactly which power to go after repealing.' }, { id:'offerASunset', label:'Offer a date on which it lapses', tone:'promise', result:'A sunset conceded at the despatch box. The clock now runs where the country can see it.' }, { id:'undertakeToRevoke', label:'Undertake to revoke it', tone:'concede', result:'The order goes. The department that had been quietly relying on it was not asked first.' }, { id:'wouldHaveVotedAnyway', label:'Say the House would have voted for it anyway', tone:'attack', result:'The government said the vote was unnecessary. The House disagreed, audibly, from both sides.' }] },
+  { id:'unrestMeetThem', side:'power', subject:'unrest', body:'There are people outside this building who have not been paid since the stoppage began, and the government has met neither side. Will {leader} meet them this week?',
+    replies:[{ id:'meetBothSides', label:'Agree to meet both sides this week', tone:'promise', result:'A meeting in the diary. Neither side can now walk out of it without being seen to walk out.' }, { id:'notUnderDuress', label:'Refuse to negotiate under duress', tone:'attack', result:'A line was drawn. It holds until the first week the country notices what is missing from the shelves.' }, { id:'improveTheOffer', label:'Say the offer will be improved', tone:'concede', result:'Money was implied at the despatch box. Every other pay claim in the country heard it implied.' }, { id:'condemnThePicket', label:'Ask the {opp} to condemn the picket', tone:'counter', result:'The question was turned and answered badly. The stoppage continued through both answers.' }] },
+  { id:'promiseOrSentence', side:'power', subject:'promise', body:'In the manifesto of {year} the {party} put one commitment above all the others. It is not law and it is not before this House. Was it a promise, or was it a sentence?',
+    replies:[{ id:'restateWithSession', label:'Restate it and name the session', tone:'promise', result:'The commitment has a date attached to it now, and dates are missed in public.' }, { id:'circumstancesChanged', label:'Say circumstances have changed', tone:'duck', result:'The House watched a manifesto being retired in real time and made a note of the hour.' }, { id:'deliveredInstead', label:'Set out what was delivered instead', tone:'record', result:'A substitute was offered. The original was neither withdrawn nor delivered, which is the worst of the three positions.' }, { id:'countTheirs', label:'Count the {opp}\'s broken promises', tone:'attack', result:'A tally was read across the floor. Both sides\' totals went up and neither went down.' }] },
+  { id:'priceOfALoaf', side:'power', subject:'prices', body:'What does a loaf cost? Not the index, the loaf. The House will wait for the figure.',
+    replies:[{ id:'toTheCoin', label:'Give the price, to the coin', tone:'record', result:'The price was right to the coin. It was the only thing the government won that session and it won it outright.' }, { id:'giveAFigure', label:'Give a figure and hope', tone:'duck', result:'The figure was wrong by a third. It will be printed under a photograph of {leader} for a week.' }, { id:'answerWithIndex', label:'Answer with the index instead', tone:'counter', result:'The House asked for a price and was given a statistic, and understood the difference immediately.' }, { id:'underThem', label:'Ask what a loaf cost under the {opp}', tone:'attack', result:'The comparison was made honestly. The chamber worked out that both figures have outrun the wage.' }] },
+  { id:'scandalDiaryDate', side:'opposition', subject:'scandal', body:'The file sat in the minister\'s private office for {number} days before this House was told anything at all. Will {leader} give the House the date on which he read it himself, or leave us to work it out from the diary?',
+    replies:[{ id:'timeline', label:'Read the timeline into the record', tone:'record', result:'The dates were given, and one of them was three weeks earlier than the papers had it. The House has a number to hold him to now.' }, { id:'leak', label:'Demanded to know who leaked the file', tone:'counter', result:'The government wanted the name of the leaker. The House wanted the name of the reader, and noticed the difference.' }, { id:'inquiry', label:'Referred it all to the standing inquiry', tone:'duck', result:'Everything is sub judice until the inquiry reports, which is after the recess.' }, { id:'indefensible', label:'Accepted that the delay was indefensible', tone:'concede', result:'The concession was real, and the heat came off the government and settled on the minister.' }] },
+  { id:'ministerNotSeen', side:'opposition', subject:'minister', body:'{minister} has not answered a question at this despatch box for {number} sessions. Is the minister unwell, unwilling, or no longer trusted with the department?',
+    replies:[{ id:'written', label:'Listed the minister\'s written answers', tone:'record', result:'Forty answers in writing and no appearance in person. The House can read; it had come to look at him.' }, { id:'smear', label:'Called it a smear on a serving minister', tone:'attack', result:'The benches behind the government cheered a defence that answered nothing, and the gallery wrote down which question it had replaced.' }, { id:'nextweek', label:'Undertook that the minister would appear next session', tone:'concede', result:'A date was given for a minister to stand up. The House will be counting the sessions until it.' }, { id:'diary', label:'Said the minister\'s diary was the minister\'s affair', tone:'duck', result:'Nobody in the chamber believed the diary was the reason, including the front bench that offered it.' }] },
+  { id:'billClausesUnreached', side:'opposition', subject:'bill', body:'The {bill} was given one afternoon in committee and {number} clauses were never reached. Will the government name the clause it did not want debated, or give back the days it took away?',
+    replies:[{ id:'channels', label:'Said the timetable was agreed through the usual channels', tone:'record', result:'The usual channels were cited by name, and one of them denied it inside the hour.' }, { id:'onreport', label:'Offered the missing clauses back on report', tone:'promise', result:'The government gave ground on its own timetable. The House noticed which side had taken it.' }, { id:'filibuster', label:'Blamed the opposition\'s own filibuster', tone:'attack', result:'Both sides left convinced they had won a procedural argument that nobody outside the building had followed.' }, { id:'leaderhouse', label:'Passed it to the Leader of the House', tone:'duck', result:'The question went along the front bench and died at the end of it.' }] },
+  { id:'workFourthDate', side:'opposition', subject:'work', body:'{work} was to open in {year}. The House has since been given three dates and no opening, so will the government name a fourth, and will it be a date it is prepared to be held to?',
+    replies:[{ id:'schedule', label:'Read out the revised schedule', tone:'record', result:'A fourth date entered the record. The House will remember that there were three before it.' }, { id:'neverwas', label:'Admitted the original date was never achievable', tone:'concede', result:'An admission the site had made a year earlier. It cost the government less than the House expected it to.' }, { id:'contractor', label:'Referred the member to the contractor\'s statement', tone:'duck', result:'The government sheltered behind a firm it is paying. Nobody in the chamber mistook that for an answer.' }, { id:'inherited', label:'Blamed the contract the last government signed', tone:'counter', result:'Half the chamber has heard that answer about this work before, and from this despatch box.' }] },
+  { id:'issueThreePositions', side:'opposition', subject:'issue', body:'On {issue} the government has told this House three different things in {number} sessions. Which of the three is the position of the government this afternoon?',
+    replies:[{ id:'consistent', label:'Insisted all three statements were consistent', tone:'record', result:'The government said the three positions were one position, and invited the House to take that on trust.' }, { id:'changed', label:'Conceded the position had changed, and said why', tone:'concede', result:'A change of policy admitted at the despatch box. It is rarer than it should be, and it played better than it deserved.' }, { id:'yours', label:'Asked what the opposition\'s position was', tone:'counter', result:'A fair question, badly timed. The House had come for an answer and got a rally.' }, { id:'statement', label:'Promised a written statement next session', tone:'promise', result:'The position will be settled in writing, which is one way of not settling it now.' }] },
+  { id:'pricesTheShopping', side:'opposition', subject:'prices', body:'A week\'s shopping for a family of four costs {number} per cent more than it did in {year}. I have not asked {leader} for the index; I have asked him what the shopping costs.',
+    replies:[{ id:'knewit', label:'Gave the figure, and the index with it', tone:'record', result:'He knew it. That is not nothing, and the House gave him the moment before taking it back.' }, { id:'games', label:'Said the member was playing games with families', tone:'duck', result:'He did not know it. Every member in the chamber understood that he did not know it.' }, { id:'worseoff', label:'Said plainly that households were worse off', tone:'concede', result:'The government stopped arguing with the figure. The country had stopped arguing with it some time ago.' }, { id:'wages', label:'Set the price against wages', tone:'counter', result:'The comparison held for the average household and for very few actual ones.' }] },
+  { id:'courtWillYouComply', side:'opposition', subject:'court', body:'The court has ruled, and the government\'s order is struck down. Will {leader} tell the House, in terms the House can hold him to, that the government will comply?',
+    replies:[{ id:'infull', label:'Said the government would comply in full', tone:'record', result:'Given at the despatch box, without qualification. The institutions had a quiet afternoon for once.' }, { id:'bench', label:'Attacked the composition of the court', tone:'attack', result:'A head of government said aloud what his party says in private. The Federal District took note of the date.' }, { id:'studying', label:'Said the judgment was being studied', tone:'duck', result:'Studied is not obeyed, and the House heard the distance between the two words.' }] },
+  { id:'treatyPrivateAssurance', side:'opposition', subject:'treaty', body:'Has any minister of this government given {power} an assurance, written or spoken, that has not been laid before this House? A yes or a no will do.',
+    replies:[{ id:'flatno', label:'Answered no, on the record', tone:'record', result:'A flat denial at the despatch box. If a paper ever surfaces, that denial is the story and not the paper.' }, { id:'practice', label:'Said it was not the practice to discuss exchanges', tone:'duck', result:'The House was told the practice. It drew its own conclusion about the assurance.' }, { id:'willlay', label:'Confirmed an exchange and undertook to lay it', tone:'concede', result:'The papers are coming. That the House had to ask for them is now on the record beside them.' }] },
+  { id:'orderUnderWhatStatute', side:'opposition', subject:'order', body:'The order was signed on {leader}\'s authority and has never come before this House. Under which statute was it made, and if the answer is none, will he say so in one word?',
+    replies:[{ id:'section', label:'Cited the enabling section', tone:'record', result:'A section was named. Three members were looking it up before he had finished sitting down.' }, { id:'youtoo', label:'Said the opposition made forty such orders in office', tone:'attack', result:'True, irrelevant, and effective on the benches immediately behind him.' }, { id:'bringit', label:'Undertook to bring the order to the House for approval', tone:'concede', result:'The order will be voted on. It did not have to be, and now it does.' }, { id:'lawofficers', label:'Said the matter was one for the law officers', tone:'duck', result:'The law officers do not sit in this chamber. The House said so at some length.' }] },
+  { id:'promiseSameWords', side:'opposition', subject:'promise', body:'In {year} this was promised to the country in words that nobody could misread. Will {leader} repeat that promise now, at this despatch box, in the same words?',
+    replies:[{ id:'exactly', label:'Repeated the words exactly', tone:'record', result:'He said them again, and this time into the record of this House. It is a debt now rather than a slogan.' }, { id:'conditions', label:'Restated it with conditions attached', tone:'duck', result:'The promise came back shorter than it went out. The House counted what had gone missing from it.' }, { id:'cannotkeep', label:'Said it could not be kept in this parliament', tone:'concede', result:'A promise withdrawn in daylight. It is the honest answer, and it will run for a week.' }, { id:'fundit', label:'Asked whether the opposition would fund it', tone:'counter', result:'The question went back across the chamber, where it was not answered either.' }] }
+];
+var V10_PAPERS = [
+  { id:'whipsReturn', title:'The Whips\' Return on Thursday\'s Division', from:'The whips\' office', body:'The return puts the government four short, with fourteen members unaccounted for and six of those abroad on committee business. The office wants an instruction before it begins pairing. Without one it will pair on its own authority, and Thursday\'s figure will be whatever it turns out to be.',
+    choices:[{ id:'recall', label:'Recall the six from committee', summary:'Costs money and a fortnight\'s goodwill.' }, { id:'pair', label:'Pair the absentees and take the division as it stands', summary:'Cheap. The margin becomes the story.' }, { id:'postpone', label:'Put the division back a week and count again', summary:'Buys time. The doubtfuls get a week as well.' }] },
+  { id:'partnerCaucusBound', title:'The Partner\'s Caucus Has Bound Its Ministers', from:'The junior partner\'s caucus secretary', body:'The partner\'s members met last night without notice and resolved to instruct their ministers to vote against clause nine. Two of those ministers sit in your cabinet and have not said which instruction they intend to obey. If this is not settled before the sitting, they will settle it themselves at the table.',
+    choices:[{ id:'drop', label:'Drop clause nine', summary:'The coalition holds. The clause does not.' }, { id:'joint', label:'Call a joint caucus and put the clause to both parties at once', summary:'Costs capital. However it falls, it is settled.' }, { id:'collective', label:'Remind the ministers that collective responsibility is not optional', summary:'Free, and it may cost two ministers.' }] },
+  { id:'factionDinner', title:'An Invitation to the Group\'s Annual Dinner', from:'The convener of a caucus group', body:'The group holds its dinner in three weeks and would like the leader to speak. The invitation went to the lobby an hour before it reached this office, so a refusal is now also a statement. Whatever is said in that room will be reported as the party\'s position by morning.',
+    choices:[{ id:'give', label:'Attend, and give them the passage they want', summary:'Their loyalty, for a sentence you cannot withdraw.' }, { id:'attend', label:'Attend, and say nothing that can be printed', summary:'Costs an evening and settles nothing.' }, { id:'decline', label:'Send a message of goodwill and stay away', summary:'Free, and correctly read as a snub.' }] },
+  { id:'estimatesChair', title:'The Chair of the Estimates Committee Falls Vacant', from:'The Clerk of Committees', body:'The chair died on Saturday and the committee must elect a successor inside a fortnight or the Clerk seats one by seniority. Three members have put themselves forward: one who understands the estimates and cannot be managed, one who can be managed and understands nothing, and the opposition\'s spokesman, who has let it be known that the chair could be had in exchange for restraint on the audit. Seniority would give it to the third.',
+    choices:[{ id:'able', label:'Elect the member who understands the estimates', summary:'The committee will work. It will work on you.' }, { id:'loyal', label:'Elect the member who can be managed', summary:'Quiet, and worth nothing.' }, { id:'trade', label:'Trade the chair for restraint on the audit', summary:'A bargain both sides will deny having made.' }] },
+  { id:'floorCrossingOffer', title:'An Approach from the Other Side', from:'An intermediary, unnamed in writing', body:'A member of fourteen years\' standing is willing to cross the floor and wants a department, or failing that a promise in writing. The approach came through a third party because the member\'s own whips are understood to be preparing something. The offer stands until the House rises.',
+    choices:[{ id:'department', label:'Take them, and give them the department', summary:'A seat, a headline, and whatever is in the file.' }, { id:'backbench', label:'Take them to the back benches with nothing in writing', summary:'Cheaper. They will not stay bought.' }, { id:'refuse', label:'Decline, and let it be known you declined', summary:'Free. The damage stays on their side of the House.' }] },
+  { id:'rebellionNineteen', title:'The Nineteen', from:'The Chief Whip, in person', body:'Nineteen of your own members voted against the second reading last night and the bill carried by four. Three of them organised it; the other sixteen were told there would be no consequence. The whips will do whatever is decided, and nothing whatever if nothing is.',
+    choices:[{ id:'all', label:'Withdraw the whip from all nineteen', summary:'Discipline restored. The majority leaves with them.' }, { id:'three', label:'Withdraw it from the three organisers only', summary:'Proportionate, and everyone can count to three.' }, { id:'nothing', label:'Do nothing, and let it be understood', summary:'Free. Read as mercy or as weakness, not by you.' }] },
+  { id:'resignationLetter', title:'The Minister\'s Letter', from:'Your principal private secretary', body:'The letter runs to four pages and is a resignation only in the last paragraph. The third page contains a sentence about your conduct in cabinet on the eleventh, and a copy reached the lobby at the same hour it reached this desk. It will be read out at six whatever is decided here.',
+    choices:[{ id:'publish', label:'Publish it in full, with your reply beside it', summary:'Everything in the open, third page included.' }, { id:'buy', label:'Offer them something to shorten it', summary:'Costs an office. It is a purchase and will be seen as one.' }, { id:'silence', label:'Say nothing and let it run', summary:'Free, for about a week.' }] },
+  { id:'leadershipDinnerRumour', title:'A Query from the Lobby', from:'The press office', body:'A correspondent has asked the office to confirm that eleven members dined together at a private address on Tuesday, and has the address. The dinner took place. The query has been held for two hours and something must be said before the first edition.',
+    choices:[{ id:'confirm', label:'Confirm the dinner and name everyone at it', summary:'The truth, used as a weapon.' }, { id:'deny', label:'Deny that any such meeting took place', summary:'One sentence, and it is on the record.' }, { id:'ballot', label:'Call a leadership ballot yourself for next week', summary:'Costs capital. It ends, one way.' }] },
+  { id:'governorWillNotExecute', title:'The Governor of Rigel Will Not Execute the Act', from:'The Governor of Rigel Plains, by hand, not through the department', body:'She has instructed state officers to take no step under the federal act and asks for one meeting before the deadline on Friday. She is careful to say she is not asking the government to withdraw anything. If no answer is sent, the first refusal happens in public on Friday, and eleven other governors have arranged to be free that afternoon.',
+    choices:[{ id:'meetHer', label:'Meet her before Friday, alone', summary:'Costs capital. Nothing is conceded on paper.' }, { id:'withholdGrants', label:'Withhold the state\'s federal grants', summary:'Free, and every governor answers.' }, { id:'attorneyGeneral', label:'Send it to the Attorney General', summary:'Correct, slow, and out of your hands.' }] },
+  { id:'veteransWardMarches', title:'The Rehabilitation Ward at Kessler Barracks', from:'The Federation of Veterans\' Associations, the Far Marches', body:'The ward closes at the end of the quarter and the forty men in it are to be moved four hundred miles inland to a hospital with no rehabilitation unit. The Federation is not asking for a programme or an inquiry; it is asking for the ward, and failing that for twenty minutes. If neither is given, the parade on the eleventh goes past the department instead of the cenotaph, and the Federation will say why when asked.',
+    choices:[{ id:'keepWard', label:'Keep the ward open', summary:'A small sum, and it is the thing they asked for.' }, { id:'receiveDelegation', label:'Receive the delegation and give them the truth', summary:'Costs nothing but the twenty minutes.' }, { id:'referToDepartment', label:'Refer them to the department', summary:'Free. The parade route changes.' }] },
+  { id:'sarathSurveyCrews', title:'An Approach Outside the Usual Channel', from:'The Sarath embassy, through a third party, unrecorded', body:'Sarath will return the two survey crews held since the spring if the government says nothing further about the frontier survey for one year. The offer is not on paper and the embassy will deny it was made. It expires the moment it becomes known, and eleven people already know.',
+    choices:[{ id:'takeTheTrade', label:'Take the trade and say nothing', summary:'The crews come home. The silence is dated.' }, { id:'publishTheOffer', label:'Publish the approach and refuse it', summary:'Standing now, and the crews stay where they are.' }, { id:'tellTheAlliance', label:'Put it to the Northern Alliance first', summary:'Correct procedure. The ally learns you were approached.' }] },
+  { id:'proprietorAsksToAsk', title:'Mr Halloran Requests an Hour', from:'The proprietor of the Somnium Ledger', body:'He would like an hour at his own house and no officials, and mentions in the same paragraph that his editor holds a photograph of a serving minister and has fixed no date for it. He asks for nothing. He is asking whether he may ask.',
+    choices:[{ id:'seeHimAlone', label:'See him alone', summary:'The photograph waits. So does the debt.' }, { id:'seeHimOnRecord', label:'See him with a private secretary taking a note', summary:'A record exists. He will read it as a refusal.' }, { id:'declineTheHour', label:'Decline the hour', summary:'Free, and the paper turns.' }] },
+  { id:'tenebrisPortStoppage', title:'The Port at Tenebris Is Closed', from:'The Board of Conciliation, ninth day of the stoppage', body:'Ninety thousand at the northern works and the docks, and the grain that was to move inland is standing in trucks. The unions will go to arbitration if the award binds both sides; the employers want the emergency power invoked instead and have said so publicly. Nothing moves off the coast until one of them is given an answer.',
+    choices:[{ id:'bindingArbitration', label:'Grant arbitration binding on both sides', summary:'Costs money, and the settlement is not yours to write.' }, { id:'emergencyPower', label:'Invoke the emergency power', summary:'The port opens in a week. The basin keeps the date.' }, { id:'letItRun', label:'Let it run and hold the line', summary:'Free until the third week.' }] },
+  { id:'ashbyReservoirDowngrade', title:'Ashby Reservoir: Category Four Downgrade', from:'The Chief Inspector of Dams, Cassian Highlands', body:'The inspectorate downgraded the embankment at six this morning and gives it between forty and a hundred hours. Eleven thousand people live below the line and the road out of the valley takes nine hours to clear. The finding is published on Thursday whichever way the government decides today.',
+    choices:[{ id:'evacuateAll', label:'Clear everything below the line', summary:'Very expensive, and it may hold.' }, { id:'evacuateNearest', label:'Clear the two nearest towns only', summary:'Cheaper. The inspector\'s number is on the record.' }, { id:'drawDownQuietly', label:'Draw the reservoir down and issue no warning', summary:'The engineering answer. Nobody is told they were at risk.' }] },
+  { id:'contractorClaimEleven', title:'Claim for Variation: Eleven Percent', from:'Vasquez & Loom, principal contractor, with the works inspectorate\'s note attached', body:'They have claimed eleven percent above the revised estimate for ground conditions and have stopped pouring while it is considered. A schedule at the back of the letter records that two of the three ground surveys the original estimate was built on were carried out by a subsidiary of their own. The site stands idle and is charged to the department at the standing rate until the claim is answered.',
+    choices:[{ id:'payTheClaim', label:'Pay the claim and get the pour restarted', summary:'Fast, and the next claim is already drafted.' }, { id:'adjudicate', label:'Refuse it and go to adjudication', summary:'Months. The site stays idle and the standing rate runs.' }, { id:'terminateAndRelet', label:'Terminate the contract and re-let the work', summary:'Ruinous, and the surveys come out in court.' }] },
+  { id:'justiceAdaireRetirement', title:'A Private Letter from Justice Adaire', from:'A Justice of the Supreme Court, marked personal', body:'She intends to retire and wishes the government to know the month before the court is told. She asks for nothing and requests no reply, and observes in the last line that the federal preemption case is listed for the spring. Any answer will be read as a preference, including no answer at all.',
+    choices:[{ id:'noReply', label:'Send no reply', summary:'Correct. She decides alone.' }, { id:'thankHerNeutral', label:'Thank her and say the timing is hers', summary:'Courteous, and a copy exists.' }, { id:'indicateSpring', label:'Indicate that the spring would suit the government', summary:'You have asked a judge a question.' }] }
+];
+
+/* ============================================================
+   S10f — QUESTION TIME, AND THE PAPERS
+   The whole pool was FIVE sentences in one if/else chain, and its gates made
+   three of them nearly unreachable: the weak-bill line needed an odd turn, the
+   troubled-work line needed turn % 4 === 2 on a branch only reached on odd
+   turns, and the issue line was the unconditional fallback. Most sessions the
+   player read the same sentence with two numbers changed, for two hundred
+   sessions.
+
+   SELECTION HERE SPENDS NO DICE, deliberately. v8EnsureQuestion is called from
+   the RENDER path — v8Badges computes the chamber badge with it, and render()
+   runs on every action and every tab change — so a roll here would make a
+   campaign's dice-spend a function of how often the player looked at a tab.
+   The pick is a hash of the turn, the subject and the campaign seed: varied,
+   stable across a reload, and free.
+   ============================================================ */
+function v10QtHash(st, subject, n) {
+  var h = (st.turn || 0) * 2654435761 + (Math.abs(st.seed || 0) % 100003) * 40503;
+  for (var i = 0; i < subject.length; i++) h = (h * 31 + subject.charCodeAt(i)) % 2147483647;
+  return Math.abs(h) % Math.max(1, n);
+}
+/* What is actually happening this session, and what each subject can supply.
+   A subject is only offered if its facts exist — a question about a governor
+   needs a governor, a question about a work needs a troubled one. */
+function v10QtContext(st) {
+  var c = { subjects: [], fill: {} }, me = playParty(st);
+  function offer(sub, fill) { c.subjects.push(sub); for (var k in fill) if (c.fill[k] === undefined) c.fill[k] = fill[k]; c.fill['_' + sub] = fill; }
+  c.fill.leader = leaderOf(st, st.ruling).name;
+  c.fill.party = PARTY[st.ruling].short;
+  c.fill.opp = PARTY[v8Opposition(st)] ? PARTY[v8Opposition(st)].short : 'the opposition';
+  c.fill.year = String(yearOf(st.turn));
+
+  var issue = topIssues(st, 1)[0];
+  if (issue) offer('issue', { issue: v8IssueWord(issue), number: String(Math.round(st.salience[issue.id])) });
+  var sc = st.scandals.filter(function (x) { return x.status === 'active'; }).sort(function (a, b) { return b.heat - a.heat; })[0];
+  if (sc) offer('scandal', { minister: (st.ministers[sc.minister] && st.ministers[sc.minister].name) || 'the minister named', number: String(Math.round(sc.heat)) });
+  var wb = v8WeakBills(st)[0];
+  if (wb) offer('bill', { bill: wb.title, number: String(Math.round(billForecast(st, wb).lower)) });
+  var tw = v8ActiveWorks(st).filter(function (w) { var q = st.v8.works[w.id]; return q && (q.overruns >= 1 || q.mode === 'paused'); })[0];
+  if (tw) offer('work', { work: tw.name, number: String(Math.round(st.v8.works[tw.id].spent)) });
+  var badMin = null;
+  for (var mk in (st.ministers || {})) { var m = st.ministers[mk]; if (!badMin || m.competence < badMin.competence) badMin = m; }
+  if (badMin && badMin.competence < 62) offer('minister', { minister: badMin.name, number: String(Math.round(badMin.competence)) });
+  if (st.v6 && st.v6.governors) {
+    var gr = REGIONS.filter(function (r) { return st.v6.governors[r.id] && v6BallotsUntilRegion(st, r) <= 1; })[0] ||
+             REGIONS.filter(function (r) { return st.v6.governors[r.id] && st.v6.governors[r.id].standing < 35; })[0];
+    if (gr) offer('governor', { governor: st.v6.governors[gr.id].name, region: gr.name, number: String(Math.round(st.v6.governors[gr.id].approval)) });
+  }
+  var pw = POWERS.filter(function (p) { return relOf(st, p.id) < 35 || (st.war && st.war.power === p.id); })[0];
+  if (pw) offer('treaty', { power: pw.short, number: String(Math.round(relOf(st, pw.id))) });
+  if (st.court && (st.court.defied || courtGap(st) > .55)) offer('court', { number: String(st.court.defied || 0) });
+  offer('money', { number: String(Math.round(st.debt)) });
+  if (st.unrest > 45) offer('unrest', { number: String(Math.round(st.unrest)) });
+  var promise = (st.promises || []).filter(function (p) { return p.status === 'open'; })[0];
+  if (promise) offer('promise', { number: String((st.promises || []).filter(function (p) { return p.status === 'open'; }).length) });
+  if (st.ind.poverty > 45) offer('prices', { number: String(Math.round(st.ind.poverty)) });
+  if (typeof v10OrderCount === 'function' && v10OrderCount(st) > 0) {
+    var ok2 = v10OrdersInForce(st)[0], oo = v10OrderOf(ok2);
+    if (oo) offer('order', { work: oo.name, number: String(v10OrderCount(st)) });
+  }
+  if (st.legacy && st.legacy.billsFailed) offer('byelection', { number: String(st.legacy.billsFailed) });
+  return c;
+}
+function v10QtFill(text, fill) {
+  return String(text).replace(/\{(\w+)\}/g, function (m, k) { return fill[k] !== undefined ? fill[k] : m; });
+}
+var v10EnsureQuestionBase = v8EnsureQuestion;
+v8EnsureQuestion = function (st) {
+  v10EnsureQuestionBase(st);
+  var v = st.v8; if (!v) return;
+  var q = v.qt;
+  if (!q.pending || q.v10 === st.turn) return;
+  var side = inPower(st) ? 'power' : 'opposition';
+  var ctx = v10QtContext(st);
+  var pool = V10_QT.filter(function (it) { return it.side === side && ctx.subjects.indexOf(it.subject) >= 0; });
+  if (!pool.length) return;
+  /* rotate the SUBJECT by the session, then the item within it, so a run of
+     sessions does not sit on one topic */
+  var subs = pool.map(function (it) { return it.subject; }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+  var sub = subs[v10QtHash(st, 'subject', subs.length)];
+  var byS = pool.filter(function (it) { return it.subject === sub; });
+  var pick = byS[v10QtHash(st, sub, byS.length)];
+  var fill = {}; for (var k in ctx.fill) fill[k] = ctx.fill[k];
+  var own = ctx.fill['_' + sub] || {}; for (var k2 in own) fill[k2] = own[k2];
+  q.question = v10QtFill(pick.body, fill);
+  q.subject = pick.subject;
+  q.opts = pick.replies.map(function (r) { return { id:r.id, label:v10QtFill(r.label, fill), tone:r.tone, result:v10QtFill(r.result, fill) }; });
+  q.v10 = st.turn;
+};
+/* Each authored reply carries a TONE, and the tone maps onto the four effect
+   paths that already work. The mechanics were never the problem — the
+   material was — so the material is new and the arithmetic is the arithmetic
+   the game already balances around. */
+var V10_QT_TONE = {
+  power:      { record:'record', attack:'attack', concede:'concede', duck:'junior', promise:'concede', counter:'attack' },
+  opposition: { record:'harry', attack:'harry', concede:'statesman', duck:'pass', promise:'statesman', counter:'resign' }
+};
+var v10QuestionBase = v8Question;
+v8Question = function (id) {
+  var q = S.v8 && S.v8.qt;
+  if (q && q.opts) {
+    var pickd = q.opts.filter(function (o) { return o.id === id; })[0];
+    if (pickd) {
+      var mapped = V10_QT_TONE[inPower(S) ? 'power' : 'opposition'][pickd.tone] || id;
+      if (mapped === 'resign' && !q.scandal) mapped = 'harry';
+      var line = pickd.result, label = pickd.label;
+      v10QuestionBase(mapped);
+      if (S.v8.qt.result) { S.v8.qt.result.label = label; S.v8.qt.result.text = line; }
+      render();
+      return;
+    }
+  }
+  v10QuestionBase(id);
+};
+var v10QuestionPanelBase = v8QuestionPanel;
+v8QuestionPanel = function () {
+  var html = v10QuestionPanelBase();
+  var q = S.v8 && S.v8.qt;
+  if (!html || !q || !q.pending || !q.opts) return html;
+  /* replace the fixed button row with the authored replies */
+  var i = html.lastIndexOf('<div class="btnrow">');
+  if (i < 0) return html;
+  var btns = q.opts.map(function (o, n) {
+    return '<button class="btn' + (n ? ' ghost' : '') + '" data-v8act="qt" data-id="' + esc(o.id) + '" title="' + esc(o.result) + '">' +
+      esc(o.label) + (o.tone === 'duck' ? '' : ' <span class="c">' + cst(1) + '</span>') + '</button>';
+  }).join('');
+  return html.slice(0, i) + '<div class="btnrow">' + btns + '</div></div>';
+};
+
+/* THE PAPERS. Sixteen new types on the proven three-edit seam: addInbox with a
+   type, an inboxChoices arm, a respondInbox arm. Their effects run through the
+   same shared debit-and-archive tail as every other paper. */
+var V10_PAPER = {}; V10_PAPERS.forEach(function (p) { V10_PAPER[p.id] = p; });
+var v10InboxChoicesBase = inboxChoices;
+inboxChoices = function (it) {
+  var d = it && it.v10paper && V10_PAPER[it.v10paper];
+  if (!d) return v10InboxChoicesBase(it);
+  return d.choices.map(function (c, i) { return { id:c.id, label:c.label, cost:i === d.choices.length - 1 ? 0 : (i === 0 ? 2 : 1), note:c.summary }; });
+};
+var v10RespondInboxBase = respondInbox;
+respondInbox = function (id, choice) {
+  var it = (S.inbox || []).filter(function (x) { return x.id === id; })[0];
+  if (!it || !it.v10paper) { v10RespondInboxBase(id, choice); return; }
+  var d = V10_PAPER[it.v10paper], opt = inboxChoices(it).filter(function (o) { return o.id === choice; })[0];
+  if (!d || !opt) return;
+  if (!pv5Spend(opt.cost || 0, 0, 'Answer ' + d.title)) return;
+  /* the paper's weight: which choice you took decides who is pleased and how
+     much standing it costs. Deliberately modest — a paper is a session's
+     texture, not a policy. */
+  var n = d.choices.map(function (c) { return c.id; }).indexOf(choice);
+  if (n === 0) { S.unity = c100((S.unity || 60) + 2); mood(S, { prof:1 }); S.capital = clamp(S.capital - 0, -5, capCap(S)); }
+  else if (n === 1) { shiftPartyRel(S, S.ruling, 2); mood(S, { smallbiz:1, labour:1 }); }
+  else { S.unity = c100((S.unity || 60) - 2); mood(S, { prof:-1, youth:-1 }); }
+  if (it.from) shiftPartyRel(S, it.from, n === 2 ? -6 : 4);
+  it.outcome = choice; it.resolved = S.turn;
+  S.inbox = S.inbox.filter(function (x) { return x.id !== id; });
+  S.inboxArchive.unshift(it);
+  logIt(S, d.title + ': ' + (d.choices[n] ? d.choices[n].label.toLowerCase() : 'answered') + '.');
+  render(); toast('Political paper answered.');
+};
+/* one of the new papers can arrive in place of the old cycle */
+var v10PoliticsTickBase = politicsTick;
+politicsTick = function (st) {
+  v10PoliticsTickBase(st);
+  if (!st.inbox || st.inbox.length >= 5) return;
+  if (st.inbox.some(function (x) { return x.v10paper; })) return;
+  if (rand() > .34) return;
+  var d = V10_PAPERS[Math.floor(rand() * V10_PAPERS.length)];
+  if (!d) return;
+  var others = PARTIES.filter(function (p) { return p.id !== playParty(st) && !st.banned[p.id]; });
+  addInbox(st, { type:'v10paper', v10paper:d.id, from:others.length ? others[Math.floor(rand() * others.length)].id : null,
+    title:d.title, body:d.body });
+};
+
 /* ---------- thirty-two more grand works ---------- */
 var V10_WORKS = [
   { id:'v11arsenal', name:'The Thaxia Arsenal', tag:'Arsenal', region:'thaxia', cost:38, years:4,
