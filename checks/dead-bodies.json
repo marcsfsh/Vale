@@ -845,7 +845,7 @@
     "regionPartyFactor#1": {
       "line": 0,
       "aliasCaptured": true,
-      "reason": "S11c: alias var v11RegionFactorBase captured above. A REASSIGNMENT rather than a wrapper, deliberately: the old body collapses eight regions into one pop-weighted mean before returning, so a wrapper has nothing left to weight per region. This is the only channel from a region to the national vote, and it was almost entirely a function of eight frozen `lean` literals — the governor, the organisers on the ground and how the region is actually governed now reach it. The [.86,1.15] clamp widened to [.72,1.34]: it bound at this size and silently ate the regional penalty for the two flank parties."
+      "reason": "S11c: alias var v11RegionFactorBase captured above. A REASSIGNMENT rather than a wrapper, deliberately: the old body collapses eight regions into one pop-weighted mean before returning, so a wrapper has nothing left to weight per region. This is the only channel from a region to the national vote, and it was almost entirely a function of eight frozen `lean` literals -- the governor, the organisers on the ground and how the region is actually governed now reach it. The clamp widened from [.86,1.15] to V11_REGION_SPAN [.80,1.22]. Measured honestly at the shipped gain of 0.23 the factor runs .847 .. 1.028, so the old FLOOR clips (the worst RSF and PNL readings sit under .86) while the old ceiling is never approached; the widened top is declared headroom for a retune of V11_REGION_GAIN, not a constraint doing work today."
     },
     "regionLeadingParty#1": {
       "line": 0,
@@ -861,6 +861,66 @@
       "line": 0,
       "aliasCaptured": true,
       "reason": "S11c: alias var v11ViewFederationBase captured above. Runs AFTER the v6 wrapper (which splits on a region-card literal and maps parts POSITIONALLY to REGIONS) and the v9 wrapper (which locates a data-region inspect marker) — so both have finished by the time this sees the HTML and neither can be mis-assigned by what it adds. Replaces the right column's Strategic Risks panel, which carried five generic national risk lines and nothing regional across half the width of the tab about the states."
+    },
+    "isBallotTurn#1": {
+      "line": 23198,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11BallotTurnBase captured and CALLED whenever no article moves the term, so a document that says nothing about the calendar reproduces the old body exactly. The general form (t > 1 && (t - 1) % term === 0) reduces to the old (t % 2 === 1) at term 2; roads.js asserts that identity across a full campaign because a silent off-by-one here moves every ballot in every save. Reads the global S in the idiom actBlocked already uses -- isBallotTurn takes only a turn number and five call sites pass nothing else."
+    },
+    "capitalIncome#4": {
+      "line": 23209,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConCapitalBase captured and called. Adds only v11ConEffects(st).capital, so an unwritten constitution is a no-op. Articles of the offices book (the fixed term, the quadrennial Assembly) and the emergency supply are felt here."
+    },
+    "indicatorTargets#5": {
+      "line": 23214,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConTargetsBase captured and called. Applies the document's ind deltas and, for articles of the rights book, a FLOOR under the liberties target -- which is the whole difference between a right and a liberal statute: a statute is outvoted by the next statute, a right is not reached by them at all."
+    },
+    "policyCost#4": {
+      "line": 23226,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConPolicyCostBase captured and called. Multiplies by the document's per-category factor, so an article that says the Authority book is dear makes it dear at every purchase rather than on a card."
+    },
+    "actBlocked#1": {
+      "line": 23247,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ActBlockedBase captured. DELIBERATELY NOT CALLED: its first line, `if (a.house !== 'Senate') return false`, is the defect. `house` on an ACT is the BOOK it is filed under on the page ('Senate', 'Supreme Court', 'Elections'), not the chamber that votes on it, so a Senate with a full veto sat and watched every act it was not itself the subject of go straight past. The replacement considers any act using the same lean actCost already assigns by book, and keeps all three original exemptions -- two are how a suspended Senate is restored and the third is the act that makes it elected."
+    },
+    "securityState#1": {
+      "line": 23260,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConSecurityBase captured and called. Adds the emergency book's brake. securityState is the single number that suppresses unrest, erodes liberties, cows the court and past 30 opens the extraordinary measures to any government -- an article restraining the emergency has to reach THAT number or it is prose."
+    },
+    "franchiseLevel#1": {
+      "line": 23269,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConFranchiseBase captured and called, clamped 0..3. The franchise book widens or narrows the roll every ballot reads."
+    },
+    "unrestTarget#1": {
+      "line": 23275,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConUnrestBase captured and called. Articles that buy order at the price of liberty, and those that do the reverse, move the target rather than the stock."
+    },
+    "budget#6": {
+      "line": 23280,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConBudgetBase captured and called, and returns early when the document carries no rev or exp -- the rights book's positive obligations (labour, health, equalisation) are a standing charge on the treasury, which is what makes them a choice rather than a slogan. net is recomputed from rev, exp and interest so the Ledger and the budget agree."
+    },
+    "v11AutonomyPressure#1": {
+      "line": 23313,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ConAutonomyBase captured and called, behind a typeof guard because S11c defines it earlier in the same chunk. The federal book moves the pressure to leave the union that S11c built."
+    },
+    "viewState#2": {
+      "line": 23728,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11ViewStateBase captured and called. The Constitution page is rebuilt around the document itself: the written constitution, what is before the country, the eight books, then the forms and transitions the base renders, then the constitutional acts -- twenty of which rendered on other tabs and nowhere here."
+    },
+    "v7DefaultCollapsed#2": {
+      "line": 23737,
+      "aliasCaptured": true,
+      "reason": "S11d: alias var v11dDefaultCollapsedBase captured and called for every tab but 'state'. The eight books and the acts panel arrive collapsed; the document and what is before the country do not. Twenty-odd open panels on one tab is exactly the wall the sixth order asked to be rid of elsewhere."
     }
   }
 }

@@ -4,7 +4,94 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S11c — The Federation** (PR #31). Third of five slices carrying the owner's
+**S11d — The Constitution** (PR #32). Fourth of five slices carrying the owner's
+sixth order. The ask was "far more options", and the ruling on what "setting the
+nation's overall constitution" means was **articles you assemble** — a written
+document built and amended over a campaign, each article changing real
+machinery, not a menu of pre-written constitutions.
+
+**What was here.** Ten FORMS rendered as informational cards with no button, the
+transitions open from the current form, a dissolve button and the path panels:
+seventeen controls on a fresh game, thirteen of them identical every session for
+two hundred sessions.
+
+**Forty-eight articles in eight books** — Of the Chambers, Of the Franchise, Of
+Terms and Offices, Of Emergency Powers, Of the Courts, Of the Federation, Of
+Rights, Of Procedure. Every one names the machinery it moves in its own `moves`
+line, and `roads.js` asserts that line against its `mods` over the whole
+registry, because a card whose prose promises what the effects struct does not
+carry is the exact defect this slice exists to fix.
+
+**Ratification is a vote, not a purchase.** An article is **laid**, **contested
+for two sessions** while the parties take positions and the country hears about
+it, and then **put** — by the Assembly, by supermajority where entrenched, by
+the country where the article says so. Capital spent during the contest moves
+the vote, which is what makes two sessions a decision rather than a wait. Only
+one article may be before the country at a time. **It can fail**, and a defeat
+costs capital, five of unity and two of unrest, and bars the question for six
+sessions.
+
+**Entrenchment is what makes it a constitution rather than a settings page.**
+Plain **50%**; entrenched **60%** to carry and **66.7%** to strike out again. Of
+Procedure moves every later bar; a convention lowers every bar by eight for six
+sessions, costs 24 capital, and **two is all any republic gets** — otherwise it
+is a discount a patient player always takes.
+
+**One place computes, eleven readers consult it.** `v11ConEffects` follows the
+`v10OrderMods` pattern, and every field has a named reader: `term` →
+`isBallotTurn`, `capital` → `capitalIncome`, `ratify` → `v11ConThreshold`,
+`franchise` → `franchiseLevel`, `autonomy` → `v11AutonomyPressure`, `emergency`
+→ `securityState`, `libFloor`/`ind` → `indicatorTargets`, `unrest` →
+`unrestTarget`, `polCost` → `policyCost`, `rev`/`exp` → `budget`, `senate` →
+`v11ArtSupport`. A change that is a permanent **fact** rather than a standing
+modifier — seating justices, ending a veto — is done in the article's own
+`apply()`: there is no such thing as half a justice.
+
+**The bug this slice nearly shipped.** `franchiseLevel` returned 0, 1 or 2 and
+three consumers **index a three-element array with it** — including
+`supportTargets`, the ballot weight itself. My first wrapper clamped to 0..3 and
+allowed halves, so two franchise articles produced `2.5`, `b.fr[2.5]` is
+`undefined`, and `b.pop * undefined` is **NaN in the vote model with nothing on
+screen to say so**. Caught by an exhaustive probe before it left the branch. The
+wrapper now rounds and clamps to the readers' own domain, and roads sweeps all
+**128 subsets** of the seven franchise articles asserting both.
+
+**`actBlocked` was broken.** Its first line was `if (a.house !== 'Senate') return
+false` — but `house` is the **book an act is filed under on the page**, not the
+chamber that votes it, so a Senate with a full veto watched every act it was not
+itself the subject of go straight past. Measured after the fix: **6 of 25**
+non-Senate acts are now refused by a hostile Senate that previously refused none.
+
+**Also brought home:** twenty of the thirty-two constitutional acts rendered on
+other tabs and nowhere here; `S.precedents`, which gates two transitions *on this
+page*, was earned on the Executive page and shown to nobody. Both are on the tab.
+
+**A correction carried over from S11c.** The `regionPartyFactor#1` adjudication
+in `checks/dead-bodies.json` still carried the overstated clamp claim I
+corrected everywhere else last slice — and the wrong span numbers with it
+(`[.72,1.34]`, where the code says `[.80,1.22]`). Fixed here.
+
+```
+ALL CHECKS PASS   11/11, 2,297,357 bytes of 2,450,000
+ROADS OK          76 assertions
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties — S11d spends NO dice
+PACING            byte-identical to the S11c baseline
+TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
+```
+
+**Pacing is identical because an unwritten constitution is a perfect no-op** —
+the harness plays first-choice-always and never opens the tab, `st.v11.con` is
+created-on-write, and an old save loads with no `v11` at all, an empty effects
+struct and the same ballot calendar at every turn of a full epic.
+
+Render cost on the tab: **8.9 ms median** with all 48 article cards, 25.1 ms in
+the extreme case of every article in force, against 44 ms for the Policy tab —
+so no build-on-open treatment was needed here.
+
+Six fail-proofs. Next: **S11e**, the Ministry and the Interests.
+
+Previously: **S11c — The Federation** (PR #31). Third of five slices carrying the owner's
 sixth order. The complaint was that the tab is "extremely bare/repetitive with
 not much impact from the things you do there" — and the survey found the
 arithmetic behind it. A region's `prosperity`, `services` and `order` reached

@@ -1461,6 +1461,151 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(rest.goalSets === 11 && rest.programmes === 3 && rest.acts === 3 && rest.records === 6, 'the registries carry the content',
     `goal sets ${rest.goalSets}/11, programmes ${rest.programmes}/3, acts ${rest.acts}/3, records ${rest.records}/6`);
 
+  /* S11d — THE CONSTITUTION. The owner asked for a nation's constitution that
+     can be SET, and ruled it should be articles you assemble rather than a
+     menu. So the assertions are about the three things that make it a
+     document rather than a shop: the vote is real, entrenchment binds its own
+     author, and every article moves machinery a player can feel. */
+  const con = await page.evaluate(() => {
+    const out = {}, blank = () => { v11Con(S); S.v11.con = { arts:{}, order:[], pending:null, failed:{}, conv:0, convUsed:0 }; };
+    out.articles = V11_ARTICLES.length;
+    out.books = V11_BOOKS.length;
+    out.perBook = V11_BOOKS.map(b => V11_ARTICLES.filter(a => a.book === b.id).length);
+
+    /* THE CALENDAR REDUCES TO WHAT IT WAS. isBallotTurn was (t % 2 === 1) for
+       t > 1 and is now the general ((t - 1) % term === 0). A silent off-by-one
+       here moves every ballot in every campaign that never touches this tab,
+       so the identity is checked across a full epic rather than sampled. */
+    blank();
+    out.calendarSame = (() => { for (let t = 1; t <= 401; t++) if (isBallotTurn(t) !== (t > 1 && t % 2 === 1)) return 'differs at ' + t; return true; })();
+    v11AdoptArticle(S, V11_ART.artQuadrennial, 61);
+    out.termNow = v11TermYears(S);
+    out.ballotsAfter = (() => { const h = []; for (let t = 1; t <= 13; t++) if (isBallotTurn(t)) h.push(t); return h.join(','); })();
+
+    /* NO ARTICLE, IN ANY COMBINATION, MAY PUT A NaN IN THE BALLOT.
+       franchiseLevel indexes a THREE-element array in supportTargets, on the
+       Parties page and on the Overview. A fractional level reads undefined out
+       of all three and b.pop * undefined is NaN in the vote model with nothing
+       on screen to say so. Every subset of the franchise articles is swept. */
+    const fArts = V11_ARTICLES.filter(a => a.mods.franchise);
+    out.franchiseArts = fArts.length;
+    out.badLevels = []; out.nanBallot = [];
+    for (let mask = 0; mask < (1 << fArts.length); mask++) {
+      blank();
+      for (let i = 0; i < fArts.length; i++) if (mask & (1 << i)) S.v11.con.arts[fArts[i].id] = { year:2030, margin:60, entrenched:false, turn:1 };
+      const fr = franchiseLevel(S);
+      if (!Number.isInteger(fr) || fr < 0 || fr > 2) out.badLevels.push(mask + ':' + fr);
+      const t = supportTargets(S);
+      for (const k in t) if (!isFinite(t[k])) out.nanBallot.push(mask + ':' + k);
+    }
+    out.subsets = 1 << fArts.length;
+
+    /* EVERY ARTICLE MOVES SOMETHING NAMED. A card whose prose promises a thing
+       the effects struct does not carry is the defect this slice exists to
+       fix, so it is asserted over the registry rather than trusted. */
+    out.empty = V11_ARTICLES.filter(a => {
+      const m = a.mods || {};
+      const live = Object.keys(m).filter(k => (typeof m[k] === 'object') ? Object.keys(m[k]).length > 0 : !!m[k]);
+      return live.length === 0 && typeof a.apply !== 'function';
+    }).map(a => a.id);
+    out.noMoves = V11_ARTICLES.filter(a => !a.moves).map(a => a.id);
+    out.dupNames = (() => { const seen = {}, d = []; V11_ARTICLES.forEach(a => { if (seen[a.name]) d.push(a.name); seen[a.name] = 1; }); return d; })();
+    /* every panel title distinct after v7FoldKey's normalisation, or one
+       preference governs several books -- the S11a lesson, applied here */
+    out.foldClash = (() => {
+      const seen = {}, d = [];
+      V11_BOOKS.forEach(b => { const k = v7FoldKey('state', b.name); if (seen[k]) d.push(k); seen[k] = 1; });
+      return d;
+    })();
+    out.broken = [];
+    V11_ARTICLES.forEach(a => {
+      blank();
+      try { v11AdoptArticle(S, a, 60); } catch (e) { out.broken.push(a.id + ':throw'); return; }
+      const t = indicatorTargets(S), bd = budget(S);
+      for (const k in t) if (!isFinite(t[k])) out.broken.push(a.id + ':ind.' + k);
+      if (!isFinite(bd.rev) || !isFinite(bd.exp) || !isFinite(bd.net)) out.broken.push(a.id + ':budget');
+      if (!isFinite(capitalIncome(S)) || !isFinite(unrestTarget(S)) || !isFinite(securityState(S))) out.broken.push(a.id + ':scalar');
+    });
+
+    /* ENTRENCHMENT: harder to repeal than to pass, or it is a settings page. */
+    blank();
+    out.threshPlain = v11ConThreshold(S, V11_ART.artQuorum, false);
+    out.threshEntrenched = v11ConThreshold(S, V11_ART.artFreeSpeech, false);
+    out.threshRepeal = v11ConThreshold(S, V11_ART.artFreeSpeech, true);
+    /* and Of Procedure moves the bar for everything after it */
+    const before = v11ConThreshold(S, V11_ART.artQuorum, false);
+    v11AdoptArticle(S, V11_ART.artEntrenchment, 67);
+    out.procedureBites = v11ConThreshold(S, V11_ART.artQuorum, false) - before;
+    /* a convention lowers it while it sits */
+    const withConv = (() => { S.v11.con.conv = S.turn + 6; const v = v11ConThreshold(S, V11_ART.artQuorum, false); S.v11.con.conv = 0; return v; })();
+    out.conventionBites = v11ConThreshold(S, V11_ART.artQuorum, false) - withConv;
+
+    /* THE VOTE IS A VOTE. It is laid, contested for two sessions, and put --
+       and it can FAIL, changing nothing but the cost of having failed. */
+    blank();
+    S.capital = 200;
+    v11ProposeArticle('artPreamble', false);
+    out.laid = !!S.v11.con.pending;
+    out.contestSessions = S.v11.con.pending ? S.v11.con.pending.due - S.turn : 0;
+    out.oneAtATime = v11CanPropose(S, V11_ART.artQuorum, false);
+    S.turn = S.v11.con.pending.due; v11ConTick(S);
+    out.carried = v11Adopted(S, 'artPreamble');
+    out.recorded = S.v11.con.arts.artPreamble || null;
+    const docBefore = v11ConCount(S), unity0 = S.unity;
+    S.v11.con.pending = { id:'artAbolishUpper', repeal:false, laid:S.turn, due:S.turn, campaign:0 };
+    PARTIES.forEach(q => { S.partyRel[q.id] = 0; });
+    v11ConTick(S);
+    out.failedChangedNothing = !v11Adopted(S, 'artAbolishUpper') && v11ConCount(S) === docBefore;
+    out.failCost = +(unity0 - S.unity).toFixed(1);
+    out.coolOff = !!v11CanPropose(S, V11_ART.artAbolishUpper, false);
+
+    /* THE SENATE COULD ONLY BLOCK ACTS THAT WERE ABOUT THE SENATE. `house` is
+       the BOOK an act is filed under, not the chamber that votes it. */
+    blank();
+    S.upper.exists = true; S.upper.veto = 2; S.upper.ceremonial = false; S.peerThreat = -99;
+    PARTIES.forEach(q => { S.upper.seats[q.id] = (q.id === S.ruling) ? 10 : 60; });
+    const nonSenate = ACTS.filter(a => a.house !== 'Senate' && ['reconciliation','restoreUpper','electedSenate'].indexOf(a.id) < 0);
+    out.nonSenateActs = nonSenate.length;
+    out.blockableNow = nonSenate.filter(a => actBlocked(a)).length;
+    return out;
+  });
+
+  say(con.articles >= 40 && con.books === 8 && con.perBook.every(n => n >= 5),
+    'forty articles, eight books',
+    `${con.articles} articles across ${con.books} books [${con.perBook.join(',')}], none of them thin`);
+  say(con.calendarSame === true && con.termNow === 4 && con.ballotsAfter === '5,9,13',
+    'the calendar reduces to what it was',
+    con.calendarSame !== true ? 'the general form ' + con.calendarSame + ' from (t % 2 === 1)'
+      : `identical to the old body at every turn of a full epic with an unwritten constitution · the quadrennial article then makes the term ${con.termNow} and the ballots fall at ${con.ballotsAfter}`);
+  say(con.badLevels.length === 0 && con.nanBallot.length === 0,
+    'no article can put a NaN in the ballot',
+    con.badLevels.length ? 'franchise level off its domain: ' + con.badLevels.slice(0, 3).join(', ')
+      : (con.nanBallot.length ? 'NaN in supportTargets: ' + con.nanBallot.slice(0, 3).join(', ')
+        : `all ${con.subsets} subsets of the ${con.franchiseArts} franchise articles leave an integer 0..2, and supportTargets is finite for every one`));
+  say(con.empty.length === 0 && con.noMoves.length === 0 && con.dupNames.length === 0 &&
+      con.foldClash.length === 0 && con.broken.length === 0,
+    'every article moves something named',
+    con.empty.length ? con.empty.length + ' move nothing: ' + con.empty.slice(0, 3).join(', ')
+      : (con.noMoves.length ? con.noMoves.length + ' carry no `moves` line'
+        : (con.dupNames.length ? 'repeated titles: ' + con.dupNames.join(', ')
+          : (con.foldClash.length ? 'two books share a fold key: ' + con.foldClash.join(', ')
+            : (con.broken.length ? con.broken.slice(0, 3).join('; ')
+              : `all ${con.articles} carry mods or an apply, name what they move, are titled distinctly and survive their own adoption without a NaN in any indicator, the budget or a scalar`)))));
+  say(con.threshPlain === 50 && con.threshEntrenched === 60 && Math.round(con.threshRepeal) === 67 &&
+      con.procedureBites > 0 && con.conventionBites > 0,
+    'an entrenched article resists repeal',
+    `plain ${con.threshPlain}%, entrenched ${con.threshEntrenched}% to carry and ${con.threshRepeal}% to strike out · ` +
+    `Of Procedure then raises every later bar by ${con.procedureBites} and a sitting convention lowers it by ${con.conventionBites}`);
+  say(con.laid && con.contestSessions === 2 && typeof con.oneAtATime === 'string' && con.carried &&
+      con.recorded && con.recorded.margin > 0 && con.failedChangedNothing && con.failCost > 0 && con.coolOff,
+    'ratification is a vote, and it can fail',
+    !con.carried ? 'the article never carried' : (!con.failedChangedNothing ? 'a failed article changed the document'
+      : `laid, contested for ${con.contestSessions} sessions, carried at ${con.recorded.margin}% and recorded against ${con.recorded.year} · ` +
+        `only one may be before the country at a time · a defeat costs ${con.failCost} of unity, changes no article, and bars the question for six sessions`));
+  say(con.blockableNow > 0,
+    'the Senate can block an act that is not about the Senate',
+    `${con.blockableNow} of ${con.nonSenateActs} acts outside the Senate's own book are refused by a hostile Senate with a full veto; before this slice actBlocked returned false for every one of them on its first line`);
+
   await browser.close();
   console.log(fail ? '\n' + fail + ' CHECK(S) FAILED' : '\nROADS OK');
   process.exit(fail ? 1 : 0);
