@@ -176,6 +176,10 @@ const BANNED = ('crucial pivotal vital invaluable transformative game-changing c
   'emphasizing emphasising enhance enhances enhanced ensure ensures ensuring highlight highlights ' +
   'showcase showcases underscore underscores boasts').split(' ');
 
+const TAILS = ('ensuring reflecting highlighting showcasing underscoring contributing fostering ' +
+  'encompassing demonstrating emphasising emphasizing signalling signaling cementing solidifying ' +
+  'illustrating underlining reinforcing bolstering paving').split(' ');
+
 const PHRASES = ['stands as', 'serves as', 'align with', 'aligns with', 'a testament to',
   'plays a key', 'plays a vital', 'valuable insights', 'in conclusion', 'it is important to note',
   'it is worth noting', 'key role', 'marks a shift', 'sets the stage'];
@@ -188,7 +192,8 @@ function words(t) { return String(t).toLowerCase().match(/[a-z']+/g) || []; }
 async function check() {
   const game = await readGame(() => POLICIES.map(p => ({
     id: p.id, name: p.name, cat: p.cat, grp: p.grp || '', max: p.max,
-    desc: p.desc, rungs: p.rungs || null,
+    desc: p.desc, rungs: p.rungs || null, grpText: p.grp || '',
+    deptName: (DEPTS[p.dept] && DEPTS[p.dept].name) || '',
     rungKeys: (function () {
       const out = [];
       for (let i = 1; i <= p.max; i++) {
@@ -225,7 +230,15 @@ async function check() {
     const lower = t.toLowerCase();
     BANNED.forEach(w => { if (new RegExp('\\b' + w + '\\b').test(lower)) fail.push(id + ' ' + label + ': banned word "' + w + '"'); });
     PHRASES.forEach(w => { if (lower.indexOf(w) >= 0) fail.push(id + ' ' + label + ': banned phrase "' + w + '"'); });
-    if (/,\s+[a-z]+ing\b/.test(t)) fail.push(id + ' ' + label + ': participle tail');
+    /* THE PARTICIPLE TAIL IS A NAMED CLASS, not any -ing word after a comma.
+       A first version banned /,\s+[a-z]+ing\b/ outright and produced nine hits
+       on the first batch, every one of them a false positive: "Board, lodging
+       and supervision", "verges, drains, painting", "work, training or a
+       documented search". Those are nouns in a list. What the house style bans
+       is the interpretive clause bolted onto the end of a sentence, and those
+       verbs are a short, closed set. A checker that cries wolf nine times
+       teaches its reader to skip it. */
+    if (new RegExp(',\\s+(' + TAILS.join('|') + ')\\b', 'i').test(t)) fail.push(id + ' ' + label + ': participle tail');
     if (/\bnot (just|only|merely|simply)\b/i.test(t)) fail.push(id + ' ' + label + ': negative parallelism');
     proper.forEach(n => { if (n.length > 3 && lower.indexOf(n) >= 0) fail.push(id + ' ' + label + ': live proper noun "' + n + '"'); });
     const ss = sentences(t);
@@ -259,13 +272,28 @@ async function check() {
       const ss = scan(p.id, 'rung' + (i + 1), t) || [];
       if (ss.length < 2 || ss.length > 5) fail.push(p.id + ' rung' + (i + 1) + ': ' + ss.length + ' sentences, want 2 to 5');
       if (t.length < 90 || t.length > 340) fail.push(p.id + ' rung' + (i + 1) + ': ' + t.length + ' chars, want 90 to 340');
-      /* the specificity floor: it must mention its own subject or something
-         this rung actually moves */
-      const lower = t.toLowerCase();
-      const own = words(p.name + ' ' + p.grp).filter(w => w.length > 4);
-      const keys = (p.rungKeys[i] || []).map(k => k.toLowerCase());
-      const hit = own.some(w => lower.indexOf(w) >= 0) || keys.some(k => lower.indexOf(k) >= 0);
-      if (!hit) fail.push(p.id + ' rung' + (i + 1) + ': names neither its own subject nor anything this rung moves');
+      /* THE SPECIFICITY FLOOR. The description has to share vocabulary with
+         its own subject: its name, its group, its one-line desc, or something
+         the rung actually moves.
+
+         The desc is in the anchor set deliberately. An earlier version took
+         only the name, the group and the rung's keys, and it failed prose that
+         was doing exactly the right thing: Social Security's first rung says
+         "pension", "contribution record" and "the oldest", which is how a
+         person describes that statute, while the registry labels it Social
+         Security and calls the bloc Retirees. Demanding the literal label back
+         would push every welfare line into reciting "Retirees", which is the
+         label-recitation the house style exists to prevent. Matching is on a
+         six-character stem so plurals and inflections count. */
+      const stem = w => w.slice(0, 4);
+      const anchor = new Set();
+      const feed = str => words(str).filter(w => w.length > 3).forEach(w => anchor.add(stem(w)));
+      feed(p.name + ' ' + p.grpText + ' ' + (p.desc || '') + ' ' + (p.deptName || ''));
+      /* every rung's keys, not only this rung's: a statute's vocabulary is the
+         whole ladder's, and rung four often speaks about what rung one built */
+      (p.rungKeys || []).forEach(ks => ks.forEach(feed));
+      const hit = words(t).filter(w => w.length > 3).some(w => anchor.has(stem(w)));
+      if (!hit) fail.push(p.id + ' rung' + (i + 1) + ': shares no vocabulary with its own name, group, description or anything this rung moves');
     });
     const set = new Set(p.rungs.map(x => x.trim()));
     if (set.size !== 4) fail.push(p.id + ': two rungs share a description');

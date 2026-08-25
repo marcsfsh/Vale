@@ -4,7 +4,83 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S11e — The Ministry and the Interests** (PR #33). **The last of five slices
+**S12 — The Statute Book Speaks** (PR #34), first of six. Two asks land whole
+here; the third gets its engine, its tooling and its first two categories.
+
+**A floor under very easy.** `DIFFS.easy` carries `capFloor:75`, applied in a new
+**outermost** wrapper on `capitalIncome`. It has to be outermost: the function is
+wrapped four times after its base and a floor applied lower is undercut by every
+wrapper above it. Measured on a deliberately terrible session (approval 5, unrest
+100, unity 10, debt 9000): very easy pays **75**, the other four pay
+6.17 / 1.41 / 0.71 / 0.05.
+
+**Every core book reads twenty-four, and the registry was never short.** The
+count reported from the Policy page (Authority 19, seven books at 23) was real,
+but nothing was missing: eleven core statutes are gated, four to the Emergency
+form, one to a prerequisite statute and six to a world condition, and
+`viewPolicy` simply omitted them. They now render **locked**: dimmed, no draft
+button, and the condition stated in the sentence `policyWhy` already knew how to
+give. Twelve on a fresh game, every one with a reason.
+
+**The view widened, not the model.** `policyOpen` governs what may be *enacted*
+and what `purgeStatutes` strikes out of a save; it is untouched, and roads
+asserts that. A new predicate `v12Listed` governs only what the page shows,
+scoped to the twenty core categories, because Imperium, People's State and The
+Charter are whole alternate books.
+
+**The ladder learns to speak.** Every statute may carry `rungs`, four strings,
+one per rung, under the mechanics line in the dossier. **48 of 582 carry prose
+so far** (Taxation and Welfare), each with a refreshed one-line `desc`.
+
+Three decisions reversed my first instinct, and the reasoning is in the code:
+the prose is **inline on the statute** rather than in a lookup table (a table
+goes stale on a rename, and six batches appending to one literal conflict on
+every rebase); the renderer is a **forward hook**, not a reassignment of
+`v9Dossier`; and the CSS is a `<div>` with a **two-class selector**, because
+`.sheet p` is specificity (0,0,1,1) and would have beaten a single-class rule
+*whatever the source order*, rendering the prose larger than the mechanics line
+above it.
+
+**Not in two hot paths, deliberately.** `v7Index` is rebuilt on every keystroke
+of the command palette and `policyCard`'s `data-search` is written into all 582
+cards on every render. The one-line `desc` is in both already; half a megabyte
+of rung prose is not joining it.
+
+**The checker earned its keep three times, and was wrong twice.** It caught the
+pilot text naming neither its subject nor anything its rung moves. Then it
+produced 90 hits on the first authored batch, and reading them showed **my rules
+were wrong, not the prose**: the participle-tail regex banned any `-ing` after a
+comma and was catching "Board, lodging and supervision" and "verges, drains,
+painting", nouns in lists; and the specificity floor demanded literal echo of
+registry labels, failing prose that says "pension", "contribution record" and
+"the oldest" for a statute the registry calls Social Security with a bloc called
+Retirees. Demanding the label back would have pushed every welfare line into
+reciting it. The participle rule now names the closed set of interpretive verbs;
+the specificity anchor includes the statute's own `desc` and matches on stems.
+Result: **90 hits to 2**, both genuine, both fixed in the prose.
+
+**maxBytes moved twice, the second time on a measurement.** 2,450,000 to
+3,000,000 before authoring, then to **3,100,000** once the first 48 statutes
+measured **1,115 bytes each**, projecting 2,985,518 at 582. That left 14 KB of
+margin for 534 unwritten statutes, which is the ceiling being discovered late.
+The authored mean came in at 257 chars against a 250 target; later batches aim
+at 230.
+
+```
+ALL CHECKS PASS   11/11, 2,389,903 bytes of 3,100,000
+ROADS OK          90 assertions
+RUNGS OK          192 descriptions, mean 257 chars
+PLAYTEST PASS     44 steps + the WebKit SKIP
+DETERMINISM PASS / TABS OK / TIERS: no width scrolls sideways
+```
+
+Six fail-proofs. The second reproduces the reported page exactly: reverting
+`v12Listed` to `policyOpen` prints Taxation:23, Security:23, Culture:23,
+Environment:23, Foreign:23, Authority:20, Empire:23.
+
+Next: **PR 2**, Labour, Capital, Health and Education.
+
+Previously: **S11e — The Ministry and the Interests** (PR #33). **The last of five slices
 carrying the owner's sixth order.** The complaint on both tabs was the same:
 "lots of repetitive low impact options". Four surveys measured the arithmetic
 behind it in the running game, and every figure below is a measurement.
