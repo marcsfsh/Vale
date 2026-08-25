@@ -205,7 +205,12 @@ async function check() {
       return out;
     })(),
     parties: PARTIES.map(x => x.name).concat(PARTIES.map(x => x.short)),
-    regions: REGIONS.map(x => x.name)
+    regions: REGIONS.map(x => x.name),
+    /* the game's own nouns for its constituencies and indicators. The style
+       brief REQUIRES the prose to name a bloc by the noun the registry gives,
+       so these must be exempt from the overuse rule below. */
+    vocab: Object.keys(BLOC).map(k => BLOC[k].name)
+      .concat(Object.keys(IND).map(k => IND[k].name))
   })));
 
   const fail = [], note = [];
@@ -316,7 +321,25 @@ async function check() {
   sentIndex.forEach((ids, s) => { if (ids.size > 1) fail.push('duplicate sentence across ' + [...ids].join(', ') + ': "' + s.slice(0, 60) + '"'); });
   shingles.forEach((ids, s) => { if (ids.size > 1) fail.push('shared phrasing across ' + [...ids].join(', ') + ': "' + s + '"'); });
   let spam = 0;
-  grams.forEach((ids, g) => { if (ids.size > 6) { spam++; if (spam <= 8) fail.push('overused phrase in ' + ids.size + ' statutes: "' + g + '"'); } });
+  /* THE OVERUSE RULE EXEMPTS THE GAME'S OWN NOUNS, and the reason is a
+     measurement. On the fourth batch it fired five times: three were genuine
+     connective spam ("at the end of", "for the first time", "as well as the")
+     and two were the bloc names "Students and Young Workers" (fifteen
+     statutes) and "Small Business and Farmers" (thirteen). The style brief
+     tells the author to name a bloc by the noun the registry gives, so the
+     rule was ordering the prose to disobey the brief, and the only ways to
+     satisfy it were to rename the constituency or to stop naming it. A rule
+     that fires on its own required vocabulary is measuring the vocabulary,
+     not the writing. It exists to kill "across the country" spam, so it now
+     skips any gram that sits inside a bloc or indicator name. */
+  const vocabGrams = new Set();
+  ((game[0] && game[0].vocab) || []).forEach(n => {
+    const w = words(n);
+    for (let i = 0; i + 4 <= w.length; i++) vocabGrams.add(w.slice(i, i + 4).join(' '));
+  });
+  grams.forEach((ids, g) => {
+    if (ids.size > 6 && !vocabGrams.has(g)) { spam++; if (spam <= 8) fail.push('overused phrase in ' + ids.size + ' statutes: "' + g + '"'); }
+  });
 
   const total = withProse.length;
   const lens = withProse.flatMap(p => p.rungs.map(x => x.length));
