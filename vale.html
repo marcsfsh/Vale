@@ -22388,6 +22388,151 @@ viewRecord = function () {
   return html.slice(0, end) + v11RecordDeck() + html.slice(end);
 };
 
+/* ============================================================
+   S11c — THE FEDERATION
+   The owner: "extremely bare/repetitive with not much impact from the things
+   you do there." The survey found the arithmetic behind that. A region's
+   prosperity, services and order reached ONE governor's approval score and a
+   single arc trigger. The only channel from a region to the national vote was
+   regionPartyFactor, and it was almost entirely a function of eight FROZEN
+   `lean` literals: the one live term was the ruling party's federal-trust
+   nudge, worth about +4.7% at ninety across all eight regions and clamped to
+   [.86, 1.15].
+
+   Per-region seat allocation was considered and rejected. `ballot` produces ONE
+   national vote-share map and already averages the regions through this
+   function; `runElection` renews a third of a flat {partyId:n} with no
+   per-region structure to carry across; and a naive largest-remainder across
+   eight regions hands ~24 seats to whoever leads each region purely from
+   ROUNDING — which would have looked exactly like the feature working. So
+   allocateSeats, ballot, runElection, projection, hemiMap and CFG are all
+   untouched here, and the seat-total invariants hold by construction.
+
+   Instead the term itself is rebuilt. THE OWNER'S RULING: a clean
+   eight-governor sweep is worth about forty Assembly seats — a ~3-point
+   national swing. The federation is a power base.
+
+   TWO THINGS THAT MAKE THE ARITHMETIC UNOBVIOUS, both measured:
+   - this factor is applied TWICE on one ballot (:6786 in supportTargets and
+     :6862 in ballot), so every coefficient is felt at roughly its square;
+   - the old clamp of [.86, 1.15] BINDS at this size, and it silently ate
+     regional penalties for the two flank parties. It widens.
+   ============================================================ */
+/* Measured, not guessed. At gain 1 a clean eight-governor sweep was worth
+   +130 Assembly seats — the factor is applied TWICE on one ballot and the
+   allocation amplifies again, so the naive coefficients overshot the owner's
+   forty by more than three times. Tuned against tools/pacing.js and the
+   measurement in the PR. */
+var V11_REGION_GAIN = 0.23;
+var V11_REGION_SPAN = [.80, 1.22];
+var v11RegionFactorBase = regionPartyFactor;
+regionPartyFactor = function (st, pid) {
+  /* A reassignment rather than a wrapper: the pop-weighted mean is collapsed by
+     the time a wrapper would see it, so there is nothing left to weight. */
+  var pos = ppos(st, pid), total = 0, weight = 0;
+  var me = playParty(st), gov = (st.v6 && st.v6.governors) || {};
+  var auto = (st.v6 && st.v6.autonomy) || {};
+  var targets = (st.campaign && st.campaign.targets) || {};
+  REGIONS.forEach(function (r) {
+    var q = st.regions[r.id]; if (!q) return;
+    var d = dist2(pos, r.lean);
+    var fit = clamp(1.08 - d * .16, .82, 1.12);
+    /* EVERY regional term below is a deviation from 1, summed and then scaled
+       by ONE constant. That is deliberate: this factor is applied twice on a
+       ballot and the allocation amplifies again, so the only honest way to hit
+       a seat target is to tune a single number against a measurement rather
+       than to guess eleven coefficients. V11_REGION_GAIN is that number and
+       the PR reports what it was measured at. */
+    var bonus = 0;
+    var g = gov[r.id];
+    if (g && g.party === pid) {
+      /* a governor of your own colour, and how well they are thought of */
+      bonus += .055 + (clamp(g.standing, 0, 100) - 50) / 900 + (clamp(g.approval, 0, 100) - 50) / 1100;
+    } else if (g && g.party && g.party !== pid) {
+      bonus -= .040 + Math.max(0, clamp(g.standing, 0, 100) - 55) / 1500;
+    }
+    /* the machine on the ground: organiser dots bought on the Campaign page,
+       which until now collapsed into one national scalar and never reached a
+       region's own vote */
+    if (pid === me) bonus += Math.min(3, targets[r.id] || 0) * .019;
+    /* how the region is actually governed. The owner's complaint in one line:
+       these three numbers moved nine of the fifteen buttons on the page and
+       reached nothing at all. */
+    var care = (clamp(q.prosperity, 0, 100) - 50) * .00075 +
+               (clamp(q.services, 0, 100) - 50) * .00065 +
+               (clamp(q.order, 0, 100) - 50) * .00045;
+    /* ASYMMETRIC ON PURPOSE. A government is judged on the regions it governs
+       far more harshly than it is rewarded for them, and the seat allocator
+       already amplifies whatever the leader does — so a symmetric coefficient
+       tuned to make a sweep worth forty seats makes neglect worth almost
+       nothing. Measured: at parity the same factor gave +45 for a sweep and
+       −8 for abandoning every region. Penalties count nearly double. */
+    var govSide = (pid === st.ruling || ((st.coalition || []).indexOf(pid) >= 0));
+    if (govSide) bonus += care * (care < 0 ? 1.9 : 1);
+    else bonus -= care * .55;
+    if (pid === st.ruling) {
+      var fed = (q.federal - 50) / 620;
+      bonus += fed * (fed < 0 ? 1.9 : 1);
+    }
+    /* an opposition party that holds a well-regarded governorship is building
+       something, and the allocator will not hand it the leader's remainder —
+       so the term has to be bigger on that side to be felt at all */
+    if (!govSide && g && g.party === pid) bonus += .085;
+    /* a region outside federal authority is not listening to the centre */
+    if (auto[r.id] && (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0)) bonus -= .07;
+    fit *= 1 + bonus * V11_REGION_GAIN;
+    var w = (typeof q.pop === 'number' ? q.pop : r.pop);
+    total += fit * w; weight += w;
+  });
+  var f = weight ? total / weight : 1;
+  if (pid === playParty(st) && st.doctrine === 'organiser') f += .018;
+  /* The clamp was [.86, 1.15] and BOUND at this size — it ate the regional
+     penalty for RSF and PNL entirely, so the two flank parties could not be
+     hurt in the regions however badly they governed them. */
+  return clamp(f, V11_REGION_SPAN[0], V11_REGION_SPAN[1]);
+};
+/* The map at the close of the count, the governor model and the ballot must
+   agree, or a region flips on screen for reasons the arithmetic did not use. */
+var v11RegionLeadingBase = regionLeadingParty;
+regionLeadingParty = function (st, r) {
+  var best = null, bv = -1;
+  PARTIES.forEach(function (p) {
+    if (st.banned && st.banned[p.id]) return;
+    var q = st.regions[r.id]; if (!q) return;
+    var pos = ppos(st, p.id), d = dist2(pos, r.lean);
+    var v = (st.psupport[p.id] || 0) * clamp(1.08 - d * .16, .82, 1.12);
+    var g = st.v6 && st.v6.governors && st.v6.governors[r.id];
+    if (g && g.party === p.id) v *= 1.09 + (clamp(g.standing, 0, 100) - 50) / 700;
+    if (p.id === st.ruling) v *= 1 + (q.federal - 50) / 620;
+    if (v > bv) { bv = v; best = p.id; }
+  });
+  return best || st.ruling;
+};
+/* What the standing is currently worth, in seats, on the page where it is
+   built. Without this the effect is real and unfelt. */
+function v11RegionalSeats(st) {
+  var keepG = st.v6 && st.v6.governors ? JSON.parse(JSON.stringify(st.v6.governors)) : null;
+  var keepQ = JSON.parse(JSON.stringify(st.regions));
+  var keepT = st.campaign && st.campaign.targets ? JSON.parse(JSON.stringify(st.campaign.targets)) : null;
+  var me = playParty(st), withIt = 0, without = 0;
+  try {
+    withIt = ((projection(st) || {}).seats || {})[me] || 0;
+    /* the counterfactual: every region neutral, no governor of yours, no
+       organisers — what the same national position is worth with nothing built */
+    REGIONS.forEach(function (r) {
+      var q = st.regions[r.id]; if (!q) return;
+      q.prosperity = 50; q.services = 50; q.order = 50; q.federal = 50;
+      if (st.v6 && st.v6.governors && st.v6.governors[r.id]) st.v6.governors[r.id].party = null;
+      if (st.campaign && st.campaign.targets) st.campaign.targets[r.id] = 0;
+    });
+    without = ((projection(st) || {}).seats || {})[me] || 0;
+  } catch (e) { withIt = without = 0; }
+  st.regions = keepQ;
+  if (keepG && st.v6) st.v6.governors = keepG;
+  if (keepT && st.campaign) st.campaign.targets = keepT;
+  return Math.round(withIt - without);
+}
+
 /* ---------- boot ---------- */
 (function () {
   S = enrichState(S, false);

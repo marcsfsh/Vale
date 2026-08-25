@@ -841,6 +841,16 @@
       "line": 0,
       "aliasCaptured": true,
       "reason": "S11a: alias var v11ViewRecordBase captured above. Splices the chart deck in after the Long Record panel, located by the first '</div><div class=\"panel\">' following its heading rather than by counting divs — and deliberately NOT on the two literals the v8 and v9 wrappers splice on, so their inserts stay where they put them."
+    },
+    "regionPartyFactor#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "S11c: alias var v11RegionFactorBase captured above. A REASSIGNMENT rather than a wrapper, deliberately: the old body collapses eight regions into one pop-weighted mean before returning, so a wrapper has nothing left to weight per region. This is the only channel from a region to the national vote, and it was almost entirely a function of eight frozen `lean` literals — the governor, the organisers on the ground and how the region is actually governed now reach it. The [.86,1.15] clamp widened to [.72,1.34]: it bound at this size and silently ate the regional penalty for the two flank parties."
+    },
+    "regionLeadingParty#1": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "S11c: alias var v11RegionLeadingBase captured above. The post-count region map read only psupport, r.lean and federal trust, so a region could flip on screen for reasons the ballot did not use. It now reads the governor and the standing the ballot reads, and the two agree."
     }
   }
 }
