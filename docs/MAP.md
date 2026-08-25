@@ -664,6 +664,74 @@ too, as isolation for any stray call the file grows later.
 
 ## The ladder (S9f) — four rungs on every statute
 
+**`rungs:` — what each rung DOES, in words (S12).** Four strings on the statute
+itself, one per rung, rendered under the mechanics line in `v9Dossier`'s ladder.
+Rung 0 has nothing to say: "Repealed or never enacted" is complete.
+
+**The array is EXACTLY four long.** The renderer indexes `p.rungs[lv - 1]`, so a
+five-element array (someone helpfully writing a rung-0 entry) shifts every
+description down one rung across the whole book, and the text stays present,
+plausible and wrong. Nothing in the game would notice. `tools/rungs.js --check`
+asserts the length and `roads.js` asserts it again on the shipped objects.
+
+**Inline on the statute, not a lookup table keyed by id.** A table goes stale
+silently when a policy is renamed, and six sequential content batches would all
+append to the same literal, so every rebase conflicts inside it. Inline, each
+category sits in its own contiguous region of the three policy arrays
+(`POLICIES`, `V10_POLICIES`, `V10_POLICIES_II`) and the batches never touch the
+same hunk. It also puts `rungs[2]` and `eff3:{...}` on adjacent lines, which is
+the only way a reviewer can check that the prose narrates the key that actually
+appears at that rung.
+
+Not `desc2/3/4`: the numbered-suffix convention means *cumulative override with
+carry-forward* (`ladderAuthored`), and prose has no carry-forward.
+
+**Reached by a forward hook, not a reassignment.**
+`(typeof v12RungSay === 'function' ? v12RungSay(p, i) : '')` inside the ladder
+loop, the same idiom `v10OrderPanel` uses at :9754 to call from v6 into v10.
+Reassigning `v9Dossier` would have copied an eighty-line function to change one
+concatenation and left an unreachable body wearing an alias.
+
+**The CSS is a `<div>` and a two-class selector, both deliberately.**
+`.sheet p` is specificity (0,0,1,1) and beats a single-class `.rung-say` at
+(0,0,1,0) **whatever the source order**, so the prose would have rendered at
+15px, larger than the 12px mechanics line above it, and the rung would read
+upside down. Source order does not save this one. The playtest asserts the
+computed size.
+
+**NOT in `v7Index` (:14560) and NOT in `policyCard`'s `data-search` attribute
+(:9408).** The first is rebuilt on every keystroke of the command palette; the
+second is written into all 582 cards on every `render()`. The one-line `desc` is
+in both already and stays; half a megabyte of rung prose is not joining it.
+
+**`tools/rungs.js`** briefs, splices and checks. `--apply` is idempotent: a
+second run is byte-identical, which is the proof the splice landed where it was
+aimed. Run `node checks/run.js` after every apply, because these are
+single-quoted literals and one unescaped apostrophe stops the game booting.
+
+## The listed and the open (S12)
+
+`policyOpen` governs what may be **enacted** and what `purgeStatutes` strikes
+out of a save. `v12Listed` governs what the policy page **shows**. They are
+deliberately different.
+
+Eleven core statutes are gated (four to the Emergency form, one to a
+prerequisite statute, six to a world condition) and the page used to omit them,
+so Authority read 19 of 24 and five other books read 23. A player counting the
+page could only conclude the book was unfinished. They now render **locked**,
+dimmed, with no draft button and the reason `policyWhy` already knew how to
+give. Every core category reads 24.
+
+**Scoped to the twenty core categories.** Imperium, People's State and The
+Charter are whole alternate statute books; showing those everywhere would put
+three unreachable books on every page. A book struck by the constitution in
+force (`CLOSED`) also stays struck: that is a consequence the player chose, not
+a gate they can work toward.
+
+**Never widen `policyOpen` to achieve this.** It would let a government pass an
+emergency statute under a Federal Republic and would rewrite every campaign in
+progress. `roads.js` asserts it is unchanged.
+
 `P(o)` (~670) is the funnel every policy literal passes through and the ONLY
 place a level curve is built. It sets `max = 4` on everything, records the old
 ladder as `lin`, and expands four channels into five rows each:

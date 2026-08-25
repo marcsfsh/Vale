@@ -1808,6 +1808,79 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `V9_REGION_BLOCS has held a per-region bloc composition since S9 and only ever printed tags with it · ` +
     `deliberately small, because it rides on the S11c regional term that was tuned against a measured seat target`);
 
+  /* S12 — THE STATUTE BOOK SPEAKS. The ladder printed four rungs of numbers and
+     said nothing about what any of them did. */
+  const prose = await page.evaluate(() => {
+    const out = {}, CORE = V12_CORE_CATS;
+    out.total = POLICIES.length;
+    const withProse = POLICIES.filter(p => p.rungs);
+    out.withProse = withProse.length;
+    /* EXACTLY FOUR. v9Dossier indexes rungs[lv - 1], so a five-element array
+       shifts every description down one rung across the whole book and the
+       text stays present, plausible and wrong. Nothing else would notice. */
+    out.wrongLength = withProse.filter(p => !Array.isArray(p.rungs) || p.rungs.length !== 4).map(p => p.id);
+    out.emptyString = withProse.filter(p => p.rungs.some(t => typeof t !== 'string' || !t.trim())).map(p => p.id);
+    out.notDistinct = withProse.filter(p => new Set(p.rungs.map(t => t.trim())).size !== 4).map(p => p.id);
+    /* a description shared between two statutes is the sibling-agent defect */
+    const seen = {}, shared = [];
+    withProse.forEach(p => p.rungs.forEach(t => {
+      const k = t.trim().toLowerCase();
+      if (seen[k] && seen[k] !== p.id) shared.push(seen[k] + '/' + p.id);
+      seen[k] = p.id;
+    }));
+    out.shared = shared;
+    /* the renderer: prose on a rung above zero, silence at rung zero, and a
+       statute with no prose renders exactly as it did before this slice */
+    const sample = withProse[0];
+    out.rendersProse = sample ? v12RungSay(sample, 1).indexOf(sample.rungs[0]) > 0 : null;
+    out.silentAtZero = sample ? v12RungSay(sample, 0) === '' : null;
+    const bare = POLICIES.filter(p => !p.rungs)[0];
+    out.bareUnchanged = bare ? v12RungSay(bare, 1) === '' : true;
+
+    /* THE FLOOR UNDER VERY EASY, and only under very easy. */
+    const tier = k => { const st = JSON.parse(JSON.stringify(S)); st.diff = k;
+      st.approval = 5; st.unrest = 100; st.unity = 10; st.debt = 9000;
+      return +capitalIncome(st).toFixed(2); };
+    out.easyWorst = tier('easy');
+    out.otherWorst = ['gentle', 'normal', 'hard', 'brutal'].map(tier);
+
+    /* EVERY CORE CATEGORY READS 24, and every locked statute says why. */
+    const shown = {};
+    POLICIES.forEach(p => { if (v12Listed(S, p)) shown[p.cat] = (shown[p.cat] || 0) + 1; });
+    out.coreOff24 = CORE.filter(c => shown[c] !== 24).map(c => c + ':' + (shown[c] || 0));
+    out.booksHidden = ['Imperium', "People's State", 'The Charter'].filter(c => shown[c]);
+    out.lockedNoReason = POLICIES.filter(p => v12Listed(S, p) && !policyOpen(S, p) && !policyWhy(S, p)).map(p => p.id);
+    out.lockedCount = POLICIES.filter(p => v12Listed(S, p) && !policyOpen(S, p)).length;
+    /* AND policyOpen ITSELF IS UNTOUCHED: what may be listed widened, what may
+       be ENACTED did not. Widening policyOpen would let an emergency statute
+       pass under a Federal Republic and would rewrite every save. */
+    out.stillClosed = !policyOpen(S, POL.rationBooks) && S.form === 'federal';
+    return out;
+  });
+
+  say(prose.wrongLength.length === 0 && prose.emptyString.length === 0 &&
+      prose.notDistinct.length === 0 && prose.shared.length === 0 &&
+      prose.rendersProse !== false && prose.silentAtZero !== false && prose.bareUnchanged,
+    'every rung that speaks says something of its own',
+    prose.wrongLength.length ? prose.wrongLength.length + ' statute(s) do not carry EXACTLY four rungs: ' + prose.wrongLength.slice(0, 3).join(', ')
+      : (prose.shared.length ? 'the same description under two statutes: ' + prose.shared.slice(0, 3).join(', ')
+        : (prose.notDistinct.length ? 'two rungs of one statute share a description: ' + prose.notDistinct.slice(0, 3).join(', ')
+          : `${prose.withProse} of ${prose.total} statutes carry prose, four rungs each, none repeated within a statute or between two · ` +
+            `rung zero stays silent and a statute with no prose renders exactly as it did before`)));
+
+  say(prose.easyWorst >= 75 && prose.otherWorst.every(v => v < 75),
+    'very easy pays a floor, and nothing else does',
+    `on a deliberately terrible session very easy still pays ${prose.easyWorst} while the other four pay ${prose.otherWorst.join('/')}`);
+
+  say(prose.coreOff24.length === 0 && prose.booksHidden.length === 0 &&
+      prose.lockedNoReason.length === 0 && prose.stillClosed,
+    'every core book reads twenty-four, and the locked ones say why',
+    prose.coreOff24.length ? 'off twenty-four: ' + prose.coreOff24.join(', ')
+      : (prose.booksHidden.length ? 'a form book leaked onto the page: ' + prose.booksHidden.join(', ')
+        : (prose.lockedNoReason.length ? prose.lockedNoReason.length + ' locked with no stated reason'
+          : `all twenty core categories list twenty-four · ${prose.lockedCount} of them are locked and every one states its condition · ` +
+            `the three form books stay hidden · and policyOpen is unchanged, so an emergency statute is still unenactable under a Federal Republic`)));
+
   await browser.close();
   console.log(fail ? '\n' + fail + ' CHECK(S) FAILED' : '\nROADS OK');
   process.exit(fail ? 1 : 0);

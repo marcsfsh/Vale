@@ -432,7 +432,15 @@ var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
     capMult:5.4, capFlat:26, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
-    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:175, capCap:440, bond:150, resist:.25 },
+    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:175, capCap:440, bond:150, resist:.25,
+    /* S12: a FLOOR under the session's capital, not another multiplier. Very
+       easy is the tier whose blurb promises "capital by the cartload"; a
+       government having a bad session on it should still be able to act. Only
+       this tier carries the field, so capitalIncome's floor is a no-op
+       everywhere else. Applied in the OUTERMOST wrapper (v12CapitalFloorBase),
+       because capitalIncome is wrapped four times after the base and a floor
+       applied earlier is undercut by every wrapper above it. */
+    capFloor:75 },
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
@@ -760,7 +768,13 @@ function polEffDelta(p, a, b) {
 var POLICIES = [
   /* taxation */
   P({ id:'incomeTax', grp:'Income and gains', name:'Federal Income Tax', cat:'Taxation', dept:'chan', max:4, cost:6, auth:0, rev:6,
-      desc:'Graduated rates on personal income.',
+      desc:'Rates on personal income that climb with the size of it, collected on the annual return.',
+      rungs:[
+        'A single low band on the top slice of income, set where most households never reach it. The Chancellor collects enough for it to matter and little enough for it to be ignored. The exchanges and the professions object to the principle rather than to the bill.',
+        'Two rates, and a threshold that drops far enough for an ordinary salary to meet it. Retirees on fixed drawdowns feel the change first and say so loudest. Revenue roughly doubles and the Economy carries the drag.',
+        'A third bracket opens above the professional salary range, and the rate on it stops being polite. Avoidance becomes a trade of its own, which the Chancellor answers with staff rather than with softer rates. Poverty eases where the money lands.',
+        'The full graduated schedule on income, with a top rate written to change behaviour rather than to raise money. Capital leaves quietly, in small amounts, continuously. What remains is a Treasury that no longer has to ask the houses for room to spend.'
+      ],
       eff:{ economy:-1.5 }, mood:{ tech:-4, prof:-4, smallbiz:-3, labour:1 },
       eff2:{ economy:-3 }, mood2:{ tech:-8, prof:-8, smallbiz:-6, seniors:-4, labour:2 }, rev2:12,
       eff3:{ economy:-4.5, poverty:-1.5 }, mood3:{ tech:-12, prof:-12, smallbiz:-9, seniors:-6, labour:3 }, rev3:18,
@@ -7259,6 +7273,36 @@ function policyOpen(st, p) {
 /* Why a measure is closed, in words the player can act on. Every disabled
    flash and locked card routes through this: a gate with no stated reason
    reads as a bug, not a mechanic. Policies with req: MUST carry reqText. */
+/* S12: THE VIEW SHOWS MORE THAN THE MODEL ALLOWS, DELIBERATELY.
+
+   policyOpen governs what may be ENACTED and what purgeStatutes strikes out of
+   a save. It is not touched here and must not be: widening it would let a
+   government pass an emergency statute under a Federal Republic and would
+   quietly rewrite every campaign in progress.
+
+   What was wrong: eleven core statutes are gated (four to the Emergency form,
+   one to a prerequisite statute, six to a world condition) and the policy page
+   simply omitted them, so Authority read 19 of 24 and five other books read 23.
+   A player counting the page could only conclude the book was unfinished.
+
+   They now render LOCKED, with the reason policyWhy already knows how to give.
+   Scoped to the twenty CORE categories: Imperium, People's State and The
+   Charter are whole alternate statute books, and showing those everywhere would
+   put three unreachable books on every page. */
+var V12_CORE_CATS = ['Taxation', 'Welfare', 'Labour', 'Education', 'Health', 'Justice',
+  'Security', 'Immigration', 'Culture', 'Technology', 'Energy', 'Environment',
+  'Infrastructure', 'Defence', 'Foreign', 'Federalism', 'Elections', 'Authority',
+  'Capital', 'Empire'];
+function v12Listed(st, p) {
+  if (policyOpen(st, p)) return true;
+  if (V12_CORE_CATS.indexOf(p.cat) < 0) return false;
+  /* a book struck by the constitution in force stays struck: that is a
+     consequence the player chose, not a gate they can work toward */
+  var c = CLOSED[st.form];
+  if (c && ((c.cats && c.cats.indexOf(p.cat) >= 0) || (c.ids && c.ids.indexOf(p.id) >= 0))) return false;
+  return true;
+}
+
 function policyWhy(st, p) {
   if (p.form || p.forms) { if (p.form !== st.form && (!p.forms || p.forms.indexOf(st.form) < 0)) {
     var names = (p.forms || [p.form]).map(function (f) { return FORMS[f] ? FORMS[f].name : f; });
@@ -9316,15 +9360,15 @@ function logPanel() {
 
 function viewPolicy() {
   var live = {};
-  POLICIES.forEach(function (p) { if (policyOpen(S, p)) live[p.cat] = true; });
+  POLICIES.forEach(function (p) { if (v12Listed(S, p)) live[p.cat] = true; });
   var filters = ['all'].concat(CATS.filter(function (c) { return live[c]; })).map(function (c) {
     return '<button data-cat="' + c + '" aria-pressed="' + (UI.polCat === c) + '">' + (c === 'all' ? 'All' : c) + '</button>';
   }).join('');
   var list = POLICIES.filter(function (p) {
-    if (!policyOpen(S, p) || (UI.polCat !== 'all' && p.cat !== UI.polCat)) return false;
+    if (!v12Listed(S, p) || (UI.polCat !== 'all' && p.cat !== UI.polCat)) return false;
     var lv = S.pol[p.id] || 0;
     if (UI.polView === 'active' && !lv) return false;
-    if (UI.polView === 'available' && lv >= p.max) return false;
+    if (UI.polView === 'available' && (lv >= p.max || !policyOpen(S, p))) return false;
     if (UI.polView === 'promises' && !(S.promises || []).some(function (m) { return m.status === 'active' && m.policy === p.id; })) return false;
     if (UI.polSearch) {
       var hay = (p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase();
@@ -9362,6 +9406,10 @@ function viewPolicy() {
 
 function policyCard(p) {
     var lv = S.pol[p.id] || 0;
+    /* S12: a statute the page lists but the model will not open yet. The card
+       still shows what it would do, because that is the point of listing it,
+       and it says in one line what would have to change first. */
+    var v12Locked = !policyOpen(S, p), v12Why = v12Locked ? policyWhy(S, p) : '';
     var pips = '';
     for (var i = 0; i < p.max; i++) pips += '<span class="pip' + (i < lv ? ' on' : '') + '"></span>';
     var tags = [];
@@ -9394,18 +9442,19 @@ function policyCard(p) {
     var upCost = lv < p.max ? policyCost(p.id, 1) : 0;
     var dnCost = lv > 0 ? policyCost(p.id, -1) : 0;
     var liveBill = activeBillFor(S, p.id);
-    var blocked = S.changed[p.id] || !!liveBill;
+    var blocked = S.changed[p.id] || !!liveBill || v12Locked;
     var lean = polLean(p);
     var upBlock = lv < p.max && upperBlocks(S, lean, 1, polAuth(p));
     var dnBlock = lv > 0 && upperBlocks(S, lean, -1, polAuth(p));
     var upRes = lv < p.max ? upperResist(S, lean, 1, polAuth(p)) : 0;
+    if (v12Locked) tags.unshift('<span class="tag down">' + esc(v12Why || 'Not open yet.') + '</span>');
     if (liveBill) tags.unshift('<span class="tag up">' + esc(liveBill.id) + ' · ' + esc(BILL_STAGE_NAMES[liveBill.stage]) + '</span>');
     else if (upBlock) tags.unshift('<span class="tag down">Senate forecast hostile</span>');
     else if (upRes > .15) tags.unshift('<span class="tag down">Senate resists</span>');
     /* a statute built to the top has no upward step to warn about, and the
        Senate's view of giving one back was computed and never shown */
     else if (dnBlock && lv === p.max) tags.unshift('<span class="tag down">Senate forecast hostile to repeal</span>');
-    return '<div class="card" data-policy-card="1" data-search="' + esc((p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase()) + '"><h3>' + esc(p.name) + '</h3>' +
+    return '<div class="card' + (v12Locked ? ' locked' : '') + '" data-policy-card="1" data-search="' + esc((p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase()) + '"><h3>' + esc(p.name) + '</h3>' +
       '<p class="desc">' + esc(p.desc) + '</p>' +
       '<div class="lvl">' + pips + '</div>' +
       '<div class="tagline">' + tags.join('') + '</div>' +
@@ -17338,7 +17387,13 @@ function v9Dossier(id) {
     var costNote = stepI ? ' · ' + stepI + ' capital from here' : '';
     ladder += '<div class="tier' + (i === lv ? ' now' : '') + (i < lv ? ' held' : '') + '"><b>' + i + '</b><span><strong>' + esc(v9TierName(p, i)) + '</strong>' +
       (i ? '<small>' + (effs.length ? effs.join(', ') : 'No indicator effect') + (revI ? ' · revenue ' + fmc(revI) : '') + (expI ? ' · cost ' + fmc(expI) : '') + costNote + '</small>'
-         : '<small>Repealed or never enacted' + costNote + '</small>') + '</span></div>';
+         : '<small>Repealed or never enacted' + costNote + '</small>') +
+      /* S12: what this rung DOES, in words, under the numbers it does it with.
+         A guarded forward hook rather than a reassignment of this function:
+         the idiom at :9754 (v10OrderPanel) already calls forward from v9 into
+         the v10 chunk, and reassigning an eighty-line function to change one
+         concatenation would leave an unreachable body wearing an alias. */
+      (typeof v12RungSay === 'function' ? v12RungSay(p, i) : '') + '</span></div>';
   }
   var up = lv < p.max ? v9PublicSupport(S, p, 1) : null, dn = lv > 0 ? v9PublicSupport(S, p, -1) : null;
   var stances = PARTIES.slice().sort(function (a, b) { return (S.seats[b.id] || 0) - (S.seats[a.id] || 0); }).map(function (q) {
@@ -18500,6 +18555,20 @@ render = function () {
 .dept-strip{margin-top:8px;padding-top:8px;border-top:1px solid var(--rule,rgba(255,255,255,.08))}
 .dept-strip .microstats{margin:0 0 6px}
 .dept-strip .btnrow{margin-top:6px}
+
+/* S12: a listed but unopened statute. Dimmed, never hidden: the page says what
+   the book holds and what would have to change to reach it. */
+.card.locked{opacity:.62}
+.card.locked h3{color:var(--ivory-dim)}
+
+/* S12: the authored line under each rung of the ladder.
+
+   A DIV and a two-class selector, both deliberately. `.sheet p` (:228) is
+   specificity 0,0,1,1 and would beat a single-class `.rung-say` at 0,0,1,0
+   WHATEVER the source order, so the prose would have rendered at 15px, larger
+   than the 12px mechanics line above it, and the rung would read upside down.
+   The div also keeps user-agent paragraph margins out of a 6px grid gap. */
+.tier .rung-say{margin-top:6px;font-size:13.5px;line-height:1.5;color:var(--ivory-dim)}
 </style>
 <script>
 'use strict';
@@ -24376,6 +24445,47 @@ document.addEventListener('click', function (ev) {
   if (!b) return;
   v11SetFunding(b.getAttribute('data-fund'), parseInt(b.getAttribute('data-fundlevel'), 10) || 0);
 });
+
+/* ==========================================================
+   S12 — THE STATUTE BOOK SPEAKS.
+
+   Every statute carries `rungs`, four strings, one per rung. Rung zero has
+   nothing to say: "Repealed or never enacted" is complete.
+
+   The prose lives on the statute itself rather than in a lookup table keyed by
+   id. Two reasons, and the second is the one that decided it. A table has no
+   way to notice that a policy was renamed out from under it, so it goes stale
+   silently. And six content batches landing in sequence would all append to
+   the SAME table literal, so every rebase conflicts inside it; inline, each
+   category sits in its own contiguous region of the three policy arrays and
+   the batches never touch the same hunk.
+
+   THE ARRAY IS EXACTLY FOUR LONG. The renderer indexes rungs[lv - 1], so a
+   five-element array (someone helpfully writing a rung-zero entry) shifts every
+   description down one rung across the whole book, and the text would still be
+   present, plausible and wrong. tools/rungs.js --check asserts the length, and
+   roads.js asserts it again on the shipped objects.
+
+   NOT in v7Index (:14560) and NOT in policyCard's data-search attribute: the
+   first is rebuilt on every keystroke of the command palette and the second is
+   written into all 582 cards on every render. The one-line `desc` is in both
+   already and stays there; half a megabyte of rung prose is not joining it.
+   ========================================================== */
+function v12RungSay(p, lv) {
+  var t = p.rungs && p.rungs[lv - 1];
+  return (lv && t) ? '<div class="rung-say">' + esc(t) + '</div>' : '';
+}
+
+/* THE FLOOR UNDER VERY EASY. capitalIncome is wrapped four times after its
+   base, so a floor applied anywhere but the outermost wrapper is undercut by
+   every wrapper above it. Only DIFFS.easy carries capFloor, so this is a no-op
+   on every other tier. */
+var v12CapitalFloorBase = capitalIncome;
+capitalIncome = function (st) {
+  var v = v12CapitalFloorBase(st);
+  var d = DIFFS[(st && st.diff) || 'normal'] || DIFFS.normal;
+  return d.capFloor ? Math.max(v, d.capFloor) : v;
+};
 
 /* ---------- boot ---------- */
 (function () {
