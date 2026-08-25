@@ -470,6 +470,22 @@ ladder as `lin`, and expands four channels into five rows each:
   BY POSITION and reads EXACTLY THREE choices, so a paper with two or four
   loses a button silently; `roads.js` refuses one. Papers are written, not
   templated: a `{placeholder}` in a title or body is a defect, not a feature.
+- **The order book is SEVENTY-TWO and registration order is load-bearing**
+  (S11b). The thirty-six added carry **no `needs` and no `req`** — the owner's
+  ruling — and are registered **after** the original thirty-six because
+  `roads.js` (:434, :448, :458) and `playtest.js` (:552) all probe
+  `V10_ORDERS.filter(x => !x.target && !x.needs && x.ind)[0]`, which is
+  positional. An ungated order registered first silently becomes the probe and
+  four assertions quietly start measuring something else.
+  **`O()`'s `req` default (:20352) is load-bearing**: `v10OrderOpen` calls
+  `o.req(st)` **unguarded**, so implementing a gate means writing a `req`,
+  never removing the default. The panel carries a filter chip strip — the
+  gated/ungated split is two of its chips.
+  `narrowed` scales everything an order delivers by `.72` per narrowing **except
+  the upkeep**, because a smaller instrument still has to be administered;
+  `upheld` quarters an order's exposure, so surviving a review is worth having;
+  and `m.courtHeat` — the exposure of the whole standing book — reaches the
+  court's hold roll instead of being summed into a field nobody read.
 - **The order book** (S10c). `V10_ORDERS` / `V10_ORDER`, registered through
   `v10RegisterOrders`. An order is NOT a statute: three rules decide what
   belongs — it TARGETS state no statute reaches (region, power, work, issue,
