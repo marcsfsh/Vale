@@ -1094,7 +1094,7 @@ var POLICIES = [
       rungs:[
         'Sheriffs and county forces draw on a federal formula for wages, vehicles and radios. The sum is small enough that a county still sets its own priorities. Young workers meet the extra patrols first. Most of these forces have never taken outside money before.',
         'The grant carries conditions now: cameras, records systems, a return filed on every stop. Forces accept because the money is most of their budget. What a county learns about its residents is stored where it cannot reach it.',
-        'Hiring is the point of this rung, and the academies run without a break to fill the posts. Policing becomes one of the country\'s larger employers, and the lodges that bargain for officers gain weight with it.',
+        'The formula stops buying equipment and starts buying people: a post created on federal money can only be kept on it. Policing becomes one of the country\'s larger employers, and the lodges that bargain for officers gain weight with it.',
         'No force stands outside the formula now, and a county that queried a condition would be querying its own payroll. Armoured vehicles and surplus military kit come with the money. Professionals in the cities begin counting the checkpoints.'
       ],
       eff:{ safety:6 }, mood:{ veterans:5, faith:5, seniors:5, smallbiz:4, youth:-7 },
@@ -1104,10 +1104,10 @@ var POLICIES = [
   P({ id:'policeReform', grp:'Policing', name:'Policing Standards Act', cat:'Justice', dept:'vpres', max:3, cost:6, auth:-.6, exp:3,
       desc:'One national standard on the use of force, a register of misconduct, and review by people who never wore the uniform.',
       rungs:[
-        'A single standard on when force may be used replaces whatever each department decided for itself, and every finding against an officer goes on a register. Serving officers say it was written by people who have never been shouted at.',
-        'The review body answers to the Vice President and stops asking departments to investigate themselves. Complaints that used to close in a fortnight end in findings instead. Where trust returns so do witnesses.',
-        'An officer struck off in one state cannot be hired across the line the following month. The register stops being a record of complaint and becomes a bar to employment. Retirees find their own sheriff short of deputies.',
-        'The standard binds federal agents wherever they are posted, and joint operations with forces that will not meet it are refused. Allies who train their police differently take the refusal as a judgement and say so.'
+        'A single standard on when force may be used replaces whatever each department decided for itself, and every finding goes on a register. A finding is a line on that register and nothing more. Officers say it was written by people who have never been shouted at.',
+        'A register only fills if somebody outside the department fills it. Complaints go to a review body answering to the Vice President, and departments stop investigating themselves. Where trust returns so do witnesses.',
+        'A finding now costs the job, and costs it in every state. An officer struck off in one cannot be hired across the line, because the register is read before a badge is issued. Retirees find their own sheriff short of deputies.',
+        'The standard leaves the police entirely. Federal agents are bound wherever they are posted, and joint operations with forces that will not meet it are refused. Allies who train their police differently take the refusal as a judgement.'
       ],
       eff:{ liberties:4, corruption:-4 }, mood:{ youth:8, prof:6, labour:3, veterans:-5, faith:-2 },
       eff2:{ liberties:7, corruption:-7, safety:1 }, mood2:{ youth:15, prof:11, labour:5, veterans:-9, faith:-4 }, exp2:6,
@@ -1118,7 +1118,7 @@ var POLICIES = [
       rungs:[
         'A judge may go below the floor on the lowest offences and must write down why. The change reaches the fastest part of the docket: possession, petty theft, a missed appointment that became a warrant. The written reasons add up to a record of where the floors were wrong.',
         'The floors go entirely, and the repeal reads backwards: anyone serving under one may apply to be sentenced again. Courts spend a year on cases they thought closed. Some of those released are arrested again and reported at length.',
-        'Supervision ends when the sentence does. Diversion takes the cases that were always about drink or an untreated illness and hands them to clinics never funded to receive them. Waiting lists lengthen far from any court.',
+        'With the floors gone the argument moves past the term to what surrounds it. Supervision ends when the sentence does, and diversion hands the cases that were always about drink or an untreated illness to clinics never funded to receive them.',
         'Custody becomes the exception a court must justify, for every offence short of the violent ones. A shopkeeper who reports a break-in is told it was dealt with by an order he never saw. The purpose is now to get somebody back to work.'
       ],
       eff:{ liberties:2, poverty:-.5 }, mood:{ youth:4, prof:2, labour:1.5, faith:-1.5, seniors:-3 },
@@ -1142,7 +1142,7 @@ var POLICIES = [
       rungs:[
         'Consent must be asked before anything is collected, and deletion honoured when it is requested. Resale of a person\'s file is prohibited outright. The firms that lived on that income read the statute for gaps.',
         'An office is created to enforce it, and it fines on a share of turnover rather than a fixed sum. The gaps close and the advertising model that paid for free services stops working. Products people used without paying begin asking to be paid for.',
-        'The duty now falls on anyone keeping a customer list: every shop with a ledger, every co-op with members. Compliance costs the same whether a firm holds a few hundred records or a great many. Small firms pay for a rule written with the largest in mind.',
+        'The office turns from the largest holders to the smallest: the duty falls on anyone keeping a customer list, every shop with a ledger, every co-op with members. Compliance costs the same whether a firm holds a few hundred records or a great many.',
         'The state is brought inside the statute: an agency may no longer buy from a broker what it would need a warrant to seize. Investigations that ran on purchased location data stop. The law now binds the people who wrote it.'
       ],
       eff:{ liberties:2.5 }, mood:{ prof:3, youth:3, tech:-4 },
@@ -1168,8 +1168,8 @@ var POLICIES = [
       rungs:[
         'Collection runs on selectors with a foreign end, and the warrant comes from a court that sits with nobody present to argue the other side. Who called whom is kept; the call itself is not. Students and the professions object to the court rather than to the tap.',
         'The warrant becomes a standing authority renewed in bulk, so no analyst asks about a particular person before reading about one. Retention has no end date. A query leaves no log, which is how officers begin looking up names of their own.',
-        'Carriers are ordered to build the access in and are paid to maintain it, which turns compliance into a line of business. Engineering staff hold clearances now. The switching rooms of the largest firms have a locked cabinet the firm may not open.',
-        'Everything crossing the wires is held by default, and decryption keys are deposited before a product may ship. Traffic moves to carriers beyond the reach of the order and the Economy takes the loss. Organisers learn their meetings were in the file before they were held.'
+        'The standing authority no longer has to be served on anybody. Carriers are ordered to build the access in and are paid to keep it running, which makes compliance a line of business. The largest switching halls have a locked cabinet the firm may not open.',
+        'The cabinets stop selecting: everything on the wires is held by default, and keys are deposited before a product ships. Traffic moves beyond the order\'s reach and the Economy takes the loss. Organisers learn their meetings were filed before they were held.'
       ],
       eff:{ safety:5, liberties:-7 }, mood:{ veterans:5, faith:2, youth:-8, prof:-5, tech:-4 },
       eff2:{ safety:9, liberties:-14, corruption:3 }, mood2:{ veterans:9, faith:3, youth:-15, prof:-10, tech:-7 }, exp2:7,
@@ -1179,9 +1179,9 @@ var POLICIES = [
       desc:'Fencing, sensor towers, detention beds and the patrols that work the crossings and the roads behind them.',
       rungs:[
         'Fencing and sensor towers go up along the stretches that are actually walked, and the crossings get a night shift. Traffic moves to harder ground and some stops coming. Governments on the far side read the towers as an opinion of them.',
-        'Holding capacity is built, so nobody detained is let go for want of a bed. The lanes at the ports of entry thicken and freight waits in them, which is where the Economy feels this. Veterans approve of a border that is finally staffed.',
-        'The line stops being the whole of it. Checkpoints open on highways well inland, and everyone in the car is asked for papers, citizens included. Liberty is spent on people who have never crossed anything.',
-        'Enforcement reaches the worksites: sheds, yards and the crews that follow the harvest. Fruit is picked late or left, and Agriculture takes the loss. The growers who lost the crews back it harder than they did before the raids.'
+        'Behind the towers there are now beds, so nobody stopped at the line is released for want of one. The night shift becomes every shift, and the lanes at the ports thicken until freight sits waiting in them. That wait is where the Economy feels this.',
+        'The line stops being the whole of it. Checkpoints open on highways well inland and feed the same holding cells, and everyone in the car is asked for papers, citizens included. Liberty is spent on people who have never crossed anything.',
+        'The checkpoints were on the public road. Enforcement now goes through the gate and into the bunkhouse: sheds, yards and the crews that follow the harvest, taken where they sleep. Fruit is picked late or left, Agriculture takes the loss, and the growers who lost the crews back it harder than before.'
       ],
       eff:{ safety:3, tension:2 }, mood:{ veterans:6, smallbiz:5, faith:4, seniors:4, youth:-6, prof:-4 },
       eff2:{ safety:5, tension:3.5, economy:-1.5 }, mood2:{ veterans:10, smallbiz:8, faith:7, seniors:7, youth:-12, prof:-8 }, exp2:9,
@@ -1193,7 +1193,7 @@ var POLICIES = [
         'The annual ceiling on work permits is raised and the skilled queue is drawn first, so laboratories and software houses get hires they waited years for. The Economy answers inside a year. Small employers, short of hands rather than engineers, see nothing in it.',
         'The ceiling opens to work with no degree behind it, and the dairies, the cold stores and the kitchens fill posts left empty for seasons. Agriculture is the first sector to report that the shortage has ended.',
         'Dependants stop counting against the annual ceiling, so a permit that brought one worker now brings a household. Schools, clinics and water mains were built for the town as it was, and nothing is widened at the speed the permits are issued.',
-        'A permit stops binding its holder to the employer who sponsored it, and a term of one ends in a settled place. People who could not change jobs at all can now bargain, which is why Organised Labour breaks with a law it had let pass.'
+        'A permit stops binding its holder to the employer who sponsored it, and a term of one ends in a settled place. The households admitted on the last widening stop being visitors. People who could not change jobs at all can now bargain, which is why Organised Labour breaks with a law it had let pass.'
       ],
       eff:{ economy:4, technology:6 }, mood:{ tech:9, prof:5, youth:4, faith:2, smallbiz:-4, veterans:-3 },
       eff2:{ economy:7, technology:11, agriculture:2.5 }, mood2:{ tech:16, prof:9, youth:8, faith:3.5, smallbiz:-8, veterans:-6 }, exp2:3.5,
@@ -1203,9 +1203,9 @@ var POLICIES = [
       desc:'Joint federal task forces against networks at home and abroad, with a watch list standing behind them.',
       rungs:[
         'Task forces stand up in the field offices, and federal agents work cases beside detectives who know the ground. A watch list is opened and kept short. Old soldiers and pensioners approve; the young ask who reviews the list.',
-        'Charges reach the plan as well as the act, so material support and conspiracy carry most of the caseload. The list gates a boarding pass and a background check, and no procedure exists for a listed person to see the entry.',
-        'The programme crosses the border: liaison posts, captures made with a host service, and strikes where no host will act. Foreign ministries protest the ones they hear about. The ones that become public are paid for at an embassy rather than in the field.',
-        'Informants are placed inside congregations and paid by the case, and the cases they bring rest on an offer the defendant would never have found alone. Clergy who had cooperated read the arrangement differently now.'
+        'Charges reach the plan as well as the act, so material support and conspiracy carry the caseload. Every name a conspiracy sweeps in goes on the list, which now gates a boarding pass and a background check. No listed person may see the entry.',
+        'The same reach crosses the border, where nothing is charged at all: liaison posts, captures with a host service, strikes where no host will act. The list travels with the liaison. Foreign ministries protest the operations they hear about.',
+        'Informants are placed inside congregations and paid by the case, so the programme supplies the plan it used to look for. The names they bring go on the same list. Clergy who had cooperated read the arrangement differently now.'
       ],
       eff:{ safety:3 }, mood:{ veterans:3, seniors:2, prof:1, youth:-2 },
       eff2:{ safety:6, liberties:-3 }, mood2:{ veterans:6, seniors:5, prof:2, youth:-5 }, exp2:4,
@@ -1216,8 +1216,8 @@ var POLICIES = [
       rungs:[
         'Warehouses stocked by region hold water, generators and cots against the season each region actually gets. The agency waits to be asked by a governor. Growers and pensioners in the flood counties are the first to find that it works.',
         'Relief turns into reconstruction, and the agency rebuilds the bridge, the levee and the water works instead of paying for a hotel room. What it puts back may be better than what fell, which the old rules forbade.',
-        'The agency buys the houses that flood every decade and declines to rebuild them, and the ground goes back to marsh and floodway. Congregations and family firms move on a cheque rather than a loan. The next flood has less to take.',
-        'Money moves before the paperwork does, and an emergency clause suspends competitive bidding for the duration. The same hauliers and roofing firms appear after every storm. Trailers are bought at a price nobody negotiated.'
+        'Rebuilding stops being automatic. The agency buys the houses that flood every decade and declines to put them back, and the ground returns to marsh and floodway. Congregations and family firms move on a cheque rather than a loan.',
+        'All of it moves before the paperwork does, and an emergency clause suspends competitive bidding for the duration. The same hauliers and roofing firms appear after every storm, and the buyout valuations come from people the agency picked.'
       ],
       eff:{ safety:5 }, mood:{ smallbiz:6, seniors:5, labour:4, faith:3 },
       eff2:{ safety:9, infrastructure:4 }, mood2:{ smallbiz:11, seniors:9, labour:7, faith:5 }, exp2:7,
@@ -1448,7 +1448,7 @@ var POLICIES = [
       rungs:[
         'A share of each cohort is called by ballot for a term in uniform or in the wards, and the rest carry on as before. Recruits come out with literacy, a trade certificate and a bearing the President likes to be photographed beside.',
         'The ballot goes and the call becomes universal, with deferment for study and a criminal charge for refusal. A young person no longer owns the years the state has claimed. Employers lose a whole cohort out of the hiring market.',
-        'Every conscript is examined, immunised and treated on entry, and a bad chest or a bad tooth is put right at federal expense before training starts. Physicians find they are seeing an entire generation at once.',
+        'Unfitness stops excusing anybody: a bad chest or a bad tooth is put right at federal expense and the conscript serves once it is mended. Deferment for study becomes a postponement rather than a way out of the term. Physicians find they are seeing an entire generation at once.',
         'The term lengthens and a reserve obligation runs for years past discharge. Conscripts are put to roads, dykes and forestry at soldier\'s pay, beside tradesmen on a bargained rate. Organised Labour calls it undercutting and is not wrong.'
       ],
       eff:{ military:4, education:2, safety:2 }, mood:{ veterans:9, faith:6, seniors:5, youth:-10.5 },
@@ -1461,7 +1461,7 @@ var POLICIES = [
         'Transmitters go up on federal money and a news desk is staffed out of the President\'s own office. Schools programming and a farming bulletin make the public case for it. The commercial stations price in a rival that never has to earn anything.',
         'Airtime for a minister is free and unanswered, and production contracts go to houses that employ the right people. An official who can grant a series is worth knowing. Professionals who once trusted the bulletin begin reading around it.',
         'Every licensed station must carry the federal bulletin at the top of the evening, and federal advertising is pulled in house. County papers lose the notices that kept them printing, and the department is soon the only buyer of a reporter\'s work.',
-        'A foreign service goes out across the border in the neighbours\' languages, written where the domestic bulletin is written. Governments protest through their embassies and the broadcasts do not stop.'
+        'The bulletin every station must carry is written for abroad as well, in the neighbours\' languages, at the same desk. What is left of the county press is bought rather than starved out, so the last titles keeping their own reporters change hands. Governments protest through their embassies and the broadcasts do not stop.'
       ],
       eff:{ liberties:-5, education:1 }, mood:{ veterans:5, seniors:4, youth:-6.5, tech:-4 },
       eff2:{ liberties:-9, corruption:4, education:1.5 }, mood2:{ veterans:9, seniors:7, prof:-13, youth:-13, tech:-8 }, exp2:7,
@@ -2084,7 +2084,7 @@ var POLICIES = [
       rungs:[
         'A schedule of offences is given a floor, and a judge who thinks the term wrong may say so in open court and impose it anyway. Sentencing turns from an argument about a person into a search for the right line on a page.',
         'Nothing new is added to the machinery. The schedule grows until it covers the ordinary volume of any docket, so the floor rather than the facts decides most terms. Mitigation is argued less often because it changes nothing.',
-        'The terms are long enough now that a household loses its earner for the whole of a childhood. Rent goes unpaid and a tenancy ends. The cost falls on people who were never charged with anything. The schedule fixed the term years earlier and nobody who wrote it saw this household.',
+        'With most of the docket under a floor, the floors themselves are raised. A household loses its earner for the whole of a childhood, rent goes unpaid and a tenancy ends. The cost falls on people who were never charged with anything.',
         'The floors reach offences that arise out of a dispute at work: obstruction, trespass on an employer\'s ground, refusal to disperse. A stoppage carries a term nobody may reduce. Organised Labour, which had no position on sentencing, acquires one.'
       ],
       eff:{ safety:5, liberties:-6 }, mood:{ faith:6, seniors:7, smallbiz:5, veterans:4, youth:-10, prof:-7 },
@@ -2096,8 +2096,8 @@ var POLICIES = [
       rungs:[
         'A third conviction from a short list of serious offences carries life, and no board may hear the case afterwards. The list is narrow and the numbers are small. The change is at the far end of a sentence, where release used to be possible.',
         'What counts as qualifying widens: convictions from any state, and offences pleaded down at the time. Old files are read again for what they can be made to carry. A man reaches his third without ever having served more than a year.',
-        'Which counts appear on the charging sheet decides the sentence, and that decision belongs to the prosecutor rather than the court. Cooperation buys a lesser charge and refusal buys a life. The bargaining happens in rooms that keep no record.',
-        'The population that cannot leave grows old inside. Cell blocks are converted to infirmaries and the service finds itself running nursing homes. Dementia is treated behind a wall at a cost no hospital would recognise.'
+        'Because so much now qualifies, which counts appear on the charging sheet decides the sentence, and that decision belongs to the prosecutor rather than the court. Cooperation buys a lesser charge and refusal buys a life.',
+        'Every widening arrives in the same place. The population that cannot leave grows old inside, and cell blocks become infirmaries. Dementia is treated behind a wall at a cost no hospital would recognise.'
       ],
       eff:{ safety:1, liberties:-1.5 }, mood:{ seniors:2, faith:1.5, smallbiz:1, youth:-2.5, prof:-2 },
       eff2:{ safety:2, liberties:-3.5 }, mood2:{ seniors:4, faith:3, smallbiz:2, veterans:1.5, youth:-5, prof:-4 }, exp2:1,
@@ -2106,10 +2106,10 @@ var POLICIES = [
   P({ id:'qualifiedImmunity', grp:'Policing', name:'Qualified Immunity Codified', cat:'Justice', dept:'vpres', max:2, cost:5, auth:.6,
       desc:'The officer\'s defence written into statute, so the suit is decided on the pleadings and not on the facts.',
       rungs:[
-        'The defence is written into statute rather than left to judges, so a claim is decided on the pleadings and never reaches a jury. What matters is whether an earlier case matched these facts closely enough.',
-        'The shield reaches past the officer to the supervisor who trained him and the department that employed him, so no defendant is left. Discipline is internal, and internal discipline is administered by colleagues.',
-        'Troops on domestic deployment and federal agents seconded to a local force come under the same protection. A soldier on a city street answers to the code he arrived with and to nothing the city can invoke.',
-        'Immunity follows the function rather than the badge, which covers the contractor who transports, guards and houses people for the state. A family with a complaint about how a relative was handled finds nobody who can be made to answer.'
+        'The defence is written into statute rather than left to judges, so a claim against the officer is decided on the pleadings and never reaches a jury. What matters is whether an earlier case matched these facts closely enough. Almost none do.',
+        'The shield passes from the officer to the department behind him: the supervisor who trained him, the county that employs them both. A claimant runs out of defendants. Discipline is internal, and internal discipline is administered by colleagues.',
+        'Cover passes from the department to whoever is lent to it. Troops on domestic deployment and federal agents seconded to a local force carry the same protection with them. A soldier on a city street answers to the code he arrived with.',
+        'The uniform stops mattering. Immunity follows the function, which covers the contractor who transports, guards and houses people for the state. A family with a complaint about how a relative was handled finds nobody who can be made to answer.'
       ],
       eff:{ safety:1.5, liberties:-3 }, mood:{ veterans:4, smallbiz:2, youth:-4.5, prof:-4, labour:-1.5 },
       eff2:{ safety:3, liberties:-6, corruption:3 }, mood2:{ veterans:8, faith:3, smallbiz:4, youth:-9, prof:-8, labour:-3 },
@@ -2131,9 +2131,9 @@ var POLICIES = [
       desc:'A permit issued anywhere is good everywhere, and no city ordinance may say otherwise.',
       rungs:[
         'A permit from the state with the lightest conditions is honoured in the state with the heaviest, and the local ordinances that said otherwise are preempted. City councils lose a power they had held for a century.',
-        'Carry reaches the places local law had kept clear: the transit car, the hospital corridor, the polling station. Older residents who wanted one room in the city to be unarmed find there is none. One rule everywhere is the argument for it.',
-        'Preemption reaches the workplace. An employer may not bar a lawful arm from the car park, and a plant that searched vehicles at the gate stops. The people who wanted this drive an hour of country road to a shift, and they say so.',
-        'Nothing stops the arms at the border, and neighbouring governments pick them up out of their own crime scenes and send notes about it. Trauma wards absorb what the traffic leaves behind. A rule about permits is now a question of foreign relations.'
+        'Preemption reaches past the ordinance to the building. The places local law had kept clear open up: the transit car, the hospital corridor, the polling station. Older residents who wanted one room in the city to be unarmed find there is none.',
+        'Preemption leaves the governments and binds the owner of the ground. An employer may not bar a lawful arm from the car park, and a plant that searched vehicles at the gate stops. The people who wanted this drive an hour of country road to a shift.',
+        'No rule inside the country is left to override, so the statute meets the ones outside it. Neighbouring governments pick these weapons out of their own crime scenes and send notes about it. Trauma wards absorb what the traffic leaves behind.'
       ],
       eff:{ safety:-4, liberties:5 }, mood:{ smallbiz:10, veterans:10, faith:5, prof:-8, youth:-4 },
       eff2:{ safety:-9, liberties:10 }, mood2:{ smallbiz:20, veterans:19, faith:9, prof:-16, youth:-7, seniors:-6 },
@@ -2146,8 +2146,8 @@ var POLICIES = [
       rungs:[
         'The surplus pipeline shuts: no armoured car, rifle or breaching charge leaves a depot for a county sheriff again. Departments keep what they already hold. The young and the professions read the closure as the whole point of it.',
         'What was issued comes back, and the recall is enforced by withholding the next federal grant. Small departments lose the vehicles they had built a tactical unit around. The rare event takes longer to reach, and Public safety shows it.',
-        'The foreign leg closes too, so surplus stops moving to allied forces and the training missions attached to it end. Sheriffs who used to train abroad on federal money stay home. Tension falls by a quiet amount nobody claims credit for.',
-        'Standing tactical teams disband except where a judge names one for a warrant, and the barracks habit goes with them. The services lose the customer that had been clearing their inventory. Pensioners in quiet counties call it a mistake.'
+        'Kit pulled back from a county cannot be shipped out instead, so the foreign leg closes with it. Surplus stops moving to allied forces and the training missions attached to it end. Tension falls by a quiet amount nobody claims credit for.',
+        'The units built around the kit go too. Standing tactical teams disband except where a judge names one for a warrant, and with no county team left to equip the services lose the customer that had been clearing their inventory. Pensioners in quiet counties call it a mistake.'
       ],
       eff:{ liberties:3 }, mood:{ youth:5, prof:4, labour:1.5, veterans:-4, faith:-1.5, smallbiz:-2 },
       eff2:{ liberties:7, safety:-2 }, mood2:{ youth:11, prof:9, labour:3, veterans:-9, faith:-3, smallbiz:-4 }, rev2:1,
@@ -2158,8 +2158,8 @@ var POLICIES = [
       rungs:[
         'A board with its own cleared staff and a subpoena that agencies must answer. It reads programmes after the fact and reports to the houses behind a closed door. The professions and technology firms wanted somebody in the room; serving officers did not.',
         'The board reviews a programme before it runs and may refuse it, which turns a report into a permission. Operations wait on a docket. Some collection that used to happen simply does not, and Public safety records the difference.',
-        'Military intelligence loses its exemption and comes inside the board\'s writ, together with the service units counted until now as tactical support. The uniformed side had never answered to a civilian body holding a subpoena.',
-        'The board publishes, in summary and on its own schedule, without asking the agency first. Partner services start holding material back rather than see it surface in a printed finding. Sharing narrows where it used to be managed quietly.'
+        'The refusal reaches the uniformed side. Military intelligence loses its exemption, together with the service units counted until now as tactical support, and waits on the same docket as everyone else.',
+        'The findings stop going only to a closed room. The board publishes in summary on its own schedule without asking the agency first, and partner services hold material back rather than see it surface in print.'
       ],
       eff:{ liberties:3, corruption:-2 }, mood:{ prof:5, youth:4, tech:3, veterans:-3 },
       eff2:{ liberties:8, corruption:-4, safety:-2 }, mood2:{ prof:10, youth:9, tech:6, veterans:-8 }, exp2:2,
@@ -2182,7 +2182,7 @@ var POLICIES = [
       rungs:[
         'Jails stop holding anyone past their release date on a federal request, since a request is not a warrant. Officers may still ask about status and most still do. Liberty rises, and the crime figures wobble enough that both sides claim them.',
         'The practice hardens into a rule binding every force and every lockup, and a sheriff who holds somebody anyway answers for it personally. Asking about status during a stop goes too. Veterans read it as police ordered not to police.',
-        'Transfers sought through a consulate stop too: a foreign government asking for its national back is answered with a court order and nothing quicker. The notes from those capitals arrive within the month.',
+        'The rule binding every force is applied to requests from abroad as well: a foreign government asking for its national back is answered with a court order and nothing quicker. The notes from those capitals arrive within the month.',
         'No local record reaches a federal agent at all, plate readers and licence files included. Grants written on the assumption of cooperation are withheld in return, and the Economy carries the loss. One government has simply stopped helping another.'
       ],
       eff:{ liberties:2.5, safety:-1 }, mood:{ youth:5, prof:3.5, tech:2, faith:-1.7, veterans:-4, smallbiz:-3 },
@@ -2416,8 +2416,8 @@ var POLICIES = [
       rungs:[
         'A federal code sets what may be shown before the evening and what may not be shown at all, and a station in breach answers to the licence rather than to a jury. Schedulers clear the early evening, and a station that guesses wrong loses a week of air.',
         'Print and the carriers are folded in, and a service answers for what its users put up, which means reading it before anybody else can. Moderation becomes the largest department in firms that never had one, and investors mark the sector down.',
-        'The examiners gain discretion over what counts as a breach, and a renewal starts to depend on the goodwill of whoever holds the file. Publishers learn which examiner to take to lunch, and the same scene passes on one station and not on the next.',
-        'Every service must check identity at the door and keep the proof, so reading anything at all becomes a recorded act. Smaller firms cannot carry the cost and either sell up or move their machines out of the country.'
+        'The written schedule gives way to the examiners\' judgement, and nothing goes out until they have seen it, print and the carriers included. A renewal turns on the goodwill of whoever holds the file, so publishers learn which examiner to take to lunch. The same scene passes on one station and not on the next.',
+        'The code reaches the reader at last: every service must check identity at the door and keep the proof, and the examiners hold that register beside the files. Reading anything at all becomes a recorded act. Smaller firms cannot carry the cost and either sell up or move their machines out of the country.'
       ],
       eff:{ liberties:-3.5 }, mood:{ faith:6, seniors:2.5, youth:-5, prof:-4 },
       eff2:{ liberties:-7.5 }, mood2:{ faith:13, seniors:5, youth:-10, prof:-8, tech:-5 }, exp2:2,
@@ -2427,9 +2427,9 @@ var POLICIES = [
       desc:'Every federal restriction on what may be said is repealed, and the state and county ones are preempted.',
       rungs:[
         'Federal restrictions on content go together: no offence of insult, no decency rule for the airwaves, no liability for a carrier over what a stranger posts. Congregations lose a remedy they had used quietly for years.',
-        'State and county ordinances are preempted, so a town may no longer set its own limit, and incitement narrows to words meant to bring violence within the hour. A protest at a funeral and a burning flag are both lawful now.',
-        'Material that other countries prohibit is published from here and stays up, because no minister holds the power to take it down at a foreign request. Other governments ask anyway and are sent the text of the statute by way of an answer.',
-        'The exception for the classroom goes: a teacher cannot be disciplined for anything said in front of a class, and the department loses its hold on what a curriculum must contain. School boards may set a syllabus and may not police it.'
+        'The repeal stops being federal housekeeping and binds downward: no state, county or town may keep a rule the chamber has struck, and incitement shrinks to words meant to bring violence within the hour. A protest at a funeral and a burning flag are lawful, and service associations find they have nobody left to petition.',
+        'The preemption runs outward as well, so an order from abroad to take something down has no more force here than a county ordinance. Material other countries prohibit is published from here and stays up. Governments ask through their embassies and are sent the text of the statute by way of an answer.',
+        'The last exception left standing is the classroom, and it goes. A teacher cannot be disciplined for anything said in front of a class, and the department loses its hold on what a curriculum must contain. School boards may set a syllabus and may not police it.'
       ],
       eff:{ liberties:2.3, safety:-.8 }, mood:{ tech:2, youth:1.8, smallbiz:1.5, prof:.5, faith:-1.8 },
       eff2:{ liberties:5, safety:-1.5 }, mood2:{ tech:4.5, youth:4, smallbiz:3.5, prof:1, faith:-4, veterans:-1.5 },
@@ -3006,10 +3006,10 @@ var POLICIES = [
   P({ id:'civilForfeiture', grp:'Policing', name:'Civil Asset Forfeiture', cat:'Justice', dept:'vpres', max:2, cost:5, rev:1.5, auth:.8,
       desc:'The property is charged rather than the owner, and the office that takes it keeps what it is worth.',
       rungs:[
-        'A case is brought against the thing rather than the person, so no conviction is needed and the owner must sue to get it back. Whatever is taken stays with the office that took it. The incentive is written into the statute in plain sight.',
-        'The threshold falls until it catches the cash a business actually carries: a day\'s takings, a livestock payment, the roll a market trader keeps in the van. Recovering it costs more than it was worth. Shopkeepers begin banking twice a day.',
-        'Proceeds are shared with the federal and military units working alongside a local force, which buys equipment no legislature voted for. A unit funds itself out of what it stops on a highway. The forces call the arrangement sound housekeeping.',
-        'Accounts and premises may be frozen before any hearing, so a firm loses its bank and its doors on the same morning. Payrolls do not go out. What is returned comes back to a company that no longer trades.'
+        'The case is brought against the thing, not the person: no conviction is needed, and the owner must sue to get it back. What may be taken is property tied to a charged offence, and it stays with the office that took it. The incentive is in the statute in plain sight.',
+        'The tie to a charge is dropped, and the threshold falls until it catches the cash a business actually carries: a day\'s takings, a livestock payment, the roll a market trader keeps in the van. Shopkeepers begin banking twice a day.',
+        'Seizure moves off the case file and onto the road. Joint highway units, federal officers and soldiers among them, may stop a vehicle and take what is in it with no charge brought against anybody, and they keep a share. A unit funds itself out of a lane of traffic.',
+        'What is banked comes within reach. Accounts and premises may be frozen before any hearing, so a firm loses its money and its doors on the same morning. Payrolls do not go out. What is returned comes back to a company that no longer trades.'
       ],
       eff:{ liberties:-5, corruption:2.5, safety:1 }, mood:{ veterans:2.5, prof:-5, youth:-4 },
       eff2:{ liberties:-11, corruption:6, safety:2 }, mood2:{ veterans:5, prof:-11, youth:-9, smallbiz:-8 }, rev2:3.5,
@@ -3033,9 +3033,9 @@ var POLICIES = [
       desc:'Offensive and defensive network operations gathered under one joint command with a standing budget.',
       rungs:[
         'One command absorbs the network defence teams scattered across the services and the civil agencies. It holds the federal networks first and answers for them. Technology firms and old soldiers both find something to like in a single address.',
-        'The command works outside the border and keeps quiet access inside networks it does not own, against the day somebody asks for it. Access of that kind is discovered eventually, and the discovery is an incident between governments.',
-        'A recruiting pipeline is built rather than bought: scholarships tied to service, a stream inside the academies, paid summers for undergraduates. Universities gain laboratories out of the arrangement. The best graduates now have a bidder.',
-        'Flaws found in common software are stockpiled for use instead of reported for repair, and the same holes stay open in the water boards and the grid. The command is stronger and everything it declines to fix is weaker.'
+        'Defending the federal networks stops being the whole job. The command works outside the border and keeps quiet access inside networks it does not own. Access of that kind is found eventually, and the discovery is an incident between governments.',
+        'Access held abroad has to be staffed, so the command grows operators rather than bidding for them: scholarships tied to service, a stream inside the academies, paid summers for undergraduates. Universities gain laboratories out of it.',
+        'The operators it grew find flaws faster than anyone can repair them, and the command stockpiles what they find instead of sending it back. The same holes stay open in the water boards and the grid. Everything it declines to fix is weaker.'
       ],
       eff:{ safety:5, technology:3, military:3 }, mood:{ veterans:7, tech:4, prof:2, youth:-4 },
       eff2:{ safety:9, technology:5, military:5, tension:3 }, mood2:{ veterans:13, tech:7, prof:4, youth:-7 }, exp2:9,
@@ -3046,8 +3046,8 @@ var POLICIES = [
       rungs:[
         'Retaliation for a protected disclosure is unlawful, and an official dismissed for one gets reinstatement and back pay from the department that did it. The channel to the houses cannot be shut by an agency rule. Nothing is spent to run it.',
         'Cleared officers come inside the protection, so a classified matter can reach a committee without permission from the chain of command. The chain reads that as an invitation to go around it. Service associations file against the change.',
-        'Contractor staff gain the standing officials have, which puts the whole supply chain inside the law. Overbilling and false certification surface from the people who watched them happen. The saving reaches the Economy before the courts finish.',
-        'A public interest defence is written into the trial itself, so a jury may hear why a disclosure to the press was made. Sources abroad stop trusting the arrangements, and some collection dries up for reasons never printed.'
+        'Contractor staff gain the standing officials and cleared officers now have, which puts the whole supply chain inside the law. Overbilling and false certification surface from the people who watched them happen. The saving reaches the Economy before the courts finish.',
+        'The channel stops being the only lawful route. A public interest defence is written into the trial, so a jury may hear why an official, an officer or a contractor went to the press instead. Sources abroad stop trusting the arrangements.'
       ],
       eff:{ liberties:3, corruption:-3 }, mood:{ prof:5, youth:4, tech:2 },
       eff2:{ liberties:8, corruption:-7 }, mood2:{ prof:10, youth:9, tech:4, veterans:-7 },
@@ -3057,9 +3057,9 @@ var POLICIES = [
       desc:'Guarding, logistics and custody bought from firms on federal contracts instead of staffed by officials.',
       rungs:[
         'Federal sites hand their guarding, haulage and catering to firms on cost plus terms. Headcount falls and the same work goes on. Financiers put money behind the new companies and family businesses take the subcontracts.',
-        'Armed roles follow: convoy escort, custody and interrogation support, held under a purchase order rather than a commission. A man with a rifle at a federal gate answers to a contracting officer. Salaried professionals turn against it; the union was already there.',
-        'The firms harden into an industry with a payroll, a lobby and a supply of retired officials who write the specifications they later bid on. The Economy gains a sector. Renewals stop being contested at all.',
-        'Arrest and search pass to contract staff, and a complaint about either goes to the contracting officer instead of a court. Nobody can be sued the way an officer is sued. Civil liberties fall wherever the uniform is a company uniform.'
+        'The rifle goes with the work. Convoy escort, custody and interrogation support are bought on a purchase order, and an armed man at a federal gate answers to a contracting officer. Salaried professionals turn against it; the union was already there.',
+        'The specification goes next. Retired officials write the requirements they later bid on, so the department asks for what the industry already sells. The Economy gains a sector and renewals stop being contested.',
+        'Arrest and search go last, and the remedy goes with them: a complaint reaches the contracting officer rather than a court. Nobody can be sued the way an officer is sued, and Civil liberties fall wherever the uniform is a company uniform.'
       ],
       eff:{ safety:1.5, corruption:3, military:1 }, mood:{ tech:3.5, smallbiz:2, labour:-3.5, youth:-2.5 },
       eff2:{ safety:3, corruption:6, military:2 }, mood2:{ tech:7, smallbiz:4, labour:-7, prof:-7, youth:-5 }, exp2:4,
@@ -3096,7 +3096,7 @@ var POLICIES = [
       rungs:[
         'Permits run for one season, tied to one named grower, and expire with the harvest. The grower posts a bond against the worker\'s return. Farms and dairies get their crews back, and Organised Labour reads the design as wage setting by other means.',
         'The scheme runs past the harvest into processing plants and building sites, on year long contracts at a rate written below the local one. The work is lawful and the wage is lawful, and the number of people working full time in poverty goes up.',
-        'Because the permit belongs to the employer, a complaint costs the complainant the right to be here. Unpaid hours, crowded bunkhouses and injuries on the line stop being reported at all. What nobody hears about, nobody acts on.',
+        'The permit still belongs to the employer, and it now covers a year of a life rather than a season, so a complaint costs a year of standing. Unpaid hours, crowded bunkhouses and injuries on the line stop being reported at all. What nobody hears about, nobody acts on.',
         'Terms are extended and renewed without limit, and none of them lead anywhere: a decade of renewals still ends in departure. The congregations that hold services at the bunkhouses watch families spend whole childhoods as visitors, and break with it.'
       ],
       eff:{ agriculture:5, economy:3 }, mood:{ smallbiz:10, tech:5, labour:-9, youth:-3, prof:-3 },
@@ -3108,7 +3108,7 @@ var POLICIES = [
       rungs:[
         'The fee goes and the backlog is worked down by clerks hired for that alone. Nothing about who qualifies has changed; the wait has. People eligible for years take the oath in the first season of it.',
         'The residence period itself is cut, and time already spent here on a student or a work permit counts toward what remains. Somebody who arrived to study can be a citizen before the degree is old.',
-        'Renunciation is dropped, so a new citizen keeps the nationality they were born with. Retirees who understood the oath to mean giving something up say so loudly, and they are not wrong about what changed.',
+        'With the wait already cut, the last thing the oath demanded goes: a new citizen keeps the nationality they were born with. Retirees who understood the oath to mean giving something up say so loudly, and they are not wrong about what changed.',
         'The character inquiry becomes a check of documents, which is the only way the timetable can be met. Citizenship now follows residence almost automatically. A few are naturalised who would have failed the old interview, and the figures carry them.'
       ],
       eff:{ liberties:2.5, economy:1 }, mood:{ prof:4, youth:3.5, tech:2.5, faith:1.5, veterans:-4, smallbiz:-2.5 },
@@ -3132,7 +3132,7 @@ var POLICIES = [
       rungs:[
         'Residence is granted against a sum placed in an approved fund and left alone for a term. The Chancellor takes a fee on every grant, and the first year of it pays for itself. Finance houses handle the placements and are delighted to.',
         'The money may be placed through an agent, and where it came from is answered by a declaration rather than by an inquiry. A trade in introductions appears inside a few months. Corruption is the first indicator to move and it does not move back.',
-        'Capital arriving this way goes where it is safest, which is property. Rents climb in the cities that received it, and households already at the edge of their income drop under. The scheme raises money and makes people poor in the same quarter.',
+        'Money nobody has asked about goes where it is safest, which is property. Rents climb in the cities that received it, and households already at the edge of their income drop under. The scheme raises money and makes people poor in the same quarter.',
         'The holding period goes: the capital may leave the fund the day after the grant is signed, and the residence stands anyway. A place here is now sold for money that need not stay. Veterans, who were told it is earned, want no part of the scheme.'
       ],
       eff:{ economy:1.5, technology:1.5 }, mood:{ tech:5, smallbiz:1.5, labour:-2.5, youth:-2, prof:-1.5 },
@@ -3147,7 +3147,7 @@ var POLICIES = [
         'Monuments, battlefields and named buildings go onto a schedule, and moving or altering one becomes an offence rather than a decision for a council. Statues that had been coming down stop coming down.',
         'A canon is written alongside the schedule: works, events and texts a school must cover before a pupil leaves. The Vice Chancellor decides what belongs in the national account of itself, and the deciding is loud.',
         'The canon stops being a reading list and becomes a spending list. Grants and relief on repair follow it, and an inspector approves the mortar. The stone, glass and thatch trades take apprentices again, and coach parties follow the syllabus.',
-        'The schedule reaches anything past a certain age, and one listed wall is enough to stop a bypass, a rail line or a reservoir. Engineers reroute at expense or abandon the scheme. Much of what the country needed built stays unbuilt.'
+        'Age alone lists a thing now, and whatever the canon names is scheduled with it, so one wall is enough to stop a bypass, a rail line or a reservoir. Engineers reroute at expense or abandon the scheme. Much of what the country needed built stays unbuilt.'
       ],
       eff:{ liberties:-1.5 }, mood:{ faith:4, veterans:4.5, seniors:3, smallbiz:2, youth:-3.5, prof:-2.5 },
       eff2:{ education:2, liberties:-3 }, mood2:{ faith:8, veterans:9, seniors:6, smallbiz:4, youth:-7, prof:-5 }, exp2:3,
@@ -3169,8 +3169,8 @@ var POLICIES = [
       desc:'A right to be dealt with in a regional language at any federal counter, court or telephone line.',
       rungs:[
         'Anybody may deal with a federal office in a regional language as of right, and the office must find the interpreter rather than the citizen. Service families and country traders ask what was wrong with the counter as it stood.',
-        'Schooling in a regional language is funded and examined on the same footing as the official one, so a pupil may sit the whole certificate in it. Teacher training opens in tongues that had no route into the profession.',
-        'Hospitals must provide interpretation at the bedside, and consent taken in a language the patient does not command does not count. A diagnosis stops turning on what a relative could render, and hospitals bid against the courts for the same short list of interpreters.',
+        'The right at the counter is worth only what the staff can speak, so schooling in a regional language is funded and examined on the same footing as the official one. A pupil may sit the whole certificate in it, and teacher training opens in tongues that had no route into the profession.',
+        'An act done without the language is void: consent taken from a patient who did not command it does not stand, and a ward with no interpreter cannot lawfully proceed. Hospitals bid against the courts for the same short list, and pupils out of the funded classrooms are hired before they qualify.',
         'Every notice, ballot paper and road sign issues in all recognised languages, and a federal post requires a certificate in two of them. Long serving clerks with only the official language move sideways or out, and pensioners watch the queue slow.'
       ],
       eff:{ liberties:2.5 }, mood:{ prof:3, youth:3, labour:2, faith:-2, veterans:-4, smallbiz:-3 },
@@ -3825,9 +3825,9 @@ var POLICIES = [
       desc:'The pool drawn from every adult on the register, paid a full day\'s wage, and no verdict returned but a unanimous one.',
       rungs:[
         'The pool is drawn from every adult on the register rather than from lists of property owners and licence holders. Service pays a full day\'s wage, so a jury seat stops costing money. The benches begin to look like the towns they sit in.',
-        'Unanimity is required, and one juror who is not satisfied ends the case. Prosecutions that would once have gone through on a majority fail. Exemptions go too, so serving officers and their commanders are called like anyone else.',
-        'A long trial needs its jurors for months, and an employer must hold the post open and paid until the verdict. A worker who could never have afforded the months sits through them, paid every week. The cost of doing this properly lands on somebody else\'s books.',
-        'Excusal for hardship is abolished. The shopkeeper who is the only one who can open in the morning is summoned, and so is the widow who has not driven after dark in years. Everyone is equally eligible and equally unable to say no.'
+        'A verdict must be unanimous, so every seat counts, and the exemptions that kept whole professions out of those seats are repealed. Serving officers and their commanders are called like anyone else. Prosecutions that once went through on a majority fail.',
+        'An employer can no longer settle it by refusing the time. A long trial needs its jurors for months, and the post is held open and paid until the verdict. The bill for doing this properly lands on somebody else\'s books.',
+        'The last way out closes: excusal for hardship is abolished. The shopkeeper who is the only one who can open in the morning is summoned, and so is the widow who has not driven after dark in years.'
       ],
       eff:{ liberties:2.5, corruption:-1.5 }, mood:{ prof:3.5, youth:2.5, labour:2 },
       eff2:{ liberties:6, corruption:-3.5, safety:-1 }, mood2:{ prof:8, youth:6, labour:5, veterans:-4 }, exp2:2,
@@ -3848,10 +3848,10 @@ var POLICIES = [
   P({ id:'youthJustice', grp:'Sentencing and prisons', name:'Youth Justice', cat:'Justice', dept:'vpres', max:2, cost:4, exp:1.5, auth:-.35,
       desc:'A separate court for anyone under eighteen, with the record sealed and diversion the first answer.',
       rungs:[
-        'Nobody under eighteen is tried in an adult court, whatever the charge. The record is sealed at the end and stays sealed. Retirees who remember a case that filled the papers ask which exception was kept and are told there is none.',
-        'The institutions become schools that lock: hours of teaching, a trade to learn, a chaplain who visits. Time inside stops being time subtracted from an education. Old soldiers who wanted a boot camp are told this is the boot camp.',
-        'The trade learned inside does not stop at the gate: a place with an employer is held for the day of release, and the instructor who taught it signs the reference. Earnings appear in households that had written a child off. The saving is a generation long.',
-        'The seal binds employers as well as courts: an employer may not ask and may not be told. A shopkeeper hiring for a stockroom takes the reference at face value and has no way to check the rest. A child\'s worst year is nobody else\'s business.'
+        'Nobody under eighteen is tried in an adult court, whatever the charge, and the file is sealed when the case ends. The seal binds the courts and stops there. Retirees who remember a case that filled the papers are told no exception was kept.',
+        'The separate system follows the child past the courtroom into the institution. These become schools that lock: hours of teaching, a trade to learn, a chaplain who visits. Old soldiers who wanted a boot camp are told this is the boot camp.',
+        'It follows him out through the gate. A place with an employer is held open for the day of release, and the instructor who taught the trade signs the reference. Earnings appear in households that had written a child off.',
+        'The seal that bound the courts now binds employers: an employer may not ask about a sealed file and may not be told. A shopkeeper hiring for a stockroom takes the reference at face value and cannot check the rest.'
       ],
       eff:{ liberties:2, safety:.5 }, mood:{ youth:4, prof:3, seniors:-2.5 },
       eff2:{ liberties:5, safety:1.2, education:1 }, mood2:{ youth:9, prof:7, faith:3, seniors:-6, veterans:-3 }, exp2:3.5,
@@ -3864,8 +3864,8 @@ var POLICIES = [
       rungs:[
         'A single standard for training and equipment across the state units, so a company raised in one place can be commanded alongside a company raised in another. The radios work together. Old soldiers and the professions treat it as overdue housekeeping.',
         'Rules of engagement are written federally, and the loaded rifle facing a crowd becomes an exception a commander has to justify afterwards. What a unit may do on a street is the same everywhere. A guardsman who fires is measured against a rule the crowd he faced can also read.',
-        'The armouries are inventoried on a federal schedule and audited without notice, and equipment that used to walk out of them stops walking. Quartermasters lose an old latitude. The books close cleanly, which no quartermaster in service remembers.',
-        'The call up turns federal, so units can be put on a street without the governor of that state asking for them. A force raised locally answers to the capital first. The young, who tend to be on the street in question, notice.'
+        'A rule of engagement counts for less when nobody can say what left the depot. The armouries are inventoried on a federal schedule and audited without notice, and equipment that used to walk out of them stops walking. Quartermasters lose an old latitude.',
+        'A force trained, ruled and counted from the capital can be called out by it as well, so units go onto a street without the governor of that state asking. The young, who tend to be on the street in question, notice.'
       ],
       eff:{ safety:2, military:1 }, mood:{ veterans:3, prof:2, smallbiz:1.5 },
       eff2:{ safety:4, military:2, liberties:1 }, mood2:{ veterans:6, prof:5, smallbiz:3 }, exp2:4,
@@ -3876,8 +3876,8 @@ var POLICIES = [
       rungs:[
         'Standards land on the largest operators of grid, water, ports and payments, and inspectors arrive without an appointment. An incident has to be reported the same day. The professions back the rule; technology firms price the compliance and object.',
         'The rural cooperative, the town water board and the county exchange come under the same standards as the largest operators. A small utility hires a compliance officer or fails an inspection. Growers who own the cooperative pay for both.',
-        'Hardening becomes mandatory rather than advised: spare transformers on the shelf, control networks cut off from the public one, a second feed into every station. The capital spent earns nothing and no tariff will recover it.',
-        'Designation is where the money now is, since a designated operator gets federal help to comply and its undesignated rival gets the same rules and no cheque. Waivers are written case by case. Lobbyists learn the inspector\'s name.'
+        'For everyone now covered, hardening becomes mandatory rather than advised: spare transformers on the shelf and control networks cut off from the public one. The capital earns nothing and no tariff will recover it.',
+        'Somebody has to pay for the hardening, and designation is the answer. A designated operator gets federal help to comply and its undesignated rival gets the same rules and no cheque. Lobbyists learn the inspector\'s name.'
       ],
       eff:{ safety:5, infrastructure:3, energy:2 }, mood:{ prof:5, tech:-3, veterans:4 },
       eff2:{ safety:9, infrastructure:5.5, energy:3.5 }, mood2:{ prof:9, tech:-7, smallbiz:-4, veterans:7 }, exp2:9,
@@ -3900,8 +3900,8 @@ var POLICIES = [
       rungs:[
         'Scanners go in at the busiest terminals and read the share of boxes picked out by manifest and by hunch. The rest move as they always moved. Hauliers absorb an extra hour and old soldiers get the reassurance they asked for.',
         'Nothing is added except reach: every terminal and every land crossing gets the same equipment, and every box goes through it. Scale here means dwell time, and a day on the wharf is a day of financing owed on the cargo.',
-        'The workforce is credentialed and paid for it, with cleared longshoremen, vetted drivers and a guard force on the wharf. Locals that had been shedding members are hiring again. The union stops fighting the scanners.',
-        'Perishables lose their exemption, so produce, cut flowers and livestock queue with everything else. What loads cold arrives warm often enough to change what growers plant. Agriculture takes the loss and says where it came from.'
+        'A scanned box still passes through hands nobody checked, so the workforce is credentialed too: cleared longshoremen, vetted drivers and a guard force on the wharf. Locals that had been shedding members are hiring again.',
+        'The last cargo moving unchecked is the cargo that spoils, and that exemption closes. What loads cold arrives warm often enough to change what growers plant. Agriculture takes the loss and says where it came from.'
       ],
       eff:{ safety:2, economy:-.5 }, mood:{ veterans:2.5, smallbiz:1.5, tech:-1.5 },
       eff2:{ safety:4, economy:-1 }, mood2:{ veterans:5, smallbiz:3, tech:-3 }, exp2:4,
@@ -3913,7 +3913,7 @@ var POLICIES = [
         'Wardens are enrolled county by county, the shelters are stocked, and the first aid course is free to anyone who turns up for it. Pensioners and old soldiers fill the early intakes. In a bad winter the warden is the one who knocks.',
         'A term in the corps becomes expected of school leavers, and the county keeps a roll of who declined. The young are the ones being enrolled and were not asked about it. Congregations lend the halls and run the evening classes.',
         'The term is paid, and the stipend turns a duty into the only wage on offer in counties where nothing else is hiring. Households join for the money. Poverty eases in precisely the places that had no other employer.',
-        'Wardens gain powers along with the uniform: they can clear a street, enter a house left locked, and hold a cordon against the people who live behind it. The neighbour is the one holding the authority now, and Civil liberties fall.'
+        'The uniform starts carrying powers. A warden may clear a street, enter a house left locked, and hold a cordon against the people who live behind it. The neighbour on a stipend is the one holding that authority.'
       ],
       eff:{ safety:2.5, healthcare:.5 }, mood:{ seniors:3, veterans:3, faith:2 },
       eff2:{ safety:5, healthcare:1 }, mood2:{ seniors:6, veterans:6, faith:4, youth:-2 }, exp2:4,
@@ -3927,7 +3927,7 @@ var POLICIES = [
         'The cap on student entry is lifted for accredited universities, which fill seats they had been holding empty. Tuition from abroad pays for laboratories no grant was going to build. The technology sector watches the intake rather than the seats.',
         'A graduate may now stay and work instead of leaving on the day of the degree. The years a university spent teaching somebody stop being a gift to another country\'s payroll, and the Economy books the difference.',
         'An open campus is paid for with a register: enrolment, attendance and address filed with the President\'s office, and a lapse in study reported the same week. Students become the most closely tracked people in Vale.',
-        'Laboratories fill with researchers from everywhere, and work needing clearance can no longer sit among them. Defence projects move off the campuses to sites that can vet a bench, and the armed forces pay for the move.'
+        'The register can say where a student sleeps; it cannot vet a bench. Laboratories fill with researchers from everywhere, and work needing clearance can no longer sit among them. Defence projects move off the campuses to sites that can, and the armed forces pay for the move.'
       ],
       eff:{ education:2, technology:2 }, mood:{ tech:4.5, prof:3, youth:2, veterans:-2.5, smallbiz:-2 },
       eff2:{ education:4, technology:4, economy:2 }, mood2:{ tech:9, prof:6, youth:4, veterans:-5, smallbiz:-4 }, exp2:2,
@@ -3938,7 +3938,7 @@ var POLICIES = [
       rungs:[
         'A written paper in the national language and an oral on the constitution, both sat before the oath. Classes are funded and a failed paper may be taken again. Congregations running evening lessons find themselves in the naturalisation business.',
         'The pass mark rises and the exemptions go with it: nobody is excused for age, for illness, or for having lived here most of a lifetime. Long settled residents sit the same paper as arrivals, and a number of them do not pass it.',
-        'The examination moves in front of the visa. It is sat abroad now, before entry, and a hire who cannot pass it cannot be hired. Finance houses and software firms that recruit on skill discover their offers resting on a grammar paper.',
+        'The examination moves in front of the visa, at the mark the last widening set. It is sat abroad now, before entry, and a hire who cannot pass it cannot be hired. Finance houses and software firms that recruit on skill discover their offers resting on a grammar paper.',
         'Renewal of a residence permit is made conditional on the same examination, so a person can fail their way out of a life already built here. Employers lose staff in the middle of a contract, and the Economy carries the vacancies.'
       ],
       eff:{ education:.5, liberties:-1.5 }, mood:{ faith:4, veterans:3.5, smallbiz:2.5, prof:-2.5, youth:-2.5 },
@@ -3963,7 +3963,7 @@ var POLICIES = [
         'No hire is lawful until the employer has queried a federal status file and kept the answer. Most queries clear in seconds. Every engagement in the country now leaves a trace in one system, which is the part that costs liberty.',
         'The duty reaches back over everyone already on the payroll. Re-running a workforce turns up mismatches in staff of long standing, and posts sit empty while the file is argued with. The Economy pays for the arguing.',
         'A market in clean identities opens: numbers rented by the week, names borrowed from the dead and the departed. The officials who can lift a mismatch become people worth knowing. Corruption arrives on the back of a system built to stop fraud.',
-        'Casual shifts, contract work and anything taken through an application come into scope, so a Saturday in a kitchen needs a query first. Young workers meet the file more often than anyone, and they are the last group to turn on it.'
+        'The rented numbers had gone where nothing was queried. Casual shifts, contract work and anything taken through an application come into scope, so a Saturday in a kitchen needs a query first. Young workers meet the file oftener than anyone and are the last to turn on it.'
       ],
       eff:{ safety:2, liberties:-4 }, mood:{ veterans:8, smallbiz:-5, faith:4, tech:-5, prof:-3 },
       eff2:{ safety:3.5, economy:-3, liberties:-7 }, mood2:{ veterans:14, smallbiz:-9.5, faith:7, tech:-10, prof:-6 }, exp2:5.5,
@@ -3975,7 +3975,7 @@ var POLICIES = [
         'Priority goes to people carrying serious convictions, and the docket is worked in that order. Anyone below the line is not pursued, which is most of those who could be. Safety improves at the top of the list while liberty falls along all of it.',
         'The line drops to take in any charge, any old order, any missed appointment. Arrests are made at dawn, and payroll clerks find posts empty on Monday with nobody to ask. The Economy takes the vacancies before the courts take the cases.',
         'Removal needs a country willing to receive, so the President leans on the ones that refuse: visas withheld from their officials, aid slowed, delegations kept waiting. States that had cooperated quietly stop cooperating quietly.',
-        'Arrests move to the courthouse steps, the school gate and the clinic doorway. Sick people stop presenting until they cannot walk, and the wards meet the result a season later. No line of the law calls a hospital a target.'
+        'The receiving countries have been made to take people back, so the only thing still short is arrests. They move to the courthouse steps, the school gate and the clinic doorway. Sick people stop presenting until they cannot walk, and the wards meet the result a season later.'
       ],
       eff:{ safety:3, liberties:-5 }, mood:{ veterans:9, smallbiz:5, faith:4, youth:-8, prof:-6, tech:-4 },
       eff2:{ safety:5.5, economy:-1.8, liberties:-9 }, mood2:{ veterans:16, smallbiz:10, faith:7, youth:-15, prof:-12, tech:-7.5 }, exp2:7.5,
@@ -3989,7 +3989,7 @@ var POLICIES = [
         'A charter fixes the grant for a term of years and appoints a board whose seats fall vacant on a cycle no single ministry controls. Professionals treat it as theirs at once, and pensioners keep the set on through the afternoon.',
         'An investigative desk is funded and given standing counsel, so a story survives the letter that used to kill it. Ministers who ring the chairman are told about the charter. Appointments that would have passed unremarked are broadcast instead, and the commercial groups lose an audience they cannot outbid for.',
         'The broadcaster lays its own relays into valleys and islands the commercial signal never bothered with, and the archive opens to anybody with a connection. A household beyond the reach of a mast gets the service before it gets a bank.',
-        'The charter is rewritten to hold every creed to the same questioning, and the devotional hour becomes one slot among many faiths. The board answers that a charter is not a chaplaincy, and the row runs a whole parliament.'
+        'The charter is rewritten to hold every creed to the same questioning, and the new relays carry that into valleys where the pulpit had been the only voice on air. The devotional hour becomes one slot among many faiths. The board answers that a charter is not a chaplaincy, and the row runs a whole parliament.'
       ],
       eff:{ education:2.8, liberties:2.6 }, mood:{ prof:8, youth:4.5, seniors:4, smallbiz:-3.5 },
       eff2:{ education:5, liberties:5, corruption:-3.5 }, mood2:{ prof:14, youth:8.5, seniors:7, smallbiz:-7, tech:-5 }, exp2:9,
@@ -4000,7 +4000,7 @@ var POLICIES = [
       rungs:[
         'A branch opens in every county with a lending stock, a newspaper room and nobody at the door asking for a subscription. The rooms fill in the afternoons with pensioners and in the evenings with apprentices.',
         'Borrowing stops being recorded: no register of who read what, and no route by which an investigator may ask. A librarian who is asked has nothing to hand over. What a person reads becomes their own business by statute rather than by custom.',
-        'The federal archive opens a reading room and papers are released once a fixed term has run, indexed rather than merely stored. Historians find the minutes of decisions that were denied at the time.',
+        'The federal papers join the lending stock: a reading room opens, files are released once a fixed term has run, and they are indexed rather than merely stored. Nobody signs for one, because the rule against records covers the archive too. Historians read the minutes of decisions that were denied at the time.',
         'The release duty reaches the operational files and the personnel records, so a campaign can be read in the words of whoever ordered it. Service associations argue that a name in a file is a family in a town.'
       ],
       eff:{ education:2 }, mood:{ prof:3, youth:2.5, seniors:2, labour:1.5 },
@@ -4013,7 +4013,7 @@ var POLICIES = [
         'Insulting a religious belief or its clergy becomes a summary offence carrying a fine, started by a complaint rather than by a prosecutor. Comedians, cartoonists and student papers learn the cost of finding out where the line sits.',
         'The penalty rises from a fine to a term inside, and any person may lay the complaint without showing the words were aimed at them. Services hosted elsewhere cut off access to the country rather than read every posting for doctrine.',
         'The offence reaches material published abroad and read here, and the department demands the authors from the countries they live in. Refusals pile up into a standing quarrel, and writers who have never set foot here are convicted in their absence.',
-        'A complaint suspends the licence of the premises where the words were said, before any hearing is held. A pub, a hall or a bookshop shuts on an accusation and reopens, if it does, months later.'
+        'A complaint alone shuts the premises where the words were said or sold, before any hearing is held. The shop that stocked a book condemned in its author\'s absence goes down with it. A hall, a printer or a bookshop reopens months later, if it reopens at all.'
       ],
       eff:{ liberties:-4.5, safety:1 }, mood:{ faith:7.5, seniors:1.5, youth:-5.5, prof:-5 },
       eff2:{ liberties:-9.5, safety:2.2 }, mood2:{ faith:15.5, seniors:3, youth:-11.5, prof:-10.5, tech:-5 },
@@ -4024,7 +4024,7 @@ var POLICIES = [
       rungs:[
         'The colours are raised and the anthem sung at the opening of every school day, every sitting of a court and every public ceremony. Nothing yet happens to the pupil who stays seated except that it is noticed.',
         'Refusal becomes punishable by fine, and the teacher or clerk presiding is obliged to report the name. A room of people watching each other stand is a quieter room, and disorder falls at the gatherings where it used to begin.',
-        'Drill is prescribed: how the colour is carried, how it is folded, who salutes and when. The recruiting sergeant attends the ceremony because that is where the boys are, and the armed forces gain volunteers at no cost to themselves.',
+        'Observance stops being a moment and becomes drill: how the colour is carried, how it is folded, who salutes and when. The duty to report catches a wrong hand as well as a refusal, so a name reaches the file for doing it badly. The recruiting sergeant attends, because that is where the boys are.',
         'Employers must open the working day with the anthem and keep a record of who attended. A firm whose staff work from wherever they happen to be must produce that record anyway, and the houses that sell abroad object carefully.'
       ],
       eff:{ liberties:-2.6 }, mood:{ veterans:5.5, faith:3.5, seniors:2.5, youth:-4.5, prof:-3.5 },
@@ -4035,9 +4035,9 @@ var POLICIES = [
       desc:'Hours, strength and the number of outlets set from the centre, with the duty raised at the same stroke.',
       rungs:[
         'Hours, strength and the number of places that may sell are fixed federally, and county option ends. The temperance side of the churches has wanted this for a generation; publicans, bottle shops and the union clubs lose the trade of a whole evening.',
-        'A floor price per unit of alcohol is set, and the cheapest strong drink in the country stops existing. Anybody who buys above the floor notices nothing, and professionals approve of it when asked. Weekend admissions fall far enough for the wards to feel it.',
+        'A floor price per unit goes in under the federal hours and strength rules, and the cheapest strong drink in the country stops being made. The off trade loses the volume that survived the shortened evening, and the duty is raised to meet the new price. Weekend admissions fall far enough for the wards to feel it.',
         'The number of licences in a district is capped and the survivors are auctioned rather than renewed. Half the on-trade in some towns closes inside a year, and the brewing and haulage that fed it contracts with it.',
-        'Scarcity makes a licence worth buying twice over, and the clerk who can move one from a dead premises to a live one has a price. Service clubs and regimental messes lose the exemption written into their charters.'
+        'The cap tightens until a licence can be had only from somebody giving one up, and the last exemptions fall inside it: service clubs and regimental messes now drink on the same permit as anybody else. The clerk who can move a permit from a dead premises to a live one has a price, and it is paid.'
       ],
       eff:{ healthcare:3, safety:2.8, liberties:-4 }, mood:{ faith:9, seniors:4, youth:-8, labour:-6, smallbiz:-5 },
       eff2:{ healthcare:5, safety:5, liberties:-7 }, mood2:{ faith:16, seniors:7, prof:3.5, youth:-14, labour:-10.5, smallbiz:-9 }, rev2:5.2,
@@ -19908,10 +19908,10 @@ var V10_POLICIES = [
       eff:{ safety:1, liberties:-1 }, mood:{ veterans:2, prof:-1.5 },
       desc:'Officers from every agency at one table, with access to the files their own statutes had kept apart.',
       rungs:[
-        'Officers from separate agencies sit at one table and query each other\'s holdings under a memorandum rather than a law. The rule that kept those files apart is not repealed, only waived. Nothing is built and nothing is spent.',
-        'The centres take reports from outside government, from private security, hotel staff and a neighbour with a suspicion. A file opens on a person because a stranger filled in a form, and the person is never told that it did.',
-        'What one agency may not hold, another hands across the table, and the officer who asked keeps a copy. The room runs on favours: an address for a tip, a plate check for a name. An analyst is caught selling what the table gave him.',
-        'Read access is extended to vetted private members: insurers, large employers, the firms that screen tenants. A membership list off a shop floor turns up on a hiring desk. The centre is a service now and its customers are not agencies.'
+        'Officers from separate agencies sit at one table and query each other\'s holdings under a memorandum rather than a law. The rule that kept those files apart is not repealed, only waived. An answer is spoken across the table and nothing is copied.',
+        'The table takes reports from outside government as well: private security, hotel staff, a neighbour with a suspicion. What the officers query now includes files no agency opened, and the person is never told one exists.',
+        'The answers stop being spoken. What one agency may not hold, another hands across the table on paper, and the officer who asked keeps the copy. The room runs on favours, and an analyst is caught selling what the table gave him.',
+        'Read access is extended to vetted private members: insurers, large employers, the firms that screen tenants. The copies leave government altogether now, and a membership list off a shop floor turns up on a hiring desk.'
       ],
       eff2:{ safety:2, liberties:-2 }, mood2:{ veterans:4, youth:-4, prof:-3 },
       eff3:{ safety:3, liberties:-3, corruption:1 }, mood3:{ veterans:6, youth:-7, prof:-4.5 },
@@ -19923,7 +19923,7 @@ var V10_POLICIES = [
         'Cameras in federal buildings and transit terminals match a face against the identity photograph. A hit is a lead handed to an officer, not an arrest. Pensioners approve of the entrance hall; the young dislike being counted through a gate.',
         'Nothing new is added and the cameras go everywhere, and quantity changes the kind. A match at one gate is an incident. A match at every gate is a route, a habit, and a list of the places a person goes.',
         'Private cameras are compelled into the feed, so a shop, a stadium and an office lobby form part of the register whether the owner wants that or not. The companies that installed those systems are told what their equipment now does.',
-        'It resolves crowds rather than individuals, and a congregation, a picket line or a queue outside a clinic becomes a list of names in an afternoon. Attendance at anything at all is a fact that somebody holds.'
+        'With every camera in the feed it stops working one face at a time. A congregation, a picket line or a queue outside a clinic resolves into a list of names in an afternoon. Attendance at anything at all is a fact that somebody holds.'
       ],
       eff2:{ safety:2, liberties:-3 }, mood2:{ youth:-8, prof:-4, seniors:3 },
       eff3:{ safety:3, liberties:-4.5 }, mood3:{ youth:-12, prof:-6, seniors:4.5, tech:-5 },
@@ -19934,8 +19934,8 @@ var V10_POLICIES = [
       rungs:[
         'The model reads arrest history and prints where the vans should wait, and a sergeant\'s judgement becomes a schedule. Pensioners see cars on their street and are pleased. The young see the same cars and read them differently.',
         'It names people as well as places, and a list of individuals to be called on comes out of it. Being on that list is not an offence and cannot be appealed. Organisers with an old arrest from a picket appear near the top.',
-        'The loop closes. Blocks that get the patrols produce the arrests that keep the model sending patrols, and every fine, night in a cell and missed shift lands where it landed before. Poverty deepens along the same streets.',
-        'A risk score attaches to a person and travels: a magistrate sees it at bail, an employer sees a version in a background check, a letting agent sees another. Salaried professionals discover that the score reaches them too.'
+        'The loop closes on both. Blocks that get the patrols produce the arrests that keep the patrols coming, and a name called on often enough acquires the record that holds it on the list. Poverty deepens along the same streets.',
+        'The list becomes a number that travels. A magistrate sees it at bail, an employer sees a version in a background check, a letting agent sees another. Salaried professionals discover that the score reaches them too.'
       ],
       eff2:{ safety:3, liberties:-3, corruption:1 }, mood2:{ seniors:4, youth:-8, labour:-3 },
       eff3:{ safety:4.5, liberties:-4.5, corruption:1.5, poverty:1.5 }, mood3:{ seniors:6, youth:-12, labour:-6 },
@@ -20102,7 +20102,7 @@ var V10_POLICIES_II = [
         'A treaty is signed with a government willing to host the hearings, and claims lodged at the border are flown to it. The price is fixed for a year and argued over the next. People are heard, but not here, and not by anyone they can reach.',
         'Transfer becomes automatic for anyone arriving without a visa, and no limit is set on how long a hearing may take. The camp fills with people whose cases are open and whose lives have stopped. Retirees are quietly for it and say little.',
         'The camp is run under contract, and the contract is the point: the operator bills by the head, ministers in the host capital take their share, and the annual price rises at every renewal. Corruption is imported along with the arrangement.',
-        'A finding for the applicant no longer brings them here: the recognised are settled in the host country instead. The charter crews and the camp staff are hired abroad on foreign terms, which is the part Organised Labour will not let go.'
+        'A finding for the applicant no longer brings them here: the recognised are settled in the host country, on the same contract and at the same price a head. The charter crews and the camp staff are hired abroad on foreign terms, which is the part Organised Labour will not let go.'
       ],
       eff:{ liberties:-2, tension:1 }, mood:{ seniors:5, veterans:4, faith:3, youth:-7, prof:-4 },
       eff2:{ liberties:-4, tension:2.5 }, mood2:{ seniors:10, veterans:8, faith:6, youth:-13, prof:-8 }, exp2:3,
@@ -20125,8 +20125,8 @@ var V10_POLICIES_II = [
       rungs:[
         'A term in uniform ends in naturalisation on the day of discharge, with the oath taken in the same room. Recruiters work the neighbourhoods where the permits are, because that is where the recruits are. The units fill.',
         'The offer opens to people with no lawful standing at all, so enlistment is itself a regularisation. Somebody who could not get a driving licence in the morning is lawful by the afternoon. Liberty rises for a group that had none, on a condition.',
-        'Schooling is added at the far end: tuition for the discharged soldier and for a spouse. A term now buys a qualification as well as a passport, and it starts drawing recruits who were headed for a lecture hall anyway.',
-        'Recruiting offices open abroad, and enlistment happens before the recruit has ever set foot here. Other governments object to a state raising soldiers inside their borders. Retirees, who hold that citizenship is not bought on contract, break with it.'
+        'One term now settles a household rather than a person. The spouse and the children naturalise on the soldier\'s service, and tuition at discharge is written into the same contract for them as well. A family with no standing at all is made lawful by one enlistment.',
+        'Recruiting offices open abroad, and enlistment happens before the recruit has ever set foot here. The household terms travel with the contract, so a family arrives already owed a passport. Other governments object to a state raising soldiers inside their borders, and Retirees hold that citizenship is not bought on contract.'
       ],
       eff:{ military:2 }, mood:{ veterans:6, youth:3, faith:2, labour:-3 },
       eff2:{ military:4, liberties:1.2 }, mood2:{ veterans:12, youth:5, faith:4, labour:-5 },
@@ -20149,7 +20149,7 @@ var V10_POLICIES_II = [
       rungs:[
         'Each state gets an allocation and fills it from a shortage list of its own, so the fruit counties nominate pickers and the coasts nominate nurses. A nominee is bound to the nominating state for a term. Small employers have a door they can reach.',
         'States set their intake without asking the Vice Chancellor first, and a permit lapses if the holder leaves the state that issued it. Interior counties that could never hold anybody begin to. Retirees see the high street change before they see the policy.',
-        'The condition is given teeth. Nominees register with a state office, report a change of address, and ask leave before taking work across a state line. People admitted to the country are not free to move about inside it.',
+        'The lapse acquires machinery. Nominees register with a state office, report a change of address, and ask leave before taking work across a state line. Somebody admitted to the country is not free to move about inside it, and the state that nominated them holds the papers that say so.',
         'A nomination becomes an asset, and there is a market in assets. Officials at the state offices are approached and some say yes. States run recruiting missions abroad on their own account, which reads from outside as one country with several governments.'
       ],
       eff:{ economy:2, agriculture:2 }, mood:{ smallbiz:8, prof:2, labour:-5, seniors:-4 },
@@ -20161,8 +20161,8 @@ var V10_POLICIES_II = [
       rungs:[
         'Places are drawn by lot from everyone who registers. There is no fee, no qualification and no way to improve a chance. The draw is made in public, and one ticket is worth exactly what every other ticket is worth.',
         'The ballot opens to people already here on temporary permits, so a winning number turns a permit into a settled place overnight. Nothing about the winner has changed except the number. Those who spent years scoring well take it badly.',
-        'Registration moves to a free public form and the draw is audited afterwards by people who did not run it. The agents who sold a better chance have nothing left to sell. Corruption falls in a corner of the system nobody was watching.',
-        'The ballot takes a larger share of the year\'s places, and takes them from the sponsored routes. A firm that has found the exact person it needs is told the places went to a draw. Technology and Finance learn what it is to have nothing to apply to.'
+        'Money stops being able to touch the draw. Registration moves to a free public form, the drawing is audited by people who did not run it, and the agents who sold a better chance to permit holders have nothing left to sell. What was promised at the outset now holds to the end.',
+        'The ballot takes a larger share of the year\'s places, and takes them from the sponsored routes. Money could not buy a number, and now an employer\'s name cannot either. A firm that has found the exact person it needs is told to register like everybody else, which Technology and Finance will not forgive.'
       ],
       eff:{ economy:.3, liberties:.4 }, mood:{ youth:3, labour:1, prof:-2, faith:-1 },
       eff2:{ economy:.6, liberties:.7 }, mood2:{ youth:5, labour:2, prof:-3, faith:-2 },
@@ -20173,8 +20173,8 @@ var V10_POLICIES_II = [
       rungs:[
         'A duty on every wire sent out of Vale, added at the counter by the transfer offices and paid by whoever is standing at it. Money comes in from the first week. Countries on the receiving end read a tax aimed at their nationals and say so.',
         'The duty follows the money to the banks and to the card top ups, and the ways around the counter close one at a time. Receipts roughly double. The Chancellor has found a levy with a broad base and no organised objectors.',
-        'The traffic leaves the counter. Cash goes home in a suitcase and values are settled between families who trust each other and write nothing down. The rate rises and the take rises less, which is how the Chancellor learns what has happened.',
-        'Identification is demanded for every transfer, and the record is kept, indexed and searchable. Sending money to a parent becomes a documented act performed under a name. It raises little more and costs a liberty that was never at issue.'
+        'The rate goes up and the duty is written to catch anything carrying value out, goods bought here and collected there included. What the counters lose, the suitcases take up: cash goes home in a pocket and families settle between themselves. The take rises by less than the rate does.',
+        'Identification is demanded for every transfer, and the record is kept, indexed and searchable. It is what the Chancellor reaches for once the rate has stopped working. Sending money to a parent becomes a documented act performed under a name, and the take barely moves for it.'
       ],
       eff:{ economy:-.7, tension:.6 }, mood:{ seniors:3, faith:1, smallbiz:-2, tech:-2, youth:-4 },
       eff2:{ economy:-1.2, tension:1.2 }, mood2:{ seniors:6, faith:4, smallbiz:-5, tech:-5, youth:-8 }, rev2:2.6,
@@ -20687,7 +20687,7 @@ var V10_POLICIES_II = [
       rungs:[
         'A barracked force is raised under the capital for riot duty and for rural counties with no police worth the name. It is called out, not stationed. Old soldiers and pensioners approve; the union and the young have met it at a picket.',
         'Nothing is added but permanence, and that is the change: barracks in every district and a standing garrison in place of a call out. A force that lives where it polices is the first thing a crowd meets rather than the last.',
-        'The frontier posts and the border road pass to the constabulary, which puts an armed federal column on a line that customs officers used to work. Neighbours read a paramilitary deployment and answer with one.',
+        'A garrisoned force can hold ground, so the frontier posts and the border road pass to the constabulary. An armed federal column now works a line that customs officers used to walk. Neighbours read a paramilitary deployment and answer with one.',
         'Duties the army had held come across with the sergeants trained for them, and the services lose the mission and the men together. The constabulary is the larger of the two forces on home ground. Salaried professionals stop calling it police work.'
       ],
       eff:{ safety:3, liberties:-2 }, mood:{ veterans:8, seniors:6, labour:-7, youth:-8 },
@@ -20699,8 +20699,8 @@ var V10_POLICIES_II = [
       rungs:[
         'A duty to refer falls on teachers, physicians and clergy, and a panel decides whether a referral goes further. A referral is not a charge and it does not expire. Congregations work out at once who will be referred and by whom.',
         'Failing to refer costs a licence, which settles the professional question. The safe move is to refer, and the referral rate climbs faster than anything it is meant to measure. Salaried professionals practise with a file in mind.',
-        'The classroom comes under the duty, so what a child argues in a lesson is reportable by the teacher who set the argument going. Debate leaves the syllabus rather than risk a panel, and Education pays for the quiet.',
-        'The referral is written into the medical record and travels with the patient. People stop telling a doctor what they think, which costs the clinic more than it costs the panel. The young are the ones being referred.'
+        'With a licence riding on it, the duty reaches into the lesson itself. What a child argues in class is reportable by the teacher who set the argument going, so debate leaves the syllabus. Education pays for the quiet.',
+        'The referral stops being a note in a panel\'s file. It is written into the medical record and into the school file, and it travels with the person. People stop telling a doctor what they think, and the young carry an entry they were never shown.'
       ],
       eff:{ safety:1, liberties:-1 }, mood:{ faith:-7, seniors:4 },
       eff2:{ safety:3, liberties:-3 }, mood2:{ faith:-12, prof:-6, seniors:8 }, exp2:1,
@@ -20710,9 +20710,9 @@ var V10_POLICIES_II = [
       desc:'Licences for the fertilisers, solvents and cultures that turn into weapons outside a laboratory.',
       rungs:[
         'Bulk fertiliser and the strong solvents go on licence, and the seller records the buyer against a number the buyer has to produce. A farm buys what it always bought and fills in a form. The Vice Chancellor collects the fee.',
-        'Laboratory supply comes under it: culture collections, bench synthesisers and the glassware to go with them. A small firm waits weeks for what used to arrive in days. Pensioners hear about the cultures and are reassured.',
-        'An inspectorate is created, with a register of every holding and a right of entry, and hospital pharmacy stocks are counted against the register. Diversion out of the clinical supply stops, which the wards notice before anyone else.',
-        'Export licences and end use certificates cover the whole chain, so a chemical works needs permission to ship what it is licensed to make. Orders go to suppliers in other jurisdictions. Financiers write the sector down.'
+        'The same licence reaches on to laboratory supply: culture collections, bench synthesisers and the glassware to go with them. A small firm waits weeks for what used to arrive in days. Pensioners hear about the cultures and are reassured.',
+        'A record kept at the counter is no longer enough. An inspectorate is created with a register of every holding and a right of entry, and hospital pharmacy stocks are counted against it. Diversion out of the clinical supply stops.',
+        'The inspectorate follows the goods out of the country. Export licences and end use certificates cover the chain, so a chemical works needs permission to ship what it is licensed to make. Orders go elsewhere and financiers write the sector down.'
       ],
       eff:{ safety:.7, agriculture:-.3 }, mood:{ smallbiz:-2, prof:2 },
       eff2:{ safety:1.4, agriculture:-.6, technology:-.6 }, mood2:{ smallbiz:-4, prof:3, seniors:2 }, rev2:.6,
@@ -20723,8 +20723,8 @@ var V10_POLICIES_II = [
       rungs:[
         'Sites are dug and kept staffed, the succession is written down well past the names everybody knows, and a rehearsal runs each autumn without notice. Old soldiers and the technology houses build it. Almost nobody else learns that it exists.',
         'Standing delegations of authority take effect on a condition instead of an announcement, so who governs during the gap is settled in advance and never published. The plan is classified entire. The young ask to read it and are refused.',
-        'Hardened cable, buried repeaters and a parallel network are laid alongside the ordinary one, which leaves the state with lines that keep working when the public ones do not. Infrastructure gains what the plan needed anyway.',
-        'Emergency instruments are drafted, signed and held undated: assembly, movement, the wire and the press. Nothing is in force and everything is ready. Salaried professionals object to a signature waiting on a date somebody else picks.'
+        'An authority that takes effect on a condition has to reach somebody. Hardened cable, buried repeaters and a parallel network are laid alongside the ordinary one, and the state keeps lines that work when the public ones do not.',
+        'What travels on those lines is written in advance: instruments on assembly, movement, the wire and the press, signed and held undated. Nothing is in force and everything is ready. Salaried professionals object to a signature waiting on a date.'
       ],
       eff:{ military:1, safety:.5 }, mood:{ veterans:4, tech:2 },
       eff2:{ military:2.5, safety:1, corruption:1 }, mood2:{ veterans:7, tech:4, youth:-5 }, exp2:2.5,
@@ -20735,8 +20735,8 @@ var V10_POLICIES_II = [
       rungs:[
         'Each security power carries an expiry, and renewal takes a recorded vote in both houses with the roll printed. The first to lapse are the small authorities nobody rises to defend. Pensioners want them kept and say so.',
         'Renewal requires the department to publish how the power was used and how often, before the vote and not after it. Powers that cannot survive their own arithmetic go quietly. Service associations dislike the whole exercise.',
-        'Liaison arrangements and treaty commitments carry the same expiry, so a partner abroad discovers the cooperation it relies on has a date attached. Renewal season turns into a diplomatic event, and tension rises around each one.',
-        'Standing military authorisations lapse the same way, and a deployment running for years must be voted through again by name. Commanders plan against a calendar written in the chamber. Old soldiers watch a war end on a procedural point.'
+        'Liaison arrangements and treaty commitments carry the same expiry and the same published account. A partner abroad learns that the cooperation it relies on has a date attached. Renewal season turns into a diplomatic event.',
+        'Standing military authorisations lapse the same way, and a deployment running for years is voted through again by name, on figures the department has to print first. Old soldiers watch a war end on a procedural point.'
       ],
       eff:{ liberties:1, safety:-.3 }, mood:{ youth:4, tech:3, prof:2, seniors:-3 },
       eff2:{ liberties:2, safety:-.6, corruption:-.5 }, mood2:{ youth:6, tech:4, prof:3, veterans:-3, seniors:-5 },
@@ -20748,7 +20748,7 @@ var V10_POLICIES_II = [
         'Banks report every transfer above a threshold nightly and a directorate under the Chancellor reads them. An account is frozen on suspicion and unfrozen on appeal, in that order. Shopkeepers who deal in cash meet the paperwork first.',
         'The threshold drops and the duty spreads past banks to wire agents, money changers and card processors. A market trader banking a week of takings sets off a report. Financiers acquire a compliance department and the cost of one.',
         'Wallets, exchanges and payment platforms come under the rule, and reporting has to be built into a product before it may be sold. A firm cannot launch and then apply for permission. The software houses lose a year to it.',
-        'Whole corridors are designated instead of particular accounts, so a remittance route or a relief fund closes by class. A household sending money home finds it does not arrive and cannot learn why. Congregations lose the channel their charity ran on.'
+        'Designation moves from the account to the corridor, and every institution reporting on a route closes it at once. A household sending money home finds it does not arrive and cannot learn why. Congregations lose the channel their charity ran on.'
       ],
       eff:{ safety:1.5, corruption:-1.5, liberties:-1 }, mood:{ smallbiz:-5, seniors:4, veterans:3 },
       eff2:{ safety:2.6, corruption:-2.6, liberties:-2.5, economy:-1 }, mood2:{ smallbiz:-10, tech:-6, seniors:7, veterans:5 }, exp2:1,
@@ -20760,8 +20760,8 @@ var V10_POLICIES_II = [
       rungs:[
         'A commission sits in public and takes testimony, and whole testimony buys immunity. The first witnesses are junior: drivers, clerks, the men who kept the logs. Congregations bring the families who had waited to hear anything at all.',
         'Units named in testimony are disbanded and their files pass to the commission sealed rather than burnt. What was destroyed cannot be recovered; what was hidden can. The young wanted trials and are watching pensions get signed.',
-        'The archive is published and put into the schools, so the account is taught instead of argued about. Historians get the paper and the classroom gets a syllabus. Education gains a subject nobody had documents for.',
-        'Officers at the top come in last, for the same immunity and the same pension, and the bargain closes with no prosecution left to bring. Old soldiers watch commanders trade a career for a statement. The men who ran the units go home to the same streets as the families who named them.'
+        'The sealed files are opened. The commission publishes the archive and puts it into the schools, so the account is taught instead of argued about. Historians get the paper and the classroom gets a syllabus.',
+        'Officers at the top come in last, when the archive already names them, and buy the same immunity and pension with a statement. Old soldiers watch commanders trade a career for an afternoon. The men who ran the units go home to the same streets as the families who named them.'
       ],
       eff:{ liberties:.7, tension:-.6 }, mood:{ faith:3, prof:2 },
       eff2:{ liberties:1.4, tension:-1.3, corruption:-.6 }, mood2:{ faith:5, seniors:3, prof:2.5, youth:-4 }, exp2:1.3,
@@ -20972,8 +20972,8 @@ var V10_POLICIES_II = [
       desc:'No discount for a plea and no charge traded away; the case is proved in open court or it is dropped.',
       rungs:[
         'The discount for pleading is abolished on the lower offences, so admitting the charge no longer buys a lighter term. Defendants who would have taken the deal as the safer bet take their chances. Some are acquitted, which was the argument.',
-        'Every charge must be proved, and there are not enough court days in the year to prove them. Prosecutors drop matters they would once have settled at the door, and not always the weak ones. A queue forms that no amount of sitting clears.',
-        'The traded charge disappears, and with it the cooperating witness who bought a lesser count by naming somebody else. Purchased testimony stops being available, and so does the wrongful conviction it sometimes produced.',
+        'The discount goes on every offence, and there are not enough court days in the year to try them all. Prosecutors drop matters they would once have settled at the door, and not always the weak ones. A queue forms that no amount of sitting clears.',
+        'The other half of the bargain goes too: a prosecutor may no longer trade a charge away, and the cooperating witness who bought a lesser count by naming somebody else goes with him. Purchased testimony ends, and so does the wrongful conviction it produced.',
         'Every complainant is a witness for as long as a trial runs. A shopkeeper who reports a till theft loses more days in the courthouse than the till held, and learns not to report the next one. Foreign prosecutors are offered nothing and say so.'
       ],
       eff:{ liberties:1.2 }, mood:{ youth:2, labour:2, prof:-2 },
@@ -20983,10 +20983,10 @@ var V10_POLICIES_II = [
   P({ id:'extraterritorialJurisdiction', grp:'The reach of the law', name:'Extraterritorial Jurisdiction', cat:'Justice', dept:'pres', max:4, cost:3, auth:.5,
       desc:'Citizens and money answer here for what they do elsewhere, whatever the law of the place they did it in.',
       rungs:[
-        'A citizen who pays a bribe abroad is prosecuted at home for it, and the plea that it was ordinary practice there is no plea at all. The President\'s law officers bring few cases and choose them carefully.',
-        'Any bank that clears in this currency comes inside the statute, wherever its counter stands. The territories are brought under the same code as the mainland. Financiers abroad have acquired a regulator they never chose.',
-        'Foreign firms accept the terms rather than lose access, so a contract signed on another continent is enforceable here. Exporters gain a remedy they had never had before. Trade grows on the back of a jurisdiction no other country agreed to.',
-        'A passport is enough: a citizen who has lived abroad a lifetime files here and answers here. A workshop with one customer overseas carries the same filing as a shipping line. Some give up the passport rather than keep filing, the only exit the statute leaves.'
+        'A citizen who pays a bribe abroad is prosecuted at home, and the plea that it was ordinary practice there is no plea at all. The reach stops at citizens and at a short list of offences. The President\'s law officers bring few cases and pick them.',
+        'The reach passes from citizens to institutions. Any bank that clears in this currency comes inside the statute, and the territories are brought under the same code as the mainland. Financiers abroad have a regulator they never chose.',
+        'The hook is no longer the currency but the market. A foreign firm that wants to sell here at all takes the code with the access, so a contract signed on another continent is enforceable in a court here. Exporters gain a remedy they never had.',
+        'No commercial hook is needed now. A passport is enough: a citizen who has lived abroad a lifetime files here, and a workshop with one customer overseas carries the same filing as a shipping line. Some give up the passport, the only exit the statute leaves.'
       ],
       eff:{ tension:1, corruption:-.8 }, mood:{ veterans:5, prof:3 },
       eff2:{ tension:2.5, territories:1, corruption:-1.5 }, mood2:{ veterans:10, tech:-8, prof:6 },
@@ -20997,7 +20997,7 @@ var V10_POLICIES_II = [
       rungs:[
         'Fines for the lowest offences are assessed in units of a person\'s income rather than in a fixed sum. For somebody on a small wage the penalty stops being a debt that takes a year to clear. The total collected barely moves.',
         'The scale is extended to regulatory and traffic penalties, where a fixed sum had been a fee the comfortable paid without thinking. Professionals who treated the ticket as a parking charge find it is a punishment.',
-        'Assessing income means the court must see it, so the revenue file follows an offender into the sentencing hearing. A minor conviction opens a person\'s earnings to a judge. What was a fine has acquired an inquiry.',
+        'Now that the scale covers the everyday penalty, the court must know what a person earns before it can fine him, so the revenue file follows an offender into the sentencing hearing. A minor conviction opens a person\'s earnings to a judge.',
         'Foreign nationals and firms are assessed on worldwide income, so a penalty issued here is calculated on money earned somewhere else. Embassies complain that a traffic matter has turned into a levy. Financiers who used to visit decline to.'
       ],
       eff:{ poverty:-.4 }, mood:{ labour:3, youth:2 },
@@ -21007,10 +21007,10 @@ var V10_POLICIES_II = [
   P({ id:'informersShare', grp:'Public integrity', name:'The Informer\'s Share', cat:'Justice', dept:'vpres', max:4, cost:3, auth:.3, rev:1.2,
       desc:'Whoever brings the file keeps a share of what the state recovers, and cannot be dismissed for bringing it.',
       rungs:[
-        'Whoever brings evidence of a fraud against the public account keeps a share of the recovery and may not be dismissed for it. Bookkeepers who always knew acquire a reason to say so. A family firm finds a nephew on the ledger is a risk.',
-        'The informer may stay anonymous, and the accused is never told who brought the file or what it was worth to him. Congregations that thought neighbourliness a virtue watch it become an income. A man may be ruined by a document he is never shown.',
-        'The share is extended past revenue matters to criminal ones, so a payment attaches to information about violence, trafficking and arms. Cases that never had a witness acquire one. What the state could not investigate it can now buy.',
-        'Foreigners may claim the share against foreign firms, which turns a domestic statute into a bounty on other countries\' companies. The recovery keeps rising and the base it is recovered from is leaving. Capital with a choice of jurisdictions exercises it.'
+        'Whoever brings evidence of a fraud against the public account keeps a share of the recovery, cannot be dismissed for it, and is not named to the accused. Bookkeepers who always knew acquire a reason to say so. A family firm finds a nephew on the ledger is a risk.',
+        'The share widens past the public account to conduct inside a private firm: wages, safety, licences, anything a regulation covers. Congregations that thought neighbourliness a virtue watch it become an income. A man may be ruined by a document he never sees.',
+        'Criminal matters come inside the scheme, so a payment attaches to information about violence, trafficking and arms. Cases that never had a witness acquire one. What the state could not investigate it can now buy.',
+        'The scheme stops at no border: a foreigner may claim against a foreign firm, and a domestic statute becomes a bounty on other countries\' companies. The recovery keeps rising and the base it is recovered from is leaving.'
       ],
       eff:{ corruption:-2 }, mood:{ labour:4, prof:3, smallbiz:-6 },
       eff2:{ corruption:-4, liberties:-1 }, mood2:{ labour:7, prof:6, smallbiz:-12, faith:-6 }, rev2:2.6,
@@ -21045,8 +21045,8 @@ var V10_POLICIES_II = [
       rungs:[
         'A founding day, a day for the war dead and a day for the trades go onto the federal list, and public business stops on each. A day named for a victory over a neighbour is renamed for everyone who died in that war. Congregations count the feasts that did not make the list.',
         'The list lengthens and the days become paid rather than merely closed, so an hourly worker keeps the wage as well as the day. Banks, courts and the registry shut together, and output slips a little further with each day added.',
-        'Naming and unnaming a day passes to the Vice Chancellor by order, with no return to the chamber. What the country commemorates becomes a decision an official may take on a wet Tuesday, and a day can be gone before the people who kept it hear it is going.',
-        'Closure on a civic day turns compulsory rather than customary, and the exemption that let a farm work through harvest is withdrawn. The last of the old feasts fall off the list and are kept, where they are kept, in private.'
+        'Adding a day or striking one passes to the Vice Chancellor by order, and the list grows between sittings faster than the chamber ever grew it. Every new day is paid from the moment it is named, so the wage bill moves at a signature. A feast can be gone before the people who keep it hear it is going.',
+        'Closure turns compulsory rather than customary, and the same order power now shuts the yard, the shop and the farm along with the registry. The exemption that let a harvest work through is struck out like anything else on the list. What is left of the old feasts is kept behind a door.'
       ],
       eff:{ economy:-.5, tension:-.5 }, mood:{ labour:5, veterans:3, faith:-3, youth:2 },
       eff2:{ economy:-1, tension:-1 }, mood2:{ labour:9, veterans:6, faith:-7, youth:4 }, exp2:1.2,
