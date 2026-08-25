@@ -4,7 +4,77 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S12 — The Statute Book Speaks** (PR #37), fourth of six. Four books authored:
+**S12 — The Statute Book Speaks** (PR #38), fifth of six. Five books authored:
+**Defence, Authority, Elections, Federalism and Foreign**, 120 statutes, 480 rung
+descriptions and 120 refreshed one-line descriptions.
+
+**456 of 582 statutes now speak**, 1,824 descriptions at a mean of 239
+characters. These 120 cost **1,046 bytes each**, holding the projection at
+**2,948,000 of the 3,100,000 allowed**, 152 KB spare.
+
+### The pipeline is now doing what it was rebuilt to do
+
+| | placements | exact | tau | mis-ordered by both readers |
+|---|---|---|---|---|
+| drafts as authored | 86.3 / 86.3% | 72.5 / 72.5% | 0.908 / 0.908 | 8 of 40 |
+| **after repair** | **92.5 / 92.5%** | **85.0 / 85.0%** | **0.950 / 0.950** | 5 of 40 |
+| shipped baseline | 78.1% | 57.5% | 0.833 | |
+
+Second batch running whose **raw authoring output cleared the baseline**, and the
+post-repair figures match PR 4's to the decimal. The two blind readers returned
+**identical scores on every one of the four measurements**, before and after,
+which is the strongest evidence yet that the instrument is reading the prose
+rather than the reader.
+
+**Attribution: 60/60, 100%.** Every rung description identified its own statute
+out of eight candidates from the same book.
+
+**Defence and Authority produced no ladder that failed both readers.** No book had
+managed that before. The repair cost **9 statutes, 25 rung fields and 2
+descriptions**, and one of the nine was found by the repair agent's own sweep
+rather than by the readers.
+
+### The verify pass caught the ordering fault before the readers did
+
+56 findings across the five books, every one repaired: **19 unorderable**, 13
+substitutable, 9 generic, 9 contradicting the brief's own numbers, 4 invented, 2
+lexically escalating. Unorderable nearly doubled from PR 4's ten, and that is the
+check working rather than failing: these five books are about degrees of state
+power, which escalates more smoothly than a building programme, so more adjacent
+rung pairs sit close in severity. Those nineteen were fixed **inside the
+pipeline, before any blind reader saw the prose.** In PR 3 the same check found
+six where the readers found twenty-four.
+
+### Two things only the corpus rules could see
+
+**"Territories and protectorates" had reached nine statutes across four books and
+three separate batches** — Energy and Technology, merged two batches ago, plus
+Authority and Elections here. Four authoring agents, none able to see the others,
+independently chose the same words for the overseas possessions. It is now seven
+different formulations. No per-book verifier could ever have found this.
+
+**A boundary commission drew "the federal districts",** which collides with
+`Federal District`, a region name. Region names go stale the moment a campaign
+renames its regions, which is why the rule exists.
+
+```
+ALL CHECKS PASS   11/11, 2,815,901 bytes of 3,100,000
+ROADS OK          90 assertions
+RUNGS OK          1,824 descriptions, mean 239
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+Five ladders still resist both readers and are named rather than swept:
+`conscientiousObjection`, `curfewAuthority`, `loyaltyOaths`,
+`multilateralAccession`, `overseasVoting`.
+
+Next: **PR 6**, Empire, Imperium, People's State and The Charter — 126 statutes,
+the last of the book. It also gives The Charter the `V9_TIERS` row it has never
+had.
+
+Previously: **S12 — The Statute Book Speaks** (PR #37), fourth of six. Four books authored:
 **Energy, Environment, Infrastructure and Technology**, 96 statutes, 384 rung
 descriptions and 96 refreshed one-line descriptions.
 
@@ -77,9 +147,6 @@ PLAYTEST PASS     41 steps + the WebKit SKIP
 DETERMINISM PASS  8 properties
 TIERS             no width scrolls sideways
 ```
-
-Next: **PR 5**, Defence, Authority, Elections, Federalism and Foreign, already
-authoring. Then **PR 6** closes the slice.
 
 Previously: **S12 — The Statute Book Speaks** (PR #36), third of six. Four books authored:
 **Culture, Immigration, Justice and Security**, 96 statutes, 384 rung
@@ -1444,6 +1511,7 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 2 | **merged** (#35) | Labour, Capital, Health and Education: 384 rung descriptions and 96 refreshed one-liners; the verifier caught 22 substitutable passages and a corpus-wide shingle caught one cross-batch collision; the specificity rule demoted to a note at 18% measured precision; blind attribution 60/60 |
 | S12 prose, batch 3 | **merged** (#36) | Culture, Immigration, Justice and Security: 384 rung descriptions and 96 refreshed one-liners; the batch failed its own rung-order measurement at 37.5% against a 57.5% shipped baseline, two rival explanations were tested and killed, and 123 rung fields across 64 statutes were rewritten to climb one axis; re-measured on the same forty ladders it reads 72.5% and 75.0% |
 | S12 prose, batch 4 | **merged** (#37) | Energy, Environment, Infrastructure and Technology: the first batch authored under the one-axis rule and the first measured before apply; drafts cleared the shipped baseline unrepaired at 75.0 and 80.0 per cent exact, repair cost 17 rung fields against the previous batch's 123, and after it both blind readers returned 92.5 / 85.0 / 0.950; the overuse rule was narrowed after firing on two bloc names |
+| S12 prose, batch 5 | **merged** (#38) | Defence, Authority, Elections, Federalism and Foreign: 480 rung descriptions and 120 refreshed one-liners; drafts cleared the baseline unrepaired again and both blind readers returned identical scores at every stage, 92.5 / 85.0 / 0.950 after a 9-statute repair; attribution 60 of 60; the corpus rule caught a phrase four agents had independently converged on across three batches |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
