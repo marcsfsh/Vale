@@ -533,6 +533,53 @@ async function run() {
     });
     step('works-instruments', late.instrumentButtons >= 4 && late.builtTagShown && late.worksCount >= 48,
       `${late.worksCount} works; a work under way offers ${late.instrumentButtons} instruments and the card says how it is being built: ${late.builtTagShown}`);
+    /* S11a: the record deck. Twenty charts on a page render() rebuilds on every
+       action — the whole design is that a collapsed panel is a SLOT and opening
+       it fills it, so this has to be walked in a real browser. */
+    await page.evaluate(() => {
+      /* the scripted run closes two sessions, which is not enough history for
+         any chart to draw — so run the recorder forward and restore the turn.
+         The point of this step is the FILL PATH, not the fixture's depth. */
+      const keepTurn = S.turn;
+      for (let i = 0; i < 24; i++) { S.turn = i + 1; v11HistTick(S); }
+      S.turn = keepTurn;
+      UI.tab = 'record'; render();
+    });
+    await page.waitForTimeout(220);
+    const deck = await page.evaluate(() => {
+      const out = {};
+      out.charts = V10_RECORD_CHARTS.length;
+      out.slots = document.querySelectorAll('[data-chart-slot]').length;
+      out.drawn = document.querySelectorAll('#view .hist-wrap').length;
+      out.chips = document.querySelectorAll('[data-recrange]').length;
+      const t0 = performance.now(); for (let i = 0; i < 10; i++) render();
+      out.msCollapsed = +((performance.now() - t0) / 10).toFixed(2);
+      /* open one panel by its heading, the way a reader does */
+      /* pick a panel whose chart reads from the primed v11 columns, so the
+         fill produces a real chart rather than an honest empty-state */
+      const want = V10_RECORD_CHARTS.filter(c => c.src === 'v11')[0].id;
+      const slot = document.querySelector('[data-chart-slot="' + want + '"]') || document.querySelector('[data-chart-slot]');
+      const panel = slot && slot.closest('.panel');
+      const h = panel && panel.querySelector('h2');
+      if (h) h.click();
+      out.filled = !!(panel && panel.querySelector('.hist-wrap') && !panel.querySelector('[data-chart-slot]'));
+      out.keyed = panel && panel.querySelector('.hist-wrap') ? panel.querySelector('.hist-wrap').dataset.chart : null;
+      out.prefSaved = !!(S.uiPrefs.folds && h && S.uiPrefs.folds[v7FoldKey('record', h.textContent)] === false);
+      /* the range chip changes the sample and forgets the old scroll offset */
+      UI.chartScroll = { probe: 999 };
+      const chip = document.querySelector('[data-recrange="5"]');
+      if (chip) chip.click();
+      out.rangeSaved = S.uiPrefs.recRange === '5';
+      out.scrollCleared = Object.keys(UI.chartScroll).length === 0;
+      const back = document.querySelector('[data-recrange="all"]'); if (back) back.click();
+      return out;
+    });
+    step('record-deck', deck.charts >= 20 && deck.slots >= 19 && deck.chips === 5 &&
+      deck.filled && deck.keyed && deck.rangeSaved && deck.scrollCleared,
+      `${deck.charts} charts, ${deck.slots} of them slots on arrival; ` +
+      `${deck.msCollapsed}ms a render collapsed; opening one fills it (${deck.keyed}) and saves the preference: ${deck.prefSaved}; ` +
+      `the range chip saves and clears the remembered scroll: ${deck.rangeSaved && deck.scrollCleared}`);
+
     step('chairs-and-pools', late.chairButtons > 0 && late.chairNamed && late.questionPool >= 160 && late.paperPool >= 32 && late.powers >= 11,
       `${late.chairButtons} chair controls while leading, chairs are named: ${late.chairNamed}; ` +
       `${late.questionPool} questions, ${late.paperPool} papers, ${late.powers} powers`);
