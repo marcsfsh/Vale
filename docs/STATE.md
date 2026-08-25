@@ -4,7 +4,68 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S10g — The Despatch Box** (PR #28). A stale workflow notification turned out
+**S11a — The Long Record** (PR #29). First of five slices carrying the owner's
+sixth order. Where the fifth order's complaint was thin material on working
+machinery, this one's is **machinery that reaches nothing** — and the surveys
+proved it with arithmetic. This slice is the exception: the Record page needed
+material, and most of it turned out to be already recorded.
+
+**Twenty charts, from three sources with three different start dates.**
+`st.v6.history` has written eleven numbers a session since v6 and four of them
+reached a chart; its cap of 220 exceeds an epic's 201 turns, so **the timeline
+the owner asked for already existed and only the filter was missing**. Five of
+its columns — growth, capital, treasury, debt, the balance — had been recorded
+since v6 and displayed to nobody. `st.v5History` has written eight a session
+since v5 and was **read by nothing at all**: inflation, unity, the government's
+seat share and campaign power exist nowhere else in the save. Fifty new columns
+join them in `st.v11.hist`. Each panel says which source it draws on and from
+what year, because one blanket disclaimer would have been wrong twice.
+
+**A collapsed panel emits a slot, not a chart.** `render()` rebuilds the active
+tab with `innerHTML` on every action; measured on the branch, twenty charts
+collapsed cost ~9–12 ms a render against ~20 ms with all of them open. The
+owner ruled that the Long Record opens and the other nineteen do not.
+
+**Three chart-engine defects that would have shipped.** `v7ChartsToEnd` used
+`querySelector` — first match only — keyed by class name, so one chart would
+have opened on the present and nineteen would have shipped the exact defect S6c
+wrote that function to fix, all sharing one memory slot. `v7Folds`'s fold key
+strips a trailing number and lowercases, so twenty panels could have collapsed
+into one saved preference. And `v6Sandbox` deep-clones the whole of `S` on every
+mouseenter over a forecastable button, which would have carried the deck's
+history through every forecast.
+
+**Rounding paid for the whole feature.** Every history row stored raw doubles —
+the fixtures hold `"approval":59.803040788077986`. All three recorders now
+round and the new columns are integers; `v6.history` at its cap went ≈50 KB to
+≈24 KB, which matters twice because the autosave rewrites the blob 160 ms after
+every render and `UI.undoStack` holds up to eight more copies.
+
+Very easy opens on **175** and earns more: `capMult` 4.2→5.4, `capFlat` 18→26
+and `capCap` 320→440 moved together, because capital is a stock clamped at
+`capCap` by some twenty sites and raising income alone would have spent the
+increase on nothing.
+
+`maxBytes` 2,200,000 → 2,450,000, raised **before** the order is authored.
+
+What the harnesses hold on this branch:
+
+```
+ALL CHECKS PASS   11/11, 2,188,984 bytes of 2,450,000
+ROADS OK          66 assertions
+PLAYTEST PASS     40 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
+```
+
+Six fail-proofs, one mutation each: two panels sharing a fold key; a chart
+reaching for a column nobody records; a fifth series on one chart; the range
+that stops slicing; the forecast that carries the record again; the recorder
+that stops rounding.
+
+Next: **S11b**, thirty-six more executive orders, none of them gated.
+
+Previously: **S10g — The Despatch Box** (PR #28). A stale workflow notification turned out
 to be carrying work: the tail of the S10f authoring run rewrote eighteen shards
 AFTER the first seventy questions had been merged and shipped, leaving
 forty-five more on disk that no build had seen. Levelling the five subjects
@@ -695,6 +756,7 @@ ratchet 10 → 5, which is now its true floor.
 | S10b/c the Order Paper and Order Book | **in review (PR #26)** | levers on other parties' bills scaled by standing, kill at an outright majority, a declared line finally seat-weighted; `partyDemandPolicy` and the private-members' path stop being deterministic; 36 standing executive orders replacing `orderPolicy`, bending targets rather than stocks, lapsing with their department |
 | S10d/e/f the Works, the Ministry, the World and the Session | **in review (PR #27)** | 16 distinct works -> 48, and six instruments that change what a work delivers rather than only its rate; five new ministerial interactions; committee chairs apportioned by largest remainder and made named people you assign when you lead; the four causes of ally-at-war closed, five powers and four treaty instruments added, treaty effects implemented; Question Time 5 sentences -> 94 questions over 14 subjects, papers 11 -> 43; two assertions that could not fail rewritten, sixteen new ones each shipped with the mutation that reddens it |
 | S10g the Despatch Box | **in review (PR #28)** | 45 questions authored by the tail of the S10f run and never merged, plus 25 levelling the five subjects that fire most often; pool 94 -> 164, seven per subject on the government benches; 51 defects found by seven adversarial readings, ten of them the same question written twice by sibling agents; the item chosen by a saved ROTATION instead of a hash whose constant stride left one subject reaching 2 of its 12 questions in 200 sessions; `maxBytes` 2.1M -> 2.2M |
+| S11a the Long Record | **in review (PR #29)** | twenty charts on the Record page from three sources, each panel naming its own start year; nine series were already recorded and shown to nobody, four of them in a v5 array read by nothing; build-on-open (9-12ms collapsed against 20ms open) with the Long Record the one that opens; three chart-engine defects fixed (querySelector-first-match, fold keys that collapse twenty panels into one preference, the sandbox carrying the deck through every forecast); all recorders round; very easy 175/5.4/26/440; `maxBytes` 2.2M -> 2.45M |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts

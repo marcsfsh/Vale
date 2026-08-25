@@ -280,6 +280,57 @@ chart is what retires the hunt back to a legend.
   chart someone had scrolled back through. It also runs when a fold opens: a
   chart inside a collapsed panel has no width to measure.
 
+## The record deck (S11a)
+
+Twenty charts on the `record` tab, drawn from **three sources with three
+different start dates** — the note under each panel says which, because one
+blanket disclaimer would be wrong twice.
+
+- `st.v6.history` — nine plottable series, and its cap of **220** exceeds an
+  epic's **201** turns, so on any save it already spans the whole campaign.
+  Five of its columns (`growth`, `capital`, `treasury`, `debt`, `net`) were
+  recorded from v6 onward and displayed to nobody until this slice.
+- `st.v5History` — written every session since v5 and **read by nothing** until
+  this slice: `inflation`, `unity`, the government's seat share and campaign
+  power exist nowhere else. Its cap was **40** and is now 220; an older save
+  keeps only its forty and the panel says so.
+- `st.v11.hist` — fifty columns, **columnar and integer**, created-on-write,
+  with a per-column first-turn stamp in `st.v11.histT`. Recorded by
+  `v11HistTick` from the v10 `tickTurn` wrapper, last in the chain so every
+  earlier tick has already moved what it reads.
+
+**A collapsed panel emits a SLOT, not a chart.** `render()` rebuilds the active
+tab with `innerHTML` on every action; measured, twenty charts collapsed cost
+~9–12 ms a render against ~20 ms with all of them open. `v7Folds`'s `toggle()`
+calls `v10FillChartSlots(panel)` **before** `v7ChartsToEnd()`, so the
+scroll-to-present pass measures a box that now has a width. Caching the SVG
+string is the trap: string-building is 0.28 ms of the 0.72 ms per chart and a
+cache still pays the innerHTML parse and the SVG layout in full.
+
+- **`v7FoldKey(tab, title)` / `v7FoldState(tab, title)`** were extracted from
+  `v7Folds`'s inlined logic so a view can ask the identical question the fold
+  pass asks. The normalisation **strips a trailing number and lowercases**, so
+  "Chart 1" and "Chart 2" are ONE saved preference — every deck title must be
+  distinct after it, and `roads.js` asserts that over the registry.
+- **`v7ChartsToEnd` is `querySelectorAll`, keyed per chart** off
+  `el.dataset.chart`. It used to be `querySelector` — first match only — keyed
+  by class name, which with a deck would have left nineteen charts opening at
+  the oldest session sharing one memory slot.
+- **`v6Sandbox` deletes `clone.v11.hist`.** It deep-clones the whole of `S` on
+  every mouseenter over a forecastable button, and the deck history is read by
+  nothing in the model.
+- **Deck charts carry `nofade`**: `.chart-in .ink` restarts its animation on
+  every render, and twenty charts fading in on every click is a cost and an
+  unpleasant read. A chart built on fold-open animates once, by arriving.
+- **The range filter** (All / 50y / 25y / 10y / 5y) rides `S.uiPrefs.recRange`,
+  which is **saved** — `UI.polCat`, the chip pattern it copies, is transient.
+  One turn is one year so a range is a slice. Changing it **clears
+  `UI.chartScroll`**, because the offset was measured against a wider box.
+- **All three recorders round.** Rows stored raw doubles
+  (`"approval":59.803040788077986`); `v6.history` at its cap went ≈50 KB → ≈24
+  KB. This matters twice over: the autosave rewrites the whole blob 160 ms after
+  every render, and `UI.undoStack` (:14909–14914) holds up to eight more copies.
+
 ## The dice (S3)
 
 **The enrich chain's guard must stay outermost.** Each chunk wraps

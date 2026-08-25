@@ -822,6 +822,87 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `wrong number of choices: ${papers.badChoices.length}; repeated titles: ${papers.dupTitles.length}; ` +
     `templated where they should be written: ${papers.templated.length}; buttons the renderer cannot price: ${papers.unpriced.length}`);
 
+  /* S11a — THE RECORD DECK. Twenty charts on a page render() rebuilds on every
+     action, drawn from three sources that started recording at three different
+     times. */
+  const deck = await page.evaluate(() => {
+    const out = {};
+    /* the fixture has not closed enough sessions for the recorder to have run,
+       so run it — that is the thing under test anyway. RESTORE S.turn: the
+       governor-ageing assertion below reads it, and a primer that leaves the
+       turn at 30 makes that test measure this one. */
+    const keepTurn = S.turn;
+    for (let i = 0; i < 30; i++) { S.turn = i + 1; v11HistTick(S); }
+    S.turn = keepTurn;
+    S.uiPrefs = S.uiPrefs || {};
+    out.charts = V10_RECORD_CHARTS.length;
+    /* v7FoldKey strips a TRAILING NUMBER and lowercases, so "Chart 1" and
+       "Chart 2" are one saved preference governing both panels. Nothing else
+       in the file catches this and it is trivial to hit by accident. */
+    const keys = V10_RECORD_CHARTS.map(c => v7FoldKey('record', c.title));
+    out.uniqueKeys = new Set(keys).size === keys.length;
+    out.dupKey = keys.find((k, i) => keys.indexOf(k) !== i) || null;
+    /* every chart defaults collapsed except the Long Record, which is the one
+       the page has always opened on */
+    out.collapsed = V10_RECORD_CHARTS.filter(c => v7DefaultCollapsed('record', c.title)).length;
+    /* the palette rule: at most four series a chart, and only from the accents
+       the theme already carries — twenty charts is exactly where an
+       unadjudicated hex arrives */
+    const ACCENTS = Object.keys(V11_ACCENT).map(k => V11_ACCENT[k]);
+    out.tooManySeries = V10_RECORD_CHARTS.filter(c => c.keys.length > 4).map(c => c.id);
+    out.strayColour = V10_RECORD_CHARTS.filter(c => c.keys.some(s => ACCENTS.indexOf(s.color) < 0)).map(c => c.id);
+    /* every series must be readable from the source its chart names, or the
+       line renders as a flat zero and says nothing */
+    out.unreadable = [];
+    V10_RECORD_CHARTS.forEach(c => {
+      c.keys.forEach(s => {
+        if (c.src === 'v11') {
+          if (!V11_SERIES.some(col => col.k === s.k)) out.unreadable.push(c.id + ':' + s.k);
+        } else {
+          const rows = V11_SRC[c.src].rows();
+          if (rows.length && typeof V11_SRC[c.src].at(rows[rows.length - 1], s.k) !== 'number') out.unreadable.push(c.id + ':' + s.k);
+        }
+      });
+    });
+    /* THE RANGE IS A SLICE OF YEARS. One turn is one year, so no conversion —
+       but it has to actually cut the sample. */
+    const keep = S.uiPrefs.recRange;
+    const col = v11Col('crown');
+    S.uiPrefs.recRange = 'all'; const all = v11Slice(col).length;
+    S.uiPrefs.recRange = '5';   const five = v11Slice(col).length;
+    S.uiPrefs.recRange = '25';  const twentyfive = v11Slice(col).length;
+    S.uiPrefs.recRange = keep;
+    out.rangeAll = all; out.rangeFive = five; out.rangeTwentyFive = twentyfive;
+    out.rangeCuts = all > 5 ? (five === 5 && twentyfive === Math.min(all, 25)) : true;
+    /* THE FORECAST MUST NOT CARRY THE RECORD. v6Sandbox deep-clones the whole
+       of S on every mouseenter over a forecastable button. */
+    const box = v6Sandbox(function () {});
+    out.sandboxClean = !(box.st.v11 && box.st.v11.hist);
+    out.liveKept = !!(S.v11 && S.v11.hist);
+    /* ROUNDING MUST NOT CHANGE WHAT A CHART SHOWS. Every recorder now rounds;
+       the deck reads the rounded value, so a chart's own frame is what has to
+       be identical, not the raw double. */
+    out.allIntegers = Object.keys(S.v11.hist).every(k => S.v11.hist[k].every(v => v === Math.round(v)));
+    out.v6Rounded = (S.v6.history || []).every(r => Math.abs(r.approval * 10 - Math.round(r.approval * 10)) < 1e-9);
+    /* EACH SOURCE STATES ITS OWN START. Three different truths — v6 spans the
+       campaign, v5 kept forty sessions before this slice, v11 starts now — and
+       one blanket note would be wrong twice. */
+    out.notes = [...new Set(V10_RECORD_CHARTS.map(c => v11ChartNote(c)))].length;
+    return out;
+  });
+  say(deck.charts >= 20 && deck.uniqueKeys && deck.collapsed === deck.charts - 0 - (deck.charts - deck.collapsed) &&
+      !deck.tooManySeries.length && !deck.strayColour.length && !deck.unreadable.length,
+    'the record deck is stocked and every line can be read',
+    `${deck.charts} charts · fold keys unique after normalisation: ${deck.uniqueKeys}${deck.dupKey ? ' (' + deck.dupKey + ')' : ''} · ` +
+    `charts with more than four series: ${deck.tooManySeries.length} · colours outside the theme accents: ${deck.strayColour.length} · ` +
+    `series their own source cannot supply: ${deck.unreadable.length}`);
+  say(deck.rangeCuts && deck.sandboxClean && deck.liveKept && deck.allIntegers && deck.v6Rounded && deck.notes >= 2,
+    'the record costs what it says and no more',
+    `a range is a slice of years (${deck.rangeAll} all, ${deck.rangeFive} at five, ${deck.rangeTwentyFive} at twenty-five) · ` +
+    `a forecast clone carries no record: ${deck.sandboxClean}, and the live one still does: ${deck.liveKept} · ` +
+    `every recorded column is an integer: ${deck.allIntegers}, and v6's rows are rounded: ${deck.v6Rounded} · ` +
+    `${deck.notes} distinct provenance notes, because the three sources began at three different times`);
+
   say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent &&
       qt.stable && qt.rotationHeld && qt.walked === qt.shelf &&
       qt.oldSaveThrew === false && qt.oldSaveAsks && qt.rotationRidesTheSave,
