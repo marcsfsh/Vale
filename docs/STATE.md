@@ -4,7 +4,84 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S12 — The Statute Book Speaks** (PR #36), third of six. Four books authored:
+**S12 — The Statute Book Speaks** (PR #37), fourth of six. Four books authored:
+**Energy, Environment, Infrastructure and Technology**, 96 statutes, 384 rung
+descriptions and 96 refreshed one-line descriptions.
+
+**336 of 582 statutes now speak**, 1,344 descriptions at a mean of 240
+characters. These 96 cost **1,048 bytes each**, projecting the finished book at
+**2,948,000 of the 3,100,000 allowed**, with 152 KB to spare.
+
+### The rule bought what it was supposed to buy
+
+This is the first batch authored under **"One axis is the ladder"**, and the
+first whose ordering was measured **before** anything reached `vale.html` rather
+than after it merged. Both changes came out of PR 3's failure, and this batch is
+the test of them.
+
+| | placements | exact | tau | mis-ordered by both readers |
+|---|---|---|---|---|
+| PR 3, drafts as authored | 68.1 / 62.5% | 37.5 / 30.0% | 0.767 / 0.733 | **24 of 40** |
+| **PR 4, drafts as authored** | **86.9 / 90.0%** | **75.0 / 80.0%** | **0.908 / 0.933** | **7 of 40** |
+| PR 4, after repair | 92.5 / 92.5% | 85.0 / 85.0% | 0.950 / 0.950 | 5 of 40 |
+| shipped baseline | 78.1% | 57.5% | 0.833 | |
+
+**The raw authoring output cleared the shipped baseline**, which PR 3's never
+did. The repair cost **17 rung fields across 7 statutes**; PR 3 needed **123
+across 64** for the same job. Writing the rule down was worth about seven times
+its own repair bill, and the two blind readers agreed to the decimal after it.
+
+Five ladders are still mis-ordered by both readers and are named rather than
+swept: `biodiversityOffsets`, `dataSafeHarbour`, `pipelinePreemption`,
+`portsAndLocks`, `ruralCooperatives`. The last two were repaired and still fail,
+which is worth saying plainly: one repair round is not a guarantee.
+
+**Attribution, measured on the drafts: 59/60, 98.3%** against a 12.5% chance
+floor, the best of the four batches. The single miss read Preempt Local Zoning as
+Permitting Reform.
+
+### The checker was wrong about the game's own nouns
+
+The 4-gram overuse rule exists to kill connective spam spreading through the
+corpus unnoticed. It fired five times here. Three were genuine: **"at the end of"
+in ten statutes, "for the first time" in eight, "as well as the" in seven.** Two
+were **bloc names**: "Students and Young Workers" in fifteen statutes and "Small
+Business and Farmers" in thirteen.
+
+The style brief tells the author to name a bloc by the noun the registry gives,
+so on those two the rule was **ordering the prose to disobey the brief**, and the
+only ways to satisfy it were to rename the constituency or to stop naming it. A
+rule that fires on its own required vocabulary is measuring the vocabulary rather
+than the writing. It now skips any gram sitting inside a bloc or indicator name,
+read from the booted game so it cannot go stale. This is the second rule in this
+slice demoted or narrowed on measured precision rather than argued about.
+
+**One of the three genuine hits was self-inflicted.** "as well as the" entered
+the corpus as a PR 3 repair, written to remove a negative parallelism, and had
+since reached seven statutes. A fix applied by hand across a corpus is itself a
+phrase that can spread.
+
+### The verify pass
+
+44 findings across the four books, every one repaired: 14 substitutable, **10
+unorderable**, 8 generic, 8 contradicting the brief's own numbers, 2 invented, 2
+lexically escalating. The unorderable count is up from six in PR 3 because the
+prompt was sharpened after that check under-fired, and this time it was pointing
+at the same fault the blind readers found rather than a different one.
+
+```
+ALL CHECKS PASS   11/11, 2,690,326 bytes of 3,100,000
+ROADS OK          90 assertions
+RUNGS OK          1,344 descriptions, mean 240
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+Next: **PR 5**, Defence, Authority, Elections, Federalism and Foreign, already
+authoring. Then **PR 6** closes the slice.
+
+Previously: **S12 — The Statute Book Speaks** (PR #36), third of six. Four books authored:
 **Culture, Immigration, Justice and Security**, 96 statutes, 384 rung
 descriptions and 96 refreshed one-line descriptions.
 
@@ -111,9 +188,6 @@ generic names. `v9TierName` is called from four sites, all escaped into display
 HTML, and nothing compares a tier name as a string, so a row is display-only. It
 gets `Granted / Chartered / Extended / Sovereign`, the book's own arc of a
 company acquiring state functions.
-
-Next: **PR 4**, Energy, Environment, Infrastructure and Technology. Briefs for
-every remaining book are generated.
 
 Previously: **S12 — The Statute Book Speaks** (PR #35), second of six. Four books authored:
 **Labour, Capital, Health and Education**, 96 statutes, 384 rung descriptions and
@@ -1369,6 +1443,7 @@ ratchet 10 → 5, which is now its true floor.
 | S12 the Statute Book Speaks (engine) | **merged** (#34) | `capFloor:75` on very easy in a new outermost wrapper; every core book renders 24 with the locked ones stating their condition, and `policyOpen` untouched; `rungs:` on the statute plus a forward-hook renderer; `tools/rungs.js`; Taxation and Welfare authored; `maxBytes` 2.45M -> 3.1M |
 | S12 prose, batch 2 | **merged** (#35) | Labour, Capital, Health and Education: 384 rung descriptions and 96 refreshed one-liners; the verifier caught 22 substitutable passages and a corpus-wide shingle caught one cross-batch collision; the specificity rule demoted to a note at 18% measured precision; blind attribution 60/60 |
 | S12 prose, batch 3 | **merged** (#36) | Culture, Immigration, Justice and Security: 384 rung descriptions and 96 refreshed one-liners; the batch failed its own rung-order measurement at 37.5% against a 57.5% shipped baseline, two rival explanations were tested and killed, and 123 rung fields across 64 statutes were rewritten to climb one axis; re-measured on the same forty ladders it reads 72.5% and 75.0% |
+| S12 prose, batch 4 | **merged** (#37) | Energy, Environment, Infrastructure and Technology: the first batch authored under the one-axis rule and the first measured before apply; drafts cleared the shipped baseline unrepaired at 75.0 and 80.0 per cent exact, repair cost 17 rung fields against the previous batch's 123, and after it both blind readers returned 92.5 / 85.0 / 0.950; the overuse rule was narrowed after firing on two bloc names |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
