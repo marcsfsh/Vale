@@ -851,6 +851,16 @@
       "line": 0,
       "aliasCaptured": true,
       "reason": "S11c: alias var v11RegionLeadingBase captured above. The post-count region map read only psupport, r.lean and federal trust, so a region could flip on screen for reasons the ballot did not use. It now reads the governor and the standing the ballot reads, and the two agree."
+    },
+    "regionAction#2": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "S11c: alias var v11RegionActionBase captured above. Six more levers on V9_REGION_ACTS, which is a registry with one generic handler and therefore the cleanest extension point on the page. These reach the economy, the disparity and the autonomy ladder — the things the existing eleven did not; nine of those moved prosperity, services and order, whose entire downstream reach was one governor approval score."
+    },
+    "viewFederation#3": {
+      "line": 0,
+      "aliasCaptured": true,
+      "reason": "S11c: alias var v11ViewFederationBase captured above. Runs AFTER the v6 wrapper (which splits on a region-card literal and maps parts POSITIONALLY to REGIONS) and the v9 wrapper (which locates a data-region inspect marker) — so both have finished by the time this sees the HTML and neither can be mis-assigned by what it adds. Replaces the right column's Strategic Risks panel, which carried five generic national risk lines and nothing regional across half the width of the tab about the states."
     }
   }
 }
