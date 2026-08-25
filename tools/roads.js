@@ -231,10 +231,36 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.turn = t0;
     out.slidingYears = slid.map(r => r.id);
 
-    /* One increment a session, from one place. */
-    const before = {}; REGIONS.forEach(r => before[r.id] = S.v6.governors[r.id].age);
+    /* One increment a session, from one place.
+
+       A governor SUCCEEDED during the sample has a delta that measures
+       nothing: `ageFigures` rolls a death-or-retirement risk per figure
+       (.004 below 62, rising to .16 above 78) and `ageSucceed`'s governor
+       branch seats a fresh `v6MakeGovernor`, whose age is an independent
+       46 + rand()*20. Observed deltas from that path: -7, -5, -4, 0, +10.
+
+       This harness reaches this probe at a DIFFERENT POINT IN THE SEEDED
+       STREAM on every run — the UI pump is click-timed, which is the hazard
+       CLAUDE.md names — so the eight governors are freshly rolled each time
+       and which of them sit in a raised risk band varies. Measured on main
+       at ae50fa2: ages came out 59,51,52,58,48,62,65,46 on one run and
+       48,60,52,58,63,59,63,65 on the next, and one run in eight succeeded a
+       governor and turned this assertion red. It was failing intermittently
+       on identical code, on main as much as here.
+
+       So successors are excluded BY OBJECT IDENTITY — `ageSucceed` replaces
+       the whole record, so `===` is exact and cannot be fooled by two
+       governors drawing the same name. The survivors are still held to
+       exactly 1: this must stay the assertion that catches a governor being
+       aged twice. The floor keeps it from passing vacuously on a session
+       that happened to retire most of the bench. */
+    const before = {}, beforeRec = {};
+    REGIONS.forEach(r => { before[r.id] = S.v6.governors[r.id].age; beforeRec[r.id] = S.v6.governors[r.id]; });
     v6GovernorsTick(S); ageFigures(S);
-    out.ageSteps = REGIONS.map(r => S.v6.governors[r.id].age - before[r.id])
+    const served = REGIONS.filter(r => S.v6.governors[r.id] === beforeRec[r.id]);
+    out.ageServed = served.length;
+    out.ageBench = REGIONS.length;
+    out.ageSteps = served.map(r => S.v6.governors[r.id].age - before[r.id])
       .filter((v, i, a) => a.indexOf(v) === i);
 
     /* Ministers are in the roster too, and carry an age at all. A fresh
@@ -304,8 +330,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(republic.slidingYears.length === 0, 'the ballot year does not recede',
     republic.slidingYears.length ? 'slides in ' + republic.slidingYears.join(', ')
       : 'a year passes and every region\'s printed ballot year stays where it was');
-  say(republic.ageSteps.length === 1 && republic.ageSteps[0] === 1, 'one year a session, once',
-    'governor age advanced by ' + republic.ageSteps.join('/') + ' over a session that ran both the governors tick and ageFigures');
+  say(republic.ageServed >= 5 && republic.ageSteps.length === 1 && republic.ageSteps[0] === 1,
+    'one year a session, once',
+    republic.ageServed < 5
+      ? `only ${republic.ageServed} of ${republic.ageBench} governors served the whole session — too few to measure the increment`
+      : 'governor age advanced by ' + republic.ageSteps.join('/') + ' over a session that ran both the governors tick and ' +
+        `ageFigures · ${republic.ageServed} of ${republic.ageBench} served it out; a successor's age measures nothing and is excluded`);
   say(republic.ministersSeated > 0 && republic.ministersAged === republic.ministersSeated &&
     republic.rosterKinds.join(',') === 'exec,governor,leader,minister' && republic.vacatedOnDeath,
     'the whole cast ages', `${republic.ministersAged}/${republic.ministersSeated} ministers carry an age · roster: ` +
@@ -826,6 +856,122 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${papers.pool} authored papers on top of the eleven the v4 base had; ` +
     `wrong number of choices: ${papers.badChoices.length}; repeated titles: ${papers.dupTitles.length}; ` +
     `templated where they should be written: ${papers.templated.length}; buttons the renderer cannot price: ${papers.unpriced.length}`);
+
+  /* S11c — THE FEDERATION. The owner reported the tab as bare and low-impact;
+     the survey found the arithmetic. */
+  const fed = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const keep = { regions: JSON.parse(JSON.stringify(S.regions)),
+      gov: JSON.parse(JSON.stringify(S.v6.governors)),
+      auto: JSON.parse(JSON.stringify(S.v6.autonomy || {})),
+      tg: JSON.parse(JSON.stringify((S.campaign && S.campaign.targets) || {})),
+      cool: JSON.parse(JSON.stringify(S.regionCooldown || {})),
+      cap: S.capital, tre: S.treasury, turn: S.turn };
+    const seats = () => ((projection(S) || {}).seats || {})[me] || 0;
+    const setAll = (v, mine, dots) => REGIONS.forEach(r => {
+      const q = S.regions[r.id];
+      q.prosperity = v; q.services = v; q.order = v; q.federal = v;
+      const g = S.v6.governors[r.id];
+      if (g) { g.party = mine ? me : PARTIES.filter(x => x.id !== me)[0].id; g.standing = v; g.approval = v; }
+      if (S.campaign && S.campaign.targets) S.campaign.targets[r.id] = dots;
+    });
+    /* WHAT A REGION IS WORTH IN THE CHAMBER. Before this slice: prosperity,
+       services and order reached one governor's approval score, and the only
+       channel to the national vote was a pop-weighted mean of eight frozen
+       `lean` literals worth about +4.7% to the ruling party alone. */
+    setAll(50, false, 0); const neutral = seats();
+    setAll(85, true, 3);  const sweep = seats();
+    setAll(20, false, 0); const abandoned = seats();
+    out.sweepGain = sweep - neutral;
+    out.neglectLoss = neutral - abandoned;
+    /* THE FLANK PARTIES CAN BE MOVED IN THE REGIONS AT ALL. Measured the way
+       it matters: the flank party HOLDING the governorships against holding
+       none. NOTE what this does and does not prove — a proof-of-failure run
+       showed restoring the old [.86,1.15] clamp does NOT turn this red, so
+       what this assertion guards is the regional TERMS, not the widened span.
+       The span still earns its keep at the bottom (the worst flank readings
+       land at .847 and .854, under the old floor); the top is headroom. */
+    out.flankMoves = ['rsf', 'pnl'].every(f => {
+      REGIONS.forEach(r => { const g = S.v6.governors[r.id]; if (g) { g.party = null; g.standing = 50; g.approval = 50; } });
+      const without = regionPartyFactor(S, f);
+      REGIONS.forEach(r => { const g = S.v6.governors[r.id]; if (g) { g.party = f; g.standing = 85; g.approval = 85; } });
+      const withThem = regionPartyFactor(S, f);
+      return withThem - without > 0.02;
+    });
+    /* the seat totals are untouched BY CONSTRUCTION — per-region allocation was
+       rejected precisely so this stays true without re-verification */
+    setAll(85, true, 3);
+    const pr = projection(S);
+    out.assemblyTotal = PARTIES.reduce((a, p) => a + (pr.seats[p.id] || 0), 0);
+    out.senateTotal = PARTIES.reduce((a, p) => a + (pr.senate[p.id] || 0), 0);
+    out.assemblyWant = CFG.seats; out.senateWant = CFG.senate;
+    S.regions = JSON.parse(JSON.stringify(keep.regions));
+    S.v6.governors = JSON.parse(JSON.stringify(keep.gov));
+    if (S.campaign) S.campaign.targets = JSON.parse(JSON.stringify(keep.tg));
+    /* THE ECONOMY IS ON THE SAVE, NOT THE FROZEN LITERAL. Writing REGIONS
+       would not be serialised, not rewound by undo, and corrupted by every
+       forecast — a silent save break. */
+    const q = v11Region(S, 'rigel');
+    out.econOnState = ['output', 'wealth', 'pop', 'trade'].every(k => q[k] !== undefined);
+    out.inTheBlob = /"output"/.test(JSON.stringify(S.regions));
+    const litPop = REGIONS.filter(r => r.id === 'rigel')[0].pop;
+    q.pop = q.pop + 5;
+    out.literalUntouched = REGIONS.filter(r => r.id === 'rigel')[0].pop === litPop;
+    q.pop = q.pop - 5;
+    /* THE LADDER HAS RUNGS, and pressure builds on the things the page moves */
+    out.rungs = V11_AUTONOMY.length;
+    S.v6.autonomy = {};
+    REGIONS.forEach(r => { const x = S.regions[r.id]; x.federal = 90; x.prosperity = 90; x.order = 90; });
+    S.crown = 80;
+    const calm = v11AutonomyPressure(S, REGION.thaxia);
+    REGIONS.forEach(r => { const x = S.regions[r.id]; x.federal = 12; x.prosperity = 14; x.order = 16; });
+    S.crown = 20;
+    const angry = v11AutonomyPressure(S, REGION.thaxia);
+    out.pressureBuilds = angry > calm + 20;
+    out.calm = calm; out.angry = angry;
+    S.v6.autonomy.thaxia = 3;
+    out.levelReads = v11AutonomyLevel(S, 'thaxia') === 3;
+    /* UNREST READS REGIONAL ORDER, which the field guide has always claimed */
+    S.regions = JSON.parse(JSON.stringify(keep.regions));
+    const u0 = unrestTarget(S);
+    REGIONS.forEach(r => { S.regions[r.id].order = 15; });
+    const u1 = unrestTarget(S);
+    /* the real wiring moves this by ~10.6; a threshold of 1 let a PARTIAL
+       break through (removing the worst-region term alone still scored 4),
+       which a proof-of-failure run caught. It has to be tight enough that
+       losing any one of the three terms shows. */
+    out.unrestReadsOrder = u1 > u0 + 8;
+    out.unrestDelta = Math.round((u1 - u0) * 10) / 10;
+    S.regions = JSON.parse(JSON.stringify(keep.regions));
+    S.v6.autonomy = keep.auto;
+    /* THE TWO UNBOUNDED LEVERS ARE BOUNDED. Standing could be bought from
+       nothing to a hundred in three clicks in one session. */
+    S.capital = 99; S.treasury = 999; S.regionCooldown = {};
+    const st0 = S.v6.governors.rigel.standing;
+    v6GovernorAction('rigel', 'meet'); const st1 = S.v6.governors.rigel.standing;
+    v6GovernorAction('rigel', 'meet'); const st2 = S.v6.governors.rigel.standing;
+    out.meetBounded = st1 > st0 && st2 === st1;
+    /* the six new levers exist and go through the one generic handler */
+    out.acts = Object.keys(V9_REGION_ACTS).length;
+    S.regions = keep.regions; S.v6.governors = keep.gov; S.v6.autonomy = keep.auto;
+    if (S.campaign) S.campaign.targets = keep.tg;
+    S.regionCooldown = keep.cool; S.capital = keep.cap; S.treasury = keep.tre; S.turn = keep.turn;
+    return out;
+  });
+  say(fed.sweepGain >= 30 && fed.sweepGain <= 55 && fed.neglectLoss >= 6 && fed.flankMoves &&
+      fed.assemblyTotal === fed.assemblyWant && fed.senateTotal === fed.senateWant,
+    'what you build in a region reaches the chamber',
+    `a clean eight-governor sweep is worth +${fed.sweepGain} Assembly seats and abandoning every region ` +
+    `costs ${fed.neglectLoss} (the owner's ruling was about forty) · the two flank parties can now be moved in the regions ` +
+    `at all: ${fed.flankMoves} · and the roll still totals ${fed.assemblyTotal}/${fed.assemblyWant} and ${fed.senateTotal}/${fed.senateWant}, ` +
+    `because per-region allocation was rejected and allocateSeats is untouched`);
+  say(fed.econOnState && fed.inTheBlob && fed.literalUntouched && fed.rungs === 5 &&
+      fed.pressureBuilds && fed.levelReads && fed.unrestReadsOrder && fed.meetBounded && fed.acts >= 10,
+    'the federation is something you can lose',
+    `the regional economy rides the SAVE and not the frozen REGIONS literal (${fed.econOnState}/${fed.inTheBlob}/${fed.literalUntouched}) · ` +
+    `${fed.rungs} rungs out of the union, pressure ${fed.calm} when the centre is trusted and ${fed.angry} when it is not · ` +
+    `regional order reaches unrest at last, ${fed.unrestDelta} when every region is ungoverned · ` +
+    `a governor cannot be bought to a hundred in one session: ${fed.meetBounded} · ${fed.acts} levers on the registry`);
 
   /* S11a — THE RECORD DECK. Twenty charts on a page render() rebuilds on every
      action, drawn from three sources that started recording at three different

@@ -4,7 +4,87 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S11b — The Order Book** (PR #30). Thirty-six more executive orders, none of
+**S11c — The Federation** (PR #31). Third of five slices carrying the owner's
+sixth order. The complaint was that the tab is "extremely bare/repetitive with
+not much impact from the things you do there" — and the survey found the
+arithmetic behind it. A region's `prosperity`, `services` and `order` reached
+**one governor's approval score and nothing else**. The only channel from a
+region to the national vote was `regionPartyFactor`, a pop-weighted mean of
+eight frozen `lean` literals; federal trust at 90 across all eight regions was
+worth **+4.7% to the ruling party alone**, and nothing a player did moved it.
+
+**The regional term.** `regionPartyFactor` is reassigned (alias
+`v11RegionFactorBase`, adjudicated as `regionPartyFactor#1`) to multiply each
+region's fit by what the player actually built there: the governor's party,
+standing and approval; the organiser dots in `st.campaign.targets`; the
+region's own indicators, read with the sign the government owns and the
+opposition does not; federal trust; autonomy as a suppressor. `regionLeadingParty`
+routes through the same function, so the post-count map, the governor model and
+the ballot finally agree — **a region flips on screen because you governed it.**
+
+**Tuned by measurement, to the owner's ruling of ~40 seats.** Everything runs
+through one gain, `V11_REGION_GAIN`, because the factor is applied **twice on
+one ballot** (:6786 and :6862) and the allocator amplifies again. At gain 1 a
+clean eight-governor sweep measured **+130 Assembly seats**. Tuned 0.30 → 47,
+0.26 → 45, **0.23 → 42**. Abandoning every region costs 13. Per-region seat
+allocation was **rejected** — `ballot` yields one national vote-share map and a
+naive largest-remainder across eight regions hands ~24 seats to whoever leads
+each region purely from rounding, *and would look exactly like the feature
+working*. Because the term leaves `allocateSeats`, `ballot`, `runElection`,
+`projection`, `hemiMap` and `CFG` untouched, the seat totals hold **by
+construction**; roads re-measures 1305/1305 and 300/300 anyway.
+
+**A correction to my own record.** An earlier commit message on this branch
+said the old `[.86, 1.15]` clamp "BOUND at this size". A proof-of-failure run
+says that is **half true and I stated it too strongly**: at the shipped gain the
+factor runs **.847 .. 1.028**, so the old *floor* does clip the two flank
+parties, but the old ceiling is never approached, and restoring `[.86, 1.15]`
+does **not** turn the flank-party assertion red. What was stopping the flank
+parties being moved in the regions was the absence of the terms, not the clamp.
+The comments at both sites now say exactly that.
+
+**Three more directions, per the owner's ruling of all four.** The regional
+economy (`pop`, `wealth`, `trade`, `output`) is materialised **created-on-write
+onto `st.regions[id]`, which is saved** — the `REGIONS` literal it seeds from is
+not serialised, not rewound by undo, leaks into a new campaign in the same page
+load, and is corrupted by every `v6Sandbox` forecast. Autonomy became a
+**five-rung ladder** where it was a boolean set by one arc branch, reading a
+legacy `true` as rung 1 so an old save climbs from where it stood. `unrestTarget`
+now reads regional `order`, which the field guide (:16283) has claimed since v6.
+`meet` and `works` bought a governor to 100 in three clicks and now sit behind
+two-session cooldowns.
+
+**A pre-existing flake, found and fixed.** `one year a session, once` was failing
+about one run in eight — **on main as much as here**. `ageFigures` rolls a
+death-or-retirement risk per figure and `ageSucceed` seats a fresh governor whose
+age is an independent `46 + rand()*20`, so a succession during the sample yields
+deltas of -7, -5, 0, +10. It surfaces at all because **this harness reaches the
+probe at a different point in the seeded stream on every run** — the UI pump is
+click-timed, the hazard CLAUDE.md names — so the eight governors are freshly
+rolled each time. Successors are now excluded **by object identity**; survivors
+are still held to exactly 1, with a floor so it cannot pass vacuously. Proved
+red by incrementing `f.age` twice.
+
+*(My first attempt to establish whether this pre-dated S11c was wrong: I ran
+main's harness without `tools/fullbuild-baseline.json`, so twelve "clean" runs
+had died at startup and tested nothing. Instrumented properly, main fails the
+same way.)*
+
+```
+ALL CHECKS PASS   11/11, 2,244,766 bytes of 2,450,000
+ROADS OK          70 assertions, stable across 14 consecutive runs
+PACING            all three lengths reach the end year; density flat at 0.8–0.9
+```
+
+**Pacing moved, and the reason is the dice, not the balance.** `v11AutonomyTick`
+and the `reTrade` lever draw from the seeded stream, so a campaign replayed from
+the same seed **diverges** — different treaties and records at seed 5EED1234 is a
+different campaign, not a worse one. Every length still reaches its end year and
+events/session is unchanged.
+
+Six fail-proofs. Next: **S11d**, the Constitution.
+
+Previously: **S11b — The Order Book** (PR #30). Thirty-six more executive orders, none of
 them gated, per the owner's ruling — the original thirty-six keep their statute
 prerequisites, so the book is seventy-two with two classes in it and the page
 says which is which rather than mixing them silently.

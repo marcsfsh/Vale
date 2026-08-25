@@ -22450,8 +22450,10 @@ viewRecord = function () {
    TWO THINGS THAT MAKE THE ARITHMETIC UNOBVIOUS, both measured:
    - this factor is applied TWICE on one ballot (:6786 in supportTargets and
      :6862 in ballot), so every coefficient is felt at roughly its square;
-   - the old clamp of [.86, 1.15] BINDS at this size, and it silently ate
-     regional penalties for the two flank parties. It widens.
+   - the old clamp of [.86, 1.15] clipped the BOTTOM at this size: the worst
+     flank readings land at .847 and .854, so RSF and PNL had their regional
+     penalty shaved. It widens to [.80, 1.22]. Measured honestly, the top of
+     that span is headroom, not a live constraint — see the clamp itself.
    ============================================================ */
 /* Measured, not guessed. At gain 1 a clean eight-governor sweep was worth
    +130 Assembly seats — the factor is applied TWICE on one ballot and the
@@ -22514,16 +22516,22 @@ regionPartyFactor = function (st, pid) {
        so the term has to be bigger on that side to be felt at all */
     if (!govSide && g && g.party === pid) bonus += .085;
     /* a region outside federal authority is not listening to the centre */
-    if (auto[r.id] && (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0)) bonus -= .07;
+    if (auto[r.id] && govSide) bonus -= .07;
     fit *= 1 + bonus * V11_REGION_GAIN;
     var w = (typeof q.pop === 'number' ? q.pop : r.pop);
     total += fit * w; weight += w;
   });
   var f = weight ? total / weight : 1;
   if (pid === playParty(st) && st.doctrine === 'organiser') f += .018;
-  /* The clamp was [.86, 1.15] and BOUND at this size — it ate the regional
-     penalty for RSF and PNL entirely, so the two flank parties could not be
-     hurt in the regions however badly they governed them. */
+  /* The clamp was [.86, 1.15]. A proof-of-failure run put the honest numbers
+     on it: at gain .23 the factor runs .847 .. 1.028 across every party at
+     both extremes, so the OLD LOW BOUND clips (the worst RSF and PNL readings
+     sit below .86 and were being shaved) while the old high bound of 1.15 is
+     never approached. Restoring [.86, 1.15] does NOT on its own break the
+     roads assertion that the flank parties can be moved in the regions — what
+     was stopping that was the absence of the terms above, not this line. The
+     span is widened both ways: the low end because it demonstrably clips, the
+     high end as headroom for a retune of V11_REGION_GAIN. */
   return clamp(f, V11_REGION_SPAN[0], V11_REGION_SPAN[1]);
 };
 /* The map at the close of the count, the governor model and the ballot must
