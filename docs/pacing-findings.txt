@@ -417,3 +417,10 @@ out 10 / 11 / 12, every length still reaches its end year, crisis density is
 still flat at 0.8, and the trajectories are the same year by year. The
 rotation changes WHICH question is asked, not how many or what the tones cost,
 and the harness answers with whatever button is first either way.
+
+Re-run at the close of S11b, after the order book went to seventy-two and the
+narrowed/upheld/courtHeat modifiers were given effect: unchanged. Records still
+10 / 11 / 12, every length still reaches its end year, crisis density still flat
+at 0.8, wars 8 / 17 / 39 as at S10e. The harness never opens the Executive tab,
+so the thirty-six new orders are absent from these numbers — named as unmeasured
+here rather than left to be inferred from a flat line.

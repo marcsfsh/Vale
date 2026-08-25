@@ -4,7 +4,59 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S11a — The Long Record** (PR #29). First of five slices carrying the owner's
+**S11b — The Order Book** (PR #30). Thirty-six more executive orders, none of
+them gated, per the owner's ruling — the original thirty-six keep their statute
+prerequisites, so the book is seventy-two with two classes in it and the page
+says which is which rather than mixing them silently.
+
+**Registration order is load-bearing.** The new orders are registered *after*
+the existing thirty-six because `roads.js` (:434, :448, :458) and
+`playtest.js` (:552) all probe
+`V10_ORDERS.filter(x => !x.target && !x.needs && x.ind)[0]` — which is
+positional. An ungated order registered first silently becomes the probe, and
+four assertions quietly start measuring something else.
+
+**A filter strip, because seventy-two is a wall.** `v10OrderPanel` rendered
+every order unconditionally into eight buckets on every render of the Executive
+page. It now carries the chip pattern the policy categories use — All /
+Available / Standing / No statute needed / Needs a statute — and the last two
+chips discharge the owner's legibility requirement with the same control.
+
+**Four modifiers that were written and read by nobody.** `m.courtHeat` was
+summed on every recompute and consulted nowhere; it now moves the court's own
+hold roll, so a government running a large book is one the court is already
+looking at. `upheld` was written by the court, printed as a tag and read by
+nothing — an order the court had *blessed* was re-picked for review on exactly
+the same terms as one it had never seen. `narrowed` cost five capital and six of
+treasury, printed a tag, and left the order delivering **one hundred per cent**
+of everything; a narrowed order is now a smaller order, 72% per narrowing across
+every field except the upkeep, because a smaller instrument still has to be
+administered. And three orders carried a `reqText` promising a gate the file did
+not have — the agencies could be dispersed out of the District *into* the
+District, and `openSchedule` could stand beside `boughtInVale`, its stated
+opposite, with both Infrastructure multipliers applying at once.
+
+**Two assertions that were not testing what they said.** "An order cannot
+outrun the book" initialised `blocked = true` and only ran its body if some
+order carried `needs`, so the day everything is ungated it would have passed
+while testing nothing. And "a session picks its question without spending a
+die" swept sixty sessions and required all fourteen subjects to be drawn —
+which is an ordinary miss at that sample size, so it failed intermittently on
+identical code, **on main as well as here**. It now sweeps a full epic
+campaign; stable across three consecutive runs.
+
+```
+ALL CHECKS PASS   11/11, 2,218,285 bytes of 2,450,000
+ROADS OK          68 assertions
+PLAYTEST PASS     40 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
+PACING            unchanged — records 10/11/12, density flat at 0.8
+```
+
+Six fail-proofs. Next: **S11c**, the Federation.
+
+Previously: **S11a — The Long Record** (PR #29). First of five slices carrying the owner's
 sixth order. Where the fifth order's complaint was thin material on working
 machinery, this one's is **machinery that reaches nothing** — and the surveys
 proved it with arithmetic. This slice is the exception: the Record page needed
@@ -757,6 +809,7 @@ ratchet 10 → 5, which is now its true floor.
 | S10d/e/f the Works, the Ministry, the World and the Session | **in review (PR #27)** | 16 distinct works -> 48, and six instruments that change what a work delivers rather than only its rate; five new ministerial interactions; committee chairs apportioned by largest remainder and made named people you assign when you lead; the four causes of ally-at-war closed, five powers and four treaty instruments added, treaty effects implemented; Question Time 5 sentences -> 94 questions over 14 subjects, papers 11 -> 43; two assertions that could not fail rewritten, sixteen new ones each shipped with the mutation that reddens it |
 | S10g the Despatch Box | **in review (PR #28)** | 45 questions authored by the tail of the S10f run and never merged, plus 25 levelling the five subjects that fire most often; pool 94 -> 164, seven per subject on the government benches; 51 defects found by seven adversarial readings, ten of them the same question written twice by sibling agents; the item chosen by a saved ROTATION instead of a hash whose constant stride left one subject reaching 2 of its 12 questions in 200 sessions; `maxBytes` 2.1M -> 2.2M |
 | S11a the Long Record | **in review (PR #29)** | twenty charts on the Record page from three sources, each panel naming its own start year; nine series were already recorded and shown to nobody, four of them in a v5 array read by nothing; build-on-open (9-12ms collapsed against 20ms open) with the Long Record the one that opens; three chart-engine defects fixed (querySelector-first-match, fold keys that collapse twenty panels into one preference, the sandbox carrying the deck through every forecast); all recorders round; very easy 175/5.4/26/440; `maxBytes` 2.2M -> 2.45M |
+| S11b the Order Book | **in review (PR #30)** | 36 more orders, none gated, registered after the originals because four harness probes are positional; a filter strip with gated/ungated as chips; courtHeat, upheld and narrowed given real effect after being written and read by nobody; three reqText promises made real; two assertions that could pass while testing nothing rewritten (one of them flaky on main) |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
