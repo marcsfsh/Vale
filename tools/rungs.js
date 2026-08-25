@@ -221,6 +221,10 @@ async function check() {
   const sentIndex = new Map();     // normalised sentence -> policy ids
   const shingles = new Map();      // 8-token shingle -> policy ids
   const grams = new Map();         // 4-gram -> set of policy ids
+  /* the game's own nouns, as word sequences, so the overuse rule below can
+     refuse to build a gram across one. See the comment at the rule itself. */
+  const vocabSeqs = [];
+  ((game[0] && game[0].vocab) || []).forEach(n => { const v = words(n); if (v.length) vocabSeqs.push(v); });
 
   function scan(id, label, t) {
     if (typeof t !== 'string' || !t.trim()) { fail.push(id + ' ' + label + ': empty'); return; }
@@ -259,11 +263,27 @@ async function check() {
       if (!shingles.has(key)) shingles.set(key, new Set());
       shingles.get(key).add(id);
     }
-    for (let i = 0; i + 4 <= w.length; i++) {
-      const key = w.slice(i, i + 4).join(' ');
-      if (!grams.has(key)) grams.set(key, new Set());
-      grams.get(key).add(id);
-    }
+    /* Mask every bloc and indicator name, then build grams only WITHIN the
+       segments between them, so no gram is formed inside or across one. */
+    const masked = w.slice();
+    vocabSeqs.forEach(v => {
+      for (let i = 0; i + v.length <= masked.length; i++) {
+        let hit = true;
+        for (let j = 0; j < v.length; j++) if (masked[i + j] !== v[j]) { hit = false; break; }
+        if (hit) for (let j = 0; j < v.length; j++) masked[i + j] = null;
+      }
+    });
+    let seg = [];
+    const flush = () => {
+      for (let i = 0; i + 4 <= seg.length; i++) {
+        const key = seg.slice(i, i + 4).join(' ');
+        if (!grams.has(key)) grams.set(key, new Set());
+        grams.get(key).add(id);
+      }
+      seg = [];
+    };
+    masked.forEach(x => { if (x === null) flush(); else seg.push(x); });
+    flush();
     return ss;
   }
 
@@ -321,24 +341,20 @@ async function check() {
   sentIndex.forEach((ids, s) => { if (ids.size > 1) fail.push('duplicate sentence across ' + [...ids].join(', ') + ': "' + s.slice(0, 60) + '"'); });
   shingles.forEach((ids, s) => { if (ids.size > 1) fail.push('shared phrasing across ' + [...ids].join(', ') + ': "' + s + '"'); });
   let spam = 0;
-  /* THE OVERUSE RULE EXEMPTS THE GAME'S OWN NOUNS, and the reason is a
-     measurement. On the fourth batch it fired five times: three were genuine
-     connective spam ("at the end of", "for the first time", "as well as the")
-     and two were the bloc names "Students and Young Workers" (fifteen
-     statutes) and "Small Business and Farmers" (thirteen). The style brief
-     tells the author to name a bloc by the noun the registry gives, so the
-     rule was ordering the prose to disobey the brief, and the only ways to
-     satisfy it were to rename the constituency or to stop naming it. A rule
-     that fires on its own required vocabulary is measuring the vocabulary,
-     not the writing. It exists to kill "across the country" spam, so it now
-     skips any gram that sits inside a bloc or indicator name. */
-  const vocabGrams = new Set();
-  ((game[0] && game[0].vocab) || []).forEach(n => {
-    const w = words(n);
-    for (let i = 0; i + 4 <= w.length; i++) vocabGrams.add(w.slice(i, i + 4).join(' '));
-  });
+  /* THE OVERUSE RULE DOES NOT SEE THE GAME'S OWN NOUNS AT ALL, and the reason
+     is a measurement taken twice. On the fourth batch it fired on the bloc
+     names "Students and Young Workers" and "Small Business and Farmers"; the
+     style brief tells the author to name a bloc by the noun the registry
+     gives, so the rule was ordering the prose to disobey the brief. Exempting
+     grams that sat INSIDE a name fixed those two. On the sixth batch it fired
+     again, one level out, on "and small business and", "business and farmers
+     who" and "and civil liberties fall", each of which straddles the edge of a
+     name rather than sitting inside it. A gram three quarters made of required
+     vocabulary is still measuring the vocabulary. The names are now masked out
+     of the word stream before grams are built, so no gram forms inside one or
+     across one, and what is left is the writing. */
   grams.forEach((ids, g) => {
-    if (ids.size > 6 && !vocabGrams.has(g)) { spam++; if (spam <= 8) fail.push('overused phrase in ' + ids.size + ' statutes: "' + g + '"'); }
+    if (ids.size > 6) { spam++; if (spam <= 8) fail.push('overused phrase in ' + ids.size + ' statutes: "' + g + '"'); }
   });
 
   const total = withProse.length;
