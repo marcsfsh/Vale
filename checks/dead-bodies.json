@@ -991,6 +991,11 @@
       "line": 24305,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11ViewInterestsBase captured and called. The other genuinely unwrapped view. Adds What the Organisations Are Worth, which is where the influence figure stops being a constant."
+    },
+    "capitalIncome#5": {
+      "line": 24478,
+      "aliasCaptured": true,
+      "reason": "S12: alias var v12CapitalFloorBase captured and called. Applies DIFFS[diff].capFloor as a FLOOR on the session's capital, and only DIFFS.easy carries the field, so every other tier is untouched. It has to be the OUTERMOST wrapper: capitalIncome is wrapped four times after its base (v8 narrative, v10, S11d's constitution and this), and a floor applied anywhere lower is undercut by every wrapper above it. Very easy's own blurb promises capital by the cartload; before this a bad session on it could still leave a government unable to act."
     }
   }
 }

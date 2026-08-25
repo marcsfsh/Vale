@@ -580,6 +580,59 @@ async function run() {
       `${deck.msCollapsed}ms a render collapsed; opening one fills it (${deck.keyed}) and saves the preference: ${deck.prefSaved}; ` +
       `the range chip saves and clears the remembered scroll: ${deck.rangeSaved && deck.scrollCleared}`);
 
+    // -- S12: the ladder says what each rung does, and locked statutes say why
+    const prose = await page.evaluate(() => {
+      const out = {};
+      const withProse = POLICIES.filter(p => p.rungs);
+      out.withProse = withProse.length;
+      if (withProse.length) {
+        const p0 = withProse[0];
+        v9Dossier(p0.id);
+        const sheet = document.querySelector('#sheet') || document.querySelector('.sheet');
+        const says = [...document.querySelectorAll('.tier .rung-say')];
+        out.rendered = says.length;
+        out.textMatches = says.length ? says[0].textContent.trim() === p0.rungs[0].trim() : false;
+        /* THE SPECIFICITY TRAP: `.sheet p` is 0,0,1,1 and would beat a
+           single-class rule whatever the source order, rendering the prose
+           LARGER than the mechanics line above it. */
+        const small = document.querySelector('.tier small');
+        out.proseSize = says.length ? parseFloat(getComputedStyle(says[0]).fontSize) : 0;
+        out.mechSize = small ? parseFloat(getComputedStyle(small).fontSize) : 0;
+        out.proseSmallerThanHeading = out.proseSize > 0 && out.proseSize < 15;
+        out.sheetScrolls = sheet ? sheet.scrollHeight > sheet.clientHeight - 1 : false;
+        out.sheetH = sheet ? Math.round(sheet.getBoundingClientRect().height) : 0;
+        /* rung zero stays silent */
+        const tiers = [...document.querySelectorAll('.tier')];
+        out.rungZeroSilent = tiers.length ? !tiers[0].querySelector('.rung-say') : true;
+        const close = document.querySelector('[data-close]'); if (close) close.click();
+      }
+      /* the locked statutes */
+      UI.tab = 'policy'; UI.polCat = 'all'; UI.polSearch = ''; render();
+      const locked = [...document.querySelectorAll('#view .card.locked')];
+      out.locked = locked.length;
+      out.lockedStateReason = locked.every(el => /\S/.test((el.querySelector('.tag.down') || {}).textContent || ''));
+      out.lockedDisabled = locked.every(el => [...el.querySelectorAll('[data-pol]')].every(b => b.hasAttribute('disabled')));
+      const counts = {};
+      document.querySelectorAll('#view .subhead, #view summary').forEach(h => {
+        const m = /^(.+?)\s+(\d+)$/.exec(h.textContent.trim());
+        if (m) counts[m[1]] = parseInt(m[2], 10);
+      });
+      out.coreOff24 = V12_CORE_CATS.filter(c => counts[c] !== 24);
+      UI.tab = 'chamber'; render();
+      return out;
+    });
+    step('statute-prose', prose.withProse === 0 || (prose.rendered === 4 && prose.textMatches &&
+      prose.proseSmallerThanHeading && prose.rungZeroSilent && prose.sheetScrolls),
+      prose.withProse === 0 ? 'no statute carries prose yet; the ladder renders as it always did'
+        : `${prose.withProse} statutes carry prose; the dossier renders ${prose.rendered} rung lines at ${prose.proseSize}px against ` +
+          `${prose.mechSize}px of mechanics (a single-class rule would have lost to .sheet p and come out at 15px); ` +
+          `rung zero stays silent (${prose.rungZeroSilent}); the sheet is ${prose.sheetH}px and scrolls inside itself (${prose.sheetScrolls})`);
+
+    step('locked-statutes', prose.coreOff24.length === 0 && prose.lockedStateReason && prose.lockedDisabled,
+      prose.coreOff24.length ? 'these core books do not read twenty-four: ' + prose.coreOff24.join(', ')
+        : `every core category heading reads twenty-four; ${prose.locked} statutes are listed locked, all of them state their condition ` +
+          `and none offers a draft button`);
+
     // -- S11e: the department strip is on the card and its buttons work
     const dept = await page.evaluate(() => {
       const keep = { capital:S.capital, treasury:S.treasury, ruling:S.ruling, coalition:S.coalition };

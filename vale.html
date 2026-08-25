@@ -432,7 +432,15 @@ var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
     capMult:5.4, capFlat:26, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
-    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:175, capCap:440, bond:150, resist:.25 },
+    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:175, capCap:440, bond:150, resist:.25,
+    /* S12: a FLOOR under the session's capital, not another multiplier. Very
+       easy is the tier whose blurb promises "capital by the cartload"; a
+       government having a bad session on it should still be able to act. Only
+       this tier carries the field, so capitalIncome's floor is a no-op
+       everywhere else. Applied in the OUTERMOST wrapper (v12CapitalFloorBase),
+       because capitalIncome is wrapped four times after the base and a floor
+       applied earlier is undercut by every wrapper above it. */
+    capFloor:75 },
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
@@ -760,49 +768,97 @@ function polEffDelta(p, a, b) {
 var POLICIES = [
   /* taxation */
   P({ id:'incomeTax', grp:'Income and gains', name:'Federal Income Tax', cat:'Taxation', dept:'chan', max:4, cost:6, auth:0, rev:6,
-      desc:'Graduated rates on personal income.',
+      desc:'Rates on personal income that climb with the size of it, collected on the annual return.',
+      rungs:[
+        'A single low band on the top slice of income, set where most households never reach it. The Chancellor collects enough for it to matter and little enough for it to be ignored. The exchanges and the professions object to the principle rather than to the bill.',
+        'Two rates, and a threshold that drops far enough for an ordinary salary to meet it. Retirees on fixed drawdowns feel the change first and say so loudest. Revenue roughly doubles and the Economy carries the drag.',
+        'A third bracket opens above the professional salary range, and the rate on it stops being polite. Avoidance becomes a trade of its own, which the Chancellor answers with staff rather than with softer rates. Poverty eases where the money lands.',
+        'The full graduated schedule, with a top rate written to change behaviour rather than to raise money. Capital leaves quietly, in small amounts, continuously. Graduates entering the professions price the top band into the first job they take.'
+      ],
       eff:{ economy:-1.5 }, mood:{ tech:-4, prof:-4, smallbiz:-3, labour:1 },
       eff2:{ economy:-3 }, mood2:{ tech:-8, prof:-8, smallbiz:-6, seniors:-4, labour:2 }, rev2:12,
       eff3:{ economy:-4.5, poverty:-1.5 }, mood3:{ tech:-12, prof:-12, smallbiz:-9, seniors:-6, labour:3 }, rev3:18,
       eff4:{ economy:-6, poverty:-2 }, mood4:{ tech:-16, prof:-16, smallbiz:-12, seniors:-8, labour:4, youth:-5 }, rev4:24 }),
   P({ id:'corporateTax', grp:'Business and finance', name:'Corporate Tax', cat:'Taxation', dept:'chan', max:4, cost:6, auth:0, rev:6,
-      desc:'Tax on company profits, with the usual argument about where they are booked.',
+      desc:'A rate on the profit a company declares, owed wherever its accountants decide the profit arose.',
+      rungs:[
+        'One rate on the profit a company admits to, pitched low enough that most firms pay it rather than pay someone to move it. The technology houses feel it hardest because their earnings are the least attached to any place. Organised Labour treats the receipts as wages recovered.',
+        'The rate rises past the point where a good accountant pays for himself. Young workers back it without reservation, on the view that the bill lands on shareholders and not on them. The receipts rise while the number of firms declaring a profit here quietly falls.',
+        'The rate is now high enough that the most interesting work in a large firm is where profit is recorded rather than how it is earned. Licence fees to a subsidiary abroad, debt loaded onto the domestic arm, prices set between related parties: a profession grows up between the company and the sum it declares.',
+        'The rate is set to take the surplus rather than to share it. Boards cut the dividend before they cut anything else, and the pension funds holding the shares find the income they were built on has thinned. Where the next plant goes is decided at whichever board meeting comes first.'
+      ],
       eff:{ economy:-1, technology:-2 }, mood:{ tech:-9, smallbiz:-3, labour:3 },
       eff2:{ economy:-2, technology:-4 }, mood2:{ tech:-18, smallbiz:-6, labour:6, youth:4 }, rev2:12,
       eff3:{ economy:-3, technology:-6, corruption:1 }, mood3:{ tech:-27, smallbiz:-9, labour:9, youth:6 }, rev3:18,
       eff4:{ economy:-4, technology:-8, corruption:2 }, mood4:{ tech:-36, smallbiz:-12, labour:12, youth:8, seniors:-6 }, rev4:24 }),
   P({ id:'wealthTax', grp:'Wealth and land', name:'Wealth Tax', cat:'Taxation', dept:'chan', max:3, cost:9, auth:0, rev:5,
-      desc:'An annual levy on net assets above a high threshold.',
+      desc:'An annual charge on what a household owns outright, above an exempt amount set high and then lowered.',
+      rungs:[
+        'Only the largest fortunes are in scope, and the bill is light against them. The work is in the valuation: every holding must be priced once a year, including the ones that have no market at all. Founders whose paper worth exceeds anything they could sell argue hardest.',
+        'The exempt amount comes down far enough to reach a paid-off house with a pension pot beside it. Urban professionals find they are wealthy on the assessment and short of cash in the bank. Payment in kind is refused, so shares and property are sold to meet a charge on shares and property.',
+        'To tax what is owned, the Chancellor must first know it. A standing register of holdings opens, with trusts, art, foreign accounts and private shares all declared under penalty for omission. It is the register, not the rate, that people take to court.',
+        'Farmland is counted at what it would fetch rather than at what it earns. A family holding acres worth more than they will ever yield sells part of them each year to pay on the rest, and the buyers are rarely other farmers.'
+      ],
       eff:{ economy:-2, technology:-3 }, mood:{ tech:-12, labour:5, youth:5 },
       eff2:{ economy:-4, technology:-5 }, mood2:{ tech:-22, prof:-7, labour:9, youth:9 }, rev2:9,
       eff3:{ economy:-5, technology:-7, liberties:-2 }, mood3:{ tech:-30, prof:-10, labour:12, youth:12 }, rev3:12,
       eff4:{ economy:-6, technology:-9, liberties:-3, agriculture:-3 }, mood4:{ tech:-36, prof:-12, labour:15, youth:15 }, rev4:15 }),
   P({ id:'salesTax', grp:'Spending and trade', name:'Federal Sales Tax', cat:'Taxation', dept:'chan', max:3, cost:4, auth:0, rev:5.5,
-      desc:'A consumption tax collected at the register. Cheap to run, felt by everyone.',
+      desc:'A charge added at the till, paid by whoever is standing there, cheap to collect and hard to escape.',
+      rungs:[
+        'A low rate at the till on ordinary goods, with food, rent and medicine left outside it. The amount is small on any one purchase and constant across the year. It falls hardest on households that spend everything they earn, which is why Poverty moves first.',
+        'The rate rises and the exempt list shrinks to bare groceries. Prepared food, clothing and the second-hand trade all come into charge, so the young in rented rooms who buy their meals ready-made pay on very nearly everything they touch.',
+        'Services enter the base: the haircut, the repair, the hour of advice. Work paid in cash and never written down is the hardest money in the country to reach, and this is the instrument that reaches it. Corruption falls because a till keeps a record that a handshake does not.',
+        'Every till reports as it rings, and the takings are matched against the filings in real time. Compliance stops depending on the shopkeeper\'s honesty and starts depending on the terminal, which the Chancellor can read from a desk. The rate itself barely moves.'
+      ],
       eff:{ poverty:2 }, mood:{ labour:-5, seniors:-5, smallbiz:-2 },
       eff2:{ poverty:4 }, mood2:{ labour:-10, seniors:-10, smallbiz:-4, youth:-6 }, rev2:11,
       eff3:{ poverty:5, corruption:-1.5 }, mood3:{ labour:-13, seniors:-13, smallbiz:-5, youth:-8 }, rev3:14,
       eff4:{ poverty:6, corruption:-2, liberties:-2 }, mood4:{ labour:-15, seniors:-15, smallbiz:-6, youth:-9 }, rev4:16.5 }),
   P({ id:'capitalGains', grp:'Income and gains', name:'Capital Gains Tax', cat:'Taxation', dept:'chan', max:3, cost:6, auth:0, rev:4.5,
-      desc:'Tax on investment income, at ordinary rates or below.',
+      desc:'A rate on the gain when an asset is sold, historically pitched below the rate on a wage.',
+      rungs:[
+        'Gains are charged only at the moment an asset is sold, and at a rate below the one on earned income. Holding costs nothing, so the largest holdings are simply never sold. The concession is defended as the price of persuading anyone to invest at all.',
+        'The gap with the wage rate closes, and the discount for having held an asset for years closes with it. Retirees living off a portfolio meet the change at the moment they sell, which is the moment they needed the money.',
+        'The relief on selling a business or a farm at the end of a working life ends. A lifetime of building something is charged in the single year it changes hands, and the family that meant to pass it on has to find the tax in cash.',
+        'The exemption for endowments closes and the uplift at death goes with it. Congregations that had lived on an endowed portfolio file for the first time, and an inherited holding now carries the whole gain of the life before it.'
+      ],
       eff:{ economy:-1, technology:-1 }, mood:{ tech:-8, prof:-4, labour:3 },
       eff2:{ economy:-2, technology:-2 }, mood2:{ tech:-16, prof:-8, seniors:-6, labour:6 }, rev2:9,
       eff3:{ economy:-2.5, technology:-2.5 }, mood3:{ tech:-20, prof:-10, seniors:-7.5, labour:7.5, smallbiz:-5 }, rev3:11.5,
       eff4:{ economy:-3, technology:-3 }, mood4:{ tech:-24, prof:-12, seniors:-9, labour:9, smallbiz:-8, faith:-6 }, rev4:13.5 }),
   P({ id:'carbonTax', grp:'Spending and trade', name:'Carbon Tax', cat:'Taxation', dept:'chan', max:3, cost:7, auth:0, rev:4,
-      desc:'A price on emissions at the wellhead, mine mouth and border.',
+      desc:'A price charged on carbon where it is dug, drilled or landed, and passed down every bill after that.',
+      rungs:[
+        'A modest price on emissions at the wellhead and the mine mouth, which reaches everyone else as freight and heating. Hauliers and farmers, who burn fuel in order to earn at all, carry it first. The Environment answers faster than any other line in the budget.',
+        'The price passes the level at which the oldest domestic generation is worth running, and those plants close on a timetable rather than in a crisis. What replaces them is bought abroad or not yet built, and Energy security records the gap between the two.',
+        'Imports are charged for the carbon embodied in them, assessed at the border by formula. Trading partners read this as protection dressed as conscience and file against it, and a quarrel about method becomes a quarrel about intent.',
+        'The price is now set to end the burning rather than to charge for it, and nothing is paid back to the household. A cold house heated by oil and a long drive to work are charged like a refinery. Poverty rises fastest where there is nothing else to buy.'
+      ],
       eff:{ environment:6, economy:-2 }, mood:{ youth:6, prof:4, smallbiz:-6, labour:-3 },
       eff2:{ environment:12, economy:-4, energy:-2 }, mood2:{ youth:12, prof:8, smallbiz:-12, labour:-6 }, rev2:8,
       eff3:{ environment:15, economy:-5, energy:-2.5, tension:2 }, mood3:{ youth:15, prof:10, smallbiz:-15, labour:-7.5 }, rev3:10,
       eff4:{ environment:18, economy:-6, energy:-3, tension:3, poverty:3 }, mood4:{ youth:18, prof:12, smallbiz:-18, labour:-9 }, rev4:12 }),
   P({ id:'tariffs', grp:'Spending and trade', name:'Import Tariffs', cat:'Taxation', dept:'vpres', max:3, cost:5, auth:0, rev:4,
-      desc:'Duties on manufactured imports, and retaliation to match.',
+      desc:'Duties on imported manufactures, set by the Vice President, answered abroad inside the quarter.',
+      rungs:[
+        'Duties apply to a short list of finished manufactures, and the Vice President may set them without going back to the houses. Growers and mills take back the home market. Partners answer with duties of their own, and the answer arrives before the first receipts do.',
+        'The duties reach consumer goods, and the landed cost of everything imported turns up in the shops. Urban professionals, who buy imported things by preference, treat the measure as a charge on their taste and are not quiet about it.',
+        'A strategic annex is added. Steel, ships, machine tools and the yards that make them are protected on the argument that a country which cannot forge cannot fight, and the general staff, who had held no view on trade, acquire one.',
+        'Components and instruments fall under duty alongside finished goods, so firms that import parts in order to export products pay on the way in. Negotiation stops. The partners now bargain over the duties themselves and no longer over anything the duties were meant to protect.'
+      ],
       eff:{ economy:-1, agriculture:2, tension:2 }, mood:{ smallbiz:6, labour:5, tech:-7 },
       eff2:{ economy:-2, agriculture:4, tension:4 }, mood2:{ smallbiz:12, labour:10, tech:-14, prof:-6 }, rev2:8,
       eff3:{ economy:-2.5, agriculture:5, tension:5, military:1.5 }, mood3:{ smallbiz:15, labour:12.5, tech:-17.5, prof:-7.5 }, rev3:10,
       eff4:{ economy:-3, agriculture:6, tension:6, military:2, technology:-2 }, mood4:{ smallbiz:18, labour:15, tech:-21, prof:-9 }, rev4:12 }),
   P({ id:'balancedBudgetRule', grp:'Fiscal rules', name:'Balanced Budget Rule', cat:'Taxation', dept:'chan', max:1, cost:8, auth:0,
-      desc:'A statutory cap on deficits, with automatic sequestration if it is breached.',
+      desc:'A statutory limit on the yearly deficit, enforced by automatic cuts rather than by argument.',
+      rungs:[
+        'Spending in a year is capped at that year\'s receipts plus a stated margin, and the test falls on the budget as drafted rather than on the debt it leaves behind. The margin sits above the gap the Chancellor runs, so an ordinary year clears it untouched. What goes is the habit of promising money now and finding it in a later account.',
+        'The cap tightens to balance measured across a whole cycle, which takes away the year-to-year excuse. When receipts fall the discretionary column absorbs the difference, and grants, places and training all sit in that column.',
+        'Breach now triggers sequestration: an automatic cut applied along every line without a further vote. Capital works absorb it first because a delayed bridge reads as a postponement rather than a cancellation, and the postponements accumulate.',
+        'Balance is no longer enough and a surplus is required, so debt outstanding falls in every year of it. What the government does not borrow, everyone else can, and the Economy is stronger here than at any lower setting. Urban professionals, untouched while the cut fell on capital works, meet it at the court list and the licensing counter.'
+      ],
       eff:{ economy:.8, corruption:-.5 }, mood:{ smallbiz:2, seniors:1, tech:1, labour:-1.5 },
       eff2:{ economy:1.5, corruption:-1 }, mood2:{ smallbiz:4, seniors:2, tech:2, labour:-3, youth:-2 },
       eff3:{ economy:2.2, corruption:-1.5, infrastructure:-.6 }, mood3:{ smallbiz:5.5, seniors:3, tech:3, labour:-4.5, youth:-3 },
@@ -810,37 +866,73 @@ var POLICIES = [
 
   /* welfare */
   P({ id:'universalHealthcare', grp:'Housing and care', name:'Universal Health Coverage', cat:'Welfare', dept:'vchan', max:3, cost:9, auth:0, exp:9,
-      desc:'Single payer coverage for every resident, funded from general revenue.',
+      desc:'Hospital and clinic care paid from one federal fund, with no bill at the door.',
+      rungs:[
+        'The fund pays for hospital treatment and emergency care, and nothing beyond the ward door. Private cover survives for everything outside it, which is where most of the money still sits. The Vice Chancellor buys peace in the wards and leaves the clinics alone.',
+        'General practice, pharmacy and maternity join the schedule, so the card covers the year rather than the crisis. The insurers lose the market they had been left with, and their underwriters find nothing comparable to sell. Retirees stop counting out tablets against the month.',
+        'The fund sets its own prices for medicines and equipment, and every maker in the country now sells to a single buyer. Margins narrow, research offices move abroad, and the technology sector books the loss. Waiting times fall furthest where the fund pays most.',
+        'Enrolment happens at birth and cannot be declined. One record follows a resident from the first clinic to the last. Nobody is uninsured, because there is no longer anything to be uninsured from. That record is also a register, and the courts have begun asking for it.'
+      ],
       eff:{ healthcare:8, poverty:-3 }, mood:{ labour:9, seniors:8, prof:4, youth:4, smallbiz:-4 },
       eff2:{ healthcare:15, poverty:-5 }, mood2:{ labour:17, seniors:15, prof:7, youth:7, tech:-7, smallbiz:-8 }, exp2:17,
       eff3:{ healthcare:21, poverty:-7, technology:-2 }, mood3:{ labour:23, seniors:21, prof:10, youth:10, tech:-10, smallbiz:-10 }, exp3:23,
       eff4:{ healthcare:24, poverty:-9, technology:-3, liberties:-2 }, mood4:{ labour:27, seniors:24, prof:12, youth:12, tech:-12, smallbiz:-12 }, exp4:27 }),
   P({ id:'socialSecurity', grp:'Income support', name:'Social Security', cat:'Welfare', dept:'vchan', max:3, cost:7, auth:0, exp:8,
-      desc:'The federal pension, indexed to wages rather than prices.',
+      desc:'A retirement pension paid on a lifetime of contributions and lifted each year with wages.',
+      rungs:[
+        'A pension paid against a contribution record, set at a floor that keeps the oldest out of destitution and no higher. The parish burial funds that had spared them a pauper\'s grave go quiet. Employers carry half the charge and resent the half.',
+        'The pension lifts with wages rather than prices, so retirement stops meaning a slow slide behind everyone still working. Survivors may draw on the record of the spouse who paid in. Lenders now price a liability that grows with the national wage bill.',
+        'The ceiling on contributions comes off, and high salaries pay across the whole of their income. Young workers watch the deduction rise and cannot see the pension from where they stand. The oldest households leave poverty as a group.',
+        'A minimum pension goes to anyone who reaches the age, contribution record or none. Nobody dies poor for having worked at home or off the books. The payroll charge that funds it now sits heavily enough on hiring that the Economy shows it.'
+      ],
       eff:{ poverty:-6 }, mood:{ seniors:12, labour:5, faith:3, smallbiz:-3 },
       eff2:{ poverty:-11 }, mood2:{ seniors:22, labour:9, faith:5, tech:-5, smallbiz:-5 }, exp2:15,
       eff3:{ poverty:-15 }, mood3:{ seniors:30, labour:12, faith:7, tech:-7, smallbiz:-7, youth:-3 }, exp3:20,
       eff4:{ poverty:-18, economy:-2 }, mood4:{ seniors:36, labour:15, faith:9, tech:-9, smallbiz:-9, youth:-5 }, exp4:24 }),
   P({ id:'childBenefit', grp:'Family and children', name:'Child Benefit', cat:'Welfare', dept:'vchan', max:3, cost:6, auth:0, exp:5,
-      desc:'A monthly payment per child, paid to the household.',
+      desc:'A monthly payment for each child, paid to the household that raises them.',
+      rungs:[
+        'A flat monthly sum for the first child, drawn from the birth register with no application to make. Congregations and young families take it as an admission that raising children costs money. Teachers notice a few more children in shoes that fit.',
+        'The payment covers every child in the house rather than the eldest, and the rate climbs with each one. Larger households pull clear of the arrears they had been managing. Small employers, who fund it through the payroll, begin to itemise their objection.',
+        'Payment runs from birth to the end of schooling and is no longer withdrawn when a parent takes work. The money is spent within a week and within a few miles, and the shops in poor towns feel it. Attendance in the older grades rises.',
+        'The rate is set high enough that a child stops being a reason a household falls behind. There is no income at which it stops, so it reaches the households that fund it. The investment desks call it the largest untargeted line in the budget.'
+      ],
       eff:{ poverty:-5, education:1 }, mood:{ labour:6, faith:5, youth:4, prof:3 },
       eff2:{ poverty:-9, education:2 }, mood2:{ labour:11, faith:9, youth:7, prof:5, smallbiz:-4 }, exp2:9,
       eff3:{ poverty:-13, education:3, economy:1 }, mood3:{ labour:15, faith:13, youth:10, prof:8, smallbiz:-5 }, exp3:13,
       eff4:{ poverty:-15, economy:2 }, mood4:{ labour:18, faith:15, youth:12, prof:9, smallbiz:-6, tech:-4 }, exp4:15 }),
   P({ id:'unemploymentInsurance', grp:'Income support', name:'Unemployment Insurance', cat:'Welfare', dept:'vchan', max:3, cost:6, auth:0, exp:5,
-      desc:'Wage replacement while out of work, extended automatically in a downturn.',
+      desc:'Wage replacement while out of work, lengthened on its own when a region turns down.',
+      rungs:[
+        'A flat weekly payment begins after a waiting period and runs for a fixed span of weeks. It covers the rent while a worker looks, and it runs out well before the search does. Employers on thin margins carry the levy and would rather hire without it.',
+        'Payment becomes a share of the wage that was lost, and the waiting week closes. A skilled worker can now refuse the first bad offer and hold out for the trade they were trained in. Firms that hire by the thousand price the higher levy and object to the share.',
+        'Cover lengthens on its own when regional joblessness crosses a trigger, with no vote in either house. Layoffs at the fast-hiring firms stop being ruinous, and the technology offices grow bolder about restructuring. The Vice Chancellor no longer drafts an emergency extension in the middle of every slump.',
+        'Contract work, gig hours and self-employment come inside the scheme on declared earnings. No employer confirms the work has ended, so the claimant is his own payroll and his own witness. A generous season of declarations sets the rate paid on the next. The Vice Chancellor pays on the declaration and cannot say how much of it is true.'
+      ],
       eff:{ poverty:-4, economy:1 }, mood:{ labour:7, youth:3, smallbiz:-4 },
       eff2:{ poverty:-7, economy:2 }, mood2:{ labour:13, youth:5, smallbiz:-7, tech:-4 }, exp2:9,
       eff3:{ poverty:-10, economy:3, technology:1 }, mood3:{ labour:18, youth:8, smallbiz:-10, tech:-5 }, exp3:13,
       eff4:{ poverty:-12, technology:2, corruption:2 }, mood4:{ labour:21, youth:9, smallbiz:-12, tech:-6 }, exp4:15 }),
   P({ id:'housingProgramme', grp:'Housing and care', name:'Federal Housing Programme', cat:'Welfare', dept:'chan', max:3, cost:7, auth:0, exp:6,
-      desc:'Construction subsidies, rent assistance and preemption of local blocking.',
+      desc:'Subsidy for building, help with the rent, and federal override of the councils blocking both.',
+      rungs:[
+        'Construction subsidy goes to the counties with the worst shortages, with rent help for those already priced out. Young workers get a first tenancy that does not eat half the wage. The building trades take on apprentices for the first time in years.',
+        'Rent assistance becomes an entitlement in every county rather than a queue in a favoured few. Landlords find the federal cheque reliable and the federal inspector less so. Small builders resent the scale at which contracts are now awarded.',
+        'Federal approval overrides local refusal on any site the programme designates, and the councils lose a veto they had held for generations. Ground breaks on land that had been kept green by objection rather than by law. The Chancellor builds quickly, and the conservation offices document what it costs.',
+        'The programme stops subsidising and starts owning. It holds tenancies at cost with no intention of ever selling. Rents flatten across whole cities. Older households who had counted the house as their pension watch the number stop climbing, and they vote on it.'
+      ],
       eff:{ poverty:-4, infrastructure:3, economy:1 }, mood:{ youth:8, labour:6, prof:4 },
       eff2:{ poverty:-7, infrastructure:5, economy:2 }, mood2:{ youth:14, labour:11, prof:7, smallbiz:-5 }, exp2:11,
       eff3:{ poverty:-10, infrastructure:8, economy:3, environment:-1 }, mood3:{ youth:20, labour:15, prof:10, smallbiz:-7 }, exp3:15,
       eff4:{ poverty:-12, infrastructure:9, environment:-2 }, mood4:{ youth:24, labour:18, prof:12, smallbiz:-9, seniors:-4 }, exp4:18 }),
   P({ id:'veteransCare', grp:'Housing and care', name:'Veterans Health and Benefits', cat:'Welfare', dept:'vchan', max:3, cost:5, auth:0, exp:5,
-      desc:'Hospitals, disability compensation and transition support for forty million veterans.',
+      desc:'Hospitals, disability compensation and transition help for those who served.',
+      rungs:[
+        'The veterans hospitals stay open and stay federal, and compensation is paid for injuries traced to service. The burden of proof rests with the claimant, and most claims die on paperwork. Congregations running the halfway houses see the difference in who arrives.',
+        'A list of presumptive conditions replaces the proof of service connection, so exposure and slow illness are compensated without an argument. Claims settle in months instead of appeals. Contracts for the hospital estate are set aside for veteran-owned firms, and small towns notice who wins them.',
+        'Care reaches the household: spouses, dependants, and the years after discharge when the uniform is gone and nothing has replaced it. Apprenticeships are underwritten jointly with the trades, which the unions helped write. Mental health beds open where the recruiting offices are busiest.',
+        'Pension, health and housing together are now worth more than the pay of the rank most people leave at. Recruiters find the argument for staying harder to make each year. The service chiefs ask for the money to be moved and are refused.'
+      ],
       eff:{ healthcare:2, poverty:-1 }, mood:{ veterans:12, faith:4 },
       eff2:{ healthcare:4, poverty:-2 }, mood2:{ veterans:22, faith:7, smallbiz:4 }, exp2:9,
       eff3:{ healthcare:5 }, mood3:{ veterans:30, faith:10, smallbiz:5, labour:3 }, exp3:13,
@@ -1384,13 +1476,25 @@ var POLICIES = [
 
   /* further mainstream depth */
   P({ id:'basicIncome', grp:'Income support', name:'Universal Basic Income', cat:'Welfare', dept:'vchan', max:3, cost:11, exp:11, auth:-.3,
-      desc:'An unconditional monthly payment to every adult citizen.',
+      desc:'An unconditional monthly payment to every adult citizen, with nothing to prove and nothing to claim.',
+      rungs:[
+        'A modest monthly sum arrives for every adult, and the existing benefits stay exactly where they are. Nobody applies and nobody is assessed, which retires the whole apparatus of proving need. Employers in the low-wage trades find the worst shifts suddenly hard to fill.',
+        'The payment reaches a level at which the work test can be abolished, and it is. Congregations argue about what is owed to a man who does nothing, and retirees who spent a working life earning theirs take it badly. Poverty falls further in one year than in the decade before it.',
+        'Young adults draw the full rate at the age of majority rather than a reduced one. Enrolment in study rises and stays risen, because the rent is covered while the course runs. Wages in the trades that hire the young climb without anyone legislating them.',
+        'The payment is set at a level a person could live on with no other income, which is the point of it and the price of it. The money comes out of the capital budget, because that is where money of this size lives. Bridges wait.'
+      ],
       eff:{ poverty:-9, economy:-2 }, mood:{ youth:11, labour:8, prof:4, tech:3, smallbiz:-9 },
       eff2:{ poverty:-17, economy:-4 }, mood2:{ youth:20, labour:15, prof:7, tech:5, smallbiz:-17, faith:-9, seniors:-5 }, exp2:20,
       eff3:{ poverty:-23, economy:-5, education:1 }, mood3:{ youth:28, labour:20, prof:10, tech:7, smallbiz:-23, faith:-13, seniors:-7 }, exp3:28,
       eff4:{ poverty:-27, economy:-6, education:2, infrastructure:-2 }, mood4:{ youth:33, labour:24, prof:12, tech:9, smallbiz:-27, faith:-15, seniors:-9 }, exp4:33 }),
   P({ id:'childcare', grp:'Family and children', name:'Universal Childcare', cat:'Welfare', dept:'vchan', max:3, cost:7, exp:6, auth:-.2,
-      desc:'Federally funded places from six months, with wage floors for the staff.',
+      desc:'Federally funded nursery places from infancy, with a wage floor for the people who staff them.',
+      rungs:[
+        'Subsidised places open for children over three, with the subsidy tapered by household income. Mothers in the professions return to work early and the labour offices count the extra hours. Congregations that hold the home to be the proper nursery say so at every hearing.',
+        'Places start at six months, which is the stretch that decides whether a career survives a birth. A wage floor for staff arrives with them. Private nurseries that ran on cheap labour either close or raise their fees, and their owners petition.',
+        'Hours run the full working day and straight through the school holidays. Sight tests, immunisation and health visiting happen in the setting, so children reach school already seen by someone. Attendance among the poorest children rises fastest.',
+        'The fee falls to nothing for every household, whatever it earns. The scheme now costs more than the pension uprating it competes against, and older households know which one lost. A nursery becomes as ordinary a public building as a school.'
+      ],
       eff:{ poverty:-3, education:3, economy:2 }, mood:{ labour:7, prof:7, youth:6, faith:-4 },
       eff2:{ poverty:-5, education:5, economy:4 }, mood2:{ labour:13, prof:13, youth:11, faith:-7, smallbiz:-5 }, exp2:11,
       eff3:{ poverty:-7, education:8, economy:5, healthcare:1 }, mood3:{ labour:18, prof:18, youth:15, faith:-10, smallbiz:-7 }, exp3:15,
@@ -1476,31 +1580,61 @@ var POLICIES = [
 
   /* taxation, the other direction */
   P({ id:'flatTax', grp:'Income and gains', name:'Flat Rate Income Tax', cat:'Taxation', dept:'chan', max:2, cost:7, auth:0, rev:2,
-      desc:'One rate above a generous allowance, and the schedules burned.',
+      desc:'One rate on everything above a large allowance, with the bands and their exceptions repealed.',
+      rungs:[
+        'The graduated bands collapse into a single rate above a generous allowance. The top of the old schedule gives up more than the bottom gains, and the Economy answers inside a year. Organised Labour objects to the shape of the thing rather than to any figure in it.',
+        'The allowance comes down until the single rate reaches the entry wage, and receipts more than double in one step. The credits that kept a part-time wage out of charge are folded in and go with it. Students and young workers pay their first tax at the rate the largest earners pay, and Poverty rises where the allowance used to sit.',
+        'With the bands gone, what used to fund schooling has to come out of the one rate, and it does not. Education is where the shortfall settles. It is the largest spending line with the least immediate constituency.',
+        'The single rate reaches pension income, which had been charged at the old lowest band. A pension in payment is the one income that cannot be rearranged to suit a rate, and the households living on one meet the whole reform at once.'
+      ],
       eff:{ economy:2, poverty:1.5 }, mood:{ tech:5, smallbiz:3.5, prof:1, labour:-4.5 },
       eff2:{ economy:5, poverty:3.5 }, mood2:{ tech:12, smallbiz:8.5, prof:2.5, labour:-11, youth:-6 }, rev2:5,
       eff3:{ economy:6.5, poverty:5, education:-2.5 }, mood3:{ tech:16, smallbiz:11, prof:3.2, labour:-14.5, youth:-8 }, rev3:6.5,
       eff4:{ economy:8, poverty:6, education:-3 }, mood4:{ tech:20, smallbiz:14, prof:4, labour:-18, youth:-10, seniors:-6 }, rev4:8 }),
   P({ id:'capitalAllowances', grp:'Business and finance', name:'Full Capital Expensing', cat:'Taxation', dept:'chan', max:3, cost:5, auth:0, exp:3,
-      desc:'Write off plant, equipment and research in the year it is bought.',
+      desc:'The cost of new plant, equipment and research is deducted in full in the year it is spent.',
+      rungs:[
+        'Machinery bought this year is deducted this year instead of across its working life. The deduction is not created, only brought forward, and the bill for that arrives at the start. Firms that were going to buy anyway buy sooner.',
+        'Research and the software that carries it come inside the relief, and the cost to the Chancellor doubles. Urban professionals ask what the country buys for a write-off claimed mostly by firms that already had the capital, and nobody answers the question directly.',
+        'Structures join the list: docks, sidings, grid connections and the dull long-lived things left out until now for lasting too long. Private money starts building what had been waiting on a public budget, and Infrastructure moves without a public order being placed.',
+        'The last exclusions go. Extraction plant, heavy haulage fleets and the equipment of the dirtiest trades take the fastest write-off available to anyone, and the relief is now entirely indifferent to what gets built.'
+      ],
       eff:{ economy:4, technology:4 }, mood:{ tech:9, smallbiz:6, labour:-2 },
       eff2:{ economy:8, technology:8 }, mood2:{ tech:18, smallbiz:12, labour:-4, prof:-4 }, exp2:6,
       eff3:{ economy:10, technology:10, infrastructure:3 }, mood3:{ tech:22.5, smallbiz:15, labour:-5, prof:-5 }, exp3:7.5,
       eff4:{ economy:12, technology:12, infrastructure:4, environment:-3 }, mood4:{ tech:27, smallbiz:18, labour:-6, prof:-6 }, exp4:9 }),
   P({ id:'territorialTax', grp:'Income and gains', name:'Territorial Taxation', cat:'Taxation', dept:'chan', max:2, cost:6, auth:0, rev:.5,
-      desc:'Tax what is earned in Vale and nothing earned outside it.',
+      desc:'Income earned outside the country leaves the base, and where income arises becomes a drafting question.',
+      rungs:[
+        'What a domestic company earns abroad stops being charged here at all: that income belongs to whichever treasury taxed it where it arose. The rule is short and easy to administer. Its consequence is that the location of profit becomes a matter of drafting, and Corruption moves with it.',
+        'The exemption extends to individuals. A citizen working abroad files nowhere while identical work done at home is charged in full, and the young, who cannot leave, work out quickly who the rule was written for.',
+        'Royalties and licence income are the easiest earnings to place, so the patents move to whichever jurisdiction charges least while the operating business stays put. The technology sector gains most from this and says the least about it.',
+        'Other treasuries lose what the rule releases. The treaties that once divided taxing rights are renegotiated or left to lapse, and the country acquires a reputation as a place profit passes through, which is raised at every table it sits at.'
+      ],
       eff:{ economy:2, corruption:1.5 }, mood:{ tech:5, smallbiz:1.5, prof:-2, labour:-2.5 },
       eff2:{ economy:5, corruption:3.5 }, mood2:{ tech:12, smallbiz:3.5, prof:-4.5, labour:-6, youth:-3.5 }, rev2:1.2,
       eff3:{ economy:6.5, corruption:5, technology:2 }, mood3:{ tech:16, smallbiz:5, prof:-6.5, labour:-8, youth:-5 }, rev3:1.6,
       eff4:{ economy:8, corruption:6, technology:3, tension:2.5 }, mood4:{ tech:20, smallbiz:6, prof:-8, labour:-10, youth:-6 }, rev4:2 }),
   P({ id:'propertyRelief', grp:'Wealth and land', name:'Property Tax Relief', cat:'Taxation', dept:'chan', max:2, cost:5, auth:0, exp:2,
-      desc:'Federal offset against state and county assessments, capped by age and income.',
+      desc:'A federal offset against local property bills, limited by age and by income.',
+      rungs:[
+        'Older owners under an income cap receive a federal payment set against their local property bill. It stops the oldest households being charged out of houses they own outright. Tenants receive nothing, and are told the relief was never meant for them.',
+        'Congregations come inside the offset: halls, manses and the buildings that had paid a local rate like anybody else. The relief is now available to owners who are not households at all, and the parish accounts improve overnight.',
+        'The income cap rises until the offset reaches owners who were never in any difficulty. What began as protection for the old is a general subsidy to ownership, and urban professionals paying the full local bill on a first flat are the ones funding it.',
+        'The counties, whose one dependable revenue is the property bill, find the base beneath them hollowed out. The federal cheque reaches the owner and never the county, and the roads and drains that the local bill used to pay for go unrepaired.'
+      ],
       eff:{ poverty:-.5 }, mood:{ seniors:6, smallbiz:3, labour:-1, youth:-2 },
       eff2:{ poverty:-1 }, mood2:{ seniors:11, smallbiz:7, faith:3, labour:-2, youth:-5 }, exp2:4,
       eff3:{ poverty:-1.6 }, mood3:{ seniors:18, smallbiz:11, faith:5, labour:-3, youth:-8, prof:-4 }, exp3:6,
       eff4:{ poverty:-2, infrastructure:-.7 }, mood4:{ seniors:22, smallbiz:14, faith:6, labour:-4, youth:-10, prof:-7 }, exp4:8 }),
   P({ id:'taxAmnesty', grp:'Business and finance', name:'Repatriation Amnesty', cat:'Taxation', dept:'chan', max:2, cost:4, auth:0, rev:2,
-      desc:'Bring the offshore holdings home at a token rate, once, again.',
+      desc:'Holdings abroad may be declared at a token rate, once, with nothing asked about where they came from.',
+      rungs:[
+        'Money held offshore can be brought home at a token rate, with no question put about how it left. The Chancellor books the receipts inside a single year, and everyone with money still outside understands the offer will be made again. Corruption is the price and it is paid up front.',
+        'The window widens to undeclared income earned at home: unbanked takings, wages handed over in an envelope, rents never reported. Small traders come in from the cold on terms the neighbour who filed honestly was never offered.',
+        'Assets rather than cash may now be declared, and their worth is stated by the holder. Unlisted shares, private holdings and patents parked abroad enter the record at whatever the owner says they are worth, which is the point at which the amnesty becomes a laundry.',
+        'The amnesty is renewed every year and has stopped being an exception to anything. Paying on time is the expensive way to do it, and the pulpits, which had said nothing at all about rates, say a great deal about this.'
+      ],
       eff:{ corruption:3, economy:1 }, mood:{ tech:4, prof:-3, youth:-2, labour:-2 },
       eff2:{ corruption:5, economy:2 }, mood2:{ tech:8, smallbiz:4, prof:-7, youth:-5, labour:-4 }, rev2:4,
       eff3:{ corruption:8, economy:3.2, technology:1.5 }, mood3:{ tech:12, smallbiz:6, prof:-11, youth:-8, labour:-6 }, rev3:6.5,
@@ -1508,31 +1642,61 @@ var POLICIES = [
 
   /* welfare, the other direction */
   P({ id:'workRequirements', grp:'Conditions and limits', name:'Work Requirements', cat:'Welfare', dept:'vchan', max:3, cost:5, rev:2, auth:.4,
-      desc:'Benefits conditional on work, training or search, verified monthly.',
+      desc:'Payments made conditional on work, training or a documented search, checked every month.',
+      rungs:[
+        'Claimants report hours of work, training or search each month, and a missed report costs part of the payment. Exemptions are wide and the checking is light. Small employers, who watched the same men turn down the same shifts, treat it as overdue.',
+        'The exemption for parents of school-age children closes, and the one for long-term claimants closes with it. Retirees recognise the rules they themselves lived under and approve of them. The unions call it a wage subsidy paid for by the people who need the wage.',
+        'Attendance is verified against employer payroll filings and a monthly appearance in person. A claimant file now records where they were and when. Officials discover that the wrong people are being sanctioned, and go on sanctioning them.',
+        'A second failure ends the payment outright for a fixed period, with no hardship route back. Households drop off the rolls and out of sight. Petty theft rises in the counties where the sanction bites hardest, and the sheriffs write to the Vice Chancellor about it.'
+      ],
       eff:{ poverty:4, economy:2 }, mood:{ smallbiz:9, faith:5, labour:-9, youth:-8 },
       eff2:{ poverty:7, economy:4 }, mood2:{ smallbiz:16, faith:9, seniors:5, labour:-16, youth:-14 }, rev2:4,
       eff3:{ poverty:10, economy:5, liberties:-2 }, mood3:{ smallbiz:22, faith:12, seniors:7, labour:-22, youth:-20 }, rev3:5,
       eff4:{ poverty:12, economy:6, liberties:-3, safety:-1 }, mood4:{ smallbiz:27, faith:15, seniors:9, labour:-27, youth:-24 }, rev4:6 }),
   P({ id:'benefitCap', grp:'Conditions and limits', name:'Household Benefit Cap', cat:'Welfare', dept:'vchan', max:2, cost:5, auth:0, rev:1.5,
-      desc:'A ceiling on total household transfers set at the median wage.',
+      desc:'A ceiling on what any one household may draw in total transfers, pegged to the median wage.',
+      rungs:[
+        'Total household transfers are capped at what a median household earns. Housing costs sit outside the count, so few households reach the ceiling at all. The ones that do are large. What passes here is a principle, that nobody idle is paid above the neighbour who works.',
+        'Housing costs come inside the ceiling, which is where the cap starts to bite in the expensive cities. Compensation for service injury is written out of the count, and the veterans organisations that lobbied for exactly that go quiet. Arrears cases at the counties double.',
+        'The ceiling is fixed in cash and stops tracking the wage it was set against, so it tightens every year without a vote. Families cut what can be cut, which is uniform, books and the fare to the better school further off. The older grades lose the children who had been travelling to reach them.',
+        'One ceiling now applies per household however many children are in it. Large families absorb the entire shortfall on the youngest. Congregations that had backed the cap on principle break with it on arithmetic.'
+      ],
       eff:{ poverty:2 }, mood:{ smallbiz:4, seniors:2, labour:-4, youth:-3 },
       eff2:{ poverty:5 }, mood2:{ smallbiz:9, seniors:5, veterans:2, labour:-9, youth:-7 }, rev2:3.5,
       eff3:{ poverty:7, education:-1 }, mood3:{ smallbiz:13, seniors:7, veterans:3, labour:-13, youth:-10 }, rev3:5,
       eff4:{ poverty:8, education:-2 }, mood4:{ smallbiz:16, seniors:8, veterans:4, labour:-16, youth:-12, faith:-4 }, rev4:6 }),
   P({ id:'blockGrantWelfare', grp:'Conditions and limits', name:'Block Grant the Programmes', cat:'Welfare', dept:'chan', max:2, cost:5, auth:0, rev:1.5,
-      desc:'Hand the welfare programmes to the fifty states as a lump sum and let them decide.',
+      desc:'Hand the welfare programmes to the states as a lump sum and let each one decide.',
+      rungs:[
+        'The federal programmes become one sum sent to each statehouse, which must still put up its own share to draw it. The rules stay roughly as they were, because the money is roughly as it was. Farmers and small employers prefer an office they can drive to.',
+        'The requirement to match federal money with state money is dropped. Grants find their way to programmes that are welfare by title and something else in practice. State auditors report this and are ignored.',
+        'The sum stops moving with caseload, so a downturn is now a state problem rather than a federal one. The first thing cut is the medical share, because it is the largest and the least visible. Rural clinics close in the states that cut fastest.',
+        'States may spend the grant on anything they choose to call welfare, and several close it to anyone not long resident. Nationals of treaty partners are refused help their governments believed was guaranteed. The complaints arrive at a Chancellor who no longer controls the money.'
+      ],
       eff:{ poverty:1 }, mood:{ smallbiz:4, faith:2.5, labour:-3.5, prof:-2.5 },
       eff2:{ poverty:2, corruption:2 }, mood2:{ smallbiz:9, faith:6, labour:-8, prof:-6 }, rev2:3.5,
       eff3:{ poverty:3, corruption:3, healthcare:-1 }, mood3:{ smallbiz:13, faith:8, labour:-11, prof:-8 }, rev3:5,
       eff4:{ poverty:4, corruption:4, healthcare:-1.5, tension:1 }, mood4:{ smallbiz:16, faith:10, labour:-14, prof:-10 }, rev4:6 }),
   P({ id:'charitableDeduction', grp:'Conditions and limits', name:'Charitable and Faith Deduction', cat:'Welfare', dept:'chan', max:2, cost:4, auth:0, exp:1.5,
-      desc:'Relief for giving, with religious and community bodies as delivery partners.',
+      desc:'Tax relief for giving, with congregations and community bodies paid to deliver the help.',
+      rungs:[
+        'Gifts to registered bodies come off taxable income, and the shelters and soup kitchens run on the result. Congregations reach households the offices never find. Union officials note that a deduction is public money spent by whoever earns enough to itemise.',
+        'Relief extends to gifts of stock and to standing donor funds, so a fortune can be given away without ever being sold. Wealth managers build the vehicles within the year. A young worker who rents and does not itemise gets nothing from any of it.',
+        'Approved bodies take delivery contracts for services the department used to run itself. A place on the register becomes worth having and worth lobbying for, and the vetting is a form and a fee. Money moves faster than the audit trailing it.',
+        'Contracted bodies may hire and admit according to their own doctrine while spending public money. The relief now covers most of what a large giver gives. Professionals who use the services and share none of the doctrine take the objection to court.'
+      ],
       eff:{ poverty:-1 }, mood:{ faith:6, smallbiz:2.5, labour:-1.5 },
       eff2:{ poverty:-2.2 }, mood2:{ faith:13, smallbiz:5.5, tech:3, labour:-3.2, youth:-2 }, exp2:3,
       eff3:{ poverty:-3.2, corruption:.8 }, mood3:{ faith:19, smallbiz:8, tech:4.5, labour:-4.6, youth:-3 }, exp3:4.5,
       eff4:{ poverty:-4, corruption:1.4 }, mood4:{ faith:24, smallbiz:10, tech:6, labour:-6, youth:-4, prof:-5 }, exp4:6 }),
   P({ id:'meansTesting', grp:'Conditions and limits', name:'Means Test the Universal Benefits', cat:'Welfare', dept:'vchan', max:2, cost:6, auth:0, rev:2,
-      desc:'Taper the flat payments away above the median household.',
+      desc:'Taper the flat payments away above the median household instead of paying everyone.',
+      rungs:[
+        'Flat payments taper above the median household rather than stopping at a cliff edge. The taper is shallow and the saving is modest. Older households, who had never had to prove anything to draw it, now file in order to keep it.',
+        'The test reads the household rather than the individual, and it takes last year\'s tax filing instead of asking for a fresh declaration. Professionals who had dreaded a means test find there is no form to complete. Retired couples find two modest incomes together clear a threshold neither would alone.',
+        'The means test runs against tax filings, bank interest and employer records without asking the claimant anything. Underpayment falls, and so does any ability to see how the figure was reached. An appeal now requires a person to disprove a file they cannot read.',
+        'The taper reaches the health entitlement itself, and a household above the line pays a share at the point of use. Some of them stop going until it is serious. The saving is real, and so is the tumour found later than it needed to be.'
+      ],
       eff:{ poverty:.5, economy:.5 }, mood:{ tech:3, smallbiz:3, seniors:-3.5, labour:-3 },
       eff2:{ poverty:1, economy:1 }, mood2:{ tech:6.5, smallbiz:6.5, prof:2, seniors:-7.5, labour:-6.5 }, rev2:4.2,
       eff3:{ poverty:1.5, economy:1.5, liberties:-.4 }, mood3:{ tech:9.5, smallbiz:9.5, prof:3, seniors:-11, labour:-9.5 }, rev3:6.2,
@@ -2218,19 +2382,37 @@ var POLICIES = [
 
   /* taxation */
   P({ id:'landValueTax', grp:'Wealth and land', name:'Land Value Tax', cat:'Taxation', dept:'chan', max:3, cost:8, rev:5, auth:-.1,
-      desc:'Tax the site and not the building. Every economist approves and every landholder objects.',
+      desc:'The assessor prices the site as though it were bare, and the tax falls on that and not on the building.',
+      rungs:[
+        'The bill follows the value of the ground alone, so building on a plot, improving it or leaving it as it is changes nothing owed. A vacant plot in a growing town stops being free to hold. The charge cannot be handed to a tenant, which is the whole argument for it and the reason landholders fight it.',
+        'Public works begin to pay for part of themselves. A new line or a bridge lifts the site values along its length, the roll picks the rise up the following year, and the money comes back to the works instead of to whoever happened to own the corner.',
+        'The exemption for farmland ends. Acreage at the edge of a spreading town is priced at the best use a buyer could put it to, and keeping it in crops becomes a decision with an annual cost attached.',
+        'Land held from abroad is assessed like any other, with no allowance made for who owns it. Foreign holders bring their governments into the argument, and a charge on the ground underfoot turns into a matter raised between capitals.'
+      ],
       eff:{ economy:3, poverty:-2 }, mood:{ prof:7, youth:7, tech:4, smallbiz:-11, seniors:-8 },
       eff2:{ economy:5, infrastructure:3, poverty:-3.5 }, mood2:{ prof:12, youth:12, tech:7, smallbiz:-19, seniors:-14 }, rev2:8.5,
       eff3:{ economy:7.5, infrastructure:5, poverty:-5, agriculture:-1.5 }, mood3:{ prof:17, youth:17, tech:10, smallbiz:-27, seniors:-20 }, rev3:12.5,
       eff4:{ economy:9, infrastructure:6, poverty:-6, agriculture:-2.5, tension:2 }, mood4:{ prof:21, youth:21, tech:12, smallbiz:-33, seniors:-24 }, rev4:15 }),
   P({ id:'transactionTax', grp:'Business and finance', name:'Financial Transaction Tax', cat:'Taxation', dept:'chan', max:2, cost:6, auth:0, rev:2.5,
-      desc:'A fraction of a point on every trade cleared in Somnium and Tenebris.',
+      desc:'A fraction of a point taken from every executed trade, collected at the clearing house.',
+      rungs:[
+        'Each executed trade is charged a fraction of a point, taken at clearing so that nobody files anything. The strategies that only work at no cost stop working, and turnover falls before the revenue arrives. The exchanges treat this as a warning shot.',
+        'Derivatives and repo are brought in, where the notional sums are largest and the levy had been easiest to sidestep by choosing a different instrument. Urban professionals, who trade rarely and hold for years, discover it costs them almost nothing.',
+        'A pension fund rebalancing its book is trading, and the charge cannot tell the difference. The cost lands on the funds obliged to trade rather than on the desks that choose to, and retirees pay a levy that was written for somebody else.',
+        'Matching engines move to whichever venue sits outside the charge, and the trades that can leave do. What remains meets a wider spread on every order, which takes more from the ordinary buyer than the levy raises from him.'
+      ],
       eff:{ economy:-1 }, mood:{ tech:-6.5, labour:3.5, youth:2.5 },
       eff2:{ economy:-2 }, mood2:{ tech:-13, prof:3, labour:7, youth:5 }, rev2:5,
       eff3:{ economy:-3.2 }, mood3:{ tech:-21, prof:5, labour:11, youth:8, seniors:-6 }, rev3:8,
       eff4:{ economy:-4, technology:-1.5 }, mood4:{ tech:-26, prof:6, labour:14, youth:10, seniors:-9 }, rev4:10 }),
   P({ id:'taxSimplification', grp:'Fiscal rules', name:'Tax Code Simplification', cat:'Taxation', dept:'chan', max:2, cost:5, exp:.5, auth:-.2,
-      desc:'Strike the deductions, shorten the return to a page, and disband half the agency.',
+      desc:'Strike the deductions, shorten the return, and let go the staff who existed to interpret them.',
+      rungs:[
+        'The narrowest reliefs go first: the ones written for a single beneficiary by a sponsor who has since left. The code gets shorter without much being noticed, and the trades that had paid an accountant to find these things stop paying him.',
+        'Union dues and the treatment of benefits provided by an employer are struck out with the rest. Organised Labour learns that a clean code means their exceptions too, and that the drafters have stopped making distinctions between one carve-out and another.',
+        'The refundable credits go. They were deductions on paper and they are cut as deductions, and the households whose income they topped up get nothing in their place. The return now fits on a page and Poverty rises.',
+        'The reliefs for pension saving and for medical costs, the last of the complications, are folded into one allowance and the agency is halved. Nobody senior is left to rule on an odd case, so an odd case is settled by whichever clerk opens the envelope.'
+      ],
       eff:{ corruption:-3, economy:1.5 }, mood:{ smallbiz:5, tech:3, prof:2.5 },
       eff2:{ corruption:-6, economy:3 }, mood2:{ smallbiz:9, tech:6, prof:5, labour:-3 }, exp2:1,
       eff3:{ corruption:-9.5, economy:4.8, poverty:2 }, mood3:{ smallbiz:14, tech:9, prof:8, labour:-4.5 }, exp3:1.5,
@@ -2238,19 +2420,37 @@ var POLICIES = [
 
   /* welfare */
   P({ id:'disabilitySupport', grp:'Income support', name:'Disability Support', cat:'Welfare', dept:'vchan', max:3, cost:5, auth:0, exp:5,
-      desc:'Income support, equipment and personal assistance, assessed once and not annually.',
+      desc:'Income support, equipment and personal assistance, assessed once rather than every year.',
+      rungs:[
+        'Income support is paid alongside equipment and adaptation, and the award is made once rather than rebuilt every year. The dread of reassessment goes with it. Waiting lists for chairs and hoists shorten wherever the panels are properly staffed.',
+        'The rate rises to where a household stops choosing between care hours and the rent. What it now covers is the cost the impairment itself imposes: heat kept on all day, the fare for a taxi on a route no bus serves. A disabled adult can buy a few hours of help outright rather than depend on a sister who left work to give them.',
+        'Access is funded as an obligation rather than a courtesy: ramps, lifts, adapted transport, a level platform at every station the department can reach. The city becomes usable, and the number of people needing paid help to leave the house falls. Employers meet candidates who could always work and could never arrive.',
+        'Personal assistance is funded at whatever hours the assessment finds necessary, with no ceiling written into the statute. Independent living stops being a scheme and becomes a right. Ratings analysts read an open-ended liability on the federal books and mark it accordingly.'
+      ],
       eff:{ poverty:-4, healthcare:2 }, mood:{ labour:7, seniors:6, faith:5, prof:4, smallbiz:-3 },
       eff2:{ poverty:-7, healthcare:3.5 }, mood2:{ labour:12, seniors:10, faith:8.5, prof:7, smallbiz:-5 }, exp2:8.5,
       eff3:{ poverty:-10, healthcare:5, infrastructure:2.5 }, mood3:{ labour:17, seniors:14.5, faith:12, prof:10, smallbiz:-7 }, exp3:12,
       eff4:{ poverty:-12, healthcare:6, infrastructure:4 }, mood4:{ labour:21, seniors:18, faith:15, prof:12, smallbiz:-9, tech:-6 }, exp4:15 }),
   P({ id:'foodAssistance', grp:'Family and children', name:'Food Assistance', cat:'Welfare', dept:'vchan', max:3, cost:5, auth:0, exp:5,
-      desc:'A monthly benefit for groceries, redeemable anywhere that sells them.',
+      desc:'A monthly grocery benefit on a card, spendable anywhere that sells food.',
+      rungs:[
+        'A monthly grocery benefit is loaded onto a card and spends at any store selling food. The amount is set by what the budget allows rather than by what food costs. Emergency pantries at the congregations empty more slowly.',
+        'The benefit is costed from a real basket that includes fresh produce, meat and milk, and it moves when prices move. Growers gain a buyer who does not haggle and does not vanish in a bad year. A bad harvest now lands on the federal books rather than on the household\'s table, and the underwriters start pricing weather into a welfare line.',
+        'Eligibility rises above the poverty line, so a household in work but short still qualifies. A grocer in a poor county has a floor under his takings, and the stores that were closing stay open. Diet-related admissions fall where take-up runs highest.',
+        'Any retailer who applies may redeem the card, and the list grows faster than anyone checks it. Redemption at a discount becomes a trade of its own, run out of corner stores that stock very little food. Nobody goes hungry and the fraud offices are years behind.'
+      ],
       eff:{ poverty:-5, healthcare:2 }, mood:{ labour:8, faith:5, youth:4, smallbiz:-4 },
       eff2:{ poverty:-9, healthcare:3.5, agriculture:3 }, mood2:{ labour:14, faith:8.5, youth:7, smallbiz:-7, tech:-5 }, exp2:8.5,
       eff3:{ poverty:-12.5, healthcare:5, agriculture:4.5, economy:3 }, mood3:{ labour:20, faith:12, youth:10, smallbiz:-10, tech:-7 }, exp3:12,
       eff4:{ poverty:-15, healthcare:6, agriculture:6, economy:5, corruption:2.5 }, mood4:{ labour:24, faith:15, youth:12, smallbiz:-12, tech:-9 }, exp4:15 }),
   P({ id:'privatePensions', grp:'Income support', name:'Private Pension Accounts', cat:'Welfare', dept:'chan', max:3, cost:7, auth:0, rev:3,
-      desc:'Divert part of the social security contribution into individual invested accounts.',
+      desc:'Divert part of the pension contribution into an account held in the worker\'s own name.',
+      rungs:[
+        'A slice of the payroll contribution is diverted into an account in the worker\'s name, invested in a default fund. The managers appointed to run that default fund are made rich by the mandate alone. Retirees watch the money that pays them today going somewhere else.',
+        'The diverted share rises until a worker in mid-career holds more in the account than the state still promises him. Every share diverted is a pension the Chancellor no longer owes, and the saving is booked in the year it is taken. Retirees watch the contribution that pays them cut a second time, and the unions now stand beside them.',
+        'Accounts may hold equities directly, and a monthly bid arrives in the market whether or not anyone wants to buy. Listed technology firms find capital cheap and patient. The oldest households now hold a pension whose worth is read off a screen each morning.',
+        'The account replaces the pension outright for everyone entering work. A worker who invests badly, or who simply retires into a bad year, grows old poor with no claim on anybody. Congregations that end up burying him take the argument to the government that wrote this.'
+      ],
       eff:{ economy:4, poverty:3 }, mood:{ tech:11, smallbiz:6, prof:3, seniors:-9, labour:-9 },
       eff2:{ economy:7, poverty:5 }, mood2:{ tech:19, smallbiz:10.5, prof:5, seniors:-18, labour:-15 }, rev2:5,
       eff3:{ economy:10, poverty:7, technology:3 }, mood3:{ tech:27, smallbiz:15, prof:7.5, seniors:-26, labour:-22 }, rev3:7.5,
@@ -2706,31 +2906,61 @@ var POLICIES = [
 
   /* ---- taxation ---- */
   P({ id:'payrollTax', grp:'Income and gains', name:'Payroll Contributions', cat:'Taxation', dept:'chan', max:3, cost:5, auth:0, rev:6,
-      desc:'A contribution on wages, split between worker and employer, hypothecated to the insurance funds.',
+      desc:'A contribution charged on wages, split between worker and employer, paid into the insurance funds.',
+      rungs:[
+        'A flat contribution on wages up to a ceiling, half from the worker and half from the employer, paid into the funds and not into the general account. Retirees defend it because the money is theirs by name. Employers count it as part of what a hire costs and hire accordingly.',
+        'The ceiling on earnings is lifted, so a large salary contributes across the whole of itself. The firms that pay expensive people carry most of the increase and complain that they are buying the same insurance twice over.',
+        'A second contribution opens, fenced to the health fund and unavailable for anything else. Healthcare improves by however much the fence holds, and the wage packet shrinks by the same amount.',
+        'The floor below which no contribution was due is removed, so the lowest wages contribute from the first hour worked. A household too poor to owe income tax owes this instead, and it is taken before any other claim on the wage is heard.'
+      ],
       eff:{ economy:-1 }, mood:{ labour:-4, smallbiz:-5, seniors:4 },
       eff2:{ economy:-1.8 }, mood2:{ labour:-7, smallbiz:-9, tech:-5, seniors:7 }, rev2:11,
       eff3:{ economy:-2.5, healthcare:.6 }, mood3:{ labour:-10, smallbiz:-12, tech:-7, seniors:10 }, rev3:15,
       eff4:{ economy:-3, healthcare:1, poverty:1 }, mood4:{ labour:-12, smallbiz:-15, tech:-9, seniors:12 }, rev4:18 }),
   P({ id:'digitalServicesTax', grp:'Business and finance', name:'Digital Services Tax', cat:'Taxation', dept:'chan', max:2, cost:5, auth:0, rev:2,
-      desc:'A levy on revenue booked in Vale by platforms headquartered anywhere.',
+      desc:'A charge on the turnover platforms book here, whatever country they answer to.',
+      rungs:[
+        'The charge falls on turnover rather than on profit, because profit is the thing these firms can move and turnover is not. Only the largest platforms are caught. Foreign capitals call it discrimination inside the week, and the complaint is filed before the first payment falls due.',
+        'The size test drops to catch marketplaces, streaming and advertising sold against domestic users wherever the invoice is written. Urban professionals, who had no side in the argument, take the Chancellor\'s once they read how little was being paid before.',
+        'The levy is now heavy enough that the platforms stop absorbing it and start withdrawing: local hiring frozen, new services held back from this market alone. Small merchants take back part of the price gap that had been closing their shops. The Economy registers the retreat, and the partners abroad threaten duties on unrelated trade.',
+        'The free tier ends. Subscriptions, listing fees and the price of everything sold through a platform rise to carry the levy, and the users who had paid nothing at all find out what the service was worth to them.'
+      ],
       eff:{ technology:-1, tension:1 }, mood:{ tech:-5.5, smallbiz:3, labour:1.5 },
       eff2:{ technology:-2, tension:2 }, mood2:{ tech:-11, smallbiz:6, prof:3, labour:3 }, rev2:4,
       eff3:{ technology:-3.2, tension:3.2, economy:-1 }, mood3:{ tech:-18, smallbiz:10, prof:5, labour:5 }, rev3:6.5,
       eff4:{ technology:-4, tension:4, economy:-1.5 }, mood4:{ tech:-22, smallbiz:12, prof:6, labour:6, youth:-6 }, rev4:8 }),
   P({ id:'vacancyTax', grp:'Wealth and land', name:'Vacancy and Second Home Tax', cat:'Taxation', dept:'chan', max:2, cost:5, auth:0, rev:1.5,
-      desc:'A punitive rate on dwellings left empty in the metros.',
+      desc:'A surcharge on a dwelling left empty, owed for the months in which nobody lived in it.',
+      rungs:[
+        'Any dwelling standing empty for most of the year in the tight cities pays a surcharge, with occupancy declared by the owner. The first result is a wave of letting: flats bought and left dark come onto the market together, and rents ease where the dark stock was thickest.',
+        'Second homes in the holiday towns are caught next, where the empty months are the arrangement rather than a failure of it. The letting agents, the trades and the shops that live on one season find the season is the thing being taxed.',
+        'Occupancy is verified instead of declared: utility readings, tenancy records, and an inspector at the door where the readings look thin. Proving that you live in your own house becomes an annual obligation.',
+        'The rate reaches the point where holding an empty flat costs more than selling it at a loss. The stock that can be sold is sold within the year, and nobody builds on the chance of a buyer turning up later.'
+      ],
       eff:{ poverty:-1 }, mood:{ youth:4.5, labour:2.5, prof:1, seniors:-3 },
       eff2:{ poverty:-2 }, mood2:{ youth:9, labour:5, prof:2, seniors:-6, smallbiz:-5 }, rev2:3,
       eff3:{ poverty:-3.2, liberties:-1.2 }, mood3:{ youth:15, labour:8, prof:3, seniors:-10, smallbiz:-8 }, rev3:4.8,
       eff4:{ poverty:-4, liberties:-1.5, economy:-1 }, mood4:{ youth:18, labour:10, prof:4, seniors:-12, smallbiz:-10 }, rev4:6 }),
   P({ id:'luxuryDuties', grp:'Spending and trade', name:'Luxury Duties', cat:'Taxation', dept:'chan', max:2, cost:4, auth:0, rev:2,
-      desc:'Duties on aircraft, yachts, jewellery and the fourth car.',
+      desc:'Duties charged at the sale of aircraft, yachts, stones and the fourth car.',
+      rungs:[
+        'A duty at the point of sale on aircraft, yachts and stones above a stated price. Nothing else in the country moves. The receipts are real, no measure of the economy registers a thing, and the entire argument is over who deserves to be annoyed.',
+        'The list grows by vote, item by item: the fourth car, the private box, the racehorse, the cellar. Deciding what counts as a luxury is now a standing occupation of the legislature, and retirees enjoy the spectacle more than anybody.',
+        'A trade in classification appears. A yacht is registered as a working vessel, a jet as a corporate necessity, a necklace as an antique, and the valuers who will sign for any of it are not hard to find. A list of named things has to be interpreted by somebody, and interpretation can be bought.',
+        'The price at which duty starts falls until it catches the boatyards, the jewellers and the coachbuilders who make these things by hand. Buyers order abroad, where no duty applies, and the workshops that had employed a village close in order of size.'
+      ],
       eff:{  }, mood:{ tech:-3.5, labour:2.5, youth:2 },
       mood2:{ tech:-7, labour:5, youth:4, seniors:2 }, rev2:4,
       eff3:{ corruption:1 }, mood3:{ tech:-11, labour:8, youth:6.5, seniors:3 }, rev3:6.5,
       eff4:{ corruption:1.5 }, mood4:{ tech:-14, labour:10, youth:8, seniors:4, smallbiz:-5 }, rev4:8 }),
   P({ id:'debtCeiling', grp:'Fiscal rules', name:'Statutory Debt Ceiling', cat:'Taxation', dept:'chan', max:2, cost:6, auth:0,
-      desc:'A hard cap on outstanding federal debt, breached only by a vote of both houses.',
+      desc:'A hard limit on debt outstanding, raised only when both houses vote to raise it.',
+      rungs:[
+        'Debt outstanding may not pass a figure written into statute, and only both houses together can move that figure. In a quiet year it is a line in a law and nothing more. What it changes is that somebody has to put a name to the vote when the limit is met.',
+        'The limit binds inside a single term, so the vote arrives on a timetable and the Chancellor has to publish what is owed and to whom before asking for it. Retirees, who hold more of this debt than anybody, take the discipline as protection of the income they live on.',
+        'Once the limit is met the Chancellor pays in order of priority: interest first, pensions next, and last of all anything with a contractor at the end of it. Work stops half built during the standoff and restarts at a price above the one it was tendered at.',
+        'The limit is met as a matter of routine, and the vote to lift it becomes the hostage in every unrelated argument. Courts sit short, patrols go unpaid for the weeks it lasts, and the country learns that the cheapest way to be dangerous is to do nothing at all.'
+      ],
       eff:{ economy:1, corruption:-1 }, mood:{ smallbiz:4, tech:3, labour:-3, youth:-2.5 },
       eff2:{ economy:2, corruption:-2 }, mood2:{ smallbiz:8, tech:6, seniors:3, labour:-6, youth:-5 },
       eff3:{ economy:3.2, corruption:-3.2, infrastructure:-1.2 }, mood3:{ smallbiz:13, tech:10, seniors:5, labour:-10, youth:-8 },
@@ -2738,31 +2968,61 @@ var POLICIES = [
 
   /* ---- welfare ---- */
   P({ id:'carersAllowance', grp:'Income support', name:'Carers Allowance', cat:'Welfare', dept:'vchan', max:2, cost:4, auth:0, exp:2,
-      desc:'A payment to those caring at home for the elderly or disabled.',
+      desc:'A payment to relatives caring at home for an elderly or disabled family member.',
+      rungs:[
+        'A payment goes to a relative giving substantial care at home, withdrawn the moment that relative earns anything much. It puts a price on hours that were unpaid and unrecorded. Congregations that had organised the same care by rota find the state arriving beside them.',
+        'The earnings limit rises far enough for a carer to hold part-time work and keep the payment. Daughters in salaried posts stop choosing between the job and the parent. Discharge from hospital to home stops failing for want of somebody at the other end.',
+        'Paid respite is written in, so a carer may leave the house for a week without the person cared for going into a ward. Employers must hold a carer\'s job open for the duration, which the smallest firms cannot absorb. Care homes admit fewer people and admit them later.',
+        'Years given to care count as contributory years, so a carer no longer reaches old age with a hole in the record. Enough people leave paid work to care full time that the labour offices see the withdrawal in their own figures. Output falls where those workers were, and the wards stay empty of people who would otherwise have filled them.'
+      ],
       eff:{ poverty:-1.5, healthcare:1 }, mood:{ seniors:4, labour:3, faith:2.5 },
       eff2:{ poverty:-3.2, healthcare:2 }, mood2:{ seniors:8.5, labour:6.5, faith:5.5, prof:3 }, exp2:4.2,
       eff3:{ poverty:-4.8, healthcare:3.2 }, mood3:{ seniors:12.5, labour:9.5, faith:8, prof:4.5, smallbiz:-3 }, exp3:6.2,
       eff4:{ poverty:-6, healthcare:4, economy:-2 }, mood4:{ seniors:16, labour:12, faith:10, prof:6, smallbiz:-5 }, exp4:8 }),
   P({ id:'fuelAllowance', grp:'Income support', name:'Winter Fuel Allowance', cat:'Welfare', dept:'vchan', max:2, cost:3, auth:0, exp:2,
-      desc:'A cold weather payment in the northern states, paid without application.',
+      desc:'A cold weather payment in the northern states, sent out without anyone having to ask.',
+      rungs:[
+        'A payment is triggered by a run of freezing days and sent automatically to older households in the cold states. Nobody applies, so nobody is missed for failing to. Deaths in the coldest weeks fall where the trigger fires most often.',
+        'The payment covers the whole cold season instead of firing on a run of days, so a household can order fuel in autumn when it is cheap. Older people stop heating one room. Actuaries object to a national outlay settled by a thermometer.',
+        'The payment is made against the heating bill whatever the fuel, so oil, coal and cut wood are all subsidised at one rate. The cheapest heat is also the dirtiest, and it is now the best value going. Air quality in the northern towns worsens through every winter.',
+        'Every household in the cold states draws it, age and income aside. The warmer states fund a payment they will never see, and the young, who rent and move, work out that they are paying for houses they cannot buy. Fuel poverty ends as a category.'
+      ],
       eff:{ poverty:-1.5, healthcare:1 }, mood:{ seniors:5.5, labour:2.5, smallbiz:1.5 },
       eff2:{ poverty:-3.2, healthcare:2 }, mood2:{ seniors:12, labour:5.5, smallbiz:3.2, tech:-3 }, exp2:4.2,
       eff3:{ poverty:-4.8, healthcare:3.2, environment:-1.2 }, mood3:{ seniors:17.5, labour:8, smallbiz:4.8, tech:-4.5 }, exp3:6.2,
       eff4:{ poverty:-6, healthcare:4, environment:-2 }, mood4:{ seniors:22, labour:10, smallbiz:6, tech:-6, youth:-6 }, exp4:8 }),
   P({ id:'hardshipFund', grp:'Income support', name:'Emergency Hardship Fund', cat:'Welfare', dept:'vchan', max:2, cost:4, auth:0, exp:1.5,
-      desc:'Discretionary grants through the counties for households in immediate crisis.',
+      desc:'Discretionary grants issued by the counties to households in immediate crisis.',
+      rungs:[
+        'Each county holds a small pot for the emergencies no scheduled payment reaches: a dead boiler, a funeral, a month of arrears. An officer decides, and there is no appeal from the decision. The sums are small enough that the department does not ask what they were for.',
+        'Grants cover eviction arrears and utility reconnection, the two doors most households fall through. Fewer families reach the shelters, and the night patrols in the county towns have less to do. The officer\'s discretion now covers sums worth arguing over.',
+        'The pot outgrows the county audit written for it. Awards start to follow acquaintance: the applicant known to the officer, the pastor who telephones, the case that is easy to write up. Nothing is stolen and a great deal is misdirected.',
+        'Officers may require a home visit before releasing a grant, and a refusal to admit them is a refusal of the money. A household in crisis is inspected in its worst week by someone with the power to say no. Almost everyone who needs the grant gets it, and the visit is the price.'
+      ],
       eff:{ poverty:-1.5 }, mood:{ labour:3, faith:3, youth:2 },
       eff2:{ poverty:-3.2, safety:1 }, mood2:{ labour:6.5, faith:6.5, youth:4.2 }, exp2:3.2,
       eff3:{ poverty:-4.8, safety:1.5, corruption:1 }, mood3:{ labour:9.5, faith:9.5, youth:6.2 }, exp3:4.6,
       eff4:{ poverty:-6, safety:2, corruption:1.6, liberties:-1.5 }, mood4:{ labour:12, faith:12, youth:8 }, exp4:6 }),
   P({ id:'pensionAgeRise', grp:'Conditions and limits', name:'Raise the Pension Age', cat:'Welfare', dept:'vchan', max:3, cost:8, auth:0, rev:5,
-      desc:'Two years at a time, indexed to life expectancy and deeply resented at every step.',
+      desc:'Push the qualifying age back in steps, tied to how long people are living.',
+      rungs:[
+        'The qualifying age moves back by two years, phased over a decade with notice to those approaching it. Everyone within sight of retirement understands precisely what has been taken, and the exchanges applaud a liability that shrinks without one payment being cut.',
+        'The age moves again, and the notice runs shorter than the plans people had made against the first rise. A worker at the wrong end of his fifties finds he has two more years to find. Those already drawing lose nothing and vote as though they had.',
+        'The age is indexed to life expectancy and rises thereafter without a further vote. Men in the manual trades reach it with the bodies those trades gave them, and a fair number never reach it at all. Disability claims rise in exactly the years the pension no longer covers.',
+        'The rise is applied to contributors who paid in abroad under reciprocal agreements, and their pensions move with everyone else\'s. The partner governments read a settled treaty as unilaterally rewritten and say so in public. Their own offices begin reviewing what they pay out under the same agreements.'
+      ],
       eff:{ economy:3, poverty:2 }, mood:{ seniors:-16, labour:-9, tech:7, smallbiz:6 },
       eff2:{ economy:5.5, poverty:3.5 }, mood2:{ seniors:-30, labour:-17, tech:13, smallbiz:11 }, rev2:9,
       eff3:{ economy:7.5, poverty:5, healthcare:-2 }, mood3:{ seniors:-40, labour:-23, tech:18, smallbiz:15 }, rev3:12.5,
       eff4:{ economy:9, poverty:6, healthcare:-3, tension:3 }, mood4:{ seniors:-48, labour:-27, tech:21, smallbiz:18 }, rev4:15 }),
   P({ id:'welfareOneStop', grp:'Conditions and limits', name:'Single Benefit Administration', cat:'Welfare', dept:'vchan', max:2, cost:6, auth:0, exp:1.5,
-      desc:'Merge every payment into one system with one assessment. It saves money and strands people in the transition.',
+      desc:'Merge every payment into one system with one assessment and one date.',
+      rungs:[
+        'The separate payments fold into one system with one assessment, and the duplicate claims that lived in the gaps between them stop being possible. Case officers give up reconciling files that never agreed. Claimants who had learned the old offices resent losing them.',
+        'Existing claimants are migrated in batches onto the new payment date. Some fall between the last payment of the old system and the first of the new, and they fall for weeks. The system is right about them and they are hungry anyway.',
+        'One system means one calculation, so an error is no longer an office\'s mistake but the same wrong award paid to everybody on the same night. The firms that built it are kept on to repair it, and the retainer outgrows the contract. The Vice Chancellor can say what a claimant was paid but not why: the reasoning belongs to a supplier.',
+        'Every federal payment folds in. Service-connected compensation goes with them, though it was never means-tested and was never meant to be. Veterans find an award earned by injury handled as one more line in a benefit calculation. Nobody disputes the money it saves. The grievance is about the category, not the sum.'
+      ],
       eff:{ corruption:-2 }, mood:{ prof:2.5, tech:2, labour:-2.5, seniors:-2 },
       eff2:{ corruption:-4.4, poverty:1 }, mood2:{ prof:5.5, tech:4.4, labour:-5.5, seniors:-4.4 }, exp2:3.2,
       eff3:{ corruption:-6.4, poverty:1.5, technology:2 }, mood3:{ prof:8, tech:6.4, labour:-8, seniors:-6.4 }, exp3:4.6,
@@ -7259,6 +7519,36 @@ function policyOpen(st, p) {
 /* Why a measure is closed, in words the player can act on. Every disabled
    flash and locked card routes through this: a gate with no stated reason
    reads as a bug, not a mechanic. Policies with req: MUST carry reqText. */
+/* S12: THE VIEW SHOWS MORE THAN THE MODEL ALLOWS, DELIBERATELY.
+
+   policyOpen governs what may be ENACTED and what purgeStatutes strikes out of
+   a save. It is not touched here and must not be: widening it would let a
+   government pass an emergency statute under a Federal Republic and would
+   quietly rewrite every campaign in progress.
+
+   What was wrong: eleven core statutes are gated (four to the Emergency form,
+   one to a prerequisite statute, six to a world condition) and the policy page
+   simply omitted them, so Authority read 19 of 24 and five other books read 23.
+   A player counting the page could only conclude the book was unfinished.
+
+   They now render LOCKED, with the reason policyWhy already knows how to give.
+   Scoped to the twenty CORE categories: Imperium, People's State and The
+   Charter are whole alternate statute books, and showing those everywhere would
+   put three unreachable books on every page. */
+var V12_CORE_CATS = ['Taxation', 'Welfare', 'Labour', 'Education', 'Health', 'Justice',
+  'Security', 'Immigration', 'Culture', 'Technology', 'Energy', 'Environment',
+  'Infrastructure', 'Defence', 'Foreign', 'Federalism', 'Elections', 'Authority',
+  'Capital', 'Empire'];
+function v12Listed(st, p) {
+  if (policyOpen(st, p)) return true;
+  if (V12_CORE_CATS.indexOf(p.cat) < 0) return false;
+  /* a book struck by the constitution in force stays struck: that is a
+     consequence the player chose, not a gate they can work toward */
+  var c = CLOSED[st.form];
+  if (c && ((c.cats && c.cats.indexOf(p.cat) >= 0) || (c.ids && c.ids.indexOf(p.id) >= 0))) return false;
+  return true;
+}
+
 function policyWhy(st, p) {
   if (p.form || p.forms) { if (p.form !== st.form && (!p.forms || p.forms.indexOf(st.form) < 0)) {
     var names = (p.forms || [p.form]).map(function (f) { return FORMS[f] ? FORMS[f].name : f; });
@@ -9316,15 +9606,15 @@ function logPanel() {
 
 function viewPolicy() {
   var live = {};
-  POLICIES.forEach(function (p) { if (policyOpen(S, p)) live[p.cat] = true; });
+  POLICIES.forEach(function (p) { if (v12Listed(S, p)) live[p.cat] = true; });
   var filters = ['all'].concat(CATS.filter(function (c) { return live[c]; })).map(function (c) {
     return '<button data-cat="' + c + '" aria-pressed="' + (UI.polCat === c) + '">' + (c === 'all' ? 'All' : c) + '</button>';
   }).join('');
   var list = POLICIES.filter(function (p) {
-    if (!policyOpen(S, p) || (UI.polCat !== 'all' && p.cat !== UI.polCat)) return false;
+    if (!v12Listed(S, p) || (UI.polCat !== 'all' && p.cat !== UI.polCat)) return false;
     var lv = S.pol[p.id] || 0;
     if (UI.polView === 'active' && !lv) return false;
-    if (UI.polView === 'available' && lv >= p.max) return false;
+    if (UI.polView === 'available' && (lv >= p.max || !policyOpen(S, p))) return false;
     if (UI.polView === 'promises' && !(S.promises || []).some(function (m) { return m.status === 'active' && m.policy === p.id; })) return false;
     if (UI.polSearch) {
       var hay = (p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase();
@@ -9362,6 +9652,10 @@ function viewPolicy() {
 
 function policyCard(p) {
     var lv = S.pol[p.id] || 0;
+    /* S12: a statute the page lists but the model will not open yet. The card
+       still shows what it would do, because that is the point of listing it,
+       and it says in one line what would have to change first. */
+    var v12Locked = !policyOpen(S, p), v12Why = v12Locked ? policyWhy(S, p) : '';
     var pips = '';
     for (var i = 0; i < p.max; i++) pips += '<span class="pip' + (i < lv ? ' on' : '') + '"></span>';
     var tags = [];
@@ -9394,18 +9688,19 @@ function policyCard(p) {
     var upCost = lv < p.max ? policyCost(p.id, 1) : 0;
     var dnCost = lv > 0 ? policyCost(p.id, -1) : 0;
     var liveBill = activeBillFor(S, p.id);
-    var blocked = S.changed[p.id] || !!liveBill;
+    var blocked = S.changed[p.id] || !!liveBill || v12Locked;
     var lean = polLean(p);
     var upBlock = lv < p.max && upperBlocks(S, lean, 1, polAuth(p));
     var dnBlock = lv > 0 && upperBlocks(S, lean, -1, polAuth(p));
     var upRes = lv < p.max ? upperResist(S, lean, 1, polAuth(p)) : 0;
+    if (v12Locked) tags.unshift('<span class="tag down">' + esc(v12Why || 'Not open yet.') + '</span>');
     if (liveBill) tags.unshift('<span class="tag up">' + esc(liveBill.id) + ' · ' + esc(BILL_STAGE_NAMES[liveBill.stage]) + '</span>');
     else if (upBlock) tags.unshift('<span class="tag down">Senate forecast hostile</span>');
     else if (upRes > .15) tags.unshift('<span class="tag down">Senate resists</span>');
     /* a statute built to the top has no upward step to warn about, and the
        Senate's view of giving one back was computed and never shown */
     else if (dnBlock && lv === p.max) tags.unshift('<span class="tag down">Senate forecast hostile to repeal</span>');
-    return '<div class="card" data-policy-card="1" data-search="' + esc((p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase()) + '"><h3>' + esc(p.name) + '</h3>' +
+    return '<div class="card' + (v12Locked ? ' locked' : '') + '" data-policy-card="1" data-search="' + esc((p.name + ' ' + p.desc + ' ' + p.cat + ' ' + (p.grp || '')).toLowerCase()) + '"><h3>' + esc(p.name) + '</h3>' +
       '<p class="desc">' + esc(p.desc) + '</p>' +
       '<div class="lvl">' + pips + '</div>' +
       '<div class="tagline">' + tags.join('') + '</div>' +
@@ -17338,7 +17633,13 @@ function v9Dossier(id) {
     var costNote = stepI ? ' · ' + stepI + ' capital from here' : '';
     ladder += '<div class="tier' + (i === lv ? ' now' : '') + (i < lv ? ' held' : '') + '"><b>' + i + '</b><span><strong>' + esc(v9TierName(p, i)) + '</strong>' +
       (i ? '<small>' + (effs.length ? effs.join(', ') : 'No indicator effect') + (revI ? ' · revenue ' + fmc(revI) : '') + (expI ? ' · cost ' + fmc(expI) : '') + costNote + '</small>'
-         : '<small>Repealed or never enacted' + costNote + '</small>') + '</span></div>';
+         : '<small>Repealed or never enacted' + costNote + '</small>') +
+      /* S12: what this rung DOES, in words, under the numbers it does it with.
+         A guarded forward hook rather than a reassignment of this function:
+         the idiom at :9754 (v10OrderPanel) already calls forward from v9 into
+         the v10 chunk, and reassigning an eighty-line function to change one
+         concatenation would leave an unreachable body wearing an alias. */
+      (typeof v12RungSay === 'function' ? v12RungSay(p, i) : '') + '</span></div>';
   }
   var up = lv < p.max ? v9PublicSupport(S, p, 1) : null, dn = lv > 0 ? v9PublicSupport(S, p, -1) : null;
   var stances = PARTIES.slice().sort(function (a, b) { return (S.seats[b.id] || 0) - (S.seats[a.id] || 0); }).map(function (q) {
@@ -18500,6 +18801,20 @@ render = function () {
 .dept-strip{margin-top:8px;padding-top:8px;border-top:1px solid var(--rule,rgba(255,255,255,.08))}
 .dept-strip .microstats{margin:0 0 6px}
 .dept-strip .btnrow{margin-top:6px}
+
+/* S12: a listed but unopened statute. Dimmed, never hidden: the page says what
+   the book holds and what would have to change to reach it. */
+.card.locked{opacity:.62}
+.card.locked h3{color:var(--ivory-dim)}
+
+/* S12: the authored line under each rung of the ladder.
+
+   A DIV and a two-class selector, both deliberately. `.sheet p` (:228) is
+   specificity 0,0,1,1 and would beat a single-class `.rung-say` at 0,0,1,0
+   WHATEVER the source order, so the prose would have rendered at 15px, larger
+   than the 12px mechanics line above it, and the rung would read upside down.
+   The div also keeps user-agent paragraph margins out of a 6px grid gap. */
+.tier .rung-say{margin-top:6px;font-size:13.5px;line-height:1.5;color:var(--ivory-dim)}
 </style>
 <script>
 'use strict';
@@ -19624,37 +19939,73 @@ var V10_POLICIES_II = [
       eff4:{ education:4.4, liberties:-2.3, tension:2, technology:-1.5 }, mood4:{ prof:13, seniors:11, youth:-13, tech:-6.5 }, exp4:2.3 }),
   P({ id:'excessProfitsLevy', grp:'Business and finance', name:'Excess Profits Levy', cat:'Taxation', dept:'chan', max:4, cost:3, auth:.3, rev:2.5,
       req:function (st) { return !!st.war; }, reqText:'a war',
-      desc:'Anything earned above the peacetime average is presumed to be the war\'s, and taxed accordingly.',
+      desc:'In wartime, whatever a firm earns above its own peacetime average is taxed apart from the rest.',
+      rungs:[
+        'While the country is at war, earnings above a firm\'s own peacetime average are charged at a separate rate. The measure is the firm\'s own record, so there is nothing to argue about what normal was. Soldiers\' families and the unions approve without qualification.',
+        'Nothing new enters the levy. It simply reaches further down, because the argument that only the arms trade profits from a war does not survive the second year of one, and the rate now rises on every firm whose margins improved while the fighting went on.',
+        'The levy acquires an investigator. Books are opened on demand, contracts already signed are reopened and repriced, and a board may set aside any price it judges excessive. Corruption falls because somebody is finally looking, and Civil liberties fall for the same reason.',
+        'Profit is redefined to take in what was done with it: reserves held back, plant revalued, the new dock and the next research programme all counted as earnings kept. Workshops supplying the front pay on money they have already spent, and the laboratories stop reinvesting in the middle of a war.'
+      ],
       eff:{ economy:-1, corruption:-1.5 }, mood:{ labour:5, veterans:4, youth:2, tech:-4, prof:-3 },
       eff2:{ economy:-2.5, corruption:-2.5 }, mood2:{ labour:10, veterans:8, youth:4, tech:-7, prof:-6 }, rev2:5,
       eff3:{ economy:-3.5, corruption:-4, liberties:-1 }, mood3:{ labour:14, veterans:11, youth:5, tech:-10, prof:-8 }, rev3:7,
       eff4:{ economy:-4, liberties:-1.5, technology:-1 }, mood4:{ labour:16, veterans:12, youth:6, tech:-12, prof:-10, smallbiz:-6 }, rev4:8 }),
   P({ id:'revenueBurdenOfProof', grp:'The Collector', name:'Burden of Proof', cat:'Taxation', dept:'chan', max:4, cost:1, auth:-.6, exp:.5,
-      desc:'No lien without a judge, no audit without cause, and the agency proves its own arithmetic.',
+      desc:'The collector must show cause to audit, go before a judge to seize, and prove its own arithmetic.',
+      rungs:[
+        'The collector must state a reason before opening an audit and must go before a judge before placing a lien. A trader who has filled in a form wrongly is no longer treated as dishonest until he proves otherwise. It costs a little in receipts and buys a great deal in temper.',
+        'The standard rises. Where an amount is disputed the collector carries the burden of proving the figure it claims, and collection is stayed until it does. Some of what is stayed is genuinely owed, and Corruption rises by that much. Organised Labour, taxed before it is paid, can stay nothing.',
+        'The protections extend to companies and to the largest filers, so the collector must show cause against a firm as well as a household. Counsel can contest an assessment for years at a cost the firm barely feels, and the cases carrying the most money are now the ones that move slowest through the queue.',
+        'The power to garnish a wage or hold back a refund without a hearing ends, and every small collection goes before a judge. A household with counsel does well out of that. A household without counsel fares worse in a courtroom than it did across a counter, and the student debts recovered quietly for years are recovered in public instead.'
+      ],
       eff:{ liberties:1, economy:.5 }, mood:{ smallbiz:3, prof:2, seniors:1 },
       eff2:{ liberties:1.5, economy:.8, corruption:.5 }, mood2:{ smallbiz:6, prof:4, seniors:2, labour:-2 }, exp2:1.2,
       eff3:{ liberties:2, economy:1, corruption:1 }, mood3:{ smallbiz:8, prof:5, seniors:3, labour:-3, tech:4 }, exp3:1.8,
       eff4:{ liberties:2.3, corruption:1.1, poverty:1 }, mood4:{ smallbiz:9, prof:5.8, seniors:3.5, tech:6, youth:-4 }, exp4:2.3 }),
   P({ id:'sourceWithholding', grp:'The Collector', name:'Deduction at Source', cat:'Taxation', dept:'chan', max:4, cost:2, auth:.4, needs:'incomeTax', rev:2,
-      desc:'The employer remits before the wage is paid; nobody misses money they never held.',
+      desc:'The employer works out the tax on a wage and remits it before the wage is paid.',
+      rungs:[
+        'The employer computes the income tax and sends it on before the wage reaches the worker. Evasion by the salaried ends in the week the rule starts, because the money never passes through their hands. Small employers become unpaid clerks and say so at length.',
+        'Nothing new falls inside the rule; it only tightens. Bonuses, commission, severance and the second job are all withheld at the moment they are paid, the reckoning at year end shrinks to a formality, and the money arrives in even instalments rather than once.',
+        'Remittance becomes electronic and immediate, with each payroll run reported as it is executed. The software that does this is a condition of employing anybody, which is an expense to the smallest firms and a market to the people who write it.',
+        'The rule reaches payments that are not wages at all: contract work, day labour at harvest, rent, and the casual hours a student picks up. Anyone who pays anyone becomes a collection point, and the picker paid at the end of a day is paid net of a tax he has never filed for.'
+      ],
       eff:{ corruption:-1.5, liberties:-.5 }, mood:{ smallbiz:-4, prof:-2, tech:-1, labour:2 },
       eff2:{ corruption:-2.5, liberties:-1 }, mood2:{ smallbiz:-8, prof:-4, tech:-2, labour:4 }, rev2:4,
       eff3:{ corruption:-3.5, liberties:-1.8, technology:1 }, mood3:{ smallbiz:-12, prof:-5, tech:-3, labour:5 }, rev3:5.5,
       eff4:{ corruption:-4, liberties:-2.3, technology:1.5, agriculture:-1 }, mood4:{ smallbiz:-14, prof:-6, tech:-4, labour:6, youth:-4 }, rev4:6.5 }),
   P({ id:'jobGuarantee', grp:'Income support', name:'Federal Job Guarantee', cat:'Welfare', dept:'chan', max:4, cost:5, auth:.2, exp:3,
-      desc:'A paid place on the public works for anyone who asks, at a wage the private sector must answer.',
+      desc:'A paid place on the public works for anyone who asks, at a wage private employers must beat.',
+      rungs:[
+        'Anyone who asks gets a place on the public works at a floor wage: verges, drains, painting, the small repairs no county ever funded. The rolls are short and the work is real enough. Employers who staffed the worst shifts on desperation lose the desperation.',
+        'The offer becomes permanent and unlimited, so the floor wage is the wage every private employer must beat in order to hire at all. Pay rises from the bottom upward through the whole lower half. Salaried professionals watch the differential they trained for narrow.',
+        'Places carry training and a recognised apprenticeship rather than a shovel and a season. A young worker leaves the scheme holding a trade instead of a gap. Instructors are hired out of the same trades the scheme is meant to feed.',
+        'The guarantee absorbs whatever labour the private economy releases, in every county and every season. Farms that hired at harvest on short notice and low pay find nobody available at either. Crops sit unpicked wherever the public works pay better than the harvest.'
+      ],
       eff:{ poverty:-2, infrastructure:1.2 }, mood:{ labour:7, youth:4, smallbiz:-5 },
       eff2:{ poverty:-4, infrastructure:2.5, economy:1.2 }, mood2:{ labour:13, youth:8, smallbiz:-10, prof:-3 }, exp2:6,
       eff3:{ poverty:-5.5, infrastructure:3.5, economy:1.8, education:2 }, mood3:{ labour:18, youth:11, smallbiz:-14, prof:-5 }, exp3:8.5,
       eff4:{ poverty:-6, infrastructure:4, economy:2, education:3, agriculture:-2 }, mood4:{ labour:21, youth:13, smallbiz:-17, prof:-6.5 }, exp4:11 }),
   P({ id:'caseworkPrivilege', grp:'Conditions and limits', name:'Casework Privilege', cat:'Welfare', dept:'vchan', max:4, cost:1, auth:-.6,
-      desc:'What a claimant tells the caseworker stays with the caseworker, absent a warrant.',
+      desc:'What a claimant tells a caseworker stays with the caseworker unless a judge says otherwise.',
+      rungs:[
+        'Notes taken by a caseworker are shielded from other departments unless a judge signs for them. A claimant file stops being a resource any office can requisition. Older claimants, who had assumed the government was one thing, cannot see what is being protected.',
+        'A claimant may describe the household truthfully without the description travelling. People stop hiding a lodger, an odd job, a returned adult child, and awards begin to match circumstances. The shield cuts both ways: a veteran\'s account of his injury is sealed off from the compensation claim it would have supported.',
+        'The privilege covers what is said about illness, addiction and treatment. A claimant can name the thing actually stopping them working and be referred rather than reported. Clinics take referrals from caseworkers that would never have been made.',
+        'The shield holds against a criminal investigation short of violence, and prosecutors lose an evidence source they had used quietly for years. Detectives who used to trace a man through his claim now cannot. Fewer minor cases close.'
+      ],
       eff:{ liberties:.8 }, mood:{ youth:2, labour:2, prof:1.5, seniors:-1.5 },
       eff2:{ liberties:1.4, poverty:-.5 }, mood2:{ youth:4, labour:3, prof:2, veterans:-2, seniors:-2.5 },
       eff3:{ liberties:1.9, poverty:-.8, healthcare:1 }, mood3:{ youth:5.5, labour:4.5, prof:2.8, veterans:-3.2, seniors:-3.5 },
       eff4:{ liberties:2.3, poverty:-1.1, healthcare:2, safety:-1 }, mood4:{ youth:6.5, labour:5.5, prof:3.2, veterans:-4.5, seniors:-4.5 } }),
   P({ id:'reliefHouses', grp:'Housing and care', name:'The Relief Houses', cat:'Welfare', dept:'vpres', max:4, cost:3, auth:.8, needs:'workRequirements', exp:1.2,
-      desc:'Board, lodging and supervision in place of money, for those the assessors find unfit to manage it.',
+      desc:'Board, lodging and supervision in place of money, for those an assessor finds unfit to hold it.',
+      rungs:[
+        'A handful of houses take in those an assessor finds unfit to manage a payment, and board replaces the payment. Nobody admitted sleeps outside. Young workers read the finding as one that could be made about anyone. The unions read it the same way.',
+        'Anyone who fails the work test twice is referred for assessment, and the houses fill with people who were merely out of work. Foreign observers ask to visit and are refused, which is reported everywhere. The government answers that the residents are fed.',
+        'The houses take contract work in, and residents do it for board rather than for wages. The accounts of the scheme improve markedly. Firms outside find themselves bidding against a workforce that cannot leave and is not paid.',
+        'A resident may not leave the grounds without the warden\'s leave, and the house infirmary stands in for the doctor outside. Illness is treated late or not at all, and the mortality figures are kept by the house producing them. Professionals who read those returns will not defend the scheme in public.'
+      ],
       eff:{ liberties:-1.2, poverty:-1.2, safety:.6 }, mood:{ seniors:4, smallbiz:3, faith:-2, labour:-4, youth:-6 },
       eff2:{ liberties:-2.5, poverty:-2.5, safety:1.2, tension:1 }, mood2:{ seniors:8, smallbiz:6, faith:-5, labour:-9, youth:-12 }, exp2:2.4,
       eff3:{ liberties:-3.5, poverty:-3.5, safety:1.8, tension:1.6, economy:1 }, mood3:{ seniors:11, smallbiz:9, faith:-7, labour:-12, youth:-16 }, exp3:3.4,
@@ -24376,6 +24727,47 @@ document.addEventListener('click', function (ev) {
   if (!b) return;
   v11SetFunding(b.getAttribute('data-fund'), parseInt(b.getAttribute('data-fundlevel'), 10) || 0);
 });
+
+/* ==========================================================
+   S12 — THE STATUTE BOOK SPEAKS.
+
+   Every statute carries `rungs`, four strings, one per rung. Rung zero has
+   nothing to say: "Repealed or never enacted" is complete.
+
+   The prose lives on the statute itself rather than in a lookup table keyed by
+   id. Two reasons, and the second is the one that decided it. A table has no
+   way to notice that a policy was renamed out from under it, so it goes stale
+   silently. And six content batches landing in sequence would all append to
+   the SAME table literal, so every rebase conflicts inside it; inline, each
+   category sits in its own contiguous region of the three policy arrays and
+   the batches never touch the same hunk.
+
+   THE ARRAY IS EXACTLY FOUR LONG. The renderer indexes rungs[lv - 1], so a
+   five-element array (someone helpfully writing a rung-zero entry) shifts every
+   description down one rung across the whole book, and the text would still be
+   present, plausible and wrong. tools/rungs.js --check asserts the length, and
+   roads.js asserts it again on the shipped objects.
+
+   NOT in v7Index (:14560) and NOT in policyCard's data-search attribute: the
+   first is rebuilt on every keystroke of the command palette and the second is
+   written into all 582 cards on every render. The one-line `desc` is in both
+   already and stays there; half a megabyte of rung prose is not joining it.
+   ========================================================== */
+function v12RungSay(p, lv) {
+  var t = p.rungs && p.rungs[lv - 1];
+  return (lv && t) ? '<div class="rung-say">' + esc(t) + '</div>' : '';
+}
+
+/* THE FLOOR UNDER VERY EASY. capitalIncome is wrapped four times after its
+   base, so a floor applied anywhere but the outermost wrapper is undercut by
+   every wrapper above it. Only DIFFS.easy carries capFloor, so this is a no-op
+   on every other tier. */
+var v12CapitalFloorBase = capitalIncome;
+capitalIncome = function (st) {
+  var v = v12CapitalFloorBase(st);
+  var d = DIFFS[(st && st.diff) || 'normal'] || DIFFS.normal;
+  return d.capFloor ? Math.max(v, d.capFloor) : v;
+};
 
 /* ---------- boot ---------- */
 (function () {
