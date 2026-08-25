@@ -4,7 +4,118 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S12 — The Statute Book Speaks** (PR #35), second of six. Four books authored:
+**S12 — The Statute Book Speaks** (PR #36), third of six. Four books authored:
+**Culture, Immigration, Justice and Security**, 96 statutes, 384 rung
+descriptions and 96 refreshed one-line descriptions.
+
+**240 of 582 statutes now speak**, 960 descriptions at a mean of 241 characters.
+These 96 cost **1,047 bytes each**, which projects the finished book at about
+**2,948,000 of the 3,100,000 allowed**.
+
+### The batch failed its own measurement, and the failure was the point
+
+Rung-order recovery came in at **37.5% and 30.0%** of ladders recovered exactly,
+against **57.5%** for the books that shipped in PR 1. Two independent blind
+readers, and the second was the worse of the two. They agreed on **twenty-four
+ladders that both failed to order**; only eleven of forty were clean in both.
+That agreement is what ruled out the instrument.
+
+Two other explanations were tested and killed before the prose was blamed:
+
+| explanation | test | result |
+|---|---|---|
+| the verify repair pass broke the ordering | exact recovery, repaired vs untouched ladders | **40% vs 36%**, the same number |
+| these books are mechanically flatter | share of rungs introducing a new indicator key | **94% vs 97%**, 1.15 new keys a rung in both |
+
+The ladders are equally eventful. The prose was not narrating the escalation.
+
+**Reading the failures found one fault, twice.** Alcohol Licensing rung one
+shortened the trading evening while rung two set a floor price that "anybody who
+buys above the floor notices nothing", so **rung one read as the harsher
+measure**. Civil Forfeiture rung two widened what may be seized while rung three
+changed who profits from it, so **the pair sat on two different axes**. Both are
+the tests added to the authoring brief after the sugar levies, and these four
+books were written before that rule existed. PR 3 is the last batch authored
+without it.
+
+### The repair, and the same measurement again
+
+**123 rung fields across 64 of the 96 statutes, no `desc` touched**, and every
+one of those counts is a **diff against a snapshot** taken before the repair
+rather than a report from the agent that made it. Forty of the rewrites are
+statutes the readers ordered correctly, found by applying the two tests to the
+rest of each book.
+
+Re-measured on the **same forty statutes with the same shuffles**, so the
+comparison is the prose and not a fresh sample:
+
+| | placements | ladders exact | Kendall tau | max displacement 0/1/2/3 |
+|---|---|---|---|---|
+| before, run 1 | 68.1% | 37.5% | 0.767 | 15/23/2/0 |
+| before, run 2 | 62.5% | 30.0% | 0.733 | 12/24/4/0 |
+| **after, run 1** | **85.0%** | **72.5%** | **0.892** | 29/9/2/0 |
+| **after, run 2** | **87.5%** | **75.0%** | **0.917** | 30/10/0/0 |
+| shipped baseline | 78.1% | 57.5% | 0.833 | 23/15/2/0 |
+
+Mis-ordered by both readers: **24 down to 9**. Clean in both: **11 up to 28**.
+The nine that remain are recorded rather than swept: `counterterrorism`,
+`fusionCentres`, `guestWorkers`, `juryReformAct`, `multilingualServices`,
+`prisonLabour`, `privateContractors`, `speechAbsolutism`, `truthAndAmnesty`.
+
+**Attribution, the other blind measurement: 58/60, 96.7%** against a 12.5%
+chance floor. Both misses are near neighbours (Expanded Immigration read as
+Family Reunification, the Habitual Offender Act as Mandatory Minimum Sentences).
+
+### What the verify pass caught, and what it could not
+
+34 findings across the four books, every one repaired: 11 substitutable, 6
+unorderable, 6 generic, 5 contradicting the brief's own numbers, 4 invented.
+**Zero lexical escalation**, the failure the brief warns about hardest. Three
+findings could only come from reading the whole registry: a prison programme
+priced against other statutes' cost fields, a national buyback written into a
+statute carrying no cost at any rung, and a word for the legislature the game's
+own interface does not use.
+
+The corpus rules then caught seven more no per-book reader could see: four
+negative parallelisms, one banned word, and two phrases that had spread to seven
+statutes each. Two of those fixes are in books that shipped earlier, to leave the
+next batches headroom under the same threshold. After the ladder repair the same
+rules caught the repair's own collision, between the rewritten multilingual
+services rung and a labour exchanges rung shipped two batches ago.
+
+**The durable lesson is about the tooling.** The verifier flagged **6**
+unorderable ladders where blind readers mis-ordered **24**. A check that reads
+one book with the answer key in hand cannot measure legibility that only a reader
+without it can see. **For PRs 4 to 6 the ordering measurement runs on the drafts
+before apply**, and its misses feed the repair pass directly.
+
+```
+ALL CHECKS PASS   11/11, 2,589,673 bytes of 3,100,000
+ROADS OK          90 assertions
+RUNGS OK          960 descriptions, mean 241
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+The fail-proof: a banned word, a participle tail, a negative parallelism and a
+one-sentence rung seeded into `juryReformAct` rung one on a scratch copy.
+`--check` reports all five and exits 1. The first attempt at that splice landed
+inside an escaped apostrophe and stopped the game booting, which is the hazard
+`--apply` exists to prevent, met by hand within a minute of trying to do the job
+by hand.
+
+Also decided rather than left for PR 6: **The Charter is the only book of the
+twenty-three with no `V9_TIERS` row**, so its twenty statutes fall through to the
+generic names. `v9TierName` is called from four sites, all escaped into display
+HTML, and nothing compares a tier name as a string, so a row is display-only. It
+gets `Granted / Chartered / Extended / Sovereign`, the book's own arc of a
+company acquiring state functions.
+
+Next: **PR 4**, Energy, Environment, Infrastructure and Technology. Briefs for
+every remaining book are generated.
+
+Previously: **S12 — The Statute Book Speaks** (PR #35), second of six. Four books authored:
 **Labour, Capital, Health and Education**, 96 statutes, 384 rung descriptions and
 96 refreshed one-line descriptions. **480 pieces of prose, no engine change.**
 
@@ -98,8 +209,6 @@ TIERS             no width scrolls sideways
 
 The fail-proof: an em dash, a digit and a one-sentence rung seeded into
 `minimumWage` rung one on a scratch copy. `--check` prints all three and exits 1.
-
-Next: **PR 3**, Culture, Immigration, Justice and Security.
 
 Previously: **S12 — The Statute Book Speaks** (PR #34), first of six. Two asks land whole
 here; the third gets its engine, its tooling and its first two categories.
@@ -1259,6 +1368,7 @@ ratchet 10 → 5, which is now its true floor.
 | S11e the Ministry and the Interests | **merged** (#33) | departments become state: funding, strain, delivery; a briefing is never silently refunded; the college buys the ceiling, not the level; influence stops being a constant; an endorsement survives one ballot |
 | S12 the Statute Book Speaks (engine) | **merged** (#34) | `capFloor:75` on very easy in a new outermost wrapper; every core book renders 24 with the locked ones stating their condition, and `policyOpen` untouched; `rungs:` on the statute plus a forward-hook renderer; `tools/rungs.js`; Taxation and Welfare authored; `maxBytes` 2.45M -> 3.1M |
 | S12 prose, batch 2 | **merged** (#35) | Labour, Capital, Health and Education: 384 rung descriptions and 96 refreshed one-liners; the verifier caught 22 substitutable passages and a corpus-wide shingle caught one cross-batch collision; the specificity rule demoted to a note at 18% measured precision; blind attribution 60/60 |
+| S12 prose, batch 3 | **merged** (#36) | Culture, Immigration, Justice and Security: 384 rung descriptions and 96 refreshed one-liners; the batch failed its own rung-order measurement at 37.5% against a 57.5% shipped baseline, two rival explanations were tested and killed, and 123 rung fields across 64 statutes were rewritten to climb one axis; re-measured on the same forty ladders it reads 72.5% and 75.0% |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
