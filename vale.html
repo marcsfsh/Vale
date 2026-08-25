@@ -19212,7 +19212,14 @@ var V9_TIERS = {
   Capital:['Modest', 'Standard', 'Strong', 'Entrenched'],
   Empire:['Modest', 'Standing', 'Expanded', 'Total'],
   Imperium:['Decreed', 'Established', 'Expanded', 'Total'],
-  "People's State":['Decreed', 'Established', 'Expanded', 'Total']
+  "People's State":['Decreed', 'Established', 'Expanded', 'Total'],
+  /* S12: The Charter was the only one of the twenty-three books without a row,
+     so its twenty statutes fell through to the generic Modest/Standard/Strong/
+     Total that v9TierName supplies below. Its own arc is a company acquiring
+     state functions, which is what these four name. Display only: v9TierName is
+     called from three sites, all of them escaping the result into HTML, and
+     nothing in the game compares a tier name as a string. */
+  "The Charter":['Granted', 'Chartered', 'Extended', 'Sovereign']
 };
 function v9TierName(p, lv) {
   if (!lv) return 'Not in force';
