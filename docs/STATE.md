@@ -4,7 +4,113 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S11d — The Constitution** (PR #32). Fourth of five slices carrying the owner's
+**S11e — The Ministry and the Interests** (PR #33). **The last of five slices
+carrying the owner's sixth order.** The complaint on both tabs was the same:
+"lots of repetitive low impact options". Four surveys measured the arithmetic
+behind it in the running game, and every figure below is a measurement.
+
+### What was actually wrong
+
+| action | before | why it was dead |
+|---|---|---|
+| **Brief** | +5, clamped to **100** | the tick clamps to **96** — briefing above 91 was **silently refunded**: measured, 3 of the 5 points bought |
+| **College** | `max(2, 8 − experience)`, then **+3 experience** | +5 once, +2 for ever, for 2 capital **and 4 of treasury** against Brief's 2 and no money — dominated from the sixth session, and worse each time used |
+| **Sideline** | cut the department's **rank** | the only paid action in the game that made the government worse at *everything* |
+| **Initiative** | shoved the indicator **stock** | the tick converges stocks at **26%** a session: **84% gone after six** |
+| the seven **traits** | — | six read **nowhere**; only `operator` appeared outside a card |
+| **influence** | written **once** | the same **540** in every campaign of every save |
+| relation ↔ bloc | **a circle** | each read the other; neither was independently meaningful |
+| **endorsement** | ~0.6% of the vote | and **cleared for every group at every election** |
+
+### The fix is a department, not more buttons
+
+`st.v11.depts[key] = {funding, strain, delivered, cases}`, created-on-write,
+sitting between the minister and the country so that briefing, funding and
+delivery have somewhere to accumulate. Capacity from competence, rank, the
+settlement and the strain; a `delivered` stock that decays at **3.5%** a session
+against an indicator's 26%; a settlement that is a real line in `budget()`; and
+an overstretched department that produces **its own** standards case — a
+consequence of how you funded it, not of who you appointed. All of it reaches
+the country through `cabinetBonus`.
+
+Measured after: Brief refunds **0** (was 3). The College is **+3 flat** (was
+5/2/2) and buys the one thing a briefing cannot — the **ceiling**, 96 → 102, so
+a schooled minister is no longer dragged back. Sideline makes **no indicator
+worse** and sends the papers to the centre. An Initiative retains **81% after
+six sessions** (the indicator it used to shove would have kept 16%). All **7 of
+7** traits carry behaviour across 7 fields.
+
+### The interests
+
+Influence moves (**540 → 604** over twenty-five sessions). The circle is broken
+one direction at a time: the relation reads the government's own conduct —
+meetings **+13.5**, refusals **−18** — and the bloc goes on reading the
+relation. An endorsement mobilises its bloc, takes a real point off any statute
+that bloc wants, and **survives one ballot** before lapsing at the second.
+`V9_REGION_BLOCS` finally does something: holding every organisation close is
+worth **+15 Assembly seats**, shutting them all out costs 5, and S11c's own
+eight-governor measurement is **unchanged at +44**.
+
+### Two things measurement caught that reading would not have
+
+**A balance shock arriving through a default.** A first pass priced the standard
+settlement at 4, so simply *filling* the cabinet — which the game encourages
+everywhere else — added **64** to expenditure on a base of 149 and took the
+session balance from **−26 to −92**. Standard is "the settlement the last review
+left it": it is already inside `budget()`'s base. Costs are now relative to it —
+standard free, lean **−3**, generous **+5** — so the default changes nothing and
+only a deliberate choice moves the budget.
+
+**A silent nerf arriving through a constant.** The department's contribution to
+`cabinetBonus` subtracts a reference performance. A first pass guessed `.55` —
+but a fresh cabinet's median performance is `.25`–`.31`, so *every typical
+department* was penalised by about `−.13 ×` its effects. A second fresh cabinet
+read a different median, so any sampled constant is fragile. `V11_DEPT_REF` is
+now **derived** from a defined department (competence 65, rank 1, standard
+settlement, nothing else): `(65 − 40) × 1.05 × .01 = .2625`.
+
+**A discount that rounded away.** The endorsement's statute discount was 7% and
+returned `Math.round(c * f)`; policy costs are small integers, so on a statute
+costing 7 it rounded straight back to 7 and bought nothing across most of the
+book — the same low-impact defect this slice exists to remove. It is now 12%
+**and floored at a whole point**.
+
+```
+ALL CHECKS PASS   11/11, 2,328,867 bytes of 2,450,000
+ROADS OK          87 assertions, stable across 5 consecutive runs
+PLAYTEST PASS     42 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
+PACING            short and standard byte-identical; epic moves
+```
+
+**What moved in epic, and what did not.** Short and standard are byte-identical
+to the standing baseline. Epic changes: crises 17 → 15, wars 41 → 42,
+achievements 11 → 12 (it now earns `debtFree`), best governing run 89 → 149.
+
+The cause is **entirely the interests half**, and that is checked rather than
+assumed: `tools/pacing.js` contains **zero** references to the cabinet, and a
+harness-style run seats **0 ministers, 0 cabinet ranks, 0 department records**.
+So the department layer — capacity, funding, strain, delivery, `V11_DEPT_REF`
+and `v11DeptTick`'s single `rand()` — is **inert** in these numbers. (Proof: the
+pacing diff is byte-identical before and after the `V11_DEPT_REF` correction.)
+What moves is that the organisations were inert and now are not: influence
+moves, the relation target reads conduct, and `blocTarget` carries the
+endorsement term — and over two hundred sessions that compounds through the
+blocs.
+
+**A flake I wrote myself.** "A briefing is never refunded" asserted the refund
+was *exactly* zero — but `pv5MinisterTick` adds `(rand() − .5) × .5`, so a
+minister sitting at the ceiling can drift down `.13` in an ordinary session. It
+failed about one run in three on identical code. It now asserts the **exact**
+invariant — that a briefing never leaves a minister above the ceiling the tick
+clamps to — and bounds the follow-on drift by the tick's own noise band.
+
+Ten fail-proofs. **The sixth order is complete**: the Record deck (S11a), very
+easy capital (S11a), the order book (S11b), the Federation (S11c), the
+Constitution (S11d) and the Ministry and Interests (S11e).
+
+Previously: **S11d — The Constitution** (PR #32). Fourth of five slices carrying the owner's
 sixth order. The ask was "far more options", and the ruling on what "setting the
 nation's overall constitution" means was **articles you assemble** — a written
 document built and amended over a campaign, each article changing real

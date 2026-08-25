@@ -522,6 +522,104 @@ the country do not. Every book title is distinct after `v7FoldKey`'s
 normalisation — asserted, because that normalisation strips a trailing number
 and lowercases, and one shared key would govern several books at once.
 
+## The ministry and the interests (S11e)
+
+The owner's complaint on both tabs was the same — "lots of repetitive low
+impact options". Four surveys measured the arithmetic behind it in the running
+game. Every figure below is a measurement, not a reading.
+
+### What was wrong, in numbers
+
+| action | before | why it was dead |
+|---|---|---|
+| **Brief** | +5, clamped to **100** | the session tick clamps to **96**, so briefing above 91 was **silently refunded** the next session — measured: 3 of 5 points |
+| **College** | `max(2, 8 - experience)`, then **+3 experience** | +5 once, +2 for ever, for 2 capital **and 4 of treasury** against Brief's 2 capital and no money: strictly dominated from the sixth session, and worse each time it was used |
+| **Sideline** | cut the department's **rank** | the only paid action in the game that made the government worse at *everything* |
+| **Initiative** | shoved the indicator **stock** | the tick converges every stock on its target at **26%** a session: measured, **84% gone after six** |
+| the seven **traits** | — | six of them were read **nowhere**; only `operator` appeared outside a card, in one exposure term |
+| **influence** | `influence: g.base`, written **once** | printed the same **540** in every campaign of every save, and the demand generator sorts on it |
+| relation ↔ bloc | **a circle** | the relation's target read the bloc; the `blocTarget` wrapper read the relation straight back |
+| **endorsement** | ~0.6% of the vote | and **cleared for every group at every election** — the event it is bought for |
+
+### The department
+
+The fix is not more buttons: it is **a department between the minister and the
+country**, so that briefing, funding and delivery have somewhere to accumulate.
+`st.v11.depts[key] = {funding, strain, delivered, cases}`, created-on-write.
+
+- **`v11DeptCapacity`** — competence, rank, the funding settlement, less strain,
+  plus the minister's trait. The number the whole page turns on.
+- **`delivered`** — the durable stock an Initiative now moves. It decays at
+  **3.5%** a session against an indicator's 26%, so work done in a department is
+  still there at the next election. Measured: **81% retained after six sessions**.
+- **`V11_FUNDING`** — lean / standard / generous, a real line in `budget()`
+  (which was blind to the government that spends it: sixteen ministries and not
+  one of them cost anything to run). **Costs are relative to standard, and
+  standard is free**: a first pass priced standard at 4, so simply *filling* the
+  cabinet — which the game encourages everywhere else — added 64 to expenditure
+  on a base of 149 and took the session balance from −26 to −92, a large balance
+  change arriving silently through a default. Standard is already inside
+  `budget()`'s own base. Measured now: generous costs 5 a session and buys 10 of
+  capacity; lean saves 3 and costs 8. All sixteen generous is +80; all sixteen
+  lean is −48, turning a −26 session into +20 at the price of capacity and the
+  strain that produces standards cases.
+- An **overstretched** department (strain > 34) produces its **own** standards
+  case — a consequence of how it has been funded rather than of who was
+  appointed to it.
+- All of it reaches the country through **`cabinetBonus`**, the real channel
+  from a ministry outward, which previously knew only competence and rank.
+
+**`V11_DEPT_REF` is derived, not sampled.** The department's contribution to
+`cabinetBonus` subtracts a reference performance. A first pass guessed `.55` as
+"the old model's rough midpoint" — but a fresh cabinet's median performance is
+about `.25`–`.31`, so **every typical department was handed a silent penalty**
+of roughly `−.13 ×` its effects: a nerf nobody asked for, arriving through a
+constant, and visible in pacing as an epic-length drift. A second fresh cabinet
+then read a different median, so a number taken from one sample is fragile
+either way. The reference is what a **defined** department produces —
+competence 65, rank 1, standard settlement, no strain, no delivered stock, no
+trait: `(65 − 40) × 1.05 × .01 = .2625`. A department at that reference
+contributes nothing extra; what is felt is the variation around it.
+
+**`V11_TRAITS`** gives all seven traits a number across seven fields, each
+consulted by a named function: `capacity` → `v11DeptCapacity`, `loyalty` /
+`exposure` → `pv5MinisterTick`, `strain` / `scandal` → `v11DeptTick`, `bills` →
+`billForecast`, `unity` → `pv5MinisterTick`.
+
+**The college now buys the one thing a briefing cannot: the ceiling.**
+`v11MinisterCeiling` is `96 + schooled * 2`, capped at 102, and the tick gives a
+schooled minister back the headroom rather than dragging them to 96. Brief's
+gain **tapers** toward the same 96 so no part of it is ever refunded.
+
+### The interests
+
+- **Influence moves.** `v11InfluenceTarget` reads the bloc it speaks for, how
+  much of the country that is, what that speech is worth, the access granted and
+  how clean the state is. Measured: 540 → 604 over twenty-five sessions.
+- **The circle is broken one direction at a time.** `v11RelationTarget` no
+  longer reads the bloc level at all: it reads the group's **own** drivers —
+  party fit, access, demands met or refused, endorsement. The bloc goes on
+  reading the relation. Influence runs *party conduct → organisation → bloc*.
+- **An endorsement buys three things**: it mobilises its bloc while held; it
+  takes a **real point** off any statute that bloc wants (12% and floored at a
+  whole point — a first pass took 7% and `Math.round` handed it straight back on
+  most of the book, which is the same low-impact defect this slice exists to
+  remove); and it **survives one ballot** and lapses at the second.
+- **`V9_REGION_BLOCS`** has held a per-region bloc composition since S9 and only
+  ever printed tags. An organisation close to the government now lifts the
+  regions its bloc is concentrated in. Deliberately small (`.045`, clamped to the
+  same `V11_REGION_SPAN`) because it rides on the S11c regional term tuned
+  against a measured seat target: holding every organisation close is worth
+  **+15 Assembly seats**, shutting them all out costs 5, and S11c's own
+  eight-governor sweep measurement is **unchanged at +44**.
+
+### The one reassignment that is not a wrapper
+
+**`pv5MinisterAction`** is reassigned, not wrapped: the four repriced actions
+have to *replace* their old bodies, and a wrapper that ran the base first would
+**spend the capital twice**. Every action this slice does not touch is delegated
+back to `v11MinisterActionBase` unchanged.
+
 ## The dice (S3)
 
 **The enrich chain's guard must stay outermost.** Each chunk wraps

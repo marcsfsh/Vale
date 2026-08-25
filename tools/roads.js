@@ -1606,6 +1606,208 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     'the Senate can block an act that is not about the Senate',
     `${con.blockableNow} of ${con.nonSenateActs} acts outside the Senate's own book are refused by a hostile Senate with a full veto; before this slice actBlocked returned false for every one of them on its first line`);
 
+  /* S11e — THE MINISTRY AND THE INTERESTS. The owner's complaint on both tabs
+     was "lots of repetitive low impact options". Four surveys measured the
+     arithmetic behind it, and every figure in these assertions was taken from
+     the running game rather than from reading the source. */
+  const min = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    S.ruling = me; S.coalition = [me];
+    ['pres', 'vpres', 'chan', 'vchan'].forEach(d => S.exec[d] = me);
+    const rows = pv5PortfolioRows().slice(0, 3);
+    rows.forEach(r => { S.cabinet[r.key] = 1; });
+    pv5EnsureState(S, false);
+    const key = rows[0].key;
+    const seed = comp => { S.capital = 300; S.treasury = 99999;
+      S.ministers[key] = { name:'T', party:me, competence:comp === undefined ? 70 : comp, loyalty:60,
+        ambition:60, trait:'technocrat', exposure:0, experience:0, briefings:0 };
+      S.cabinet[key] = 2; if (S.v11) S.v11.depts = {}; };
+
+    /* A BRIEFING IS NEVER REFUNDED. Brief clamped to 100 while the session
+       tick clamps to 96, so briefing a minister above 91 bought points the
+       next session took back with nothing on screen to say so. */
+    seed(94); pv5MinisterAction(key, 'brief');
+    const peak = S.ministers[key].competence;
+    /* THE EXACT INVARIANT is that a briefing never puts a minister ABOVE the
+       ceiling the session tick clamps to -- that is what made the old body
+       refund three of the five points bought. The follow-on drift is NOT part
+       of it: pv5MinisterTick adds (rand() - .5) * .5, so a minister sitting at
+       the ceiling can lose up to .13 in an ordinary session. Asserting the
+       refund is exactly zero measured that noise and failed about one run in
+       three on identical code. */
+    out.briefOverCeiling = +(peak - 96).toFixed(2);
+    pv5MinisterTick(S);
+    out.briefRefund = +(peak - S.ministers[key].competence).toFixed(2);
+    seed(60); const c0 = S.ministers[key].competence; pv5MinisterAction(key, 'brief');
+    out.briefLow = +(S.ministers[key].competence - c0).toFixed(2);
+
+    /* THE COLLEGE MUST BEAT WAITING AND MUST NOT UNDO ITSELF. It gave
+       max(2, 8 - experience) and then ADDED 3 to experience: +5 once, +2 for
+       ever, for 2 capital AND 4 of treasury against Brief's 2 capital and no
+       money. It now buys the one thing a briefing cannot -- the ceiling. */
+    seed(90); const gains = [];
+    for (let i = 0; i < 3; i++) { const a = S.ministers[key].competence; pv5MinisterAction(key, 'train'); gains.push(+(S.ministers[key].competence - a).toFixed(2)); }
+    out.collegeGains = gains;
+    out.collegeSteady = gains.every(g => Math.abs(g - gains[0]) < 1e-9);
+    out.collegeCeiling = v11MinisterCeiling(S.ministers[key]);
+    seed(95); pv5MinisterAction(key, 'train'); pv5MinisterAction(key, 'brief');
+    for (let i = 0; i < 6; i++) pv5MinisterTick(S);
+    out.schooledPast96 = S.ministers[key].competence > 96;
+
+    /* SIDELINE was the only paid action in the game that made the government
+       worse at everything: it cut the department's RANK. */
+    seed(); const cb0 = cabinetBonus(S), amb0 = S.ministers[key].ambition, q0 = cabQuality(S, key);
+    pv5MinisterAction(key, 'sideline');
+    const cb1 = cabinetBonus(S);
+    out.sidelineWorse = Object.keys(cb0).filter(k => Math.abs(cb1[k] || 0) < Math.abs(cb0[k]) - 1e-9).length;
+    out.sidelineRank = cabQuality(S, key) === q0;
+    out.sidelineAmbition = amb0 - S.ministers[key].ambition;
+    out.sidelineDelivered = v11Dept(S, key).delivered > 0;
+
+    /* AN INITIATIVE SHOVED A STOCK THE TICK CONVERGES AT 26 PER CENT A
+       SESSION: measured, 84 per cent of it was gone after six. It now moves
+       the department's delivered stock, which decays at 3.5 per cent. */
+    seed(); const d0 = v11Dept(S, key).delivered;
+    pv5MinisterAction(key, 'launch');
+    const jump = v11Dept(S, key).delivered - d0;
+    for (let i = 0; i < 6; i++) v11DeptTick(S);
+    out.initiativeJump = +jump.toFixed(2);
+    out.initiativeKept = Math.round(v11Dept(S, key).delivered / jump * 100);
+    out.indicatorWouldKeep = Math.round(Math.pow(.74, 6) * 100);
+
+    /* A DEPARTMENT IS A LINE IN THE BUDGET AND A NUMBER IN THE COUNTRY.
+       budget() was blind to the government that spends it. */
+    seed(); const b0 = budget(S).exp, cap0 = v11DeptCapacity(S, key), cbn = JSON.stringify(cabinetBonus(S));
+    v11Dept(S, key).funding = 2;
+    out.fundGenerous = { exp:+(budget(S).exp - b0).toFixed(1), cap:+(v11DeptCapacity(S, key) - cap0).toFixed(1) };
+    out.fundReachesCountry = JSON.stringify(cabinetBonus(S)) !== cbn;
+    v11Dept(S, key).funding = 0;
+    out.fundLean = { exp:+(budget(S).exp - b0).toFixed(1), cap:+(v11DeptCapacity(S, key) - cap0).toFixed(1) };
+
+    /* SIX OF THE SEVEN TRAITS WERE READ NOWHERE. Each field of V11_TRAITS is
+       consulted by a named function, and every trait carries at least one. */
+    out.traitsTotal = Object.keys(PV5_MINISTER_TRAITS).length;
+    out.traitsLive = Object.keys(PV5_MINISTER_TRAITS).filter(t => {
+      const v = V11_TRAITS[t];
+      return v && Object.keys(v).some(k => v[k] !== 0);
+    }).length;
+    out.traitFields = ['capacity', 'loyalty', 'strain', 'exposure', 'scandal', 'bills', 'unity']
+      .filter(f => Object.keys(V11_TRAITS).some(t => V11_TRAITS[t][f] !== 0)).length;
+    return out;
+  });
+
+  const ints = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    S.ruling = me; S.coalition = [me];
+    const sum = () => PV5_INTERESTS.reduce((n, g) => n + S.interests[g.id].influence, 0);
+    /* INFLUENCE WAS SET ONCE AND NEVER WRITTEN AGAIN: the same 540 in every
+       campaign of every save, and the demand generator sorts on it. */
+    out.inf0 = Math.round(sum());
+    for (let i = 0; i < 25; i++) pv5InterestTick(S);
+    out.inf25 = Math.round(sum());
+    out.infMoved = Math.abs(out.inf25 - out.inf0) > 3;
+
+    /* THE CIRCLE IS BROKEN, ONE DIRECTION AT A TIME. The relation's target
+       read the bloc while the bloc read the relation straight back. Measured
+       on a bloc whose base target is OFF the ceiling -- c100 saturates the
+       most-organised blocs at 100 and would hide both terms. */
+    const usable = PV5_INTERESTS.filter(g => { const v = pv5BlocTargetV4(S, BLOC[g.bloc]); return v > 5 && v < 95; });
+    out.usableBlocs = usable.length;
+    const g0 = usable[0], q = S.interests[g0.id];
+    q.endorsement = false;
+    const b0 = S.blocs[g0.bloc], before = v11RelationTarget(S, g0);
+    S.blocs[g0.bloc] = clamp(b0 + 35, 0, 100);
+    out.blocDoesNotDriveRelation = Math.abs(v11RelationTarget(S, g0) - before) < 1e-9;
+    S.blocs[g0.bloc] = b0;
+    q.relation = 30; const lo = blocTarget(S, BLOC[g0.bloc]);
+    q.relation = 75; const hi = blocTarget(S, BLOC[g0.bloc]);
+    out.relationDrivesBloc = hi - lo > .5;
+    /* and the relation reads how the government has BEHAVED */
+    q.relation = 50;
+    const t0 = v11RelationTarget(S, g0);
+    q.met = (q.met || 0) + 3; const tMet = v11RelationTarget(S, g0);
+    q.met -= 3; q.refused = (q.refused || 0) + 3; const tRef = v11RelationTarget(S, g0);
+    q.refused -= 3;
+    out.conduct = { met:+(tMet - t0).toFixed(1), refused:+(tRef - t0).toFixed(1) };
+
+    /* AN ENDORSEMENT BUYS THREE THINGS and survives the ballot it was bought
+       for. It was worth six tenths of one per cent of the vote and was
+       cleared for every group at every election. */
+    const noEnd = blocTarget(S, BLOC[g0.bloc]);
+    q.endorsement = true;
+    out.endMobilises = blocTarget(S, BLOC[g0.bloc]) - noEnd > .5;
+    const pol = POLICIES.filter(x => x.mood && (x.mood[g0.bloc] || 0) > 0)[0];
+    q.endorsement = false; const pc0 = pol ? policyCost(pol.id, 1) : 0;
+    q.endorsement = true; const pc1 = pol ? policyCost(pol.id, 1) : 0;
+    out.endCheapens = pol ? pc1 < pc0 : false;
+    q.relation = 70; q.ballots = 0;
+    runElection(S, false);
+    out.endSurvivesFirst = q.endorsement === true;
+    runElection(S, false);
+    out.endLapsesSecond = q.endorsement === false;
+
+    /* THE ORGANISATIONS REACH THE REGIONS. V9_REGION_BLOCS has held a
+       per-region bloc composition since S9 and only ever printed tags. This
+       rides on top of the S11c regional term, so what it is worth in SEATS is
+       reported rather than asserted loosely. */
+    const seats = () => ((projection(S) || {}).seats || {})[me] || 0;
+    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 50; S.interests[g.id].endorsement = false; });
+    const mid = seats(), fMid = regionPartyFactor(S, me);
+    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 92; S.interests[g.id].endorsement = true; });
+    const close = seats(), fClose = regionPartyFactor(S, me);
+    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 8; S.interests[g.id].endorsement = false; });
+    const shut = seats(), fShut = regionPartyFactor(S, me);
+    out.regionSeats = { close:close - mid, shutOut:mid - shut };
+    out.regionMoves = fClose > fMid && fMid > fShut;
+    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 50; });
+    return out;
+  });
+
+  say(min.briefOverCeiling <= 0 && min.briefRefund < .3 && min.briefLow === 5,
+    'a briefing is never refunded',
+    `briefing a minister at 94 leaves them ${min.briefOverCeiling} above the ceiling the session tick clamps to ` +
+    `(the old body left them at 99 against a clamp of 96, and three of the five points bought were gone the next session) · ` +
+    `the follow-on drift is ${min.briefRefund}, inside the tick's own +/-.25 noise · and a minister at 60 still gains the full ${min.briefLow}`);
+  say(min.collegeSteady && min.collegeGains[0] > 0 && min.collegeCeiling > 96 && min.schooledPast96,
+    'the college beats waiting, and does not undo itself',
+    `three visits gave ${min.collegeGains.join('/')} (it gave 5/2/2, and each visit made the next worse) · ` +
+    `a schooled minister's ceiling is ${min.collegeCeiling} and the session tick no longer drags them back to 96: ${min.schooledPast96}`);
+  say(min.sidelineWorse === 0 && min.sidelineRank && min.sidelineAmbition > 0 && min.sidelineDelivered,
+    'sidelining a rival no longer guts the government',
+    min.sidelineWorse ? min.sidelineWorse + ' indicators still made worse by it'
+      : `no indicator is made worse (it used to cut the department's rank, so every one of them was), ` +
+        `ambition falls ${min.sidelineAmbition}, and the papers reach the centre instead of nobody`);
+  say(min.initiativeKept >= 70 && min.initiativeKept > min.indicatorWouldKeep,
+    'an initiative outlives the session that bought it',
+    `${min.initiativeKept}% of it is still there six sessions later · the indicator stock it used to shove would have kept ${min.indicatorWouldKeep}%, ` +
+    `because the session tick converges every stock on its target at 26 per cent`);
+  say(min.fundGenerous.exp > 0 && min.fundGenerous.cap > 0 && min.fundLean.exp < 0 && min.fundLean.cap < 0 && min.fundReachesCountry,
+    'a department is a line in the budget and a number in the country',
+    `a generous settlement costs ${min.fundGenerous.exp} a session and buys ${min.fundGenerous.cap} of capacity; ` +
+    `a lean one saves ${-min.fundLean.exp} and costs ${-min.fundLean.cap} · and it reaches every indicator the ministry touches: ${min.fundReachesCountry}`);
+  say(min.traitsLive === min.traitsTotal && min.traitFields === 7,
+    'every trait on a card is read somewhere',
+    `${min.traitsLive} of ${min.traitsTotal} traits carry behaviour across ${min.traitFields} fields · before this slice only \`operator\` appeared outside a card, in one exposure term`);
+
+  say(ints.infMoved,
+    'influence is no longer a constant',
+    `combined influence moved ${ints.inf0} -> ${ints.inf25} over twenty-five sessions · it was written exactly once, at pv5EnsureState, and printed the same 540 in every campaign of every save`);
+  say(ints.blocDoesNotDriveRelation && ints.relationDrivesBloc && ints.conduct.met > 0 && ints.conduct.refused < 0,
+    'the relation and the bloc are no longer a circle',
+    `moving the bloc 35 points does not move the relation's target (${ints.blocDoesNotDriveRelation}), but the relation still moves the bloc (${ints.relationDrivesBloc}) · ` +
+    `and the relation reads how the government behaved: three meetings ${ints.conduct.met > 0 ? '+' : ''}${ints.conduct.met}, three refusals ${ints.conduct.refused} · ` +
+    `measured on one of the ${ints.usableBlocs} blocs whose base target is off the c100 ceiling, because saturation would hide both terms`);
+  say(ints.endMobilises && ints.endCheapens && ints.endSurvivesFirst && ints.endLapsesSecond,
+    'an endorsement buys three things and survives its ballot',
+    `it mobilises its own bloc (${ints.endMobilises}), takes a real point off any statute that bloc wants (${ints.endCheapens}), ` +
+    `and survives the first ballot (${ints.endSurvivesFirst}) before lapsing at the second (${ints.endLapsesSecond}) · ` +
+    `every endorsement used to be cleared for every group at every election, which is the event they are bought for`);
+  say(ints.regionMoves,
+    'the organisations reach the regions',
+    `holding every organisation close is worth ${ints.regionSeats.close >= 0 ? '+' : ''}${ints.regionSeats.close} Assembly seats and shutting them all out costs ${ints.regionSeats.shutOut} · ` +
+    `V9_REGION_BLOCS has held a per-region bloc composition since S9 and only ever printed tags with it · ` +
+    `deliberately small, because it rides on the S11c regional term that was tuned against a measured seat target`);
+
   await browser.close();
   console.log(fail ? '\n' + fail + ' CHECK(S) FAILED' : '\nROADS OK');
   process.exit(fail ? 1 : 0);
