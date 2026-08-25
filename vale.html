@@ -431,8 +431,8 @@ var DEPTS = {
 var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
-    capMult:4.2, capFlat:18, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
-    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:140, capCap:320, bond:150, resist:.25 },
+    capMult:5.4, capFlat:26, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
+    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:175, capCap:440, bond:150, resist:.25 },
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
@@ -5427,10 +5427,17 @@ function factionTick(st) {
   st.unity = c100((st.unity || 60) + (avg - (st.unity || 60)) * .055);
 }
 
+/* S11a: every history row in this game stored raw doubles — the fixtures hold
+   "approval":59.803040788077986, eighteen characters for four characters of
+   meaning. At its cap v6.history alone was ~50 KB of a ~40 KB save, and the
+   autosave rewrites the whole blob 160ms after every render while UI.undoStack
+   keeps up to eight more copies. One decimal is more precision than any chart
+   in the file can draw. */
+function r1(n) { return Math.round((+n || 0) * 10) / 10; }
 function recordPoll(st) {
   st.pollHistory = st.pollHistory || [];
-  var row = { turn:st.turn, year:yearOf(st.turn), approval:approval(st), ruling:st.ruling, support:{} };
-  PARTIES.forEach(function (p) { row.support[p.id] = st.psupport[p.id] || 0; });
+  var row = { turn:st.turn, year:yearOf(st.turn), approval:r1(approval(st)), ruling:st.ruling, support:{} };
+  PARTIES.forEach(function (p) { row.support[p.id] = Math.round((st.psupport[p.id] || 0) * 1e4) / 1e4; });
   st.pollHistory.push(row);
   if (st.pollHistory.length > 32) st.pollHistory.shift();
 }
@@ -10647,10 +10654,16 @@ function pv5FiscalTick(st){
 }
 
 /* ---------- strategic record and all new session systems ---------- */
+/* S11a: this has been written every session since v5 and READ BY NOTHING —
+   four series (inflation, unity, the government's seat share, campaign power)
+   that exist nowhere else in the save. The record deck plots them, so the
+   window widens from forty sessions to the whole campaign, which is what
+   v6.history has always carried. Rows already recorded keep their forty-session
+   span: the deck says so per panel rather than pretending otherwise. */
 function pv5SessionRecord(st){
-  st.v5History.push({turn:st.turn,approval:approval(st),growth:st.macro.growth,inflation:st.macro.inflation,capital:st.capital,
-    unity:st.unity,coalition:govShare(st),campaign:pv5CampaignPower(st)});
-  if(st.v5History.length>40)st.v5History.shift();
+  st.v5History.push({turn:st.turn,approval:r1(approval(st)),growth:r1(st.macro.growth),inflation:r1(st.macro.inflation),capital:r1(st.capital),
+    unity:r1(st.unity),coalition:Math.round(govShare(st)*1e4)/1e4,campaign:r1(pv5CampaignPower(st))});
+  if(st.v5History.length>220)st.v5History.shift();
 }
 var pv5SessionTickV4=sessionSystemsTick;
 sessionSystemsTick=function(st){
@@ -11239,8 +11252,15 @@ S=enrichState(S,false);render();
   .chart-in .ink{animation:chartInk .42s cubic-bezier(.2,.7,.3,1) both}
 }
 @keyframes chartInk{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-.hist-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-family:var(--font-u);font-size:12px}
-.hist-legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
+/* S11a: .hist-legend was defined here and emitted nowhere in the whole file —
+   a legend class with no legend, dead since S6c put the figures on the lines.
+   The record deck: a collapsed panel holds a SLOT, not a chart, and a deck
+   chart does not re-animate (the ink animation restarts on every render, and
+   twenty of them fading in on every click is a cost and an unpleasant read). */
+.chart-slot{min-height:2px}
+.hist-chart.nofade .ink{animation:none}
+.rec-range{margin-top:8px}
+.chart-note{margin-top:6px}
 
 /* ---------- effect previews ---------- */
 .choice .fx{display:block;margin-top:5px;font-family:var(--font-u);font-size:11px;letter-spacing:.02em;color:var(--slate);line-height:1.5}
@@ -12139,7 +12159,7 @@ billCard = function (b) {
    ========================================================== */
 function v6HistoryTick(st) {
   var b = budget(st);
-  st.v6.history.push({ t:st.turn, y:yearOf(st.turn), approval:approval(st), unrest:st.unrest, growth:st.macro.growth, capital:st.capital, treasury:st.treasury, debt:st.debt, liberties:st.ind.liberties, economy:st.ind.economy, net:b.net });
+  st.v6.history.push({ t:st.turn, y:yearOf(st.turn), approval:r1(approval(st)), unrest:r1(st.unrest), growth:r1(st.macro.growth), capital:r1(st.capital), treasury:r1(st.treasury), debt:r1(st.debt), liberties:r1(st.ind.liberties), economy:r1(st.ind.economy), net:r1(b.net) });
   if (st.v6.history.length > 220) st.v6.history.shift();
   if (b.net >= 0) { st.v6.stats.sessionsBalanced++; st.v6.stats.bestBalanceRun = Math.max(st.v6.stats.bestBalanceRun, st.v6.stats.sessionsBalanced); } else st.v6.stats.sessionsBalanced = 0;
 }
@@ -13086,6 +13106,11 @@ function v6CoalitionDialog(nc) {
 /* ---------- effect previews ---------- */
 function v6Sandbox(fn) {
   var real = S, savedUndo = UI.undo, clone = JSON.parse(JSON.stringify(S));
+  /* S11a: this deep-clones the WHOLE of S on every mouseenter over a
+     forecastable button. The record deck's history is read by nothing in the
+     model — only by charts — so carrying it through a forecast is pure cost.
+     Dropping it here is exact, not an approximation. */
+  if (clone.v11) { delete clone.v11.hist; delete clone.v11.histT; }
   var rr = render, ss = showSheet, hs = hideSheet, tt = toast, ff = flash, rnd0 = Math.random, sv = saveAutosave, cu = captureUndo, msgs = [], seed = 48271;
   S = clone; render = function () {}; showSheet = function () {}; hideSheet = function () {}; toast = function () {}; flash = function (m) { msgs.push(String(m)); };
   Math.random = function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }; saveAutosave = function () {}; captureUndo = function () {};
@@ -14321,6 +14346,22 @@ var V7_FOLD_REMAP = {
   'chamber|the country':'nation|the country',
   'chamber|the ministry':'government|ministerial actions'
 };
+/* S11a: the key normalisation and the collapse decision were inlined below,
+   which meant a view function could not ask the same question this pass asks —
+   and the record deck has to, because it decides whether to BUILD a chart or
+   leave a slot for it. A pure extraction: both callers now derive the identical
+   string and the identical boolean.
+   NOTE the normalisation strips a TRAILING NUMBER and lowercases, so "Chart 1"
+   and "Chart 2" are the same key. Every panel title in a deck must be distinct
+   after this, or one saved preference silently governs all of them. */
+function v7FoldKey(tab, title) {
+  return tab + '|' + String(title).replace(/\s+/g, ' ').replace(/\s*\d+\s*$/, '').trim().toLowerCase();
+}
+function v7FoldState(tab, title) {
+  var prefs = (S && S.uiPrefs && S.uiPrefs.folds) || {};
+  var key = v7FoldKey(tab, title), norm = key.slice(tab.length + 1);
+  return prefs[key] !== undefined ? !!prefs[key] : (v7Clean() && v7DefaultCollapsed(tab, norm));
+}
 function v7Folds() {
   var view = document.getElementById('view'); if (!view || !S || !S.uiPrefs) return;
   var prefs = S.uiPrefs.folds || (S.uiPrefs.folds = {});
@@ -14332,9 +14373,8 @@ function v7Folds() {
   }
   view.querySelectorAll('.panel').forEach(function (panel) {
     var h = panel.firstElementChild; if (!h || h.tagName !== 'H2') return;
-    var title = h.textContent.replace(/\s+/g, ' ').replace(/\s*\d+\s*$/, '').trim().toLowerCase();
-    var key = UI.tab + '|' + title;
-    var collapsed = prefs[key] !== undefined ? !!prefs[key] : (v7Clean() && v7DefaultCollapsed(UI.tab, title));
+    var key = v7FoldKey(UI.tab, h.textContent), title = key.slice(UI.tab.length + 1);
+    var collapsed = v7FoldState(UI.tab, h.textContent);
     panel.classList.add('foldable'); panel.classList.toggle('collapsed', collapsed);
     h.setAttribute('role', 'button'); h.setAttribute('aria-expanded', String(!collapsed)); h.tabIndex = 0; h.title = collapsed ? 'Show this panel' : 'Hide this panel';
     function toggle() {
@@ -14343,7 +14383,10 @@ function v7Folds() {
       prefs[key] = c; clearTimeout(UI.saveTimer); UI.saveTimer = setTimeout(saveAutosave, 300);
       // A chart inside a collapsed panel has no width to measure, so the pass
       // that opens it on the present skips it. Run it again once it is visible.
-      if (!c) v7ChartsToEnd();
+      // S11a: a deck chart is not BUILT until its panel opens — twenty charts
+      // drawn on arrival cost 23ms a render against 9ms for one. Fill first,
+      // then scroll, or the pass measures an empty box.
+      if (!c) { if (typeof v10FillChartSlots === 'function') v10FillChartSlots(panel); v7ChartsToEnd(); }
     }
     h.addEventListener('click', function (e) { if (e.target.closest('button, a')) return; toggle(); });
     h.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
@@ -14388,18 +14431,24 @@ document.getElementById('view').addEventListener('click', function (e) {
    their end labels off the right edge. The reader wants today first. Opened at
    the end once per chart, then left alone: render() runs on every action and
    would otherwise yank a chart the reader had scrolled back through. */
+/* S11a: this used to iterate the two literals ['poll-wrap','hist-wrap'] and
+   call querySelector — FIRST MATCH ONLY — and key the remembered offset by
+   CLASS NAME. With a deck of charts that meant one chart got the treatment and
+   every other one shipped the exact defect this function was written to fix,
+   all of them sharing one memory slot. Now: every wrap on the page, keyed by
+   its own id. */
 function v7ChartsToEnd() {
   UI.chartScroll = UI.chartScroll || {};
-  ['poll-wrap', 'hist-wrap'].forEach(function (cls) {
-    var el = document.querySelector('.' + cls);
-    if (!el || el.scrollWidth <= el.clientWidth + 1) return;
-    el.scrollLeft = UI.chartScroll[cls] === undefined ? el.scrollWidth : UI.chartScroll[cls];
+  document.querySelectorAll('.poll-wrap, .hist-wrap').forEach(function (el) {
+    var key = el.dataset.chart || (el.className.indexOf('poll-wrap') >= 0 ? 'poll-wrap' : 'hist-wrap');
+    if (el.scrollWidth <= el.clientWidth + 1) return;
+    el.scrollLeft = UI.chartScroll[key] === undefined ? el.scrollWidth : UI.chartScroll[key];
     // Bound once per element. v7Folds calls this on every fold open with no
     // intervening render, so an unguarded addEventListener stacked duplicates
     // on the same node.
     if (!el.dataset.scrollBound) {
       el.dataset.scrollBound = '1';
-      el.addEventListener('scroll', function () { UI.chartScroll[cls] = el.scrollLeft; });
+      el.addEventListener('scroll', function () { UI.chartScroll[key] = el.scrollLeft; });
     }
   });
 }
@@ -18489,6 +18538,9 @@ tickTurn = function (st) {
   /* S10c: the order book's session. Defined further down the chunk, so guard
      the reference the way the v4 base guards its own forward hooks. */
   if (typeof v10OrdersTick === 'function') v10OrdersTick(st);
+  /* S11a: the record deck's own recorder, last in the chain so every earlier
+     tick has already moved what it reads. */
+  if (typeof v11HistTick === 'function') v11HistTick(st);
 };
 
 /* the Constitution page carries the apparatus reading */
@@ -21705,6 +21757,401 @@ function v10OrderEvent(st) {
     ]
   };
 }
+
+/* ============================================================
+   S11a — THE LONG RECORD
+   The owner asked for the Record page to carry the whole campaign in charts.
+   Most of it was already being recorded and shown to nobody: v6.history has
+   written eleven numbers a session since v6 and four of them reach a chart,
+   and v5History has written eight a session since v5 and reaches NOTHING.
+   What is missing is recorded here, and the whole deck is drawn from three
+   sources with the honesty about each one written on the panel.
+
+   THE COST RULE. render() rebuilds the active tab with innerHTML on every
+   action. Twenty charts drawn on arrival measured 23ms a render against 8.6ms
+   for the page with one; built only when their panel is opened, 9ms. So a
+   collapsed panel here emits a SLOT, not a chart, and v7Folds fills it the
+   moment the reader opens it. Caching the SVG string was measured too and is
+   the trap: string-building is 0.28ms of the 0.72ms, and a cache still pays
+   the innerHTML parse and the SVG layout in full.
+
+   THE SIZE RULE. Everything below is stored COLUMNAR and as INTEGERS. These
+   are all 0-100 quantities and no chart in this file can draw a tenth, so a
+   decimal here would be forty thousand characters of noise on a blob the
+   autosave rewrites after every render and the undo stack holds nine copies of.
+   ============================================================ */
+var V11_CAP = 220;
+/* Each column: the key it is stored under, and how to read it off the state.
+   A column that cannot be read yet (a namespace an old save has not grown)
+   returns null and is simply not recorded that session. */
+var V11_SERIES = [
+  { k:'technology',     f:function (st) { return st.ind.technology; } },
+  { k:'agriculture',    f:function (st) { return st.ind.agriculture; } },
+  { k:'infrastructure', f:function (st) { return st.ind.infrastructure; } },
+  { k:'poverty',        f:function (st) { return st.ind.poverty; } },
+  { k:'education',      f:function (st) { return st.ind.education; } },
+  { k:'healthcare',     f:function (st) { return st.ind.healthcare; } },
+  { k:'safety',         f:function (st) { return st.ind.safety; } },
+  { k:'corruption',     f:function (st) { return st.ind.corruption; } },
+  { k:'military',       f:function (st) { return st.ind.military; } },
+  { k:'energy',         f:function (st) { return st.ind.energy; } },
+  { k:'environment',    f:function (st) { return st.ind.environment; } },
+  { k:'tension',        f:function (st) { return st.ind.tension; } },
+  { k:'territories',    f:function (st) { return st.ind.territories; } },
+  { k:'bLabour',   f:function (st) { return st.blocs.labour; } },
+  { k:'bTech',     f:function (st) { return st.blocs.tech; } },
+  { k:'bSmallbiz', f:function (st) { return st.blocs.smallbiz; } },
+  { k:'bProf',     f:function (st) { return st.blocs.prof; } },
+  { k:'bFaith',    f:function (st) { return st.blocs.faith; } },
+  { k:'bVeterans', f:function (st) { return st.blocs.veterans; } },
+  { k:'bYouth',    f:function (st) { return st.blocs.youth; } },
+  { k:'bSeniors',  f:function (st) { return st.blocs.seniors; } },
+  { k:'sPrices',    f:function (st) { return st.salience && st.salience.prices; } },
+  { k:'sJobs',      f:function (st) { return st.salience && st.salience.jobs; } },
+  { k:'sHealth',    f:function (st) { return st.salience && st.salience.health; } },
+  { k:'sIntegrity', f:function (st) { return st.salience && st.salience.integrity; } },
+  { k:'crown',   f:function (st) { return st.crown; } },
+  { k:'army',    f:function (st) { return st.armyLoyalty; } },
+  { k:'secState', f:function (st) { return securityState(st); } },
+  /* the chamber, as a share of the house rather than a raw count, so the line
+     means the same thing after territorialSeats has moved the total */
+  { k:'govSeats', f:function (st) { return govShare(st) * 100; } },
+  { k:'oppSeats', f:function (st) {
+      var me = playParty(st), tot = 0, opp = 0;
+      PARTIES.forEach(function (p) { var n = st.seats[p.id] || 0; tot += n;
+        if (p.id !== st.ruling && (st.coalition || []).indexOf(p.id) < 0) opp += n; });
+      return tot ? opp / tot * 100 : 0; } },
+  { k:'senGov', f:function (st) {
+      var u = st.upper && st.upper.seats; if (!u) return null;
+      var tot = 0, gov = 0;
+      PARTIES.forEach(function (p) { var n = u[p.id] || 0; tot += n;
+        if (p.id === st.ruling || (st.coalition || []).indexOf(p.id) >= 0) gov += n; });
+      return tot ? gov / tot * 100 : 0; } },
+  { k:'rProsperity', f:function (st) { return v11RegionMean(st, 'prosperity'); } },
+  { k:'rServices',   f:function (st) { return v11RegionMean(st, 'services'); } },
+  { k:'rOrder',      f:function (st) { return v11RegionMean(st, 'order'); } },
+  { k:'rFederal',    f:function (st) { return v11RegionMean(st, 'federal'); } },
+  { k:'pOstmark',  f:function (st) { return st.powers ? relOf(st, 'ostmark') : null; } },
+  { k:'pMoya',     f:function (st) { return st.powers ? relOf(st, 'moya') : null; } },
+  { k:'pSarath',   f:function (st) { return st.powers ? relOf(st, 'sarath') : null; } },
+  { k:'pAlliance', f:function (st) { return st.powers ? relOf(st, 'alliance') : null; } },
+  /* counts, not percentages — the axis for these charts is a count */
+  { k:'orders', f:function (st) { return typeof v10OrderCount === 'function' ? v10OrderCount(st) : null; } },
+  { k:'works',  f:function (st) { return typeof v8ActiveWorks === 'function' ? v8ActiveWorks(st).length : null; } },
+  { k:'cabinet', f:function (st) { return typeof cabinetFilled === 'function' ? cabinetFilled(st) : null; } },
+  { k:'bills',    f:function (st) { return (st.bills || []).length; } },
+  { k:'papers',   f:function (st) { return (st.inbox || []).length; } },
+  { k:'scandals', f:function (st) { return (st.scandals || []).filter(function (x) { return x.status === 'active'; }).length; } },
+  { k:'courtWith', f:function (st) { return typeof courtWith === 'function' ? courtWith(st) * 100 : null; } },
+  { k:'unemployment', f:function (st) { return st.macro && st.macro.unemployment; } },
+  { k:'inequality',   f:function (st) { return st.macro && st.macro.inequality; } },
+  { k:'confidence',   f:function (st) { return st.macro && st.macro.confidence; } },
+  { k:'compet',  f:function (st) {
+      var ks = Object.keys(st.ministers || {}); if (!ks.length) return 0;
+      var t = 0; ks.forEach(function (k) { t += st.ministers[k].competence || 0; });
+      return t / ks.length; } }
+];
+function v11RegionMean(st, key) {
+  if (!st.regions) return null;
+  var t = 0, n = 0;
+  REGIONS.forEach(function (r) { var q = st.regions[r.id]; if (q && typeof q[key] === 'number') { t += q[key]; n++; } });
+  return n ? t / n : null;
+}
+/* Created-on-write, absent-is-valid: a campaign saved before this existed has
+   no v11 at all, loads, and starts recording the session it is opened. */
+function v11Hist(st) {
+  var v = st.v11 || (st.v11 = {});
+  v.hist = v.hist || {}; v.histT = v.histT || {};
+  return v;
+}
+function v11HistTick(st) {
+  var v = v11Hist(st);
+  V11_SERIES.forEach(function (col) {
+    var raw;
+    try { raw = col.f(st); } catch (e) { raw = null; }
+    if (raw === null || raw === undefined || !isFinite(raw)) return;
+    var a = v.hist[col.k] || (v.hist[col.k] = []);
+    if (v.histT[col.k] === undefined) v.histT[col.k] = st.turn;
+    a.push(Math.round(raw));
+    if (a.length > V11_CAP) { a.shift(); v.histT[col.k] = v.histT[col.k] + 1; }
+  });
+}
+
+/* ---------- the three sources, and their honesty ----------
+   v6.history has run since v6 and caps at 220 against an epic's 201 turns, so
+   on ANY save it already spans the whole campaign. v5History ran since v5 but
+   capped at FORTY until this slice, so an existing save has only its last
+   forty sessions and widening the cap recovers nothing. v11.hist starts the
+   session a save is first opened after this ships. Three different truths, so
+   three different notes — one blanket disclaimer would be wrong twice. */
+var V11_SRC = {
+  v6:  { rows:function () { return (S.v6 && S.v6.history) || []; },
+         turn:function (r) { return r.t; }, year:function (r) { return r.y; },
+         at:function (r, k) { return r[k]; },
+         note:function () { return 'Recorded every session since the campaign opened.'; } },
+  v5:  { rows:function () { return S.v5History || []; },
+         turn:function (r) { return r.turn; }, year:function (r) { return yearOf(r.turn); },
+         at:function (r, k) { return r[k]; },
+         note:function () {
+           var h = S.v5History || [];
+           if (!h.length) return 'Nothing recorded yet.';
+           var first = h[0].turn;
+           return first <= 2 ? 'Recorded every session since the campaign opened.'
+             : 'Recorded from ' + yearOf(first) + '. Before this update only the last forty sessions were kept.'; } }
+};
+/* v11 columns are columnar, so they get their own reader rather than a row shape */
+function v11Col(k) { return (S.v11 && S.v11.hist && S.v11.hist[k]) || []; }
+function v11ColStart(k) { return (S.v11 && S.v11.histT && S.v11.histT[k]) || 0; }
+function v11ColNote(keys) {
+  var t = 0;
+  keys.forEach(function (k) { t = Math.max(t, v11ColStart(k)); });
+  if (!t) return 'Nothing recorded yet.';
+  return t <= 2 ? 'Recorded every session since the campaign opened.'
+    : 'Recorded from ' + yearOf(t) + ', when this campaign was first opened after the record was built.';
+}
+
+/* ---------- the range filter ----------
+   One turn is one year, so a range is a slice and nothing has to be converted.
+   The choice rides S.uiPrefs, which is SAVED — UI.polCat, the pattern this
+   copies, is transient and resets on reload. */
+var V11_RANGES = [
+  { id:'all', label:'All', n:0 },
+  { id:'50',  label:'50y', n:50 },
+  { id:'25',  label:'25y', n:25 },
+  { id:'10',  label:'10y', n:10 },
+  { id:'5',   label:'5y',  n:5 }
+];
+function v11Range() {
+  var id = S.uiPrefs && S.uiPrefs.recRange;
+  var r = V11_RANGES.filter(function (x) { return x.id === id; })[0];
+  return r || V11_RANGES[0];
+}
+function v11Slice(arr) {
+  var n = v11Range().n;
+  return (!n || arr.length <= n) ? arr : arr.slice(arr.length - n);
+}
+function v11RangeStrip() {
+  var cur = v11Range().id;
+  return '<div class="filters rec-range">' + V11_RANGES.map(function (r) {
+    return '<button data-recrange="' + r.id + '" aria-pressed="' + (r.id === cur) + '">' + esc(r.label) + '</button>';
+  }).join('') + '</div>';
+}
+
+/* ---------- the deck ----------
+   Titles must be DISTINCT after v7FoldKey's normalisation, which strips a
+   trailing number and lowercases: "Chart 1" and "Chart 2" are one saved
+   preference governing both panels. roads.js asserts it over this registry. */
+var V11_ACCENT = { gold:'#BFA14E', clay:'#C77B62', green:'#6FAE8B', deep:'#7E6A33', pale:'#D4B45E', rust:'#7A4038' };
+function v11Party(st) { return PARTY[playParty(st)].color; }
+var V10_RECORD_CHARTS = [
+  { id:'purse', title:'The Public Purse', src:'v6', axis:'money',
+    keys:[{ k:'treasury', name:'Treasury', color:V11_ACCENT.gold, emphasis:true },
+          { k:'debt',     name:'Debt',     color:V11_ACCENT.rust }] },
+  { id:'balance', title:'The Balance and the Capital', src:'v6', axis:'money',
+    keys:[{ k:'net',     name:'Balance', color:V11_ACCENT.green, emphasis:true },
+          { k:'capital', name:'Capital', color:V11_ACCENT.gold }] },
+  { id:'prices', title:'Growth and Prices', src:'v5', axis:'raw',
+    keys:[{ k:'growth',    name:'Growth',    color:V11_ACCENT.green, emphasis:true },
+          { k:'inflation', name:'Inflation', color:V11_ACCENT.clay }] },
+  { id:'standing', title:'The Government’s Standing', src:'v5', axis:'pct',
+    keys:[{ k:'unity',     name:'Unity',     color:V11_ACCENT.gold, emphasis:true },
+          { k:'coalition', name:'Its share', color:V11_ACCENT.green, scale:100 },
+          { k:'campaign',  name:'Campaign',  color:V11_ACCENT.clay, scale:8.33 }] },
+  { id:'economy', title:'The Economy and What It Is Built On', src:'v11', axis:'pct',
+    keys:[{ k:'technology',     name:'Technology',  color:V11_ACCENT.gold, emphasis:true },
+          { k:'agriculture',    name:'Agriculture', color:V11_ACCENT.green },
+          { k:'infrastructure', name:'Roads',       color:V11_ACCENT.clay },
+          { k:'energy',         name:'Energy',      color:V11_ACCENT.deep }] },
+  { id:'want', title:'Want, Learning and Health', src:'v11', axis:'pct',
+    keys:[{ k:'poverty',    name:'Poverty',   color:V11_ACCENT.rust, emphasis:true },
+          { k:'education',  name:'Schools',   color:V11_ACCENT.gold },
+          { k:'healthcare', name:'Health',    color:V11_ACCENT.green },
+          { k:'safety',     name:'Safety',    color:V11_ACCENT.clay }] },
+  { id:'reach', title:'The Reach of the State', src:'v11', axis:'pct',
+    keys:[{ k:'corruption',  name:'Corruption',  color:V11_ACCENT.rust, emphasis:true },
+          { k:'military',    name:'Armed forces', color:V11_ACCENT.deep },
+          { k:'environment', name:'Environment', color:V11_ACCENT.green },
+          { k:'secState',    name:'Apparatus',   color:V11_ACCENT.clay }] },
+  { id:'abroad', title:'Tension and the Territories', src:'v11', axis:'pct',
+    keys:[{ k:'tension',     name:'Tension',     color:V11_ACCENT.rust, emphasis:true },
+          { k:'territories', name:'Territories', color:V11_ACCENT.gold }] },
+  { id:'blocsWork', title:'The Blocs That Work', src:'v11', axis:'pct',
+    keys:[{ k:'bLabour',   name:'Labour',      color:V11_ACCENT.rust, emphasis:true },
+          { k:'bTech',     name:'Technical',   color:V11_ACCENT.green },
+          { k:'bSmallbiz', name:'Small trade', color:V11_ACCENT.gold },
+          { k:'bProf',     name:'Professional', color:V11_ACCENT.clay }] },
+  { id:'blocsRest', title:'The Blocs That Watch', src:'v11', axis:'pct',
+    keys:[{ k:'bFaith',    name:'The devout',  color:V11_ACCENT.deep, emphasis:true },
+          { k:'bVeterans', name:'Veterans',    color:V11_ACCENT.rust },
+          { k:'bYouth',    name:'The young',   color:V11_ACCENT.green },
+          { k:'bSeniors',  name:'The old',     color:V11_ACCENT.pale }] },
+  { id:'asking', title:'What the Country Is Asking About', src:'v11', axis:'pct',
+    keys:[{ k:'sPrices',    name:'Prices',    color:V11_ACCENT.gold, emphasis:true },
+          { k:'sJobs',      name:'Work',      color:V11_ACCENT.green },
+          { k:'sHealth',    name:'Health',    color:V11_ACCENT.clay },
+          { k:'sIntegrity', name:'Integrity', color:V11_ACCENT.rust }] },
+  { id:'chamber', title:'The Two Houses', src:'v11', axis:'pct',
+    keys:[{ k:'govSeats', name:'Government', color:V11_ACCENT.gold, emphasis:true },
+          { k:'oppSeats', name:'Opposition', color:V11_ACCENT.rust },
+          { k:'senGov',   name:'The Senate', color:V11_ACCENT.green }] },
+  { id:'loyalty', title:'The Crown and the Army', src:'v11', axis:'pct',
+    keys:[{ k:'crown', name:'The crown', color:V11_ACCENT.gold, emphasis:true },
+          { k:'army',  name:'The army',  color:V11_ACCENT.deep }] },
+  { id:'states', title:'The Condition of the States', src:'v11', axis:'pct',
+    keys:[{ k:'rProsperity', name:'Prosperity', color:V11_ACCENT.gold, emphasis:true },
+          { k:'rServices',   name:'Services',   color:V11_ACCENT.green },
+          { k:'rOrder',      name:'Order',      color:V11_ACCENT.clay },
+          { k:'rFederal',    name:'Trust',      color:V11_ACCENT.deep }] },
+  { id:'powers', title:'The Great Powers', src:'v11', axis:'pct',
+    keys:[{ k:'pAlliance', name:'The Alliance', color:V11_ACCENT.green, emphasis:true },
+          { k:'pOstmark',  name:'Ostmark',      color:V11_ACCENT.gold },
+          { k:'pMoya',     name:'Moya',         color:V11_ACCENT.clay },
+          { k:'pSarath',   name:'Sarath',       color:V11_ACCENT.rust }] },
+  { id:'instruments', title:'Orders and Works in Hand', src:'v11', axis:'count',
+    keys:[{ k:'orders', name:'Orders standing', color:V11_ACCENT.gold, emphasis:true, top:12 },
+          { k:'works',  name:'Works under way', color:V11_ACCENT.green, top:12 }] },
+  { id:'orderpaper', title:'The Order Paper', src:'v11', axis:'count',
+    keys:[{ k:'bills',    name:'Bills in flight',  color:V11_ACCENT.gold, emphasis:true },
+          { k:'papers',   name:'Papers waiting',   color:V11_ACCENT.green },
+          { k:'scandals', name:'Affairs running',  color:V11_ACCENT.rust }] },
+  { id:'bench', title:'The Bench and the Government', src:'v11', axis:'pct',
+    keys:[{ k:'courtWith', name:'The court with you', color:V11_ACCENT.green, emphasis:true }] },
+  { id:'hardship', title:'Work, Confidence and the Gap', src:'v11', axis:'raw',
+    keys:[{ k:'unemployment', name:'Out of work', color:V11_ACCENT.rust, emphasis:true },
+          { k:'inequality',   name:'The gap',     color:V11_ACCENT.clay },
+          { k:'confidence',   name:'Confidence',  color:V11_ACCENT.green }] },
+  { id:'cabinet', title:'The Cabinet', src:'v11', axis:'raw',
+    keys:[{ k:'cabinet', name:'Offices filled', color:V11_ACCENT.gold, emphasis:true, top:16 },
+          { k:'compet',  name:'Competence',     color:V11_ACCENT.green, top:100 }] }
+];
+
+/* A chart's own scale. `pct` is the 0-100 frame the game's own indicators live
+   on; `money`, `raw` and `count` autoscale, which neither existing caller does
+   — v6HistoryChart hard-codes 0-100 and pv5PollChart rolls its own. */
+function v11Frame(chart, cols) {
+  if (chart.axis === 'pct') return { lo:0, hi:100 };
+  var lo = Infinity, hi = -Infinity;
+  cols.forEach(function (c) { c.raw.forEach(function (v) { if (v < lo) lo = v; if (v > hi) hi = v; }); });
+  if (!isFinite(lo)) return { lo:0, hi:1 };
+  if (chart.axis === 'count') { lo = 0; hi = Math.max(hi, 1); }
+  if (lo === hi) { lo -= 1; hi += 1; }
+  var pad = (hi - lo) * .08;
+  return { lo:lo - pad, hi:hi + pad };
+}
+function v11Fmt(n, axis) {
+  if (axis === 'money') return fmc ? fmc(Math.round(n)) : String(Math.round(n));
+  if (axis === 'raw' || axis === 'count') return String(Math.round(n * 10) / 10);
+  return String(Math.round(n));
+}
+/* Build one chart. Returns '' when there is nothing yet to draw — the panel
+   then says why rather than showing an empty box. */
+function v11ChartHtml(chart) {
+  var cols = [], xs = [], enough = false;
+  if (chart.src === 'v11') {
+    var len = 0;
+    chart.keys.forEach(function (s) { len = Math.max(len, v11Col(s.k).length); });
+    if (len < 2) return '';
+    var startT = 0;
+    chart.keys.forEach(function (s) { startT = Math.max(startT, v11ColStart(s.k)); });
+    chart.keys.forEach(function (s) {
+      var a = v11Slice(v11Col(s.k));
+      cols.push({ s:s, raw:a });
+    });
+    var n = v11Slice(v11Col(chart.keys[0].k)).length;
+    var firstT = startT + Math.max(0, v11Col(chart.keys[0].k).length - n);
+    for (var i = 0; i < n; i++) xs.push((i === 0 || i === n - 1) ? String(yearOf(firstT + i)) : '');
+    enough = n >= 2;
+  } else {
+    var src = V11_SRC[chart.src], rows = v11Slice(src.rows());
+    if (rows.length < 2) return '';
+    chart.keys.forEach(function (s) {
+      cols.push({ s:s, raw:rows.map(function (r) { var v = src.at(r, s.k); return (typeof v === 'number' && isFinite(v)) ? v * (s.scale || 1) : 0; }) });
+    });
+    xs = rows.map(function (r, i) { return (i === 0 || i === rows.length - 1) ? String(src.year(r)) : ''; });
+    enough = true;
+  }
+  if (!enough) return '';
+  var fr = v11Frame(chart, cols), span = (fr.hi - fr.lo) || 1;
+  var series = cols.map(function (c) {
+    return { name:c.s.name, short:c.s.name, color:c.s.color, emphasis:!!c.s.emphasis,
+      values:c.raw.map(function (v) { return clamp((v - fr.lo) / span, 0, 1); }) };
+  });
+  /* NO `chart-in` on a deck chart: it re-animates on every render, and twenty
+     charts fading in on every click is both a cost and an unpleasant read. A
+     chart built when its panel opens animates once, by arriving. */
+  return '<div class="hist-wrap" data-chart="' + chart.id + '">' + lineChart({
+    cls:'hist-chart nofade', w:720, h:220, padR:124,
+    label:chart.title,
+    series:series, xLabels:xs,
+    axis:function (t) { return v11Fmt(fr.lo + (1 - t) * span, chart.axis); },
+    value:function (v) { return v11Fmt(fr.lo + v * span, chart.axis); }
+  }) + '</div>';
+}
+function v11ChartNote(chart) {
+  if (chart.src === 'v11') return v11ColNote(chart.keys.map(function (s) { return s.k; }));
+  return V11_SRC[chart.src].note();
+}
+/* A panel emits the chart if its fold is open, otherwise a SLOT that v7Folds
+   fills the moment the reader opens it. */
+function v11ChartPanel(chart) {
+  var open = !v7FoldState('record', chart.title);
+  var body = open ? (v11ChartHtml(chart) || '<div class="empty-state">Two closed sessions are needed before this can be drawn.</div>')
+                  : '<div class="chart-slot" data-chart-slot="' + chart.id + '"></div>';
+  return '<div class="panel"><h2>' + esc(chart.title) + '</h2>' + body +
+    '<p class="hint chart-note">' + esc(v11ChartNote(chart)) + '</p></div>';
+}
+function v10FillChartSlots(root) {
+  (root || document).querySelectorAll('[data-chart-slot]').forEach(function (slot) {
+    var id = slot.getAttribute('data-chart-slot');
+    var chart = V10_RECORD_CHARTS.filter(function (c) { return c.id === id; })[0];
+    if (!chart) return;
+    slot.outerHTML = v11ChartHtml(chart) || '<div class="empty-state">Two closed sessions are needed before this can be drawn.</div>';
+  });
+}
+function v11RecordDeck() {
+  return '<div class="panel"><h2>The Record in Figures</h2>' +
+    '<p class="hint">Twenty charts, the whole campaign by default. Open the one you want; they are drawn as they are opened.</p>' +
+    v11RangeStrip() + '</div>' +
+    V10_RECORD_CHARTS.map(v11ChartPanel).join('');
+}
+/* Every deck panel starts collapsed except the Long Record, which is the chart
+   the page has always opened on. */
+var v11DefaultCollapsedBase = v7DefaultCollapsed;
+v7DefaultCollapsed = function (tab, title) {
+  if (tab === 'record' && V10_RECORD_CHARTS.some(function (c) { return v7FoldKey('record', c.title) === v7FoldKey('record', title); })) return true;
+  return v11DefaultCollapsedBase(tab, title);
+};
+/* The range chips. Delegated at the document, the way the v8 and v9 command
+   delegates are, so the strip survives every re-render without rebinding.
+   Changing the range CLEARS the remembered horizontal scroll for every chart:
+   the offset was measured against a much wider box and would otherwise land
+   somewhere meaningless, or leave a box that no longer overflows holding a
+   stale value. */
+document.addEventListener('click', function (e) {
+  var b = e.target && e.target.closest && e.target.closest('[data-recrange]');
+  if (!b) return;
+  if (!S || !S.uiPrefs) return;
+  S.uiPrefs.recRange = b.getAttribute('data-recrange');
+  UI.chartScroll = {};
+  render();
+});
+var v11ViewRecordBase = viewRecord;
+viewRecord = function () {
+  var html = v11ViewRecordBase();
+  /* Splice AFTER the Long Record's own panel, so the deck reads as a
+     continuation of the chart the owner already knows. The marker is the
+     panel v6 emits at :13423 and it is not one of the two literals the v8 and
+     v9 wrappers splice on, so their inserts are untouched. */
+  var marker = '<div class="panel"><h2>The Long Record</h2>';
+  var i = html.indexOf(marker);
+  if (i < 0) return html + v11RecordDeck();
+  /* the Long Record panel closes at the first '</div><div class="panel">' after
+     its heading — not by counting divs, and not on the two literals the v8 and
+     v9 wrappers splice on, so their inserts stay where they put them */
+  var b = html.indexOf('</div><div class="panel">', i);
+  var end = b < 0 ? html.length : b + '</div>'.length;
+  return html.slice(0, end) + v11RecordDeck() + html.slice(end);
+};
 
 /* ---------- boot ---------- */
 (function () {
