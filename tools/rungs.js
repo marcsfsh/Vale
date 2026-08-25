@@ -311,7 +311,12 @@ async function check() {
   const mean = lens.length ? Math.round(lens.reduce((a, b) => a + b, 0) / lens.length) : 0;
   console.log('statutes with prose : ' + total + ' of ' + game.length);
   console.log('rung descriptions   : ' + lens.length + ', mean ' + mean + ' chars');
-  if (mean > 250 && lens.length) console.log('NOTE mean is above the 250-char budget; the size ratchet is finite.');
+  /* The target is 230, measured: the first batch came in at 257, which
+     projected to 2,985,518 bytes at 582 statutes and left 14 KB of margin.
+     This is a note, not a failure: a batch that runs long is a size problem to
+     be decided on, not prose to be cut by a regex. */
+  if (mean > 230 && lens.length) console.log('NOTE mean ' + mean + ' is above the 230-char target; at ' + mean +
+    ' chars a full book of 2,328 rungs runs about ' + Math.round(mean * 2328 / 1024) + ' KB of prose alone.');
   if (fail.length) {
     console.log('\n' + fail.length + ' PROBLEM(S):');
     fail.slice(0, 40).forEach(f => console.log('  ' + f));
