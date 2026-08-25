@@ -429,6 +429,99 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
+## The constitution (S11d)
+
+Forty-eight articles in eight books on the `state` tab, assembled over a
+campaign. Before this slice the tab rendered ten FORMS as informational cards
+with no button, the transitions open from the current form, a dissolve button
+and the path panels — seventeen controls on a fresh game, thirteen of them
+identical every session for two hundred sessions.
+
+**The document is `st.v11.con`, created-on-write.** A save without one has an
+*unwritten* constitution, which is the historical state of every campaign begun
+before this slice: nothing is lost, because nothing was there, so there is no
+migration and nothing to announce. Shape:
+`{arts:{id → {year, margin, entrenched, turn}}, order:[id], pending, failed:{}, conv, convUsed}`.
+
+**Ratification is a vote.** `doTransition` takes capital and applies; an article
+is **laid** (`v11ProposeArticle`), **contested for two sessions** while the
+parties take positions and `salience.federal` rises, and then **put** by
+`v11ConTick` from the v10 `tickTurn` wrapper — before `v11HistTick`, so the
+record deck shows the session an article carried rather than the one after.
+Only one may be before the country at a time. `v11CampaignArticle` spends
+capital to move the vote, which is what makes two sessions a decision rather
+than a wait. A defeat costs capital, five of unity and two of unrest, records
+the year in `failed`, and bars the question for six sessions.
+
+**Entrenchment is what makes it a constitution rather than a settings page.**
+`V11_THRESH` — plain **50%**, entrenched **60%** to carry, **66.7%** to strike
+out again. `Of Procedure` moves every later bar (`mods.ratify`), and a sitting
+convention lowers every bar by eight for six sessions. A convention costs 24
+capital and **two is all any republic gets**; otherwise it is a discount a
+patient player always takes.
+
+**`v11ConEffects(st)` is the one place that computes, on the `v10OrderMods`
+pattern — recomputed, never cached.** EVERY field has a named reader, and the
+comment above it says which:
+
+| field | reader |
+|---|---|
+| `term` | `isBallotTurn` |
+| `capital` | `capitalIncome` |
+| `ratify` | `v11ConThreshold` |
+| `franchise` | `franchiseLevel` |
+| `autonomy` | `v11AutonomyPressure` (S11c) |
+| `emergency` | `securityState` |
+| `libFloor`, `ind` | `indicatorTargets` |
+| `unrest` | `unrestTarget` |
+| `polCost` | `policyCost` |
+| `rev`/`exp` | `budget` |
+| `senate` | `v11ArtSupport` — a party's stake in the upper house decides how it votes on the upper house |
+
+A change that is a permanent **fact** about the state rather than a standing
+modifier — seating justices, ending a veto, changing the electoral system — is
+done in the article's own `apply()`, not aggregated. There is no such thing as
+half a justice.
+
+**`franchiseLevel` MUST return an integer in 0..2.** Three consumers index a
+three-element array with it: `b.fr[fr]` in `supportTargets` (:6788 — the ballot
+weight itself), `b.fr[fr]` on the Parties page, and a three-element label array
+on the Overview. A fractional level reads `undefined` out of all three, and
+`b.pop * undefined` is **NaN propagating into the vote model with nothing on
+screen to say so**. Article contributions may be fractional — two half-steps
+make a step — but the sum is rounded and clamped, and `roads.js` sweeps all
+**128 subsets** of the seven franchise articles asserting both the domain and
+that `supportTargets` stays finite.
+
+**`isBallotTurn` generalises without moving anything.** It was
+`t > 1 && t % 2 === 1`; it is now `t > 1 && (t - 1) % term === 0`, which is the
+same function at `term = 2`. It reads the global `S`, in the idiom `actBlocked`
+already uses — the function takes only a turn number and all five call sites
+pass nothing else — and calls `v11BallotTurnBase` whenever the document says
+nothing about the calendar. `roads.js` checks the identity at **every turn of a
+full epic**, because a silent off-by-one here moves every ballot in every save.
+
+**`actBlocked` was broken and is fixed.** Its first line was
+`if (a.house !== 'Senate') return false`. But `house` on an ACT is the **book it
+is filed under on the page** — 'Senate', 'Supreme Court', 'Elections' — not the
+chamber that votes on it, so a Senate with a full veto sat and watched every act
+it was not itself the subject of go straight past. It now considers any act,
+using the same lean `actCost` already assigns by book, and keeps all three
+original exemptions: two are how a suspended Senate is restored, the third is
+the act that makes it elected. Measured: **6 of 25** non-Senate acts are now
+refused by a hostile Senate that previously refused none.
+
+**The constitution came home.** Twenty of the thirty-two constitutional acts
+rendered on other tabs and nowhere here, and `S.precedents` — which gates two of
+the transitions *on this very page* — was earned on the Executive page and shown
+to nobody. Both are on the tab now.
+
+**The eight books and the acts panel arrive COLLAPSED** (`v7DefaultCollapsed`
+reassigned, alias `v11dDefaultCollapsedBase`); the document and what is before
+the country do not. Every book title is distinct after `v7FoldKey`'s
+normalisation — asserted, because that normalisation strips a trailing number
+and lowercases, and one shared key would govern several books at once.
+
 ## The dice (S3)
 
 **The enrich chain's guard must stay outermost.** Each chunk wraps

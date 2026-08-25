@@ -580,6 +580,54 @@ async function run() {
       `${deck.msCollapsed}ms a render collapsed; opening one fills it (${deck.keyed}) and saves the preference: ${deck.prefSaved}; ` +
       `the range chip saves and clears the remembered scroll: ${deck.rangeSaved && deck.scrollCleared}`);
 
+    // -- S11d: the Constitution page renders the document and a real vote
+    const con = await page.evaluate(() => {
+      const keep = { capital:S.capital, ruling:S.ruling, coalition:S.coalition, turn:S.turn };
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me]; S.capital = 200;
+      UI.tab = 'state'; render();
+      const out = {};
+      const titles = [...document.querySelectorAll('#view .panel h2')].map(h => h.textContent.trim());
+      out.titles = titles.length;
+      out.hasDoc = titles.some(t => /Constitution of Vale/.test(t));
+      out.hasPending = titles.some(t => /Before the Country/.test(t));
+      out.hasActs = titles.some(t => /Constitutional Acts/.test(t));
+      out.books = V11_BOOKS.filter(b => titles.indexOf(b.name) >= 0).length;
+      /* the books arrive COLLAPSED -- twenty-odd open panels on one tab is the
+         wall the sixth order asked to be rid of elsewhere */
+      out.collapsedOnArrival = V11_BOOKS.filter(b => v7DefaultCollapsed('state', b.name.toLowerCase())).length;
+      out.artButtons = document.querySelectorAll('#view [data-art]').length;
+      /* lay one through the real button, not the model */
+      const btn = document.querySelector('#view [data-art]:not([disabled])');
+      out.clickable = !!btn;
+      if (btn) {
+        const id = btn.getAttribute('data-art');
+        btn.click();
+        out.laid = !!(S.v11 && S.v11.con && S.v11.con.pending && S.v11.con.pending.id === id);
+        render();
+        out.pendingShown = /Before the Country/.test(document.getElementById('view').innerHTML) &&
+          document.querySelectorAll('#view [data-artcampaign]').length === 1;
+        /* and it survives a save and a reload of the blob */
+        const blob = JSON.stringify(S);
+        const back = JSON.parse(blob);
+        out.ridesTheSave = !!(back.v11 && back.v11.con && back.v11.con.pending && back.v11.con.pending.id === id);
+        /* put it */
+        S.turn = S.v11.con.pending.due; v11ConTick(S);
+        out.resolved = !S.v11.con.pending;
+        out.docOrFailed = v11ConCount(S) === 1 || !!S.v11.con.failed[id];
+      }
+      S.capital = keep.capital; S.ruling = keep.ruling; S.coalition = keep.coalition; S.turn = keep.turn;
+      if (S.v11) S.v11.con = { arts:{}, order:[], pending:null, failed:{}, conv:0, convUsed:0 };
+      UI.tab = 'chamber'; render();
+      return out;
+    });
+    step('constitution-page', con.hasDoc && con.hasPending && con.hasActs && con.books === 8 &&
+      con.collapsedOnArrival === 8 && con.artButtons >= 40 && con.clickable && con.laid &&
+      con.pendingShown && con.ridesTheSave && con.resolved && con.docOrFailed,
+      `${con.titles} panels: the document, what is before the country, ${con.books} books (all ${con.collapsedOnArrival} collapsed on arrival) and the acts; ` +
+      `${con.artButtons} article controls; laying one through its own button puts it before the country (${con.laid}), ` +
+      `the pending panel appears with its campaign control (${con.pendingShown}), it rides the save (${con.ridesTheSave}), and two sessions later it is put (${con.resolved})`);
+
     step('chairs-and-pools', late.chairButtons > 0 && late.chairNamed && late.questionPool >= 160 && late.paperPool >= 32 && late.powers >= 11,
       `${late.chairButtons} chair controls while leading, chairs are named: ${late.chairNamed}; ` +
       `${late.questionPool} questions, ${late.paperPool} papers, ${late.powers} powers`);
