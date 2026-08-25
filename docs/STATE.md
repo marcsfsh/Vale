@@ -4,7 +4,121 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S12 — The Statute Book Speaks** (PR #38), fifth of six. Five books authored:
+**S12 — The Statute Book Speaks** (PR #39), sixth of six. **The slice is
+complete.** Empire, Imperium, the People's State and The Charter close the book:
+126 statutes, 504 rung descriptions and 126 refreshed one-line descriptions.
+
+**Every statute in the game now speaks: 582 of 582, 2,328 rung descriptions and
+582 refreshed one-liners. 2,910 pieces of authored prose**, which is the number
+the owner's order specified. The file stands at **2,951,257 bytes of the
+3,100,000 allowed**, against a projection of 2,948,134 made three batches ago.
+
+### The three asks, all delivered
+
+| ask | where |
+|---|---|
+| very easy pays a minimum of seventy-five capital a session | PR #34, `capFloor` in a new outermost wrapper |
+| every policy category reads twenty-four | PR #34, the eleven gated statutes render locked with their condition |
+| every policy gets a refreshed description and one per rung | PRs #34 to #39, 2,910 pieces |
+
+### The last batch
+
+The three imperial books were authored as one corpus on purpose. Imperium's
+thirty-nine and the People's State's forty-three were **sharded by group** so no
+agent held more than twenty-one statutes, each shard reading its whole book
+first: the five shards covered both books exactly, no statute written twice and
+none dropped. The verify pass found **71 passages, all repaired**, and
+substitutable led for the first time in six batches at twenty-three, which is
+what writing three books about empire together was meant to expose.
+
+| | placements | exact | tau |
+|---|---|---|---|
+| drafts as authored | 87.5 / 86.9% | 77.5 / 75.0% | 0.908 |
+| **after repair** | **93.1 / 91.9%** | **87.5 / 85.0%** | **0.950 / 0.942** |
+| shipped baseline | 78.1% | 57.5% | 0.833 |
+
+The highest ordering scores of the project, on the batch that was hardest by
+construction. Four ladders resist both readers and are named rather than swept:
+`honours`, `imperialGuilds`, `shockWork`, `wardsOfTheCapital`.
+
+**The Charter got a tier vocabulary of its own**, `Granted / Chartered /
+Extended / Sovereign`, having been the only one of twenty-three books with no
+`V9_TIERS` row. Display only, checked rather than assumed at all three call
+sites, and verified after the change: Taxation and Imperium unmoved at Punitive
+and Total.
+
+### The style guide taught its own tic
+
+With all 582 statutes in place the corpus rules fired eight times, and the
+dominant finding was one sentence shape across thirteen books: **"the Economy
+takes the ___" in fourteen statutes, "the Economy carries the ___" in sixteen,
+"the technology sector ___" in twenty-one.**
+
+The origin is traceable. The worked example in the house style guide ends
+*"Revenue roughly doubles and the Economy carries the drag"*, and all twenty-five
+authoring agents were anchored to it. **The gold standard propagated its own
+sentence shape into the corpus.** Nothing in the pipeline was watching for a
+teaching example transmitting more than it intended, and no per-book reader could
+have seen it. 48 fields were rewritten; the three families now stand at three
+statutes each.
+
+### Two rules narrowed on measurement, and one demoted
+
+The overuse rule was wrong twice, one level apart. On the fourth batch it fired
+on the bloc names "Students and Young Workers" and "Small Business and Farmers",
+which the style brief **requires** the prose to use; exempting grams that sat
+inside a name fixed those. On this batch it produced three more straddling the
+edge of a name rather than sitting inside it: "and small business and", "business
+and farmers who", "and civil liberties fall". A gram three quarters made of
+required vocabulary is still measuring the vocabulary. Names are now masked out
+of the word stream before grams are built.
+
+Earlier in the slice the **specificity floor** was demoted to a note at eighteen
+per cent measured precision, and the repair validator's **prefix test** was
+replaced with a whole-string test after reporting three correct repairs as
+unrepaired. Four instrument corrections in six batches, each on a measurement
+rather than an argument.
+
+### What the arc of the measurements shows
+
+| batch | drafts, exact | after repair | repair cost |
+|---|---|---|---|
+| PR 3 | 37.5 / 30.0% | 72.5 / 75.0% | 64 statutes, 123 fields |
+| PR 4 | 75.0 / 80.0% | 85.0 / 85.0% | 7 statutes, 17 fields |
+| PR 5 | 72.5 / 72.5% | 85.0 / 85.0% | 9 statutes, 25 fields |
+| PR 6 | 77.5 / 75.0% | 87.5 / 85.0% | 7 statutes, 23 fields |
+
+PR 3 failed its own measurement and the diagnosis produced two permanent changes:
+**the ordering run moved ahead of `--apply`**, and the **one-axis rule** went into
+the authoring brief. Every batch after it cleared the shipped baseline on raw
+authoring output, and the repair bill fell by roughly seven times and stayed
+there.
+
+**Whole-corpus measurements, taken blind on the finished book:**
+
+| measurement | result | chance |
+|---|---|---|
+| attribution, 120 samples across all 23 books | **118/120, 98.3%** | 12.5% |
+
+Both misses are near neighbours inside their own book: The Emergency Censor read
+as the Information Standards Act, the Counterterrorism Programme as the
+Radicalisation Referral Scheme.
+
+```
+ALL CHECKS PASS   11/11, 2,951,257 bytes of 3,100,000
+ROADS OK          90 assertions, including 582 of 582 statutes carrying four
+                  distinct rungs, none repeated within a statute or between two
+RUNGS OK          2,328 descriptions, mean 240
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+Next: **Marker/seam consolidation**, the item deferred out of S2 and S6 and the
+largest remaining stabilisation work. 25 literal splice markers; dead-body
+ratchet 5 to 0.
+
+Previously: **S12 — The Statute Book Speaks** (PR #38), fifth of six. Five books authored:
 **Defence, Authority, Elections, Federalism and Foreign**, 120 statutes, 480 rung
 descriptions and 120 refreshed one-line descriptions.
 
@@ -69,10 +183,6 @@ TIERS             no width scrolls sideways
 Five ladders still resist both readers and are named rather than swept:
 `conscientiousObjection`, `curfewAuthority`, `loyaltyOaths`,
 `multilateralAccession`, `overseasVoting`.
-
-Next: **PR 6**, Empire, Imperium, People's State and The Charter — 126 statutes,
-the last of the book. It also gives The Charter the `V9_TIERS` row it has never
-had.
 
 Previously: **S12 — The Statute Book Speaks** (PR #37), fourth of six. Four books authored:
 **Energy, Environment, Infrastructure and Technology**, 96 statutes, 384 rung
@@ -1512,6 +1622,7 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 3 | **merged** (#36) | Culture, Immigration, Justice and Security: 384 rung descriptions and 96 refreshed one-liners; the batch failed its own rung-order measurement at 37.5% against a 57.5% shipped baseline, two rival explanations were tested and killed, and 123 rung fields across 64 statutes were rewritten to climb one axis; re-measured on the same forty ladders it reads 72.5% and 75.0% |
 | S12 prose, batch 4 | **merged** (#37) | Energy, Environment, Infrastructure and Technology: the first batch authored under the one-axis rule and the first measured before apply; drafts cleared the shipped baseline unrepaired at 75.0 and 80.0 per cent exact, repair cost 17 rung fields against the previous batch's 123, and after it both blind readers returned 92.5 / 85.0 / 0.950; the overuse rule was narrowed after firing on two bloc names |
 | S12 prose, batch 5 | **merged** (#38) | Defence, Authority, Elections, Federalism and Foreign: 480 rung descriptions and 120 refreshed one-liners; drafts cleared the baseline unrepaired again and both blind readers returned identical scores at every stage, 92.5 / 85.0 / 0.950 after a 9-statute repair; attribution 60 of 60; the corpus rule caught a phrase four agents had independently converged on across three batches |
+| S12 prose, batch 6 | **merged** (#39) | Empire, Imperium, People's State and The Charter close the book: 582 of 582 statutes speak, 2,910 pieces of authored prose; the two largest books sharded by group covered both exactly; highest ordering scores of the project at 93.1 / 87.5 / 0.950; whole-corpus blind attribution 118 of 120; the style guide's own worked example was found to have propagated its sentence shape into 21 statutes across 13 books |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
