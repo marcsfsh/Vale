@@ -6669,6 +6669,22 @@ function unrestTarget(st) {
   var v = 6 + d * 2.1;
   v += Math.max(0, st.ind.poverty - 50) * .35;
   v -= (st.ind.safety - 50) * .3;
+  /* S11c: the field guide has always told the player that "public safety and
+     regional order" lower unrest. Regional order was never read here — the
+     eight numbers moved by nine of the fifteen buttons on the Federation page
+     reached one governor's approval and nothing else. Now the worst-governed
+     region is a national fact, and the gap between the richest and poorest is
+     too. */
+  if (st.regions) {
+    var wOrder = 100, n = 0, mOrder = 0;
+    REGIONS.forEach(function (r) { var q = st.regions[r.id]; if (!q) return;
+      n++; mOrder += q.order; if (q.order < wOrder) wOrder = q.order; });
+    if (n) {
+      v += Math.max(0, 46 - wOrder) * .22;
+      v -= (mOrder / n - 50) * .12;
+    }
+    if (typeof v11Disparity === 'function') v += Math.max(0, v11Disparity(st) - 24) * .18;
+  }
   v += FORMS[st.form].unrest;
   var ss = securityState(st);
   v -= Math.min(18, ss * .22);
@@ -11718,6 +11734,22 @@ function v6GovernorElections(st, early) {
 function v6GovernorAction(id, action) {
   var r = REGION[id], g = S.v6.governors[id], q = S.regions[id]; if (!r || !g || !q) return;
   var me = playParty(S);
+  /* S11c: `meet` and `works` went through pv5Spend, which checks only money —
+     so standing could be bought from nothing to a hundred in three clicks in a
+     single session, and standing's only consequence was gating a 30%-chance
+     event. The other levers on this page have always had a two-session
+     cooldown; these two now do too, and standing is worth having because the
+     regional term reads it. */
+  if (action === 'meet' || action === 'works') {
+    S.regionCooldown = S.regionCooldown || {};
+    var ck = id + ':gov' + action, last = S.regionCooldown[ck];
+    if (last !== undefined && S.turn - last < 2) {
+      flash(action === 'meet' ? 'The governor was seen this session already.'
+                              : 'A joint programme is already being signed in ' + r.name + '.');
+      return;
+    }
+    S.regionCooldown[ck] = S.turn;
+  }
   if (action === 'meet') {
     if (!pv5Spend(2, 0, 'Meet the governor of ' + r.name)) return;
     g.standing = c100(g.standing + 11); q.federal = c100(q.federal + 3); S.v6.stats.governorsMet++;
@@ -18538,6 +18570,9 @@ tickTurn = function (st) {
   /* S10c: the order book's session. Defined further down the chunk, so guard
      the reference the way the v4 base guards its own forward hooks. */
   if (typeof v10OrdersTick === 'function') v10OrdersTick(st);
+  /* S11c: the country outside the capital, then what it costs to ignore. */
+  if (typeof v11EconomyTick === 'function') v11EconomyTick(st);
+  if (typeof v11AutonomyTick === 'function') v11AutonomyTick(st);
   /* S11a: the record deck's own recorder, last in the chain so every earlier
      tick has already moved what it reads. */
   if (typeof v11HistTick === 'function') v11HistTick(st);
@@ -22386,6 +22421,415 @@ viewRecord = function () {
   var b = html.indexOf('</div><div class="panel">', i);
   var end = b < 0 ? html.length : b + '</div>'.length;
   return html.slice(0, end) + v11RecordDeck() + html.slice(end);
+};
+
+/* ============================================================
+   S11c — THE FEDERATION
+   The owner: "extremely bare/repetitive with not much impact from the things
+   you do there." The survey found the arithmetic behind that. A region's
+   prosperity, services and order reached ONE governor's approval score and a
+   single arc trigger. The only channel from a region to the national vote was
+   regionPartyFactor, and it was almost entirely a function of eight FROZEN
+   `lean` literals: the one live term was the ruling party's federal-trust
+   nudge, worth about +4.7% at ninety across all eight regions and clamped to
+   [.86, 1.15].
+
+   Per-region seat allocation was considered and rejected. `ballot` produces ONE
+   national vote-share map and already averages the regions through this
+   function; `runElection` renews a third of a flat {partyId:n} with no
+   per-region structure to carry across; and a naive largest-remainder across
+   eight regions hands ~24 seats to whoever leads each region purely from
+   ROUNDING — which would have looked exactly like the feature working. So
+   allocateSeats, ballot, runElection, projection, hemiMap and CFG are all
+   untouched here, and the seat-total invariants hold by construction.
+
+   Instead the term itself is rebuilt. THE OWNER'S RULING: a clean
+   eight-governor sweep is worth about forty Assembly seats — a ~3-point
+   national swing. The federation is a power base.
+
+   TWO THINGS THAT MAKE THE ARITHMETIC UNOBVIOUS, both measured:
+   - this factor is applied TWICE on one ballot (:6786 in supportTargets and
+     :6862 in ballot), so every coefficient is felt at roughly its square;
+   - the old clamp of [.86, 1.15] clipped the BOTTOM at this size: the worst
+     flank readings land at .847 and .854, so RSF and PNL had their regional
+     penalty shaved. It widens to [.80, 1.22]. Measured honestly, the top of
+     that span is headroom, not a live constraint — see the clamp itself.
+   ============================================================ */
+/* Measured, not guessed. At gain 1 a clean eight-governor sweep was worth
+   +130 Assembly seats — the factor is applied TWICE on one ballot and the
+   allocation amplifies again, so the naive coefficients overshot the owner's
+   forty by more than three times. Tuned against tools/pacing.js and the
+   measurement in the PR. */
+var V11_REGION_GAIN = 0.23;
+var V11_REGION_SPAN = [.80, 1.22];
+var v11RegionFactorBase = regionPartyFactor;
+regionPartyFactor = function (st, pid) {
+  /* A reassignment rather than a wrapper: the pop-weighted mean is collapsed by
+     the time a wrapper would see it, so there is nothing left to weight. */
+  var pos = ppos(st, pid), total = 0, weight = 0;
+  var me = playParty(st), gov = (st.v6 && st.v6.governors) || {};
+  var auto = (st.v6 && st.v6.autonomy) || {};
+  var targets = (st.campaign && st.campaign.targets) || {};
+  REGIONS.forEach(function (r) {
+    var q = st.regions[r.id]; if (!q) return;
+    var d = dist2(pos, r.lean);
+    var fit = clamp(1.08 - d * .16, .82, 1.12);
+    /* EVERY regional term below is a deviation from 1, summed and then scaled
+       by ONE constant. That is deliberate: this factor is applied twice on a
+       ballot and the allocation amplifies again, so the only honest way to hit
+       a seat target is to tune a single number against a measurement rather
+       than to guess eleven coefficients. V11_REGION_GAIN is that number and
+       the PR reports what it was measured at. */
+    var bonus = 0;
+    var g = gov[r.id];
+    if (g && g.party === pid) {
+      /* a governor of your own colour, and how well they are thought of */
+      bonus += .055 + (clamp(g.standing, 0, 100) - 50) / 900 + (clamp(g.approval, 0, 100) - 50) / 1100;
+    } else if (g && g.party && g.party !== pid) {
+      bonus -= .040 + Math.max(0, clamp(g.standing, 0, 100) - 55) / 1500;
+    }
+    /* the machine on the ground: organiser dots bought on the Campaign page,
+       which until now collapsed into one national scalar and never reached a
+       region's own vote */
+    if (pid === me) bonus += Math.min(3, targets[r.id] || 0) * .019;
+    /* how the region is actually governed. The owner's complaint in one line:
+       these three numbers moved nine of the fifteen buttons on the page and
+       reached nothing at all. */
+    var care = (clamp(q.prosperity, 0, 100) - 50) * .00075 +
+               (clamp(q.services, 0, 100) - 50) * .00065 +
+               (clamp(q.order, 0, 100) - 50) * .00045;
+    /* ASYMMETRIC ON PURPOSE. A government is judged on the regions it governs
+       far more harshly than it is rewarded for them, and the seat allocator
+       already amplifies whatever the leader does — so a symmetric coefficient
+       tuned to make a sweep worth forty seats makes neglect worth almost
+       nothing. Measured: at parity the same factor gave +45 for a sweep and
+       −8 for abandoning every region. Penalties count nearly double. */
+    var govSide = (pid === st.ruling || ((st.coalition || []).indexOf(pid) >= 0));
+    if (govSide) bonus += care * (care < 0 ? 1.9 : 1);
+    else bonus -= care * .55;
+    if (pid === st.ruling) {
+      var fed = (q.federal - 50) / 620;
+      bonus += fed * (fed < 0 ? 1.9 : 1);
+    }
+    /* an opposition party that holds a well-regarded governorship is building
+       something, and the allocator will not hand it the leader's remainder —
+       so the term has to be bigger on that side to be felt at all */
+    if (!govSide && g && g.party === pid) bonus += .085;
+    /* a region outside federal authority is not listening to the centre */
+    if (auto[r.id] && govSide) bonus -= .07;
+    fit *= 1 + bonus * V11_REGION_GAIN;
+    var w = (typeof q.pop === 'number' ? q.pop : r.pop);
+    total += fit * w; weight += w;
+  });
+  var f = weight ? total / weight : 1;
+  if (pid === playParty(st) && st.doctrine === 'organiser') f += .018;
+  /* The clamp was [.86, 1.15]. A proof-of-failure run put the honest numbers
+     on it: at gain .23 the factor runs .847 .. 1.028 across every party at
+     both extremes, so the OLD LOW BOUND clips (the worst RSF and PNL readings
+     sit below .86 and were being shaved) while the old high bound of 1.15 is
+     never approached. Restoring [.86, 1.15] does NOT on its own break the
+     roads assertion that the flank parties can be moved in the regions — what
+     was stopping that was the absence of the terms above, not this line. The
+     span is widened both ways: the low end because it demonstrably clips, the
+     high end as headroom for a retune of V11_REGION_GAIN. */
+  return clamp(f, V11_REGION_SPAN[0], V11_REGION_SPAN[1]);
+};
+/* The map at the close of the count, the governor model and the ballot must
+   agree, or a region flips on screen for reasons the arithmetic did not use. */
+/* NOTE the signature: this takes a REGION, not a state — both callers
+   (:9534 and :16436, the post-count map) pass one, and reading it as (st, r)
+   throws on the first election of the campaign. */
+var v11RegionLeadingBase = regionLeadingParty;
+regionLeadingParty = function (r) {
+  if (!r || !r.id || !S.regions || !S.regions[r.id]) return v11RegionLeadingBase(r);
+  var best = null, bv = -1, q = S.regions[r.id];
+  PARTIES.forEach(function (p) {
+    if (S.banned && S.banned[p.id]) return;
+    var d = dist2(ppos(S, p.id), r.lean);
+    var v = (S.psupport[p.id] || 0) * clamp(1.08 - d * .16, .82, 1.12);
+    var g = S.v6 && S.v6.governors && S.v6.governors[r.id];
+    if (g && g.party === p.id) v *= 1.09 + (clamp(g.standing, 0, 100) - 50) / 700;
+    if (p.id === S.ruling) v *= 1 + (q.federal - 50) / 620;
+    if (v > bv) { bv = v; best = p.id; }
+  });
+  return best || S.ruling;
+};
+/* What the standing is currently worth, in seats, on the page where it is
+   built. Without this the effect is real and unfelt. */
+function v11RegionalSeats(st) {
+  var keepG = st.v6 && st.v6.governors ? JSON.parse(JSON.stringify(st.v6.governors)) : null;
+  var keepQ = JSON.parse(JSON.stringify(st.regions));
+  var keepT = st.campaign && st.campaign.targets ? JSON.parse(JSON.stringify(st.campaign.targets)) : null;
+  var me = playParty(st), withIt = 0, without = 0;
+  try {
+    withIt = ((projection(st) || {}).seats || {})[me] || 0;
+    /* the counterfactual: every region neutral, no governor of yours, no
+       organisers — what the same national position is worth with nothing built */
+    REGIONS.forEach(function (r) {
+      var q = st.regions[r.id]; if (!q) return;
+      q.prosperity = 50; q.services = 50; q.order = 50; q.federal = 50;
+      if (st.v6 && st.v6.governors && st.v6.governors[r.id]) st.v6.governors[r.id].party = null;
+      if (st.campaign && st.campaign.targets) st.campaign.targets[r.id] = 0;
+    });
+    without = ((projection(st) || {}).seats || {})[me] || 0;
+  } catch (e) { withIt = without = 0; }
+  st.regions = keepQ;
+  if (keepG && st.v6) st.v6.governors = keepG;
+  if (keepT && st.campaign) st.campaign.targets = keepT;
+  return Math.round(withIt - without);
+}
+
+/* ---------- the country outside the capital, and what it costs to ignore ----
+   `r.pop`, `r.wealth` and `r.urban` live on the top-level REGIONS literal,
+   which is NOT serialised, is not rewound by undo, leaks into a new campaign
+   started in the same page load, and is corrupted by every v6Sandbox forecast.
+   So the mutable economy lives on st.regions[id], which rides the save; the
+   literals stay as the founding values they always were. */
+var V11_TRADES = {
+  industry:   { name:'Industry',    tag:'mills and yards',        ind:'infrastructure' },
+  agriculture:{ name:'Agriculture', tag:'the harvest',            ind:'agriculture' },
+  ports:      { name:'Shipping',    tag:'the wharves',            ind:'economy' },
+  finance:    { name:'Finance',     tag:'the exchanges',          ind:'technology' },
+  extraction: { name:'Extraction',  tag:'the seams and the rigs', ind:'energy' },
+  administration:{ name:'Administration', tag:'the departments',  ind:'education' }
+};
+var V11_TRADE_OF = { somnium:'ports', rigel:'industry', cassian:'finance', thaxia:'agriculture',
+  tenebris:'extraction', meridian:'agriculture', marches:'extraction', district:'administration' };
+function v11Region(st, id) {
+  var q = st.regions && st.regions[id]; if (!q) return null;
+  if (q.pop === undefined) { var r = REGION[id]; q.pop = r ? r.pop : 12; }
+  if (q.wealth === undefined) { var r2 = REGION[id]; q.wealth = r2 ? r2.wealth : 50; }
+  if (q.trade === undefined) q.trade = V11_TRADE_OF[id] || 'industry';
+  if (q.output === undefined) q.output = 50;
+  return q;
+}
+function v11Disparity(st) {
+  var lo = 100, hi = 0;
+  REGIONS.forEach(function (r) { var q = v11Region(st, r.id); if (!q) return;
+    if (q.wealth < lo) lo = q.wealth; if (q.wealth > hi) hi = q.wealth; });
+  return Math.max(0, Math.round(hi - lo));
+}
+function v11EconomyTick(st) {
+  var totalPop = 0;
+  REGIONS.forEach(function (r) { var q = v11Region(st, r.id); if (q) totalPop += q.pop; });
+  REGIONS.forEach(function (r) {
+    var q = v11Region(st, r.id); if (!q) return;
+    var tr = V11_TRADES[q.trade] || V11_TRADES.industry;
+    /* what the region actually makes: its trade's national indicator, its own
+       prosperity, and the roads that carry it out */
+    var target = 30 + (st.ind[tr.ind] || 50) * .38 + (q.prosperity - 50) * .34 + (st.ind.infrastructure - 50) * .12;
+    q.output = c100(q.output + (target - q.output) * .17);
+    var wTarget = 34 + q.output * .42 + (q.prosperity - 50) * .2 - st.macro.unemployment * .4;
+    q.wealth = c100(q.wealth + (wTarget - q.wealth) * .11);
+  });
+  /* people move toward work. Slow, cumulative, and the whole reason a
+     disparity matters rather than merely being displayed. */
+  var mean = 0; REGIONS.forEach(function (r) { mean += v11Region(st, r.id).wealth; });
+  mean /= REGIONS.length;
+  REGIONS.forEach(function (r) {
+    var q = v11Region(st, r.id);
+    var pull = (q.wealth - mean) * .0016 * (totalPop / 100);
+    q.pop = Math.max(2, Math.round((q.pop + pull) * 100) / 100);
+  });
+  /* and the gap between the best and worst region is a national fact */
+  var gap = v11Disparity(st);
+  st.v11 = st.v11 || {}; st.v11.disparity = gap;
+}
+/* ---------- the ladder out of the union ----------
+   st.v6.autonomy was a boolean set by one branch of one arc and read by a
+   drain, a tag, a council line and a verdict penalty. A federation you can
+   lose needs steps between "in" and "gone". */
+var V11_AUTONOMY = [
+  { n:0, name:'Within the union',   note:'The writ of the capital runs here without qualification.' },
+  { n:1, name:'Devolved',           note:'Its assembly legislates on its own schedule of matters. The centre is asked, not obeyed.' },
+  { n:2, name:'Chartered',          note:'It holds a charter the courts will enforce against the capital.' },
+  { n:3, name:'Autonomous',         note:'Federal authority is nominal. Taxes are collected locally and remitted at its discretion.' },
+  { n:4, name:'In secession',       note:'It denies the union altogether. What happens next is not a matter for this page.' }
+];
+function v11AutonomyLevel(st, id) {
+  var v = st.v6 && st.v6.autonomy && st.v6.autonomy[id];
+  if (!v) return 0;
+  return typeof v === 'number' ? Math.max(1, Math.min(4, v)) : 1;
+}
+function v11AutonomyPressure(st, r) {
+  var q = v11Region(st, r.id); if (!q) return 0;
+  var g = st.v6 && st.v6.governors && st.v6.governors[r.id];
+  var p = 0;
+  p += Math.max(0, 46 - q.federal) * .9;
+  p += Math.max(0, 44 - q.prosperity) * .5;
+  p += Math.max(0, 42 - q.order) * .45;
+  if (g && g.party !== playParty(st)) p += 6;
+  if (g && g.standing < 30) p += 8;
+  p += Math.max(0, v11Disparity(st) - 22) * .5;
+  p -= Math.max(0, st.crown - 55) * .4;
+  return Math.max(0, Math.round(p));
+}
+function v11AutonomyTick(st) {
+  if (!st.v6) return;
+  st.v6.autonomy = st.v6.autonomy || {};
+  REGIONS.forEach(function (r) {
+    var lvl = v11AutonomyLevel(st, r.id), press = v11AutonomyPressure(st, r);
+    if (press > 46 && rand() < (press - 46) / 260) {
+      var next = Math.min(4, lvl + 1);
+      if (next !== lvl) {
+        st.v6.autonomy[r.id] = next;
+        logIt(st, r.name + ' moved to ' + V11_AUTONOMY[next].name.toLowerCase() + '.');
+        chronicle(st, r.name + ' is ' + V11_AUTONOMY[next].name.toLowerCase() + '.');
+        addNews(st, 'The Federation', r.name + ': ' + V11_AUTONOMY[next].name,
+          V11_AUTONOMY[next].note, next >= 3 ? 'bad' : 'warn');
+        st.crown = c100(st.crown - 3 - next);
+        st.unrest = clamp(st.unrest + next * 2, 0, 110);
+      }
+    } else if (lvl && press < 14 && rand() < .06) {
+      var back = lvl - 1;
+      if (back <= 0) delete st.v6.autonomy[r.id]; else st.v6.autonomy[r.id] = back;
+      logIt(st, r.name + (back <= 0 ? ' returned to the union.' : ' stepped back from ' + V11_AUTONOMY[lvl].name.toLowerCase() + '.'));
+      st.crown = c100(st.crown + 2);
+    }
+  });
+}
+
+/* ---------- six more levers, on the registry that already exists ----------
+   V9_REGION_ACTS is a registry with one generic handler, so an entry is one
+   object literal plus one arm. These six reach the economy, the disparity and
+   the ladder — the things the old eleven did not. */
+V9_REGION_ACTS.corridor = { label:'Trunk corridor', cost:6, money:12,
+  title:'A trunk road and a rail spur out of the region, built to carry what it makes. Output and roads rise; the money is gone for a decade.' };
+V9_REGION_ACTS.retrain = { label:'Retraining', cost:4, money:6,
+  title:'The mills close either way. This decides whether the people who worked in them stay.' };
+V9_REGION_ACTS.charterTalks = { label:'Charter talks', cost:5, money:4,
+  title:'Negotiate terms with a region drifting out of the union. Steps it back one rung, and the capital gives something up to do it.' };
+V9_REGION_ACTS.equalise = { label:'Equalisation grant', cost:5, money:14,
+  title:'Money moved from the richest region to this one, on a formula nobody in the richest region accepts.' };
+V9_REGION_ACTS.reTrade = { label:'Re-found the local economy', cost:8, money:18,
+  title:'Change what the region is for. Enormously expensive, slow to pay, and the only way a dying trade stops being its future.' };
+V9_REGION_ACTS.assemblySeat = { label:'Sit in their assembly', cost:3, money:0,
+  title:'The party takes the regional assembly seriously for once: candidates, agents and a presence between ballots.' };
+var v11RegionActionBase = regionAction;
+regionAction = function (id, action) {
+  var extra = ['corridor','retrain','charterTalks','equalise','reTrade','assemblySeat'];
+  if (extra.indexOf(action) < 0) return v11RegionActionBase(id, action);
+  var r = REGION[id], q = v11Region(S, id), spec = V9_REGION_ACTS[action];
+  if (!r || !q || !spec) return;
+  S.regionCooldown = S.regionCooldown || {};
+  var key = id + ':' + action, last = S.regionCooldown[key];
+  if (last !== undefined && S.turn - last < 2) { flash('That regional intervention is still working through.'); return; }
+  if (!inPower(S)) { flash('Only a government commands the federal purse.'); return; }
+  if (!pv5Spend(spec.cost, spec.money, spec.label + ' in ' + r.name)) return;
+  S.regionCooldown[key] = S.turn;
+  var me = playParty(S);
+  if (action === 'corridor') {
+    q.output = c100(q.output + 9); q.prosperity = c100(q.prosperity + 5); q.federal = c100(q.federal + 4);
+    S.ind.infrastructure = c100(S.ind.infrastructure + 1); S.ind.environment = c100(S.ind.environment - 1);
+  } else if (action === 'retrain') {
+    q.services = c100(q.services + 5); q.wealth = c100(q.wealth + 3);
+    S.macro.unemployment = Math.max(0, S.macro.unemployment - .4);
+    mood(S, { labour:3, youth:2 });
+  } else if (action === 'charterTalks') {
+    var lvl = v11AutonomyLevel(S, id);
+    if (!lvl) { flash(r.name + ' is inside the union; there is nothing to negotiate.'); return; }
+    var back = lvl - 1;
+    if (back <= 0) delete S.v6.autonomy[id]; else S.v6.autonomy[id] = back;
+    q.federal = c100(q.federal + 9); S.crown = c100(S.crown - 2);
+    if (S.v6.governors[id]) S.v6.governors[id].standing = c100(S.v6.governors[id].standing + 10);
+    logIt(S, r.name + ' stepped back from ' + V11_AUTONOMY[lvl].name.toLowerCase() + ' by agreement.');
+  } else if (action === 'equalise') {
+    var rich = null;
+    REGIONS.forEach(function (x) { var qq = v11Region(S, x.id); if (!qq || x.id === id) return;
+      if (!rich || qq.wealth > v11Region(S, rich).wealth) rich = x.id; });
+    q.wealth = c100(q.wealth + 7); q.services = c100(q.services + 5); q.federal = c100(q.federal + 6);
+    if (rich) { var rq = v11Region(S, rich); rq.wealth = c100(rq.wealth - 4); rq.federal = c100(rq.federal - 7);
+      logIt(S, 'An equalisation grant moved money from ' + REGION[rich].name + ' to ' + r.name + '.'); }
+    mood(S, { labour:2, smallbiz:-2, prof:-1 });
+  } else if (action === 'reTrade') {
+    var order = Object.keys(V11_TRADES), i = order.indexOf(q.trade);
+    q.trade = order[(i + 1 + Math.floor(rand() * (order.length - 1))) % order.length];
+    q.output = c100(q.output - 12); q.prosperity = c100(q.prosperity - 4); q.federal = c100(q.federal + 3);
+    logIt(S, r.name + ' was re-founded on ' + V11_TRADES[q.trade].tag + '.');
+    chronicle(S, r.name + ' turned to ' + V11_TRADES[q.trade].name.toLowerCase() + '.');
+  } else if (action === 'assemblySeat') {
+    S.campaign = S.campaign || {}; S.campaign.targets = S.campaign.targets || {};
+    S.campaign.targets[id] = Math.min(3, (S.campaign.targets[id] || 0) + 1);
+    q.attention = (q.attention || 0) + 1;
+    S.machine[me] = clamp((S.machine[me] || 0) + .02, -.8, 1);
+  }
+  logIt(S, 'The federal government opened a ' + spec.label.toLowerCase() + ' in ' + r.name + '.');
+  render();
+};
+
+/* ---------- the Federation page finally carries the federation ----------
+   The right-hand column of this tab was strategicRisksPanel(): five generic
+   national risk lines, nothing regional, half the page's width. The works
+   tagged by region render on `nation`, the eight region-targeted orders on
+   `exec`, and the tour's eight region options on `government` — so the tab
+   about the states showed no construction, no standing orders and no visits.
+   This wrapper runs AFTER v6's and v9's, whose splices are positional and
+   marker-based; by the time it sees the HTML both have finished, so adding
+   region cards here cannot mis-assign their inserts. */
+function v11StatesLedger() {
+  var rows = REGIONS.map(function (r) {
+    var q = v11Region(S, r.id); if (!q) return '';
+    var g = S.v6 && S.v6.governors && S.v6.governors[r.id];
+    var lvl = v11AutonomyLevel(S, r.id), tr = V11_TRADES[q.trade] || V11_TRADES.industry;
+    var works = (typeof v8ActiveWorks === 'function' ? v8ActiveWorks(S) : []).filter(function (w) { return w.region === r.id; });
+    var orders = (typeof v10OrdersInForce === 'function' ? v10OrdersInForce(S) : [])
+      .filter(function (k) { return String(k).split(':')[1] === r.id; })
+      .map(function (k) { var o = v10OrderOf(k); return o ? o.name : null; }).filter(Boolean);
+    return '<tr><th>' + esc(r.name) + '</th>' +
+      '<td>' + esc(tr.name) + '</td>' +
+      '<td class="num">' + Math.round(q.output) + '</td>' +
+      '<td class="num">' + Math.round(q.wealth) + '</td>' +
+      '<td class="num">' + (Math.round(q.pop * 10) / 10) + '</td>' +
+      '<td>' + (lvl ? esc(V11_AUTONOMY[lvl].name) : '<span class="muted">—</span>') + '</td>' +
+      '<td class="num">' + v11AutonomyPressure(S, r) + '</td>' +
+      '<td>' + (g ? esc(PARTY[g.party] ? PARTY[g.party].short : '—') : '—') + '</td>' +
+      '<td>' + (works.length ? works.map(function (w) { return esc(w.name); }).join(', ') : '<span class="muted">none</span>') + '</td>' +
+      '<td>' + (orders.length ? orders.map(esc).join(', ') : '<span class="muted">none</span>') + '</td></tr>';
+  }).join('');
+  var gap = v11Disparity(S);
+  return '<div class="panel"><h2>The States Ledger</h2>' +
+    '<p class="note">What each region makes, what it is worth, how many live there, and how far out of the union it has drifted. ' +
+    'The gap between the richest and poorest region stands at <b>' + gap + '</b>' +
+    (gap > 24 ? ' — wide enough that it is now feeding unrest and moving people.' : '.') + '</p>' +
+    '<div class="tablewrap"><table><thead><tr><th>Region</th><th>Trade</th><th class="num">Output</th><th class="num">Wealth</th>' +
+    '<th class="num">People</th><th>Standing</th><th class="num">Pressure</th><th>Governor</th><th>Works</th><th>Orders</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div></div>';
+}
+function v11RegionalWorth() {
+  var n = v11RegionalSeats(S), me = playParty(S);
+  return '<div class="panel"><h2>What the States Are Worth</h2>' +
+    '<p class="note">Everything the ' + esc(PARTY[me].short) + ' has built in the regions — the governors, the organisers on the ground and ' +
+    'the condition the states are actually in — is worth about <b>' + (n >= 0 ? '+' : '') + n + '</b> Assembly seat' +
+    (Math.abs(n) === 1 ? '' : 's') + ' against a country where none of it had been done. ' +
+    (n > 12 ? 'That is a majority in a close year.' : n < -6 ? 'That is a deficit the national campaign has to make up.' :
+      'A clean sweep of all eight governorships is worth around forty.') + '</p></div>';
+}
+var v11ViewFederationBase = viewFederation;
+viewFederation = function () {
+  var html = v11ViewFederationBase();
+  /* replace the right column's national risk panel with the two that belong
+     here; if it is not found, append rather than lose them */
+  var risk = html.indexOf('<div class="panel"><h2>Strategic Risks</h2>');
+  var add = v11RegionalWorth() + v11StatesLedger();
+  if (risk >= 0) {
+    /* Cut the panel out rather than sitting above it: this is half the width
+       of the tab about the states and it carried five generic national risk
+       lines. Panels do not nest, so walk the tags and stop where this one
+       closes — counting divs is exact where a marker literal would not be. */
+    var depth = 0, i = risk, end = -1;
+    while (i < html.length) {
+      var open = html.indexOf('<div', i), shut = html.indexOf('</div>', i);
+      if (shut < 0) break;
+      if (open >= 0 && open < shut) { depth++; i = open + 4; continue; }
+      depth--; i = shut + 6;
+      if (depth === 0) { end = i; break; }
+    }
+    if (end > risk) return html.slice(0, risk) + add + html.slice(end);
+    return html.slice(0, risk) + add + html.slice(risk);
+  }
+  var open = html.indexOf('<div class="grid"><div>');
+  if (open >= 0) return html.slice(0, open + 23) + add + html.slice(open + 23);
+  return html + add;
 };
 
 /* ---------- boot ---------- */

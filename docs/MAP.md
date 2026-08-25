@@ -331,6 +331,104 @@ cache still pays the innerHTML parse and the SVG layout in full.
   KB. This matters twice over: the autosave rewrites the whole blob 160 ms after
   every render, and `UI.undoStack` (:14909–14914) holds up to eight more copies.
 
+## The federation (S11c)
+
+Before this slice a region's `prosperity`, `services` and `order` reached **one
+governor's approval score** and nothing else. The only channel from a region to
+the national vote was `regionPartyFactor`, a pop-weighted mean of eight frozen
+`lean` literals; federal trust at 90 across all eight regions was worth **+4.7%
+to the ruling party alone**, and nothing a player did on the tab moved it.
+
+**The regional term.** `regionPartyFactor` is **reassigned**, not wrapped
+(`regionPartyFactor#1` in `dead-bodies.json`, alias `v11RegionFactorBase`): the
+pop-weighted mean is already collapsed by the time a wrapper would see it, so
+there is nothing left to weight. The new body recomputes the same mean and
+multiplies each region's `fit` by what the player actually built there — the
+governor's party, standing and approval; the organiser dots in
+`st.campaign.targets[r.id]`; the region's own prosperity/services/order read
+**with the sign the government owns and the opposition does not**; the federal
+trust nudge; and autonomy as a suppressor on the government side.
+
+**One tunable, and why.** Every coefficient runs through **`V11_REGION_GAIN`**
+(`0.23`), because the factor is applied **TWICE on one ballot** (:6786 in
+`supportTargets`, :6862 in `ballot`) and the allocator amplifies again. At gain
+`1` a clean eight-governor sweep measured **+130 Assembly seats** against the
+owner's ruling of about forty. Tuned by measurement: `0.30` → 47, `0.26` → 45,
+**`0.23` → 42** (`roads.js` reports 44 against its own harness state). Retune the
+gain, never the eleven coefficients.
+
+**`V11_REGION_SPAN` is `[.80, 1.22]`, and only its floor is doing work.** At the
+shipped gain the factor runs **.847 .. 1.028** across every party at both
+extremes — so the old `[.86, 1.15]` clipped the *bottom* (the worst RSF and PNL
+readings sat under .86 and were being shaved) and its ceiling was never
+approached. A proof-of-failure run confirms restoring `[.86, 1.15]` does **not**
+turn the flank-party assertion red: what was stopping the flank parties being
+moved in the regions was the absence of the terms, not the clamp. The top of the
+span is headroom for a retune of the gain, and the comment at the clamp says so.
+
+**Per-region seat allocation was rejected**, deliberately. `ballot` produces one
+national vote-share map, `runElection` renews a third of the Assembly against a
+flat `{partyId: n}` with no per-region structure, and a naive largest-remainder
+across eight regions hands ~24 seats to whoever leads each region **purely from
+rounding — and it would look exactly like the feature working**. Because the
+regional term leaves `allocateSeats`, `ballot`, `runElection`, `projection`,
+`hemiMap` and `CFG` untouched, "the constitution holds the totals" holds *by
+construction*; `roads.js` re-measures 1305/1305 and 300/300 anyway.
+
+- **`regionLeadingParty` takes a REGION, not a state.** Both callers (:9534 and
+  the post-count map at :16436) pass one. It is reassigned to route through the
+  same factor so the map, the governor model and the ballot agree — a region
+  flips on screen *because you governed it*. It falls back to
+  `v11RegionLeadingBase` when handed anything without a live `st.regions` entry.
+- **`v11RegionalSeats(st)`** reads the effect back through `projection()`,
+  comparing the live standing against a neutralised counterfactual, so the page
+  can say what the federation is worth **in seats** right now. Without this the
+  effect is real and unfelt.
+
+**The economy is on the SAVE, not the literal.** `r.pop`, `r.wealth` and
+`r.urban` live on the top-level `REGIONS` literal, which is **not serialised,
+not rewound by undo, leaks into a new campaign in the same page load, and is
+corrupted by every `v6Sandbox` forecast**. `v11Region(st, id)` materialises
+`pop`/`wealth`/`trade`/`output` **created-on-write onto `st.regions[id]`**,
+seeded from the literal; the literals stay as the founding values and are never
+written. `v11EconomyTick` moves output and wealth toward trade-weighted targets
+and migrates population; `v11Disparity` is the spread between the richest and
+poorest region and feeds both autonomy pressure and unrest.
+
+**Autonomy is a ladder, not a boolean.** `V11_AUTONOMY` has five rungs — within
+the union, devolved, chartered, autonomous, in secession. `st.v6.autonomy[id]`
+was a **boolean set by one arc branch**; `v11AutonomyLevel` reads a legacy
+`true` as rung 1, so an old save climbs the ladder from where it stood rather
+than breaking. `v11AutonomyPressure` reads federal trust, prosperity, order, an
+opposition governor, a weak governor and national disparity against the crown.
+
+**`unrestTarget` now reads regional `order`** — the worst region and the mean,
+plus disparity. The field guide (:16283) has claimed it did since v6.
+
+**Cooldowns.** `meet` and `works` bought a governor's standing to 100 in three
+clicks; both now sit behind a two-session cooldown on
+`S.regionCooldown[id + ':gov' + action]`.
+
+**The tick order is fixed** in the v10 `tickTurn` wrapper (:18574–18578):
+`v10OrdersTick`, then `v11EconomyTick`, then `v11AutonomyTick`, then
+`v11HistTick` **last**, so the deck records what every earlier tick has already
+moved.
+
+**The dice moved, and it was announced.** `v11AutonomyTick` draws for a rung
+change and `v11Region` draws once per region when its trade is first
+materialised. A campaign replayed from an old seed therefore **diverges** —
+`tools/pacing.js` shows different treaties and records at the same seed for that
+reason, not because the arc changed; all three lengths still reach the end year.
+
+**Both `viewFederation` wrappers fail silently if the markup moves.** v6 splits
+on `<article class="card region-card">` and maps `parts[i] → REGIONS[i-1]`
+**positionally**, so a second `.region-card` element mis-assigns every governor
+strip by one region; v9 locates `data-region="{id}" data-region-action="inspect"`,
+so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
+(`v11StatesLedger`, `v11RegionalWorth`) are appended by a **third** wrapper
+(`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
+walking div depth rather than splicing on a marker.
+
 ## The dice (S3)
 
 **The enrich chain's guard must stay outermost.** Each chunk wraps
