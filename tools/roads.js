@@ -722,9 +722,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        preceding tests left S.ruling as makes this number wander */
     const keepRuling = S.ruling, keepCo = S.coalition, me = playParty(S);
     const r0 = S.rngState;
+    /* S11b: this swept SIXTY sessions and asserted all fourteen subjects were
+       drawn. Over sixty draws by hash across fourteen subjects, missing one is
+       ordinary — the assertion failed intermittently on identical code, which
+       is worse than no assertion at all. The property under test is that every
+       subject is REACHABLE, so sweep a full epic campaign, where it is. */
     const sweep = () => {
       const seen = new Set(), seenSubs = new Set();
-      for (let t = 1; t <= 60; t++) {
+      for (let t = 1; t <= 200; t++) {
         S.turn = t; S.v8.qt.turn = -1; S.v8.qt.v10 = -1; v8EnsureQuestion(S);
         if (S.v8.qt.question) { seen.add(S.v8.qt.question); seenSubs.add(S.v8.qt.subject); }
       }
@@ -903,11 +908,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `every recorded column is an integer: ${deck.allIntegers}, and v6's rows are rounded: ${deck.v6Rounded} · ` +
     `${deck.notes} distinct provenance notes, because the three sources began at three different times`);
 
-  say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent &&
+  say(qt.distinctSubjects === 14 && qt.distinct >= 60 && qt.leaks === 0 && !qt.diceSpent &&
       qt.stable && qt.rotationHeld && qt.walked === qt.shelf &&
       qt.oldSaveThrew === false && qt.oldSaveAsks && qt.rotationRidesTheSave,
     'a session picks its question without spending a die',
-    `60 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
+    `200 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
     `${qt.distinctInOpposition} in opposition, across ${qt.distinctSubjects} subjects, ` +
     `${qt.leaks} of them showing an unfilled placeholder; rngState moved: ${qt.diceSpent}; ` +
     `fifty renders in one session left the question and the rotation alone: ${qt.stable && qt.rotationHeld}; ` +
@@ -1068,8 +1073,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* S10c retired orderPolicy — an order no longer raises a statute. The rule
        it carried ("an order cannot outrun its own statute book") survives as
        `needs:` on an ORDER, so the gate is asserted against the new book. */
+    let gatedCount = 0;
     const ord = V10_ORDERS.filter(o => o.needs)[0];
-    let blocked = true;
+    /* S11b: this used to initialise `blocked = true`, so if NO order carried a
+       `needs` the body never ran and the assertion passed while testing
+       nothing. The sixth order adds thirty-six deliberately UNGATED orders, so
+       the day somebody ungates the rest this has to go red rather than quietly
+       agree. */
+    let blocked = !!ord;
+    gatedCount = V10_ORDERS.filter(o => o.needs).length;
     if (ord) {
       S.pol[ord.needs] = 0;
       blocked = !!v10OrderOpen(S, ord, null);
@@ -1086,9 +1098,86 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     enactBill(S, bill);
     const lapsed = (S.pol[p.id] || 0) === before && S.legacy.billsFailed === failedBefore + 1;
     delete p.needs;
-    return { blocked, lapsed };
+    return { blocked, lapsed, gated: gatedCount, total: V10_ORDERS.length };
   });
-  say(needs.blocked, 'an order cannot outrun the book', `an order with a statute prerequisite is refused without it and opens with it: ${needs.blocked}`);
+  /* S11b — the seventy-two-order book, and three modifiers that used to be
+     written and read by nobody. */
+  const book2 = await page.evaluate(() => {
+    const out = {};
+    const keep = { pol: JSON.parse(JSON.stringify(S.pol)), orders: JSON.parse(JSON.stringify((S.v10 && S.v10.orders) || {})),
+      exec: JSON.parse(JSON.stringify(S.exec)), capital: S.capital, prefs: JSON.parse(JSON.stringify(S.uiPrefs || {})) };
+    out.total = V10_ORDERS.length;
+    out.ungated = V10_ORDERS.filter(o => !o.needs).length;
+    /* the owner's ruling: the thirty-six added carry no prerequisite of any
+       kind, and NONE of them may sneak a req in either */
+    const late = V10_ORDERS.slice(36);
+    out.lateCount = late.length;
+    out.lateGated = late.filter(o => o.needs).length;
+    /* O()'s req default is load-bearing: v10OrderOpen calls o.req(st)
+       UNGUARDED, so an order without one throws on every card render */
+    out.missingReq = V10_ORDERS.filter(o => typeof o.req !== 'function').length;
+    /* the probes in this file and in playtest are positional — the first
+       untargeted, ungated order with an `ind` must still be the one the
+       original book put there */
+    out.probe = (V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0] || {}).id;
+    /* NARROWING MUST MAKE AN ORDER SMALLER. It cost capital and treasury,
+       printed a tag, and changed nothing at all. */
+    S.exec = { pres:playParty(S), vpres:playParty(S), chan:playParty(S), vchan:playParty(S) };
+    S.capital = 99;
+    const o = V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0];
+    const ik = Object.keys(o.ind)[0];
+    S.v10.orders = {}; S.v10.orderTurn = {};
+    v10IssueOrder(o.id, null);
+    const kk = v10OrderKey(o.id, null);
+    out.issued = !!(S.v10.orders[kk] && S.v10.orders[kk].status === 'inforce');
+    out.issueRefusal = out.issued ? null : v10OrderOpen(S, o, null);
+    if (!out.issued) { S.pol = keep.pol; S.v10.orders = keep.orders; S.exec = keep.exec; S.capital = keep.capital; S.uiPrefs = keep.prefs; return out; }
+    const full = v10OrderMods(S).ind[ik] || 0;
+    S.v10.orders[kk].narrowed = 1;
+    const once = v10OrderMods(S).ind[ik] || 0;
+    S.v10.orders[kk].narrowed = 2;
+    const twice = v10OrderMods(S).ind[ik] || 0;
+    out.narrowShrinks = Math.abs(once) < Math.abs(full) - 1e-9 && Math.abs(twice) < Math.abs(once) - 1e-9;
+    out.narrowRatio = full ? Math.round(once / full * 100) / 100 : 0;
+    /* upkeep is NOT narrowed — a smaller instrument still has to be run */
+    const upFull = v10OrderMods(S).upkeep;
+    out.upkeepHeld = Math.abs(upFull - (o.upkeep || 0)) < 1e-9;
+    /* courtHeat is the exposure of the whole book, and it must now reach
+       something rather than being summed into a field nobody reads */
+    out.courtHeat = Math.round(v10OrderMods(S).courtHeat * 100) / 100;
+    out.courtHeatReal = out.courtHeat > 0;
+    /* the filter actually filters, and the two classes are separable */
+    S.uiPrefs = S.uiPrefs || {};
+    S.uiPrefs.orderFilter = 'needs';  const onlyGated = V10_ORDERS.filter(v10OrderShown).length;
+    S.uiPrefs.orderFilter = 'free';   const onlyFree = V10_ORDERS.filter(v10OrderShown).length;
+    S.uiPrefs.orderFilter = 'all';    const all = V10_ORDERS.filter(v10OrderShown).length;
+    out.filterSplits = onlyGated + onlyFree === all && onlyGated > 0 && onlyFree >= 36;
+    out.onlyGated = onlyGated; out.onlyFree = onlyFree;
+    /* the District exclusion the card has always claimed */
+    const disp = V10_ORDER.disperseAgencies;
+    out.districtExcluded = disp ? !v10OrderTargets(disp).some(t => t.id === 'district') : false;
+    out.otherRegionsKept = disp ? v10OrderTargets(disp).length === REGIONS.length - 1 : false;
+    S.pol = keep.pol; S.v10.orders = keep.orders; S.exec = keep.exec;
+    S.capital = keep.capital; S.uiPrefs = keep.prefs;
+    return out;
+  });
+  say(book2.total >= 72 && book2.lateCount === book2.total - 36 && book2.lateGated === 0 &&
+      book2.missingReq === 0 && book2.probe === 'establishmentFreeze',
+    'thirty-six more, and none of them gated',
+    `${book2.total} orders, ${book2.ungated} of them needing no statute · the ${book2.lateCount} registered after the original ` +
+    `thirty-six carry ${book2.lateGated} prerequisites · every order has a callable req (O()'s default is load-bearing for the ` +
+    `unguarded call in v10OrderOpen): ${book2.missingReq === 0} · the positional probe is still ${book2.probe}`);
+  say(book2.issued && book2.narrowShrinks && book2.upkeepHeld && book2.courtHeatReal && book2.filterSplits &&
+      book2.districtExcluded && book2.otherRegionsKept,
+    'a narrowed order is a smaller order',
+    `narrowing scales what an order delivers to ${book2.narrowRatio} and again after that, while the upkeep is unchanged: ${book2.upkeepHeld} · ` +
+    `the book's total exposure reaches the court at ${book2.courtHeat} instead of being summed into a field nobody read · ` +
+    `the page separates ${book2.onlyGated} gated from ${book2.onlyFree} ungated · ` +
+    `the agencies can no longer be dispersed into the District: ${book2.districtExcluded}`);
+
+  say(needs.blocked && needs.gated > 0, 'an order cannot outrun the book',
+    `${needs.gated} of ${needs.total} orders carry a statute prerequisite; one is refused without it and opens with it: ${needs.blocked}` +
+    (needs.gated ? '' : ' — NOTHING IS GATED, so this assertion is testing nothing'));
   say(needs.lapsed, 'a bill lapses with its prerequisite', `enactBill refused and archived as failed: ${needs.lapsed}`);
 
   // 8. seat conservation under the reapportioning acts
