@@ -722,9 +722,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        preceding tests left S.ruling as makes this number wander */
     const keepRuling = S.ruling, keepCo = S.coalition, me = playParty(S);
     const r0 = S.rngState;
+    /* S11b: this swept SIXTY sessions and asserted all fourteen subjects were
+       drawn. Over sixty draws by hash across fourteen subjects, missing one is
+       ordinary — the assertion failed intermittently on identical code, which
+       is worse than no assertion at all. The property under test is that every
+       subject is REACHABLE, so sweep a full epic campaign, where it is. */
     const sweep = () => {
       const seen = new Set(), seenSubs = new Set();
-      for (let t = 1; t <= 60; t++) {
+      for (let t = 1; t <= 200; t++) {
         S.turn = t; S.v8.qt.turn = -1; S.v8.qt.v10 = -1; v8EnsureQuestion(S);
         if (S.v8.qt.question) { seen.add(S.v8.qt.question); seenSubs.add(S.v8.qt.subject); }
       }
@@ -903,11 +908,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `every recorded column is an integer: ${deck.allIntegers}, and v6's rows are rounded: ${deck.v6Rounded} · ` +
     `${deck.notes} distinct provenance notes, because the three sources began at three different times`);
 
-  say(qt.distinctSubjects === 14 && qt.distinct >= 25 && qt.leaks === 0 && !qt.diceSpent &&
+  say(qt.distinctSubjects === 14 && qt.distinct >= 60 && qt.leaks === 0 && !qt.diceSpent &&
       qt.stable && qt.rotationHeld && qt.walked === qt.shelf &&
       qt.oldSaveThrew === false && qt.oldSaveAsks && qt.rotationRidesTheSave,
     'a session picks its question without spending a die',
-    `60 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
+    `200 sessions with every subject in play drew ${qt.distinctInPower} distinct questions in government and ` +
     `${qt.distinctInOpposition} in opposition, across ${qt.distinctSubjects} subjects, ` +
     `${qt.leaks} of them showing an unfilled placeholder; rngState moved: ${qt.diceSpent}; ` +
     `fifty renders in one session left the question and the rotation alone: ${qt.stable && qt.rotationHeld}; ` +
@@ -1068,8 +1073,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* S10c retired orderPolicy — an order no longer raises a statute. The rule
        it carried ("an order cannot outrun its own statute book") survives as
        `needs:` on an ORDER, so the gate is asserted against the new book. */
+    let gatedCount = 0;
     const ord = V10_ORDERS.filter(o => o.needs)[0];
-    let blocked = true;
+    /* S11b: this used to initialise `blocked = true`, so if NO order carried a
+       `needs` the body never ran and the assertion passed while testing
+       nothing. The sixth order adds thirty-six deliberately UNGATED orders, so
+       the day somebody ungates the rest this has to go red rather than quietly
+       agree. */
+    let blocked = !!ord;
+    gatedCount = V10_ORDERS.filter(o => o.needs).length;
     if (ord) {
       S.pol[ord.needs] = 0;
       blocked = !!v10OrderOpen(S, ord, null);
@@ -1086,9 +1098,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     enactBill(S, bill);
     const lapsed = (S.pol[p.id] || 0) === before && S.legacy.billsFailed === failedBefore + 1;
     delete p.needs;
-    return { blocked, lapsed };
+    return { blocked, lapsed, gated: gatedCount, total: V10_ORDERS.length };
   });
-  say(needs.blocked, 'an order cannot outrun the book', `an order with a statute prerequisite is refused without it and opens with it: ${needs.blocked}`);
+  say(needs.blocked && needs.gated > 0, 'an order cannot outrun the book',
+    `${needs.gated} of ${needs.total} orders carry a statute prerequisite; one is refused without it and opens with it: ${needs.blocked}` +
+    (needs.gated ? '' : ' — NOTHING IS GATED, so this assertion is testing nothing'));
   say(needs.lapsed, 'a bill lapses with its prerequisite', `enactBill refused and archived as failed: ${needs.lapsed}`);
 
   // 8. seat conservation under the reapportioning acts
