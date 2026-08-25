@@ -18493,6 +18493,13 @@ render = function () {
    ========================================================== */
 .sec-state .val-big{font-family:var(--font-n);font-size:26px;font-weight:600;letter-spacing:.02em}
 .sec-state .thresh{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+
+/* S11e: the department strip inside a minister card. Appended at the END of
+   the last style chunk, per the source-order rule: chunks conflict by order
+   and equal specificity, so a new rule goes last or under a body-class scope. */
+.dept-strip{margin-top:8px;padding-top:8px;border-top:1px solid var(--rule,rgba(255,255,255,.08))}
+.dept-strip .microstats{margin:0 0 6px}
+.dept-strip .btnrow{margin-top:6px}
 </style>
 <script>
 'use strict';
@@ -18577,6 +18584,9 @@ tickTurn = function (st) {
      runs BEFORE the recorder, so the deck's own history shows the session an
      article carried rather than the one after it. */
   if (typeof v11ConTick === 'function') v11ConTick(st);
+  /* S11e: the departments' own session -- strain, decay of the delivered
+     stock, and the standards case an overstretched department produces. */
+  if (typeof v11DeptTick === 'function') v11DeptTick(st);
   /* S11a: the record deck's own recorder, last in the chain so every earlier
      tick has already moved what it reads. */
   if (typeof v11HistTick === 'function') v11HistTick(st);
@@ -23772,6 +23782,599 @@ document.addEventListener('click', function (ev) {
   else if (b.hasAttribute('data-artcampaign')) v11CampaignArticle();
   else if (b.hasAttribute('data-artwithdraw')) v11WithdrawArticle();
   else if (b.hasAttribute('data-conv')) v11CallConvention();
+});
+
+/* ==========================================================
+   S11e — THE MINISTRY AND THE INTERESTS.
+
+   The owner's complaint on both tabs was the same: "lots of repetitive low
+   impact options". Four surveys measured the arithmetic behind it, and every
+   number below was taken from the running game, not from reading:
+
+   - BRIEF buys +5 competence and clamps at 100, but the session tick clamps at
+     96. A minister briefed from 94 reaches 99 and is back at 96 the next
+     session: THREE OF THE FIVE POINTS BOUGHT ARE SILENTLY REFUNDED.
+   - THE COLLEGE gives max(2, 8 - experience) and adds 3 to experience, so it
+     is +5 once and +2 for ever after -- for 2 capital AND 4 of treasury,
+     against Brief's +5 for 2 capital and no money. It is strictly dominated
+     from the sixth session, and using it makes the next use worse.
+   - SIDELINE costs 3 capital to take the department's rank from 2 to 1 (so
+     cabinetBonus falls), loyalty from 60 to 44 and unity by 2. It is the only
+     paid action in the game that makes the government worse at everything.
+   - INITIATIVE shoves the indicator STOCK, and the session tick converges
+     every stock on its target at 26 per cent: measured, a 2.8 point push is
+     0.46 points six sessions later. Eighty-four per cent of it is gone.
+   - SIX OF THE SEVEN TRAITS ARE READ NOWHERE. Only `operator` appears outside
+     a card, in one exposure term.
+
+   The fix is not more buttons. It is a department that exists between the
+   minister and the country, so that briefing, funding and delivery have
+   somewhere to accumulate.
+   ========================================================== */
+
+/* THE COSTS ARE RELATIVE TO STANDARD, AND STANDARD IS FREE. Measured before
+   this was fixed: a first pass priced standard at 4 and generous at 11, so
+   simply FILLING the cabinet -- which the game encourages everywhere else --
+   added 64 to expenditure on a base of 149 and took the session's balance from
+   -26 to -92. That is a large balance change nobody asked for, arriving
+   silently through a default. Standard is "the settlement the last review left
+   it": it is already inside budget()'s own base, so it costs nothing extra
+   here, a lean settlement is a SAVING, and only a generous one is a charge the
+   player chose to take on. */
+var V11_FUNDING = [
+  { n:0, name:'Lean',      note:'The department does what it must and nothing it would like.', cost:-3, cap:-8,  strain:2.2 },
+  { n:1, name:'Standard',  note:'The settlement the last review left it.',                     cost:0,  cap:0,   strain:0 },
+  { n:2, name:'Generous',  note:'Enough to hire, and to be seen hiring.',                      cost:5,  cap:10,  strain:-1.8 }
+];
+
+function v11Dept(st, key) {
+  var v = st.v11 || (st.v11 = {});
+  if (!v.depts) v.depts = {};
+  if (!v.depts[key]) v.depts[key] = { funding:1, strain:0, delivered:0, cases:0 };
+  return v.depts[key];
+}
+function v11DeptFunding(st, key) {
+  return V11_FUNDING[clamp(v11Dept(st, key).funding, 0, 2)] || V11_FUNDING[1];
+}
+/* CAPACITY is what the department can actually carry: the minister's own
+   competence, what their rank buys them, what the settlement pays for, less
+   what the strain has taken. It is the number the whole page now turns on. */
+function v11DeptCapacity(st, key) {
+  var m = st.ministers && st.ministers[key], q = cabQuality(st, key);
+  if (!m || !q) return 0;
+  var f = v11DeptFunding(st, key);
+  var v = (m.competence - 40) * 1.05 + (q - 1) * 9 + f.cap - clamp(v11Dept(st, key).strain, 0, 60) * .8;
+  v += v11TraitOf(m, 'capacity');
+  return clamp(v, 0, 100);
+}
+/* DELIVERED is the durable stock an Initiative now moves, in place of shoving
+   an indicator the tick erases. It decays slowly and feeds cabinetBonus, so a
+   department that has been worked shows it for years rather than sessions. */
+/* The reference department: competence 65, rank 1, standard settlement, no
+   strain, no delivered stock, no trait. (65 - 40) * 1.05 * .01 = .2625. */
+var V11_DEPT_REF = (65 - 40) * 1.05 * .01;
+function v11DeptPerformance(st, key) {
+  var d = v11Dept(st, key);
+  return clamp(v11DeptCapacity(st, key) * .01 + clamp(d.delivered, 0, 40) * .012, 0, 1.6);
+}
+
+/* ---------- the traits stop being decoration ----------
+   Six of the seven were read nowhere at all. Each now has a number, and every
+   number is consulted by a named function below. */
+var V11_TRAITS = {
+  technocrat:  { capacity:7,  loyalty:-.6, strain:-.5, exposure:0,   scandal:0,   bills:0,  unity:0 },
+  organiser:   { capacity:2,  loyalty:1.4, strain:-1.6, exposure:0,  scandal:0,   bills:0,  unity:.5 },
+  reformer:    { capacity:5,  loyalty:-.4, strain:1.4, exposure:.9,  scandal:0,   bills:0,  unity:-.4 },
+  loyalist:    { capacity:-2, loyalty:1.9, strain:0,   exposure:-.4, scandal:-.3, bills:0,  unity:.4 },
+  operator:    { capacity:0,  loyalty:0,   strain:0,   exposure:1.2, scandal:.2,  bills:3,  unity:0 },
+  communicator:{ capacity:-1, loyalty:.4,  strain:0,   exposure:.8,  scandal:-.9, bills:1,  unity:.3 },
+  ideologue:   { capacity:1,  loyalty:.8,  strain:.8,  exposure:.2,  scandal:0,   bills:-2, unity:.9 }
+};
+function v11TraitOf(m, field) {
+  var t = m && V11_TRAITS[m.trait];
+  return t ? (t[field] || 0) : 0;
+}
+function v11CabinetTrait(st, field) {
+  var n = 0;
+  pv5PortfolioRows().forEach(function (row) {
+    var m = st.ministers && st.ministers[row.key];
+    if (m && cabQuality(st, row.key)) n += v11TraitOf(m, field);
+  });
+  return n;
+}
+
+/* ---------- the department's own session ---------- */
+function v11DeptTick(st) {
+  if (!st.ministers) return;
+  pv5PortfolioRows().forEach(function (row) {
+    var m = st.ministers[row.key], q = cabQuality(st, row.key);
+    if (!m || !q) return;
+    var d = v11Dept(st, row.key), f = v11DeptFunding(st, row.key);
+    /* strain accumulates on a lean settlement and on an active department */
+    d.strain = clamp(d.strain + f.strain + v11TraitOf(m, 'strain') + (q - 1) * .5 - 1.1, 0, 60);
+    /* delivery decays, but slowly: this is the stock Initiative now moves */
+    d.delivered = Math.max(0, d.delivered * .965);
+    /* a department run hard on a lean settlement produces its OWN case, which
+       is the thing the ministry page never had: a consequence of how you fund
+       it rather than of who you appointed */
+    if (d.strain > 34 && rand() < (d.strain - 34) / 260 + Math.max(0, v11TraitOf(m, 'scandal')) * .01) {
+      d.cases = (d.cases || 0) + 1;
+      pv5NewScandal(st, row.key, 'department');
+      d.strain = clamp(d.strain - 12, 0, 60);
+    }
+  });
+}
+
+/* ---------- what the department reaches ----------
+   cabinetBonus is the real channel from a ministry to the country. It was
+   `row.effects[k] * ((competence - 55)/75 + (rank - 1) * .18)` and knew
+   nothing about funding, strain, delivery or the trait on the card. */
+var v11CabinetBonusBase = cabinetBonus;
+cabinetBonus = function (st) {
+  var out = v11CabinetBonusBase(st);
+  pv5PortfolioRows().forEach(function (row) {
+    var m = st.ministers && st.ministers[row.key];
+    if (!m || !cabQuality(st, row.key)) return;
+    /* THE MIDPOINT IS MEASURED, NOT GUESSED. A first pass used .55 as "the old
+       model's rough midpoint" and it was wrong: on a fresh sixteen-office
+       cabinet the median performance is .306, so every typical department was
+       being handed a SILENT PENALTY of -.134 times its effects -- a nerf
+       nobody asked for, arriving through a constant. Measured across a fresh
+       cabinet: competence 52/68/77, capacity 13/31/43, performance
+       .127/.306/.427 -- but a SECOND fresh cabinet read .145/.249/.399, so a
+       constant taken from one sample is fragile. The reference is therefore
+       DERIVED, not sampled: V11_DEPT_REF is exactly what a minister of
+       competence 65 at rank 1 on a standard settlement with no strain, no
+       delivered stock and no trait bonus produces --
+         capacity = (65 - 40) * 1.05 = 26.25, performance = 26.25 * .01
+       -- so a department at that reference contributes nothing extra, and what
+       is felt is the VARIATION around it: funding, strain, delivery and the
+       trait. A department at competence 88 reads about .52 and gains; a
+       starved one loses. Both sampled medians sit within .02 of it. */
+    var extra = v11DeptPerformance(st, row.key) - V11_DEPT_REF;
+    for (var k in row.effects) out[k] = (out[k] || 0) + row.effects[k] * extra * .55;
+  });
+  return out;
+};
+
+/* THE DEPARTMENTS ARE A LINE IN THE BUDGET. budget() was blind to the
+   government that spends it: sixteen ministries and not one of them cost
+   anything to run. */
+var v11DeptBudgetBase = budget;
+budget = function (st) {
+  var b = v11DeptBudgetBase(st);
+  if (!st.ministers) return b;
+  var extra = 0;
+  pv5PortfolioRows().forEach(function (row) {
+    if (!st.ministers[row.key] || !cabQuality(st, row.key)) return;
+    extra += v11DeptFunding(st, row.key).cost;
+  });
+  if (!extra) return b;
+  b.exp += extra;
+  b.net = b.rev - b.exp - (b.interest || 0);
+  return b;
+};
+
+/* the operator manages Parliament, the ideologue does not */
+var v11TraitForecastBase = billForecast;
+billForecast = function (st, bill) {
+  var f = v11TraitForecastBase(st, bill);
+  if (!st.ministers || !inPower(st)) return f;
+  var n = v11CabinetTrait(st, 'bills');
+  if (!n) return f;
+  f.lower = clamp(f.lower + n * .4, 0, 100);
+  f.upper = clamp(f.upper + n * .25, 0, 100);
+  return f;
+};
+
+/* ---------- the four actions, repriced against the arithmetic ---------- */
+function v11SetFunding(key, n) {
+  if (!inPower(S)) { flash('Only a party in government sets a department\'s settlement.'); return; }
+  /* Resolve the portfolio FIRST and bail if it is not one. The title is used
+     in both the undo label and the log, and `(… || {}).title` would have put a
+     literal "undefined" in front of the player -- the same class of leak S9a
+     went through the file to remove. */
+  var row = pv5PortfolioRows().filter(function (r) { return r.key === key; })[0];
+  if (!row) return;
+  var d = v11Dept(S, key), was = d.funding;
+  n = clamp(n, 0, 2);
+  if (n === was) return;
+  captureUndo('Fund ' + row.title);
+  d.funding = n;
+  /* moving a settlement is a decision with a cost either way: cutting one
+     angers the department, raising one is noticed by everybody else */
+  var m = S.ministers && S.ministers[key];
+  if (m) m.loyalty = clamp(m.loyalty + (n > was ? 5 : -7), 0, 100);
+  if (n < was) d.strain = clamp(d.strain + 4, 0, 60);
+  logIt(S, row.title + ' moved to a ' + V11_FUNDING[n].name.toLowerCase() + ' settlement.');
+  render();
+}
+
+/* ---------- the four actions the arithmetic condemned ----------
+   pv5MinisterAction is reassigned rather than wrapped: the four cases below
+   have to REPLACE their old bodies, and a wrapper that ran the base first
+   would spend the capital twice. Every case the base handled and this slice
+   does not is delegated back to it unchanged. */
+var v11MinisterActionBase = pv5MinisterAction;
+pv5MinisterAction = function (key, action) {
+  if (['brief', 'train', 'sideline', 'launch'].indexOf(action) < 0) return v11MinisterActionBase(key, action);
+  var row = pv5PortfolioRows().filter(function (x) { return x.key === key; })[0];
+  var m = S.ministers && S.ministers[key];
+  if (!row || !m) return v11MinisterActionBase(key, action);
+  var d = v11Dept(S, key);
+
+  if (action === 'brief') {
+    /* THE CEILING IS THE TICK'S CEILING. Brief clamped to 100 while the
+       session tick clamps to 96, so a briefing above 91 was partly refunded
+       the following session with nothing on screen to say so. The gain now
+       TAPERS toward the same ceiling: it is never wasted and never refunded,
+       and briefing a minister who is already excellent is honestly cheap
+       rather than dishonestly free. */
+    if (!pv5Spend(2, 0, 'Brief ' + m.name)) return;
+    var room = 96 - m.competence;
+    var gain = clamp(Math.min(5, room * .55 + 1), 0, room);
+    m.competence = clamp(m.competence + gain, 0, 96);
+    m.loyalty = clamp(m.loyalty + 4, 0, 100);
+    m.briefings = (m.briefings || 0) + 1;
+    /* and a briefing is also a week of the leader's attention: it takes a
+       little strain out of the department */
+    d.strain = clamp(d.strain - 3, 0, 60);
+    logIt(S, m.name + ' received the leadership\'s full brief.');
+
+  } else if (action === 'train') {
+    /* THE COLLEGE MUST BEAT WAITING, AND MUST NOT UNDO ITSELF. It gave
+       max(2, 8 - experience) and then added THREE to experience, so it was +5
+       once and +2 for ever, for 2 capital and 4 of treasury -- strictly worse
+       than Brief from the sixth session, and worse each time it was used.
+       It now buys the one thing a briefing cannot: it RAISES THE CEILING. A
+       schooled minister passes the 96 the tick clamps everyone else to. */
+    if (!pv5Spend(2, 4, 'Send ' + m.name + ' to the college')) return;
+    m.schooled = Math.min(3, (m.schooled || 0) + 1);
+    m.experience = (m.experience || 0) + 1;
+    m.competence = clamp(m.competence + 3, 0, v11MinisterCeiling(m));
+    logIt(S, m.name + ' spent the recess at the college of administration, and comes back able to go further than the rest.');
+
+  } else if (action === 'sideline') {
+    /* "LEAVE THEM THE TITLE AND TAKE THE PAPERS" is what the card promises,
+       and taking the papers has to mean the papers go SOMEWHERE. The old body
+       cut the department's rank -- so the work simply stopped being done, and
+       three capital bought a worse government at everything. The work now
+       moves to the centre: the department keeps delivering out of its
+       accumulated stock while the minister stops being a rival. */
+    if (!pv5Spend(3, 0, 'Sideline ' + m.name)) return;
+    m.ambition = clamp(m.ambition - 18, 0, 100);
+    m.loyalty = clamp(m.loyalty - 14, 0, 100);
+    m.sidelined = true;
+    d.delivered = Math.max(0, d.delivered) + 6;      /* the centre takes it on */
+    d.strain = clamp(d.strain + 5, 0, 60);           /* and feels it */
+    S.unity = c100((S.unity || 60) - 2);
+    logIt(S, m.name + ' keeps the title. The papers now come to the centre.');
+
+  } else if (action === 'launch') {
+    /* AN INITIATIVE MOVED A STOCK THE TICK ERASES AT 26 PER CENT A SESSION:
+       measured, a 2.8 point push was 0.46 points six sessions later. It now
+       moves the department's own DELIVERED stock, which decays at 3.5 per
+       cent and is read by cabinetBonus -- so the same money buys something
+       that is still there at the next election. What it delivers is set by
+       the department's CAPACITY, so funding and strain finally matter. */
+    if (!pv5Spend(3, 3, 'Launch initiative with ' + m.name)) return;
+    var cap = v11DeptCapacity(S, key);
+    d.delivered = clamp(d.delivered + 3 + cap * .07 + v11TraitOf(m, 'capacity') * .2, 0, 40);
+    d.strain = clamp(d.strain + 6, 0, 60);
+    m.exposure = (m.exposure || 0) + 5;
+    m.loyalty = clamp(m.loyalty + 2, 0, 100);
+    logIt(S, m.name + ' launched a departmental initiative.');
+  }
+  render();
+};
+/* A schooled minister may pass the ceiling the session tick clamps everyone
+   else to. This is the ONLY way past 96, and it is why the college exists. */
+function v11MinisterCeiling(m) {
+  return clamp(96 + (m.schooled || 0) * 2, 96, 102);
+}
+var v11MinisterTickBase = pv5MinisterTick;
+pv5MinisterTick = function (st) {
+  v11MinisterTickBase(st);
+  /* the base clamps every minister to 96; give the schooled ones back the
+     headroom the college bought them, and let the traits reach loyalty */
+  pv5PortfolioRows().forEach(function (row) {
+    var m = st.ministers && st.ministers[row.key];
+    if (!m || !cabQuality(st, row.key)) return;
+    var ceil = v11MinisterCeiling(m);
+    if (ceil > 96 && m.competence >= 95.9) m.competence = clamp(m.competence + .3, 0, ceil);
+    m.loyalty = clamp(m.loyalty + v11TraitOf(m, 'loyalty'), 10, 98);
+    m.exposure = Math.max(0, (m.exposure || 0) + v11TraitOf(m, 'exposure') * .4);
+    if (m.sidelined) m.loyalty = clamp(m.loyalty - .8, 10, 98);
+  });
+  st.unity = c100((st.unity || 60) + v11CabinetTrait(st, 'unity') * .12);
+};
+
+/* ==========================================================
+   THE INTERESTS.
+
+   Three measured defects, all of them the same shape -- a number on the page
+   that nothing in the model writes:
+
+   - INFLUENCE IS SET ONCE, at pv5EnsureState (:10434, `influence: g.base`),
+     and is never written again by anything. "Balance of influence" prints the
+     same 540 in every campaign of every save, and the demand generator picks
+     its group by sorting on it, so the same three organisations ask for
+     things for two hundred sessions.
+   - THE RELATION AND THE BLOC ARE A CIRCLE. pv5InterestTick sets the
+     relation's target from `st.blocs[g.bloc]`, and the blocTarget wrapper adds
+     `(relation - 50) * (influence/100) * .16` back into the bloc. Neither
+     number is independently meaningful; they simply agree with each other.
+   - AN ENDORSEMENT is worth `influence/100` inside a campaign-power term that
+     is then multiplied by .65 and capped at 12 -- about six tenths of one per
+     cent of the vote -- and it is cleared for every group at every election.
+
+   And V9_REGION_BLOCS has held a per-region bloc composition since S9 that
+   only ever printed tags. The federation slice gave regions a politics; this
+   connects the organised interests to it.
+   ========================================================== */
+
+function v11Interest(st, id) {
+  return (st.interests && st.interests[id]) || null;
+}
+/* WHAT AN ORGANISATION IS WORTH depends on the bloc it organises, how much of
+   the country that bloc is, how organised it has been allowed to be, and how
+   clean the state is. None of that was read before. */
+function v11InfluenceTarget(st, g) {
+  var q = v11Interest(st, g.id); if (!q) return g.base;
+  var bloc = BLOC[g.bloc] || {};
+  var v = g.base * .55;
+  v += (st.blocs[g.bloc] || 50) * .28;                       /* a bloc that is content is a bloc that turns out */
+  v += (bloc.pop || .12) * 90;                               /* how much of the country it speaks for */
+  v += (bloc.power || .5) * 22;                              /* and what that speech is worth */
+  v += clamp(q.access || 0, 0, 40) * .30;                    /* access compounds into standing */
+  v += (st.ind.corruption - 50) * .22;                       /* a dirtier state is a lobbyist's state */
+  if (q.endorsement) v += 4;
+  v -= Math.max(0, 45 - (q.relation || 50)) * .18;           /* a body the government will not see loses ground */
+  return clamp(v, 12, 100);
+}
+
+/* THE CIRCLE IS BROKEN HERE. The relation's target no longer reads the bloc
+   level at all: it reads the group's OWN drivers -- how near the governing
+   party stands to the bloc it organises, the access it has been granted, its
+   demands met or refused, and whether it is currently endorsing. The bloc goes
+   on reading the relation, so the influence now runs one way only:
+   the party's conduct -> the organisation -> the bloc. */
+function v11RelationTarget(st, g) {
+  var q = v11Interest(st, g.id); if (!q) return 50;
+  var fit = typeof affOf === 'function' ? affOf(st, playParty(st), g.bloc) : 0;
+  var v = 50 + fit * 22;
+  v += clamp(q.access || 0, 0, 40) * .45;
+  v += (q.met || 0) * 4.5 - (q.refused || 0) * 6;
+  if (q.endorsement) v += 6;
+  if (st.cordon && st.cordon[playParty(st)]) v -= 4;
+  return clamp(v, 5, 95);
+}
+
+var v11InterestTickBase = pv5InterestTick;
+pv5InterestTick = function (st) {
+  /* the base still runs: it decays access, drops an endorsement that has gone
+     sour, and raises the demands. Only the two targets are taken off it. */
+  v11InterestTickBase(st);
+  PV5_INTERESTS.forEach(function (g) {
+    var q = st.interests && st.interests[g.id]; if (!q) return;
+    q.relation = c100(q.relation + (v11RelationTarget(st, g) - q.relation) * .10);
+    q.influence = clamp(q.influence + (v11InfluenceTarget(st, g) - q.influence) * .09, 5, 100);
+    if (q.endorsed && q.endorsed < st.turn - 12) q.endorsed = null;
+  });
+};
+
+/* AN ENDORSEMENT NOW BUYS THREE THINGS, and survives the ballot it was bought
+   for rather than being cleared for every group at every election. */
+function v11Endorsements(st) {
+  var n = [];
+  PV5_INTERESTS.forEach(function (g) {
+    var q = st.interests && st.interests[g.id];
+    if (q && q.endorsement) n.push(g);
+  });
+  return n;
+}
+/* 1. it mobilises its own bloc, for as long as it is held */
+var v11EndorseBlocBase = blocTarget;
+blocTarget = function (st, b) {
+  var v = v11EndorseBlocBase(st, b);
+  var q = st.interests && st.interests[b.id];
+  if (q && q.endorsement) v += 3.2 + (q.influence || 50) * .022;
+  return c100(v);
+};
+/* 2. it makes the statutes its bloc wants cheaper to carry.
+
+   THE DISCOUNT HAS TO SURVIVE THE ROUNDING. A first pass took seven per cent
+   and returned Math.round(c * f) -- and policy costs are small integers, so on
+   a statute costing 7 the discount rounded straight back to 7 and the
+   endorsement bought nothing at all on most of the book. That is precisely the
+   "repetitive low impact option" this slice exists to remove, so it is twelve
+   per cent AND floored at a whole point: an endorsement always visibly
+   cheapens what its own bloc wants, which is what its card promises. */
+var v11EndorsePolicyCostBase = policyCost;
+policyCost = function (id, dir) {
+  var c = v11EndorsePolicyCostBase(id, dir);
+  var p = POL[id]; if (!p || !p.mood) return c;
+  var lv = S.pol[id] || 0;
+  var d = polMoodDelta(p, lv, clamp(lv + dir, 0, p.max));
+  var n = 0;
+  v11Endorsements(S).forEach(function (g) { if ((d[g.bloc] || 0) > 0) n++; });
+  if (!n) return c;
+  return Math.max(1, Math.min(c - 1, Math.round(c * Math.pow(.88, n))));
+};
+/* 3. and it is not wiped at every election. runElection's v5 wrapper clears
+   the endorsement of EVERY group; an endorsement now survives one ballot and
+   lapses at the second, so seeking one before a ballot buys a relationship
+   rather than a receipt. */
+var v11RunElectionBase = runElection;
+runElection = function (st, early) {
+  var held = {};
+  PV5_INTERESTS.forEach(function (g) {
+    var q = st.interests && st.interests[g.id];
+    if (q && q.endorsement) held[g.id] = (q.ballots || 0) + 1;
+  });
+  var r = v11RunElectionBase(st, early);
+  PV5_INTERESTS.forEach(function (g) {
+    var q = st.interests && st.interests[g.id]; if (!q) return;
+    if (held[g.id] === undefined) return;
+    if (held[g.id] >= 2 || q.relation < 42) { q.endorsement = false; q.ballots = 0; return; }
+    q.endorsement = true; q.ballots = held[g.id];
+  });
+  return r;
+};
+
+/* THE ORGANISATIONS REACH THE REGIONS. V9_REGION_BLOCS has held a per-region
+   bloc composition since S9 and only ever printed tags with it. S11c gave the
+   regions a politics that reaches the chamber; an organisation that is close
+   to the government now moves the standing of the regions its own bloc is
+   concentrated in, and one that has been shut out moves them the other way. */
+function v11InterestRegionLift(st, rid) {
+  var mix = (typeof V9_REGION_BLOCS !== 'undefined' && V9_REGION_BLOCS[rid]) || null;
+  if (!mix) return 0;
+  var v = 0;
+  PV5_INTERESTS.forEach(function (g) {
+    var q = st.interests && st.interests[g.id]; if (!q) return;
+    var w = mix[g.bloc] || 0; if (!w) return;
+    v += w * ((q.relation - 50) / 50) * ((q.influence || 50) / 100) * (q.endorsement ? 1.7 : 1);
+  });
+  return v;
+}
+var v11InterestRegionBase = regionPartyFactor;
+regionPartyFactor = function (st, pid) {
+  var f = v11InterestRegionBase(st, pid);
+  if (pid !== playParty(st)) return f;
+  var total = 0, weight = 0;
+  REGIONS.forEach(function (r) {
+    var q = st.regions && st.regions[r.id]; if (!q) return;
+    var w = (typeof q.pop === 'number' ? q.pop : r.pop);
+    total += v11InterestRegionLift(st, r.id) * w; weight += w;
+  });
+  if (!weight) return f;
+  /* deliberately small: this rides on top of a term S11c tuned to a measured
+     seat target, and the PR reports what it moved that target by. */
+  return clamp(f * (1 + (total / weight) * .045), V11_REGION_SPAN[0], V11_REGION_SPAN[1]);
+};
+
+/* the meeting and the refusal are now REMEMBERED, because v11RelationTarget
+   reads them: the relationship is a record of how the government has behaved
+   toward the organisation, not a reading of the bloc's mood. */
+var v11InterestActionBase = pv5InterestAction;
+pv5InterestAction = function (id, action) {
+  var q = S.interests && S.interests[id];
+  var cap0 = S.capital;
+  v11InterestActionBase(id, action);
+  if (!q || S.capital === cap0) return;      /* refused or unaffordable: nothing was spent */
+  if (action === 'meet' || action === 'access') q.met = Math.min(12, (q.met || 0) + 1);
+  else if (action === 'distance') { q.refused = Math.min(12, (q.refused || 0) + 1); q.ballots = 0; }
+  else if (action === 'endorse') q.ballots = 0;
+};
+
+/* ---------- the page ---------- */
+function v11DeptStrip(row) {
+  var key = row.key, m = S.ministers && S.ministers[key];
+  if (!m || !cabQuality(S, key)) return '';
+  var d = v11Dept(S, key), f = v11DeptFunding(S, key);
+  var cap = Math.round(v11DeptCapacity(S, key));
+  var strain = Math.round(d.strain), del = Math.round(d.delivered);
+  var t = V11_TRAITS[m.trait] || {};
+  return '<div class="dept-strip">' +
+    '<div class="microstats">' +
+    '<span><b>' + cap + '</b>Capacity</span>' +
+    '<span><b>' + del + '</b>Delivered</span>' +
+    '<span><b>' + strain + '</b>Strain</span>' +
+    '</div>' +
+    '<div class="tagline"><span class="tag' + (f.n === 0 ? ' down' : (f.n === 2 ? ' up' : '')) + '">' +
+    esc(f.name) + ' settlement' + (f.cost > 0 ? ' · ' + fmc(f.cost) + ' a session' :
+      (f.cost < 0 ? ' · saves ' + fmc(-f.cost) + ' a session' : ' · already in the base')) + '</span>' +
+    (strain > 34 ? '<span class="tag down">Overstretched</span>' : '') +
+    (m.sidelined ? '<span class="tag">Papers at the centre</span>' : '') +
+    ((m.schooled || 0) ? '<span class="tag up">College · ceiling ' + v11MinisterCeiling(m) + '</span>' : '') +
+    (t.bills ? '<span class="tag' + (t.bills > 0 ? ' up' : ' down') + '">' + (t.bills > 0 ? '+' : '') + t.bills + ' on the floor</span>' : '') +
+    '</div>' +
+    '<div class="btnrow">' + V11_FUNDING.map(function (o) {
+      return '<button class="btn ghost" data-fund="' + key + '" data-fundlevel="' + o.n + '"' +
+        (o.n === f.n ? ' disabled' : '') + ' title="' + esc(o.note) + '">' + esc(o.name) + '</button>';
+    }).join('') + '</div></div>';
+}
+
+/* The minister card is regenerated markup, so it is spliced on a class the
+   base emits rather than on prose: pv5MinisterCard opens every card with
+   `<article class="minister-card` and closes each with the button row. The
+   strip goes in immediately before that closing </div></article>. */
+var v11MinisterCardBase = pv5MinisterCard;
+pv5MinisterCard = function (row) {
+  var html = v11MinisterCardBase(row);
+  var strip = v11DeptStrip(row);
+  if (!strip) return html;
+  var end = html.lastIndexOf('</div></article>');
+  if (end < 0) return html + strip;
+  return html.slice(0, end + 6) + strip + html.slice(end + 6);
+};
+
+var v11ViewGovernmentBase = viewGovernment;
+viewGovernment = function () {
+  var html = v11ViewGovernmentBase();
+  var rows = pv5PortfolioRows().filter(function (r) { return S.ministers && S.ministers[r.key] && cabQuality(S, r.key); });
+  if (!rows.length) return html;
+  var spend = 0, strained = 0, delivered = 0, cap = 0;
+  rows.forEach(function (r) {
+    spend += v11DeptFunding(S, r.key).cost;
+    var d = v11Dept(S, r.key);
+    if (d.strain > 34) strained++;
+    delivered += d.delivered; cap += v11DeptCapacity(S, r.key);
+  });
+  var panel = '<div class="panel"><h2>The Departments</h2>' +
+    '<p class="note">A department sits between the minister and the country. Its CAPACITY is what it can carry ' +
+    '&mdash; the minister\'s competence, what their rank buys them and what the settlement pays for, less the strain. ' +
+    'Its DELIVERED stock is what initiatives have built there; it decays at three and a half per cent a session ' +
+    'rather than the twenty-six per cent an indicator loses, so work done in a department is still there at the ' +
+    'next election. Both reach the country through the cabinet\'s contribution to every indicator.</p>' +
+    '<div class="macro-grid">' +
+    '<div class="macro-tile"><b>Departments running</b><strong>' + rows.length + '</strong><small>of 16 offices</small></div>' +
+    '<div class="macro-tile"><b>Average capacity</b><strong>' + Math.round(cap / rows.length) + '</strong><small>0 to 100</small></div>' +
+    '<div class="macro-tile"><b>Delivered stock</b><strong>' + Math.round(delivered) + '</strong><small>across the ministry</small></div>' +
+    '<div class="macro-tile"><b>Settlements</b><strong>' + fmc(spend) + '</strong><small>a session, in the Ledger</small></div>' +
+    '<div class="macro-tile"><b>Overstretched</b><strong>' + strained + '</strong><small>departments above 34 strain</small></div>' +
+    '</div>' +
+    (strained ? '<p class="note">An overstretched department produces its own standards case, whoever is running it. ' +
+      'That is a consequence of how it has been funded, not of who was appointed to it.</p>' : '') +
+    '</div>';
+  var mk = '<div class="grid"><div>';
+  return html.indexOf(mk) >= 0 ? html.replace(mk, mk + panel) : panel + html;
+};
+
+var v11ViewInterestsBase = viewInterests;
+viewInterests = function () {
+  var html = v11ViewInterestsBase();
+  var lift = [];
+  REGIONS.forEach(function (r) {
+    var v = v11InterestRegionLift(S, r.id);
+    if (Math.abs(v) > .02) lift.push({ r:r, v:v });
+  });
+  lift.sort(function (a, b) { return b.v - a.v; });
+  var ends = v11Endorsements(S);
+  var panel = '<div class="panel"><h2>What the Organisations Are Worth</h2>' +
+    '<p class="note">Influence is no longer a fixed number on a card: it moves with the bloc the organisation ' +
+    'speaks for, how much of the country that is, the access it has been granted and how clean the state is. ' +
+    'The relationship reads how the government has actually behaved toward it &mdash; meetings, access, demands ' +
+    'refused &mdash; and the bloc reads the relationship, so the influence runs one way instead of in a circle.</p>' +
+    '<div class="macro-grid">' +
+    '<div class="macro-tile"><b>Endorsements held</b><strong>' + ends.length + '</strong><small>each survives one ballot, then lapses</small></div>' +
+    '<div class="macro-tile"><b>Statutes they cheapen</b><strong>' + (ends.length ? Math.round((1 - Math.pow(.88, ends.length)) * 100) + '%' : '&mdash;') +
+      '</strong><small>off anything their bloc wants, never less than a point</small></div>' +
+    '</div>' +
+    (lift.length ? '<p class="note" style="margin-top:8px">Where they are concentrated, they move the regions: ' +
+      esc(lift.slice(0, 3).map(function (x) { return x.r.name + ' ' + (x.v > 0 ? '+' : '') + x.v.toFixed(2); }).join(', ')) +
+      (lift.length > 3 ? ', and ' + (lift.length - 3) + ' more' : '') + '.</p>'
+      : '<p class="note muted" style="margin-top:8px">No organisation is yet close enough, or shut out enough, to move a region.</p>') +
+    '</div>';
+  var mk = '<div class="grid"><div>';
+  return html.indexOf(mk) >= 0 ? html.replace(mk, mk + panel) : panel + html;
+};
+
+document.addEventListener('click', function (ev) {
+  var b = ev.target && ev.target.closest ? ev.target.closest('[data-fund]') : null;
+  if (!b) return;
+  v11SetFunding(b.getAttribute('data-fund'), parseInt(b.getAttribute('data-fundlevel'), 10) || 0);
 });
 
 /* ---------- boot ---------- */

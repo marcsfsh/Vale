@@ -921,6 +921,76 @@
       "line": 23737,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11dDefaultCollapsedBase captured and called for every tab but 'state'. The eight books and the acts panel arrive collapsed; the document and what is before the country do not. Twenty-odd open panels on one tab is exactly the wall the sixth order asked to be rid of elsewhere."
+    },
+    "cabinetBonus#3": {
+      "line": 23901,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11CabinetBonusBase captured and called. cabinetBonus is the real channel from a ministry to the country, and it knew nothing about the department -- only competence and rank. It now adds the department's PERFORMANCE (capacity from competence, rank, the funding settlement and the strain; plus the delivered stock an Initiative builds), so funding a department and running it into the ground both reach every indicator it touches."
+    },
+    "budget#7": {
+      "line": 23916,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11DeptBudgetBase captured and called, returning early when no department carries a cost. budget() was blind to the government that spends it -- sixteen ministries and not one of them cost anything to run. Each department's settlement is now a line in it, and net is recomputed from rev, exp and interest so the Ledger and the budget agree."
+    },
+    "billForecast#4": {
+      "line": 23932,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11TraitForecastBase captured and called. Six of the seven minister traits were read NOWHERE outside a card; the operator's card says they manage Parliament well and the ideologue's says they resist compromise, so those two now move the Assembly and Senate forecasts through V11_TRAITS.bills."
+    },
+    "pv5MinisterAction#1": {
+      "line": 23966,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11MinisterActionBase captured and called for every action this slice does not reprice. A REASSIGNMENT rather than a wrapper for the four it does: brief, train, sideline and launch have to REPLACE their old bodies, and a wrapper that ran the base first would spend the capital twice. Measured defects fixed: Brief clamped to 100 while the tick clamps to 96 (three of five points bought were silently refunded the next session); the College gave max(2, 8 - experience) and then ADDED 3 to experience, so it was strictly dominated by Brief from the sixth session and worse each time it was used; Sideline cut the department's rank, making it the only paid action in the game that makes the government worse at everything; and an Initiative shoved an indicator stock the session tick converges at 26 per cent, measured at 84 per cent gone after six sessions."
+    },
+    "pv5MinisterTick#1": {
+      "line": 24043,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11MinisterTickBase captured and called first. The base clamps every minister to 96; this gives the schooled ones back the headroom the college bought them, applies the trait loyalty and exposure terms, and lets a sidelined minister drift away from the government that sidelined them."
+    },
+    "pv5InterestTick#1": {
+      "line": 24121,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11InterestTickBase captured and called first -- it still decays access, drops a soured endorsement and raises the demands. Only the two TARGETS are taken off it, to break the circle: the relation's target read st.blocs[g.bloc] while the blocTarget wrapper read the relation straight back, so neither number was independently meaningful. The relation now reads the group's own drivers (party fit, access granted, demands met or refused, endorsement) and the bloc goes on reading the relation, so influence runs one way."
+    },
+    "blocTarget#4": {
+      "line": 24145,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11EndorseBlocBase captured and called. An endorsement now mobilises the bloc the organisation speaks for, for as long as it is held -- one of the three things it buys, in place of six tenths of one per cent of the vote and nothing else."
+    },
+    "policyCost#5": {
+      "line": 24153,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11EndorsePolicyCostBase captured and called. The second thing an endorsement buys: seven per cent off any statute whose mood delta favours the endorsing organisation's bloc, compounding across endorsements."
+    },
+    "runElection#4": {
+      "line": 24169,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11RunElectionBase captured and called. The v5 wrapper cleared the endorsement of EVERY group at EVERY election -- the very event they are bought for. An endorsement now survives one ballot and lapses at the second, so seeking one before a ballot buys a relationship rather than a receipt. A relation that has fallen below 42 still ends it immediately."
+    },
+    "regionPartyFactor#2": {
+      "line": 24202,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11InterestRegionBase captured and called. V9_REGION_BLOCS has held a per-region bloc composition since S9 and only ever printed tags with it. An organisation close to the government now lifts the regions its own bloc is concentrated in, and one shut out depresses them. Deliberately small (.045) because it rides on top of the S11c regional term, which was tuned against a measured seat target, and the PR reports what it moved that target by. Clamped to the same V11_REGION_SPAN."
+    },
+    "pv5InterestAction#1": {
+      "line": 24221,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11InterestActionBase captured and called first; this only RECORDS what happened, because v11RelationTarget reads it. A meeting and a refusal are now remembered, so the relationship is a record of how the government has behaved toward the organisation rather than a reading of its bloc's mood. Guarded on capital actually having been spent, so a refused or unaffordable action records nothing."
+    },
+    "pv5MinisterCard#1": {
+      "line": 24263,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11MinisterCardBase captured and called. The department strip is spliced before the card's own closing tags rather than on prose -- the card is regenerated markup and every literal in it is a marker that could move."
+    },
+    "viewGovernment#1": {
+      "line": 24273,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11ViewGovernmentBase captured and called. One of only two genuinely unwrapped views before this slice. Adds The Departments panel."
+    },
+    "viewInterests#1": {
+      "line": 24305,
+      "aliasCaptured": true,
+      "reason": "S11e: alias var v11ViewInterestsBase captured and called. The other genuinely unwrapped view. Adds What the Organisations Are Worth, which is where the influence figure stops being a constant."
     }
   }
 }

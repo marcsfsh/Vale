@@ -580,6 +580,52 @@ async function run() {
       `${deck.msCollapsed}ms a render collapsed; opening one fills it (${deck.keyed}) and saves the preference: ${deck.prefSaved}; ` +
       `the range chip saves and clears the remembered scroll: ${deck.rangeSaved && deck.scrollCleared}`);
 
+    // -- S11e: the department strip is on the card and its buttons work
+    const dept = await page.evaluate(() => {
+      const keep = { capital:S.capital, treasury:S.treasury, ruling:S.ruling, coalition:S.coalition };
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me]; S.capital = 300; S.treasury = 99999;
+      ['pres', 'vpres', 'chan', 'vchan'].forEach(d => S.exec[d] = me);
+      pv5PortfolioRows().slice(0, 4).forEach(r => { S.cabinet[r.key] = 1; });
+      pv5EnsureState(S, false);
+      UI.tab = 'government'; render();
+      const out = {};
+      out.panel = [...document.querySelectorAll('#view .panel h2')].some(h => /The Departments/.test(h.textContent));
+      out.strips = document.querySelectorAll('#view .dept-strip').length;
+      out.fundButtons = document.querySelectorAll('#view [data-fund]').length;
+      const btn = document.querySelector('#view [data-fund]:not([disabled])');
+      out.clickable = !!btn;
+      if (btn) {
+        const key = btn.getAttribute('data-fund'), lvl = +btn.getAttribute('data-fundlevel');
+        const exp0 = budget(S).exp;
+        btn.click();
+        out.moved = v11Dept(S, key).funding === lvl;
+        out.budgetMoved = Math.abs(budget(S).exp - exp0) > 0.01;
+        /* and it rides the save */
+        const back = JSON.parse(JSON.stringify(S));
+        out.ridesTheSave = !!(back.v11 && back.v11.depts && back.v11.depts[key] &&
+          back.v11.depts[key].funding === lvl);
+      }
+      /* the interests panel is on its own tab */
+      UI.tab = 'politics'; render();
+      let html = document.getElementById('view').innerHTML;
+      if (!/What the Organisations Are Worth/.test(html)) {
+        const t = [...document.querySelectorAll('[data-subtab],[data-tab]')].find(b => /interest/i.test(b.textContent || ''));
+        if (t) { t.click(); html = document.getElementById('view').innerHTML; }
+      }
+      out.interestPanel = /What the Organisations Are Worth/.test(html) || (function () {
+        UI.tab = 'interests'; render(); return /What the Organisations Are Worth/.test(document.getElementById('view').innerHTML);
+      })();
+      S.capital = keep.capital; S.treasury = keep.treasury; S.ruling = keep.ruling; S.coalition = keep.coalition;
+      UI.tab = 'chamber'; render();
+      return out;
+    });
+    step('departments', dept.panel && dept.strips >= 4 && dept.fundButtons >= 12 && dept.clickable &&
+      dept.moved && dept.budgetMoved && dept.ridesTheSave && dept.interestPanel,
+      `The Departments panel present; ${dept.strips} department strips on the ministry cards with ${dept.fundButtons} settlement controls; ` +
+      `changing one through its own button moves the department (${dept.moved}), moves the budget (${dept.budgetMoved}) and rides the save (${dept.ridesTheSave}); ` +
+      `the interests page carries its worth panel (${dept.interestPanel})`);
+
     // -- S11d: the Constitution page renders the document and a real vote
     const con = await page.evaluate(() => {
       const keep = { capital:S.capital, ruling:S.ruling, coalition:S.coalition, turn:S.turn };
