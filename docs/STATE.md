@@ -13,6 +13,56 @@ complete.** Empire, Imperium, the People's State and The Charter close the book:
 the owner's order specified. The file stands at **2,951,257 bytes of the
 3,100,000 allowed**, against a projection of 2,948,134 made three batches ago.
 
+### Correction: the post-repair ordering figures in PRs #36 to #39 are inflated
+
+**What was wrong.** Each batch sampled forty ladders, measured them blind,
+repaired the ones both readers failed, then re-measured **the same forty**. That
+was described in those PR bodies as controlling for sample difficulty, which it
+does. It also means the second number was taken on the ladders that had just been
+optimised against it. **The reported 85.0 to 87.5 per cent exact recovery is a
+test-set score, not an estimate of the book.**
+
+**The size of it, measured directly.** A sixty-ladder run over the imperial books
+after they shipped, one reader, one run, split by whether a ladder had been in
+the repaired forty:
+
+| | exact |
+|---|---|
+| ladders inside the repaired sample | **95.2%** (20 of 21) |
+| ladders never measured before | **66.7%** (26 of 39) |
+
+**28.5 points.** That is the inflation.
+
+**The honest number.** Pooling every ladder from two fresh runs that had never
+appeared in any measured sample:
+
+| held-out, n = 98 | placements | exact | tau |
+|---|---|---|---|
+| **the book as it stands** | **78.3%** | **60.2%** | **0.830** |
+| shipped baseline (PR 1) | 78.1% | 57.5% | 0.833 |
+| what PRs #36-#39 reported | 92.5-93.1% | 85.0-87.5% | 0.950 |
+
+**The book reads at about the standard PR 1 set, not meaningfully above it.**
+
+**What is unaffected.** The **draft-stage** figures were always fresh
+measurements on ladders no repair had touched, so the finding that the one-axis
+rule works at authoring time stands unchanged: PR 3's drafts recovered 37.5 and
+30.0 per cent, PR 4's 75.0 and 80.0, PR 5's 72.5, PR 6's 77.5 and 75.0. So does
+the repair-cost collapse, 123 rung fields to about twenty. And **attribution was
+always drawn fresh**: 118 of 120 across all twenty-three books stands.
+
+**The rule this earns.** Never re-measure the sample you repaired against. A
+repair pass must be scored on ladders held out from the run that selected its
+targets. Any future prose work in this repo measures on a held-out sample or
+reports nothing.
+
+**Why the book is not being re-authored.** At 60.2 per cent held-out it sits at
+the standard that shipped in PR 1 and was accepted, on a corpus twelve times the
+size. Re-repairing 582 ladders to chase a number would be disproportionate, and
+repairing against a measurement is what produced this problem in the first place.
+The four books' own fresh scores are recorded for whoever picks this up: Empire
+90.9, Imperium 76.5, People's State 75.0, The Charter 62.5 per cent.
+
 ### The three asks, all delivered
 
 | ask | where |
