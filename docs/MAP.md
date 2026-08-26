@@ -562,6 +562,64 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
+## The person in the office (S15i)
+
+**There was no candidate.** An executive office was won by a *party*: national
+vote share, a push keyed on `st.ruling`, a noise band, and a flat **`1.18`** for
+whichever party held it. Not one attribute of the sitting holder entered the
+contest. A person was minted *afterwards* by `holderOf` and thrown away the
+moment `f.party !== st.exec[office]`, so nobody could hold an office twice, be
+beaten and come back, or be barred from a third term.
+
+**The bench already existed.** Sixteen ministers have carried competence,
+loyalty, ambition, exposure and a trait since v5; eight governors have carried
+standing, approval and their own `terms` since v6; every party has had a leader
+since v4. **None of them could stand for anything.**
+
+- **`execBench(st, office, pid)`** — the sitting holder if the office is theirs,
+  the party leader, any minister of theirs with `ambition >= 55`, any governor of
+  theirs. Each candidate carries where they came from, which the page prints.
+- **`execNominate`** scores on ambition, competence, loyalty and exposure, with a
+  bonus for the sitting holder and the leader. The player's party honours
+  `st.execNominee[office]` if it has been named and the person is still eligible.
+- **`execSeat`** installs the winner and increments `terms` when it is the same
+  person. **An ambitious minister who wins a great office leaves the cabinet** —
+  the first consequence ambition has ever had outside its own portfolio.
+- **`execRemember`** takes loyalty off, and puts ambition on, every minister who
+  wanted it and did not get it.
+- **`execPersonFactor`** replaces the flat party `1.18`: the sitting *person*
+  standing again is worth 1.14 plus .05 a term plus a competence term, less
+  exposure, clamped to `[.86, 1.32]`; the same party running a new face gets 1.04.
+
+**No die is rolled anywhere in this model.** `execBench`, `execNominate` and
+`v15Person` are all on the render path — the nomination panel previews who the
+party will put up — and a roll there makes the campaign's dice depend on how many
+times the player looked at a screen. Every derived value comes off `v15Hash` of
+the person's own name, so it is stable, previewable and free. That is also why
+**`makeFigure` is untouched**: `v15Person` backfills competence, ambition,
+exposure, `terms` and `from` on read, so old saves, the ten event and action
+sites that build a figure by hand, and the v10 rename wrapper all get the same
+treatment through one function, and the dice stream is byte-identical.
+
+**Three things that were wired to nothing:**
+
+| was | is |
+|---|---|
+| `execPush` wrote `S.execPush[S.ruling]`, keyed on no office, and the read applied it to **both** contests of the pair. Its `money:8` came out of the national treasury | four options, one per office; credited to `playParty(S)`, so a junior partner no longer buys the senior partner's ticket; `purse:'party'`. `execPushOn` reads the office key **and** the bare party key, so a save written mid-cycle is not silently voided |
+| `promoteProtege` picked a **random** office among those the coalition held, discarded whoever was in it and minted a stranger with a hand-picked trait and `loyalty: 85` | four options, and the person who arrives is somebody the player built — a minister, a governor or the party leader |
+| `artTermLimit` has read *"no person shall hold the same great office for more than two terms together"* since S11d, has **no `apply()`**, and **no executive term counter existed anywhere in the file** | `execTermBarred` reads `v11Adopted(st, 'artTermLimit')` against the sitting holder's `terms` |
+
+**`ageSucceed`'s exec arm takes the successor off the bench too**, so a death in
+office promotes somebody rather than introducing a stranger. Measured over eighty
+sessions: 11 successions, all of them out of the leadership or the states, where
+every one used to be a name nobody had seen.
+
+**`viewExec` had no wrapper and emitted no `data-*` of its own.** `viewExec#1`
+appends the person's competence, term and origin to each office card by
+replacing the tag the base writes (`'<span class="tag">' + name + ', aged ' + age
++ '</span>'`), and splices the nomination bench in above **`<div
+class="panel"><h2>The Cabinet</h2>`**.
+
 ## Campaigning and the vote model (S15h)
 
 **Five channels reach the count, and before this slice one of them was worth

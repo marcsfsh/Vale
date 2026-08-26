@@ -6729,18 +6729,226 @@ function seedFigures(st) {
 function leaderOf(st, pid) {
   if (!st.figures) seedFigures(st);
   if (!st.figures.leaders[pid]) st.figures.leaders[pid] = makeFigure(st, pid, 44);
-  return st.figures.leaders[pid];
+  return v15Person(st, st.figures.leaders[pid]);
 }
 function holderOf(st, office) {
   if (!st.figures) seedFigures(st);
   var f = st.figures.exec[office];
-  if (!f || f.party !== st.exec[office]) {
-    f = makeFigure(st, st.exec[office], 46);
-    st.figures.exec[office] = f;
+  if (!f) { f = makeFigure(st, st.exec[office], 46); st.figures.exec[office] = f; }
+  /* S15i: this used to DISCARD the person and mint a stranger the moment the
+     office changed party, which is why nobody could ever hold one twice, be
+     beaten and come back, or be term-limited out of it. The office changes
+     hands in the contest now, which names the new holder off the winning
+     party's own bench. This is what is left: the repair for a save, a scenario
+     apply() or a consulate act that moved st.exec without going through it. */
+  if (f.party !== st.exec[office]) f = execSeat(st, office, st.exec[office], null);
+  return v15Person(st, f);
+}
+function traitOf(st, pid) { return leaderOf(st, pid).trait; }
+
+/* ---------- the person in the office (S15i) ---------------------------------
+
+   THERE WAS NO CANDIDATE. An executive office was won by a PARTY: national vote
+   share, a push keyed on `st.ruling`, a noise band, and a flat `1.18` for
+   whichever party held it. Not one attribute of the sitting holder -- not their
+   name, their age, their trait or the `loyalty` the assent stage reads -- ever
+   entered the contest. A person was minted AFTERWARDS by `holderOf`, and thrown
+   away the moment the party changed, so nobody could hold an office twice, be
+   beaten and come back, or be barred from a third term.
+
+   The bench already existed and was already modelled. Sixteen ministers have
+   carried competence, loyalty, ambition, exposure and a trait since v5; eight
+   governors have carried standing, approval and their own `terms` count since
+   v6; every party has had a leader since v4. None of them could stand for
+   anything. `ambition` in particular was written six ways and read twice: a
+   -0.29-a-session loyalty drag, and a `>= 55` gate on a button whose whole
+   effect was `+1` to a rank integer on the SAME portfolio.
+
+   NOTHING HERE ROLLS A DIE. `execBench`, `execNominate` and `v15Person` are all
+   called from the render path -- the nomination panel previews who your party
+   will put up -- and a roll on a render makes the campaign's dice depend on how
+   many times the player looked at a screen. Every derived value comes off a
+   hash of the person's own name, so it is stable, previewable and free. */
+var V15_EXEC_OFFICES = ['pres', 'vpres', 'chan', 'vchan'];
+/* a minister's trait and a great officer's trait come out of two different
+   registries; this is how a career reads across the gap */
+var V15_MINISTRY_TRAIT = { technocrat:'technocrat', organiser:'organiser', reformer:'liberal',
+  loyalist:'invisible', operator:'fixer', communicator:'orator', ideologue:'ideologue' };
+
+function v15Hash(s) {
+  var h = 5381, i; s = String(s || '');
+  for (i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h % 100003;
+}
+
+/* Figures written before this slice carry a name, a party, an age, a trait and
+   a loyalty and nothing else, and so do figures written by the ten event and
+   action sites that build one by hand. Filled in on READ rather than migrated:
+   nothing is lost, because nothing was there, and a derivation off the name is
+   the same answer every time it is asked. */
+function v15Person(st, f) {
+  if (!f) return f;
+  var h = v15Hash(f.name);
+  if (typeof f.competence !== 'number') f.competence = 40 + (h % 49);
+  if (typeof f.ambition !== 'number') f.ambition = 34 + (v15Hash(f.name + 'a') % 58);
+  if (typeof f.exposure !== 'number') f.exposure = 0;
+  if (typeof f.terms !== 'number') f.terms = 1;
+  if (!f.from) f.from = 'the party';
+  return f;
+}
+
+function v15Cand(o) {
+  o.competence = clamp(o.competence === undefined ? 55 : o.competence, 5, 99);
+  o.loyalty = clamp(o.loyalty === undefined ? 55 : o.loyalty, 0, 100);
+  o.ambition = clamp(o.ambition === undefined ? 50 : o.ambition, 0, 100);
+  o.exposure = o.exposure || 0;
+  o.terms = o.terms || 0;
+  if (!TRAIT[o.trait]) o.trait = TRAITS[v15Hash(o.name + 't') % TRAITS.length].id;
+  return o;
+}
+
+/* WHO A PARTY CAN PUT UP: the sitting holder if it is theirs, the party leader,
+   any minister of theirs whose ambition is up, and any governor of theirs. */
+function execBench(st, office, pid) {
+  var out = [], seen = {};
+  var add = function (c) { if (!c.name || seen[c.name]) return; seen[c.name] = 1; out.push(v15Cand(c)); };
+  var sit = st.figures && st.figures.exec && st.figures.exec[office];
+  if (sit && sit.party === pid) {
+    v15Person(st, sit);
+    add({ name:sit.name, party:pid, trait:sit.trait, from:'the office', seat:'sitting', sitting:true,
+      competence:sit.competence, loyalty:sit.loyalty, ambition:sit.ambition,
+      exposure:sit.exposure, terms:sit.terms });
+  }
+  var ld = st.figures && st.figures.leaders && st.figures.leaders[pid];
+  if (ld) {
+    v15Person(st, ld);
+    add({ name:ld.name, party:pid, trait:ld.trait, from:'the leadership', seat:'leader',
+      competence:ld.competence, loyalty:100, ambition:ld.ambition, exposure:ld.exposure, terms:0 });
+  }
+  if (st.ministers) {
+    for (var k in st.ministers) {
+      var m = st.ministers[k];
+      if (!m || m.party !== pid || (m.ambition || 0) < 55) continue;
+      add({ name:m.name, party:pid, trait:V15_MINISTRY_TRAIT[m.trait] || 'technocrat', from:'the ministry',
+        seat:'minister', post:k, competence:m.competence, loyalty:m.loyalty,
+        ambition:m.ambition, exposure:m.exposure, terms:0 });
+    }
+  }
+  if (st.v6 && st.v6.governors) {
+    for (var rid in st.v6.governors) {
+      var g = st.v6.governors[rid];
+      if (!g || g.party !== pid) continue;
+      add({ name:g.name, party:pid, from:'the states', seat:'governor', region:rid,
+        competence:g.standing, loyalty:58, ambition:clamp((g.approval || 50) + 10, 0, 100),
+        terms:0 });
+    }
+  }
+  if (!out.length && st.figures && st.figures.exec) {
+    /* a party with nobody at all still fields somebody; this is the only path
+       that mints a stranger, and it is the path the old model always took */
+    var f = v15Person(st, makeFigure(st, pid, 46));
+    add({ name:f.name, party:pid, trait:f.trait, from:'the party', seat:'new',
+      competence:f.competence, loyalty:f.loyalty, ambition:f.ambition, exposure:0, terms:0 });
+  }
+  return out;
+}
+
+/* THE ARTICLE OF THE LIMITED TERM SAYS WHAT IT DOES NOW. Its own sentence has
+   been "No person shall hold the same great office for more than two terms
+   together" since S11d, and no executive term counter existed anywhere in the
+   file for it to read. */
+function execTermBarred(st, office, c) {
+  if (typeof v11Adopted !== 'function' || !v11Adopted(st, 'artTermLimit')) return false;
+  return !!c.sitting && (c.terms || 1) >= 2;
+}
+
+function execNomScore(st, office, c) {
+  var v = c.ambition * .46 + c.competence * .34 + c.loyalty * .16 - c.exposure * .6;
+  if (c.sitting) v += 13 + Math.min(9, ((c.terms || 1) - 1) * 4);
+  if (c.seat === 'leader') v += 7;
+  /* the room, and it is the same room every time it is asked */
+  v += (v15Hash(c.name + office) % 21) - 10;
+  return v;
+}
+
+function execNominate(st, office, pid) {
+  var bench = execBench(st, office, pid);
+  var open = bench.filter(function (c) { return !execTermBarred(st, office, c); });
+  if (!open.length) open = bench.slice(0, 1);
+  var scored = open.map(function (c) { return { c:c, s:execNomScore(st, office, c) }; })
+    .sort(function (a, b) { return b.s - a.s; });
+  var pick = null;
+  /* the player's party names its own, if it has named one and that person is
+     still on the bench and still eligible */
+  var named = st.execNominee && st.execNominee[office];
+  if (named && pid === playParty(st)) open.forEach(function (c) { if (c.name === named) pick = c; });
+  if (!pick) pick = scored[0].c;
+  return { winner:pick, runners:scored.map(function (x) { return x.c; }).filter(function (c) { return c !== pick; }),
+    bench:bench, contested:open.length > 1, barred:bench.length - open.length };
+}
+
+/* THE PERSON, NOT THE COLOUR. This is what the flat party-keyed 1.18 became. */
+function execPersonFactor(st, office, pid, cand) {
+  var sit = st.figures && st.figures.exec && st.figures.exec[office], v = 1;
+  if (sit && sit.party === pid && cand && cand.name === sit.name) {
+    v15Person(st, sit);
+    v *= 1.14 + Math.min(.10, ((sit.terms || 1) - 1) * .05);
+    v *= 1 + (clamp(sit.competence, 0, 100) - 55) / 300;
+    v *= 1 - Math.min(.18, (sit.exposure || 0) * .012);
+  } else if (sit && sit.party === pid) {
+    /* the party holds the office and is running a new face: worth a little,
+       and nothing like an incumbent */
+    v *= 1.04;
+  }
+  if (cand) v *= 1 + (clamp(cand.competence, 0, 100) - 55) / 400;
+  /* bounded, because four multiplied terms compound: an able two-term holder
+     reaches 1.32 against the flat 1.18 the PARTY used to get, and a tired one
+     with a file on them is worth less than a fresh face of the same colour */
+  return clamp(v, .86, 1.32);
+}
+
+/* office-keyed since S15i. The bare party key is what a save written before it
+   carries mid-cycle, and it still counts rather than being silently dropped. */
+function execPushOn(st, office, pid) {
+  var p = st.execPush; if (!p) return 0;
+  return (p[office + ':' + pid] || 0) + (p[pid] || 0);
+}
+
+function execSeat(st, office, pid, cand) {
+  if (!st.figures) seedFigures(st);
+  var prev = st.figures.exec[office];
+  var c = cand || execNominate(st, office, pid).winner;
+  var same = !!prev && prev.name === c.name && prev.party === pid;
+  var f = same ? v15Person(st, prev) : {
+    name:c.name, party:pid, age:44 + (v15Hash(c.name + 'g') % 21), trait:c.trait,
+    since:yearOf(st.turn), loyalty:c.loyalty, competence:c.competence,
+    ambition:c.ambition, exposure:c.exposure || 0, terms:0, from:c.from || 'the party' };
+  f.party = pid;
+  f.terms = same ? (f.terms || 1) + 1 : 1;
+  st.figures.exec[office] = f;
+  /* AN AMBITIOUS MINISTER WHO WINS A GREAT OFFICE LEAVES THE CABINET. That is
+     the first consequence ambition has ever had outside its own portfolio. */
+  if (!same && c.seat === 'minister' && c.post && st.ministers && st.ministers[c.post]) {
+    delete st.ministers[c.post];
+    if (st.cabinet) st.cabinet[c.post] = 0;
   }
   return f;
 }
-function traitOf(st, pid) { return leaderOf(st, pid).trait; }
+
+/* and the losers remember it */
+function execRemember(st, runners) {
+  (runners || []).forEach(function (c) {
+    if (c.seat === 'minister' && c.post && st.ministers && st.ministers[c.post]) {
+      var m = st.ministers[c.post];
+      m.loyalty = clamp(m.loyalty - 9, 0, 100);
+      m.ambition = clamp(m.ambition + 7, 0, 100);
+    }
+    if (c.seat === 'governor' && c.region && st.v6 && st.v6.governors && st.v6.governors[c.region]) {
+      var g = st.v6.governors[c.region];
+      g.standing = clamp(g.standing - 5, 5, 95);
+    }
+  });
+}
 
 function figureEffects(st) {
   PARTIES.forEach(function (p) {
@@ -6784,9 +6992,12 @@ function ageSucceed(st, rec, died) {
       '. ' + nf.name + ' takes the leadership, and is ' + (/^[aeiou]/i.test(TRAIT[nf.trait].name) ? 'an ' : 'a ') + TRAIT[nf.trait].name.toLowerCase() + '.');
     if (rec.key === st.ruling) { st.capital = clamp(st.capital - 4, -5, capCap(st)); st.unrest += 3; }
   } else if (rec.kind === 'exec') {
-    st.figures.exec[rec.key] = makeFigure(st, st.exec[rec.key], 46);
+    /* S15i: the successor comes off the holding party's own bench rather than
+       being minted as a stranger, and starts a term of their own. */
+    st.figures.exec[rec.key] = null;
+    var ef = execSeat(st, rec.key, st.exec[rec.key], null);
     logIt(st, (died ? 'Death in office of ' : 'Resignation of ') + f.name + ', ' + DEPTS[rec.key].name +
-      '. ' + st.figures.exec[rec.key].name + ' is sworn in.');
+      '. ' + ef.name + ' is sworn in, out of ' + ef.from + '.');
     st.capital = clamp(st.capital - 2, -5, capCap(st));
   }
 }
@@ -10647,19 +10858,32 @@ function runElection(st, early) {
   if (isExecTurn(st.turn)) {
     execRes = {};
     execPair(st.turn).forEach(function (office) {
-      var r = {}, t = 0;
+      var r = {}, t = 0, noms = {};
       PARTIES.forEach(function (p) {
-        var v = res[p.id] * (1 + ((st.execPush && st.execPush[p.id]) || 0));
+        /* S15i: every party puts up a NAMED person off its own bench, and the
+           contest reads that person. The flat 1.18 for whoever held the office
+           was keyed on the party, so a beloved twenty-year technocrat and an
+           eighty-year-old nobody the party had just installed were the same
+           number. execPush is aimed at one office now instead of lifting both
+           contests of the pair at once. */
+        noms[p.id] = execNominate(st, office, p.id);
+        var v = res[p.id] * (1 + execPushOn(st, office, p.id));
         v *= .78 + rand() * .44;
-        if (p.id === st.exec[office]) v *= 1.18;
+        v *= execPersonFactor(st, office, p.id, noms[p.id].winner);
         r[p.id] = Math.max(0, v); t += r[p.id];
       });
       PARTIES.forEach(function (p) { r[p.id] = r[p.id] / t; });
       var w = rcvWinner(r);
       execRes[office] = w;
       st.exec[office] = w;
+      var seated = execSeat(st, office, w, noms[w].winner);
+      execRemember(st, noms[w].runners);
+      logIt(st, seated.name + ' was returned as ' + DEPTS[office].name + ' for the ' + PARTY[w].short +
+        (seated.terms > 1 ? ', for a ' + (seated.terms === 2 ? 'second' : 'further') + ' term.'
+                          : ', out of ' + seated.from + '.'));
     });
     st.execPush = {};
+    if (st.execNominee) st.execNominee = {};
   }
 
   var delta = {}, swing = 0;
@@ -11160,9 +11384,20 @@ var ACTIONS = [
       if (CABMOOD[open[0]]) mood(S, CABMOOD[open[0]]);
       logIt(S, open[1] + ' was confirmed.');
     } }),
-  A({ id:'execPush', cat:'Cabinet', name:'Back the Executive Ticket', cost:6, money:8, elective:true,
-    desc:'Money and organisation behind your party in the next executive contest.',
-    run:function (S) { S.execPush = S.execPush || {}; S.execPush[S.ruling] = (S.execPush[S.ruling] || 0) + .16; logIt(S, 'The party moved money into the executive campaign.'); } }),
+  /* S15i: it could not be aimed -- the write was keyed on the party alone and
+     the read applied it to BOTH contests of the pair -- and it credited
+     `S.ruling`, so a junior partner's 6 capital and 8 money bought the senior
+     partner's ticket. It is aimed at one office now, credited to the party the
+     player actually leads, and paid out of that party's own funds. */
+  A({ id:'execPush', cat:'Cabinet', name:'Back the Executive Ticket', cost:6, money:8, elective:true, purse:'party',
+    desc:'Money and organisation behind your own party, in one executive contest.',
+    opts: V15_EXEC_OFFICES.map(function (o) {
+      return { label:'For the ' + DEPTS[o].name, cost:6, money:8, run:function (S) {
+        var me = playParty(S), k = o + ':' + me;
+        S.execPush = S.execPush || {};
+        S.execPush[k] = (S.execPush[k] || 0) + .16;
+        logIt(S, 'The ' + PARTY[me].short + ' moved money into the contest for ' + DEPTS[o].name + '.'); } };
+    }) }),
   /* ---------------- foreign powers ---------------- */
   A({ id:'envoy', cat:'Diplomacy', name:'Send an Envoy', cost:4, money:4, cool:1,
     desc:'A named ambassador with instructions, to one capital in particular.',
@@ -11330,19 +11565,29 @@ var ACTIONS = [
       S.coopted[best] = true; S.ind.corruption += 2;
       logIt(S, f.name + ' of the ' + PARTY[best].short + ' has been brought a good deal closer to the government.');
     } }),
-  A({ id:'promoteProtege', cat:'Figures', name:'Elevate a Protege', cost:5, cool:2,
-    desc:'Put your own person into a great office and hope they remember who put them there.',
-    run:function (S) {
-      var off = ['pres','vpres','chan','vchan'], co = S.coalition || [S.ruling];
-      var mine = off.filter(function (o) { return co.indexOf(S.exec[o]) >= 0; });
-      var target = mine.length ? rnd(mine) : rnd(off);
-      var f = makeFigure(S, S.exec[target], 40);
-      f.trait = rnd(['technocrat','organiser','orator','fixer']);
-      f.loyalty = 85;
-      S.figures.exec[target] = f;
-      S.capital += 3;
-      logIt(S, f.name + ' was elevated to ' + DEPTS[target].name + ', and is ' + (/^[aeiou]/i.test(TRAIT[f.trait].name) ? 'an ' : 'a ') + TRAIT[f.trait].name.toLowerCase() + '.');
-    } }),
+  /* S15i: this was the feature implemented as a coin toss. It picked a RANDOM
+     office among those the coalition held, threw away whoever was in it and
+     minted a stranger with a hand-picked trait and a loyalty of 85 -- there was
+     no protege, because there was no bench to take one from. It is aimed now,
+     and the person who arrives is somebody the player has actually built:
+     a minister, a governor or the party leader. */
+  A({ id:'promoteProtege', cat:'Figures', name:'Elevate a Protege', cost:5, money:4, cool:2, purse:'party',
+    desc:'Put one of your own people into a great office your side already holds.',
+    opts: V15_EXEC_OFFICES.map(function (o) {
+      return { label:'Into the ' + DEPTS[o].name + '\u2019s chair', cost:5, money:4, run:function (S) {
+        var co = S.coalition || [S.ruling], pid = S.exec[o];
+        if (co.indexOf(pid) < 0) { flash('The ' + DEPTS[o].name + ' is held against you.'); return; }
+        var bench = execBench(S, o, pid).filter(function (c) { return !c.sitting; });
+        if (!bench.length) { flash('There is nobody on the bench for it.'); return; }
+        bench.sort(function (a, b) { return (b.ambition + b.competence) - (a.ambition + a.competence); });
+        var prev = S.figures.exec[o], f = execSeat(S, o, pid, bench[0]);
+        f.loyalty = clamp(f.loyalty + 20, 0, 100);
+        S.ind.corruption = c100(S.ind.corruption + 2);
+        if (prev && prev.name !== f.name) S.unity = c100((S.unity || 60) - 4);
+        logIt(S, f.name + ' was lifted out of ' + f.from + ' into ' + DEPTS[o].name +
+          ', and is ' + (/^[aeiou]/i.test(TRAIT[f.trait].name) ? 'an ' : 'a ') + TRAIT[f.trait].name.toLowerCase() + '.');
+      } };
+    }) }),
   A({ id:'discreditLeader', cat:'Figures', name:'Destroy a Reputation', cost:8, money:5, cool:2, esc:1.2,
     desc:'Twelve years of the correspondence of somebody else, released a week at a time.',
     run:function (S) {
@@ -30217,6 +30462,91 @@ viewCampaign = function () {
   var i = html.indexOf(mk);
   return i >= 0 ? html.slice(0, i) + v15CampaignWorth() + html.slice(i) : html + v15CampaignWorth();
 };
+
+/* ==========================================================
+   S15i: THE OFFICE IS WON BY A PERSON, AND THE PAGE SAYS WHO.
+
+   viewExec printed four cards naming the holder and their trait and nothing
+   else -- the whole page emitted no data attribute of its own. It now carries
+   the person's competence, how long they have held it and where they came
+   from, and, before a contest, the bench the party is choosing from.
+
+   The nomination is a choice made BEFORE the ballot rather than a sheet thrown
+   up inside the turn tick, which is both easier to answer and the way the
+   thing actually works: a party settles on its candidate and then fights the
+   election with them.
+   ========================================================== */
+function v15NextExecTurn() {
+  var t = S.turn, last = lastTurn();
+  while (t <= last && !isExecTurn(t)) t++;
+  return t <= last ? t : null;
+}
+function v15PersonLine(f) {
+  v15Person(S, f);
+  return Math.round(f.competence) + ' competence · ' +
+    (f.terms > 1 ? f.terms + ' terms' : 'a first term') + ' · out of ' + f.from;
+}
+function v15NominationPanel() {
+  var t = v15NextExecTurn();
+  if (!FORMS[S.form].elections || t === null) return '';
+  var me = playParty(S);
+  var cards = execPair(t).map(function (office) {
+    var nom = execNominate(S, office, me);
+    var rows = nom.bench.map(function (c) {
+      var barred = execTermBarred(S, office, c), chosen = nom.winner.name === c.name;
+      return '<button class="strategy-choice" data-nominate="' + office + '" data-nominee="' + esc(c.name) + '"' +
+        (barred ? ' disabled' : '') + ' aria-pressed="' + chosen + '"><b>' + esc(c.name) + '</b><small>' +
+        esc(TRAIT[c.trait].name) + ' from ' + esc(c.from) + ' · competence ' + Math.round(c.competence) +
+        ' · loyalty ' + Math.round(c.loyalty) + ' · ambition ' + Math.round(c.ambition) +
+        (barred ? ' · barred by the Article of the Limited Term' : '') + '</small></button>';
+    }).join('');
+    return '<article class="card"><h3>' + esc(DEPTS[office].name) + '</h3><p class="desc">' +
+      (nom.contested ? nom.bench.length + ' of your people want it. ' : 'One name only. ') +
+      'The party will put up <b>' + esc(nom.winner.name) + '</b> unless you say otherwise' +
+      (nom.barred ? ', and ' + nom.barred + ' of them cannot stand again' : '') + '.</p>' + rows + '</article>';
+  }).join('');
+  return '<div class="panel"><h2>Your Nomination</h2>' +
+    '<p class="note">A great office is won by a person. Your ministers, your governors and your party leader are ' +
+    'all on the bench, and an ambitious minister who takes one of these offices leaves the cabinet to do it. ' +
+    'The people who wanted it and did not get it remember. Naming a candidate costs ' + cst(2) + ' capital and ' +
+    fmc(3) + ' of party money, and it stands until the contest.</p>' +
+    '<div class="cards">' + cards + '</div></div>';
+}
+function v15Nominate(office, name) {
+  if (V15_EXEC_OFFICES.indexOf(office) < 0) return;
+  var me = playParty(S), c = null;
+  execBench(S, office, me).forEach(function (x) { if (x.name === name) c = x; });
+  if (!c) { flash('That name is no longer on the bench.'); return; }
+  if (execTermBarred(S, office, c)) { flash('The Article of the Limited Term bars a third term together.'); return; }
+  if (!pv5Spend(2, 3, 'Nominate ' + name, myPurse())) return;
+  S.execNominee = S.execNominee || {};
+  S.execNominee[office] = name;
+  logIt(S, 'The ' + PARTY[me].short + ' will put ' + name + ' forward for ' + DEPTS[office].name + '.');
+  render();
+}
+var v15ViewExecBase = viewExec;
+viewExec = function () {
+  var html = v15ViewExecBase();
+  /* the office cards get the person; the marker is the card heading the base
+     writes for each office, and the tag row that follows it */
+  V15_EXEC_OFFICES.forEach(function (k) {
+    var f = holderOf(S, k);
+    var mk = '<span class="tag">' + esc(f.name) + ', aged ' + f.age + '</span>';
+    if (html.indexOf(mk) >= 0) html = html.replace(mk, mk + '<span class="tag">' + esc(v15PersonLine(f)) + '</span>');
+  });
+  var panel = v15NominationPanel();
+  if (panel) {
+    var slot = '<div class="panel"><h2>The Cabinet</h2>';
+    var i = html.indexOf(slot);
+    html = i >= 0 ? html.slice(0, i) + panel + html.slice(i) : html + panel;
+  }
+  return html;
+};
+document.addEventListener('click', function (ev) {
+  var b = ev.target && ev.target.closest ? ev.target.closest('[data-nominate]') : null;
+  if (!b || b.disabled) return;
+  v15Nominate(b.getAttribute('data-nominate'), b.getAttribute('data-nominee'));
+});
 
 /* ---------- boot ---------- */
 (function () {

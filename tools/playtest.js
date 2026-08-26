@@ -1202,6 +1202,58 @@ async function run() {
       `organisations panel states theirs (${cw.orgSays}) -- the page used to print a "point potential" on a scale ` +
       `nothing else in the game uses`);
 
+    /* S15i: the nomination, through the rendered page. What only the page can
+       answer is whether the bench renders at all, whether a real click changes
+       who the party will put up, and whether that choice rides the save. */
+    const nm = await page.evaluate(() => {
+      const out = {}, me = playParty(S);
+      const keep = { tab:UI.tab, ruling:S.ruling, coalition:S.coalition, cap:S.capital,
+        exec:JSON.parse(JSON.stringify(S.exec)), form:S.form,
+        purse:JSON.parse(JSON.stringify(S.purse || {})), nominee:S.execNominee };
+      S.ruling = me; S.coalition = [me]; S.capital = 400; S.execNominee = {};
+      if (S.purse) PARTIES.forEach(p => { S.purse[p.id] = 400; });
+      ['pres', 'vpres', 'chan', 'vchan'].forEach(k => { S.exec[k] = me; });
+
+      UI.tab = 'exec'; render();
+      const panel = [...document.querySelectorAll('#view .panel')]
+        .filter(x => /Your Nomination/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      out.found = !!panel;
+      if (panel) {
+        out.offices = panel.querySelectorAll('.card').length;
+        out.names = panel.querySelectorAll('[data-nominate]').length;
+        out.pressed = panel.querySelectorAll('[data-nominate][aria-pressed="true"]').length;
+      }
+      /* the office cards carry the person, not only the party colour */
+      out.personOnCard = /competence · /.test(document.querySelector('#view').textContent);
+
+      /* a real click on somebody who is NOT the default changes the answer */
+      const btns = [...document.querySelectorAll('#view [data-nominate]')]
+        .filter(b => b.getAttribute('aria-pressed') !== 'true' && !b.disabled);
+      out.clickable = btns.length > 0;
+      if (btns.length) {
+        const office = btns[0].getAttribute('data-nominate'), who = btns[0].getAttribute('data-nominee');
+        const p0 = typeof partyPurse === 'function' ? partyPurse(S, me) : 0;
+        btns[0].click();
+        out.stored = S.execNominee && S.execNominee[office] === who;
+        out.paidFromPurse = (typeof partyPurse === 'function' ? partyPurse(S, me) : 0) < p0;
+        render();
+        out.nowNominee = typeof execNominate === 'function' ? execNominate(S, office, me).winner.name === who : false;
+      }
+
+      S.exec = keep.exec; S.ruling = keep.ruling; S.coalition = keep.coalition;
+      S.capital = keep.cap; S.purse = keep.purse; S.execNominee = keep.nominee; S.form = keep.form;
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('nomination-bench',
+      nm.found && nm.offices === 2 && nm.names >= 6 && nm.pressed === 2 && nm.personOnCard &&
+      nm.clickable && nm.stored && nm.paidFromPurse && nm.nowNominee,
+      `the executive page carries the bench for the ${nm.offices} offices next contested, ${nm.names} named people ` +
+      `across them with the party's own choice marked (${nm.pressed}); naming somebody else stores it ` +
+      `(${nm.stored}), takes the money out of the party purse (${nm.paidFromPurse}) and is who the party then puts ` +
+      `up (${nm.nowNominee}); and each office card names the holder's competence and term (${nm.personOnCard}) -- ` +
+      `the page used to print a name, an age and a trait, and emitted no control of its own at all`);
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

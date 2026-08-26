@@ -3453,6 +3453,150 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `over fifty sessions, against 2 and 8 before), because that harness takes the first choice always and never ` +
     `builds any of them`);
 
+  /* S15i -- THE OFFICE IS WON BY A PERSON. Every probe degrades rather than
+     throws on a build without the model, so the whole block can be run against
+     HEAD to prove it reddens. */
+  const per = await page.evaluate(() => {
+    const out = { has: typeof execNominate === 'function' };
+    const me = playParty(S);
+    const keep = { exec:JSON.parse(JSON.stringify(S.exec)), ruling:S.ruling, coalition:S.coalition,
+      figures:JSON.parse(JSON.stringify(S.figures || {})), cap:S.capital, tre:S.treasury,
+      ministers:JSON.parse(JSON.stringify(S.ministers || {})),
+      cabinet:JSON.parse(JSON.stringify(S.cabinet || {})),
+      purse:JSON.parse(JSON.stringify(S.purse || {})), push:S.execPush,
+      con:S.v11 && S.v11.con ? JSON.parse(JSON.stringify(S.v11.con)) : null };
+    S.ruling = me; S.coalition = [me];
+    ['pres', 'vpres', 'chan', 'vchan'].forEach(k => { S.exec[k] = me; });
+    /* a bench worth the name: fill the cabinet, all of it the player's party
+       and all of it looking upward */
+    pv5PortfolioRows().forEach(r => {
+      if (!S.ministers[r.key]) { S.cabinet[r.key] = 1; S.ministers[r.key] = pv5MakeMinister(S, r.key, 0); }
+      S.ministers[r.key].party = me; S.ministers[r.key].ambition = 80;
+    });
+    /* and two governorships, so all four places a candidate can come from are
+       exercised rather than only the two the harness state happens to have */
+    if (S.v6 && S.v6.governors) ['rigel', 'thaxia'].forEach(rid => { if (S.v6.governors[rid]) S.v6.governors[rid].party = me; });
+    if (!out.has) {
+      /* the old model, measured the same way: holderOf mints a stranger and
+         the contest reads nothing about them */
+      const f0 = holderOf(S, 'pres');
+      out.bench = 0; out.from = f0.from || 'nowhere'; out.terms = f0.terms || 0;
+      out.hasCompetence = typeof f0.competence === 'number';
+      out.pushAimed = false; out.pushToLeader = false; out.barred = false;
+      out.vacated = false; out.remembered = 0; out.protOpts = 0;
+      out.factorSitting = 1.18; out.factorNewFace = 1.18;
+      S.exec = keep.exec; S.ruling = keep.ruling; S.coalition = keep.coalition;
+      S.figures = keep.figures; S.ministers = keep.ministers; S.cabinet = keep.cabinet;
+      return out;
+    }
+
+    const nom = execNominate(S, 'pres', me);
+    out.bench = nom.bench.length;
+    out.contested = nom.contested;
+    out.origins = nom.bench.map(c => c.from).filter((v, i, a) => a.indexOf(v) === i).length;
+    const seated = execSeat(S, 'pres', me, nom.winner);
+    out.seatedIsNominee = seated.name === nom.winner.name;
+    out.from = seated.from;
+    out.hasCompetence = typeof seated.competence === 'number';
+    /* an ambitious minister who takes a great office LEAVES THE CABINET */
+    out.vacated = nom.winner.seat === 'minister' ? !S.ministers[nom.winner.post] : null;
+
+    /* terms accumulate on the PERSON, and the article that says so bars a third */
+    const again = execSeat(S, 'pres', me, execNominate(S, 'pres', me).winner);
+    out.sameHolder = again.name === seated.name;
+    out.terms = again.terms;
+    const sitOf = () => execBench(S, 'pres', me).filter(c => c.sitting)[0];
+    out.barredBefore = execTermBarred(S, 'pres', sitOf());
+    const c11 = v11Con(S);
+    c11.arts.artTermLimit = { year:yearOf(S.turn), margin:62, entrenched:true, turn:S.turn };
+    out.barred = execTermBarred(S, 'pres', sitOf());
+    out.replacedWhenBarred = execNominate(S, 'pres', me).winner.name !== again.name;
+    delete c11.arts.artTermLimit;
+
+    /* incumbency at the person level, not the party's */
+    const bench2 = execNominate(S, 'pres', me).bench;
+    out.factorSitting = +execPersonFactor(S, 'pres', me, bench2.filter(c => c.sitting)[0]).toFixed(3);
+    out.factorNewFace = +execPersonFactor(S, 'pres', me, bench2.filter(c => !c.sitting)[0]).toFixed(3);
+
+    /* the ticket is aimed, credited to the party the PLAYER leads, and paid
+       out of that party's own funds -- measured while the player leads a
+       JUNIOR partner, which is the case the old write got wrong */
+    S.ruling = 'fp'; S.coalition = ['fp', me];
+    S.execPush = {}; S.capital = 400; S.treasury = 1200; S.purse[me] = 400;
+    const act = ACTIONS.filter(x => x.id === 'execPush')[0];
+    out.pushOpts = (act.opts || []).length;
+    const t0 = S.treasury, p0 = partyPurse(S, me);
+    doAction(act, act.opts[2]);
+    out.pushOnAimed = +execPushOn(S, 'chan', me).toFixed(3);
+    out.pushOnOther = +execPushOn(S, 'pres', me).toFixed(3);
+    out.pushToLeader = execPushOn(S, 'chan', 'fp') > 0;
+    out.pushAimed = out.pushOnAimed > 0 && out.pushOnOther === 0;
+    out.pushTreasury = S.treasury === t0;
+    out.pushPurse = partyPurse(S, me) < p0;
+    S.ruling = me; S.coalition = [me];
+
+    /* the people who wanted it and did not get it remember */
+    const nom3 = execNominate(S, 'vpres', me), was = {};
+    nom3.runners.forEach(r => { if (r.seat === 'minister' && S.ministers[r.post]) was[r.post] = { l:S.ministers[r.post].loyalty, a:S.ministers[r.post].ambition }; });
+    execRemember(S, nom3.runners);
+    out.runnersUp = Object.keys(was).length;
+    out.remembered = Object.keys(was).filter(k => S.ministers[k].loyalty < was[k].l && S.ministers[k].ambition > was[k].a).length;
+
+    /* the protege is somebody the player built, and the office is chosen */
+    S.capital = 400; S.purse[me] = 400;
+    const pp = ACTIONS.filter(x => x.id === 'promoteProtege')[0];
+    out.protOpts = (pp.opts || []).length;
+    const before = S.figures.exec.vchan.name;
+    doAction(pp, pp.opts[3]);
+    out.protChanged = S.figures.exec.vchan.name !== before;
+    out.protFrom = S.figures.exec.vchan.from;
+
+    S.exec = keep.exec; S.ruling = keep.ruling; S.coalition = keep.coalition;
+    S.figures = keep.figures; S.ministers = keep.ministers; S.cabinet = keep.cabinet;
+    S.capital = keep.cap; S.treasury = keep.tre; S.purse = keep.purse; S.execPush = keep.push;
+    if (keep.con && S.v11) S.v11.con = keep.con;
+    return out;
+  });
+
+  say(per.has && per.bench >= 8 && per.origins >= 3 && per.seatedIsNominee &&
+      per.from !== 'the party' && per.hasCompetence,
+    'the office is won by a person',
+    `the party puts up one of ${per.bench} named people, from ${per.origins} of the four places a candidate can ` +
+    `come from -- the office, the leadership, the ministry, the states -- and the winner takes the chair out of ` +
+    `${per.from} · before this PR the office ` +
+    `was won by a PARTY and a stranger was minted afterwards by holderOf, with no competence, no ambition and no ` +
+    `term count; the figure carries all three now (${per.hasCompetence})`);
+
+  say(per.has && per.terms === 2 && !per.barredBefore && per.barred && per.replacedWhenBarred,
+    'the Article of the Limited Term limits a term',
+    `a holder returned a second time is on ${per.terms} terms, and with the article adopted the sitting holder is ` +
+    `barred (${per.barredBefore} -> ${per.barred}) and the party puts somebody else up (${per.replacedWhenBarred}) · ` +
+    `its own sentence has read "no person shall hold the same great office for more than two terms together" since ` +
+    `S11d, it has no apply(), and NO executive term counter existed anywhere in the file for it to read`);
+
+  say(per.has && per.factorSitting > per.factorNewFace && per.factorNewFace > 1,
+    'incumbency belongs to the person',
+    `the sitting holder standing again is worth ${per.factorSitting} against ${per.factorNewFace} for the same ` +
+    `party running a new face · it was a flat 1.18 keyed on the PARTY, so a beloved twenty-year technocrat and an ` +
+    `eighty-year-old nobody the party had installed the week before were the same number`);
+
+  say(per.has && per.pushOpts === 4 && per.pushAimed && !per.pushToLeader && per.pushTreasury && per.pushPurse,
+    'the executive ticket can be aimed and is paid for by the party',
+    `the ticket has ${per.pushOpts} offices to choose between and the money lands on the one chosen ` +
+    `(${per.pushOnAimed} there, ${per.pushOnOther} elsewhere) · measured with the player leading a JUNIOR coalition ` +
+    `partner, the credit goes to the player's own party and not to the senior one (${per.pushToLeader}), and it is ` +
+    `paid out of party funds with the exchequer untouched (${per.pushTreasury}/${per.pushPurse}) · the old write was ` +
+    `S.execPush[S.ruling], keyed on no office at all, and its money came out of the national treasury`);
+
+  say(per.has && per.runnersUp > 0 && per.remembered === per.runnersUp && per.vacated !== false &&
+      per.protOpts === 4 && per.protChanged && per.protFrom !== 'the party',
+    'ambition reaches past its own portfolio',
+    `${per.remembered} of ${per.runnersUp} ministers who wanted a great office and did not get it lose loyalty and ` +
+    `gain ambition for it, a minister who WINS one leaves the cabinet to take it (${per.vacated}), and Elevate a ` +
+    `Protege names ${per.protOpts} offices and lifts somebody real out of ${per.protFrom} · it used to pick a RANDOM ` +
+    `office and mint a stranger · ambition was written six ways and read twice: a -0.29-a-session loyalty drag and a ` +
+    `>= 55 gate on a button whose whole effect was +1 to a rank integer on the same portfolio`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
