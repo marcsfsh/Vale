@@ -1,1001 +1,803 @@
 {
-  "_comment": "Adjudicated verdicts for every top-level function reassignment site in vale.html, keyed name#ordinal. aliasCaptured=false means the site replaces a body without keeping a reference to it. Since S2 every such site has been POISON-PROVED (tools/poison.js): each replaced body executes once at its own chunk boot, so it is transitional rather than dead. The five genuinely unreachable bodies were deleted in S2. NOTE: ordinal keys shift when a site is deleted -- re-derive verdicts, never carry them across a deletion.",
-  "maxDead": 5,
+  "_comment": "Adjudicated verdicts for every top-level function reassignment site in vale.html, keyed name#ordinal. aliasCaptured records whether the site keeps a reference to the body it replaces -- and since S14 the check DERIVES that from the file and fails if this record disagrees, because an alias that is never read is not a capture and two sites had been scoring green on exactly that. The verdict is no longer this file's to assert. Since S2 every orphaned body has been POISON-PROVED (tools/poison.js): each replaced body executes once at its own chunk boot, so it is transitional rather than dead. The five genuinely unreachable bodies were deleted in S2. S14 also removed the per-site `line` field: all 199 were stale and 28 were literally 0, because nothing maintained them and every edit above a site moves it. Run `node checks/run.js --sites` for the live enumeration. NOTE: ordinal keys shift when a site is deleted -- re-derive verdicts, never carry them across a deletion.",
+  "maxDead": 7,
   "sites": {
     "enrichState#1": {
-      "line": 8329,
       "aliasCaptured": true,
       "reason": "alias var pv5EnrichV4 captured above"
     },
     "cabinetBonus#1": {
-      "line": 8333,
       "aliasCaptured": true,
       "reason": "alias var pv5CabinetBonusV4 captured above"
     },
     "billForecast#1": {
-      "line": 8396,
       "aliasCaptured": true,
       "reason": "alias var pv5BillForecastV4 captured above"
     },
     "sponsorBill#1": {
-      "line": 8407,
       "aliasCaptured": true,
       "reason": "alias var pv5SponsorBillV4 captured above"
     },
     "aiGovern#1": {
-      "line": 8425,
       "aliasCaptured": true,
       "reason": "alias var pv5AiGovernV4 captured above"
     },
     "ballot#1": {
-      "line": 8493,
       "aliasCaptured": true,
       "reason": "alias var pv5BallotV4 captured above"
     },
     "runElection#1": {
-      "line": 8500,
       "aliasCaptured": true,
       "reason": "alias var pv5RunElectionV4 captured above"
     },
     "budget#1": {
-      "line": 8515,
       "aliasCaptured": true,
       "reason": "alias var pv5BudgetV4 captured above"
     },
     "macroTick#1": {
-      "line": 8522,
       "aliasCaptured": true,
       "reason": "alias var pv5MacroTickV4 captured above"
     },
     "sessionSystemsTick#1": {
-      "line": 8542,
       "aliasCaptured": true,
       "reason": "alias var pv5SessionTickV4 captured above"
     },
     "inboxChoices#1": {
-      "line": 8548,
       "aliasCaptured": true,
       "reason": "alias var pv5InboxChoicesV4 captured above"
     },
     "respondInbox#1": {
-      "line": 8562,
       "aliasCaptured": true,
       "reason": "alias var pv5RespondInboxV4 captured above"
     },
     "viewHouses#1": {
-      "line": 8731,
       "aliasCaptured": true,
       "reason": "alias var pv5ViewHousesV4 captured above"
     },
     "viewLedger#1": {
-      "line": 8756,
       "aliasCaptured": true,
       "reason": "alias var pv5ViewLedgerV4 captured above"
     },
     "viewChamber#1": {
-      "line": 8759,
       "aliasCaptured": true,
       "reason": "alias var pv5ViewChamberV4 captured above"
     },
     "wire#1": {
-      "line": 8767,
       "aliasCaptured": true,
       "reason": "alias var pv5WireV4 captured above"
     },
     "render#1": {
-      "line": 8779,
       "aliasCaptured": false,
       "reason": "v5 full rewrite, no alias. Poison-proved LIVE (tools/poison.js render-v4): the v4 body it replaces executes once at v4 boot. Transitional, not dead."
     },
     "billForecast#2": {
-      "line": 9031,
       "aliasCaptured": true,
       "reason": "alias var v6BillForecastV5 captured above"
     },
     "enrichState#2": {
-      "line": 9238,
       "aliasCaptured": true,
       "reason": "alias var v6EnrichV5 captured above"
     },
     "warTick#1": {
-      "line": 9409,
       "aliasCaptured": true,
       "reason": "alias var v6WarTickBase captured above"
     },
     "ageFigures#1": {
-      "line": 9560,
       "aliasCaptured": true,
       "reason": "alias var v6AgeFiguresBase captured above"
     },
     "draftBillDialog#1": {
-      "line": 9606,
       "aliasCaptured": true,
       "reason": "alias var v6DraftBillDialogBase captured above"
     },
     "advanceBills#1": {
-      "line": 9656,
       "aliasCaptured": true,
       "reason": "alias var v6AdvanceBillsBase captured above"
     },
     "courtReview#1": {
-      "line": 9659,
       "aliasCaptured": true,
       "reason": "alias var v6CourtReviewBase captured above"
     },
     "billAction#1": {
-      "line": 9667,
       "aliasCaptured": true,
       "reason": "alias var v6BillActionBase captured above"
     },
     "billCard#1": {
-      "line": 9677,
       "aliasCaptured": true,
       "reason": "alias var v6BillCardBase captured above"
     },
     "logIt#1": {
-      "line": 10429,
       "aliasCaptured": true,
       "reason": "alias var v6LogItBase captured above"
     },
     "hideSheet#1": {
-      "line": 10433,
       "aliasCaptured": true,
       "reason": "alias var v6HideSheetBase captured above"
     },
     "tickTurn#1": {
-      "line": 10449,
       "aliasCaptured": true,
       "reason": "alias var v6TickTurnBase captured above"
     },
     "runElection#2": {
-      "line": 10465,
       "aliasCaptured": true,
       "reason": "alias var v6RunElectionBase captured above"
     },
     "doTransition#1": {
-      "line": 10476,
       "aliasCaptured": true,
       "reason": "alias var v6DoTransitionBase captured above"
     },
     "doAction#1": {
-      "line": 10482,
       "aliasCaptured": true,
       "reason": "alias var v6DoActionBase captured above"
     },
     "viewChamber#2": {
-      "line": 10840,
       "aliasCaptured": true,
       "reason": "alias var v6ViewChamberV5 captured above"
     },
     "viewFederation#1": {
-      "line": 10862,
       "aliasCaptured": true,
       "reason": "alias var v6ViewFederationV5 captured above"
     },
     "viewWorld#1": {
-      "line": 10890,
       "aliasCaptured": true,
       "reason": "alias var v6ViewWorldV5 captured above"
     },
     "viewPolicy#1": {
-      "line": 10927,
       "aliasCaptured": true,
       "reason": "alias var v6ViewPolicyV5 captured above"
     },
     "renderStats#1": {
-      "line": 10962,
       "aliasCaptured": false,
       "reason": "v6 rewrite, no alias. Poison-proved LIVE (renderstats-v4): v4 render calls the v4 body at boot."
     },
     "wire#2": {
-      "line": 10993,
       "aliasCaptured": true,
       "reason": "alias var v6WireV5 captured above"
     },
     "render#2": {
-      "line": 11003,
       "aliasCaptured": false,
       "reason": "v6 full rewrite, no alias. Poison-proved LIVE (render-v5): the v5 body executes once at v5 boot before this replaces it."
     },
     "gameOver#1": {
-      "line": 11076,
       "aliasCaptured": true,
       "reason": "alias var v6GameOverBase captured above"
     },
     "render#3": {
-      "line": 11423,
       "aliasCaptured": true,
       "reason": "alias var v6mRenderBase captured above"
     },
     "showSheet#1": {
-      "line": 11451,
       "aliasCaptured": true,
       "reason": "alias var v6mShowSheetBase captured above"
     },
     "hideSheet#2": {
-      "line": 11456,
       "aliasCaptured": true,
       "reason": "alias var v6mHideSheetBase captured above"
     },
     "renderTabs#1": {
-      "line": 11652,
       "aliasCaptured": true,
       "reason": "alias var v7RenderTabsBase captured above"
     },
     "v6mCenterTab#1": {
-      "line": 11667,
       "aliasCaptured": false,
       "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (centertab-mobile): the mobile body runs at the mobile chunk boot."
     },
     "viewChamber#3": {
-      "line": 11702,
       "aliasCaptured": true,
       "reason": "alias var v7ViewChamberBase captured above"
     },
     "viewPolicy#2": {
-      "line": 11741,
       "aliasCaptured": true,
       "reason": "alias var v7ViewPolicyBase captured above"
     },
     "v6mPolicyFolds#1": {
-      "line": 11744,
       "aliasCaptured": false,
       "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (policyfolds-mobile): the mobile body runs at the mobile chunk boot."
     },
     "render#4": {
-      "line": 11822,
       "aliasCaptured": true,
       "reason": "alias var v7RenderBase captured above"
     },
     "confirmEndTurn#1": {
-      "line": 11840,
       "aliasCaptured": true,
       "reason": "alias var v7ConfirmEndBase captured above"
     },
     "helpDialog#1": {
-      "line": 12006,
       "aliasCaptured": true,
       "reason": "alias var v7HelpBase captured above"
     },
     "applyTheme#1": {
-      "line": 12043,
       "aliasCaptured": true,
       "reason": "alias var v7ApplyThemeBase captured above"
     },
     "enrichState#3": {
-      "line": 12271,
       "aliasCaptured": true,
       "reason": "alias var v8EnrichV7 captured above"
     },
     "v6NewGame#1": {
-      "line": 12288,
       "aliasCaptured": true,
       "reason": "alias var v8NewGameBase captured above"
     },
     "v6Previews#1": {
-      "line": 12295,
       "aliasCaptured": true,
       "reason": "alias var v8PreviewsBase captured above"
     },
     "pickEvents#1": {
-      "line": 12297,
       "aliasCaptured": true,
       "reason": "alias var v8PickEventsBase captured above"
     },
     "v6ArcChance#1": {
-      "line": 12304,
       "aliasCaptured": true,
       "reason": "alias var v8ArcChanceBase captured above"
     },
     "captureUndo#1": {
-      "line": 12309,
       "aliasCaptured": true,
       "reason": "alias var v8CaptureBase captured above"
     },
     "undoLast#1": {
-      "line": 12315,
       "aliasCaptured": true,
       "reason": "alias var v8UndoBase captured above"
     },
     "endTurn#1": {
-      "line": 12324,
       "aliasCaptured": true,
       "reason": "alias var v8EndTurnBase captured above"
     },
     "budget#3": {
-      "line": 12401,
       "aliasCaptured": true,
       "reason": "alias var v8BudgetBase captured above"
     },
     "inboxChoices#2": {
-      "line": 12498,
       "aliasCaptured": true,
       "reason": "alias var v8InboxChoicesBase captured above"
     },
     "respondInbox#2": {
-      "line": 12510,
       "aliasCaptured": true,
       "reason": "alias var v8RespondInboxBase captured above"
     },
     "blocTarget#2": {
-      "line": 12684,
       "aliasCaptured": true,
       "reason": "alias var v8BlocTargetBase captured above"
     },
     "pv5CampaignPower#1": {
-      "line": 12688,
       "aliasCaptured": true,
       "reason": "alias var v8CampaignBase captured above"
     },
     "pv5Objectives#1": {
-      "line": 12937,
       "aliasCaptured": true,
       "reason": "alias var v8ObjectivesBase captured above"
     },
     "gameOver#2": {
-      "line": 12979,
       "aliasCaptured": true,
       "reason": "alias var v8GameOverBase captured above"
     },
     "tickTurn#2": {
-      "line": 13348,
       "aliasCaptured": true,
       "reason": "alias var v8TickBase captured above"
     },
     "v6AfterTurn#1": {
-      "line": 13355,
       "aliasCaptured": true,
       "reason": "alias var v8AfterTurnBase captured above"
     },
     "runElection#3": {
-      "line": 13370,
       "aliasCaptured": true,
       "reason": "alias var v8RunElectionBase captured above"
     },
     "viewChamber#4": {
-      "line": 13385,
       "aliasCaptured": true,
       "reason": "alias var v8ViewChamberBase captured above"
     },
     "viewHouses#2": {
-      "line": 13391,
       "aliasCaptured": true,
       "reason": "alias var v8ViewHousesBase captured above"
     },
     "viewNation#1": {
-      "line": 13398,
       "aliasCaptured": true,
       "reason": "alias var v8ViewNationBase captured above"
     },
     "viewParties#1": {
-      "line": 13403,
       "aliasCaptured": true,
       "reason": "alias var v8ViewPartiesBase captured above"
     },
     "viewLedger#2": {
-      "line": 13409,
       "aliasCaptured": true,
       "reason": "alias var v8ViewLedgerBase captured above"
     },
     "viewRecord#1": {
-      "line": 13418,
       "aliasCaptured": true,
       "reason": "alias var v8ViewRecordBase captured above"
     },
     "v6ShowReport#1": {
-      "line": 13427,
       "aliasCaptured": true,
       "reason": "alias var v8ShowReportBase captured above"
     },
     "wire#3": {
-      "line": 13445,
       "aliasCaptured": true,
       "reason": "alias var v8WireBase captured above"
     },
     "v6SimButton#1": {
-      "line": 13455,
       "aliasCaptured": true,
       "reason": "alias var v8SimBase captured above"
     },
     "v6Advisors#1": {
-      "line": 13475,
       "aliasCaptured": true,
       "reason": "alias var v8AdvisorsBase captured above"
     },
     "v7Risks#1": {
-      "line": 13489,
       "aliasCaptured": true,
       "reason": "alias var v8RisksBase captured above"
     },
     "billCard#2": {
-      "line": 13510,
       "aliasCaptured": true,
       "reason": "alias var v8BillCardBase captured above"
     },
     "renderTabs#2": {
-      "line": 13533,
       "aliasCaptured": true,
       "reason": "alias var v8RenderTabsBase captured above"
     },
     "showElection#1": {
-      "line": 13614,
       "aliasCaptured": true,
       "reason": "alias var v8ShowElectionBase captured above"
     },
     "confirmEndTurn#2": {
-      "line": 13651,
       "aliasCaptured": true,
       "reason": "alias var v8ConfirmEndBase captured above"
     },
     "v7Index#1": {
-      "line": 13680,
       "aliasCaptured": true,
       "reason": "alias var v8IndexBase captured above"
     },
     "v7Jump#1": {
-      "line": 13693,
       "aliasCaptured": true,
       "reason": "alias var v8JumpBase captured above"
     },
     "v7MenuList#1": {
-      "line": 13703,
       "aliasCaptured": true,
       "reason": "alias var v8MenuListBase captured above"
     },
     "helpDialog#2": {
-      "line": 13715,
       "aliasCaptured": true,
       "reason": "alias var v8HelpBase captured above"
     },
     "startScreen#1": {
-      "line": 13730,
       "aliasCaptured": true,
       "reason": "alias var v8StartBase captured above"
     },
     "render#5": {
-      "line": 13755,
       "aliasCaptured": true,
       "reason": "alias var v8RenderBase captured above"
     },
     "enrichState#4": {
-      "line": 13849,
       "aliasCaptured": true,
       "reason": "alias var v9EnrichV8 captured above"
     },
     "partyActions#1": {
-      "line": 14259,
       "aliasCaptured": true,
       "reason": "alias var v9PartyActionsBase captured above"
     },
     "regionAction#1": {
-      "line": 14321,
       "aliasCaptured": true,
       "reason": "alias var v9RegionActionBase captured above"
     },
     "viewFederation#2": {
-      "line": 14338,
       "aliasCaptured": true,
       "reason": "alias var v9ViewFederationBase captured above"
     },
     "indicatorTargets#1": {
-      "line": 14476,
       "aliasCaptured": true,
       "reason": "alias var v9IndicatorTargetsBase captured above"
     },
     "policyCard#1": {
-      "line": 14546,
       "aliasCaptured": true,
       "reason": "alias var v9PolicyCardBase captured above"
     },
     "draftBillDialog#2": {
-      "line": 14574,
       "aliasCaptured": true,
       "reason": "alias var v9DraftDialogBase captured above"
     },
     "hideSheet#3": {
-      "line": 14594,
       "aliasCaptured": true,
       "reason": "alias var v9HideSheetBase captured above"
     },
     "sponsorBill#2": {
-      "line": 14597,
       "aliasCaptured": true,
       "reason": "alias var v9SponsorBillBase captured above"
     },
     "enactBill#1": {
-      "line": 14609,
       "aliasCaptured": true,
       "reason": "alias var v9EnactBillBase captured above"
     },
     "billCard#3": {
-      "line": 14617,
       "aliasCaptured": true,
       "reason": "alias var v9BillCardBase captured above"
     },
     "billAction#2": {
-      "line": 14631,
       "aliasCaptured": true,
       "reason": "alias var v9BillActionBase captured above"
     },
     "billCard#4": {
-      "line": 14644,
       "aliasCaptured": true,
       "reason": "alias var v9BillCardAppeal captured above"
     },
     "v6Sandbox#1": {
-      "line": 14768,
       "aliasCaptured": true,
       "reason": "alias var v9SandboxBase captured above"
     },
     "viewJudicial#1": {
-      "line": 14800,
       "aliasCaptured": true,
       "reason": "alias var v9ViewJudicialBase captured above"
     },
     "v6ProgrammesPanel#1": {
-      "line": 15131,
       "aliasCaptured": true,
       "reason": "alias var v9ProgrammesPanelBase captured above"
     },
     "applyDoctrine#1": {
-      "line": 15229,
       "aliasCaptured": true,
       "reason": "alias var v9ApplyDoctrineBase captured above"
     },
     "capitalIncome#2": {
-      "line": 15237,
       "aliasCaptured": true,
       "reason": "alias var v9CapitalIncomeBase captured above"
     },
     "indicatorTargets#2": {
-      "line": 15248,
       "aliasCaptured": true,
       "reason": "alias var v9IndicatorTargetsDoctrine captured above"
     },
     "billForecast#3": {
-      "line": 15257,
       "aliasCaptured": true,
       "reason": "alias var v9BillForecastBase captured above"
     },
     "policyCost#2": {
-      "line": 15268,
       "aliasCaptured": true,
       "reason": "alias var v9PolicyCostBase captured above"
     },
     "actionCost#1": {
-      "line": 15276,
       "aliasCaptured": true,
       "reason": "alias var v9ActionCostBase captured above"
     },
     "actCost#1": {
-      "line": 15284,
       "aliasCaptured": true,
       "reason": "alias var v9ActCostBase captured above"
     },
     "doExtra#1": {
-      "line": 15290,
       "aliasCaptured": true,
       "reason": "alias var v9ExtraCostDoctrine captured above"
     },
     "extraCard#1": {
-      "line": 15299,
       "aliasCaptured": true,
       "reason": "alias var v9ExtraCardBase captured above"
     },
     "v8ApplyRules#1": {
-      "line": 15315,
       "aliasCaptured": true,
       "reason": "alias var v9ApplyRulesBase captured above"
     },
     "v8RulesSummary#1": {
-      "line": 15321,
       "aliasCaptured": true,
       "reason": "alias var v9RulesSummaryBase captured above"
     },
     "upperResist#1": {
-      "line": 15327,
       "aliasCaptured": true,
       "reason": "alias var v9UpperResistBase captured above"
     },
     "budget#4": {
-      "line": 15333,
       "aliasCaptured": true,
       "reason": "alias var v9BudgetBase captured above"
     },
     "courtReview#2": {
-      "line": 15343,
       "aliasCaptured": true,
       "reason": "alias var v9CourtReviewBase captured above"
     },
     "figureEffects#1": {
-      "line": 15359,
       "aliasCaptured": true,
       "reason": "alias var v9FigureEffectsBase captured above"
     },
     "v6TreatiesTick#1": {
-      "line": 15382,
       "aliasCaptured": true,
       "reason": "alias var v9TreatiesTickBase captured above"
     },
     "allocateSeats#1": {
-      "line": 15403,
       "aliasCaptured": true,
       "reason": "alias var v9AllocateSeatsBase captured above"
     },
     "tickTurn#3": {
-      "line": 15459,
       "aliasCaptured": true,
       "reason": "alias var v9TickBase captured above"
     },
     "v6ExtraEvents#1": {
-      "line": 15472,
       "aliasCaptured": true,
       "reason": "alias var v9ExtraEventsBase captured above"
     },
     "wire#4": {
-      "line": 15485,
       "aliasCaptured": true,
       "reason": "alias var v9WireBase captured above"
     },
     "v6Advisors#2": {
-      "line": 15521,
       "aliasCaptured": true,
       "reason": "alias var v9AdvisorsBase captured above"
     },
     "v7Risks#2": {
-      "line": 15534,
       "aliasCaptured": true,
       "reason": "alias var v9RisksBase captured above"
     },
     "v8CloseChecklist#1": {
-      "line": 15542,
       "aliasCaptured": true,
       "reason": "alias var v9CloseChecklistBase captured above"
     },
     "viewRecord#2": {
-      "line": 15554,
       "aliasCaptured": true,
       "reason": "alias var v9ViewRecordBase captured above"
     },
     "helpDialog#3": {
-      "line": 15570,
       "aliasCaptured": true,
       "reason": "alias var v9HelpBase captured above"
     },
     "v7MenuList#2": {
-      "line": 15580,
       "aliasCaptured": true,
       "reason": "alias var v9MenuListBase captured above"
     },
     "v7Index#2": {
-      "line": 15589,
       "aliasCaptured": true,
       "reason": "alias var v9IndexBase captured above"
     },
     "v7Jump#2": {
-      "line": 15597,
       "aliasCaptured": true,
       "reason": "alias var v9JumpBase captured above"
     },
     "render#6": {
-      "line": 15606,
       "aliasCaptured": true,
       "reason": "alias var v9RenderBase captured above"
     },
     "enrichState#5": {
-      "line": 14333,
       "aliasCaptured": true,
       "reason": "alias var v9EnrichGuarded captured above. The outermost wrapper of the enrich chain, and it must STAY outermost: it points the dice at the state being enriched, and any wrapper installed after it would run its backfill rolls outside that guard, spending the live campaign's stream on a detached object. tools/determinism.js asserts the property."
     },
     "tickTurn#4": {
-      "line": 16507,
       "aliasCaptured": true,
       "reason": "alias var v10TickBase captured above (S9d: records ssPeak after the base tick)"
     },
     "viewState#1": {
-      "line": 16516,
       "aliasCaptured": true,
       "reason": "alias var v10ViewStateBase captured above (S9d: prepends the security-state strip)"
     },
     "actCost#2": {
-      "line": 17172,
       "aliasCaptured": true,
       "reason": "alias var v10ActCostBase captured above (S9e: the Offer arc's chartered-Senate discount)"
     },
     "pv5MakeMinister#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10MakeMinisterBase captured above (S10a: ministers gain an age at birth)"
     },
     "ageRoster#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10AgeRosterBase captured above (S10a: ministers and governors join the mortality roster)"
     },
     "ageSucceed#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10AgeSucceedBase captured above (S10a: succession arms for ministers and governors)"
     },
     "v8EnsureState#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10V8EnsureBase captured above (S10a: folds a pre-S10a save's retired 'coast' sea wall onto v9seawall, loudly)"
     },
     "makeFigure#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10MakeFigureBase captured above (S10a: names deduplicated against the living cast)"
     },
     "v6MakeGovernor#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10MakeGovernorBase captured above (S10a: regionally weighted, deduplicated governor names)"
     },
     "indicatorTargets#3": {
-      "line": 0,
       "aliasCaptured": true,
-      "reason": "alias var v10IndTargetsBase captured above (S10c: an order in force bends the indicator TARGET, so revoking it lets the country drift back)"
+      "reason": "alias var v10TreatyTargetsBase captured above (S10e: treaties in force finally move the indicator targets their own cards advertise) [S14: this entry and #4 had each other's alias. An ordinal-shift artefact, the failure docs/MAP.md warns about: #3 is the TREATY wrapper and #4 the ORDER wrapper, not the other way round.]"
     },
     "blocTarget#3": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10BlocTargetBase captured above (S10c: same, for bloc targets)"
     },
     "budget#5": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10BudgetBase captured above (S10c: orders that spend or raise money without an appropriation)"
     },
     "capitalIncome#3": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10CapIncomeBase captured above (S10c: standing orders cost capital every session they stand)"
     },
     "policyCost#3": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10PolicyCostBase captured above (S10c: orders that make a category of statute cheaper or dearer to move)"
     },
     "blocTarget#1": {
-      "line": 8462,
       "aliasCaptured": true,
       "reason": "alias var pv5BlocTargetV4 captured above"
     },
     "budget#2": {
-      "line": 9399,
       "aliasCaptured": true,
       "reason": "alias var v6BudgetV5 captured above"
     },
     "policyCost#1": {
-      "line": 9546,
       "aliasCaptured": true,
       "reason": "alias var v6PolicyCostV5 captured above"
     },
     "capitalIncome#1": {
-      "line": 12686,
       "aliasCaptured": true,
       "reason": "alias var v8CapitalBase captured above"
     },
     "cabinetBonus#2": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10CabinetBonusBase captured above (S10c: an order that speeds or slows what the ministries deliver)"
     },
     "v8WorkPerSession#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10WorkPerSessionBase captured above (S10c: an order that changes the pace of the public works)"
     },
     "v8EnsureQuestion#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10EnsureQuestionBase captured above (S10f: 24 authored questions across 14 subjects replace five hard-coded sentences)"
     },
     "v8Question#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10QuestionBase captured above (S10f: an authored reply maps onto the effect path its tone names)"
     },
     "v8QuestionPanel#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10QuestionPanelBase captured above (S10f: the authored replies replace the fixed button row)"
     },
     "inboxChoices#3": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10InboxChoicesBase captured above (S10f: sixteen new political papers)"
     },
     "respondInbox#3": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10RespondInboxBase captured above (S10f: their effects, through the shared debit-and-archive tail)"
     },
     "politicsTick#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10PoliticsTickBase captured above (S10f: a new paper can arrive in place of the old eleven-type cycle)"
     },
     "v8EnsureState#2": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10PowersEnsureBase captured above (S10e: backfills every POWERS id so a raw read cannot produce NaN)"
     },
     "shiftRel#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "alias var v10ShiftRelBase captured above (S10e: the same guard on the one writer that never checked)"
     },
     "indicatorTargets#4": {
-      "line": 0,
       "aliasCaptured": true,
-      "reason": "alias var v10TreatyTargetsBase captured above (S10e: treaties in force finally move the indicator targets their own cards advertise)"
+      "reason": "alias var v10IndTargetsBase captured above (S10c: an order in force bends the indicator TARGET, so revoking it lets the country drift back) [S14: swapped back, see #3.]"
     },
     "v7DefaultCollapsed#1": {
-      "line": 0,
       "aliasCaptured": true,
-      "reason": "S11a: alias var v11DefaultCollapsedBase captured above. The record deck adds twenty panels and every one of them must default COLLAPSED — v7DefaultCollapsed returns false for anything it does not name, so without this the whole deck draws on arrival and the build-on-open design never engages."
+      "reason": "S11a: alias var v11DefaultCollapsedBase captured above. The record deck adds twenty panels and every one of them must default COLLAPSED \u2014 v7DefaultCollapsed returns false for anything it does not name, so without this the whole deck draws on arrival and the build-on-open design never engages."
     },
     "viewRecord#3": {
-      "line": 0,
       "aliasCaptured": true,
-      "reason": "S11a: alias var v11ViewRecordBase captured above. Splices the chart deck in after the Long Record panel, located by the first '</div><div class=\"panel\">' following its heading rather than by counting divs — and deliberately NOT on the two literals the v8 and v9 wrappers splice on, so their inserts stay where they put them."
+      "reason": "S11a: alias var v11ViewRecordBase captured above. Splices the chart deck in after the Long Record panel, located by the first '</div><div class=\"panel\">' following its heading rather than by counting divs \u2014 and deliberately NOT on the two literals the v8 and v9 wrappers splice on, so their inserts stay where they put them."
     },
     "regionPartyFactor#1": {
-      "line": 0,
-      "aliasCaptured": true,
-      "reason": "S11c: alias var v11RegionFactorBase captured above. A REASSIGNMENT rather than a wrapper, deliberately: the old body collapses eight regions into one pop-weighted mean before returning, so a wrapper has nothing left to weight per region. This is the only channel from a region to the national vote, and it was almost entirely a function of eight frozen `lean` literals -- the governor, the organisers on the ground and how the region is actually governed now reach it. The clamp widened from [.86,1.15] to V11_REGION_SPAN [.80,1.22]. Measured honestly at the shipped gain of 0.23 the factor runs .847 .. 1.028, so the old FLOOR clips (the worst RSF and PNL readings sit under .86) while the old ceiling is never approached; the widened top is declared headroom for a retune of V11_REGION_GAIN, not a constraint doing work today."
+      "aliasCaptured": false,
+      "reason": "S14: aliasCaptured corrected true -> false. The alias var v11RegionFactorBase is declared and read NOWHERE, so this is an orphaning reassignment wearing a capture's clothes, and it scored green for three slices. S11c's own reasoning, which is sound and unchanged -- a REASSIGNMENT rather than a wrapper, deliberately: the old body collapses eight regions into one pop-weighted mean before returning, so a wrapper has nothing left to weight per region. This is the only channel from a region to the national vote, and it was almost entirely a function of eight frozen `lean` literals -- the governor, the organisers on the ground and how the region is actually governed now reach it. The clamp widened from [.86,1.15] to V11_REGION_SPAN [.80,1.22]. Measured honestly at the shipped gain of 0.23 the factor runs .847 .. 1.028, so the old FLOOR clips (the worst RSF and PNL readings sit under .86) while the old ceiling is never approached; the widened top is declared headroom for a retune of V11_REGION_GAIN, not a constraint doing work today."
     },
     "regionLeadingParty#1": {
-      "line": 0,
       "aliasCaptured": true,
       "reason": "S11c: alias var v11RegionLeadingBase captured above. The post-count region map read only psupport, r.lean and federal trust, so a region could flip on screen for reasons the ballot did not use. It now reads the governor and the standing the ballot reads, and the two agree."
     },
     "regionAction#2": {
-      "line": 0,
       "aliasCaptured": true,
-      "reason": "S11c: alias var v11RegionActionBase captured above. Six more levers on V9_REGION_ACTS, which is a registry with one generic handler and therefore the cleanest extension point on the page. These reach the economy, the disparity and the autonomy ladder — the things the existing eleven did not; nine of those moved prosperity, services and order, whose entire downstream reach was one governor approval score."
+      "reason": "S11c: alias var v11RegionActionBase captured above. Six more levers on V9_REGION_ACTS, which is a registry with one generic handler and therefore the cleanest extension point on the page. These reach the economy, the disparity and the autonomy ladder \u2014 the things the existing eleven did not; nine of those moved prosperity, services and order, whose entire downstream reach was one governor approval score."
     },
     "viewFederation#3": {
-      "line": 0,
       "aliasCaptured": true,
-      "reason": "S11c: alias var v11ViewFederationBase captured above. Runs AFTER the v6 wrapper (which splits on a region-card literal and maps parts POSITIONALLY to REGIONS) and the v9 wrapper (which locates a data-region inspect marker) — so both have finished by the time this sees the HTML and neither can be mis-assigned by what it adds. Replaces the right column's Strategic Risks panel, which carried five generic national risk lines and nothing regional across half the width of the tab about the states."
+      "reason": "S11c: alias var v11ViewFederationBase captured above. Runs AFTER the v6 wrapper (which splits on a region-card literal and maps parts POSITIONALLY to REGIONS) and the v9 wrapper (which locates a data-region inspect marker) \u2014 so both have finished by the time this sees the HTML and neither can be mis-assigned by what it adds. Replaces the right column's Strategic Risks panel, which carried five generic national risk lines and nothing regional across half the width of the tab about the states."
     },
     "isBallotTurn#1": {
-      "line": 23198,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11BallotTurnBase captured and CALLED whenever no article moves the term, so a document that says nothing about the calendar reproduces the old body exactly. The general form (t > 1 && (t - 1) % term === 0) reduces to the old (t % 2 === 1) at term 2; roads.js asserts that identity across a full campaign because a silent off-by-one here moves every ballot in every save. Reads the global S in the idiom actBlocked already uses -- isBallotTurn takes only a turn number and five call sites pass nothing else."
     },
     "capitalIncome#4": {
-      "line": 23209,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConCapitalBase captured and called. Adds only v11ConEffects(st).capital, so an unwritten constitution is a no-op. Articles of the offices book (the fixed term, the quadrennial Assembly) and the emergency supply are felt here."
     },
     "indicatorTargets#5": {
-      "line": 23214,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConTargetsBase captured and called. Applies the document's ind deltas and, for articles of the rights book, a FLOOR under the liberties target -- which is the whole difference between a right and a liberal statute: a statute is outvoted by the next statute, a right is not reached by them at all."
     },
     "policyCost#4": {
-      "line": 23226,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConPolicyCostBase captured and called. Multiplies by the document's per-category factor, so an article that says the Authority book is dear makes it dear at every purchase rather than on a card."
     },
     "actBlocked#1": {
-      "line": 23247,
-      "aliasCaptured": true,
-      "reason": "S11d: alias var v11ActBlockedBase captured. DELIBERATELY NOT CALLED: its first line, `if (a.house !== 'Senate') return false`, is the defect. `house` on an ACT is the BOOK it is filed under on the page ('Senate', 'Supreme Court', 'Elections'), not the chamber that votes on it, so a Senate with a full veto sat and watched every act it was not itself the subject of go straight past. The replacement considers any act using the same lean actCost already assigns by book, and keeps all three original exemptions -- two are how a suspended Senate is restored and the third is the act that makes it elected."
+      "aliasCaptured": false,
+      "reason": "S14: aliasCaptured corrected true -> false. The adjudication below says DELIBERATELY NOT CALLED in its own capitals, and the check still counted it as a capture because a boolean said so. S11d: alias var v11ActBlockedBase captured. DELIBERATELY NOT CALLED: its first line, `if (a.house !== 'Senate') return false`, is the defect. `house` on an ACT is the BOOK it is filed under on the page ('Senate', 'Supreme Court', 'Elections'), not the chamber that votes on it, so a Senate with a full veto sat and watched every act it was not itself the subject of go straight past. The replacement considers any act using the same lean actCost already assigns by book, and keeps all three original exemptions -- two are how a suspended Senate is restored and the third is the act that makes it elected."
     },
     "securityState#1": {
-      "line": 23260,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConSecurityBase captured and called. Adds the emergency book's brake. securityState is the single number that suppresses unrest, erodes liberties, cows the court and past 30 opens the extraordinary measures to any government -- an article restraining the emergency has to reach THAT number or it is prose."
     },
     "franchiseLevel#1": {
-      "line": 23269,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConFranchiseBase captured and called, clamped 0..3. The franchise book widens or narrows the roll every ballot reads."
     },
     "unrestTarget#1": {
-      "line": 23275,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConUnrestBase captured and called. Articles that buy order at the price of liberty, and those that do the reverse, move the target rather than the stock."
     },
     "budget#6": {
-      "line": 23280,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConBudgetBase captured and called, and returns early when the document carries no rev or exp -- the rights book's positive obligations (labour, health, equalisation) are a standing charge on the treasury, which is what makes them a choice rather than a slogan. net is recomputed from rev, exp and interest so the Ledger and the budget agree."
     },
     "v11AutonomyPressure#1": {
-      "line": 23313,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ConAutonomyBase captured and called, behind a typeof guard because S11c defines it earlier in the same chunk. The federal book moves the pressure to leave the union that S11c built."
     },
     "viewState#2": {
-      "line": 23728,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11ViewStateBase captured and called. The Constitution page is rebuilt around the document itself: the written constitution, what is before the country, the eight books, then the forms and transitions the base renders, then the constitutional acts -- twenty of which rendered on other tabs and nowhere here."
     },
     "v7DefaultCollapsed#2": {
-      "line": 23737,
       "aliasCaptured": true,
       "reason": "S11d: alias var v11dDefaultCollapsedBase captured and called for every tab but 'state'. The eight books and the acts panel arrive collapsed; the document and what is before the country do not. Twenty-odd open panels on one tab is exactly the wall the sixth order asked to be rid of elsewhere."
     },
     "cabinetBonus#3": {
-      "line": 23901,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11CabinetBonusBase captured and called. cabinetBonus is the real channel from a ministry to the country, and it knew nothing about the department -- only competence and rank. It now adds the department's PERFORMANCE (capacity from competence, rank, the funding settlement and the strain; plus the delivered stock an Initiative builds), so funding a department and running it into the ground both reach every indicator it touches."
     },
     "budget#7": {
-      "line": 23916,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11DeptBudgetBase captured and called, returning early when no department carries a cost. budget() was blind to the government that spends it -- sixteen ministries and not one of them cost anything to run. Each department's settlement is now a line in it, and net is recomputed from rev, exp and interest so the Ledger and the budget agree."
     },
     "billForecast#4": {
-      "line": 23932,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11TraitForecastBase captured and called. Six of the seven minister traits were read NOWHERE outside a card; the operator's card says they manage Parliament well and the ideologue's says they resist compromise, so those two now move the Assembly and Senate forecasts through V11_TRAITS.bills."
     },
     "pv5MinisterAction#1": {
-      "line": 23966,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11MinisterActionBase captured and called for every action this slice does not reprice. A REASSIGNMENT rather than a wrapper for the four it does: brief, train, sideline and launch have to REPLACE their old bodies, and a wrapper that ran the base first would spend the capital twice. Measured defects fixed: Brief clamped to 100 while the tick clamps to 96 (three of five points bought were silently refunded the next session); the College gave max(2, 8 - experience) and then ADDED 3 to experience, so it was strictly dominated by Brief from the sixth session and worse each time it was used; Sideline cut the department's rank, making it the only paid action in the game that makes the government worse at everything; and an Initiative shoved an indicator stock the session tick converges at 26 per cent, measured at 84 per cent gone after six sessions."
     },
     "pv5MinisterTick#1": {
-      "line": 24043,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11MinisterTickBase captured and called first. The base clamps every minister to 96; this gives the schooled ones back the headroom the college bought them, applies the trait loyalty and exposure terms, and lets a sidelined minister drift away from the government that sidelined them."
     },
     "pv5InterestTick#1": {
-      "line": 24121,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11InterestTickBase captured and called first -- it still decays access, drops a soured endorsement and raises the demands. Only the two TARGETS are taken off it, to break the circle: the relation's target read st.blocs[g.bloc] while the blocTarget wrapper read the relation straight back, so neither number was independently meaningful. The relation now reads the group's own drivers (party fit, access granted, demands met or refused, endorsement) and the bloc goes on reading the relation, so influence runs one way."
     },
     "blocTarget#4": {
-      "line": 24145,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11EndorseBlocBase captured and called. An endorsement now mobilises the bloc the organisation speaks for, for as long as it is held -- one of the three things it buys, in place of six tenths of one per cent of the vote and nothing else."
     },
     "policyCost#5": {
-      "line": 24153,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11EndorsePolicyCostBase captured and called. The second thing an endorsement buys: seven per cent off any statute whose mood delta favours the endorsing organisation's bloc, compounding across endorsements."
     },
     "runElection#4": {
-      "line": 24169,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11RunElectionBase captured and called. The v5 wrapper cleared the endorsement of EVERY group at EVERY election -- the very event they are bought for. An endorsement now survives one ballot and lapses at the second, so seeking one before a ballot buys a relationship rather than a receipt. A relation that has fallen below 42 still ends it immediately."
     },
     "regionPartyFactor#2": {
-      "line": 24202,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11InterestRegionBase captured and called. V9_REGION_BLOCS has held a per-region bloc composition since S9 and only ever printed tags with it. An organisation close to the government now lifts the regions its own bloc is concentrated in, and one shut out depresses them. Deliberately small (.045) because it rides on top of the S11c regional term, which was tuned against a measured seat target, and the PR reports what it moved that target by. Clamped to the same V11_REGION_SPAN."
     },
     "pv5InterestAction#1": {
-      "line": 24221,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11InterestActionBase captured and called first; this only RECORDS what happened, because v11RelationTarget reads it. A meeting and a refusal are now remembered, so the relationship is a record of how the government has behaved toward the organisation rather than a reading of its bloc's mood. Guarded on capital actually having been spent, so a refused or unaffordable action records nothing."
     },
     "pv5MinisterCard#1": {
-      "line": 24263,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11MinisterCardBase captured and called. The department strip is spliced before the card's own closing tags rather than on prose -- the card is regenerated markup and every literal in it is a marker that could move."
     },
     "viewGovernment#1": {
-      "line": 24273,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11ViewGovernmentBase captured and called. One of only two genuinely unwrapped views before this slice. Adds The Departments panel."
     },
     "viewInterests#1": {
-      "line": 24305,
       "aliasCaptured": true,
       "reason": "S11e: alias var v11ViewInterestsBase captured and called. The other genuinely unwrapped view. Adds What the Organisations Are Worth, which is where the influence figure stops being a constant."
     },
     "capitalIncome#5": {
-      "line": 24478,
       "aliasCaptured": true,
       "reason": "S12: alias var v12CapitalFloorBase captured and called. Applies DIFFS[diff].capFloor as a FLOOR on the session's capital, and only DIFFS.easy carries the field, so every other tier is untouched. It has to be the OUTERMOST wrapper: capitalIncome is wrapped four times after its base (v8 narrative, v10, S11d's constitution and this), and a floor applied anywhere lower is undercut by every wrapper above it. Very easy's own blurb promises capital by the cartload; before this a bad session on it could still leave a government unable to act."
     }
-  }
+  },
+  "_maxDeadComment": "S14 moves this 5 -> 7, which is a CORRECTION rather than a regression: the count did not rise, the instrument started measuring it. run.js read the aliasCaptured boolean below and took its word; regionPartyFactor#1 and actBlocked#1 both wear an alias that nothing in the file ever reads, so their bodies are as orphaned as the five the ratchet already counted. The derived rule agrees with 197 of the 199 hand adjudications and disagrees on exactly those two. Target is still 0, and S14 PR D goes after it. PRIOR: S1 set it at 10, S2 took it to 5 by deleting the five bodies nothing reached and called 5 the true floor -- which S14 PR D tests, since the five remaining bodies are reached only by three redundant boot renders."
 }

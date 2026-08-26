@@ -25,30 +25,49 @@ const fs = require('fs');
 const path = require('path');
 
 // Each entry anchors a body by the text that opens it. Anchors must be unique.
+//
+// S14 pruned five entries. Half this registry was dead: S2 deleted the bodies
+// and never removed them from the tool that deleted them, so `--list` offered
+// five ids that could only ever exit 1. `runqueue-v4`, `palette-v5` and
+// `menu-v6` are gone from vale.html entirely; `startscreen-v4` and
+// `helpdialog-v4` lost their v4 DECLARATIONS and survive only as later
+// reassignments, which this tool cannot anchor by text because the same
+// opening line occurs at each of them (helpDialog has three). Anchor a later
+// vintage by adding a longer, unique opening line when one is actually needed.
+//
+// `--list` now verifies every anchor against the file and exits 1 if any of
+// them has rotted, so this cannot go stale in silence a second time.
 const BODIES = {
   'render-v4':        'function render() {',
   'render-v5':        'render=function(){',
-  'runqueue-v4':      'function runQueue(done) {',
   'renderstats-v4':   'function renderStats() {',
-  'startscreen-v4':   'function startScreen() {',
-  'palette-v5':       'function pv5CommandPalette',
-  'menu-v6':          'function v6Menu',
   'centertab-mobile': 'function v6mCenterTab() {',
   'policyfolds-mobile': 'function v6mPolicyFolds() {',
-  'helpdialog-v4':    'function helpDialog() {',
 };
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(__dirname, 'out');
+// VALE_FILE, like every other tool here: it is how the registry's own
+// self-check is proved able to fail.
+const FILE = process.env.VALE_FILE || path.join(ROOT, 'vale.html');
 
 if (process.argv.includes('--list')) {
-  for (const [id, anchor] of Object.entries(BODIES)) console.log(id.padEnd(20), anchor);
-  process.exit(0);
+  const text = fs.readFileSync(FILE, 'utf8');
+  let rotten = 0;
+  for (const [id, anchor] of Object.entries(BODIES)) {
+    const first = text.indexOf('\n' + anchor);
+    const n = first < 0 ? 0 : (text.indexOf('\n' + anchor, first + 1) >= 0 ? 2 : 1);
+    if (n !== 1) rotten++;
+    console.log(id.padEnd(20), anchor.padEnd(30),
+      n === 1 ? 'line ' + (text.slice(0, first + 1).split('\n').length) : (n ? 'NOT UNIQUE' : 'GONE — the body this anchored no longer exists'));
+  }
+  if (rotten) console.error('\n' + rotten + ' anchor(s) no longer resolve. Prune them, or re-point them at the body that replaced them.');
+  process.exit(rotten ? 1 : 0);
 }
 const ids = (process.argv[2] || '').split(',').filter(Boolean);
 if (!ids.length) { console.log('usage: node tools/poison.js <id>[,<id>...]   (--list to see ids)'); process.exit(1); }
 
-let src = fs.readFileSync(path.join(ROOT, 'vale.html'), 'utf8');
+let src = fs.readFileSync(FILE, 'utf8');
 for (const id of ids) {
   const anchor = BODIES[id];
   if (!anchor) { console.error('unknown body: ' + id); process.exit(1); }

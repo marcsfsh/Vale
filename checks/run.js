@@ -91,21 +91,77 @@ function reassignmentSites(text) {
   return sites;
 }
 
+/* ---- alias capture (shared by 3 and --sites) ---- */
+// AN ALIAS THAT IS NEVER READ IS NOT A CAPTURE. Until S14 this check read a
+// hand-written `aliasCaptured` boolean and took its word. Two sites exploited
+// that: `v11RegionFactorBase` is referenced nowhere else, and
+// `v11ActBlockedBase`'s own adjudication says, in capitals, "DELIBERATELY NOT
+// CALLED". Both bodies are as orphaned as the five the ratchet counted, both
+// wore an alias, both scored green.
+//
+// It is derived here instead. Validated against the file it replaces: the rule
+// agrees with 197 of the 199 hand adjudications and disagrees on exactly the
+// two the survey found, which is why the reported count moves 5 to 7. The
+// recorded boolean is still cross-checked against the derivation, so the file
+// cannot drift away from the code again without failing.
+function aliasCapture(text, lines, site) {
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let alias = null, at = null;
+  for (let i = site.line - 2; i >= Math.max(0, site.line - 12); i--) {
+    const L = lines[i];
+    const m = L.match(new RegExp('^(?:var|let|const)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*' + esc(site.name) + '\\s*;\\s*$'));
+    if (m) { alias = m[1]; at = i + 1; break; }
+    // stop at the first line of real top-level code that is not a declaration
+    if (/^\S/.test(L) && !/^\s*(\/\*|\*|\/\/)/.test(L) && L.trim() !== '' && !/^(var|let|const)\b/.test(L)) break;
+  }
+  let reads = 0;
+  if (alias) reads = (text.match(new RegExp('\\b' + esc(alias) + '\\b', 'g')) || []).length - 1;
+  return { alias, aliasLine: at, reads, captured: !!alias && reads > 0 };
+}
+
+/* `node checks/run.js --sites` prints the live enumeration. The adjudication
+   file used to carry a `line` field for each site; all 199 were stale and 28
+   were literally 0, because nothing maintained them and every edit above a
+   site moves it. Derived on demand instead of recorded and left to rot. */
+if (process.argv.includes('--sites')) {
+  const lines = src.split('\n');
+  const all = reassignmentSites(src);
+  for (const s of all) {
+    const a = aliasCapture(src, lines, s);
+    console.log(String(s.line).padStart(6) + '  ' + s.key.padEnd(30) + '  ' +
+      (a.alias ? a.alias + ' (declared ' + a.aliasLine + ', read ' + a.reads + 'x)' : 'NO ALIAS CAPTURED'));
+  }
+  console.log('\n' + all.length + ' sites, ' + all.filter(s => !aliasCapture(src, src.split('\n'), s).captured).length + ' orphaned');
+  process.exit(0);
+}
+
 /* ---- 3. dead-body ratchet ---- */
 {
   const sites = reassignmentSites(src);
+  const lines = src.split('\n');
   const problems = [];
   const knownKeys = new Set(Object.keys(deadBodies.sites));
+  let dead = 0;
   for (const s of sites) {
     if (!knownKeys.has(s.key)) problems.push(`unadjudicated site ${s.key} (line ${s.line}) — add to checks/dead-bodies.json with a reason`);
     knownKeys.delete(s.key);
+    const got = aliasCapture(src, lines, s);
+    if (!got.captured) dead++;
+    const rec = deadBodies.sites[s.key];
+    // The verdict is derived; the recorded boolean has to match it, or the
+    // file is describing a vale.html that no longer exists.
+    if (rec && rec.aliasCaptured !== got.captured) {
+      problems.push(`${s.key} (line ${s.line}) is adjudicated aliasCaptured:${rec.aliasCaptured}, but ` +
+        (got.alias ? `its alias ${got.alias} is read ${got.reads} time(s) in the file` : 'no alias is captured above it') +
+        ` — correct the adjudication, or the capture`);
+    }
   }
   for (const stale of knownKeys) problems.push(`stale adjudication ${stale} — site no longer exists, remove it`);
-  const dead = Object.values(deadBodies.sites).filter(v => v.aliasCaptured === false).length;
-  if (dead > deadBodies.maxDead) problems.push(`${dead} no-alias sites exceeds maxDead ${deadBodies.maxDead}`);
+  if (dead > deadBodies.maxDead) problems.push(`${dead} orphaned bodies exceeds maxDead ${deadBodies.maxDead}`);
   report('dead-body-ratchet', problems.length === 0,
     problems.length ? problems[0] + (problems.length > 1 ? ` (+${problems.length - 1} more)` : '')
-      : `${sites.length} sites adjudicated, ${dead} without alias (max ${deadBodies.maxDead}, target 0)`);
+      : `${sites.length} sites adjudicated, ${dead} orphaned — no alias, or an alias nothing reads ` +
+        `(max ${deadBodies.maxDead}, target 0; \`--sites\` lists them)`);
 }
 
 /* ---- 4. stale-binding ratchet ---- */
