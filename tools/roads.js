@@ -3824,6 +3824,98 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `from four to seventy-two is what made it likely · a card with no answers is now skipped rather than fatal ` +
     `(${dispatch.guardCleared})`);
 
+  /* S16f -- THE CUSTOM START. The owner asked for a scenario editor over the
+     constitution, the statute book, every chamber, the executive, the bench,
+     the ministry, the states, the powers and where every party stands. The
+     eleven openings are eleven fixed literals; this is the twelfth and the
+     player writes it. It is applied BETWEEN `v6NewGame` and `enrichState`, so
+     every ensure chain in the file runs over the edited state exactly as it
+     runs over a scenario's, and an id this build does not carry is dropped and
+     COUNTED rather than half-written -- the save contract since S1. */
+  const custom = await page.evaluate(() => {
+    const out = {};
+    out.built = typeof v16CustomApply === 'function';
+    if (!out.built) {
+      /* a build without this PR: report the fixed openings and say so, rather
+         than throwing at the harness */
+      out.lost = 0; out.fields = 0; out.sections = 0;
+      out.landed = {}; out.axes = 0; out.landedAll = 0;
+      out.missed = ['every axis: there is no custom start'];
+      out.plainUntouched = true; out.rubbish = 0;
+      out.openings = (typeof V6_SCENARIOS !== 'undefined') ? V6_SCENARIOS.length : 0;
+      return out;
+    }
+    const art = V11_ARTICLES[0].id, pol = POLICIES.filter(p => p.cat === 'Taxation')[0];
+    const region = REGIONS[0].id;
+    /* every axis at once, with a deliberate piece of rubbish on each of them */
+    const blob = {
+      v:1, form:'executive', articles:[art, 'nosuchArticle'],
+      pol:{ [pol.id]:pol.max, nosuchPolicy:2 },
+      seats:{ lp:60, fp:20, sd:20 },
+      upperSeats:{ lp:70, fp:30 },
+      upperState:'ceremonial', upperVeto:0, lowerState:'suspended',
+      exec:{ pres:'lp', vpres:'lp', chan:'lp', vchan:'lp', nosuchOffice:'lp' },
+      courtLean:-80, cabinetDepth:3,
+      governors:{ [region]:'lp', nosuchRegion:'lp' },
+      powers:{ sarath:95, tarnow:5, nosuchPower:50 },
+      treaties:{ sarath:['consular', 'defence', 'nosuchTreaty'] },
+      partyRel:{ fp:12 }, machine:{ lp:.9 }, purse:{ lp:1200 },
+      ind:{ liberties:20, tension:90, nosuchIndicator:5 },
+      money:{ capital:400, treasury:2000, unrest:70, unity:35 }
+    };
+    out.lost = v16CustomClean(blob).lost;
+    out.fields = v16CustomCount(v16CustomClean(blob).blob);
+    out.sections = v16CustomSections().length;
+
+    UI.setup = UI.setup || {}; UI.setup.custom = blob;
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    const seatTotal = PARTIES.reduce((n, p) => n + (S.seats[p.id] || 0), 0);
+    out.landed = {
+      form:S.form === 'executive',
+      article:!!(S.v11 && S.v11.con && S.v11.con.arts[art] !== undefined),
+      statute:S.pol[pol.id] === pol.max,
+      assembly:Math.round(100 * (S.seats.lp || 0) / seatTotal) === 60 && seatTotal === CFG.seats,
+      senate:!!S.upper.ceremonial && S.upper.veto === 0,
+      lower:!!S.lower.suspended,
+      exec:['pres', 'vpres', 'chan', 'vchan'].every(o => S.exec[o] === 'lp'),
+      cabinet:Object.keys(S.cabinet).filter(k => S.cabinet[k] > 0).length === 3,
+      court:courtGap(S) > 0,
+      governor:S.v6.governors[region].party === 'lp',
+      powers:S.powers.sarath === 95 && S.powers.tarnow === 5,
+      treaties:v6TreatyKinds(S, 'sarath').join(',') === 'consular,defence',
+      partyRel:Math.round(S.partyRel.fp) === 12,
+      machine:Math.abs(S.machine.lp - .9) < .001,
+      purse:Math.round(partyPurse(S, 'lp')) === 1200,
+      indicators:S.ind.liberties === 20 && S.ind.tension === 90,
+      exchequer:S.capital === 400 && S.treasury === 2000 && S.unrest === 70 && S.unity === 35,
+      marked:S.v6.scenario === 'custom' && !!S.customStart
+    };
+    out.axes = Object.keys(out.landed).length;
+    out.landedAll = Object.keys(out.landed).filter(k => out.landed[k]).length;
+    out.missed = Object.keys(out.landed).filter(k => !out.landed[k]);
+
+    /* a start that sets nothing changes nothing */
+    UI.setup.custom = null;
+    const plain = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    out.plainUntouched = plain.form === 'federal' && !plain.customStart;
+    /* and rubbish is refused whole rather than half-applied */
+    out.rubbish = v16CustomClean('not a start at all').lost;
+    return out;
+  });
+
+  say(custom.built && custom.sections === 10 && custom.lost === 7 && custom.fields > 25 &&
+      custom.landedAll === custom.axes && custom.plainUntouched && custom.rubbish === -1,
+    'a start of your own',
+    `the editor covers ${custom.sections} axes and one blob setting all of them at once -- the form, an article, a ` +
+    `statute at its top rung, both houses, all four great offices, the cabinet's depth, the bench, a governorship, two ` +
+    `capitals and what is written with one of them, a party's relations, organisation and money, two indicators and the ` +
+    `whole exchequer -- lands ${custom.landedAll} of ${custom.axes}` +
+    `${custom.missed.length ? ' (missed: ' + custom.missed.join(', ') + ')' : ''} through the real ` +
+    `\`v6NewGame\` and the whole ensure chain · ${custom.fields} fields set and ${custom.lost} pieces of rubbish planted ` +
+    `on every axis were each dropped and COUNTED rather than half-written, and a blob that is not a start at all is ` +
+    `refused whole (${custom.rubbish}) · a campaign begun with no custom start is untouched (${custom.plainUntouched})` +
+    (custom.built ? '' : ' · THIS BUILD HAS NO CUSTOM START: the eleven openings are eleven fixed literals'));
+
   /* S16e -- THE SIX THAT ARE NOT YOURS. The owner: "other parties should be
      more active and less stagnant." Measured over fifty sessions before this
      PR, with the player leading the LP and the FP in government: `st.push` was

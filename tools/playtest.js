@@ -1440,6 +1440,54 @@ async function run() {
       `-- before this PR the sheet listed ten cards against one slot, signing on the click and ` +
       `replacing whatever was in it` + (tr.built ? '' : ' -- THIS BUILD HAS NO PROPOSAL PATH'));
 
+    /* S16f: the editor, driven through the real start screen. The model side
+       is in roads.js; what this asks is whether a player can reach it, set a
+       field, keep it, and see that it is kept. */
+    const cs = await page.evaluate(() => {
+      const out = { built:typeof v16CustomSheet === 'function' };
+      const keepSetup = UI.setup ? JSON.parse(JSON.stringify(UI.setup)) : null;
+      startScreen();
+      const open = document.querySelector('#sheet [data-cs-open]');
+      out.onStartScreen = !!open;
+      if (!open) { if (typeof hideSheet === 'function') hideSheet(); UI.setup = keepSetup; render(); return out; }
+      open.click();
+      const sh = document.getElementById('sheet');
+      out.sections = sh.querySelectorAll('[data-cs-sec]').length;
+      out.controls = sh.querySelectorAll('[data-cs]').length;
+      out.hasText = !!sh.querySelector('[data-cs-text]');
+      out.sectionNames = [...sh.querySelectorAll('[data-cs-sec] > summary > b')].map(x => x.textContent);
+      const form = sh.querySelector('[data-cs="form"]');
+      if (form) form.value = 'empire';
+      const cap = sh.querySelector('[data-cs="money.capital"]');
+      if (cap) cap.value = '321';
+      const gov = sh.querySelector('[data-cs="governors.' + REGIONS[0].id + '"]');
+      if (gov) gov.value = 'lp';
+      sh.querySelector('[data-cs-apply]').click();
+      const kept = UI.setup.custom || {};
+      out.keptForm = kept.form;
+      out.keptCapital = kept.money && kept.money.capital;
+      out.keptGovernor = kept.governors && kept.governors[REGIONS[0].id];
+      out.backOnStartScreen = !!document.querySelector('#sheet [data-cs-open]');
+      out.label = (document.querySelector('#sheet [data-cs-open] b') || {}).textContent || '';
+      /* and clearing puts it back */
+      document.querySelector('#sheet [data-cs-open]').click();
+      document.getElementById('sheet').querySelector('[data-cs-clear]').click();
+      out.cleared = !UI.setup.custom;
+      if (typeof hideSheet === 'function') hideSheet();
+      UI.setup = keepSetup; render();
+      return out;
+    });
+    step('custom-start',
+      cs.built && cs.onStartScreen && cs.sections === 10 && cs.controls > 300 && cs.hasText &&
+      cs.keptForm === 'empire' && cs.keptCapital === 321 && cs.keptGovernor === 'lp' &&
+      cs.backOnStartScreen && /3 fields set/.test(cs.label) && cs.cleared,
+      `the start screen carries "Design the republic" (${cs.onStartScreen}), which opens ${cs.sections} sections ` +
+      `[${(cs.sectionNames || []).join(', ')}] and ${cs.controls} controls over one sheet; setting the form, the ` +
+      `opening capital and a governorship and keeping them writes all three (${cs.keptForm}/${cs.keptCapital}/` +
+      `${cs.keptGovernor}), the start screen says so ("${cs.label}"), and clearing puts it back (${cs.cleared}) -- ` +
+      `the eleven openings were eleven fixed literals and this is the twelfth` +
+      (cs.built ? '' : ' -- THIS BUILD HAS NO CUSTOM START'));
+
     /* S16e: the six on the page. A posture the player cannot see is not in the
        game, so the model side in roads.js is only half of it. */
     const sixp = await page.evaluate(() => {
