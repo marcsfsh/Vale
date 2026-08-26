@@ -72,29 +72,42 @@ so in each case the **first surviving assignment became the declaration**
 (`var runQueue = function …`), later wrappers untouched. The dead-to-dead line
 `pv5CommandPalette = v6Menu;` went with its operands.
 
-**Live, despite replacing a body without an alias** (5 sites — `checks/dead-bodies.json`
-carries the proof for each):
+**Deleted in S14** — the same five bodies, which S2 had proved live and called
+the ratchet's floor. They were live, but only through **three boot statements**
+that painted screens a later chunk replaced immediately: the v4 boot `render()`,
+the `render()` half of the v5 boot line, and two calls on the mobile chunk's
+boot line. Remove those and every one of the five is unreachable:
 
-| site | why it is not dead |
-|---|---|
-| v5 `render` rewrite | the v4 body runs at v4's boot `render()` |
-| v6 `render` rewrite | the v5 body runs at v5's boot |
-| v6 `renderStats` rewrite | v4 `render` calls the v4 body at boot |
-| v7 `v6mCenterTab` rewrite | the mobile body runs at the mobile chunk's boot |
-| v7 `v6mPolicyFolds` rewrite | same |
+| body | its only reacher | proved |
+|---|---|---|
+| v4 `render` | the v4 boot `render()` | `poison.js render-v4`, alone |
+| v4 `renderStats` | v4 `render`, from inside it | `renderstats-v4`, alone — this is the one S2's trap applies to hardest |
+| v5 `render` | the v5 boot line | `render-v5`, alone |
+| v6m `v6mCenterTab` | the mobile boot line | `centertab-mobile`, alone |
+| v6m `v6mPolicyFolds` | the mobile boot line | `policyfolds-mobile`, alone |
 
-**Orphaned, and wearing an alias nothing reads** (2 more, found in S14 when the
-check stopped believing a hand-written boolean). An alias that is never read is
-not a capture, so the true count is **7**, not 5:
+**Alone** is the whole method: a `throw` aborts the block it is in, so poisoning
+two bodies at once hides every call after the first. Each poison was run against
+the full playtest **and** all 92 roads assertions, and the same five poisons
+reddened the build from before the reachers were removed — which is what makes a
+green run evidence rather than an absence of evidence. The first surviving
+assignment of each name is now its declaration, exactly as S2 did it.
+
+**Orphaned, and wearing an alias nothing reads** — the **2** the ratchet counts
+today, found in S14 when the check stopped believing a hand-written boolean. An
+alias that is never read is not a capture:
 
 | site | the alias | why it is orphaned |
 |---|---|---|
 | `regionPartyFactor#1` | `v11RegionFactorBase` | referenced nowhere else in the file. A deliberate reassignment, for the reason S11c records: the old body collapses eight regions into one pop-weighted mean, so a wrapper has nothing left to weight per region |
 | `actBlocked#1` | `v11ActBlockedBase` | its own adjudication says **"DELIBERATELY NOT CALLED"** in capitals. The old first line, `if (a.house !== 'Senate') return false`, is the defect S11d replaced it for |
 
-Neither is a fault to fix: both bodies were meant to be replaced. The fault was
-an instrument that scored them green while counting five others for the same
-condition.
+Neither is a fault to fix: both bodies were meant to be replaced, for reasons
+S11c and S11d record and S14 did not disturb. The fault was an instrument that
+scored them green while counting five others for the same condition. The honest
+end state for these two is a recorded verdict, not a deletion, so the ratchet
+sits at **2 against a target of 0** and the gap is documented rather than
+closed.
 
 Two traps found the hard way, both worth remembering:
 
@@ -1121,8 +1134,11 @@ Since S5 the first style block opens with seven embedded `@font-face` rules
 (Latin subsets as data URIs, ~128 KB) and the file references nothing
 off-origin — regenerate them with `tools/fonts.sh`, never by hand.
 
-Parse-time boot: v4 (~8176) creates a **throwaway** `newGame('normal')` and
-renders; each chunk re-enriches/re-renders (6 renders total at load); v6's boot
+Parse-time boot: v4 (~8176) creates a **throwaway** `newGame('normal')`; each
+chunk re-enriches and re-renders. **Five paints of `#view` at load**, measured
+with a mutation observer rather than counted by eye — this line said 6 and the
+true figure was 7 until S14 removed the v4 and v5 boot renders, which painted
+screens the v6 boot replaced before anyone saw them. v6's boot
 IIFE (~11229) opens `startScreen()` (which offers Resume — never auto-resumes);
 v8/v9 boots rebuild the still-open setup sheet (it is built 3× per load). The
 throwaway game cannot clobber a real autosave: `saveAutosave` requires

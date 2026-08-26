@@ -32,10 +32,11 @@ before touching the file.
 
 - Never rebind a top-level function name without capturing the previous body
   (`var vXFooBase = foo;` first) **and calling it**: since S14 the check derives
-  capture from the code, and an alias nothing reads counts as an orphan exactly
-  like no alias at all. Every reassignment site must be adjudicated in
+  capture from the code, an alias nothing reads counts as an orphan exactly like
+  no alias at all, and an orphan with no `deliberate` adjudication fails
+  outright. Every reassignment site must be adjudicated in
   `checks/dead-bodies.json` or checks fail; `node checks/run.js --sites` lists
-  all 199 with their aliases and read counts.
+  all 194 with their aliases and read counts.
 - Never pass a reassignable function identifier by value at top level
   (`addEventListener('click', foo)` at column 0) — it freezes the body at that
   vintage. The ratchet is at 0; do not add the first.

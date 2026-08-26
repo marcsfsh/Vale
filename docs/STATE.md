@@ -4,7 +4,104 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S14 — Truth, then the seams**, third of five PRs. The dead-body ratchet made
+**S14 — Truth, then the seams**, fourth of five PRs. The five bodies S2 called
+the ratchet's floor are gone, and the check now asks for a reason rather than a
+number.
+
+### S2's floor was three boot statements
+
+The five have sat on the ratchet since S2, every one marked poison-proved LIVE.
+They were live — but only through three statements, each of them painting a
+screen a later chunk replaced before anyone saw it:
+
+- `render();` closing the v4 boot
+- the `render()` half of `S=enrichState(S,false);render();` closing the v5 boot
+- `v6mPolicyFolds(); v6mCenterTab();` on the mobile chunk's boot line
+
+The v6 boot re-enriches, renders and opens the start screen over all of it, and
+v7 renders again after the mobile chunk. Remove those three and every one of the
+five bodies is unreachable.
+
+Kept deliberately: the v5 boot's `enrichState`, which is the only v5 refresh of
+the state, and the mobile boot line's wrap-tables, lock and `V6M` bookkeeping,
+which nothing else does.
+
+### Proved one at a time, in both directions
+
+**Alone** is the method, and S2 paid for it: a `throw` aborts the block it is
+in, so poisoning two bodies at once hides every call after the first — and
+`renderStats` called from inside `render`, plus both mobile calls on one line,
+are four of these five sites.
+
+| body | poisoned alone, after | the same poison, before |
+|---|---|---|
+| v4 `render` | playtest PASS, ROADS OK | 4 page errors |
+| v5 `render` | playtest PASS, ROADS OK | 4 page errors |
+| v4 `renderStats` | playtest PASS, ROADS OK | **8** page errors |
+| v6m `v6mCenterTab` | playtest PASS, ROADS OK | 4 page errors |
+| v6m `v6mPolicyFolds` | playtest PASS, ROADS OK | 4 page errors |
+
+The right-hand column is what makes the left one evidence rather than an absence
+of evidence: the same five poisons against the build from before the reachers
+were removed all reddened, naming the body they reached.
+
+Each body was then deleted and the first surviving assignment of its name
+promoted to the declaration, exactly as S2 did it. Every ordinal key was
+re-derived afterwards — 199 sites became 194, `render#3..#6` became `#1..#4` —
+and the re-derivation was checked by asserting that every reason naming an alias
+names the alias the code actually has. **Zero mismatches.**
+
+### The ratchet now asks for a reason, not a number
+
+A count is a weak contract: a new orphan can arrive by slipping under a ceiling.
+An orphaned body must now be adjudicated **`deliberate: true`** with the reason
+it is one, or the check fails whatever the count says.
+
+Two remain, and both are deliberate in the strict sense that **calling the
+replaced body would reintroduce the defect it was replaced for**:
+`regionPartyFactor`'s old body collapses eight regions into one pop-weighted
+mean before returning, and `actBlocked`'s old first line refuses every act not
+filed under the Senate's own book. `maxDead` is 2 and is a backstop now, not the
+contract.
+
+### What the player gets
+
+| | before | after |
+|---|---|---|
+| paints of `#view` at load | **7** | **5** |
+| boot to the setup sheet, median of seven | 401.9 ms | **345.6 ms** |
+| `vale.html` | 2,999,292 bytes | 2,994,541 |
+
+`MAP.md` said 6 paints; the true figure was 7, measured with a mutation observer
+rather than counted by eye.
+
+Structural first paint identical at all three tiers before and after (10 panels,
+90 buttons, 5 folds at setup; 10 and 60 in game), no console errors. The DOM is
+not byte-stable run to run — `rand()`'s pre-game fallback varies the opening —
+so screenshots cannot answer this question and the comparison is structural.
+
+A new playtest step, `phone-policy-folds`, holds the feature whose body was
+deleted: 20 category folds on the phone policy page, no unfolded subheads left,
+and both promoted names still callable. It reddens on a build where v7's
+`v6mPolicyFolds` returns early.
+
+```
+ALL CHECKS PASS   11/11, 194 sites, 2 orphaned, each adjudicated deliberate
+ROADS OK          92 assertions
+PLAYTEST PASS     43 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS / TABS / CHAMBER  all green
+```
+
+Next: **PR E**, the marker check. **13 of its 24 multi-occurrence markers can
+never fail** — `occurrences >= 2` is vacuously true forever for `</div>` (801),
+`<div` (824), `</button>` (185) and ten more generic structural strings. And the
+two markers whose failure puts **wrong data on screen** rather than none are
+held in variables, so the literal-only discovery regex has never seen them:
+`vale.html`'s `.region-card` positional split, where a second one mis-assigns
+every governor strip by one region, and the Long Record's panel marker.
+
+Previously: **S14 — Truth, then the seams**, third of five PRs. The dead-body ratchet made
 honest before it is moved. No `vale.html` change.
 
 ### The check was reading a boolean, not the code
@@ -2106,6 +2203,7 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 6 | **merged** (#39) | Empire, Imperium, People's State and The Charter close the book: 582 of 582 statutes speak, 2,910 pieces of authored prose; the two largest books sharded by group covered both exactly; highest ordering scores of the project at 93.1 / 87.5 / 0.950; whole-corpus blind attribution 118 of 120; the style guide's own worked example was found to have propagated its sentence shape into 21 statutes across 13 books |
 | S13a style fidelity | **merged** (#41) | the authoring brief was a 112-line paraphrase of a 161-line skill and had dropped a rule; it is now the skill verbatim plus a statute addendum, committed as docs/PROSE-STYLE.md; audit of all 2,910 pieces came back clean on twelve rule families and two hits; the phrase matcher was fixed from substring to word boundary; "X rather than Y" measured at 7.5% precision and was deliberately left to judgement; maxBytes 3.1M to 10M |
 | S13b the whole book read aloud | **merged** (#42) | all 582 ladders read blind twice, not sampled: 66.7 / 67.7 per cent exact with 163 failed by both readers; 458 rung fields repaired across 163 statutes with no non-target touched; re-read by two fresh readers at 85.4 / 84.4 per cent, tau 0.946 / 0.938, failures down to 62; the one-axis rule measured on the whole population at 59.2 per cent before it against 77.8 after, and the batches that predated it closed to 81.7 |
+| S14d the ratchet driven down | **merged** (#46) | S2's floor of five turned out to be three boot statements -- the v4 boot render, the render half of the v5 boot line and two calls on the mobile boot line, all painting screens a later chunk replaced before anyone saw them; with those gone all five bodies poison-proved unreachable ONE AT A TIME against playtest and all 92 roads assertions, and the same five poisons reddened the pre-removal build (4/4/8/4/4 page errors), which is what makes the green runs evidence; bodies deleted, first surviving assignments promoted to declarations, 199 ordinal keys re-derived to 194 with zero alias mismatches; the ratchet now requires `deliberate: true` with a reason on any orphan rather than trusting a ceiling, and the 2 that remain are the two whose replaced bodies are wrong; paints of #view at load 7 -> 5, boot 401.9ms -> 345.6ms |
 | S14c the ratchet made honest | **merged** (#45) | the check counted a hand-written aliasCaptured boolean and never asked whether the alias exists or is read, so two sites wearing an unread alias scored green -- one adjudicated in its own capitals as DELIBERATELY NOT CALLED; capture is now DERIVED from the code and the recorded boolean cross-checked against it, a rule validated at 197 agreements out of 199 with exactly the two known disagreements, moving maxDead 5 -> 7 as a correction; all 199 stale line fields deleted (28 were literally 0) in favour of `run.js --sites`; the swapped indicatorTargets#3/#4 aliases put back; five of poison.js's ten anchors pruned as bodies S2 deleted, and --list made self-verifying |
 | S14b three live defects | **merged** (#44) | clamp answered NaN with NaN and bounds the wrong way round with the wrong bound; both are now named on screen and in the console and a bound is returned, with the predicate measured on an instrumented copy first (zero faults across playtest, zero across sixty turns, exactly one across roads) -- and that one was real: the brief branch clamped a schooled minister back to a hardcoded 96 against a ceiling of 102, refunding the college for 2 capital, 96.30 -> 96.00 before and 99.33 after; seven positional .filter(...)[0] probes named through pick(), demonstrated by a renamed order that the old playtest passed 41/41 on; the size check given a growth bound of 250,000 against HEAD, sized from the largest legitimate commit in this file's history (204,136) |
 | S14a documents made true | **merged** (#43) | eleven false statements across CLAUDE.md, MAP.md and STATE.md, every one true when written: the size line said 1.4 MB against 3.0, MAP said 93 Math.random() sites eleven slices after S3 made it 1, MAP contradicted itself fourteen lines apart on whether the fonts are fetched, the ratchet bullet was wrong on three of six figures, the marker count was given as both 21 and 25, and a colour-vision question S7 had answered was still listed as open; the 62-ladder handoff lived only in a gitignored path and is now docs/PROSE-RESIDUE.md; roads.js, rungs.js, tools/prose/ and PROSE-STYLE.md added to the command list; no code touched |
@@ -2129,11 +2227,12 @@ ratchet 10 → 5, which is now its true floor.
   bullet was found wrong on three of its six figures** — it is the section a
   cold session trusts for ratchet state, and it had gone stale across eleven
   slices: strict **8/8** (S9d took it 7 to 8 with the v10 chunk) and stale
-  bindings 0, both at target and pinned; orphaned bodies **max 7, target 0**
-  (S1 set it at 10, S2 deleted five and called 5 the floor; S14 found the check
-  was reading a hand-written boolean rather than the code, and two more sites
-  wear an alias nothing reads — 5 to 7 is the instrument being corrected, not
-  the file getting worse, and PR D goes after the number),
+  bindings 0, both at target and pinned; orphaned bodies **max 2, and every one
+  of them adjudicated `deliberate` with its reason** (S1 set it at 10, S2
+  deleted five and called 5 the floor, S14 PR C corrected the instrument to 7,
+  S14 PR D deleted the five S2 had kept and left the two whose replaced bodies
+  are wrong — the count is now a backstop and the binding rule is that an
+  orphan nobody wrote a reason for fails outright),
   unseeded randomness pinned at 1 call (rand()'s pre-game fallback; was 93
   before S3), width thresholds pinned to the five tier edges and heights to the
   one (460, the landscape turn bar — added in S8d, when the check learned about
