@@ -3597,6 +3597,130 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `office and mint a stranger · ambition was written six ways and read twice: a -0.29-a-session loyalty drag and a ` +
     `>= 55 gate on a button whose whole effect was +1 to a rank integer on the same portfolio`);
 
+  /* S15j -- THE NORTHERN ALLIANCE IS A SET OF MEMBERS. Every probe degrades
+     rather than throws on a build without the model. */
+  const all = await page.evaluate(() => {
+    const out = { has: typeof allianceState === 'function' };
+    const act = (id) => ACTIONS.filter(x => x.id === id)[0];
+    out.powers = POWERS.length;
+    const opts = (id) => { const a = act(id); return a ? (a.opts || []).length : 0; };
+    out.targets = { envoy:opts('envoy'), treaty:opts('treaty'), coerce:opts('coerce'),
+      sanction:opts('sanction'), accede:opts('accede') };
+    /* the five S10e powers, and whether the Foreign Office can name them */
+    const late = ['tarnow', 'zhenkai', 'oranje', 'khoraz', 'valdenmark'].filter(id => POWER[id]);
+    out.late = late.length;
+    out.reachable = late.filter(id => (act('envoy').opts || []).some(o => o.label.indexOf(POWER[id].short) >= 0)).length;
+    const t0 = act('treaty');
+    out.treatyWritesOne = !!t0 && (t0.opts || []).length > 0 && /v6TreatyDialog/.test(String(t0.opts[0].run));
+
+    /* THE FOUR AFFORDANCES THAT SAID "the alliance" AND MOVED NOTHING. Run
+       each one's own body against a clone and read st.powers.alliance back. */
+    const moved = (fn) => {
+      const box = v6Sandbox(function (c) {
+        c.a0 = relOf(c, 'alliance');
+        try { fn(c); } catch (e) { c.threw = String(e); }
+        c.a1 = relOf(c, 'alliance');
+      });
+      return box.st.a1 !== box.st.a0;
+    };
+    const evChoice = (evId, label) => {
+      const e = EVENTS.filter(x => x.id === evId)[0];
+      if (!e) return null;
+      const ch = (e.ch || []).filter(x => x.l === label)[0];
+      return ch ? ch.f : null;
+    };
+    const convene = evChoice('moya', 'Convene the Northern Alliance');
+    const withdraw = evChoice('foreignCondemnation', 'Withdraw from the Alliance entirely');
+    const visit = ((act('stateVisit') || {}).opts || []).filter(o => /Alliance capitals/.test(o.label))[0];
+    out.convene = convene ? moved(convene) : null;
+    out.withdraw = withdraw ? moved(withdraw) : null;
+    out.visit = visit ? moved(visit.run) : null;
+
+    if (!out.has) { out.cap0 = null; out.cap2 = null; out.acceptRate = null; return out; }
+
+    /* THE STATUTE IS READ. Its id appeared exactly once in three megabytes
+       before this PR: in its own definition. */
+    const keepPol = S.pol.allianceExpansion, keepAll = S.alliance;
+    S.pol.allianceExpansion = 0;
+    out.cap0 = allianceCap(S);
+    out.why0 = allianceWhy(S, 'meridian');
+    S.pol.allianceExpansion = 2;
+    out.cap2 = allianceCap(S);
+    S.pol.allianceExpansion = keepPol; S.alliance = keepAll;
+
+    /* A DIE THAT CAN SAY NO, at the odds the card prints. No diplomatic
+       decision in the game spent one before: every other applies a fixed
+       shift and reports it as a fact. */
+    const boxA = v6Sandbox(function (c) {
+      c.pol.allianceExpansion = 1;
+      c.yes = 0; c.odds = 0;
+      for (let i = 0; i < 300; i++) {
+        c.alliance = { members:[], asked:{}, founded:1 };
+        c.powers.meridian = 52; c.powers.alliance = 50; c.ind.tension = 55;
+        c.odds = allianceOdds(c, 'meridian');
+        if (allianceInvite(c, 'meridian').ok) c.yes++;
+      }
+    });
+    out.acceptRate = boxA.st.yes; out.acceptOdds = boxA.st.odds;
+
+    /* MEMBERS ARE NEVER THE COUNTRY VALE FIGHTS, AND THEY COME WHEN CALLED */
+    const boxW = v6Sandbox(function (c) {
+      c.alliance = { members:['sarath', 'ostmark'], asked:{}, founded:1 };
+      c.pol.allianceExpansion = 2; c.pol.allianceCommitments = 3;
+      POWERS.forEach(p => { c.powers[p.id] = 12; });
+      c.powers.sarath = 78; c.powers.ostmark = 78;
+      c.ind.tension = 95; c.hits = {}; c.joins = 0;
+      for (let i = 0; i < 400; i++) {
+        c.war = null;
+        warTick(c);
+        if (c.war) { c.hits[c.war.power] = (c.hits[c.war.power] || 0) + 1; c.joins += (c.war.joined || []).length; }
+      }
+    });
+    out.wars = Object.keys(boxW.st.hits).reduce((n, k) => n + boxW.st.hits[k], 0);
+    out.memberFought = ['sarath', 'ostmark'].some(id => boxW.st.hits[id]);
+    out.joins = boxW.st.joins;
+    return out;
+  });
+
+  const T = all.targets || {};
+  say(all.powers === 11 && all.reachable === all.late && all.late === 5 &&
+      T.envoy === 11 && T.treaty === 11 && T.coerce === 10 && T.accede === 10 && T.sanction >= 10,
+    'the Foreign Office reaches eleven capitals',
+    `${all.reachable} of the ${all.late} powers S10e shipped can be reached at last: the envoy, treaty, pressure, ` +
+    `sanction and accession lists offer ${T.envoy}/${T.treaty}/${T.coerce}/${T.sanction}/${T.accede} targets against ` +
+    `${all.powers} powers · POWERS.push runs in the S10e chunk and those four lists were built with POWERS.map at ` +
+    `the moment the ACTIONS literal was EVALUATED, so the order book could name Tarnow and the Foreign Office could not`);
+
+  say(all.has && all.cap0 === 0 && all.cap2 > 0 && /statute/.test(all.why0 || ''),
+    'Expand the Northern Alliance expands the Northern Alliance',
+    `nothing may accede at rung zero -- "${all.why0}" -- and the statute at two admits ${all.cap2} · its id appeared ` +
+    `EXACTLY ONCE in three megabytes before this PR, in its own definition, beside a purge list · the Alliance was ` +
+    `one relation number on a power row with no members in it, so there was nothing to expand`);
+
+  say(all.has && all.acceptRate > 0 && all.acceptRate < 300 &&
+      Math.abs(all.acceptRate / 3 - all.acceptOdds) < 8,
+    'a capital can say no, at the odds on the card',
+    `${all.acceptRate} of 300 accessions carried against a printed ${all.acceptOdds} in a hundred · this is the ` +
+    `first diplomatic decision in the game that spends a die: every other one applies a fixed shift and reports it ` +
+    `as a fact, and the odds are on the panel because a die the player cannot see the odds of is a coin toss`);
+
+  say(all.has && all.wars > 0 && !all.memberFought && all.joins > 0,
+    'a guarantee runs in both directions',
+    `over ${all.wars} war rolls with two members at relations of twelve on every other power, Vale went to war with ` +
+    `a member ${all.memberFought ? 'YES' : 'not once'}, and members came in on our side ${all.joins} times · the ` +
+    `candidate filter took a power's KIND and its treaties and had no way to ask whether it was in the bloc, ` +
+    `because the bloc had no members; and the only trace of an ally fighting was a flat +1 of momentum for a ` +
+    `defence pact`);
+
+  say(all.convene === true && all.withdraw === true && all.visit === true && all.treatyWritesOne,
+    'the cards about the Alliance touch the Alliance',
+    `convening it (${all.convene}), withdrawing from it entirely (${all.withdraw}) and a state visit to its ` +
+    `capitals (${all.visit}) all move the relation now, and Conclude a Treaty opens the real terms sheet ` +
+    `(${all.treatyWritesOne}) · it cost 8 capital and 6 of money, moved the relation by 22 and produced NO ` +
+    `instrument: no entry in Treaties in Force, no progress toward the Peacemaker record, no line in the stats · ` +
+    `and withdrawing entirely from the Alliance used to leave the relation, the drift bonus, the war exemption and ` +
+    `the war edge all exactly where they were`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

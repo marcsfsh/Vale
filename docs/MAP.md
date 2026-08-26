@@ -562,6 +562,67 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
+## The Northern Alliance (S15j)
+
+**It was one relation number on a power row.** `st.powers.alliance`, seeded at
+74, drifting like any other — a bloc with no members in it. The statute named
+**Expand the Northern Alliance** carries four authored rungs about association,
+accession and guarantee, and its id appeared **exactly once in three megabytes**:
+in its own definition (plus one purge list). Nothing could be expanded because
+there was nothing to be a member of.
+
+**`st.alliance = { members, asked, founded }`** is that set, created on write —
+a save from before this slice has an Alliance with no members, which is exactly
+what it had. The `alliance` power row stays as what it always was: the standing
+of the institution itself.
+
+- **`allianceCap`** reads `st.pol.allianceExpansion` against `V15_ALLY_CAP`
+  `[0, 2, 4, 6]`. **Nothing may accede at rung zero**, which is what the
+  statute's own first rung says arrives with it.
+- **`allianceOdds`** — relation, the Alliance's own standing, the statute, the
+  tension, the power's `kind`, whether Vale is at war, any standing treaty, and
+  how many times this capital has already been asked. **It is printed on the
+  panel**, because a die whose odds the player cannot see is a coin toss.
+- **`allianceInvite` spends a die.** It is the first diplomatic decision in the
+  game that does: every other one applies a fixed shift and reports it as a
+  fact. Measured: **76 of 300** accessions carry against a printed 26.
+- **`warTick`'s candidate filter excludes members.** It took a power's `kind`
+  and its treaties and had no way to ask whether it was in the bloc. Measured
+  over 374 war rolls with two members at 78 and every other power at 12: Vale
+  went to war with a member **not once**.
+- **`allianceJoin` brings them in.** A guarantee runs in both directions, which
+  is what the Alliance's card has said since v4; the only mechanical trace of an
+  ally fighting was a flat `+1` of momentum for a defence pact. Joiners add
+  `1.7` each to the war edge, gain relation on a victory and lose it on a defeat.
+
+**The Foreign Office could reach six capitals of eleven.** `POWERS.push` runs in
+the S10e chunk; the envoy, treaty, pressure and sanction lists were built with
+`POWERS.map` **at the moment the `ACTIONS` literal and the v9 widening IIFE were
+evaluated**, long before it. So the order book could name Tarnow and the Foreign
+Office could not. All four are rebuilt at the end of the file, where `POWERS` is
+complete. `data-opt` is an **array index**, so they are replaced whole before
+anything renders, never appended to a rendered one.
+
+> **`A(o)` is declared twice** — the ACTIONS constructor and the articles
+> constructor — and the second shadows the first file-wide. The accession action
+> is therefore pushed onto `ACTIONS` as a plain object with `pay:true` set by
+> hand. Anything added to `ACTIONS` from the last chunk must do the same.
+
+**Four cards that said "the alliance" and moved nothing** now move it: convening
+it, withdrawing from it *entirely* (which now empties the roster too), a state
+visit to its capitals, and the arc line whose own summary read "the alliance
+cools". And **Conclude a Treaty produced no treaty** — 8 capital and 6 of money
+for a relation shift, no entry in Treaties in Force, no progress toward the
+Peacemaker record, no line in the stats. It opens `v6TreatyDialog` now, so the
+game has one treaty path instead of two surfaces of which only one signed
+anything.
+
+**Known and left alone:** `kind:'trade'` exempts its holders from the war roll
+entirely, which `zhenkai` inherited from the S10e "same array" push; and four of
+the ten treaty kinds (`transit`, `science`, `labour`, `extradition`) reach
+`indicatorTargets` but have no branch in either treaty tick, so the relation
+drift their cards promise is written by nothing.
+
 ## The person in the office (S15i)
 
 **There was no candidate.** An executive office was won by a *party*: national
