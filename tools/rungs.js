@@ -508,7 +508,16 @@ async function corpora() {
     return {
       measures: grab(typeof EXTRA !== 'undefined' ? EXTRA : [], 'measure', ['desc', 'blurb', 'reqText', 'moves']),
       orders: grab(typeof V10_ORDERS !== 'undefined' ? V10_ORDERS : [], 'order', ['desc', 'blurb', 'reqText', 'moves']),
-      articles: grab(typeof V11_ARTICLES !== 'undefined' ? V11_ARTICLES : [], 'article', ['text', 'moves', 'reqText'])
+      articles: grab(typeof V11_ARTICLES !== 'undefined' ? V11_ARTICLES : [], 'article', ['text', 'moves', 'reqText']),
+      /* S16b: the treaty book is a fourth registry, twenty instruments with a
+         note and a list of tags apiece. It is keyed by id rather than held in
+         an array, and its tags are prose the card prints, so each one is
+         judged as its own piece. */
+      treaties: Object.keys(typeof V6_TREATIES !== 'undefined' ? V6_TREATIES : {}).map(k => {
+        const d = V6_TREATIES[k], row = { id:'treaty:' + k, kind:'treaty', name:d.name || '', note:d.note || '' };
+        (d.tags || []).forEach((t, i) => { row['tag' + (i + 1)] = t; });
+        return row;
+      })
     };
   });
 
@@ -534,7 +543,7 @@ async function corpora() {
     if (/\binterestingly,/i.test(t)) fail.push(id + ' ' + label + ': throat-clearing');
   }
 
-  ['measures', 'orders', 'articles'].forEach(k => {
+  ['measures', 'orders', 'articles', 'treaties'].forEach(k => {
     (data[k] || []).forEach(row => {
       /* A DUPLICATE NAME IS THE ONE DEFECT THAT IS SILENT ON THE PAGE. S15g
          found two panels drawing adjacent cards under an identical heading and
@@ -551,7 +560,7 @@ async function corpora() {
     });
   });
 
-  const counts = ['measures', 'orders', 'articles'].map(k => k + ' ' + (data[k] || []).length).join(', ');
+  const counts = ['measures', 'orders', 'articles', 'treaties'].map(k => k + ' ' + (data[k] || []).length).join(', ');
   console.log('corpora            : ' + counts);
   console.log('authored pieces    : ' + pieces + ', mean ' + Math.round(chars / Math.max(1, pieces)) + ' chars');
   console.log('distinct names     : ' + seenName.size);
