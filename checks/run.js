@@ -146,8 +146,18 @@ if (process.argv.includes('--sites')) {
     if (!knownKeys.has(s.key)) problems.push(`unadjudicated site ${s.key} (line ${s.line}) — add to checks/dead-bodies.json with a reason`);
     knownKeys.delete(s.key);
     const got = aliasCapture(src, lines, s);
-    if (!got.captured) dead++;
     const rec = deadBodies.sites[s.key];
+    if (!got.captured) {
+      dead++;
+      // S14: a count is a weak contract -- a new orphan can arrive by slipping
+      // under the ceiling. An orphan has to be adjudicated `deliberate` with
+      // the reason it is one, or it fails here whatever the count says.
+      if (rec && rec.deliberate !== true) {
+        problems.push(`${s.key} (line ${s.line}) replaces a body and keeps no alias that is read, ` +
+          `and is not adjudicated deliberate — capture the old body and call it, or record in ` +
+          `checks/dead-bodies.json why replacing it outright is right`);
+      }
+    }
     // The verdict is derived; the recorded boolean has to match it, or the
     // file is describing a vale.html that no longer exists.
     if (rec && rec.aliasCaptured !== got.captured) {
@@ -160,8 +170,8 @@ if (process.argv.includes('--sites')) {
   if (dead > deadBodies.maxDead) problems.push(`${dead} orphaned bodies exceeds maxDead ${deadBodies.maxDead}`);
   report('dead-body-ratchet', problems.length === 0,
     problems.length ? problems[0] + (problems.length > 1 ? ` (+${problems.length - 1} more)` : '')
-      : `${sites.length} sites adjudicated, ${dead} orphaned — no alias, or an alias nothing reads ` +
-        `(max ${deadBodies.maxDead}, target 0; \`--sites\` lists them)`);
+      : `${sites.length} sites adjudicated, ${dead} orphaned — no alias, or an alias nothing reads — ` +
+        `${dead ? 'each one adjudicated deliberate' : 'none'} (max ${deadBodies.maxDead}; \`--sites\` lists them)`);
 }
 
 /* ---- 4. stale-binding ratchet ---- */

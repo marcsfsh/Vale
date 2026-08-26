@@ -1,6 +1,6 @@
 {
   "_comment": "Adjudicated verdicts for every top-level function reassignment site in vale.html, keyed name#ordinal. aliasCaptured records whether the site keeps a reference to the body it replaces -- and since S14 the check DERIVES that from the file and fails if this record disagrees, because an alias that is never read is not a capture and two sites had been scoring green on exactly that. The verdict is no longer this file's to assert. Since S2 every orphaned body has been POISON-PROVED (tools/poison.js): each replaced body executes once at its own chunk boot, so it is transitional rather than dead. The five genuinely unreachable bodies were deleted in S2. S14 also removed the per-site `line` field: all 199 were stale and 28 were literally 0, because nothing maintained them and every edit above a site moves it. Run `node checks/run.js --sites` for the live enumeration. NOTE: ordinal keys shift when a site is deleted -- re-derive verdicts, never carry them across a deletion.",
-  "maxDead": 7,
+  "maxDead": 2,
   "sites": {
     "enrichState#1": {
       "aliasCaptured": true,
@@ -21,6 +21,10 @@
     "aiGovern#1": {
       "aliasCaptured": true,
       "reason": "alias var pv5AiGovernV4 captured above"
+    },
+    "blocTarget#1": {
+      "aliasCaptured": true,
+      "reason": "alias var pv5BlocTargetV4 captured above"
     },
     "ballot#1": {
       "aliasCaptured": true,
@@ -66,10 +70,6 @@
       "aliasCaptured": true,
       "reason": "alias var pv5WireV4 captured above"
     },
-    "render#1": {
-      "aliasCaptured": false,
-      "reason": "v5 full rewrite, no alias. Poison-proved LIVE (tools/poison.js render-v4): the v4 body it replaces executes once at v4 boot. Transitional, not dead."
-    },
     "billForecast#2": {
       "aliasCaptured": true,
       "reason": "alias var v6BillForecastV5 captured above"
@@ -78,9 +78,17 @@
       "aliasCaptured": true,
       "reason": "alias var v6EnrichV5 captured above"
     },
+    "budget#2": {
+      "aliasCaptured": true,
+      "reason": "alias var v6BudgetV5 captured above"
+    },
     "warTick#1": {
       "aliasCaptured": true,
       "reason": "alias var v6WarTickBase captured above"
+    },
+    "policyCost#1": {
+      "aliasCaptured": true,
+      "reason": "alias var v6PolicyCostV5 captured above"
     },
     "ageFigures#1": {
       "aliasCaptured": true,
@@ -146,23 +154,15 @@
       "aliasCaptured": true,
       "reason": "alias var v6ViewPolicyV5 captured above"
     },
-    "renderStats#1": {
-      "aliasCaptured": false,
-      "reason": "v6 rewrite, no alias. Poison-proved LIVE (renderstats-v4): v4 render calls the v4 body at boot."
-    },
     "wire#2": {
       "aliasCaptured": true,
       "reason": "alias var v6WireV5 captured above"
-    },
-    "render#2": {
-      "aliasCaptured": false,
-      "reason": "v6 full rewrite, no alias. Poison-proved LIVE (render-v5): the v5 body executes once at v5 boot before this replaces it."
     },
     "gameOver#1": {
       "aliasCaptured": true,
       "reason": "alias var v6GameOverBase captured above"
     },
-    "render#3": {
+    "render#1": {
       "aliasCaptured": true,
       "reason": "alias var v6mRenderBase captured above"
     },
@@ -178,10 +178,6 @@
       "aliasCaptured": true,
       "reason": "alias var v7RenderTabsBase captured above"
     },
-    "v6mCenterTab#1": {
-      "aliasCaptured": false,
-      "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (centertab-mobile): the mobile body runs at the mobile chunk boot."
-    },
     "viewChamber#3": {
       "aliasCaptured": true,
       "reason": "alias var v7ViewChamberBase captured above"
@@ -190,11 +186,7 @@
       "aliasCaptured": true,
       "reason": "alias var v7ViewPolicyBase captured above"
     },
-    "v6mPolicyFolds#1": {
-      "aliasCaptured": false,
-      "reason": "v7 rewrite of a mobile-layer fn, no alias. Poison-proved LIVE (policyfolds-mobile): the mobile body runs at the mobile chunk boot."
-    },
-    "render#4": {
+    "render#2": {
       "aliasCaptured": true,
       "reason": "alias var v7RenderBase captured above"
     },
@@ -257,6 +249,10 @@
     "blocTarget#2": {
       "aliasCaptured": true,
       "reason": "alias var v8BlocTargetBase captured above"
+    },
+    "capitalIncome#1": {
+      "aliasCaptured": true,
+      "reason": "alias var v8CapitalBase captured above"
     },
     "pv5CampaignPower#1": {
       "aliasCaptured": true,
@@ -362,13 +358,17 @@
       "aliasCaptured": true,
       "reason": "alias var v8StartBase captured above"
     },
-    "render#5": {
+    "render#3": {
       "aliasCaptured": true,
       "reason": "alias var v8RenderBase captured above"
     },
     "enrichState#4": {
       "aliasCaptured": true,
       "reason": "alias var v9EnrichV8 captured above"
+    },
+    "enrichState#5": {
+      "aliasCaptured": true,
+      "reason": "alias var v9EnrichGuarded captured above. The outermost wrapper of the enrich chain, and it must STAY outermost: it points the dice at the state being enriched, and any wrapper installed after it would run its backfill rolls outside that guard, spending the live campaign's stream on a detached object. tools/determinism.js asserts the property."
     },
     "partyActions#1": {
       "aliasCaptured": true,
@@ -542,13 +542,9 @@
       "aliasCaptured": true,
       "reason": "alias var v9JumpBase captured above"
     },
-    "render#6": {
+    "render#4": {
       "aliasCaptured": true,
       "reason": "alias var v9RenderBase captured above"
-    },
-    "enrichState#5": {
-      "aliasCaptured": true,
-      "reason": "alias var v9EnrichGuarded captured above. The outermost wrapper of the enrich chain, and it must STAY outermost: it points the dice at the state being enriched, and any wrapper installed after it would run its backfill rolls outside that guard, spending the live campaign's stream on a detached object. tools/determinism.js asserts the property."
     },
     "tickTurn#4": {
       "aliasCaptured": true,
@@ -566,18 +562,6 @@
       "aliasCaptured": true,
       "reason": "alias var v10MakeMinisterBase captured above (S10a: ministers gain an age at birth)"
     },
-    "ageRoster#1": {
-      "aliasCaptured": true,
-      "reason": "alias var v10AgeRosterBase captured above (S10a: ministers and governors join the mortality roster)"
-    },
-    "ageSucceed#1": {
-      "aliasCaptured": true,
-      "reason": "alias var v10AgeSucceedBase captured above (S10a: succession arms for ministers and governors)"
-    },
-    "v8EnsureState#1": {
-      "aliasCaptured": true,
-      "reason": "alias var v10V8EnsureBase captured above (S10a: folds a pre-S10a save's retired 'coast' sea wall onto v9seawall, loudly)"
-    },
     "makeFigure#1": {
       "aliasCaptured": true,
       "reason": "alias var v10MakeFigureBase captured above (S10a: names deduplicated against the living cast)"
@@ -586,9 +570,25 @@
       "aliasCaptured": true,
       "reason": "alias var v10MakeGovernorBase captured above (S10a: regionally weighted, deduplicated governor names)"
     },
+    "v8EnsureState#1": {
+      "aliasCaptured": true,
+      "reason": "alias var v10V8EnsureBase captured above (S10a: folds a pre-S10a save's retired 'coast' sea wall onto v9seawall, loudly)"
+    },
+    "ageRoster#1": {
+      "aliasCaptured": true,
+      "reason": "alias var v10AgeRosterBase captured above (S10a: ministers and governors join the mortality roster)"
+    },
+    "ageSucceed#1": {
+      "aliasCaptured": true,
+      "reason": "alias var v10AgeSucceedBase captured above (S10a: succession arms for ministers and governors)"
+    },
     "indicatorTargets#3": {
       "aliasCaptured": true,
       "reason": "alias var v10TreatyTargetsBase captured above (S10e: treaties in force finally move the indicator targets their own cards advertise) [S14: this entry and #4 had each other's alias. An ordinal-shift artefact, the failure docs/MAP.md warns about: #3 is the TREATY wrapper and #4 the ORDER wrapper, not the other way round.]"
+    },
+    "indicatorTargets#4": {
+      "aliasCaptured": true,
+      "reason": "alias var v10IndTargetsBase captured above (S10c: an order in force bends the indicator TARGET, so revoking it lets the country drift back) [S14: swapped back, see #3.]"
     },
     "blocTarget#3": {
       "aliasCaptured": true,
@@ -602,26 +602,6 @@
       "aliasCaptured": true,
       "reason": "alias var v10CapIncomeBase captured above (S10c: standing orders cost capital every session they stand)"
     },
-    "policyCost#3": {
-      "aliasCaptured": true,
-      "reason": "alias var v10PolicyCostBase captured above (S10c: orders that make a category of statute cheaper or dearer to move)"
-    },
-    "blocTarget#1": {
-      "aliasCaptured": true,
-      "reason": "alias var pv5BlocTargetV4 captured above"
-    },
-    "budget#2": {
-      "aliasCaptured": true,
-      "reason": "alias var v6BudgetV5 captured above"
-    },
-    "policyCost#1": {
-      "aliasCaptured": true,
-      "reason": "alias var v6PolicyCostV5 captured above"
-    },
-    "capitalIncome#1": {
-      "aliasCaptured": true,
-      "reason": "alias var v8CapitalBase captured above"
-    },
     "cabinetBonus#2": {
       "aliasCaptured": true,
       "reason": "alias var v10CabinetBonusBase captured above (S10c: an order that speeds or slows what the ministries deliver)"
@@ -629,6 +609,10 @@
     "v8WorkPerSession#1": {
       "aliasCaptured": true,
       "reason": "alias var v10WorkPerSessionBase captured above (S10c: an order that changes the pace of the public works)"
+    },
+    "policyCost#3": {
+      "aliasCaptured": true,
+      "reason": "alias var v10PolicyCostBase captured above (S10c: orders that make a category of statute cheaper or dearer to move)"
     },
     "v8EnsureQuestion#1": {
       "aliasCaptured": true,
@@ -662,10 +646,6 @@
       "aliasCaptured": true,
       "reason": "alias var v10ShiftRelBase captured above (S10e: the same guard on the one writer that never checked)"
     },
-    "indicatorTargets#4": {
-      "aliasCaptured": true,
-      "reason": "alias var v10IndTargetsBase captured above (S10c: an order in force bends the indicator TARGET, so revoking it lets the country drift back) [S14: swapped back, see #3.]"
-    },
     "v7DefaultCollapsed#1": {
       "aliasCaptured": true,
       "reason": "S11a: alias var v11DefaultCollapsedBase captured above. The record deck adds twenty panels and every one of them must default COLLAPSED \u2014 v7DefaultCollapsed returns false for anything it does not name, so without this the whole deck draws on arrival and the build-on-open design never engages."
@@ -676,6 +656,7 @@
     },
     "regionPartyFactor#1": {
       "aliasCaptured": false,
+      "deliberate": true,
       "reason": "S14: aliasCaptured corrected true -> false. The alias var v11RegionFactorBase is declared and read NOWHERE, so this is an orphaning reassignment wearing a capture's clothes, and it scored green for three slices. S11c's own reasoning, which is sound and unchanged -- a REASSIGNMENT rather than a wrapper, deliberately: the old body collapses eight regions into one pop-weighted mean before returning, so a wrapper has nothing left to weight per region. This is the only channel from a region to the national vote, and it was almost entirely a function of eight frozen `lean` literals -- the governor, the organisers on the ground and how the region is actually governed now reach it. The clamp widened from [.86,1.15] to V11_REGION_SPAN [.80,1.22]. Measured honestly at the shipped gain of 0.23 the factor runs .847 .. 1.028, so the old FLOOR clips (the worst RSF and PNL readings sit under .86) while the old ceiling is never approached; the widened top is declared headroom for a retune of V11_REGION_GAIN, not a constraint doing work today."
     },
     "regionLeadingParty#1": {
@@ -708,6 +689,7 @@
     },
     "actBlocked#1": {
       "aliasCaptured": false,
+      "deliberate": true,
       "reason": "S14: aliasCaptured corrected true -> false. The adjudication below says DELIBERATELY NOT CALLED in its own capitals, and the check still counted it as a capture because a boolean said so. S11d: alias var v11ActBlockedBase captured. DELIBERATELY NOT CALLED: its first line, `if (a.house !== 'Senate') return false`, is the defect. `house` on an ACT is the BOOK it is filed under on the page ('Senate', 'Supreme Court', 'Elections'), not the chamber that votes on it, so a Senate with a full veto sat and watched every act it was not itself the subject of go straight past. The replacement considers any act using the same lean actCost already assigns by book, and keeps all three original exemptions -- two are how a suspended Senate is restored and the third is the act that makes it elected."
     },
     "securityState#1": {
@@ -799,5 +781,6 @@
       "reason": "S12: alias var v12CapitalFloorBase captured and called. Applies DIFFS[diff].capFloor as a FLOOR on the session's capital, and only DIFFS.easy carries the field, so every other tier is untouched. It has to be the OUTERMOST wrapper: capitalIncome is wrapped four times after its base (v8 narrative, v10, S11d's constitution and this), and a floor applied anywhere lower is undercut by every wrapper above it. Very easy's own blurb promises capital by the cartload; before this a bad session on it could still leave a government unable to act."
     }
   },
-  "_maxDeadComment": "S14 moves this 5 -> 7, which is a CORRECTION rather than a regression: the count did not rise, the instrument started measuring it. run.js read the aliasCaptured boolean below and took its word; regionPartyFactor#1 and actBlocked#1 both wear an alias that nothing in the file ever reads, so their bodies are as orphaned as the five the ratchet already counted. The derived rule agrees with 197 of the 199 hand adjudications and disagrees on exactly those two. Target is still 0, and S14 PR D goes after it. PRIOR: S1 set it at 10, S2 took it to 5 by deleting the five bodies nothing reached and called 5 the true floor -- which S14 PR D tests, since the five remaining bodies are reached only by three redundant boot renders."
+  "_maxDeadComment": "S14 PR D takes this 7 -> 2. The five that S2 called the ratchet's true floor were live only through three redundant boot statements -- the v4 boot render, the render half of the v5 boot line, and two calls on the mobile chunk's boot line -- all three painting screens a later chunk replaced before anyone saw them. With those gone every one of the five poison-proved unreachable ON ITS OWN (never in a set: a throw aborts its block and hides the calls after it, which is how S2 lost a day), against the full playtest and all 92 roads assertions, and the same five poisons reddened the build from before the removal. The bodies are deleted and the first surviving assignment of each name is now its declaration. The 2 that remain are regionPartyFactor#1 and actBlocked#1: both bodies were MEANT to be replaced, for reasons S11c and S11d record and S14 PR C did not disturb, so the honest end state for them is a recorded verdict rather than a deletion. PRIOR: S1 set it at 10, S2 -> 5, S14 PR C -> 7 when the check stopped believing a hand-written boolean.",
+  "_deliberateComment": "An orphaned body is only allowed if someone wrote down why. `deliberate: true` is that record, and the check fails on any orphan without it -- a stronger contract than a count, because a NEW orphan cannot arrive by slipping under a ceiling. maxDead stays as a backstop against a slice adjudicating a dozen of them in one go. S14 PR D left exactly two, both because the replaced body is WRONG and calling it would reintroduce the defect it was replaced for: regionPartyFactor's old body collapses eight regions into one pop-weighted mean before returning, and actBlocked's old first line refuses every act that is not filed under the Senate's own book."
 }

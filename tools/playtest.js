@@ -896,6 +896,31 @@ async function run() {
     `${phone.hemiLabelsHidden} and the legend keeping its counts: ${phone.legendCounts}, ` +
     `no sideways scroll: ${phone.noSideScroll}`);
 
+  /* S14: the phone's policy folds and its tab strip, asserted because their
+     v6m bodies were deleted. Both names were declared by v6m and reassigned by
+     v7 without an alias, and the only thing that ever ran the v6m bodies was
+     one line on the mobile chunk's boot. With that line gone the bodies were
+     poison-proved unreachable and removed, and v7's assignment became the
+     declaration -- so what has to hold from here is that the FEATURE still
+     works, not that a particular body exists. */
+  const fold = await page.evaluate(() => {
+    const keep = UI.tab;
+    UI.tab = 'policy'; render();
+    const out = {
+      folds: document.querySelectorAll('details.fold.polcat').length,
+      bare: document.querySelectorAll('#view .subhead').length,
+      /* and the names still resolve to a callable body after the promotion */
+      callable: typeof v6mPolicyFolds === 'function' && typeof v6mCenterTab === 'function',
+      strip: (() => { const n = document.getElementById('tabs'); return !!(n && n.querySelector('[aria-current="true"]')); })(),
+    };
+    UI.tab = keep; render();
+    return out;
+  });
+  step('phone-policy-folds', fold.folds >= 20 && fold.bare === 0 && fold.callable && fold.strip,
+    `${fold.folds} category folds on the phone policy page with ${fold.bare} unfolded subheads left, ` +
+    `v6mPolicyFolds and v6mCenterTab both callable after the promotion: ${fold.callable}, ` +
+    `open tab marked on the strip: ${fold.strip}`);
+
   // a sheet on a phone is a full-bleed page anchored to the bottom, not a
   // centred desktop modal that leaves the primary action off-screen
   await page.evaluate(() => { if (typeof saveDialog === 'function') saveDialog(); });

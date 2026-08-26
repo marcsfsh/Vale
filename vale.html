@@ -11351,62 +11351,19 @@ function applyTheme() {
   root.style.setProperty('--party-ink', lum(c) > .5 ? '#0E120F' : '#EAE7DC');
 }
 
-function render() {
-  S = enrichState(S, false);
-  applyTheme();
-  var st0 = standing(S);
-  document.getElementById('realmSub').textContent =
-    PARTY[playParty(S)].name + ' \u00b7 ' +
-    (st0 === 'leading' ? 'in government' : (st0 === 'junior' ? 'junior partner in government' : 'in opposition, ' + (S.oppYears || 0) + ' years')) +
-    ' \u00b7 ' + FORMS[S.form].name;
-  var crest = document.querySelector ? document.querySelector('.crest') : null;
-  if (crest) crest.textContent = PARTY[playParty(S)].short.charAt(0);
-  document.getElementById('dateLabel').textContent = dateLabel(S.turn);
-  var b = budget(S);
-  document.getElementById('turnHint').textContent =
-    'Capital ' + (capitalIncome(S) >= 0 ? '+' : '') + capitalIncome(S).toFixed(1) + ' per session, balance ' + (b.net >= 0 ? '+' : '') + fm(b.net);
-  var next = electionsOn(S) ? Math.max(0, nextBallot(S.turn) - S.turn) : null;
-  document.getElementById('sessionMeta').innerHTML =
-    '<span class="session-chip">' + S.bills.length + ' bill' + (S.bills.length === 1 ? '' : 's') + '</span>' +
-    '<span class="session-chip">' + S.inbox.length + ' paper' + (S.inbox.length === 1 ? '' : 's') + '</span>' +
-    '<span class="session-chip">' + (next === null ? 'No ballot' : (next ? next + 'y to ballot' : 'Ballot due')) + '</span>';
+/* S14: the v4 `render` body was deleted here. It was reached only by the v4
+   boot render, itself a paint the v6 boot replaced before anyone saw it. Five
+   bodies had sat on the dead-body ratchet since S2, which called 5 its true
+   floor; they were live, but only through three redundant boot statements.
+   Poison-proved unreachable one body at a time (tools/poison.js render-v4)
+   against the full playtest and all 92 roads assertions. */
 
-  renderStats();
-  renderTabs();
-  var v = document.getElementById('view');
-  v.innerHTML = ({
-    chamber: viewChamber, policy: viewPolicy, nation: viewNation,
-    parties: viewParties, houses: viewHouses, exec: viewExec, judicial: viewJudicial,
-    state: viewState, ledger: viewLedger, world: viewWorld, federation:viewFederation
-  })[UI.tab]();
-  wire(v);
-  document.getElementById('btnEnd').disabled = !!S.over;
-  var undo = document.getElementById('btnUndo');
-  undo.disabled = !UI.undo || !!S.over || UI.busy;
-  undo.title = UI.undo ? 'Undo: ' + UI.undo.label : 'No decision to undo';
-  clearTimeout(UI.saveTimer); UI.saveTimer = setTimeout(saveAutosave, 160);
-}
-
-function renderStats() {
-  var a = approval(S);
-  var items = [
-    { l:'Treasury', v: fm(S.treasury), sub: 'debt ' + fm(S.debt), bad: S.debt > 640 },
-    { l:'Political capital', v: Math.round(S.capital) },
-    { l:'Approval', v: Math.round(a) },
-    { l:'Unrest', v: Math.round(S.unrest), bad: S.unrest > 55 },
-    { l:'State governments', v: Math.round(S.crown), bad: S.crown < 35 },
-    { l:'Armed forces', v: Math.round(S.armyLoyalty), bad: S.armyLoyalty < 40 },
-    { l:'Court', v: courtWith(S) + '/' + S.court.justices.length, bad: courtWith(S) * 2 < S.court.justices.length },
-    { l:'Party unity', v: Math.round(S.unity || 60), bad: (S.unity || 60) < 42 },
-    { l:'Radicalism', v: Math.round(radicalOf(S)), bad: radicalOf(S) > 50 },
-    { l:'Growth', v: (S.macro.growth >= 0 ? '+' : '') + S.macro.growth.toFixed(1) + '%', bad:S.macro.growth < 0 },
-    { l:'Credit', v:S.macro.rating, bad:['BB','B'].indexOf(S.macro.rating) >= 0 }
-  ];
-  document.getElementById('stats').innerHTML = items.map(function (i) {
-    return '<div class="stat"><b>' + i.l + '</b><span class="' + (i.bad ? 'neg' : '') + '">' + i.v +
-      (i.sub ? '<span class="delta">' + i.sub + '</span>' : '') + '</span></div>';
-  }).join('');
-}
+/* S14: the v4 `renderStats` body was deleted here. Nothing called it but the
+   v4 and v5 render bodies, both of which went with it, and the v6 layer
+   replaces the name with its own. It is the one of the five that S2's trap
+   applies to hardest -- it was called from INSIDE render, so poisoning render
+   at the same time would have hidden it -- and it was proved on its own
+   (tools/poison.js renderstats-v4). */
 
 function renderTabs() {
   document.getElementById('tabs').innerHTML = TABS.map(function (t) {
@@ -13699,16 +13656,10 @@ wire=function(root){
   root.querySelectorAll('[data-fiscal-kind]').forEach(function(b){b.addEventListener('click',function(){pv5FiscalAction(b.getAttribute('data-fiscal-kind'),b.getAttribute('data-fiscal-id'));});});
 };
 
-render=function(){
-  S=enrichState(S,false);applyTheme();document.body.classList.toggle('compact',!!(S.uiPrefs&&S.uiPrefs.compact));
-  var st0=standing(S);document.getElementById('realmSub').textContent=PARTY[playParty(S)].name+' · '+(st0==='leading'?'in government':(st0==='junior'?'junior partner in government':'in opposition, '+(S.oppYears||0)+' years'))+' · '+FORMS[S.form].name;
-  var crest=document.querySelector('.crest');if(crest)crest.textContent=PARTY[playParty(S)].short.charAt(0);document.getElementById('dateLabel').textContent=dateLabel(S.turn);
-  var b=budget(S);document.getElementById('turnHint').textContent='Capital '+(capitalIncome(S)>=0?'+':'')+capitalIncome(S).toFixed(1)+' per session, balance '+(b.net>=0?'+':'')+fm(b.net);
-  var next=electionsOn(S)?Math.max(0,nextBallot(S.turn)-S.turn):null;document.getElementById('sessionMeta').innerHTML='<span class="session-chip">'+S.bills.length+' bill'+(S.bills.length===1?'':'s')+'</span><span class="session-chip">'+S.inbox.length+' paper'+(S.inbox.length===1?'':'s')+'</span><span class="session-chip">'+(next===null?'No ballot':(next?next+'y to ballot':'Ballot due'))+'</span><span class="session-chip">Campaign '+pv5CampaignPower(S).toFixed(1)+'</span>';
-  renderStats();renderTabs();var views={chamber:viewChamber,policy:viewPolicy,houses:viewHouses,exec:viewExec,government:viewGovernment,judicial:viewJudicial,parties:viewParties,interests:viewInterests,campaign:viewCampaign,world:viewWorld,nation:viewNation,federation:viewFederation,state:viewState,ledger:viewLedger};
-  if(!views[UI.tab])UI.tab='chamber';var v=document.getElementById('view');v.innerHTML=views[UI.tab]();wire(v);
-  document.getElementById('btnEnd').disabled=!!S.over;var undo=document.getElementById('btnUndo');undo.disabled=!UI.undo||!!S.over||UI.busy;undo.title=UI.undo?'Undo: '+UI.undo.label:'No decision to undo';clearTimeout(UI.saveTimer);UI.saveTimer=setTimeout(saveAutosave,160);
-};
+/* S14: the v5 `render` body was deleted here. Its only caller was the v5 boot
+   line above, which re-enriched the state and repainted a screen the v6 boot
+   replaced immediately. Poison-proved on its own (tools/poison.js render-v5)
+   against the full playtest and all 92 roads assertions. */
 
 document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!UI.busy)pv5CommandPalette();}});
 
@@ -16090,7 +16041,7 @@ function viewRecord() {
 }
 
 /* ---------- the stats bar, with movement since the last session ---------- */
-renderStats = function () {
+var renderStats = function () {
   var a = approval(S), p = S.v6 && S.v6.prev;
   function dl(cur, prev, inv, fmt) {
     if (!p || prev === undefined || prev === null) return '';
@@ -16130,7 +16081,7 @@ wire = function (root) {
   v6AttachForecasts(root);
 };
 
-render = function () {
+var render = function () {
   S = enrichState(S, false); applyTheme(); document.body.classList.toggle('compact', !!(S.uiPrefs && S.uiPrefs.compact));
   var st0 = standing(S);
   document.getElementById('realmSub').textContent = PARTY[playParty(S)].name + ' \u00b7 ' + (st0 === 'leading' ? 'in government' : (st0 === 'junior' ? 'junior partner in government' : 'in opposition, ' + (S.oppYears || 0) + ' years')) + ' \u00b7 ' + FORMS[S.form].name;
@@ -16558,36 +16509,22 @@ function v6mWrapTables(root) {
   });
 }
 
-/* Policy categories fold on a phone; the open ones are remembered. */
-function v6mPolicyFolds() {
-  if (!v6mIs() || UI.tab !== 'policy') return;
-  var view = document.getElementById('view'), openAll = !!UI.polSearch || UI.polCat !== 'all';
-  UI.polOpen = UI.polOpen || {};
-  view.querySelectorAll('.subhead').forEach(function (h) {
-    var cards = h.nextElementSibling; if (!cards || !cards.classList.contains('cards') || !h.closest('.panel')) return;
-    var key = h.textContent.replace(/\s+/g, ' ').replace(/\s*\d+\s*$/, '').trim();
-    var d = document.createElement('details'); d.className = 'fold polcat'; d.open = openAll || !!UI.polOpen[key];
-    var s = document.createElement('summary'); s.innerHTML = h.innerHTML; d.appendChild(s);
-    h.parentNode.insertBefore(d, h); d.appendChild(cards); h.remove();
-    d.addEventListener('toggle', function () { UI.polOpen[key] = d.open; });
-  });
-}
+/* S14: the v6m `v6mPolicyFolds` body was deleted here, with its comment, for
+   the same reason as v6mCenterTab below: the mobile boot line was its only
+   caller, and v7's replacement does the folding on every render. Poison-proved
+   on its own (tools/poison.js policyfolds-mobile). */
 
 /* The pressed policy filter stays in view on its strip. */
 function v6mCenterFilter() {
   var f = document.querySelector('#view .filters'), b = f && f.querySelector('[aria-pressed="true"]'); if (!b || !v6mIs()) return;
   f.scrollLeft = Math.max(0, b.offsetLeft - (f.clientWidth - b.offsetWidth) / 2);
 }
-/* Keep the open tab in view on the strip. */
-function v6mCenterTab() {
-  var nav = document.getElementById('tabs'), b = nav && nav.querySelector('[aria-current="true"]'); if (!b || !v6mIs()) return;
-  var target = Math.max(0, b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2);
-  /* Smooth only when the tab actually changed: this runs on EVERY render, and
-     an animated re-centre after a mere state change reads as the nav sliding
-     around on its own. */
-  var mode = (V6M.first || !V6M.navChanged) ? 'auto' : 'smooth';
-  try { nav.scrollTo({ left:target, behavior:mode }); } catch (e) { nav.scrollLeft = target; }
-}
+/* S14: the v6m `v6mCenterTab` body was deleted here, with its comment. It was
+   reached only by the mobile chunk's boot line, which called it once before
+   v7 replaced it a few hundred lines below and called the replacement on
+   every render since. Poison-proved unreachable on its own (tools/poison.js
+   centertab-mobile) against the full playtest and all 92 roads assertions.
+   The name is declared at v7's assignment now. */
 
 var v6mRenderBase = render;
 render = function () {
@@ -16872,7 +16809,7 @@ renderTabs = function () {
   nav.innerHTML = '<div class="tabrow groups">' + groups + '</div><div class="tabrow pages">' + pages + extra + '</div>';
 };
 /* the mobile strip centres the open button of each row */
-v6mCenterTab = function () {
+var v6mCenterTab = function () {
   var nav = document.getElementById('tabs'); if (!nav || !v6mIs()) return;
   var rows = nav.classList.contains('grouped') ? nav.querySelectorAll('.tabrow') : [nav];
   Array.prototype.forEach.call(rows, function (row) {
@@ -16950,7 +16887,7 @@ var v7ViewPolicyBase = viewPolicy;
 viewPolicy = function () { var html = v7ViewPolicyBase(); return (v7Clean() && inPower(S)) ? v7RecommendedFold() + html : html; };
 
 /* policy categories fold on every screen in the clean layout */
-v6mPolicyFolds = function () {
+var v6mPolicyFolds = function () {
   if (!(v6mIs() || v7Clean()) || UI.tab !== 'policy') return;
   var view = document.getElementById('view'), openAll = !!UI.polSearch || UI.polCat !== 'all';
   UI.polOpen = UI.polOpen || {};
