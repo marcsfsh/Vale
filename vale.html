@@ -606,7 +606,11 @@ var PARTY_FACTIONS = {
 };
 
 var BILL_STAGES = ['committee','assembly','senate','assent'];
-var BILL_STAGE_NAMES = { committee:'Committee', assembly:'Assembly', senate:'Senate', assent:'Assent', passed:'Law', failed:'Failed', withdrawn:'Withdrawn', killed:'Killed' };
+/* S15: `council` is the suspended Assembly and `decree` is no Assembly at all.
+   They are not in BILL_STAGES because BILL_STAGES is the FULL ladder of a
+   working republic; which rungs a given bill actually has to climb is answered
+   by billLadder(), because under a decree there is only one. */
+var BILL_STAGE_NAMES = { committee:'Committee', assembly:'Assembly', senate:'Senate', assent:'Assent', council:'Council', decree:'Decree', passed:'Law', failed:'Failed', withdrawn:'Withdrawn', killed:'Killed' };
 
 var BLOC = {}; BLOCS.forEach(function (b) { BLOC[b.id] = b; });
 
@@ -8042,9 +8046,17 @@ function billForecast(st, bill) {
   if (st.doctrine === 'broker' && bill.strategy === 'negotiated') { lower += 4; upper += 5; }
   if (st.diff === 'easy') { lower += 28; upper += 34; }
   if (st.diff === 'hard') { lower -= 4; upper -= 6; }
-  if (!lowerSits(st)) lower = FORMS[st.form].elections ? 0 : 100;
-  if (!upperOn(st) || st.upper.veto === 0 || st.upper.ceremonial) upper = 100;
-  return { lower:clamp(lower, 0, 100), upper:clamp(upper, 0, 100), issue:issue,
+  /* S15: this read `if (!lowerSits(st)) lower = FORMS[st.form].elections ? 0 : 100;`
+     -- it asked about the CALENDAR when the question is whether a chamber
+     exists, and it gave the same answer for a suspended house and an abolished
+     one. Under a form that still holds elections an abolished Assembly forced
+     lower to 0, which drove the committee figure below to 14 against a bar of
+     43: every bill died in committee, and the game never said why. */
+  var ls = lowerState(st);
+  if (ls === 'suspended') lower = councilFavour(st);
+  else if (ls === 'abolished') lower = decreeFavour(st);
+  if (upperState(st) !== 'sitting') upper = 100;
+  return { lower:clamp(lower, 0, 100), upper:clamp(upper, 0, 100), issue:issue, lowerState:ls,
     committee:clamp(lower * .72 + (st.salience[issue.id] || 50) * .28 + (bill.committee || 0), 0, 100) };
 }
 
@@ -8057,7 +8069,7 @@ function sponsorBill(st, policy, dir, owner, strategy, free) {
   var sponsor = owner === 'government' ? st.ruling : (owner === 'coalition' ? (st.partner || st.ruling) : playParty(st));
   var b = {
     id:'B' + String(st.billSeq++).padStart(3, '0'), policy:policy, dir:dir, owner:owner || 'player', sponsor:sponsor,
-    title:billTitle(policy, dir), introduced:st.turn, stage:'committee', strategy:strategy || 'clean',
+    title:billTitle(policy, dir), introduced:st.turn, stage:billOpeningStage(st), strategy:strategy || 'clean',
     whip:0, upperDeal:0, committee:0, concessions:strategy === 'negotiated' ? 1 : 0,
     confidence:false, urgent:strategy === 'urgent', playerPosition:owner === 'player' ? 'support' : null,
     notes:[], cost:cost
@@ -8151,12 +8163,64 @@ function failBill(st, bill, chamber, vote) {
   addNews(st, chamber + ' Division', bill.title + ' is defeated', vote.toFixed(0) + ' percent voted for the measure.', 'bad');
 }
 
+/* S15: after a chamber carries, where does the bill go? The Senate arm below
+   has asked this since v4; the Assembly arm never did, so a bill that had just
+   passed a House that does not exist went on to the next stage regardless. */
+function billAfterLower(st, bill) {
+  if (upperState(st) === 'sitting') { bill.stage = 'senate'; return false; }
+  enactBill(st, bill); return true;
+}
 function advanceBills(st) {
   st.bills.slice().forEach(function (bill) {
     var loops = bill.urgent ? 2 : 1;
+    /* A bill on the paper when the chamber it was laid in is taken away does
+       not sit in a stage that no longer exists. It moves to whatever the
+       constitution leaves standing, and the log says so. */
+    var open = billOpeningStage(st);
+    if ((bill.stage === 'committee' || bill.stage === 'assembly') && lowerState(st) !== 'sitting') {
+      bill.stage = open; bill.notes.push('Carried over when the Assembly stopped sitting');
+      logIt(st, bill.title + ' was carried over: the Assembly it was laid before no longer sits.');
+    } else if (bill.stage === 'council' && lowerState(st) !== 'suspended') {
+      bill.stage = open; bill.notes.push('Carried over when the council was dissolved');
+    } else if (bill.stage === 'senate' && upperState(st) !== 'sitting') {
+      enactBill(st, bill); bill.urgent = false; return;
+    }
     while (loops-- > 0 && st.bills.indexOf(bill) >= 0) {
       var f = billForecast(st, bill), roll;
-      if (bill.stage === 'committee') {
+      if (bill.stage === 'decree') {
+        /* No chamber stands between the government and the statute book. The
+           apparatus can still refuse, and the refusal is the whole difference
+           between ruling by decree and ruling by wish. */
+        roll = f.lower + (rand() - .5) * 13;
+        if (st.diff === 'easy') roll = Math.max(68, roll);
+        if (roll < 50) {
+          archiveBill(st, bill, 'failed', 'The decree was not carried out: ' + roll.toFixed(0) + '% of the apparatus stood behind it');
+          st.legacy.billsFailed++;
+          st.unity = c100((st.unity || 60) - 4);
+          st.unrest = clamp(st.unrest + 3, 0, 110);
+          logIt(st, bill.title + ' was decreed and not carried out. The order was read and nothing followed it.');
+          addNews(st, 'The Decree', bill.title + ' is not carried out', 'The instruction was issued and the machinery of state did not move.', 'bad');
+          break;
+        }
+        bill.decreeVote = roll;
+        bill.notes.push('Enacted by decree');
+        logIt(st, bill.title + ' was enacted by decree.');
+        enactBill(st, bill); break;
+      } else if (bill.stage === 'council') {
+        /* The suspended house: a council of the government's own people. One
+           session, and it usually says yes. */
+        roll = f.lower + (rand() - .5) * 13;
+        if (st.diff === 'easy') roll = Math.max(68, roll);
+        if (roll < 50) { failBill(st, bill, 'council', roll); break; }
+        bill.assemblyVote = roll;
+        /* S15: the chamber's decision is reported BEFORE the bill is handed on.
+           It used to be reported after, so when the lower house was the last
+           chamber the bill went straight to assent and the house that had just
+           carried it was never mentioned at all. */
+        bill.notes.push('Approved by the council');
+        logIt(st, bill.title + ' was approved by the council with ' + roll.toFixed(0) + ' percent.');
+        if (billAfterLower(st, bill)) break;
+      } else if (bill.stage === 'committee') {
         roll = f.committee + (rand() - .5) * 14;
         if (st.diff === 'easy') roll = Math.max(72, roll);
         if (roll < 43) { failBill(st, bill, 'committee', roll); break; }
@@ -8167,9 +8231,9 @@ function advanceBills(st) {
         if (st.diff === 'easy') roll = Math.max(68, roll);
         if (roll < 50) { failBill(st, bill, 'Assembly', roll); break; }
         bill.assemblyVote = roll;
-        if (!upperOn(st) || st.upper.veto === 0 || st.upper.ceremonial) { enactBill(st, bill); break; }
-        bill.stage = 'senate'; bill.notes.push('Passed the Assembly');
+        bill.notes.push('Passed the Assembly');
         logIt(st, bill.title + ' passed the Assembly with ' + roll.toFixed(0) + ' percent.');
+        if (billAfterLower(st, bill)) break;
       } else if (bill.stage === 'senate') {
         roll = f.upper + (rand() - .5) * 13;
         if (st.diff === 'easy') roll = Math.max(66, roll);
@@ -8239,7 +8303,7 @@ function billAction(id, action) {
   if (action === 'delayIt') {
     /* Send it back. Costs the sponsor a session and some Senate goodwill. */
     b.delayedBy = (b.delayedBy || 0) + 1;
-    b.stage = 'committee'; b.upperDeal = Math.max(0, b.upperDeal - 6);
+    b.stage = billOpeningStage(S); b.upperDeal = Math.max(0, b.upperDeal - 6);
     b.notes.push('Referred back to committee');
     shiftPartyRel(S, b.sponsor, -5); S.unity = c100((S.unity || 60) - 1);
     logIt(S, b.title + ' was sent back to committee by the government.');
@@ -8878,6 +8942,56 @@ function dOf(st) { return DIFFS[(st && st.diff) || 'normal'] || DIFFS.normal; }
 function upperOn(st) { return !!(st.upper && st.upper.exists); }
 function lowerOn(st) { return !!(st.lower && st.lower.exists); }
 function lowerSits(st) { return lowerOn(st) && !st.lower.suspended; }
+
+/* S15: THREE STATES, NOT TWO. `exists` and `suspended` have been on the lower
+   house since v4 and every consumer read them through one boolean, so an
+   ABOLISHED Assembly and a SUSPENDED one were the same thing to the model --
+   and both were represented by substituting a number into the forecast rather
+   than by removing a stage. A number cannot remove a stage, cannot remove a
+   session of delay, and cannot remove the sentence "passed the Assembly with
+   100 percent" from the log, which is what an emperor with no Assembly was
+   reading. */
+function lowerState(st) {
+  if (!lowerOn(st)) return 'abolished';
+  return st.lower.suspended ? 'suspended' : 'sitting';
+}
+function upperState(st) {
+  if (!upperOn(st)) return 'abolished';
+  if (st.upper.ceremonial || st.upper.veto === 0) return 'ceremonial';
+  return 'sitting';
+}
+/* A suspended chamber still meets: a council of the government's own people
+   that passes almost anything and occasionally does not. What makes it balk is
+   what makes a decree fail -- the army, the party and the states. This is a
+   real gradient, not a rubber stamp with the word "almost" in front of it: at
+   army 30, unity 30 and crown 20 it reads 42 against a bar of 50. */
+function councilFavour(st) {
+  return clamp(18 + (st.armyLoyalty || 50) * .42 + (st.unity || 60) * .26 +
+    (st.crown || 50) * .16, 20, 97);
+}
+/* A decree still has to be carried out. There is no chamber to convince, so it
+   starts higher -- but the apparatus can refuse a government the army, the
+   party and the states have stopped believing in, and when it refuses the
+   statute does not enter the book. */
+function decreeFavour(st) { return clamp(councilFavour(st) + 8, 20, 99); }
+/* The rungs this constitution actually has. The bill card drew four fixed pips
+   and one of them, `assent`, has never lit in the file's history. */
+function billLadder(st) {
+  var ls = lowerState(st), up = upperState(st) === 'sitting', out = [];
+  if (ls === 'sitting') out.push('committee', 'assembly');
+  else if (ls === 'suspended') out.push('council');
+  if (up) out.push('senate');
+  if (!out.length) out.push('decree');
+  return out;
+}
+/* Where a bill enters. No Assembly and no Senate that sits means no chamber
+   stands between the government and the statute book. */
+function billOpeningStage(st) {
+  var ls = lowerState(st);
+  if (ls === 'sitting') return 'committee';
+  if (ls === 'suspended') return 'council';
+  return upperState(st) === 'sitting' ? 'senate' : 'decree';
+}
 function electionsOn(st) { return FORMS[st.form].elections && lowerSits(st); }
 function playParty(st) { return st.playAs || st.ruling; }
 function standing(st) {
@@ -9171,8 +9285,13 @@ function agendaStrain(st) {
 function capitalIncome(st) {
   var a = approval(st);
   var v = 5 + (a - 45) / 10 + FORMS[st.form].capBonus + (st.acts.consulate ? 1 : 0);
-  if (seatShare(st, [st.ruling]) > .5) v += 1.4;
-  else if (st.partner) v -= .8;
+  /* S15: a majority bonus paid out of a frozen seat map, from a chamber that
+     no longer sits. An emperor commands no majority; he commands the
+     apparatus, and the terminal forms' own capBonus already pays for that. The
+     partner penalty goes with it -- there is no house in which to be a
+     minority. */
+  if (lowerSits(st) && seatShare(st, [st.ruling]) > .5) v += 1.4;
+  else if (lowerSits(st) && st.partner) v -= .8;
   v -= agendaStrain(st);
   v -= pushback(st).strain;
   v -= st.unrest / 45;
@@ -10127,11 +10246,17 @@ var ACTIONS = [
     desc:'Hang the measure on the appropriations bill, where the Senate cannot reach it without stopping the government.',
     can:function () { return lowerSits(S); },
     run:function (S) { S.lordsDeal = S.turn; S.ind.corruption += 3; mood(S, { prof:-4 }); logIt(S, 'The programme was attached to the supply bill.'); } }),
+  /* S15: these four had no chamber gate of any kind. actionOpen's only
+     chamber test reads a.house, which marks SENATE actions, so there was no
+     Assembly marker anywhere -- and an Emperor with no legislature could hand
+     out committee chairs across both houses and adjourn them early. */
   A({ id:'omnibus', cat:'Legislative', name:'Move an Omnibus Bill', cost:9, money:6, cool:3,
     desc:'Bundle everything into one vote. Clears the session so that measures already moved this year may be moved again.',
+    can:function () { return lowerSits(S) || upperState(S) === 'sitting'; },
     run:function (S) { S.changed = {}; S.ind.corruption += 4; mood(S, { prof:-5, youth:-3 }); logIt(S, 'An omnibus bill cleared the order paper.'); } }),
   A({ id:'chairs', cat:'Legislative', name:'Hand Out Committee Chairs', cost:5, money:5, cool:2,
     desc:'Twenty chairs across both houses, given to those who will need to remember it.',
+    can:function () { return lowerSits(S) || upperState(S) === 'sitting'; },
     run:function (S) { S.capital += 8; S.ind.corruption += 4; logIt(S, 'Committee chairs were distributed.'); } }),
   A({ id:'specialSession', cat:'Legislative', name:'Call a Special Session', cost:7, money:4, cool:2,
     desc:'Recall both houses out of season and put one thing in front of them.',
@@ -10139,9 +10264,11 @@ var ACTIONS = [
     run:function (S) { S.changed = {}; S.capital -= 1; S.unrest -= 3; mood(S, { prof:3, labour:2 }); logIt(S, 'A special session was called.'); } }),
   A({ id:'adjourn', cat:'Legislative', name:'Adjourn the Houses Early', cost:2, cool:2,
     desc:'Send them home. Nothing can pass and nothing can be investigated.',
+    can:function () { return lowerSits(S) || upperState(S) === 'sitting'; },
     run:function (S) { S.capital += 6; S.ind.liberties -= 3; S.ind.corruption += 3; mood(S, { prof:-6, youth:-4 }); logIt(S, 'The houses rose early.'); } }),
   A({ id:'censure', cat:'Legislative', name:'Censure a Member', cost:4, cool:1,
     desc:'A motion against a named opponent, and a week of coverage about them instead of you.',
+    can:function () { return lowerSits(S) || upperState(S) === 'sitting'; },
     run:function (S) {
       var t = null; PARTIES.forEach(function (q) { if (q.id !== S.ruling && (!t || (S.seats[q.id] || 0) > (S.seats[t] || 0))) t = q.id; });
       if (t) S.machine[t] = clamp((S.machine[t] || 0) - .07, -.8, 1);
@@ -11000,6 +11127,21 @@ function doTransition(tr) {
   tr.apply(S);
   if (!FORMS[tr.to].elections && lowerOn(S)) S.lower.suspended = true;
   if (FORMS[tr.to].elections && lowerOn(S)) S.lower.suspended = false;
+  /* S15: the Assembly was suspended here and the Senate was left alone, so a
+     One Party State could be -- and was -- voted down by its own upper house.
+     Only the Empire and the DPR neutralised it, and only in their own apply().
+     A form that has abolished elections does not keep an elected chamber with a
+     veto over it. Abolition outright stays the separate, expensive act it is;
+     this is the difference between a chamber that cannot stop you and one that
+     does not exist. */
+  if (!FORMS[tr.to].elections && upperOn(S) && !S.upper.ceremonial) {
+    S.upper.veto = 0; S.upper.ceremonial = true; S.upper.elected = false;
+    logIt(S, 'The Senate was reduced to a ceremonial chamber. It will be summoned, and it will not divide.');
+  }
+  if (FORMS[tr.to].elections && upperOn(S) && S.upper.ceremonial) {
+    S.upper.veto = 1; S.upper.ceremonial = false; S.upper.elected = true;
+    logIt(S, 'The Senate resumed its powers and its elections.');
+  }
   if (!hadElections && electionsOn(S)) S.lastElection = S.turn - CFG.term + 4;
   var struck = purgeStatutes(S);
   if (struck.length) S.lastPurge = struck.length;
@@ -11635,10 +11777,18 @@ function viewChamber() {
     : 'Coalition benches ' + govSeats + ' of ' + CFG.seats + ' members, majority at ' + maj +
       (govSeats >= maj ? '' : '. The government is in a minority and governs on the sufferance of the centre.'));
 
-  var top = '<div class="panel chamberwrap"><h2>National Assembly, ' + CFG.seats + ' Members</h2>' +
-    lowerMap() +
-    '<div class="seatlegend">' + legendFor(S.seats) + '</div>' +
-    '<div class="majline">' + esc(lowerNote) + '</div></div>';
+  /* S15: the hemicycle was drawn whatever the state of the house, changing only
+     the caption, so an abolished Assembly still showed 1305 members arranged in
+     a chamber. The Senate half below has always replaced its map with a
+     statement when abolished; this half now does the same, and keeps the last
+     return as a legend so the record is not lost with the picture. */
+  var top = !lowerOn(S)
+    ? '<div class="panel"><h2>National Assembly</h2><p class="note">' + esc(lowerNote) + '</p>' +
+      '<div class="seatlegend">' + legendFor(S.seats) + '</div></div>'
+    : '<div class="panel chamberwrap"><h2>National Assembly, ' + CFG.seats + ' Members</h2>' +
+      lowerMap() +
+      '<div class="seatlegend">' + legendFor(S.seats) + '</div>' +
+      '<div class="majline">' + esc(lowerNote) + '</div></div>';
 
   var sen = upperOn(S)
     ? '<div class="panel chamberwrap"><h2>' + (S.upper.elected ? 'National Senate, elected, ' : 'National Senate, ') + CFG.senate + ' Senators</h2>' +
@@ -11701,9 +11851,11 @@ function upperStrip() {
 }
 
 function billCard(b) {
-  var f = billForecast(S, b), current = BILL_STAGES.indexOf(b.stage);
-  var timeline = BILL_STAGES.map(function (s, i) { return '<span class="stage ' + (i < current ? 'done' : (i === current ? 'now' : '')) + '"></span>'; }).join('');
-  var labels = BILL_STAGES.map(function (s) { return '<span>' + esc(BILL_STAGE_NAMES[s]) + '</span>'; }).join('');
+  var ladder = billLadder(S);
+  if (ladder.indexOf(b.stage) < 0) ladder = [b.stage].concat(ladder);
+  var f = billForecast(S, b), current = ladder.indexOf(b.stage);
+  var timeline = ladder.map(function (s, i) { return '<span class="stage ' + (i < current ? 'done' : (i === current ? 'now' : '')) + '"></span>'; }).join('');
+  var labels = ladder.map(function (s) { return '<span>' + esc(BILL_STAGE_NAMES[s]) + '</span>'; }).join('');
   var actions = [];
   function act(id, label, cost, money, disabled, title) {
     actions.push('<button class="btn ghost" data-bill="' + b.id + '" data-bill-action="' + id + '"' + (disabled ? ' disabled' : '') +
@@ -13956,7 +14108,12 @@ billForecast = function (st, bill) {
   var f = v6BillForecastV5(st, bill);
   if (st.diff === 'gentle') { f.lower = clamp(f.lower + 10, 0, 100); f.upper = clamp(f.upper + 12, 0, 100); f.committee = clamp(f.committee + 8, 0, 100); }
   if (st.diff === 'brutal') { f.lower = clamp(f.lower - 8, 0, 100); f.upper = clamp(f.upper - 11, 0, 100); f.committee = clamp(f.committee - 5, 0, 100); }
-  if (!lowerSits(st)) f.lower = FORMS[st.form].elections ? 0 : 100;
+  /* S15: the same substitution the v4 body carried, re-applied here after this
+     wrapper's own terms. It asks about the calendar; the question is whether a
+     chamber exists. See billForecast. */
+  var ls15 = lowerState(st);
+  if (ls15 === 'suspended') f.lower = councilFavour(st);
+  else if (ls15 === 'abolished') f.lower = decreeFavour(st);
   if (!upperOn(st) || st.upper.veto === 0 || st.upper.ceremonial) f.upper = 100;
   return f;
 };
@@ -20688,7 +20845,12 @@ billForecast = function (st, bill) {
   if (st.doctrine === 'tribune' && bill.owner === 'player' && POL[bill.policy]) { var ps = v9PublicSupport(st, POL[bill.policy], bill.dir); f.lower = clamp(f.lower + (ps - 50) * .12, 0, 100); }
   if (bill.sunset) f.upper = clamp(f.upper + 2, 0, 100);
   if (st.v8 && st.v8.rules && st.v8.rules.docileSenate) f.upper = clamp(f.upper + 6, 0, 100);
-  if (!lowerSits(st)) f.lower = FORMS[st.form].elections ? 0 : 100;
+  /* S15: the same substitution the v4 body carried, re-applied here after this
+     wrapper's own terms. It asks about the calendar; the question is whether a
+     chamber exists. See billForecast. */
+  var ls15 = lowerState(st);
+  if (ls15 === 'suspended') f.lower = councilFavour(st);
+  else if (ls15 === 'abolished') f.lower = decreeFavour(st);
   if (!upperOn(st) || st.upper.veto === 0 || st.upper.ceremonial) f.upper = 100;
   return f;
 };
@@ -26608,8 +26770,14 @@ function v11ArtForecast(st, a, repeal) {
   if (st.diff === 'easy') { lower += 22; upper += 26; }
   if (st.diff === 'gentle') { lower += 9; upper += 11; }
   if (st.diff === 'hard') { lower -= 4; upper -= 5; }
-  if (!lowerSits(st)) lower = FORMS[st.form].elections ? 0 : 100;
-  if (!upperOn(st) || st.upper.veto === 0 || st.upper.ceremonial) upper = 100;
+  /* S15: the constitution carried the bill machine's defect one layer up, and
+     it bit harder here: under a form that still holds elections an abolished
+     Assembly forced lower to 0, so NO article could ever be ratified, and the
+     card went on saying "Lay it before the Assembly". */
+  var ls15 = lowerState(st);
+  if (ls15 === 'suspended') lower = councilFavour(st);
+  else if (ls15 === 'abolished') lower = decreeFavour(st);
+  if (upperState(st) !== 'sitting') upper = 100;
   var country = clamp(46 + (approval(st) - 45) * .5 + heat * 2 - dist2(govPos(st), a.pos) * 12, 2, 98);
   return { lower:clamp(lower, 0, 100), upper:clamp(upper, 0, 100), country:country };
 }
@@ -26698,7 +26866,7 @@ function v11ConTick(st) {
   var need = v11ConThreshold(st, a, p.repeal);
   var lower = f.lower + boost;
   var upper = f.upper + boost * .6;
-  var ok = lower >= need && (upper >= 50 || !upperOn(st) || st.upper.veto === 0 || st.upper.ceremonial);
+  var ok = lower >= need && (upper >= 50 || upperState(st) !== 'sitting');
   if (ok && a.referendum) ok = (f.country + boost) >= 50;
   if (ok) {
     if (p.repeal) v11RepealArticle(st, a, Math.round(lower));
@@ -26926,7 +27094,12 @@ v11RegisterArticles([
       text:'There shall be one house of the legislature, and it shall be the Assembly.',
       moves:'ends the Senate outright; the whole statute book gets cheaper and the government answers to one chamber',
       mods:{ senate:-2, capital:.6, polCost:{ Authority:.9, Elections:.86, Federalism:.92 } },
-      apply:function (st) { if (st.upper) { st.upper.veto = 0; st.upper.ceremonial = true; } } }),
+      /* S15: its name is the Single Chamber, its text says there shall be ONE
+         house, and its moves line says it ends the Senate outright. It set
+         ceremonial. An article that says a thing the model does not do is the
+         defect the slice it shipped in was written to remove. */
+      apply:function (st) { if (st.upper) { st.upper.veto = 0; st.upper.ceremonial = false; st.upper.elected = false; st.upper.exists = false; } },
+      repeal:function (st) { if (st.upper) { st.upper.exists = true; st.upper.veto = 1; st.upper.elected = true; } } }),
   A({ id:'artElectedSenate', book:'chambers', name:'Article of the Elected Senate', cost:18,
       pos:{ e:-.2, a:-.4 },
       text:'The senators shall be returned by the states that send them, and shall sit for a term.',

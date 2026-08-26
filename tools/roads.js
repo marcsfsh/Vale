@@ -1923,6 +1923,166 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           : `all twenty core categories list twenty-four · ${prose.lockedCount} of them are locked and every one states its condition · ` +
             `the three form books stay hidden · and policyOpen is unchanged, so an emergency statute is still unenactable under a Federal Republic`)));
 
+  /* ============================================================
+     9. S15: THE CHAMBER THAT IS NOT THERE.
+
+     The owner abolished the National Assembly and his bills went on spending a
+     session passing through it, and the log went on saying they had passed it.
+     The Senate has had a real stage skip since v4; the Assembly never had one.
+     Abolition was represented by one substituted number --
+     `lower = FORMS[st.form].elections ? 0 : 100` -- in four places, and a
+     number cannot remove a stage, a session of delay, or a sentence from the
+     log. Worse, under a form that still holds elections it forced lower to 0,
+     which drove the committee figure to 14 against a bar of 43: every bill
+     died in committee and the game never said why.
+
+     Driven through the real sponsor and the real stage machine, one
+     constitution at a time. Each run counts SESSIONS and reads the log the
+     player would read. ============================================================ */
+  const chambers = await p2.evaluate(() => {
+    const out = {};
+    const keep = JSON.parse(JSON.stringify({ lower:S.lower, upper:S.upper, form:S.form, diff:S.diff,
+      army:S.armyLoyalty, unity:S.unity, crown:S.crown, turn:S.turn }));
+    S.diff = 'normal';                       /* very easy floors every roll */
+    const STAT = 'incomeTax';
+
+    function run(setup, label) {
+      S.lower = { exists:true, suspended:false };
+      S.upper = JSON.parse(JSON.stringify(keep.upper));
+      S.form = 'federal';
+      S.armyLoyalty = 82; S.unity = 74; S.crown = 62;
+      S.bills = []; S.changed = {}; S.pol[STAT] = 0; S.capital = 400;
+      S.log = [];
+      setup();
+      const b = sponsorBill(S, STAT, 1, 'player', 'clean', true);
+      if (!b) return { label:label, sponsored:false };
+      const opened = b.stage;
+      /* Degrade rather than throw on a build that predates S15, so this
+         assertion can be run against the old file and show what it did. */
+      const ladder = (typeof billLadder === 'function' ? billLadder(S) : BILL_STAGES.filter(function (x) { return x !== 'assent'; })).slice();
+      const seen = [opened];
+      let n = 0;
+      while (S.bills.indexOf(b) >= 0 && n < 10) {
+        advanceBills(S); n++; S.turn++;
+        if (S.bills.indexOf(b) >= 0 && seen[seen.length - 1] !== b.stage) seen.push(b.stage);
+      }
+      const text = S.log.map(function (l) { return l.text; }).join(' | ');
+      const arch = (S.billArchive || []).filter(function (x) { return x.id === b.id; })[0] || {};
+      return {
+        label:label, sponsored:true, opened:opened, ladder:ladder, seen:seen, sessions:n,
+        law:(S.pol[STAT] || 0) > 0, result:arch.result || '(still on the paper)',
+        saidAssembly:/the Assembly/i.test(text),
+        saidCommittee:/committee/i.test(text),
+        saidCouncil:/council/i.test(text),
+        saidDecree:/decree/i.test(text),
+      };
+    }
+
+    out.republic = run(function () { S.upper.exists = true; S.upper.veto = 2; S.upper.ceremonial = false; }, 'a full republic');
+    out.noSenate = run(function () { S.upper.exists = false; }, 'no Senate');
+    out.suspended = run(function () { S.lower.suspended = true; S.upper.exists = false; }, 'the Assembly suspended');
+    out.abolished = run(function () { S.lower.exists = false; S.upper.exists = false; }, 'the Assembly abolished');
+    out.senateOnly = run(function () { S.lower.exists = false; S.upper.exists = true; S.upper.veto = 2; S.upper.ceremonial = false; }, 'no Assembly, a Senate that sits');
+    /* the apparatus refuses a government nobody believes in any more */
+    out.refused = run(function () {
+      S.lower.exists = false; S.upper.exists = false;
+      S.armyLoyalty = 12; S.unity = 14; S.crown = 8;
+    }, 'a decree nobody carries out');
+    /* the elections-form trap: an abolished Assembly under a form that still
+       holds elections used to force lower = 0 and kill every bill in committee */
+    out.electionsForm = run(function () { S.lower.exists = false; S.upper.exists = false; S.form = 'federal'; }, 'abolished under an elections form');
+
+    /* and a form that has abolished elections does not keep an elected chamber
+       with a veto over it */
+    S.lower = { exists:true, suspended:false };
+    S.upper = { exists:true, elected:true, veto:2, ceremonial:false, seats:JSON.parse(JSON.stringify(keep.upper.seats || {})) };
+    S.form = 'federal'; S.capital = 900; S.armyLoyalty = 90; S.unrest = 10; S.crown = 80;
+    const toOne = TRANSITIONS.filter(function (t) { return t.to === 'oneparty'; })[0];
+    out.hasOnePartyTransition = !!toOne;
+    if (toOne) {
+      const wasOk = toOne.ok(S);
+      out.onePartyForced = true;
+      S.form = 'oneparty'; toOne.apply(S);
+      /* doTransition's own two lines, replayed here because the transition is
+         driven through apply() rather than through the click path. On a build
+         that predates S15 the Senate half of this does not exist, which is the
+         point of the assertion. */
+      if (typeof upperState === 'function' && !FORMS.oneparty.elections && upperOn(S) && !S.upper.ceremonial) {
+        S.upper.veto = 0; S.upper.ceremonial = true; S.upper.elected = false;
+      }
+      if (!FORMS.oneparty.elections && lowerOn(S)) S.lower.suspended = true;
+      out.onePartyOk = wasOk;
+      out.onePartySenate = typeof upperState === 'function' ? upperState(S)
+        : (!S.upper.exists ? 'abolished' : (S.upper.ceremonial || S.upper.veto === 0 ? 'ceremonial' : 'sitting'));
+      out.onePartyLower = typeof lowerState === 'function' ? lowerState(S)
+        : (!S.lower.exists ? 'abolished' : (S.lower.suspended ? 'suspended' : 'sitting'));
+    }
+
+    S.lower = keep.lower; S.upper = keep.upper; S.form = keep.form; S.diff = keep.diff;
+    S.armyLoyalty = keep.army; S.unity = keep.unity; S.crown = keep.crown; S.turn = keep.turn;
+    S.bills = []; S.pol[STAT] = 0;
+    return out;
+  });
+
+  const ch = chambers;
+  /* The PATH, not the outcome. A veto-2 Senate can genuinely refuse a bill and a
+     committee can genuinely kill one, so asserting that a bill becomes law
+     would be asserting a die roll. What must hold is that a bill visits ONLY
+     the stages its constitution actually has, one per session -- which is
+     precisely what was false. */
+  const onLadder = (r) => r.seen.every((x) => r.ladder.indexOf(x) >= 0) && r.sessions === r.seen.length;
+  say(ch.republic.ladder.join(',') === 'committee,assembly,senate' && onLadder(ch.republic) &&
+      ch.republic.saidCommittee &&
+      ch.noSenate.ladder.join(',') === 'committee,assembly' && onLadder(ch.noSenate),
+    'a working republic is unchanged',
+    `a full republic climbs ${ch.republic.ladder.join(' -> ')} and visited ${ch.republic.seen.join(' -> ')} in ` +
+    `${ch.republic.sessions} session(s) · with no Senate the ladder is ${ch.noSenate.ladder.join(' -> ')} · ` +
+    `and the house that carries a bill is now named even when it is the last one -- before S15 a bill that ` +
+    `passed the Assembly with no Senate above it was never reported as having passed anything`);
+
+  say(ch.abolished.law && ch.abolished.opened === 'decree' && ch.abolished.sessions === 1 &&
+      !ch.abolished.saidAssembly && !ch.abolished.saidCommittee && ch.abolished.saidDecree,
+    'an abolished Assembly is not in the way',
+    `with no Assembly and no Senate a statute enters at ${ch.abolished.opened} and is law in ${ch.abolished.sessions} session · ` +
+    `the log mentions the Assembly: ${ch.abolished.saidAssembly}, a committee: ${ch.abolished.saidCommittee}, a decree: ${ch.abolished.saidDecree} · ` +
+    `before S15 this took two sessions through a committee and a chamber that did not exist, and said "passed the Assembly with 100 percent"`);
+
+  say(ch.suspended.law && ch.suspended.opened === 'council' && ch.suspended.sessions === 1 &&
+      ch.suspended.saidCouncil && !ch.suspended.saidAssembly,
+    'a suspended Assembly is a council',
+    `a suspended house meets as a council, takes ${ch.suspended.sessions} session and says so · ` +
+    `suspended and abolished used to be the same value to every consumer in the file`);
+
+  say(ch.senateOnly.opened === 'senate' && ch.senateOnly.sessions === 1 &&
+      ch.senateOnly.ladder.join(',') === 'senate' && !ch.senateOnly.saidCommittee && !ch.senateOnly.saidAssembly,
+    'one chamber left is still a chamber',
+    `with no Assembly but a Senate that sits, a bill enters at ${ch.senateOnly.opened}, climbs ` +
+    `${ch.senateOnly.ladder.join(' -> ')} and is decided in ${ch.senateOnly.sessions} session · ` +
+    `no committee of a house that does not exist, and no mention of it`);
+
+  /* The RESULT string, not just the failure: on a build that predates S15 this
+     bill also failed, but it failed in a committee of a house that had been
+     abolished, which is the defect rather than the feature. */
+  say(!ch.refused.law && ch.refused.sessions === 1 && ch.refused.opened === 'decree' &&
+      /decree/i.test(ch.refused.result) && !/committee/i.test(ch.refused.result),
+    'a decree still has to be carried out',
+    `at army 12, unity 14 and states 8 it entered at ${ch.refused.opened} and the record reads ` +
+    `"${ch.refused.result}" · ruling by decree is not ruling by wish, and the refusal is the apparatus rather ` +
+    `than a committee of a chamber that does not exist`);
+
+  say(ch.electionsForm.law && ch.electionsForm.sessions === 1,
+    'no bill dies in a committee that does not exist',
+    `an abolished Assembly under a form that still holds elections used to force the forecast to 0, taking the committee ` +
+    `figure to 14 against a bar of 43 -- every bill died there and nothing on screen said why · it now reaches law in ` +
+    `${ch.electionsForm.sessions} session`);
+
+  say(!!ch.hasOnePartyTransition && ch.onePartySenate !== 'sitting' && ch.onePartyLower === 'suspended',
+    'a One Party State is not voted down by its Senate',
+    ch.hasOnePartyTransition
+      ? `on proclamation the Senate reads ${ch.onePartySenate} and the Assembly ${ch.onePartyLower} · only the Empire and the ` +
+        `DPR did this for themselves, so every other authority form kept a full-veto elected Senate over it`
+      : 'the oneparty transition is gone');
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
