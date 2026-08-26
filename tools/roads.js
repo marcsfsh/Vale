@@ -3652,7 +3652,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     };
     const convene = evChoice('moya', 'Convene the Northern Alliance');
     const withdraw = evChoice('foreignCondemnation', 'Withdraw from the Alliance entirely');
-    const visit = ((act('stateVisit') || {}).opts || []).filter(o => /Alliance capitals/.test(o.label))[0];
+    /* S16c rebuilt this list over every capital and put the power id on each
+       leg, so the fixture names the CAPITAL rather than the words on the card. */
+    const visit = ((act('stateVisit') || {}).opts || [])
+      .filter(o => o.power === 'alliance' || /Alliance capitals/.test(o.label))[0];
     out.convene = convene ? moved(convene) : null;
     out.withdraw = withdraw ? moved(withdraw) : null;
     out.visit = visit ? moved(visit.run) : null;
@@ -3820,6 +3823,125 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `no card and no way forward -- reachable from turn one with any order in force, and S15b uncapping the book ` +
     `from four to seventy-two is what made it likely · a card with no answers is now skipped rather than fatal ` +
     `(${dispatch.guardCleared})`);
+
+  /* S16c -- THE FOREIGN OFFICE REACHES EVERY CAPITAL. Measured on the build
+     before this PR by driving every leg of every Diplomacy action through its
+     own run and counting which of the eleven capitals moved: stateVisit 4,
+     summit 3, tradeMission 3, recallAmb 2, aidSurge 2, armProxy 4. Five of the
+     six were written in v4 and widened in v9, when the file modelled six powers
+     and named three of them by hand, and `POWERS.push` runs in the S10e chunk.
+     And the BASE leg of five of the six -- the option the card offers first --
+     moved no relation with any power at all.
+
+     Sanctions were the other half: a card called "Sanction a Power", a Sanctions
+     Regime statute behind it and two executive orders naming it in `needs`, and
+     no such thing in the file as a power BEING sanctioned. */
+  const dip = await page.evaluate(() => {
+    const out = { acts:[], leaks:[] };
+    const fresh = () => {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+      S.ruling = playParty(S); S.coalition = [playParty(S)]; S.capital = 900; S.treasury = 9000;
+    };
+    /* legs that correctly move no relation, each for a stated reason. Anything
+       else that costs capital and moves nothing is a leak and is named. */
+    const EXEMPT = {
+      'To the territories':'the possessions, not a foreign capital',
+      'Lift the sanctions on one capital':'nothing is under sanction in the fixture',
+      'Lift every sanction':'nothing is under sanction in the fixture'
+    };
+    const SHEETS = ['treaty', 'accede', 'suePeace'];
+    ['stateVisit', 'summit', 'tradeMission', 'recallAmb', 'aidSurge', 'armProxy', 'sanction', 'coerce', 'envoy'].forEach((id) => {
+      const a = ACTIONS.filter(x => x.id === id)[0];
+      if (!a) { out.acts.push({ id, missing:true }); return; }
+      const reaches = [];
+      const legs = (a.opts && a.opts.length) ? a.opts : [{ label:a.name, run:a.run }];
+      legs.forEach((leg) => {
+        fresh();
+        const before = {};
+        POWERS.forEach(p => { before[p.id] = relOf(S, p.id); });
+        try { if (leg.run) leg.run(S); } catch (e) { out.leaks.push(id + '/' + (leg.label || '') + ' threw'); return; }
+        const moved = POWERS.filter(p => Math.abs(relOf(S, p.id) - before[p.id]) > 0.001).map(p => p.id);
+        moved.forEach(m => { if (reaches.indexOf(m) < 0) reaches.push(m); });
+        if (!moved.length && !EXEMPT[leg.label] && SHEETS.indexOf(id) < 0) out.leaks.push(id + ' / ' + (leg.label || a.name));
+      });
+      out.acts.push({ id, legs:legs.length, reach:reaches.length, hasAlliance:reaches.indexOf('alliance') >= 0 });
+    });
+    /* every tip on every leg of the five rebuilt lists is composed from the
+       same table the run reads, so none of them can be silent */
+    out.tipless = [];
+    ['stateVisit', 'summit', 'tradeMission', 'recallAmb', 'aidSurge'].forEach((id) => {
+      const a = ACTIONS.filter(x => x.id === id)[0];
+      (a.opts || []).forEach(o => { if (!o.tip || !/[+-]?\d/.test(o.tip)) out.tipless.push(id + ' / ' + o.label); });
+    });
+    /* and one authored line per capital per instrument. Degrades rather than
+       throwing on a build without this PR, so the harness reports a FAILURE
+       with the diagnosis instead of a ReferenceError with a stack. */
+    out.built = typeof V16_DIP !== 'undefined' && typeof v16SanctionList === 'function';
+    out.authored = !out.built ? 0 : POWERS.filter(p => {
+      const row = V16_DIP[p.id];
+      return row && ['visit', 'summit', 'trade', 'recall', 'aid'].every(k => typeof row[k] === 'string' && row[k].length > 40);
+    }).length;
+
+    /* sanctions are a STATE */
+    if (!out.built) {
+      out.sanctionedAtStart = 0; out.imposed = false; out.onList = 0;
+      out.bitesPlain = 0; out.bitesUnderStatute = 0; out.noSeizure = 0; out.withSeizure = 0;
+      out.ridesTheSave = false; out.onThePage = false; out.lifted = false; out.gonePage = false;
+      return out;
+    }
+    fresh();
+    out.sanctionedAtStart = v16SanctionList(S).length;
+    v16Impose(S, 'tarnow');
+    out.imposed = v16Sanctioned(S, 'tarnow');
+    out.onList = v16SanctionList(S).length;
+    const rel0 = relOf(S, 'tarnow'), ten0 = S.ind.tension;
+    S.pol.sanctionsRegime = 0; v16SanctionsTick(S);
+    out.bitesPlain = Math.round((rel0 - relOf(S, 'tarnow')) * 100) / 100;
+    S.powers.tarnow = rel0; S.ind.tension = ten0;
+    S.pol.sanctionsRegime = 2; v16SanctionsTick(S);
+    out.bitesUnderStatute = Math.round((rel0 - relOf(S, 'tarnow')) * 100) / 100;
+    /* the Seize the Frozen Reserves act turns the bite into revenue */
+    S.acts.assetSeizure = false; const t0 = S.treasury; v16SanctionsTick(S);
+    out.noSeizure = S.treasury - t0;
+    S.acts.assetSeizure = true; const t1 = S.treasury; v16SanctionsTick(S);
+    out.withSeizure = S.treasury - t1;
+    /* it rides the save */
+    const blob = JSON.parse(JSON.stringify(S));
+    out.ridesTheSave = !!(blob.v6.sanctions && blob.v6.sanctions.tarnow);
+    /* the world page names it */
+    UI.tab = 'world'; render();
+    out.onThePage = /Under Sanction/.test(document.getElementById('view').textContent);
+    v16Lift(S, 'tarnow');
+    out.lifted = !v16Sanctioned(S, 'tarnow');
+    render();
+    out.gonePage = !/Under Sanction/.test(document.getElementById('view').textContent);
+    return out;
+  });
+
+  const dipMap = {}; dip.acts.forEach(a => { dipMap[a.id] = a; });
+  const dipShort = ['stateVisit', 'summit', 'tradeMission', 'recallAmb', 'aidSurge'].filter(id => (dipMap[id] || {}).reach !== 11);
+  say(dip.built && dipShort.length === 0 && dip.leaks.length === 0 && dip.tipless.length === 0 && dip.authored === 11 &&
+      (dipMap.armProxy || {}).reach === 10 && !(dipMap.armProxy || {}).hasAlliance &&
+      (dipMap.sanction || {}).reach === 10 && !(dipMap.sanction || {}).hasAlliance &&
+      dip.sanctionedAtStart === 0 && dip.imposed && dip.onList === 1 &&
+      dip.bitesPlain > 0 && dip.bitesUnderStatute > dip.bitesPlain &&
+      dip.noSeizure === 0 && dip.withSeizure > 0 &&
+      dip.ridesTheSave && dip.onThePage && dip.lifted && dip.gonePage,
+    'the Foreign Office reaches every capital',
+    `the state visit, the summit, the trade mission, the recall and the aid programme each reach ` +
+    `${dipMap.stateVisit.reach}/${dipMap.summit.reach}/${dipMap.tradeMission.reach}/${dipMap.recallAmb.reach}/${dipMap.aidSurge.reach} ` +
+    `of eleven capitals, where this same probe reads 4/3/3/2/2 on the build before this PR, and arming a client reaches ` +
+    `${dipMap.armProxy.reach} (never our own bloc: ${!dipMap.armProxy.hasAlliance}) where it read 4 · ` +
+    `${dip.authored} of eleven capitals carry an authored line for each of the five, and every leg's tip is COMPOSED from ` +
+    `the same table its run reads (${dip.tipless.length} silent) · ${dip.leaks.length} diplomatic legs cost capital and move ` +
+    `no relation, where the BASE leg of five of the six did exactly that · sanctions are a state that rides the save ` +
+    `(${dip.ridesTheSave}): imposing puts a capital on a list of ${dip.onList}, a session costs it ${dip.bitesPlain} of ` +
+    `relations and ${dip.bitesUnderStatute} under the Sanctions Regime statute at two, Seize the Frozen Reserves turns ` +
+    `${dip.noSeizure} of revenue into ${dip.withSeizure} (both statutes named sanctions and neither could ask whether one ` +
+    `stood), and the world page carries the capitals under controls (${dip.onThePage}) until they are lifted (${dip.gonePage})` +
+    (dip.built ? '' : ' · THIS BUILD HAS NO PER-CAPITAL LISTS: five of the six actions name a fixed handful of capitals ' +
+      'chosen before the S10e powers existed, and a sanction is a one-off relation hit with no state behind it'));
 
   /* S16b -- A TREATY IS A RELATIONSHIP, NOT A SLOT. `st.v6.treaties[pid]` held
      ONE instrument, so signing a second replaced the first and the same capital

@@ -1369,9 +1369,20 @@ async function run() {
       out.subheadsAwaiting = [...document.getElementById('sheet').querySelectorAll('.sheet-sub')].map(x => x.textContent);
       if (typeof hideSheet === 'function') hideSheet();
 
-      /* one session, and the capital answers */
+      /* one session, and the capital answers. WHICH way it answers is a die,
+         so what this asserts is that the proposal SETTLES -- the pending row is
+         gone either way. Keying a step to one roll is the flake S15j already
+         paid for once. The instrument itself is then obtained by asking again
+         until they agree, which is what a player does. */
       if (out.built) { v6TreatiesTick(S); S.turn += 1; }
       out.settled = out.built && talks('meridian').length === 0;
+      if (out.built && !v6HasTreaty(S, 'meridian', out.kindPicked)) {
+        for (var t = 0; t < 40 && !v6HasTreaty(S, 'meridian', out.kindPicked); t++) {
+          S.capital = 900; S.treasury = 9000; S.powers.meridian = 92;
+          v6TreatyPropose('meridian', out.kindPicked);
+          v6TreatiesTick(S); S.turn += 1;
+        }
+      }
       out.signed = out.built ? v6HasTreaty(S, 'meridian', out.kindPicked) : live('meridian').length > 0;
       render();
       out.pageSaysInForce = !out.signed ||
@@ -1387,8 +1398,14 @@ async function run() {
         S.capital = 900;
         const before = v6TreatyKinds(S, 'meridian').slice();
         const next = Object.keys(V6_TREATIES).filter(k => v6TreatyOpen(S, 'meridian', k))[0];
-        if (next) { v6TreatyPropose('meridian', next); v6TreatiesTick(S); S.turn += 1; }
-        out.keptTheFirst = before.every(k => v6HasTreaty(S, 'meridian', k));
+        for (var u = 0; next && u < 40 && !v6HasTreaty(S, 'meridian', next); u++) {
+          S.capital = 900; S.treasury = 9000; S.powers.meridian = 92;
+          v6TreatyPropose('meridian', next);
+          v6TreatiesTick(S); S.turn += 1;
+        }
+        out.secondSigned = !!next && v6HasTreaty(S, 'meridian', next);
+        out.keptTheFirst = before.every(k => v6HasTreaty(S, 'meridian', k)) && out.secondSigned &&
+          v6Treaties(S, 'meridian').length >= before.length + 1;
       } else out.keptTheFirst = !!out.built;
 
       /* and in opposition the door is shut, with the reason on the button */

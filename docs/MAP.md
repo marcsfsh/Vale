@@ -636,6 +636,63 @@ the tool that re-runs it: very easy's capital and works ceiling
 (`tools/roads.js`, the campaign block), and the +460 all-five-channels ceiling
 recorded in `docs/STATE.md`'s open items.
 
+## Diplomacy (S16c) — the Foreign Office reaches every capital
+
+Measured before S16c by driving every leg of every Diplomacy action and counting
+which of the eleven capitals moved:
+
+| action | reached | now |
+|---|---|---|
+| `stateVisit` | 4 | **11** |
+| `summit` | 3 | **11** |
+| `tradeMission` | 3 | **11** |
+| `recallAmb` | 2 | **11** |
+| `aidSurge` | 2 | **11** |
+| `armProxy` | 4 | **10** (never our own bloc) |
+| `envoy` / `coerce` / `sanction` | 11 / 10 / 10 | unchanged |
+
+Five of the six were written in v4 and widened in v9, when the file modelled six
+powers and named three of them by hand. **`POWERS.push` runs in the S10e chunk**,
+so Valdenmark, Zhen-Kai, Oranje, Khoraz and Tarnow could be sanctioned and
+pressed and never visited. S15j rebuilt the envoy, treaty, pressure and accession
+lists for the same reason. **A list built where the ACTIONS literal is evaluated
+freezes the six powers that existed at that moment**, so these are built in a
+chunk at the end of the file.
+
+**And the BASE leg of five of the six moved no relation with any power at all.**
+"Bring the powers to a table in Vale and keep them there until something is
+signed" changed international tension and the mood of the professions, and no
+power noticed. Each of those legs is repaired to do what its label says: a
+summit of all the powers moves all eleven, a recall from every hostile capital
+moves every capital below 40, an aid programme moves every capital below 50.
+
+**The numbers are composed, never typed beside the code.** `V16_DIP_ACTS` holds
+the arithmetic by instrument and by the power's `kind`; `v16DipEffect` reads it,
+`v16DipRun` applies it and `v16DipTip` prints it. `V16_DIP` holds one authored
+line per capital per instrument — 55 of them, held to the house style by
+`tools/rungs.js --corpora` — and nothing else. A tag cannot drift from the run
+because there is only one of them.
+
+Each generated leg carries `power: pw.id`, so a harness names the **capital**
+rather than the words on the card. S14's rule is that fixtures are named and
+never positional, and a label is very nearly positional.
+
+### Sanctions are a state (S16c)
+
+`st.v6.sanctions[pid] = {since}`, through `v16Sanctions` / `v16Sanctioned` /
+`v16SanctionList`. `sanction` applied a one-off fifteen points of relations and
+stopped: the card is called *Sanction a Power*, a **Sanctions Regime** statute
+stands behind it and two executive orders name it in their `needs`, and there was
+no such thing in the file as a power *being* sanctioned — nothing could be asked.
+
+`v16SanctionsTick`, in a `tickTurn` wrapper, charges what standing controls cost
+both sides every session: relations −1.1, tension +0.5, economy −0.35 (−0.56 for
+a trading or southern capital). **`st.pol.sanctionsRegime` multiplies all of it
+by `1 + rung × .45`** and **`st.acts.assetSeizure` turns it into +1.5 of revenue
+a session** — which is what those two statutes have always said. `v16SanctionsPanel`
+puts the capitals under controls on the world page, because a state nothing on
+any screen names is a state the player cannot play against.
+
 ## Treaties (S16b) — a relationship, not a slot
 
 `st.v6.treaties[pid]` is an **ARRAY** of instruments. It held ONE object,

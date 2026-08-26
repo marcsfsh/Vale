@@ -5,7 +5,8 @@ Update this file in the last commit of every PR.
 ## Current slice
 
 **S16 — Somebody can stop you, and the other half of the game** is **open**.
-Two of twelve PRs: **S16a**, the session clocks, and **S16b**, the treaty book.
+Three of twelve PRs: **S16a** the session clocks, **S16b** the treaty book, and
+**S16c** the Foreign Office.
 
 ### What the slice is
 
@@ -19,7 +20,7 @@ are folded in beside them:
 |---|---|
 | **a** #60 | **two sessions means two sessions** — the amendment clock, and every other clock counted against the wrong session |
 | **b** #61 | **a treaty is a relationship, not a slot** — many at once, prerequisites, ten more kinds, and a reply the following turn |
-| c | the Foreign Office reaches every capital: the diplomacy actions the S10e powers never reached, and the leaves that cost capital and move nothing |
+| **c** #62 | **the Foreign Office reaches every capital** — the diplomacy actions the S10e powers never reached, the legs that cost capital and move nothing, and sanctions as a state |
 | d | the court can stop you |
 | e | the street has leverage |
 | f | out of power is a place you play from |
@@ -29,6 +30,92 @@ are folded in beside them:
 | j | the long deck folds, and focus survives |
 | k | contrast and the thumb |
 | l | the prose pass and the slice close |
+
+### S16c — the Foreign Office reaches every capital
+
+The owner: *"under country>world tab, there's a lot of things you can do but many
+of them dont include ALL powers - new powers were added in a past update but they
+didnt carry to some of the diplomatic actions you can do."*
+
+Measured by driving **every leg of every Diplomacy action** through its own run
+and counting which of the eleven capitals moved:
+
+| action | before | after |
+|---|---|---|
+| Make a State Visit | 4 | **11** |
+| Convene a Summit | 3 | **11** |
+| Send a Trade Mission | 3 | **11** |
+| Recall the Ambassadors | 2 | **11** |
+| Emergency Aid Abroad | 2 | **11** |
+| Arm a Client | 4 | **10** (never our own bloc) |
+| Send an Envoy / Apply Pressure / Sanction a Power | 11 / 10 / 10 | unchanged |
+
+Five of the six were written in v4 and widened in v9, when the file modelled six
+powers and named three of them by hand. **`POWERS.push` runs in the S10e chunk**,
+so Valdenmark, Zhen-Kai, Oranje, Khoraz and Tarnow could be sanctioned and
+pressed and never visited, never brought to a summit, never sent a trade mission,
+never recalled from and never given aid. This is the same defect S15j fixed for
+the envoy, treaty, pressure and accession lists, in the five actions it did not
+reach.
+
+**And a second finding the survey did not have.** The BASE leg of five of the six
+— the option the card offers first — **moved no relation with any power at all**.
+*"Bring the powers to a table in Vale and keep them there until something is
+signed"* changed international tension and the mood of the professions, and no
+power noticed. Each is repaired to do what its label says: a summit of all the
+powers moves all eleven, a recall from every hostile capital moves every capital
+below 40, an aid programme moves every capital below 50, and each of them says
+how many it found. **Zero diplomatic legs now cost capital and move nothing**
+except the state visit to the territories, which is about the possessions.
+
+**The numbers are composed, never typed beside the code.** `V16_DIP_ACTS` holds
+the arithmetic by instrument and by the power's kind, `v16DipRun` applies it and
+`v16DipTip` prints it, so a tag cannot drift from the run because there is only
+one of them. `V16_DIP` holds **55 authored lines** — one per capital per
+instrument — and nothing else. Twenty tips were silent before; none is now.
+
+### Sanctions are a state, not a gesture
+
+`sanction` applied a one-off fifteen points of relations and stopped. The card is
+called *Sanction a Power*, a **Sanctions Regime** statute stands behind it, two
+executive orders name it in their `needs`, and there was no such thing in the
+file as a power **being** sanctioned: nothing could be asked. It is
+`st.v6.sanctions[pid]` now, riding the save, costing both sides every session it
+stands, and liftable one capital at a time or all at once.
+
+| | measured |
+|---|---|
+| a session under controls | relations **−1.10**, tension +0.50, economy −0.35 |
+| with the Sanctions Regime statute at two | relations **−2.09** |
+| Seize the Frozen Reserves | **0 → +1.5** of revenue a session |
+
+Both statutes named sanctions and neither could ask whether one stood.
+`v16SanctionsPanel` puts the capitals under controls on the world page, because a
+state nothing on any screen names is a state the player cannot play against.
+
+### One flake of my own, caught by this PR
+
+S16b's `terms-sheet` playtest step asserted that the capital **signed** — one die
+roll. S16c shifted the seeded stream and the step went red on a refusal that was
+entirely correct. It asserts the property now: the proposal **settles** either
+way, and the instrument is obtained by asking again until they agree, which is
+what a player does. This is the second time this repo has paid for a point
+estimate off a single roll; the first was S15j's accession assertion.
+
+`tools/rungs.js --corpora` gains the dispatch lines as a **fifth registry**: 724
+authored pieces across 261 distinct names, and it passes.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          159 assertions
+PLAYTEST PASS     52 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+CORPORA OK        724 pieces, 261 distinct names
+PACING            six seeds, identical
+```
+
+Next: **S16d**, the court. That is the first of the four "somebody can stop you"
+PRs and the largest single ask behind the slice's title.
 
 ### S16b — a treaty is a relationship, not a slot
 
@@ -3508,6 +3595,7 @@ ratchet 10 → 5, which is now its true floor.
 | S15k the prose pass and the close | **merged** (#58) | `rungs.js --corpora`: the 60 measures, 90 orders and 80 articles held to the statute book's own house style, 548 pieces across 230 distinct names, failing on a breach -- it found three, a curly apostrophe and two em dashes in the order book; S15 itself added two em dashes across ten PRs, one in a comment and one in a panel note; the punctuation residue in the rest of the file measured, classified and REPORTED rather than repaired (32 in-sentence uses, 22 of them Question Time, none of them S15's); one flaky assertion turned from a point estimate into a property; AGREEMENT, MAP, STATE and CLAUDE.md brought up to date |
 | S16a two sessions means two sessions | **merged** (#60) | `endTurn` runs every tick and only THEN does `S.turn += 1`, so a tick comparing against `st.turn` stands in the session the click is leaving rather than the one it is producing; four of the game's six session clocks were counted that way -- an article that said two sessions wanted three End Session clicks, a plebiscite that said one wanted two, a manifesto commitment dated eight sessions out survived ten, and a political paper stayed answerable a session past the date printed on it, with its three expiry warnings firing a session early to match; the arc banner's `+ 1` and the ballot counter were the two that were already right, which is what made the other four look deliberate; `roads.js` measures all six through the model in endTurn's own order and names the four that disagreed |
 | S16b treaties are a relationship | **merged** (#61) | `st.v6.treaties[powerId]` was ONE object, so signing a second replaced the first and the same capital could be walked round a non-aggression pact, a defence pact and a non-aggression pact inside one session with the Foreign Office reporting each as a treaty signed; a list per capital with twenty instruments (ten more), sixteen of them written on top of another, terms laid rather than signed with the capital answering at the next session at odds printed before the money is spent, every instrument able to lapse where five never could, annulment that cascades through what stands on it, and the Foreign Office shut in opposition where eleven Negotiate buttons were live; two live defects caught by measurement -- a prerequisite naming a kind defined in a later chunk threw three times before the first screen, and a read that installed an empty array turned the Peacemaker record's `Object.keys` test into "eleven powers exist" and awarded it on every seed with nothing signed |
+| S16c the Foreign Office reaches every capital | **merged** (#62) | five diplomatic actions named a fixed handful of capitals chosen before `POWERS.push` added the S10e five, so a state visit reached 4 of eleven, a summit 3, a trade mission 3, a recall 2, an aid programme 2 and arming a client 4 -- all eleven now, with 55 authored lines and every number on every tip COMPOSED from the same table its run reads; the base leg of five of the six moved no relation with any power at all and each now does what its label says; and sanctions became a state that rides the save, costing both sides every session, multiplied by the Sanctions Regime statute and turned into revenue by Seize the Frozen Reserves -- two statutes that named sanctions where nothing in the file could ask whether one stood |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
