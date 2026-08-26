@@ -3923,7 +3923,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.cold = sample(44, false);
     out.warm = sample(96, true);
 
-    /* 6. the old save shape, through the load path */
+    /* 6. the Peacemaker record. Its test read `Object.keys(st.v6.treaties)`,
+       which is one entry per CAPITAL and never was the number of instruments in
+       force -- and once reads stopped being free it would have fired on every
+       campaign with nothing signed at all. */
+    S.v6.treaties = {};
+    POWERS.forEach(p => { v6Treaties(S, p.id); v6TreatyOpen(S, p.id, 'consular'); });
+    out.keysAfterReads = Object.keys(S.v6.treaties).length;
+    const peace = V6_ACHIEVEMENTS.filter(a => a.id === 'peacemaker')[0];
+    out.peaceOnNothing = !!peace && peace.test(S);
+    S.v6.treaties = { meridian:[{ kind:'consular', since:2030 }, { kind:'border', since:2031 }] };
+    out.peaceOnTwo = !!peace && peace.test(S);
+    S.v6.treaties.meridian.push({ kind:'environment', since:2032 });
+    out.peaceOnThree = !!peace && peace.test(S);
+
+    /* 6b. the old save shape, through the load path */
     S.v6.treaties = { meridian:{ kind:'trade', since:2031 }, tarnow:'a blob this build cannot read' };
     UI.treatiesMigrated = 0; UI.treatiesLost = 0;
     const rows = v6Treaties(S, 'meridian');
@@ -3939,7 +3953,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       treaty.laid && treaty.inForceSameSession === 0 && treaty.awaiting === 1 &&
       treaty.answered && treaty.signedNext && treaty.stacked === 20 && treaty.cascadeSound &&
       treaty.cold > 0 && treaty.cold < 300 && treaty.warm > treaty.cold &&
-      treaty.migratedKind === 'trade' && treaty.migratedCount === 1 && treaty.lostCount === 1 && treaty.lostDropped,
+      treaty.migratedKind === 'trade' && treaty.migratedCount === 1 && treaty.lostCount === 1 && treaty.lostDropped &&
+      !treaty.peaceOnNothing && !treaty.peaceOnTwo && treaty.peaceOnThree,
     'a treaty is a relationship, not a slot',
     `${treaty.kinds} instruments, ${treaty.withNeeds} of them written on top of another, and every one of them can lapse ` +
     `(${treaty.noFloor.length} with neither a floor nor a condition) with no silent card among them (${treaty.silent.length}) · ` +
@@ -3948,6 +3963,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `all ${treaty.stacked} can stand with ONE power at once, where the store held exactly one before this PR · ` +
     `annulling the non-aggression pact takes ${treaty.cascade.length} instruments with it (${treaty.cascade.join(', ')}) and leaves ${treaty.leftStanding} standing · ` +
     `the answer is a die: ${treaty.cold} of 300 at a cold 44 with nothing written, ${treaty.warm} of 300 at 96 with three instruments already in force · ` +
+    `Peacemaker reads instruments and not capitals: false on nothing signed (${treaty.peaceOnNothing}) after all eleven ` +
+    `powers have been read (${treaty.keysAfterReads} keys on the store), false on two with one capital (${treaty.peaceOnTwo}) ` +
+    `and true on three (${treaty.peaceOnThree}) -- its test was Object.keys on the store, which counted CAPITALS · ` +
     `and a pre-S16b save carrying one bare object per power migrates (${treaty.migratedCount} carried, ${treaty.lostCount} unreadable dropped and counted)` +
     (treaty.built ? '' : ' · THIS BUILD HAS NO PROPOSAL PATH: st.v6.treaties[pid] is one object, so a second instrument REPLACES the first and terms are signed on the click'));
 

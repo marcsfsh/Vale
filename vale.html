@@ -16147,10 +16147,24 @@ function v6TreatiesEnsure(st) {
   }
   return v.treaties;
 }
+/* Reading must not CREATE. `v6TreatyRows` used to install an empty array for
+   any power it was asked about, and the desk brief asks about all eleven every
+   render -- which turned `Object.keys(st.v6.treaties).length >= 3`, the
+   Peacemaker record's test, into "eleven powers exist" and awarded it on every
+   seed with nothing signed. The test counted keys rather than instruments and
+   is fixed below; this is the half that made it fire. */
 function v6TreatyRows(st, pid) {
+  var tr = v6TreatiesEnsure(st);
+  return Array.isArray(tr[pid]) ? tr[pid] : [];
+}
+function v6TreatyRowsRW(st, pid) {
   var tr = v6TreatiesEnsure(st);
   if (!Array.isArray(tr[pid])) tr[pid] = [];
   return tr[pid];
+}
+function v6TreatyCount(st) {
+  var n = 0; POWERS.forEach(function (pw) { n += v6Treaties(st, pw.id).length; });
+  return n;
 }
 function v6Treaties(st, pid) { return v6TreatyRows(st, pid).filter(function (t) { return !t.pending; }); }
 function v6TreatyTalks(st, pid) { return v6TreatyRows(st, pid).filter(function (t) { return t.pending; }); }
@@ -16190,6 +16204,12 @@ function v6TreatyAsks(st, pid, kind) {
    panel and never a button that refuses after the click. */
 function v6TreatyWhy(st, pid, kind) {
   var d = V6_TREATIES[kind]; if (!d) return 'No such instrument.';
+  /* S16b: the Foreign Office answers to the government. Every power card on the
+     world page carried a live Negotiate button in opposition, so a party with
+     no ministry could sign eleven treaties out of political capital it had not
+     spent governing. S16f is where being out of power gets its own things to
+     do; this is only the door that should never have been open. */
+  if (!inPower(st)) return 'The Foreign Office answers to the government, and you are not it.';
   if (st.war && st.war.power === pid) return 'The two countries are at war.';
   if (v6TreatyExcluded(st, pid, kind)) return 'They are in the Alliance. Neither may open a war on the other already.';
   if (v6HasTreaty(st, pid, kind)) return 'Already in force.';
@@ -16231,7 +16251,7 @@ function v6TreatyPropose(pid, kind) {
   if (why) { flash(why); return false; }
   var odds = v6TreatyOdds(S, pid, kind);
   if (!pv5Spend(d.cost, d.money, 'Terms proposed to ' + pw.short)) return false;
-  v6TreatyRows(S, pid).push({ kind:kind, laid:S.turn, odds:odds, pending:true });
+  v6TreatyRowsRW(S, pid).push({ kind:kind, laid:S.turn, odds:odds, pending:true });
   S.v6.treatyAsks[pid + ':' + kind] = v6TreatyAsks(S, pid, kind) + 1;
   logIt(S, 'A ' + d.name.toLowerCase() + ' was proposed to ' + pw.name + ' at ' + odds + ' in a hundred. They answer at the next session.');
   return true;
@@ -16240,7 +16260,7 @@ function v6TreatyPropose(pid, kind) {
    is what a prerequisite has to mean, and the log names each one. */
 function v6TreatyAnnul(st, pid, kind, quiet) {
   var d = V6_TREATIES[kind]; if (!d) return [];
-  var rows = v6TreatyRows(st, pid), gone = [];
+  var rows = v6TreatyRowsRW(st, pid), gone = [];
   var drop = function (k) {
     for (var i = rows.length - 1; i >= 0; i--) if (rows[i].kind === k && !rows[i].pending) { rows.splice(i, 1); gone.push(k); }
     Object.keys(V6_TREATIES).forEach(function (o) {
@@ -16262,7 +16282,7 @@ function v6TreatyAnnul(st, pid, kind, quiet) {
    following turn" means and S16a is why it is spelt this way. */
 function v6TreatyAnswer(st) {
   POWERS.forEach(function (pw) {
-    var rows = v6TreatyRows(st, pw.id);
+    var rows = v6TreatyRowsRW(st, pw.id);
     rows.slice().forEach(function (t) {
       if (!t.pending || t.laid > st.turn) return;
       var d = V6_TREATIES[t.kind]; if (!d) { rows.splice(rows.indexOf(t), 1); return; }
@@ -16712,7 +16732,10 @@ var V6_ACHIEVEMENTS = [
   { id:'debtFree', name:'Out of the Red', note:'The federal debt was cleared.', test:function (st) { return st.debt <= 0 && st.turn > 3; } },
   { id:'aaa', name:'Triple A', note:'The sovereign rating reached AAA.', test:function (st) { return st.macro.rating === 'AAA'; } },
   { id:'fullCabinet', name:'Every Seat Filled', note:'All sixteen cabinet posts held at once.', test:function (st) { return cabinetFilled(st) >= 16; } },
-  { id:'peacemaker', name:'Peacemaker', note:'Three treaties in force at once.', test:function (st) { return Object.keys(st.v6.treaties).length >= 3; } },
+  /* S16b: INSTRUMENTS, not powers. The test counted keys on the store, which
+     was one entry per capital and is now one array per capital, and neither
+     count is the number of treaties in force. */
+  { id:'peacemaker', name:'Peacemaker', note:'Three treaties in force at once.', test:function (st) { return v6TreatyCount(st) >= 3; } },
   { id:'victor', name:'Victor', note:'Won a war.', test:function (st) { return st.v6.stats.victories >= 1; } },
   { id:'restorer', name:'The Restorer', note:'Brought back the federal constitution from another order.', test:function (st) { return st.v6.flags && st.v6.flags.restored; } },
   { id:'emperor', name:'Imperator', note:'Proclaimed the Empire of Vale.', test:function (st) { return st.form === 'empire'; } },
@@ -17969,7 +17992,7 @@ viewWorld = function () {
       (live.length ? live.map(function (t) { return '<span class="tag up">' + esc(V6_TREATIES[t.kind].name) + ', ' + t.since + '</span>'; }).join('') : '<span class="tag">No treaty</span>') +
       (talks.length ? '<span class="tag">' + v8Plural(talks.length, 'proposal') + ' awaiting an answer</span>' : '') +
       (can ? '<span class="tag">' + can + ' term' + (can === 1 ? '' : 's') + ' on the table</span>' : '') + '</div>' +
-      '<div class="btnrow"><button class="btn ghost" data-treaty-open="' + pw.id + '"' + (S.war && S.war.power === pw.id ? ' disabled' : '') + '>Negotiate</button></div>';
+      '<div class="btnrow"><button class="btn ghost" data-treaty-open="' + pw.id + '"' + ((!inPower(S) || (S.war && S.war.power === pw.id)) ? ' disabled' : '') + '>Negotiate</button></div>';
     html = html.slice(0, j + 6) + extra + html.slice(j + 6);
   });
   var open = html.indexOf('<div class="grid"><div>');
@@ -18117,7 +18140,7 @@ var helpDialog = function () {
     '<div class="card"><h3>Coalitions</h3><p class="desc">When your party wins without a majority, you choose the partners. Each costs capital, brings seats and a written programme, and can bring the government down. Or govern alone.</p></div>' +
     '<div class="card"><h3>Crises</h3><p class="desc">Some dispatches open a crisis that runs for several sessions. The choice made in one part changes the text and the options of the next. The Overview shows the part you are in.</p></div>' +
     '<div class="card"><h3>The states</h3><p class="desc">Each region has a governor with a party and a standing with you. Half are contested at each federal ballot. A hostile governor defies mandates; a friendly one is worth meeting. A region can leave the federation, and can be brought back.</p></div>' +
-    '<div class="card"><h3>The world</h3><p class="desc">Relations set what treaties are available: non-aggression, trade, defence and arms limitation. At war, the war council sets the strategy. A war ends with terms, and the terms are yours to refuse.</p></div>' +
+    '<div class="card"><h3>The world</h3><p class="desc">Twenty instruments may be written with a capital, as many at once as it will sign. What opens each one is the relation and what already stands between the two countries: a basing agreement is written on a defence pact, which is written on a non-aggression pact. Terms are laid, not signed, and the capital answers at the next session. At war, the war council sets the strategy, and a war ends with terms that are yours to refuse.</p></div>' +
     '<div class="card"><h3>Programmes</h3><p class="desc">Adopt one of seven published programmes from Policy. Its measures cost fifteen percent less to draft, and completing it pays capital, unity and the gratitude of the blocs it was written for.</p></div>' +
     '<div class="card"><h3>Succession</h3><p class="desc">When your leader dies or retires, you choose the successor from three candidates. Their temperament shapes the party\'s drift for years.</p></div>' +
     '<div class="card"><h3>The record</h3><p class="desc">' + V6_ACHIEVEMENTS.length + ' records, the long chart, every crisis and referendum, and the numbers the archives will keep. At the end of the period the verdict of history grades the government by domain.</p></div>' +
@@ -18145,7 +18168,7 @@ function v6Verdict(st) {
   else if (st.form === 'dpr') { ep = 'The Vanguard'; note = 'The plan, the party and a Congress that never divided.'; }
   else if (ii.liberties < 35) { ep = 'The Strong Hand'; note = 'Order was kept and the keeping of it is what is remembered.'; }
   else if (v.stats.victories >= 2) { ep = 'The Conqueror'; note = 'Two wars won, and the bill for both still being paid.'; }
-  else if (Object.keys(v.treaties).length >= 3 && ii.tension < 35) { ep = 'The Peacemaker'; note = 'A continent of treaties, most of them still in force.'; }
+  else if (v6TreatyCount(st) >= 3 && ii.tension < 35) { ep = 'The Peacemaker'; note = 'A continent of treaties, most of them still in force.'; }
   else if (st.legacy.playerLaws >= 40) { ep = 'The Legislator'; note = 'The statute book is a third your own work.'; }
   else if (st.debt < 150 && budget(st).net > 0) { ep = 'The Sound Money Government'; note = 'The books balanced, and the country forgave everything else.'; }
   else if (ii.infrastructure > 75 && ii.energy > 70) { ep = 'The Builder'; note = 'Roads, ports, power and housing, and a name on half of them.'; }

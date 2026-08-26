@@ -636,6 +636,65 @@ the tool that re-runs it: very easy's capital and works ceiling
 (`tools/roads.js`, the campaign block), and the +460 all-five-channels ceiling
 recorded in `docs/STATE.md`'s open items.
 
+## Treaties (S16b) — a relationship, not a slot
+
+`st.v6.treaties[pid]` is an **ARRAY** of instruments. It held ONE object,
+`{kind, since}`, until S16b, so signing a second replaced the first and twelve
+places in the file indexed the slot directly.
+
+| shape | meaning |
+|---|---|
+| `{kind, since, laid}` | in force |
+| `{kind, laid, odds, pending:true}` | laid, and the capital has not answered |
+
+**Never index `treaties[pid]`.** Read through the accessors:
+
+- `v6Treaties(st, pid)` — what is in force
+- `v6TreatyTalks(st, pid)` — what is awaiting an answer
+- `v6HasTreaty(st, pid, kind)` / `v6TreatyKinds(st, pid)`
+- `v6TreatyCount(st)` — instruments across every capital
+- `v6TreatyRows` **reads and does not create**; `v6TreatyRowsRW` is the writing
+  half. That distinction is load-bearing: while reads installed an empty array,
+  the desk brief's eleven-power sweep turned `Object.keys(st.v6.treaties)` into
+  eleven and the **Peacemaker** record fired on every campaign with nothing
+  signed. Its test counted capitals rather than instruments and now calls
+  `v6TreatyCount`.
+
+**Twenty instruments, sixteen of them written on top of another.** `needs` is a
+list of ids that must already stand. A prerequisite is a **forward reference**
+into the registry, which is why `research` and `cultural` were moved out of the
+late v9 chunk and into the literal: while they were defined after it, every boot
+render between the two chunks read `.name` off undefined and threw. The registry
+is one literal, and `v6TreatyMissing` skips an id it cannot find so a future
+split fails soft rather than at boot.
+
+**Nothing is signed on the click.** `v6TreatyPropose` spends the capital and the
+money on the NEGOTIATION and pushes a pending row carrying `odds`, computed once
+at that moment — so the number the card printed is the number that is rolled and
+no render path spends a die. `v6TreatyAnswer`, first thing in `v6TreatiesTick`,
+answers anything with `laid <= st.turn`: the tick runs before `S.turn += 1`, so
+terms laid in session N are answered by the tick that closes N and read on
+entering N+1. That is what "the following turn" means (see S16a).
+
+**Annulling cascades.** `v6TreatyAnnul` drops everything whose `needs` name the
+instrument being annulled, transitively, and names each one in the log. Pulling
+a non-aggression pact takes the defence pact, the intelligence liaison, the
+basing agreement, the arms treaty and the non-proliferation accord with it.
+
+**Every instrument can lapse.** All twenty carry `floor` (a relation below which
+it lapses) or a condition of their own (tariffs void a trade agreement,
+rearmament collapses an arms treaty). Five had no branch anywhere in the tick
+before this slice.
+
+**Every tag is a claim the model answers for.** `targets` is a general indicator
+map read in the `indicatorTargets` wrapper; `mil`/`econ`/`tech`/`pov`/`corr` are
+the older spelling and both are read. `drift` moves the relation each session,
+`upkeep` charges the treasury, `warmth` raises the odds on every further term.
+
+**The Foreign Office answers to the government.** `v6TreatyWhy` refuses when
+`!inPower(st)`, and the world page disables every Negotiate button. Eleven of
+them were live in opposition.
+
 ## The Northern Alliance (S15j)
 
 **It was one relation number on a power row.** `st.powers.alliance`, seeded at

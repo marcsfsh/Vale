@@ -1329,6 +1329,10 @@ async function run() {
       /* degrades rather than throwing on a build without S16b: the harness
          reports a FAILURE with the diagnosis instead of a stack. */
       out.built = typeof v6TreatyPropose === 'function';
+      /* the Foreign Office answers to the government, so this asks the page a
+         GOVERNMENT sees; the refusal in opposition is asserted below it. */
+      keep.ruling = S.ruling; keep.coalition = S.coalition;
+      S.ruling = playParty(S); S.coalition = [playParty(S)];
       S.capital = 900; S.treasury = 9000; S.powers.meridian = 92;
       if (out.built) S.v6.treaties.meridian = []; else delete S.v6.treaties.meridian;
       var live = (pid) => (out.built ? v6Treaties(S, pid)
@@ -1387,6 +1391,12 @@ async function run() {
         out.keptTheFirst = before.every(k => v6HasTreaty(S, 'meridian', k));
       } else out.keptTheFirst = !!out.built;
 
+      /* and in opposition the door is shut, with the reason on the button */
+      S.ruling = 'fp'; S.coalition = ['fp']; UI.tab = 'world'; render();
+      out.oppDisabled = [...document.querySelectorAll('#view [data-treaty-open]')].every(b => b.disabled);
+      out.oppWhy = out.built ? v6TreatyWhy(S, 'meridian', 'consular') : '';
+
+      S.ruling = keep.ruling; S.coalition = keep.coalition;
       S.capital = keep.cap; S.treasury = keep.tre; S.powers = keep.powers;
       S.v6.treaties = keep.treaties; UI.tab = keep.tab;
       if (typeof hideSheet === 'function') hideSheet();
@@ -1399,7 +1409,7 @@ async function run() {
       tr.subheadsInForce.indexOf('In force') >= 0 && tr.canAnnul > 0 &&
       tr.saysLockedReason && tr.saysOdds && tr.openButtons > 0 && tr.paid &&
       tr.notSigned && tr.awaiting === 1 && tr.pageSaysAwaiting && tr.settled &&
-      tr.pageSaysInForce && tr.keptTheFirst,
+      tr.pageSaysInForce && tr.keptTheFirst && tr.oppDisabled && /answers to the government/.test(tr.oppWhy),
       `the terms sheet groups twenty instruments by state -- [${tr.subheads.join(', ')}] with nothing signed, ` +
       `[${tr.subheadsAwaiting.join(', ')}] once terms are laid, [${tr.subheadsInForce.join(', ')}] once they are ` +
       `answered, with ${tr.canAnnul} of them annullable -- `+
@@ -1408,7 +1418,9 @@ async function run() {
       `a real click on "${tr.kindPicked}" is paid for (${tr.paid}) and signs NOTHING that session (${tr.notSigned}, ` +
       `${tr.awaiting} awaiting, and the world page says so: ${tr.pageSaysAwaiting}), the capital answers at the next ` +
       `(settled ${tr.settled}, signed ${tr.signed}), and a second instrument leaves the first standing ` +
-      `(${tr.keptTheFirst}) -- before this PR the sheet listed ten cards against one slot, signing on the click and ` +
+      `(${tr.keptTheFirst}); in opposition every Negotiate button is shut (${tr.oppDisabled}) with the reason given ` +
+      `("${tr.oppWhy}"), where eleven of them were live and a party with no ministry could sign eleven treaties ` +
+      `-- before this PR the sheet listed ten cards against one slot, signing on the click and ` +
       `replacing whatever was in it` + (tr.built ? '' : ' -- THIS BUILD HAS NO PROPOSAL PATH'));
 
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&

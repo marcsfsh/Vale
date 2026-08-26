@@ -5,7 +5,7 @@ Update this file in the last commit of every PR.
 ## Current slice
 
 **S16 — Somebody can stop you, and the other half of the game** is **open**.
-First of twelve PRs: **S16a — two sessions means two sessions**.
+Two of twelve PRs: **S16a**, the session clocks, and **S16b**, the treaty book.
 
 ### What the slice is
 
@@ -18,7 +18,7 @@ are folded in beside them:
 | PR | what it is |
 |---|---|
 | **a** #60 | **two sessions means two sessions** — the amendment clock, and every other clock counted against the wrong session |
-| b | treaties are a relationship, not a slot: many at once, prerequisites, new kinds, and a reply the following turn |
+| **b** #61 | **a treaty is a relationship, not a slot** — many at once, prerequisites, ten more kinds, and a reply the following turn |
 | c | the Foreign Office reaches every capital: the diplomacy actions the S10e powers never reached, and the leaves that cost capital and move nothing |
 | d | the court can stop you |
 | e | the street has leverage |
@@ -29,6 +29,96 @@ are folded in beside them:
 | j | the long deck folds, and focus survives |
 | k | contrast and the thumb |
 | l | the prose pass and the slice close |
+
+### S16b — a treaty is a relationship, not a slot
+
+The owner: *"only one treaty can be active with a power at a time AND it can be
+swapped back and forth. I can negotiate a non aggression pact, then a defense
+pact, then a non aggression pact, and so on all in the same session. just
+doesn't feel right."*
+
+Measured on the branch before the change:
+
+```
+store          st.v6.treaties[powerId] = { kind, since } -- ONE slot per power
+kinds          10
+signing a second REPLACES the first : true
+most that can stand with one power  : 1
+offered at relation 95              : 10 of 10
+any prerequisite between kinds      : false
+signs instantly (no reply next turn): true
+kinds with no branch anywhere in the tick : transit, science, labour, extradition
+```
+
+**Twenty instruments, a list per capital, prerequisites, and a reply.**
+
+| before | after |
+|---|---|
+| one instrument per power | as many as a capital will sign; **20 measured standing at once** |
+| ten kinds | **twenty**: a consular convention at the bottom, then a boundary treaty, fisheries, an environmental protocol, investment protection, a monetary and clearing agreement, a treaty of friendship, non-proliferation, an intelligence liaison and a basing agreement |
+| the relation was the only gate | **16 of the 20 are written on top of another instrument**, and the card says which. At 99 relations with nothing signed, **four** terms are on the table, not twenty |
+| signed on the click | terms are **laid**, at odds printed before the money is spent, and the capital answers **at the next session** |
+| five could never lapse | **all twenty** carry a relation floor or a condition of their own |
+| annulling dropped one thing | annulling **cascades**: pulling the non-aggression pact takes the defence pact, the liaison, the basing agreement, the arms treaty and the accord with it, each named in the log |
+
+The odds are computed once, when the proposal is laid, and stored on it — so the
+number the card printed is the number that is rolled, and no render path spends
+a die. Measured: **35 of 300 at a cold 44 with nothing written, 289 of 300 at 96
+with three instruments already in force.** Depth is the point; that is what
+makes it a relationship.
+
+**Two live defects found on the way, both introduced by the change and both
+caught by measurement rather than by reading.**
+
+1. `research` and `cultural` were **defined in a chunk that runs long after the
+   registry literal**. The moment `science` was given `needs:['cultural']`,
+   every boot render between the two chunks read `.name` off undefined and threw
+   **three times before the first screen**. A prerequisite is a forward
+   reference. The registry is one literal now and `v6TreatyMissing` skips an id
+   it cannot find, so a future split fails soft rather than at boot.
+2. `v6TreatyRows` installed an empty array for any power it was asked about, and
+   the desk brief asks about all eleven every render. That turned
+   `Object.keys(st.v6.treaties).length >= 3` — the **Peacemaker** record's test
+   — into "eleven powers exist", and `tools/pacing.js` showed it awarded on
+   **every one of six seeds with nothing signed**. Reads no longer create, and
+   the test counts instruments (`v6TreatyCount`) rather than capitals, which it
+   never should have.
+
+**And one door that should never have been open**: every power card on the world
+page carried a live Negotiate button **in opposition**, so a party with no
+ministry could sign eleven treaties. `v6TreatyWhy` refuses when `!inPower(st)`
+and the buttons are disabled with the reason on them. S16f is where being out of
+power gets its own things to do; this is only the door.
+
+**Save shape.** An object per power becomes an array. A pre-S16b save is
+**wrapped, not dropped**, and the world page says so until the player has read
+it; a blob that is neither is dropped and **counted**, on the pattern the
+statute ladder and the constitution use. Asserted through `indicatorTargets`: a
+pre-S16b save reads **1.5** for a defence pact, identical to the new shape.
+
+**Pacing: byte-identical.** Six seeds, short, against the build before the PR —
+the same elections, the same wars, the same records. The harness takes the first
+choice always and never opens the Foreign Office, so nothing here should have
+moved, and the one thing that did move was the Peacemaker regression above.
+
+`tools/rungs.js --corpora` holds the treaty book as a **fourth registry** to the
+statute book's house style: 20 instruments, their notes and every one of their
+tags, 658 authored pieces across 250 distinct names. It passes.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          158 assertions, 3 of which redden against main
+PLAYTEST PASS     52 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+CORPORA OK        658 pieces, 250 distinct names
+PACING            six seeds, identical
+```
+
+Next: **S16c**, the Foreign Office reaching every capital. S15j rebuilt four
+target lists from six capitals to eleven; the survey found five more actions
+(`stateVisit`, `summit`, `tradeMission`, `recallAmb`, `aidSurge`) still built
+before the S10e powers existed, eight diplomatic leaves that cost capital and
+move no relation, and sanctions that are an event rather than a state.
 
 ### S16a — two sessions means two sessions
 
@@ -3417,6 +3507,7 @@ ratchet 10 → 5, which is now its true floor.
 | S15j the Northern Alliance | **merged** (#57) | one relation number on a power row, and a statute whose id appeared once in three megabytes; a membership set, an accession that spends a die at odds printed before the player spends, members that are never the country Vale fights and that come in when it does, the Foreign Office's four target lists rebuilt from six capitals to eleven (they were built at the moment the ACTIONS literal was evaluated, before the S10e push), five cards that named the Alliance and moved nothing, and a treaty action that produced no treaty |
 | S15k the prose pass and the close | **merged** (#58) | `rungs.js --corpora`: the 60 measures, 90 orders and 80 articles held to the statute book's own house style, 548 pieces across 230 distinct names, failing on a breach -- it found three, a curly apostrophe and two em dashes in the order book; S15 itself added two em dashes across ten PRs, one in a comment and one in a panel note; the punctuation residue in the rest of the file measured, classified and REPORTED rather than repaired (32 in-sentence uses, 22 of them Question Time, none of them S15's); one flaky assertion turned from a point estimate into a property; AGREEMENT, MAP, STATE and CLAUDE.md brought up to date |
 | S16a two sessions means two sessions | **merged** (#60) | `endTurn` runs every tick and only THEN does `S.turn += 1`, so a tick comparing against `st.turn` stands in the session the click is leaving rather than the one it is producing; four of the game's six session clocks were counted that way -- an article that said two sessions wanted three End Session clicks, a plebiscite that said one wanted two, a manifesto commitment dated eight sessions out survived ten, and a political paper stayed answerable a session past the date printed on it, with its three expiry warnings firing a session early to match; the arc banner's `+ 1` and the ballot counter were the two that were already right, which is what made the other four look deliberate; `roads.js` measures all six through the model in endTurn's own order and names the four that disagreed |
+| S16b treaties are a relationship | **merged** (#61) | `st.v6.treaties[powerId]` was ONE object, so signing a second replaced the first and the same capital could be walked round a non-aggression pact, a defence pact and a non-aggression pact inside one session with the Foreign Office reporting each as a treaty signed; a list per capital with twenty instruments (ten more), sixteen of them written on top of another, terms laid rather than signed with the capital answering at the next session at odds printed before the money is spent, every instrument able to lapse where five never could, annulment that cascades through what stands on it, and the Foreign Office shut in opposition where eleven Negotiate buttons were live; two live defects caught by measurement -- a prerequisite naming a kind defined in a later chunk threw three times before the first screen, and a read that installed an empty array turned the Peacemaker record's `Object.keys` test into "eleven powers exist" and awarded it on every seed with nothing signed |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
