@@ -71,6 +71,28 @@ three its date promises rather than four. Both are the printed number winning
 over the arithmetic, which is the point of the PR, but they are duration changes
 and they are recorded here for the owner.
 
+**The arc is unchanged, and the single-seed reading that says otherwise is a
+re-rolled stream.** `tools/pacing.js` on the one seat it is usually run from
+(`5EED1234`) shows 4 elections won and 10 years governing becoming 6 and 14,
+which looks like a lift. It is not: moving when a tick fires shifts the seeded
+stream and a first-choice-always harness then plays a *different* campaign, not
+a better one. Six seeds, short, both builds:
+
+| | 5EED1234 | A1B2C3D4 | 00C0FFEE | DEADBEEF | 12345678 | 0BADCAFE | mean |
+|---|---|---|---|---|---|---|---|
+| elections won, before | 4 | 8 | 4 | 13 | 5 | 3 | **6.2** |
+| elections won, after | 6 | 10 | 3 | 5 | 6 | 3 | **5.5** |
+| years governing, before | 10 | 30 | 10 | 36 | 12 | 10 | **18.0** |
+| years governing, after | 14 | 28 | 10 | 14 | 14 | 10 | **15.0** |
+| records earned, before | 8 | 9 | 9 | 8 | 9 | 9 | **52/264** |
+| records earned, after | 8 | 9 | 8 | 9 | 9 | 8 | **51/264** |
+
+Both means fall slightly and every value stays inside the seed-to-seed spread of
+the build before the PR (10 to 36 years governing on one length). The lesson is
+about the instrument as much as the change: **a pacing figure from one seed
+cannot tell a balance change from a reshuffle**, and any PR that moves when a
+die is drawn has to be read across seeds.
+
 **The assertion.** `roads.js` gains *every session clock charges what it prints*
 — all six driven through the model in `endTurn`'s own order rather than through
 the UI, per the determinism rule, because which sheets a click pumps depends on
@@ -89,6 +111,7 @@ ALL CHECKS PASS   11/11, 3,175,227 bytes, +1,557 since HEAD of 250,000
 ROADS OK          157 assertions
 PLAYTEST PASS     51 steps + the WebKit SKIP
 DETERMINISM PASS  8 properties
+PACING            measured across six seeds; unchanged within the spread
 ```
 
 Next: **S16b**, treaties. Measured on this branch: `st.v6.treaties[powerId]` is
