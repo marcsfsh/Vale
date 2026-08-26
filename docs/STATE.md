@@ -4,16 +4,66 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S12 — The Statute Book Speaks** (PR #39), sixth of six. **The slice is
-complete.** Empire, Imperium, the People's State and The Charter close the book:
-126 statutes, 504 rung descriptions and 126 refreshed one-line descriptions.
+**S14 — Truth, then the seams**, first of five PRs. No code in this one: it
+makes the three documents say what is true, and rescues a handoff that would
+have died on the next clone.
 
-**Every statute in the game now speaks: 582 of 582, 2,328 rung descriptions and
-582 refreshed one-liners. 2,910 pieces of authored prose**, which is the number
-the owner's order specified. The file stands at **2,951,257 bytes of the
-3,100,000 allowed**, against a projection of 2,948,134 made three batches ago.
+### What the documents claimed
 
-**S13b — The whole book read aloud** (PR #42). Every S12 ordering figure came
+| where | said | truth |
+|---|---|---|
+| `CLAUDE.md:6` | `vale.html` is 1.4 MB | **3.0 MB**, and that line's only job is context safety |
+| `MAP.md` | 93 `Math.random()` sites and no seeded PRNG | **one**, `rand()`'s pre-game fallback; 111 calls route through the seeded engine. S3 made this false eleven slices ago and it was copied forward every time |
+| `MAP.md` | the two font requests fail cosmetically offline | the fonts are embedded data URIs. The line fourteen above it already said so, so the file contradicted itself |
+| `STATE.md` ratchet list | three of six figures | strict is 8/8 not 7/7; dead sites are max 5 target 0, not max 10; the size cap is 10 MB against a 3.0 MB file, not 1.6 against 1.43 |
+| `STATE.md` | 21 literal markers in one place, 25 in two others | **25** |
+| `STATE.md` | the two party-palette collapses are still the owner's open question | S7 closed them. Every pair that collapses under the three dichromacies is an **adjacent** pair, which is exactly where S6b put the aisles and the direct labels |
+| `CLAUDE.md` command list | omitted `tools/roads.js` | **90 assertions, the largest content harness in the repo.** Also missing: `tools/rungs.js`, `tools/prose/` and `docs/PROSE-STYLE.md` |
+
+Every one of these was true when written. That is the point: a document that is
+never re-read against the code decays into confident misdirection, and the two
+worst entries here, the size line and the `Math.random()` count, are the two a
+new session acts on before it has read anything else.
+
+### `docs/PROSE-RESIDUE.md` is new
+
+The 62 ladders both round-3 readers still fail were recorded in
+`tools/out/rungs/sweep-repair.json`. `tools/out/` is gitignored, so the list
+existed only in the container that made it, and the handoff it was written for
+would have found an empty path. It is now tracked and broken down by book,
+alongside the two earlier S12 residues, with the reasoning for not running a
+second repair round and the commands to re-derive it.
+
+**Taxation carries seven of the 62**, the worst book, and it is the book whose
+ladder is a rate: two adjacent rates read as one statute to a reader shown no
+numbers. **Technology carries none.** `juryReformAct` is on the S12 batch-3 list
+and on the round-3 list, the only statute to resist two independent repair passes
+with different readers each time.
+
+```
+ALL CHECKS PASS   11/11, 2,995,262 bytes of 10,000,000
+ROADS OK          90 assertions
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+`vale.html` is untouched: `git diff --stat` names only `CLAUDE.md`, `docs/MAP.md`,
+`docs/STATE.md` and the new `docs/PROSE-RESIDUE.md`.
+
+Next: **S14 PR B**, three live defects. `clamp` (~`:4426`) passes NaN through and
+`STATE.md` already records a NaN reaching the vote model with nothing on screen
+to say so; make it loud in the S9a sense, with a probe that reddens without the
+fix. De-positionalise the four `V10_ORDERS…[0]` probes (`roads.js:434,448,458`,
+`playtest.js:552`) onto a stable id. Reshape the size check into a growth bound
+against `HEAD:vale.html`, since at a 10 MB ceiling it can no longer catch the
+duplicated region it is kept for. Then PR C and PR D on the dead-body ratchet
+(make it honest, then drive it to zero with poison proofs), and PR E on the
+marker check, where **13 of the 24 multi-occurrence markers can never fail**:
+`occurrences >= 2` is vacuously true forever for `</div>`, `<div`, `</button>`
+and ten more generic structural strings.
+
+Previously: **S13b — The whole book read aloud** (PR #42, merged). Every S12 ordering figure came
 from a forty-ladder sample, and the repair pass fixed exactly the ladders that
 sample failed, then re-scored the same forty. Roughly five hundred of the five
 hundred and eighty two ladders had never been read by anyone. This reads all of
@@ -83,8 +133,10 @@ taken before any repair touched a batch: 37.5 and 30.0 per cent for PR 3, then
 
 ### Sixty-two ladders still resist
 
-Both round-3 readers still fail 62 of 582. They are recorded in
-`tools/out/rungs/sweep-repair.json` for whoever picks this up. A second repair
+Both round-3 readers still fail 62 of 582. They are named, by book, in
+`docs/PROSE-RESIDUE.md`, which also carries the two earlier S12 residues.
+(S14a: this entry originally pointed at `tools/out/rungs/sweep-repair.json`,
+which is gitignored, so the handoff died on clone.) A second repair
 round on them is available and was not run: the marginal ladder here is one where
 two rungs are genuinely close in severity, and forcing a gap risks the failure
 that matters more, prose that reads in order and describes nothing.
@@ -104,7 +156,7 @@ or its closing bracket. Filtered on exactly that, residue **zero**.
 Next: **marker/seam consolidation**, deferred out of S2 and S6 and the largest
 remaining stabilisation item. 25 literal splice markers, dead-body ratchet 5 to 0.
 
-Previously: **S13a — Carry the skill, do not summarise it** (PR #41). The owner asked whether
+Previously: **S13a — Carry the skill, do not summarise it** (PR #41, merged). The owner asked whether
 the uploaded `writing-style` skill had actually been used on the statute prose.
 It had, but not whole, and the gap is worth recording because it was invisible
 from inside the pipeline.
@@ -193,7 +245,8 @@ so the checker is reading prose and not a broken splice.
 Next: **S13b**, the exhaustive ladder sweep. Every S12 figure came from a
 40-ladder sample, so roughly 500 of 582 ladders have never been read by anyone.
 
-Previously: **S12 — The Statute Book Speaks** (PR #39), sixth of six. **The slice is complete.**
+Previously: **S12 follow-up — the inflated figures** (PR #40, merged).
+Sixth-of-six had shipped; this is what re-reading its own numbers found.
 
 ### Correction: the post-repair ordering figures in PRs #36 to #39 are inflated
 
@@ -349,6 +402,16 @@ TIERS             no width scrolls sideways
 Next: **Marker/seam consolidation**, the item deferred out of S2 and S6 and the
 largest remaining stabilisation work. 25 literal splice markers; dead-body
 ratchet 5 to 0.
+
+Previously: **S12 — The Statute Book Speaks** (PR #39, merged), sixth of six. **The slice is
+complete.** Empire, Imperium, the People's State and The Charter close the book:
+126 statutes, 504 rung descriptions and 126 refreshed one-line descriptions.
+
+**Every statute in the game now speaks: 582 of 582, 2,328 rung descriptions and
+582 refreshed one-liners. 2,910 pieces of authored prose**, which is the number
+the owner's order specified. The file stood at **2,951,257 bytes** at the slice
+close, against a projection of 2,948,134 made three batches ago. (The cap was
+3,100,000 then; the owner raised it to 10,000,000 in S13.)
 
 Previously: **S12 — The Statute Book Speaks** (PR #38), fifth of six. Five books authored:
 **Defence, Authority, Elections, Federalism and Foreign**, 120 statutes, 480 rung
@@ -1323,7 +1386,7 @@ after the plan was written:
 
 Next: nothing queued from the fifth order. The largest remaining stabilisation
 item is unchanged and still the owner's co-priority: **marker/seam
-consolidation** — 21 literal splice markers, and the dead-body ratchet from 5
+consolidation** — 25 literal splice markers, and the dead-body ratchet from 5
 to 0.
 
 Previously: **S10b/c — The Order Paper and the Order Book** (PR #26). Two halves of the
@@ -1426,9 +1489,13 @@ TABS OK / CHAMBER OK / TIERS: no width scrolls sideways
 ```
 
 Nothing is queued. Open questions that remain the owner's, unchanged: the
-localStorage-persistence probe visit, the WebKit host allowlist, and the two
-party-palette collapses `tools/seats.js` reports under colour-vision
-simulation.
+localStorage-persistence probe visit and the WebKit host allowlist. (S14a
+correction: this entry also carried "the two party-palette collapses
+`tools/seats.js` reports under colour-vision simulation" as open. It was not.
+S7 settled it below, at the S7 entry: every pair that collapses under the three
+dichromacies is an ADJACENT pair, which is exactly where S6b put the aisles and
+the direct labels. The palette needs no change; the item was copied forward
+after it had been answered.)
 
 Previously: **S9h — the curves** (PR #23, merged). The last of the fourth
 order: every one of the 582 statutes has four levels, each with its own set
@@ -1857,7 +1924,8 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 6 | **merged** (#39) | Empire, Imperium, People's State and The Charter close the book: 582 of 582 statutes speak, 2,910 pieces of authored prose; the two largest books sharded by group covered both exactly; highest ordering scores of the project at 93.1 / 87.5 / 0.950; whole-corpus blind attribution 118 of 120; the style guide's own worked example was found to have propagated its sentence shape into 21 statutes across 13 books |
 | S13a style fidelity | **merged** (#41) | the authoring brief was a 112-line paraphrase of a 161-line skill and had dropped a rule; it is now the skill verbatim plus a statute addendum, committed as docs/PROSE-STYLE.md; audit of all 2,910 pieces came back clean on twelve rule families and two hits; the phrase matcher was fixed from substring to word boundary; "X rather than Y" measured at 7.5% precision and was deliberately left to judgement; maxBytes 3.1M to 10M |
 | S13b the whole book read aloud | **merged** (#42) | all 582 ladders read blind twice, not sampled: 66.7 / 67.7 per cent exact with 163 failed by both readers; 458 rung fields repaired across 163 statutes with no non-target touched; re-read by two fresh readers at 85.4 / 84.4 per cent, tau 0.946 / 0.938, failures down to 62; the one-axis rule measured on the whole population at 59.2 per cent before it against 77.8 after, and the batches that predated it closed to 81.7 |
-| **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
+| S14a documents made true | **merged** (#43) | eleven false statements across CLAUDE.md, MAP.md and STATE.md, every one true when written: the size line said 1.4 MB against 3.0, MAP said 93 Math.random() sites eleven slices after S3 made it 1, MAP contradicted itself fourteen lines apart on whether the fonts are fetched, the ratchet bullet was wrong on three of six figures, the marker count was given as both 21 and 25, and a colour-vision question S7 had answered was still listed as open; the 62-ladder handoff lived only in a gitignored path and is now docs/PROSE-RESIDUE.md; roads.js, rungs.js, tools/prose/ and PROSE-STYLE.md added to the command list; no code touched |
+| **Marker/seam consolidation** | **in progress — S14 PRs B to E** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. **25** literal splice markers (this row said 21 until S14 counted them with the check's own regex); dead-body ratchet 5 → 0. S14 splits it: PR B the three live defects, PR C the ratchet made honest (5 → 7, a correction), PR D the ratchet driven to zero with poison proofs, PR E the marker check split so it stops implying cover it does not have — **13 of its 24 multi-occurrence markers can never fail**, and the two markers whose failure puts wrong data on screen are held in variables and have never been seen by it |
 
 ## Open items / environment facts
 
@@ -1873,15 +1941,26 @@ ratchet 10 → 5, which is now its true floor.
   wherever `npx playwright install webkit` works; adding those hosts to the
   environment allowlist would enable engine-true phone runs here. Substitute
   meanwhile: Chromium at the phone viewport (named SKIP in harness output).
-- Checks baselines (`checks/baseline.json`): strict 7/7 and stale bindings 0
-  (S1 targets reached and pinned), dead sites max 10 (0 by end of S2),
+- Checks baselines (`checks/baseline.json`), **corrected in S14 after this
+  bullet was found wrong on three of its six figures** — it is the section a
+  cold session trusts for ratchet state, and it had gone stale across eleven
+  slices: strict **8/8** (S9d took it 7 to 8 with the v10 chunk) and stale
+  bindings 0, both at target and pinned; dead sites **max 5, target 0** (S2 took
+  it 10 to 5 and called 5 its true floor; S14 revisits whether that is right),
   unseeded randomness pinned at 1 call (rand()'s pre-game fallback; was 93
   before S3), width thresholds pinned to the five tier edges and heights to the
   one (460, the landscape turn bar — added in S8d, when the check learned about
-  the height axis), size cap 1.6 MB (file now 1.43 MB with fonts embedded),
+  the height axis), size cap **10 MB** on the owner's S13 ruling that it is soft
+  (**file now 3.0 MB**; the check is kept only to catch a runaway apply
+  duplicating a region),
   external allowlist **empty and staying empty**.
 - Both items deferred out of S6a and S6b are closed in S6c: the turn bar is
   opaque at its top edge, and above the phone tier the chamber legend drops the
   seat counts the direct labels already carry (it keeps the party names and the
   banned state, which are never redundant).
+- **The pacing retune is still the owner's.** S8 (PR #10) measured that a
+  short campaign closes having unlocked 3 of 39 achievements against 18-28 per
+  cent for the longer options, put three retune options in the PR body, and
+  never got an answer. Recorded here because a ruling that lives only in a
+  merged PR body is a ruling nobody will find.
 - The user's decisions of record live in docs/AGREEMENT.md (interview verbatim).
