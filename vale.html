@@ -12798,9 +12798,13 @@ function saveDialog() {
 }
 
 /* ---------------- boot ---------------- */
+/* S14: this used to end `render();`. The v5 boot re-enriched and rendered
+   again, and the v6 boot re-enriches, renders and opens the start screen over
+   the top, so the v4 paint was a screen nobody ever saw. It was also the only
+   thing reaching the v4 render and renderStats bodies, which is why the
+   dead-body ratchet sat at 5 and called it a floor. */
 S = newGame('normal');
 logIt(S, 'A Labor government takes office at the head of the Popular Front, facing a Senate held by the Unity Front.');
-render();
 </script>
 <!-- ==========================================================
      STATECRAFT EXPANSION · ENRICHMENT VERSION 5
@@ -13708,8 +13712,11 @@ render=function(){
 
 document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!UI.busy)pv5CommandPalette();}});
 
-/* Refresh the current state through v5. The v6 layer opens the start screen. */
-S=enrichState(S,false);render();
+/* Refresh the current state through v5. The v6 layer opens the start screen.
+   S14: the `render()` that used to close this line went with the v4 one above.
+   The enrich stays -- it is the only v5 refresh of the state -- but the paint
+   was redundant, and it was the only caller of the v5 render body. */
+S=enrichState(S,false);
 </script>
 
 <!-- ==========================================================
@@ -16645,8 +16652,13 @@ hideSheet = function () { v6mHideSheetBase(); v6mUnlock(); };
   apply();
 })();
 
-/* Re-run the page once, so the boot render picks up the wrappers. */
-if (typeof S !== 'undefined' && S) { v6mWrapTables(document.getElementById('view')); v6mWrapTables(document.getElementById('sheet')); v6mPolicyFolds(); v6mCenterTab(); if (!document.getElementById('modal').hidden) v6mLock(); V6M.lastTab = UI.tab; V6M.first = false; }
+/* Re-run the page once, so the boot render picks up the wrappers.
+   S14: v6mPolicyFolds() and v6mCenterTab() were dropped from this line. Both
+   are reassigned by v7 a few hundred lines below and called again by v7's own
+   boot render, so this pass only ever reached the v6m bodies -- the two
+   remaining entries on the ratchet. The wrappers, the lock and the V6M state
+   stay: nothing else does those. */
+if (typeof S !== 'undefined' && S) { v6mWrapTables(document.getElementById('view')); v6mWrapTables(document.getElementById('sheet')); if (!document.getElementById('modal').hidden) v6mLock(); V6M.lastTab = UI.tab; V6M.first = false; }
 
 </script>
 <!-- ==========================================================
