@@ -53,8 +53,12 @@ before touching the file.
 Also: CSS chunks conflict by source order (last wins, equal specificity) — new
 rules go at the end or under a body-class scope; later chunks splice rendered
 HTML by marker strings and query DOM sentinels, so renaming a class, heading or
-slot attribute can silently disable a feature (checks catch the literal-marker
-class only; cross-chunk DOM slots are guarded by playtest steps instead).
+slot attribute can silently disable a feature. `marker-integrity` asks, of the
+markers written as a literal at the call site, whether an **emitter** of that
+string exists outside the splice; it says plainly which markers it cannot ask
+that of (12 generic structural strings) and it cannot see a marker built in a
+variable at all. Those, and the DOM slots, are guarded by playtest steps —
+`splices-land` for the three whose failure is silent.
 
 ## Commands
 

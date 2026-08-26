@@ -779,6 +779,79 @@ async function run() {
       `a revoke control appears: ${ord.revokeBtn}; revoking puts it back: ${ord.back}`);
   }
 
+  /* S14: THE THREE SPLICES NOTHING WAS WATCHING. `marker-integrity` counts
+     literal marker strings; it can only see a literal written inline at the
+     call site, and it asks whether the string occurs twice anywhere in the
+     file. Neither test reaches these three, and all three fail SILENTLY -- the
+     splice misses, the base HTML is returned, and what the player loses is a
+     whole feature or, worse, correct data replaced by wrong data.
+
+       vale.html  the splice                        what vanishes
+       :15936     '<article class="card region-card">' held in a VARIABLE, then
+                  a positional split: parts[i] is paired with REGIONS[i-1].
+                  A second .region-card anywhere in that view mis-assigns EVERY
+                  governor strip by one region. Wrong data, not missing data,
+                  and the check has never seen this marker at all.
+       :19726     the region-action splice, marker also built in a variable,
+                  cutting at '</button>'. All of V9_REGION_ACTS disappears from
+                  the federation tab.
+       :24869     'html.lastIndexOf("<div class=\'btnrow\'>")' replaces the
+                  fixed button row with the authored Question Time replies. Miss
+                  it and 164 authored questions revert to v8's generic row,
+                  which still works, so the whole feature is invisible.
+                  chairs-and-pools checks the POOL SIZE, never a rendered reply. */
+  {
+    const spl = await page.evaluate(() => {
+      const out = {};
+      const keep = UI.tab;
+      UI.tab = 'federation'; render();
+      const cards = [...document.querySelectorAll('.region-card')];
+      out.cards = cards.length;
+      out.regions = REGIONS.length;
+      /* each card's governor strip must belong to the region whose card it is */
+      out.misassigned = cards.map((c, i) => {
+        const h = c.querySelector('h3'), g = c.querySelector('[data-governor]');
+        const r = REGIONS[i];
+        return (!r || !g || g.getAttribute('data-governor') !== r.id ||
+          (h ? h.textContent.trim() : '') !== r.name) ? (r ? r.id : '#' + i) : null;
+      }).filter(Boolean);
+      /* and every region action reaches every region */
+      const acts = Object.keys(V9_REGION_ACTS);
+      out.acts = acts.length;
+      out.regionsMissingActs = REGIONS.filter(r => {
+        const got = [...document.querySelectorAll('[data-region="' + r.id + '"][data-region-action]')]
+          .map(b => b.getAttribute('data-region-action'));
+        return acts.some(a => got.indexOf(a) < 0);
+      }).map(r => r.id);
+      /* the despatch box answers with its own replies, not v8's fixed row */
+      S.v8.qt.pending = true; S.v8.qt.turn = S.turn;
+      if (typeof v8EnsureQuestion === 'function') v8EnsureQuestion(S);
+      UI.tab = 'chamber'; render();
+      const want = (S.v8.qt.opts || []).map(o => o.id);
+      const got = [...document.querySelectorAll('[data-v8act="qt"]')]
+        .map(b => b.getAttribute('data-id')).filter(Boolean);
+      out.qtWant = want.length;
+      out.qtGot = got.length;
+      out.qtMatches = want.length > 0 && want.length === got.length && want.every((id, i) => id === got[i]);
+      /* v8's own row also carries data-v8act="qt" buttons with ids of its own,
+         so a count match is not a match -- name the first id that differs. */
+      out.qtFirstDiff = out.qtMatches ? null
+        : { want: want[want.findIndex((id, i) => id !== got[i])] || '(none)',
+            got: got[want.findIndex((id, i) => id !== got[i])] || '(none)' };
+      UI.tab = keep; render();
+      return out;
+    });
+    step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
+      spl.regionsMissingActs.length === 0 && spl.qtMatches,
+      spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`
+        : spl.regionsMissingActs.length ? `region actions missing on ${spl.regionsMissingActs.join(', ')}`
+          : !spl.qtMatches ? `Question Time rendered ${spl.qtGot} replies for ${spl.qtWant} authored options and the first mismatch is ` +
+            `"${(spl.qtFirstDiff || {}).got}" where "${(spl.qtFirstDiff || {}).want}" was authored — the button row splice missed ` +
+            `and v8's generic row is on screen`
+            : `${spl.cards} region cards each carrying their own governor strip, all ${spl.acts} region actions on all ${spl.regions} regions, ` +
+              `and Question Time answering with its ${spl.qtWant} authored replies rather than v8's fixed row`);
+  }
+
   // -- S10a: an unreadable save is not written over after being promised untouched
   {
     const kept = await page.evaluate(() => {

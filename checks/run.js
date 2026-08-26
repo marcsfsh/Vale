@@ -201,31 +201,72 @@ if (process.argv.includes('--sites')) {
 }
 
 /* ---- 5. marker integrity (literal string markers only) ---- */
+// S14 split this in two, because a third of what it reported was vacuous.
+//
+// The rule used to be `this literal occurs >= 2 times somewhere in the file`.
+// For `</div>` (800 occurrences), `<div` (824), `</button>` (185) and nine more
+// generic HTML fragments, that is true forever no matter what anyone renames,
+// so a green line about them was never evidence. Those are adjudicated in
+// markers.json as `structural`: LISTED, not counted, and the splices that use
+// them are covered by playtest assertions instead (`splices-land`).
+//
+// For the rest the question is now a real one: does an EMITTER of this literal
+// exist anywhere OUTSIDE the splice call sites? That is the pair the marker
+// depends on, and it is what breaks when a heading or a class is renamed in one
+// place. Counting occurrences anywhere could not tell the two apart.
+//
+// What this check still cannot see, and does not pretend to: a marker built in
+// a VARIABLE. The discovery regex needs the literal inline at the call site, so
+// vale.html's `.region-card` positional split and the v9 region-action splice
+// have never been among these markers at all -- and the first of them fails by
+// putting WRONG data on screen rather than none. Both are covered by
+// `splices-land` in the playtest.
 {
-  // literals fed to indexOf/lastIndexOf/replace, or passed as the marker argument
-  // of the v8Insert helper, that contain '<' — the splice markers
   const res = [
     /\.(?:indexOf|lastIndexOf|replace)\(\s*'((?:[^'\\]|\\.)*<(?:[^'\\]|\\.)*)'/g,
     /v8Insert\(\s*[\w$]+\s*,\s*'((?:[^'\\]|\\.)*<(?:[^'\\]|\\.)*)'/g,
   ];
-  const markers = new Set();
-  for (const re of res) { let m; while ((m = re.exec(src))) markers.add(m[1]); }
+  const markers = new Map();   // literal -> Set of source offsets of the literal at a call site
+  for (const re of res) {
+    let m;
+    while ((m = re.exec(src))) {
+      const at = m.index + m[0].lastIndexOf(m[1]);
+      if (!markers.has(m[1])) markers.set(m[1], new Set());
+      markers.get(m[1]).add(at);
+    }
+  }
   const problems = [];
   const adjKeys = new Set(Object.keys(markerAdj.singleOccurrence));
-  for (const lit of markers) {
-    // count occurrences of the literal (as written, incl. escapes) in the source
-    let count = 0, idx = -1;
-    while ((idx = src.indexOf(`'${lit}'`, idx + 1)) !== -1) count++;
-    const also = src.split(lit).length - 1; // occurrences incl. inside larger strings
-    const occurrences = Math.max(count, also);
-    if (occurrences >= 2) { adjKeys.delete(lit); continue; }
-    if (markerAdj.singleOccurrence[lit]) { adjKeys.delete(lit); continue; }
-    problems.push(`splice marker with a single occurrence and no adjudication: '${lit.slice(0, 60)}…'`);
+  const structKeys = new Set(Object.keys(markerAdj.structural || {}));
+  let paired = 0, structural = 0, excused = 0;
+  for (const [lit, callSites] of markers) {
+    // every occurrence of the literal, minus the ones that ARE the splice call
+    let emitters = 0, idx = -1;
+    while ((idx = src.indexOf(lit, idx + 1)) !== -1) if (!callSites.has(idx)) emitters++;
+
+    if (structKeys.has(lit)) {
+      structKeys.delete(lit);
+      structural++;
+      // and it must really be generic, or a specific marker is hiding in here
+      if (emitters < 3) {
+        problems.push(`'${lit.slice(0, 40)}…' is adjudicated structural but occurs only ${emitters} time(s) ` +
+          `outside its splice — that is a specific marker, and the pair test means something for it`);
+      }
+      continue;
+    }
+    if (emitters >= 1) { paired++; adjKeys.delete(lit); continue; }
+    if (markerAdj.singleOccurrence[lit]) { excused++; adjKeys.delete(lit); continue; }
+    problems.push(`splice marker with no emitter anywhere outside its call site: '${lit.slice(0, 60)}…' — ` +
+      `the splice can only miss from here; give it an emitter, or adjudicate it in checks/markers.json`);
   }
-  for (const staleKey of adjKeys) problems.push(`stale marker adjudication (marker gone or now multi-occurrence): '${staleKey.slice(0, 50)}…'`);
+  for (const staleKey of adjKeys) problems.push(`stale singleOccurrence adjudication (marker gone, or it has an emitter now): '${staleKey.slice(0, 50)}…'`);
+  for (const staleKey of structKeys) problems.push(`stale structural adjudication (marker gone): '${staleKey.slice(0, 50)}…'`);
   report('marker-integrity', problems.length === 0,
     problems.length ? problems[0] + (problems.length > 1 ? ` (+${problems.length - 1} more)` : '')
-      : `${markers.size} literal splice markers, all multi-occurrence or adjudicated (note: v7's 3 regenerated-output splices are not literals — covered by the playtest harness)`);
+      : `${markers.size} literal splice markers: ${paired} emitter/splicer pairs asserted, ${excused} adjudicated ` +
+        `single-occurrence, and ${structural} structural strings whose count carries no information — listed in ` +
+        `checks/markers.json, covered by the playtest's \`splices-land\` rather than here. Markers built in a ` +
+        `variable are invisible to this check by construction; \`splices-land\` holds those too`);
 }
 
 /* ---- 6. save keys ---- */

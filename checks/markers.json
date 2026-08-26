@@ -1,6 +1,20 @@
 {
-  "_comment": "Adjudicated splice markers that legitimately occur only once in the source. Every other marker literal must appear >=2x (builder + splicer) or checks/run.js fails. Each entry needs a reason. This list ratchets down as consolidation replaces string-splicing with real seams.",
+  "_comment": "Adjudications for the splice markers checks/run.js discovers. The check now asks a real question of the markers it can ask it of -- does an EMITTER of this literal exist anywhere outside the splice call site -- and says plainly that it cannot ask it of the rest. `structural` names the generic HTML fragments whose occurrence count is vacuously satisfied forever: nothing anyone renames can take </div> below two occurrences in a 3 MB document, so a green line about them was never evidence of anything. They are listed rather than counted, and the splices that use them are covered by playtest assertions instead. `singleOccurrence` is the older list: a marker with no emitter at all, allowed only with a reason. Both lists ratchet down as consolidation replaces string-splicing with real seams.",
   "singleOccurrence": {
     "<tr><td>Debt service</td>": "The ledger builds this row from expRows.push(['Debt service', b.interest]) (~7895) via a generic row renderer, so the literal exists only at the v8 splice (~13508). If the label is renamed, v8Insert's fallback APPENDS the grand-works row at the end of the view (visible misplacement, not silent loss). Eliminated when S2 gives the ledger a real seam."
+  },
+  "structural": {
+    "<div": "824 occurrences. The opening of every div in the file; the count can never fall below two.",
+    "</div>": "800 occurrences, five splice sites. Same.",
+    "</button>": "185 occurrences. Also the cut point for the v9 region-action splice, whose real failure mode is covered by the playtest step `splices-land`.",
+    "</div></div>": "129 occurrences. Two closing divs in a row is not a name.",
+    "<div class=\"btnrow\">": "50 occurrences. The v10 Question Time splice cuts here; that splice is covered by `splices-land`, which asserts the AUTHORED replies are on screen rather than v8's fixed row.",
+    "<div class=\"tagline\">": "39 occurrences. Every party card carries one.",
+    "<div class=\"grid\"><div>": "22 occurrences. A layout opening, used by five splices and by ordinary markup.",
+    "</article>": "22 occurrences. The cut point inside the region-card splice, covered by `splices-land`.",
+    "</table></div>": "17 occurrences.",
+    "</div></article>": "13 occurrences.",
+    "</div><div class=\"panel\">": "6 occurrences. A panel boundary, not a panel.",
+    "</section>": "5 occurrences, two splice sites. The lowest count in this list and still not a name: any section closing anywhere satisfies it."
   }
 }
