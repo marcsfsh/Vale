@@ -8463,7 +8463,11 @@ function promiseTick(st) {
       st.unity = c100((st.unity || 60) + 6);
       st.legacy.promisesKept++;
       addNews(st, 'Manifesto', POL[p.policy].name + ' commitment fulfilled', 'The party conference marks the promise as kept.', 'good');
-    } else if (st.turn > p.deadline) {
+    } else if (st.turn + 1 >= p.deadline) {
+      /* The session this tick is producing, not the one it is leaving. The card
+         says `deadline - turn` sessions and this decides when that runs out, so
+         the two have to be read against the same session or the card is a lie
+         by one. See the note in `v11ConTick`. */
       p.status = 'failed'; p.resolved = st.turn;
       st.unity = c100((st.unity || 60) - 8);
       st.legacy.promisesBroken++;
@@ -9436,7 +9440,12 @@ function respondInbox(id, choice) {
 
 function expireInbox(st) {
   st.inbox.slice().forEach(function (it) {
-    if (st.turn <= it.deadline) return;
+    /* A paper says "Reply by <the date of session `deadline`>", so it has to be
+       answerable ON that session and gone at its close. `politicsTick` runs
+       before `S.turn += 1`, so the session closing is `st.turn`, and asking for
+       `st.turn > it.deadline` gave the player a fourth session on a paper the
+       card dated to the third. */
+    if (st.turn < it.deadline) return;
     if (it.from) shiftPartyRel(st, it.from, -8);
     if (it.type === 'faction_demand') {
       var f = (st.factions[playParty(st)] || [])[it.faction || 0]; if (f) f.loyalty = c100(f.loyalty - 9);
@@ -9632,7 +9641,10 @@ function showDoctrineChoice() {
 
 function confirmEndTurn() {
   if (S.over || UI.busy) return;
-  var due = S.inbox.filter(function (i) { return i.deadline <= S.turn + 1; }).length;
+  /* `expireInbox` runs on the session that is closing, which is `S.turn`. This
+     asked one session ahead of it and warned about papers that had another
+     session to run. */
+  var due = S.inbox.filter(function (i) { return i.deadline <= S.turn; }).length;
   var bills = S.bills.length;
   var next = isBallotTurn(S.turn + 1) && electionsOn(S);
   showSheet('<div class="kicker">Close the Session</div><h2 id="sheetTitle">Advance to ' + esc(dateLabel(S.turn + 1)) + '?</h2>' +
@@ -17543,7 +17555,7 @@ function v6Advisors(st) {
   var treatyable = POWERS.filter(function (pw) { return !v.treaties[pw.id] && relOf(st, pw.id) >= 64; });
   if (treatyable.length && !st.war) out.push({ who:'Foreign Secretary', t:'Terms are available', p:treatyable.map(function (pw) { return pw.short; }).join(', ') + ' would sign. A trade agreement pays; a defence pact costs and protects.', calm:true, jump:'world' });
   if (st.ind.tension > 62 && !st.war) out.push({ who:'Foreign Secretary', t:'Tension at ' + Math.round(st.ind.tension), p:'An arms treaty, a summit, or a quieter frontier. The war roll is made every session.', urgent:st.ind.tension > 75, jump:'world' });
-  if (st.inbox.some(function (i) { return i.deadline <= st.turn + 1; })) out.push({ who:'Private Office', t:'Papers expire this session', p:st.inbox.filter(function (i) { return i.deadline <= st.turn + 1; }).length + ' paper' + (st.inbox.filter(function (i) { return i.deadline <= st.turn + 1; }).length === 1 ? '' : 's') + ' unanswered. Expiry is a decision with consequences.', urgent:false, jump:'parties' });
+  if (st.inbox.some(function (i) { return i.deadline <= st.turn; })) out.push({ who:'Private Office', t:'Papers expire this session', p:st.inbox.filter(function (i) { return i.deadline <= st.turn; }).length + ' paper' + (st.inbox.filter(function (i) { return i.deadline <= st.turn; }).length === 1 ? '' : 's') + ' unanswered. Expiry is a decision with consequences.', urgent:false, jump:'parties' });
   out.sort(function (a, b) { return (b.urgent ? 2 : (b.calm ? 0 : 1)) - (a.urgent ? 2 : (a.calm ? 0 : 1)); });
   if (!out.length) out.push({ who:'Cabinet Secretary', t:'Nothing is on fire', p:'The government has room to choose its own fight. That is rarer than it sounds.', calm:true, jump:'policy' });
   return out.slice(0, 4);
@@ -20853,7 +20865,7 @@ function v8CloseChecklist(st) {
   if (paused.length) out.push({ c:'warn', t:paused.map(function (w) { return w.name; }).join(', ') + ' suspended; the estimate rises while the site waits.' });
   var spend = v8WorksSpend(st), b = budget(st);
   if (spend > 0 && b.net < 0 && st.treasury < spend * 2) out.push({ c:'warn', t:'The works cost ' + fmc(spend) + ' a session against a treasury of ' + fm(st.treasury) + '. The Treasury suspends works when the money runs out.' });
-  var due = st.inbox.filter(function (i) { return i.deadline <= st.turn + 1; }).length;
+  var due = st.inbox.filter(function (i) { return i.deadline <= st.turn; }).length;
   if (due) out.push({ c:'warn', t:due + ' political paper' + (due === 1 ? '' : 's') + ' expire' + (due === 1 ? 's' : '') + ' with this session.' });
   if (power) { var weak = v8WeakBills(st); if (weak.length) out.push({ c:'warn', t:weak.length + ' government bill' + (weak.length === 1 ? '' : 's') + ' below the line: ' + weak.slice(0, 2).map(function (x) { return x.title; }).join('; ') + '.' }); }
   var pr = v.press; if (power && pr.briefed !== st.turn && st.capital >= cst(2)) out.push({ c:'', t:'The lobby has not been briefed this session.' });
@@ -28912,7 +28924,18 @@ function v11ConTick(st) {
      object before S15e, so an article could not be laid while another was
      waiting and there was nothing to iterate. */
   c.pending.slice().forEach(function (p) {
-    if (st.turn < p.due) return;
+    /* THE SESSION THIS TICK IS PRODUCING, not the one it is leaving. `endTurn`
+       runs `tickTurn` and only then does `S.turn += 1`, so a tick comparing
+       against `st.turn` is looking at the session the player has just finished.
+       An article laid in session 1 with `due = 3` therefore waited for a THIRD
+       End Session -- the card counted down 2, 1, 0 and the article carried on
+       the click after the zero.
+
+       The arc banner has always compensated for this in the other direction
+       (`a.due - S.turn + 1` at its two render sites) and the ballot counter is
+       right (`pv5SessionsToBallot` says two and takes two, measured). This was
+       the one clock in the game that said a number and charged one more. */
+    if (st.turn + 1 < p.due) return;
     var a = V11_ART[p.id];
     if (!a) { c.pending = c.pending.filter(function (x) { return x !== p; }); return; }
     var v = v11ArtVerdict(st, p);

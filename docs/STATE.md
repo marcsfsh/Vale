@@ -4,10 +4,127 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real** is **complete**: eleven PRs, #48 through #58. The
-prose pass and the slice close.
+**S16 — Somebody can stop you, and the other half of the game** is **open**.
+First of twelve PRs: **S16a — two sessions means two sessions**.
 
-### What the slice was
+### What the slice is
+
+The owner chose it from four options and added six requirements of their own.
+The two halves of the title are the survey's two largest findings — every power
+that is supposed to check a government is decorative, and **the seven-eighths of
+the game that is only reachable while you hold office** — and the owner's six
+are folded in beside them:
+
+| PR | what it is |
+|---|---|
+| **a** #60 | **two sessions means two sessions** — the amendment clock, and every other clock counted against the wrong session |
+| b | treaties are a relationship, not a slot: many at once, prerequisites, new kinds, and a reply the following turn |
+| c | the Foreign Office reaches every capital: the diplomacy actions the S10e powers never reached, and the leaves that cost capital and move nothing |
+| d | the court can stop you |
+| e | the street has leverage |
+| f | out of power is a place you play from |
+| g | an opposition deck, and `switchParty` retires |
+| h | the six act: doctrine, memory and initiative for the parties that are not yours |
+| i | the custom start — a scenario editor over the constitution, the statute book, every chamber, the powers and the standings |
+| j | the long deck folds, and focus survives |
+| k | contrast and the thumb |
+| l | the prose pass and the slice close |
+
+### S16a — two sessions means two sessions
+
+The owner reported it exactly: *"if I put forward an amendment, assuming it
+clears everything necessary, then clicking End Session twice means that upon the
+second click is when the article is adopted"* — and it did not. It wanted three.
+
+**One line of arithmetic, four clocks.** `endTurn` runs `tickTurn`,
+`politicsTick` and `v6ExtraEvents` and only **then** does `S.turn += 1`. So a
+tick that compares against `st.turn` is standing in the session the player has
+just *finished*, not the one the click is *producing* — and every clock written
+that way charges one more session than its card prints. Measured, all six:
+
+| clock | the card says | it took | now |
+|---|---|---|---|
+| an article, before the Assembly | 2 | **3** | 2 |
+| an article, by plebiscite | 1 | **2** | 1 |
+| a crisis arc's next dispatch | 3 | 3 | 3 |
+| sessions to the federal ballot | 2 | 2 | 2 |
+| a manifesto commitment | 8 | **10** | 8 |
+| a political paper | dated to a session | **a session past it** | on the date |
+
+The two that were already right are the reason the other four looked
+deliberate. The arc banner prints `a.due - S.turn + 1` at both its render sites
+— the `+ 1` is precisely this compensation, applied once, in one subsystem, in
+2023 — and `pv5SessionsToBallot` reads `nextBallot(st.turn) - st.turn` against a
+comparison in the queue *after* the increment, so it never had the problem.
+
+The fix is the same shape in all four: ask about `st.turn + 1`, the session the
+click is producing. The manifesto was off by **two** because it used a strict
+`>` on top of the wrong session. The political paper is a different case in the
+same family: its card names a **date**, not a count, so it must be answerable
+**on** the session it names and gone at that session's close — it stayed a
+fourth session, and the three "papers expire with this session" warnings fired
+a session early to match.
+
+Two of these change durations by a session: a manifesto commitment now runs the
+eight sessions its card promises rather than nine, and a political paper the
+three its date promises rather than four. Both are the printed number winning
+over the arithmetic, which is the point of the PR, but they are duration changes
+and they are recorded here for the owner.
+
+**The arc is unchanged, and the single-seed reading that says otherwise is a
+re-rolled stream.** `tools/pacing.js` on the one seat it is usually run from
+(`5EED1234`) shows 4 elections won and 10 years governing becoming 6 and 14,
+which looks like a lift. It is not: moving when a tick fires shifts the seeded
+stream and a first-choice-always harness then plays a *different* campaign, not
+a better one. Six seeds, short, both builds:
+
+| | 5EED1234 | A1B2C3D4 | 00C0FFEE | DEADBEEF | 12345678 | 0BADCAFE | mean |
+|---|---|---|---|---|---|---|---|
+| elections won, before | 4 | 8 | 4 | 13 | 5 | 3 | **6.2** |
+| elections won, after | 6 | 10 | 3 | 5 | 6 | 3 | **5.5** |
+| years governing, before | 10 | 30 | 10 | 36 | 12 | 10 | **18.0** |
+| years governing, after | 14 | 28 | 10 | 14 | 14 | 10 | **15.0** |
+| records earned, before | 8 | 9 | 9 | 8 | 9 | 9 | **52/264** |
+| records earned, after | 8 | 9 | 8 | 9 | 9 | 8 | **51/264** |
+
+Both means fall slightly and every value stays inside the seed-to-seed spread of
+the build before the PR (10 to 36 years governing on one length). The lesson is
+about the instrument as much as the change: **a pacing figure from one seed
+cannot tell a balance change from a reshuffle**, and any PR that moves when a
+die is drawn has to be read across seeds.
+
+**The assertion.** `roads.js` gains *every session clock charges what it prints*
+— all six driven through the model in `endTurn`'s own order rather than through
+the UI, per the determinism rule, because which sheets a click pumps depends on
+timing but which session a tick is standing in does not. It reddens against the
+build before this PR naming all four:
+
+```
+FAIL  every session clock charges what it prints
+      ... says 2, takes 3 · says 1, takes 2 · says 8, takes 10 · says 3, takes 4
+      DISAGREE: article before the Assembly, article by plebiscite,
+                manifesto commitment, political paper
+```
+
+```
+ALL CHECKS PASS   11/11, 3,175,227 bytes, +1,557 since HEAD of 250,000
+ROADS OK          157 assertions
+PLAYTEST PASS     51 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+PACING            measured across six seeds; unchanged within the spread
+```
+
+Next: **S16b**, treaties. Measured on this branch: `st.v6.treaties[powerId]` is
+**one slot per power** — `{kind, since}` — so signing a second *replaces* the
+first, ten kinds are offered at a relation of 95 with **no prerequisite between
+any of them**, nothing stops a swap back and forth inside one session, and a
+treaty is signed **instantly** with no reply from the capital. Four of the ten
+kinds (`transit`, `science`, `labour`, `extradition`) have no branch anywhere in
+the tick, and five can never lapse.
+
+Previously: **S15 — The regime is real**, complete: eleven PRs, #48 through #58.
+
+### What S15 was
 
 The owner played a campaign and found the authority mechanics decorative:
 abolish the National Assembly and your bills still spend a session passing
@@ -88,8 +205,8 @@ CORPORA OK        548 pieces, 230 distinct names
 TIERS / TABS / CHAMBER   all green
 ```
 
-Next: the owner's ruling. Three numbers this slice moved are recorded in the
-open items below with the tool that re-runs each, and nothing else is queued.
+S15's own next was the owner's ruling. Three numbers it moved are recorded in
+the open items below with the tool that re-runs each.
 
 Previously: **S15 — The regime is real**, tenth of eleven PRs. The Northern
 Alliance is a set of members, and the statute that expands it expands it.
@@ -3299,6 +3416,7 @@ ratchet 10 → 5, which is now its true floor.
 | S15i executive offices and persons | **merged** (#56) | the office was won by a PARTY -- vote share, a push keyed on `st.ruling`, noise, and a flat 1.18 -- and a person was minted afterwards by holderOf and thrown away when the party changed; a bench of 19 named people from the ministry, the states, the leadership and the office, a nomination the player can name, terms that accumulate on the person, an article of the limited term that finally limits one, an ambitious minister who leaves the cabinet to take a great office and runners-up who remember; and no die rolled anywhere in it, because the panel previews the nomination on the render path |
 | S15j the Northern Alliance | **merged** (#57) | one relation number on a power row, and a statute whose id appeared once in three megabytes; a membership set, an accession that spends a die at odds printed before the player spends, members that are never the country Vale fights and that come in when it does, the Foreign Office's four target lists rebuilt from six capitals to eleven (they were built at the moment the ACTIONS literal was evaluated, before the S10e push), five cards that named the Alliance and moved nothing, and a treaty action that produced no treaty |
 | S15k the prose pass and the close | **merged** (#58) | `rungs.js --corpora`: the 60 measures, 90 orders and 80 articles held to the statute book's own house style, 548 pieces across 230 distinct names, failing on a breach -- it found three, a curly apostrophe and two em dashes in the order book; S15 itself added two em dashes across ten PRs, one in a comment and one in a panel note; the punctuation residue in the rest of the file measured, classified and REPORTED rather than repaired (32 in-sentence uses, 22 of them Question Time, none of them S15's); one flaky assertion turned from a point estimate into a property; AGREEMENT, MAP, STATE and CLAUDE.md brought up to date |
+| S16a two sessions means two sessions | **merged** (#60) | `endTurn` runs every tick and only THEN does `S.turn += 1`, so a tick comparing against `st.turn` stands in the session the click is leaving rather than the one it is producing; four of the game's six session clocks were counted that way -- an article that said two sessions wanted three End Session clicks, a plebiscite that said one wanted two, a manifesto commitment dated eight sessions out survived ten, and a political paper stayed answerable a session past the date printed on it, with its three expiry warnings firing a session early to match; the arc banner's `+ 1` and the ballot counter were the two that were already right, which is what made the other four look deliberate; `roads.js` measures all six through the model in endTurn's own order and names the four that disagreed |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts

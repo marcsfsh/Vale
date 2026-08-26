@@ -3800,6 +3800,119 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `from four to seventy-two is what made it likely · a card with no answers is now skipped rather than fatal ` +
     `(${dispatch.guardCleared})`);
 
+  /* S16a -- A CLOCK THAT SAYS A NUMBER CHARGES THAT NUMBER. `endTurn` runs
+     `tickTurn`, `politicsTick` and `v6ExtraEvents` and only THEN does
+     `S.turn += 1`, so a tick that compares against `st.turn` is looking at the
+     session the player has just finished, not the one the click is producing.
+     Four of the six clocks in the game were counted against the wrong session:
+     an article laid "in 2 sessions" wanted three End Session clicks, a
+     plebiscite two, a manifesto commitment dated eight sessions out survived
+     ten, and a political paper stayed answerable a session past the date
+     printed on it. The arc banner (`a.due - S.turn + 1`) and the ballot counter
+     were already right, which is what made the other four look deliberate.
+
+     This drives the model in `endTurn`'s own order rather than the UI, per the
+     determinism rule: which sheets a click pumps depends on timing, but which
+     session a tick is standing in does not. Fixtures are named, never taken by
+     position. */
+  const clocks = await page.evaluate(() => {
+    const rows = [];
+    const fresh = () => {
+      S = enrichState(v6NewGame('easy', 'v6default', 'standard', 'lp'), false);
+      S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me]; S.capital = 900; S.treasury = 3000;
+      PARTIES.forEach(p => { S.partyRel[p.id] = 95; });
+      S.seats[me] = Math.floor(CFG.seats * .9);
+      PARTIES.forEach(p => { if (p.id !== me) S.seats[p.id] = Math.floor(CFG.seats * .1 / 6); });
+    };
+    const click = () => {
+      tickTurn(S);
+      politicsTick(S);
+      const fired = (typeof v6ExtraEvents === 'function') ? v6ExtraEvents(S) : [];
+      S.turn += 1;
+      return fired;
+    };
+    const ART = 'artQuorum';
+
+    /* 1. an article laid before the Assembly */
+    fresh();
+    let c = v11Con(S); c.pending = []; c.arts = {}; c.order = []; c.failed = {};
+    v11ProposeArticle(ART, false, 'assembly');
+    let card = c.pending.length ? Math.max(0, c.pending[0].due - S.turn) : null, took = null;
+    for (let i = 1; i <= 8; i++) { click(); if (c.arts[ART]) { took = i; break; } }
+    rows.push({ clock: 'article, before the Assembly', card: card, took: took });
+
+    /* 2. the same article by plebiscite -- one session, and open under a form
+       with no elections, which is the whole point of a plebiscite */
+    fresh();
+    c = v11Con(S); c.pending = []; c.arts = {}; c.order = []; c.failed = {};
+    S.ind.liberties = 95;
+    PARTIES.forEach(p => { S.partyRel[p.id] = 99; });
+    BLOCS.forEach(x => { S.blocs[x.id] = 92; });
+    v11ProposeArticle(ART, false, 'plebiscite');
+    card = c.pending.length ? Math.max(0, c.pending[0].due - S.turn) : null; took = null;
+    for (let i = 1; i <= 8; i++) { click(); if (!c.pending.length) { took = i; break; } }
+    rows.push({ clock: 'article, by plebiscite', card: card, took: took });
+
+    /* 3. a crisis arc's next dispatch. The banner prints due - turn + 1 and
+       `v6ExtraEvents` fires at due <= turn: the +1 is the compensation the
+       other clocks were missing. */
+    fresh();
+    S.v6.arcs = { active: { id: 'capitalCapture', phase: V6_ARC.capitalCapture.phases[0].id,
+      started: S.turn, due: S.turn + 2, vars: {} }, done: {}, count: 0, cooldown: S.turn };
+    card = S.v6.arcs.active.due - S.turn + 1; took = null;
+    for (let i = 1; i <= 8; i++) {
+      if (click().some(e => String(e.id).indexOf('v6arc:') === 0)) { took = i; break; }
+    }
+    rows.push({ clock: "arc's next dispatch", card: card, took: took });
+
+    /* 4. sessions to the federal ballot */
+    fresh();
+    card = pv5SessionsToBallot(S); took = null;
+    for (let i = 1; i <= 12; i++) { click(); if (electionsOn(S) && isBallotTurn(S.turn)) { took = i; break; } }
+    rows.push({ clock: 'sessions to the ballot', card: card, took: took });
+
+    /* 5. a manifesto commitment. `promiseTick` refreshes the whole manifesto
+       the moment none is active, so the failure is read off the record. */
+    fresh();
+    S.promises = [{ id: 'S16a-0', party: playParty(S), policy: 'unionRights', target: 99,
+      made: S.turn, deadline: S.turn + 8, status: 'active', reward: 4 }];
+    card = Math.max(0, S.promises[0].deadline - S.turn); took = null;
+    const broke0 = S.legacy.promisesBroken;
+    for (let i = 1; i <= 14; i++) { click(); if (S.legacy.promisesBroken > broke0) { took = i; break; } }
+    rows.push({ clock: 'manifesto commitment', card: card, took: took });
+
+    /* 6. a political paper. Its card names a DATE, not a count, so the test is
+       that it is answerable ON the session it names and gone at that close. */
+    fresh();
+    S.inbox = [];
+    addInbox(S, { type: 'faction_demand', title: 'A paper for the clock', from: null,
+      body: 'x', faction: 0, opts: [{ id: 'a', label: 'Yes' }] });
+    const paper = S.inbox[0], dated = paper.deadline;
+    card = dated - S.turn + 1; took = null;
+    let onDated = null;
+    for (let i = 1; i <= 8; i++) {
+      if (onDated === null && S.turn === dated) onDated = S.inbox.indexOf(paper) >= 0;
+      click();
+      if (S.inbox.indexOf(paper) < 0) { took = i; break; }
+    }
+    rows.push({ clock: 'political paper', card: card, took: took, onDated: onDated });
+
+    return rows;
+  });
+
+  const clockBad = clocks.filter(r => r.card === null || r.took === null || r.card !== r.took);
+  const clockPaper = clocks.filter(r => r.clock === 'political paper')[0];
+  say(clockBad.length === 0 && clockPaper && clockPaper.onDated === true,
+    'every session clock charges what it prints',
+    `${clocks.length} clocks measured against endTurn's own order (tick, then turn += 1): ` +
+    clocks.map(r => `${r.clock} says ${r.card}, takes ${r.took}`).join(' · ') +
+    ` · a political paper is still answerable on the session its card dates it to (${clockPaper && clockPaper.onDated})` +
+    (clockBad.length ? ` · DISAGREE: ${clockBad.map(r => r.clock).join(', ')}` : '') +
+    ` · before S16a four of these were counted against the session the click was leaving rather than the one it ` +
+    `was producing, so an amendment that said two sessions wanted three End Session clicks`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

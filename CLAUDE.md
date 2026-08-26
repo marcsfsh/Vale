@@ -44,6 +44,12 @@ before touching the file.
   call the unseeded source, and never name a local `seed` inside `newGame` —
   `var` hoists to the top of the function and one already shadowed the campaign
   seed, so the state literal was built with `seed: undefined`.
+- **A countdown that resolves in a tick asks about `st.turn + 1`.** `endTurn`
+  runs every tick and only *then* does `S.turn += 1`, so inside one `st.turn` is
+  the session the click is **leaving**, not the one it is producing. Four of the
+  six session clocks were counted against `st.turn` and each charged one End
+  Session click more than its card printed — the amendment clock said two and
+  took three. `roads.js` holds all six.
 - **Never set `fill` on a bare `text` selector in a chart's stylesheet.** A CSS
   fill beats an SVG presentation attribute and silently greys out every label
   the chart colours by attribute.
@@ -68,11 +74,13 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **155 content assertions**, the largest harness here: the
+- `tools/roads.js` — **157 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
-  exists, that every one of the 582 statutes carries four distinct rungs, and
-  that no number went bad on any of it. Run it after any content change.
+  exists, that every one of the 582 statutes carries four distinct rungs, that
+  every clock printing a session count charges exactly that many End Session
+  clicks, and that no number went bad on any of it. Run it after any content
+  change.
 - `tools/determinism.js` — seven properties of the seeded dice. Drive the model,
   not the modal queue: which queued sheets a UI run pumps depends on click
   timing, so a UI-level comparison measures the harness, not the game.

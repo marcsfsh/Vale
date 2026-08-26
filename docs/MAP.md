@@ -280,6 +280,40 @@ hideSheet wrapper) → `render` (v9→v8→v7→mobile→v6 full redraw; v6's bo
 full rewrite that redraws `#stats`+`#tabs`+active view via innerHTML, then
 `wire()` re-binds).
 
+### Every tick stands in the session the click is LEAVING (S16a)
+
+Read the chain above: **`S.turn += 1` comes last**, after `tickTurn`,
+`politicsTick` and `v6ExtraEvents`. So inside any of them `st.turn` is the
+session the player has just *finished*, not the one the click is *producing*. A
+clock that prints `due - st.turn` on the card and then resolves on
+`st.turn >= due` in a tick is therefore reading the two numbers against
+**different sessions**, and charges one more End Session click than it printed.
+
+Four of the game's six session clocks were written that way. The rule now, for
+every countdown that lands in a tick:
+
+> **Ask about `st.turn + 1`.** That is the session the click is producing, and
+> it is the session the card was rendered against.
+
+| clock | where it resolves | reads |
+|---|---|---|
+| an article before the chambers or the country | `v11ConTick` | `st.turn + 1 < p.due` → wait |
+| a manifesto commitment | `promiseTick` | `st.turn + 1 >= p.deadline` → failed |
+| a crisis arc's next dispatch | `v6ExtraEvents` | `a.due <= st.turn`, and the banner prints `a.due - S.turn + 1` — the same compensation, spelt on the render side |
+| sessions to the federal ballot | `runQueue`'s done callback | `isBallotTurn(S.turn)` *after* the increment, so `pv5SessionsToBallot` never had the problem |
+
+A **political paper** is the odd one and worth knowing about: its card names a
+**date** (`Reply by <dateLabel(it.deadline)>`), not a count. It must be
+answerable **on** the session it names and gone at that session's close, so
+`expireInbox` reads `st.turn < it.deadline` → keep, and the three "papers expire
+with this session" warnings read `deadline <= st.turn` rather than
+`<= st.turn + 1`.
+
+`tools/roads.js` holds all six under *every session clock charges what it
+prints*, driving the model in `endTurn`'s own order rather than the UI — which
+sheets a click pumps depends on timing, which session a tick is standing in does
+not.
+
 The **closing branch** (`S.turn > lastTurn()`) calls `v6BankSession(S)` — the
 shared bank-the-dying-session helper defined beside `endTurn` — then
 `finish()`→`gameOver` (v8 hall→v6 grades→v4 sets `S.over`), and returns.
@@ -918,6 +952,11 @@ article-shaped is dropped and COUNTED rather than guessed at. The wrap lives in
 |---|---|---|---|
 | `assembly` | 2, or **1 while a convention sits** | the chambers, then the Senate | the chambers sit |
 | `plebiscite` | **1** | the country | always, including under a form with no elections |
+
+**Two sessions is two End Session clicks (S16a).** `v11ConTick` waits on
+`st.turn + 1 < p.due`, not `st.turn < p.due` — see *Every tick stands in the
+session the click is LEAVING* under the turn loop. Until then the card counted
+down 2, 1, 0 and the article carried on the click *after* the zero.
 
 `v11ArtVerdict(st, p)` is the one place that answers what an article is decided
 on. The plebiscite **replaces** the chamber test: before S15e `a.referendum`
