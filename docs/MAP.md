@@ -918,13 +918,28 @@ ladder as `lin`, and expands four channels into five rows each:
   BY POSITION and reads EXACTLY THREE choices, so a paper with two or four
   loses a button silently; `roads.js` refuses one. Papers are written, not
   templated: a `{placeholder}` in a title or body is a defect, not a feature.
-- **The order book is SEVENTY-TWO and registration order is load-bearing**
-  (S11b). The thirty-six added carry **no `needs` and no `req`** — the owner's
-  ruling — and are registered **after** the original thirty-six because
-  `roads.js` (:434, :448, :458) and `playtest.js` (:552) all probe
-  `V10_ORDERS.filter(x => !x.target && !x.needs && x.ind)[0]`, which is
-  positional. An ungated order registered first silently becomes the probe and
-  four assertions quietly start measuring something else.
+- **The order book is NINETY, uncapped, and entirely national** (S11b, S15b).
+  There is **no limit on standing orders**. `v10OrderMax` was `var n = 4` with
+  two-slot bonuses, read in three places and asserted by no harness; because the
+  check ran before cost and independently of target, and every card calls
+  `v10OrderOpen`, a government at four had every button on all 72 cards disabled
+  and the same refusal printed 72 times. What limits the book now is what always
+  should have: **every order in force charges its upkeep against `capitalIncome`
+  every session it stands.** Sixty ungated national orders signed at once cost
+  20.5 capital a session, and the arithmetic says no long before a number does.
+  **No order names a state.** Thirteen made the player pick one and delivered a
+  regional payload there; twelve of the thirteen already carried national `ind`
+  and `mood` on top, so the target was the smaller half of what they did. They
+  carry `nationEff` now, which is `regionEff` for an order that names nothing:
+  the drift reaches every region at a fifth of what the concentrated version put
+  in one. `target` survives for **power** (11 orders) and **work** (1), because
+  a foreign power is a different axis from a state.
+  The thirty-six S11b added carry **no `needs` and no `req`** — the owner's
+  ruling — and are registered **after** the original thirty-six because the
+  harness probes used to be positional. They are named through `pick()` since
+  S14b, and `pick` earned its keep the first time this book was touched: it
+  named `disperseAgencies` as having lost the property it was chosen for
+  instead of silently measuring a different order.
   **`O()`'s `req` default (:20352) is load-bearing**: `v10OrderOpen` calls
   `o.req(st)` **unguarded**, so implementing a gate means writing a `req`,
   never removing the default. The panel carries a filter chip strip — the
@@ -941,6 +956,26 @@ ladder as `lin`, and expands four channels into five rows each:
   the line against the 72 `ACTIONS`); and it LAPSES when you lose the
   department that signed it (the line against the 23 `EXTRA`, which are
   permanent). A candidate that fails any of the three is a reskin.
+- **`m.book` is what an order does to the ORDER BOOK** (S15b). The whole
+  "Orders about orders" category — five cards promising expiry, a pre-ballot
+  bar, a week on the table, an Attorney's opinion and a printed register —
+  delivered `ind`, `mood`, `delivery` and `polCost` like any other order and
+  touched the book nowhere. Four fields now: `expire` (an order is stamped when
+  signed, so a rule arriving late does not retroactively kill the standing book
+  and a rule that is revoked does not resurrect what it stamped), `lay` (a new
+  order waits on the table, and with the Assembly abolished there is no table so
+  it does not), `preBallot`, and `review` (the register raises what the court
+  sees of the book and the Attorney's opinion lowers it, and they compound).
+  **Both self-applying rules apply to themselves**, because the record is
+  written before the book is read.
+- **`onIssue` / `onRevoke` is the hatch out of the fifteen fields.** The engine
+  has called it at four sites since S10c and no order defined it until S15b.
+  Three do: `decreeMachinery` and `loyaltyOath` raise `decreeFavour`, and
+  `standingConvocation` raises `councilFavour` and lowers `decreeFavour` — the
+  first time an order has reached anything outside its own aggregate fields, and
+  it reaches the S15a chamber model. An `onIssue` that moves a STOCK does not
+  reverse: `loyaltyOath`'s purge is one, and its card says so in the last
+  sentence rather than leaving a modifier quietly behind.
 - **Standing effects bend TARGETS, never stocks.** `tickTurn` moves each
   indicator a quarter of the way toward `indicatorTargets(st)` per session, so
   an order in force shifts the target and the country drifts; revoke it and

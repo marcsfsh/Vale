@@ -8966,14 +8966,29 @@ function upperState(st) {
    real gradient, not a rubber stamp with the word "almost" in front of it: at
    army 30, unity 30 and crown 20 it reads 42 against a bar of 50. */
 function councilFavour(st) {
-  return clamp(18 + (st.armyLoyalty || 50) * .42 + (st.unity || 60) * .26 +
-    (st.crown || 50) * .16, 20, 97);
+  var v = 18 + (st.armyLoyalty || 50) * .42 + (st.unity || 60) * .26 + (st.crown || 50) * .16;
+  /* S15b: the order book reaches the chamber model. A standing convocation
+     makes a suspended house behave like a chamber -- readier to sit, and
+     readier to refuse. */
+  if (st.v10 && st.v10.convocation) v += 10;
+  return clamp(v, 20, 97);
 }
 /* A decree still has to be carried out. There is no chamber to convince, so it
    starts higher -- but the apparatus can refuse a government the army, the
    party and the states have stopped believing in, and when it refuses the
    statute does not enter the book. */
-function decreeFavour(st) { return clamp(councilFavour(st) + 8, 20, 99); }
+function decreeFavour(st) {
+  var v = councilFavour(st) + 8;
+  /* S15b: and the machinery of the decree, which names a man in every
+     department who answers for carrying one out, makes the apparatus likelier
+     to do so. The oath is a smaller version of the same thing. A standing
+     convocation pulls the other way, and its bonus to councilFavour above is
+     already inside this figure, so the net is what the two cards imply. */
+  if (st.v10 && st.v10.decreeShield) v += 9;
+  if (st.v10 && st.v10.oathSworn) v += 5;
+  if (st.v10 && st.v10.convocation) v -= 22;
+  return clamp(v, 20, 99);
+}
 /* The rungs this constitution actually has. The bill card drew four fixed pips
    and one of them, `assent`, has never lit in the file's history. */
 function billLadder(st) {
@@ -17269,6 +17284,17 @@ function v7Index() {
   EXTRA.forEach(function (x) { out.push({ kind:'Extraordinary', name:x.name, text:x.desc + ' extraordinary measure ' + v7FieldWords('', x.eff, x.mood), key:'extra:' + x.id, sel:'[data-extra="' + x.id + '"]', note:'Tier ' + x.tier + ', ' + cst(x.cost) + ' capital' }); });
   PV5_INTERESTS.forEach(function (g) { out.push({ kind:'Interest', name:g.name, text:g.note + ' ' + g.kind, tab:'interests', sel:'[data-interest="' + g.id + '"]', note:g.kind + ' · relationship ' + Math.round(S.interests[g.id].relation) }); });
   PV5_COMMITTEES.forEach(function (c) { out.push({ kind:'Committee', name:c.name, text:(c.brief || '') + ' committee', tab:'houses', sel:'[data-committee="' + c.id + '"]', note:'Standing committee' }); });
+  /* S15: seventy-two orders were unsearchable. The palette indexed Actions,
+     Measures, Acts, Extraordinary measures, Programmes, Committees, Ministries,
+     Regions, Parties and Powers, and the largest registry added since S10 was
+     not among them. */
+  if (typeof V10_ORDERS !== 'undefined') V10_ORDERS.forEach(function (o) {
+    if (!v10OrderShown(o)) return;
+    var rec = v10OrderRec(S, o.id);
+    out.push({ kind:'Order', name:o.name, text:o.blurb + ' ' + o.cat + ' ' + DEPTS[o.dept].name + ' executive order directive',
+      tab:'exec', sel:'[data-orderid="' + o.id + '"]',
+      note:(rec && rec.status === 'inforce' ? 'In force · ' : (rec && rec.status === 'laid' ? 'On the table · ' : '')) + o.cat });
+  });
   pv5PortfolioRows().forEach(function (r) { var m = S.ministers[r.key]; out.push({ kind:'Ministry', name:r.title, text:(m ? m.name : 'vacant') + ' ' + DEPTS[r.office].name + ' minister cabinet', tab:'government', sel:'[data-minister="' + r.key + '"],[data-appoint="' + r.key + '"]', note:m ? m.name + ', ' + PARTY[m.party].short : 'Vacant' }); });
   [['Last session\'s Gazette', 'gazette', 'report newspaper session'], ['Field guide', 'help', 'help how to play rules'], ['Save, export or restore', 'save', 'load export json file'], ['Begin a new government', 'new', 'restart new game start screen']].forEach(function (c) { out.push({ kind:'Menu', name:c[0], text:c[2], cmd:c[1] }); });
   return out;
@@ -24203,20 +24229,33 @@ function v10OrderCount(st) { return v10OrdersInForce(st).length; }
 /* How many orders a government can have standing at once. An executive that
    rules by decree can hold more of them; one that has lost its departments
    holds fewer. */
-function v10OrderMax(st) {
-  var n = 4;
-  if (st.doctrine === 'executive') n += 2;
-  if (!FORMS[st.form].elections) n += 2;
-  if (FORMS[st.form].terminal) n += 2;
-  return n;
-}
+/* S15: THE CAP IS GONE. It was `var n = 4` with two-slot bonuses, read in three
+   places and asserted by no harness, and because the check was
+   target-independent and v10OrderCard calls v10OrderOpen for every card, a
+   government at four standing orders had every button on all 72 cards disabled
+   and the same refusal printed 72 times. The book looked broken rather than
+   full.
+
+   Nothing replaces it, because something already did the job: every order in
+   force charges its upkeep against capitalIncome every session it stands. A
+   government that signs twenty is paying for twenty, and the arithmetic says no
+   long before an arbitrary number does. The brake is a price, which the player
+   can see and weigh, rather than a wall. */
+function v10OrderUpkeep(st) { return v10OrderMods(st).upkeep || 0; }
 
 /* THE MODIFIER LAYER. Pure: it builds a fresh object from the orders in force
    and is CONSULTED, never accumulated. Recomputing rather than accruing is
    what makes revocation exact and an old save correct. */
 function v10OrderMods(st) {
+  /* S15: `book` is what an order does to the ORDER BOOK. The whole "Orders
+     about orders" category -- five cards promising expiry, a pre-ballot bar,
+     a week on the table, an Attorney's opinion and a printed register --
+     delivered ind, mood, delivery and polCost like any other order and touched
+     the book itself nowhere. Five cards saying a thing the model did not do,
+     in the one category whose entire subject is the model. */
   var m = { ind:{}, mood:{}, exp:0, rev:0, upkeep:0, delivery:0, polCost:{}, salience:{},
-    regions:{}, powers:{}, works:0, courtHeat:0, unrest:0, crown:0, army:0 };
+    regions:{}, powers:{}, works:0, courtHeat:0, unrest:0, crown:0, army:0,
+    book:{ expire:0, lay:0, preBallot:false, review:1 } };
   if (!st || !st.v10 || !st.v10.orders) return m;
   var reg = st.v10.orders;
   for (var key in reg) {
@@ -24246,7 +24285,30 @@ function v10OrderMods(st) {
     for (k in ((o.mods && o.mods.polCost) || {})) m.polCost[k] = (m.polCost[k] || 1) * (1 + (o.mods.polCost[k] - 1) * g);
     for (k in (o.salience || {})) m.salience[k] = (m.salience[k] || 0) + o.salience[k] * g;
     if (tgt && o.regionEff) { m.regions[tgt] = m.regions[tgt] || {}; for (k in o.regionEff) m.regions[tgt][k] = (m.regions[tgt][k] || 0) + o.regionEff[k] * g; }
+    /* S15: nationEff is regionEff for an order that names no region. Thirteen
+       orders made the player pick a state and then delivered their regional
+       payload to that one place; twelve of them already carried national ind
+       and mood on top, so the target was the smaller half of what they did.
+       They are national now, and the drift reaches every region at a fifth of
+       what the concentrated version put in one -- eight fifths of the old
+       total, spread, which is what a national order should be against a
+       regional one at the same upkeep. */
+    if (o.nationEff) {
+      REGIONS.forEach(function (r) {
+        m.regions[r.id] = m.regions[r.id] || {};
+        for (var nk in o.nationEff) m.regions[r.id][nk] = (m.regions[r.id][nk] || 0) + o.nationEff[nk] * g;
+      });
+    }
     if (tgt && o.powerEff) { m.powers[tgt] = (m.powers[tgt] || 0) + o.powerEff * g; }
+    if (o.book) {
+      /* the shortest expiry wins, the longest lay wins, any bar is a bar, and
+         the review multipliers compound -- the register exposes the book and
+         the Attorney's opinion shields it, so holding both is close to neither */
+      if (o.book.expire) m.book.expire = m.book.expire ? Math.min(m.book.expire, o.book.expire) : o.book.expire;
+      if (o.book.lay) m.book.lay = Math.max(m.book.lay, o.book.lay);
+      if (o.book.preBallot) m.book.preBallot = true;
+      if (o.book.review) m.book.review *= o.book.review;
+    }
   }
   return m;
 }
@@ -24328,8 +24390,12 @@ policyCost = function (id, dir) {
 function v10OrderOpen(st, o, target) {
   if (!inPower(st)) return 'Only a government issues orders.';
   if (!holdsDept(st, o.dept)) return DEPTS[o.dept].name + ' is in other hands.';
+  /* S15: "In the session before a general ballot this executive signs nothing
+     new." It now signs nothing new. */
+  if (v10OrderMods(st).book.preBallot && electionsOn(st) && nextBallot(st.turn) - st.turn <= 1) {
+    return 'This executive signs nothing new in the session before a ballot. That is its own standing order.';
+  }
   if (v10OrderRec(st, v10OrderKey(o.id, target))) return 'That order already stands.';
-  if (v10OrderCount(st) >= v10OrderMax(st)) return 'The government already has ' + v10OrderMax(st) + ' orders standing. Revoke one first.';
   if (o.needs && !(st.pol[o.needs] > 0)) return 'Requires ' + POL[o.needs].name + '. An order cannot outrun its own statute book.';
   if (!o.req(st)) return o.reqText ? 'Requires ' + o.reqText + '.' : 'Not available now.';
   if (st.v10 && st.v10.orderTurn && st.v10.orderTurn[v10OrderKey(o.id, target)] === st.turn) return 'That order has already moved this session.';
@@ -24344,7 +24410,16 @@ function v10IssueOrder(id, target) {
   captureUndo('Issue ' + o.name);
   S.capital -= cost;
   var key = v10OrderKey(o.id, target);
+  /* S15: the book's own rules, applied to the thing being signed -- INCLUDING
+     when the thing being signed is the rule. "No direction of this executive is
+     to stand beyond its second session" means no direction, so the record goes
+     in first and the book is read with it already there. A week on the table
+     needs a table: with no Assembly there is nowhere to lay it, so the delay
+     does not apply and the card says so rather than pretending. */
   v10Orders(S)[key] = { status:'inforce', issued:S.turn, dept:o.dept, target:target || null };
+  var bk = v10OrderMods(S).book, rec15 = v10Orders(S)[key];
+  if (bk.expire) rec15.expires = S.turn + bk.expire;
+  if (bk.lay > 0 && lowerState(S) !== 'abolished') { rec15.status = 'laid'; rec15.due = S.turn + bk.lay; }
   S.v10.orderTurn = S.v10.orderTurn || {}; S.v10.orderTurn[key] = S.turn;
   /* S11b: this map was written on every issue and never pruned, so a long
      campaign carried a stamp for every order it had ever signed. Only the
@@ -24400,13 +24475,32 @@ function v10OrdersTick(st) {
 
   /* an order lapses when the department that issued it changes hands. This is
      the whole reason an order is not a statute. */
-  var lapsed = [];
+  /* S15: an order laid before the House takes effect when its week is up. */
+  for (k in reg) {
+    if (reg[k] && reg[k].status === 'laid' && st.turn >= reg[k].due) {
+      reg[k].status = 'inforce';
+      var lo = v10OrderOf(k);
+      logIt(st, (lo ? lo.name : 'An order') + ' has lain its week on the table and takes effect.');
+    }
+  }
+  var lapsed = [], expired = [];
   for (k in reg) {
     var rec = reg[k]; if (!rec || rec.status !== 'inforce') continue;
     var o = v10OrderOf(k); if (!o) { delete reg[k]; continue; }
     if (!holdsDept(st, rec.dept || o.dept)) { lapsed.push(k); continue; }
     if (o.req && !o.req(st)) { lapsed.push(k); continue; }
+    /* S15: and it dies of its own accord unless a minister signs it again. The
+       expiry stamp is written when the order is signed, so an expiry rule that
+       arrives later does not retroactively kill the standing book, and one that
+       is revoked does not resurrect what it already stamped. */
+    if (rec.expires && st.turn >= rec.expires) { expired.push(k); continue; }
   }
+  expired.forEach(function (key) {
+    var o = v10OrderOf(key), target = v10OrderTargetOf(key);
+    delete reg[key];
+    if (o && o.onRevoke) o.onRevoke(st, target);
+    logIt(st, v10OrderTitle(o, target) + ' expired. Nobody signed it again, and it died of its own accord.');
+  });
   lapsed.forEach(function (key) {
     var o = v10OrderOf(key), target = v10OrderTargetOf(key);
     delete reg[key];
@@ -24440,7 +24534,10 @@ function v10OrderReview(st) {
   live.forEach(function (k) {
     var o = v10OrderOf(k); if (!o) return;
     var rec = st.v10.orders[k] || {};
-    var x = (o.exposure || 0) * (1 + Math.max(0, gap - .5));
+    /* S15: book.review is the register raising the court's sight of the book
+       and the Attorney's opinion lowering it. Both cards claimed to govern how
+       an order stands in law and neither reached this line. */
+    var x = (o.exposure || 0) * (1 + Math.max(0, gap - .5)) * (v10OrderMods(st).book.review || 1);
     /* settled law: an order the court has already upheld is a quarter as
        exposed, and one it narrowed is delivering less so it draws less fire */
     if (rec.upheld) x *= .25;
@@ -25333,14 +25430,14 @@ v10RegisterOrders([
     cost:3, upkeep:0.15, exposure:0.1,
     ind:{ tension:-1.5, corruption:-1.5 }, mood:{ prof:3, tech:1, veterans:1, smallbiz:-1 }, exp:1, mods:{ delivery:0.2 } }),
   O({ id:'disperseAgencies', name:'Disperse the Agencies', cat:'Directives to the administration', dept:'vchan',
-    blurb:'The pensions bureau, the schools inspectorate and the health authority take their headquarters out of the District and into the region named in the order. The capital stays where it is; the jobs do not.',
-    cost:7, upkeep:0.7, exposure:0.2, target:'region',
-    mood:{ labour:3, prof:-4, smallbiz:2, youth:-1 }, exp:3.5, mods:{ delivery:-0.4, polCost:{ Federalism:0.85 } }, salience:{ federal:2 }, regionEff:{ prosperity:0.8, services:0.6, federal:0.5 },
+    blurb:'The pensions bureau, the schools inspectorate and the health authority are broken up and posted out of the District to provincial addresses in every state. The capital keeps the ministers and loses the filing. The officials who go are the ones who were already looking to leave.',
+    cost:7, upkeep:0.7, exposure:0.2,
+    mood:{ labour:3, prof:-4, smallbiz:2, youth:-1 }, exp:3.5, mods:{ delivery:-0.4, polCost:{ Federalism:0.85 } }, salience:{ federal:2 }, nationEff:{ prosperity:0.16, services:0.12, federal:0.1 },
     notDistrict:true, reqText:'a region other than the District' }),
   O({ id:'hardshipStay', name:'Stay of Collection in Hardship', cat:'Enforcement discretion', dept:'chan',
-    blurb:'The Revenue is directed to seize nothing, garnish nothing and force no sale in the named region while the arrears stand. Every assessment is still owed, still accruing, still on the file. The knock on the door simply stops.',
-    cost:5, upkeep:0.5, exposure:0.35, target:'region', needs:'incomeTax',
-    ind:{ poverty:-2, economy:0.5, corruption:1 }, mood:{ labour:4, seniors:3, smallbiz:3, faith:2, prof:-2, tech:-4 }, rev:-3, mods:{ polCost:{ Taxation:1.2 } }, salience:{ prices:8 }, regionEff:{ prosperity:1.2, federal:2, order:0.6 } }),
+    blurb:'The Revenue is directed to seize nothing, garnish nothing and force no sale anywhere in Vale while the arrears stand. Every assessment is still owed, still accruing, still on the file. The knock on the door simply stops.',
+    cost:5, upkeep:0.5, exposure:0.35, needs:'incomeTax',
+    ind:{ poverty:-2, economy:0.5, corruption:1 }, mood:{ labour:4, seniors:3, smallbiz:3, faith:2, prof:-2, tech:-4 }, rev:-3, mods:{ polCost:{ Taxation:1.2 } }, salience:{ prices:8 }, nationEff:{ prosperity:0.24, federal:0.4, order:0.12 } }),
   O({ id:'noCellForFine', name:'No Cell for a Fine', cat:'Enforcement discretion', dept:'vpres',
     blurb:'The Attorney General directs that no warrant issue and no term of custody be sought for the non-payment of a fine, a fee or a court cost. The debt stands and the notices keep going out. Only the cell comes off the table.',
     cost:3, upkeep:0.15, exposure:0.2,
@@ -25376,11 +25473,11 @@ v10RegisterOrders([
   O({ id:'orderRegister', name:'The Register of Standing Orders', cat:'Orders about orders', dept:'vpres',
     blurb:'Every direction this executive has signed and not revoked is printed in one volume — its authority, its author, what it costs the purse, the date it was made — and reprinted each session with the changes marked in the margin. The opposition buys the first copy. The bench buys the second, and an application to have a page struck out of it is filed before the third.',
     cost:4, upkeep:0.35, exposure:0.7,
-    ind:{ corruption:-3, liberties:2 }, mood:{ prof:4, youth:3, smallbiz:2, labour:1, tech:-2, veterans:-3 }, exp:1, mods:{ delivery:-0.03, crown:0.2, polCost:{ Justice:0.9, Security:1.1 } }, salience:{ integrity:7 } }),
+    ind:{ corruption:-3, liberties:2 }, mood:{ prof:4, youth:3, smallbiz:2, labour:1, tech:-2, veterans:-3 }, exp:1, mods:{ delivery:-0.03, crown:0.2, polCost:{ Justice:0.9, Security:1.1 } }, salience:{ integrity:7 }, book:{ review:1.45 } }),
   O({ id:'orderExpiry', name:'Every Order Shall Expire', cat:'Orders about orders', dept:'chan',
     blurb:'No direction of this executive is to stand beyond its second session: at the end of it the thing dies of its own accord unless a minister signs it again in person, with a fresh costing attached and the old one printed beside it. Departments stop treating a circular as furniture. The Chancellery\'s costing clerks discover they have become the most powerful people in the building, and the cabinet discovers it is spending its Thursdays re-signing its own work.',
     cost:7, upkeep:1.1, exposure:0.12,
-    ind:{ liberties:3, corruption:-2, safety:-1, economy:0.5 }, mood:{ smallbiz:5, youth:3, faith:2, veterans:-2, seniors:-2, labour:-3, prof:-5 }, exp:-1.5, mods:{ delivery:-0.07, crown:0.4, polCost:{ Authority:1.2 } }, salience:{ rights:4 } }),
+    ind:{ liberties:3, corruption:-2, safety:-1, economy:0.5 }, mood:{ smallbiz:5, youth:3, faith:2, veterans:-2, seniors:-2, labour:-3, prof:-5 }, exp:-1.5, mods:{ delivery:-0.07, crown:0.4, polCost:{ Authority:1.2 } }, salience:{ rights:4 }, book:{ expire:2 } }),
   O({ id:'openTheReserves', name:'The Reserves Are Opened', cat:'Money without appropriation', dept:'chan',
     blurb:'Fuel from the salt domes, grain from the federal silos and medicine from the depots go onto the market at last quarter\'s price, and keep going while the order stands. The hauliers notice within a week; the general staff notice too.',
     cost:5, upkeep:0.5, exposure:0.35, needs:'strategicReserve',
@@ -25432,29 +25529,29 @@ v10RegisterOrders([
     cost:6, upkeep:0.9, exposure:0.5, target:'power',
     ind:{ tension:3, military:-1, technology:-1.5, economy:-0.5 }, mood:{ veterans:4, faith:2, labour:2, prof:-2, smallbiz:-3, tech:-4 }, exp:2.5, rev:-1.5, mods:{ works:-0.1, delivery:-0.1, polCost:{ Foreign:1.2 } }, salience:{ world:8 }, powerEff:-1.2 }),
   O({ id:'disasterArea', name:'Declaration of a Disaster Area', cat:'Emergency and territory', dept:'chan',
-    blurb:'The region is declared a disaster area: federal money moves without waiting for the state to ask, and the relief agency answers to the capital until the declaration is withdrawn. The governors who did not get one are counting.',
-    cost:4, upkeep:0.35, exposure:0.12, target:'region', needs:'disasterAgency',
-    ind:{ infrastructure:2, poverty:-1, safety:1 }, mood:{ seniors:3, labour:2, faith:2, smallbiz:1 }, exp:4, mods:{ unrest:-0.4, delivery:0.3 }, salience:{ climate:9 }, regionEff:{ services:2, prosperity:1, federal:1.5 } }),
+    blurb:'Any district that meets the schedule becomes a disaster area the day an assessor signs, without waiting for its state to ask, and the relief agency answers to the capital until the declaration is withdrawn. Governors who used to lobby for one now read the schedule instead.',
+    cost:4, upkeep:0.35, exposure:0.12, needs:'disasterAgency',
+    ind:{ infrastructure:2, poverty:-1, safety:1 }, mood:{ seniors:3, labour:2, faith:2, smallbiz:1 }, exp:4, mods:{ unrest:-0.4, delivery:0.3 }, salience:{ climate:9 }, nationEff:{ services:0.4, prosperity:0.2, federal:0.3 } }),
   O({ id:'stateAdministration', name:'The State Under Federal Administration', cat:'Emergency and territory', dept:'vpres',
-    blurb:'A federal administrator takes the seals of a state government that can no longer meet its obligations or keep its own peace. The legislature still sits; it no longer signs anything.',
-    cost:8, upkeep:1.1, exposure:0.75, target:'region', needs:'stateReceivership',
-    ind:{ corruption:-2, liberties:-3, safety:1 }, mood:{ faith:-3, prof:-2, smallbiz:-2, labour:1 }, exp:3, mods:{ crown:0.7, unrest:1.1, delivery:-0.4, polCost:{ Federalism:1.35 } }, salience:{ federal:18 }, regionEff:{ federal:-2.5, services:2, order:1.5, prosperity:0.5 } }),
+    blurb:'A standing receivership takes the seals of any state government that misses its obligations or loses its own peace, on a federal certificate and nothing else. The legislatures still sit. Two of them have stopped passing anything the capital has not seen first.',
+    cost:8, upkeep:1.1, exposure:0.75, needs:'stateReceivership',
+    ind:{ corruption:-2, liberties:-3, safety:1 }, mood:{ faith:-3, prof:-2, smallbiz:-2, labour:1 }, exp:3, mods:{ crown:0.7, unrest:1.1, delivery:-0.4, polCost:{ Federalism:1.35 } }, salience:{ federal:18 }, nationEff:{ federal:-0.5, services:0.4, order:0.3, prosperity:0.1 } }),
   O({ id:'portClosure', name:'Closure of the Port and the Crossings', cat:'Emergency and territory', dept:'pres',
-    blurb:'The frontier stations and the deep-water berths in the region are shut to traffic from beyond, and stay shut. The freight forwarders find another country; the towns that lived off the crossing do not.',
-    cost:6, upkeep:0.7, exposure:0.5, target:'region', needs:'borderSecurity',
-    ind:{ tension:3, safety:2, economy:-2, territories:-2 }, mood:{ veterans:3, faith:2, smallbiz:-4, tech:-3, youth:-2 }, exp:1, rev:-3, mods:{ unrest:0.6 }, salience:{ migration:12 }, regionEff:{ prosperity:-2.5, order:1, federal:-1 } }),
+    blurb:'Every frontier station and deep-water berth in Vale is shut to traffic from beyond, and stays shut. The freight forwarders find another country. The towns that lived off a crossing find nothing.',
+    cost:6, upkeep:0.7, exposure:0.5, needs:'borderSecurity',
+    ind:{ tension:3, safety:2, economy:-2, territories:-2 }, mood:{ veterans:3, faith:2, smallbiz:-4, tech:-3, youth:-2 }, exp:1, rev:-3, mods:{ unrest:0.6 }, salience:{ migration:12 }, nationEff:{ prosperity:-0.5, order:0.2, federal:-0.2 } }),
   O({ id:'standingGarrison', name:'A Standing Garrison', cat:'Emergency and territory', dept:'pres',
-    blurb:'Regular troops are quartered in the region under federal command rather than the governor\'s, and no date is set for their leaving. The streets are quieter, and nobody mistakes why.',
-    cost:7, upkeep:0.95, exposure:0.68, target:'region',
-    ind:{ safety:3, liberties:-4, military:1 }, mood:{ veterans:4, youth:-5, prof:-3, labour:-2 }, exp:5, mods:{ unrest:0.9, army:-0.4, crown:0.4 }, salience:{ safety:14 }, regionEff:{ order:2.5, federal:-2, prosperity:-0.8 } }),
+    blurb:'Regular troops are quartered in every state under federal command rather than the governor\'s, and no date is set for their leaving. The streets are quieter, and nobody mistakes why.',
+    cost:7, upkeep:0.95, exposure:0.68,
+    ind:{ safety:3, liberties:-4, military:1 }, mood:{ veterans:4, youth:-5, prof:-3, labour:-2 }, exp:5, mods:{ unrest:0.9, army:-0.4, crown:0.4 }, salience:{ safety:14 }, nationEff:{ order:0.5, federal:-0.4, prosperity:-0.16 } }),
   O({ id:'worksEmergency', name:'The Federal Works Emergency', cat:'Emergency and territory', dept:'chan',
-    blurb:'Federal crews, federal money and federal timetables descend on one region\'s roads, water and rail, with the permitting waived for the duration. Every other region reads the map and draws the obvious conclusion.',
-    cost:5, upkeep:0.55, exposure:0.22, target:'region', needs:'regionalDevelopment',
-    ind:{ infrastructure:4, economy:2, poverty:-1 }, mood:{ labour:5, smallbiz:3, youth:2, tech:1 }, exp:9, mods:{ works:0.1, delivery:0.4 }, salience:{ jobs:12 }, regionEff:{ prosperity:2.5, services:1.2, federal:1.5 } }),
+    blurb:'Federal crews, federal money and federal timetables descend on the roads, the water and the rail of every state at once, with the permitting waived for the duration. The contractors who can work at that pace are the ones who already owned the plant.',
+    cost:5, upkeep:0.55, exposure:0.22, needs:'regionalDevelopment',
+    ind:{ infrastructure:4, economy:2, poverty:-1 }, mood:{ labour:5, smallbiz:3, youth:2, tech:1 }, exp:9, mods:{ works:0.1, delivery:0.4 }, salience:{ jobs:12 }, nationEff:{ prosperity:0.5, services:0.24, federal:0.3 } }),
   O({ id:'regionCordon', name:'A Cordon and Movement Control', cat:'Emergency and territory', dept:'vchan',
-    blurb:'Movement in and out of the region is licensed rather than free, and its clinics take their orders from the capital. It works, and the region will not forgive it quickly.',
-    cost:6, upkeep:0.6, exposure:0.55, target:'region', needs:'quarantinePowers',
-    ind:{ healthcare:3, liberties:-3, economy:-2 }, mood:{ seniors:4, prof:2, faith:1, youth:-4, smallbiz:-5 }, exp:3, rev:-2, mods:{ unrest:1, polCost:{ Health:0.85 } }, salience:{ health:15 }, regionEff:{ services:1.5, prosperity:-2.2, order:-1, federal:-1.5 } }),
+    blurb:'Movement between the states is licensed rather than free, and every clinic in Vale takes its orders from the capital. It works, and the country will not forgive it quickly.',
+    cost:6, upkeep:0.6, exposure:0.55, needs:'quarantinePowers',
+    ind:{ healthcare:3, liberties:-3, economy:-2 }, mood:{ seniors:4, prof:2, faith:1, youth:-4, smallbiz:-5 }, exp:3, rev:-2, mods:{ unrest:1, polCost:{ Health:0.85 } }, salience:{ health:15 }, nationEff:{ services:0.3, prosperity:-0.44, order:-0.2, federal:-0.3 } }),
 
   /* ---- S11b: thirty-six more, none of them gated. Registered AFTER the
      original thirty-six on purpose: roads.js and playtest.js both probe
@@ -25574,37 +25671,178 @@ v10RegisterOrders([
     cost:5, upkeep:0.5, exposure:0.2,
     ind:{ environment:2.5, technology:1, economy:-0.5, energy:-0.5 }, mood:{ youth:4, tech:3, prof:2, labour:-3, smallbiz:-4, veterans:-1 }, exp:4, mods:{ works:-0.2, delivery:-0.1, polCost:{ Environment:0.85, Energy:0.95, Infrastructure:1.1 } }, salience:{ climate:8 } }),
   O({ id:'regionCurfew', name:'A Curfew from Dusk', cat:'Emergency and territory', dept:'pres',
-    blurb:'Nobody is to be on the streets of the region between dusk and six, excepting doctors, night shifts and those holding a paper from the district office. The nights go quiet within a week, and the applications for papers are read by men who will remember who applied.',
-    cost:4, upkeep:0.45, exposure:0.4, target:'region',
-    ind:{ safety:2, liberties:-3, economy:-1 }, mood:{ seniors:3, faith:2, veterans:2, youth:-6, smallbiz:-3, labour:-2 }, exp:2, rev:-1, mods:{ unrest:0.7, crown:0.3, polCost:{ Justice:1.15 } }, salience:{ safety:10 }, regionEff:{ order:2, prosperity:-1.5, federal:-1 } }),
+    blurb:'Nobody is to be on the streets between dusk and six, anywhere in Vale, excepting doctors, night shifts and those holding a paper from a district office. The nights go quiet within a week, and the applications for papers are read by men who will remember who applied.',
+    cost:4, upkeep:0.45, exposure:0.4,
+    ind:{ safety:2, liberties:-3, economy:-1 }, mood:{ seniors:3, faith:2, veterans:2, youth:-6, smallbiz:-3, labour:-2 }, exp:2, rev:-1, mods:{ unrest:0.7, crown:0.3, polCost:{ Justice:1.15 } }, salience:{ safety:10 }, nationEff:{ order:0.4, prosperity:-0.3, federal:-0.2 } }),
   O({ id:'requisitionOrder', name:'Requisition of Vehicles and Vacant Property', cat:'Emergency and territory', dept:'chan',
-    blurb:'Lorries, buses, cold stores and empty houses in the region are taken into federal use at a valuation the department sets for itself, and the owners are paid when the accounts allow. What has to be moved is moved; the man whose two trucks did the moving is still holding the receipt at the end of the year.',
-    cost:5, upkeep:0.5, exposure:0.35, target:'region',
-    ind:{ infrastructure:2, poverty:-2, economy:-1.5, liberties:-2, corruption:1 }, mood:{ labour:3, seniors:2, smallbiz:-7, prof:-3, tech:-2, faith:-1 }, exp:3, mods:{ works:0.15, delivery:0.2, unrest:0.4, polCost:{ Infrastructure:0.9 } }, salience:{ rights:6 }, regionEff:{ services:2, prosperity:-1.5, order:0.5, federal:-1 } }),
+    blurb:'Lorries, buses, cold stores and empty houses are taken into federal use wherever they stand, at a valuation the department sets for itself, and the owners are paid when the accounts allow. What has to be moved is moved. The man whose two trucks did the moving is still holding the receipt at the end of the year.',
+    cost:5, upkeep:0.5, exposure:0.35,
+    ind:{ infrastructure:2, poverty:-2, economy:-1.5, liberties:-2, corruption:1 }, mood:{ labour:3, seniors:2, smallbiz:-7, prof:-3, tech:-2, faith:-1 }, exp:3, mods:{ works:0.15, delivery:0.2, unrest:0.4, polCost:{ Infrastructure:0.9 } }, salience:{ rights:6 }, nationEff:{ services:0.4, prosperity:-0.3, order:0.1, federal:-0.2 } }),
   O({ id:'rationScale', name:'The Ration Scale', cat:'Emergency and territory', dept:'vchan',
-    blurb:'Bread, fuel, milk and medicine in the region are sold at a scale of quantities and prices printed in the gazette, against a book issued to every household. Nobody starves and everybody queues, and inside a month there is a second price the gazette does not print.',
-    cost:5, upkeep:0.6, exposure:0.3, target:'region',
-    ind:{ poverty:-3, healthcare:1, economy:-2, corruption:2, agriculture:-1 }, mood:{ seniors:4, labour:3, faith:2, youth:-2, smallbiz:-5, prof:-3 }, exp:4, rev:-1, mods:{ unrest:-0.4, delivery:0.1, polCost:{ Welfare:0.85 } }, salience:{ prices:12 }, regionEff:{ services:1.5, prosperity:-1.2, order:1, federal:-0.5 } }),
+    blurb:'Bread, fuel, milk and medicine are sold at a national scale of quantities and prices printed in the gazette, against a book issued to every household in Vale. Nobody starves and everybody queues, and inside a month there is a second price the gazette does not print.',
+    cost:5, upkeep:0.6, exposure:0.3,
+    ind:{ poverty:-3, healthcare:1, economy:-2, corruption:2, agriculture:-1 }, mood:{ seniors:4, labour:3, faith:2, youth:-2, smallbiz:-5, prof:-3 }, exp:4, rev:-1, mods:{ unrest:-0.4, delivery:0.1, polCost:{ Welfare:0.85 } }, salience:{ prices:12 }, nationEff:{ services:0.3, prosperity:-0.24, order:0.2, federal:-0.1 } }),
   O({ id:'policeCommissioner', name:'A Federal Commissioner of Police', cat:'Emergency and territory', dept:'vpres',
-    blurb:'The region\'s constabulary reports to a commissioner appointed in the capital, who holds the payroll, the promotions and the complaints file. The sergeants who were being paid twice are gone inside a month, and so is every officer who was minded to be awkward about a federal instruction.',
-    cost:6, upkeep:0.65, exposure:0.45, target:'region',
-    ind:{ corruption:-3, safety:2, liberties:-2 }, mood:{ prof:2, seniors:2, veterans:1, youth:-3, smallbiz:-1, faith:-2 }, exp:3, mods:{ crown:0.3, unrest:0.5, delivery:0.15, polCost:{ Justice:0.9, Federalism:1.25 } }, salience:{ integrity:8 }, regionEff:{ order:2, federal:-2, services:0.8 } }),
+    blurb:'Every constabulary in Vale reports to a commissioner appointed in the capital, who holds the payroll, the promotions and the complaints file. The sergeants who were being paid twice are gone inside a month, and so is every officer who was minded to be awkward about a federal instruction.',
+    cost:6, upkeep:0.65, exposure:0.45,
+    ind:{ corruption:-3, safety:2, liberties:-2 }, mood:{ prof:2, seniors:2, veterans:1, youth:-3, smallbiz:-1, faith:-2 }, exp:3, mods:{ crown:0.3, unrest:0.5, delivery:0.15, polCost:{ Justice:0.9, Federalism:1.25 } }, salience:{ integrity:8 }, nationEff:{ order:0.4, federal:-0.4, services:0.16 } }),
   O({ id:'federalUtilities', name:'The Grid and the Waterworks', cat:'Emergency and territory', dept:'vchan',
-    blurb:'The region\'s power, water and sewers are run by federal engineers under a single warrant, with the tariffs set in the capital and the arrears struck off. The lights stay on, the utility boards find they have nothing left to meet about, and the state that borrowed to build the things is invited to go on paying the bond.',
-    cost:6, upkeep:0.7, exposure:0.35, target:'region',
-    ind:{ infrastructure:3, energy:2, poverty:-1, healthcare:1 }, mood:{ labour:4, seniors:3, smallbiz:2, tech:-2, prof:-1 }, exp:7, rev:-1, mods:{ works:0.2, delivery:0.25, unrest:-0.3, polCost:{ Energy:0.9, Federalism:1.2 } }, salience:{ prices:7 }, regionEff:{ services:2.5, prosperity:1.2, federal:-1.5, order:0.5 } }),
+    blurb:'Power, water and sewers pass to federal engineers under a single national warrant, with the tariffs set in the capital and the arrears struck off. The lights stay on, the utility boards find they have nothing left to meet about, and the states that borrowed to build the things go on paying the bonds.',
+    cost:6, upkeep:0.7, exposure:0.35,
+    ind:{ infrastructure:3, energy:2, poverty:-1, healthcare:1 }, mood:{ labour:4, seniors:3, smallbiz:2, tech:-2, prof:-1 }, exp:7, rev:-1, mods:{ works:0.2, delivery:0.25, unrest:-0.3, polCost:{ Energy:0.9, Federalism:1.2 } }, salience:{ prices:7 }, nationEff:{ services:0.5, prosperity:0.24, federal:-0.3, order:0.1 } }),
   O({ id:'ordersLaidBefore', name:'Laid Before the House in Seven Days', cat:'Orders about orders', dept:'vchan',
     blurb:'No direction of this executive takes effect until it has lain on the table of the House for seven days with its costing attached, and any member may move against it in that time. The emergencies are now begun a week in advance, and the departments have learned to draft on a Monday.',
     cost:4, upkeep:0.45, exposure:0.2,
-    ind:{ liberties:3, corruption:-2, safety:-1 }, mood:{ prof:4, youth:3, smallbiz:2, faith:1, labour:-2, veterans:-3 }, exp:1, mods:{ delivery:-0.25, crown:0.5, polCost:{ Authority:1.25, Justice:0.9 } }, salience:{ integrity:7 } }),
+    ind:{ liberties:3, corruption:-2, safety:-1 }, mood:{ prof:4, youth:3, smallbiz:2, faith:1, labour:-2, veterans:-3 }, exp:1, mods:{ delivery:-0.25, crown:0.5, polCost:{ Authority:1.25, Justice:0.9 } }, salience:{ integrity:7 }, book:{ lay:1 } }),
   O({ id:'attorneyOpinion', name:'The Attorney\'s Opinion on Every Order', cat:'Orders about orders', dept:'vpres',
     blurb:'No order is signed until the Attorney has written on the face of it the statute or prerogative the thing rests on, and initialled the sentence. Two of the standing orders came back without an opinion at all, and the Attorney\'s outer office is now the slowest room in the government.',
     cost:5, upkeep:0.5, exposure:0.25,
-    ind:{ liberties:2, corruption:-2, safety:-1 }, mood:{ prof:5, youth:2, smallbiz:1, tech:-1, labour:-2, veterans:-2 }, exp:2, mods:{ delivery:-0.3, crown:0.45, polCost:{ Justice:0.85, Authority:1.3 } }, salience:{ rights:6 } }),
+    ind:{ liberties:2, corruption:-2, safety:-1 }, mood:{ prof:5, youth:2, smallbiz:1, tech:-1, labour:-2, veterans:-2 }, exp:2, mods:{ delivery:-0.3, crown:0.45, polCost:{ Justice:0.85, Authority:1.3 } }, salience:{ rights:6 }, book:{ review:0.55 } }),
   O({ id:'preBallotBar', name:'No Order Before a Ballot', cat:'Orders about orders', dept:'chan',
     blurb:'In the session before a general ballot this executive signs nothing new: no direction, no relief, no appointment that would take effect after the poll. The opposition stops calling every relief measure a bribe, and the government goes to the country holding the powers it already had and not one more.',
     cost:3, upkeep:0.35, exposure:0.15,
-    ind:{ corruption:-3, liberties:2 }, mood:{ prof:3, youth:3, faith:2, smallbiz:1, labour:-2, seniors:-2 }, exp:-1.5, mods:{ delivery:-0.2, crown:0.6, polCost:{ Elections:0.8, Welfare:1.1 } }, salience:{ integrity:9 } })
+    ind:{ corruption:-3, liberties:2 }, mood:{ prof:3, youth:3, faith:2, smallbiz:1, labour:-2, seniors:-2 }, exp:-1.5, mods:{ delivery:-0.2, crown:0.6, polCost:{ Elections:0.8, Welfare:1.1 } }, salience:{ integrity:9 }, book:{ preBallot:true } })
+  ,
+  /* ============================================================
+     S15: EIGHTEEN MORE, ALL NATIONAL.
+
+     Six pragmatic, six progressive, six authoritarian, across the eight
+     categories the book already has. Three of them use `onIssue`/`onRevoke`,
+     the escape hatch the engine has called at four sites since S10c and no
+     order has ever defined -- which is why nothing in the book could reach
+     anything outside the fifteen aggregate fields. What they reach is the
+     chamber model S15a built: whether the apparatus carries out a decree, and
+     whether a suspended house behaves like a chamber or like a rubber stamp.
+     ============================================================ */
+
+  /* ---- authoritarian ---- */
+  O({ id:'decreeMachinery', name:'The Machinery of the Decree', cat:'The executive\'s own house', dept:'pres',
+    blurb:'Every department names one officer who answers personally for carrying out what the executive signs, and the name is printed beside the instruction. A direction that goes unexecuted now has a man attached to it. The first two officers named were the two who had been slowest.',
+    cost:8, upkeep:1.2, exposure:0.62,
+    req:function (st) { return !FORMS[st.form].elections || securityState(st) >= 30; },
+    reqText:'a state that has stopped holding elections, or a security state of 30',
+    ind:{ liberties:-3, corruption:2, safety:1 }, mood:{ veterans:3, prof:-5, youth:-4, labour:-2 },
+    mods:{ delivery:0.35, crown:-0.4, unrest:0.5, polCost:{ Authority:0.88 } }, salience:{ integrity:6 },
+    onIssue:function (st) { st.v10.decreeShield = true; },
+    onRevoke:function (st) { delete st.v10.decreeShield; } }),
+
+  O({ id:'prefectsOfTheStates', name:'A Prefect in Every State Capital', cat:'Directives to the administration', dept:'vpres',
+    blurb:'A federal prefect keeps an office in each state capital, sees the governor\'s correspondence before the governor does, and reports weekly. Two governors have started holding the meetings that matter somewhere else.',
+    cost:7, upkeep:0.95, exposure:0.58,
+    ind:{ corruption:-2, liberties:-3, safety:1 }, mood:{ prof:-3, faith:-2, veterans:2, smallbiz:-2 }, exp:4,
+    mods:{ crown:0.9, unrest:0.6, delivery:0.2 }, salience:{ federal:11 },
+    nationEff:{ federal:-0.35, order:0.3, services:0.12 } }),
+
+  O({ id:'pressLicensing', name:'A Licence to Print', cat:'Enforcement discretion', dept:'vchan',
+    blurb:'No press runs without an annual licence from the department, and the licence names the printer, the proprietor and the address of the machine. Three papers did not apply. One of them is now a weekly, and the other two are letters.',
+    cost:6, upkeep:0.8, exposure:0.82, needs:'censorshipAct',
+    ind:{ liberties:-6, corruption:3, safety:1 }, mood:{ prof:-7, youth:-6, tech:-4, faith:2, veterans:2 },
+    mods:{ unrest:1.1, crown:0.2, polCost:{ Culture:0.85, Authority:0.9 } }, salience:{ rights:14 } }),
+
+  O({ id:'nightCourts', name:'The Courts Sit at Night', cat:'Enforcement discretion', dept:'vpres',
+    blurb:'Magistrates sit from eight until three on public order charges, and a man arrested at ten is sentenced before the shift he would have worked. The clearance figures are the best in the history of the office, and the appeal rate has quadrupled.',
+    cost:5, upkeep:0.6, exposure:0.55,
+    ind:{ safety:3, liberties:-4, corruption:1 }, mood:{ seniors:4, faith:3, veterans:2, youth:-7, prof:-4 }, exp:3,
+    mods:{ unrest:0.7, polCost:{ Justice:0.88 } }, salience:{ safety:12 },
+    nationEff:{ order:0.45, prosperity:-0.1 } }),
+
+  O({ id:'internalPassport', name:'Papers for the Interior', cat:'Emergency and territory', dept:'pres',
+    blurb:'A working paper is required to take up residence or employment outside the state a man was registered in, and the paper is issued by the district office that knows him. The cities stop growing in the month it takes effect, and the queue at the district office is out of the door by the second.',
+    cost:8, upkeep:1.15, exposure:0.78, needs:'passportControl',
+    ind:{ liberties:-7, safety:2, economy:-3, corruption:3 }, mood:{ youth:-8, labour:-5, tech:-6, smallbiz:-4, faith:2, seniors:2 }, rev:-2,
+    mods:{ unrest:1.4, crown:0.5, army:0.2 }, salience:{ migration:16 },
+    nationEff:{ order:0.5, prosperity:-0.4, federal:-0.25 } }),
+
+  O({ id:'loyaltyOath', name:'The Oath of the Federal Service', cat:'The executive\'s own house', dept:'chan',
+    blurb:'Every officer of the federal service swears to the state and to the government of the day by name, in writing, before the next pay run. Four hundred did not sign and are gone by the end of the month. The departments that lost the most are the ones that had been arguing with the Chancellery.',
+    cost:6, upkeep:0.5, exposure:0.7,
+    req:function (st) { return securityState(st) >= 20; },
+    reqText:'a security state of 20',
+    ind:{ liberties:-4, corruption:-1 }, mood:{ prof:-8, veterans:4, youth:-3, faith:2 },
+    mods:{ delivery:-0.15, crown:0.3, unrest:0.4 }, salience:{ integrity:8 },
+    /* The purge is a one-shot on a stock and revocation does not undo it. The
+       card says so in the last sentence, which is the S10c rule kept honestly
+       rather than a modifier quietly left behind. */
+    onIssue:function (st) { st.v10.oathSworn = true; st.ind.corruption = c100(st.ind.corruption - 4); },
+    onRevoke:function (st) { delete st.v10.oathSworn; } }),
+
+  /* ---- progressive ---- */
+  O({ id:'standingConvocation', name:'The Houses Sit Whether Called or Not', cat:'Orders about orders', dept:'chan',
+    blurb:'The chambers convene on the first day of every session by their own standing order, whether or not the executive has summoned them, and the clerk reads the list of directions signed since they last met. A government that has suspended a house finds it meeting anyway, and finds that the men in it behave like a chamber.',
+    cost:6, upkeep:0.7, exposure:0.3,
+    ind:{ liberties:5, corruption:-3 }, mood:{ prof:6, youth:4, smallbiz:2, labour:1, veterans:-3 },
+    mods:{ delivery:-0.18, crown:0.4, polCost:{ Authority:1.3, Elections:0.85 } }, salience:{ rights:9 },
+    onIssue:function (st) { st.v10.convocation = true; },
+    onRevoke:function (st) { delete st.v10.convocation; } }),
+
+  O({ id:'openBooks', name:'Every Contract Above the Line', cat:'Money without appropriation', dept:'chan',
+    blurb:'Every federal contract above the threshold is published entire on the day it is signed, with the losing bids beside it. Two departments discovered they had been paying different prices for the same paper, and one supplier stopped bidding altogether.',
+    cost:4, upkeep:0.4, exposure:0.25,
+    ind:{ corruption:-5, liberties:2, economy:0.5 }, mood:{ prof:5, smallbiz:4, tech:3, youth:2 }, rev:1.5,
+    mods:{ delivery:-0.08, polCost:{ Capital:0.92 } }, salience:{ integrity:10 } }),
+
+  O({ id:'legalAidStanding', name:'A Solicitor on Duty', cat:'The federal purse as a customer', dept:'vpres',
+    blurb:'A duty solicitor is paid to sit in every charge room in Vale between eight at night and eight in the morning. The number of statements signed before dawn falls by half in the first quarter, and so does the number of convictions the appeal court sends back.',
+    cost:5, upkeep:0.65, exposure:0.15,
+    ind:{ liberties:4, corruption:-2, safety:-1 }, mood:{ prof:4, youth:4, labour:3, seniors:-2, veterans:-2 }, exp:5,
+    mods:{ polCost:{ Justice:0.9 } }, salience:{ rights:8 },
+    nationEff:{ order:-0.1, services:0.2 } }),
+
+  O({ id:'childHunger', name:'A Meal Before the Bell', cat:'Money without appropriation', dept:'vchan',
+    blurb:'Every federal school serves breakfast from the contingency fund, without a means test and without a form, from the first Monday after the order. Attendance in the poorest districts rises inside a term, and the department that runs the means tests has written twice to ask what it is now for.',
+    cost:4, upkeep:0.55, exposure:0.12,
+    ind:{ poverty:-3, education:2, healthcare:1 }, mood:{ labour:6, youth:4, faith:3, seniors:2, tech:-1 }, exp:7,
+    salience:{ jobs:6 }, nationEff:{ services:0.3, prosperity:0.12 } }),
+
+  O({ id:'translationBureau', name:'The Bureau of the Second Language', cat:'Directives to the administration', dept:'vchan',
+    blurb:'Every federal form, hearing and helpline is available in the languages a district actually speaks, on the district registrar\'s certificate. The clinics in the border states stop losing appointments to misunderstanding, and two state governments have complained about the cost of matching it.',
+    cost:4, upkeep:0.45, exposure:0.2,
+    ind:{ education:1, healthcare:1, liberties:2, corruption:-1 }, mood:{ youth:3, prof:3, labour:2, faith:-2, veterans:-3 }, exp:4,
+    mods:{ delivery:0.12 }, salience:{ migration:7 }, nationEff:{ services:0.25, federal:0.15 } }),
+
+  O({ id:'carbonAudit', name:'An Audit on Every Purchase', cat:'The federal purse as a customer', dept:'chan',
+    blurb:'No federal purchase above the threshold is made without a stated figure for what it burns, and the figure is printed in the award. The cement suppliers found a cleaner kiln within a year, and the haulage contracts were rewritten by the people who lost them.',
+    cost:5, upkeep:0.5, exposure:0.18, needs:'emissionsRules',
+    ind:{ climate:3, technology:1, economy:-1 }, mood:{ youth:5, tech:4, prof:3, smallbiz:-3, veterans:-2 }, exp:3,
+    mods:{ works:-0.05, polCost:{ Environment:0.88 } }, salience:{ climate:11 } }),
+
+  /* ---- pragmatic ---- */
+  O({ id:'procurementPanel', name:'One Panel of Suppliers', cat:'The federal purse as a customer', dept:'chan',
+    blurb:'Every department buys from one standing panel at one set of prices, and a supplier joins it once instead of bidding eleven times. The small firms who could never afford eleven tenders are on it; the four who used to win everything are still on it too, at a worse price.',
+    cost:4, upkeep:0.35, exposure:0.12,
+    ind:{ corruption:-2, economy:1 }, mood:{ smallbiz:5, prof:3, tech:2 }, rev:1, exp:-4,
+    mods:{ delivery:0.18, works:0.04 }, salience:{ integrity:4 } }),
+
+  O({ id:'secondmentScheme', name:'Staff Lent Between Departments', cat:'Directives to the administration', dept:'vchan',
+    blurb:'A department short of hands may take them from one that is not, for a quarter at a time, on the Vice Chancellor\'s signature and nobody\'s permission. The health authority took forty clerks off the licensing bureau in the first month and gave back thirty-one.',
+    cost:3, upkeep:0.3, exposure:0.1,
+    ind:{ corruption:-1 }, mood:{ prof:2, labour:1, smallbiz:1 },
+    mods:{ delivery:0.28, crown:-0.1 }, salience:{} }),
+
+  O({ id:'dataRegistry', name:'One Register of Addresses', cat:'Directives to the administration', dept:'vchan',
+    blurb:'Pensions, health, schools and the Revenue read one address for a household instead of four, updated once. Nine thousand pensioners who had been receiving nothing were found in the first reconciliation, and so were two thousand who had been receiving twice.',
+    cost:5, upkeep:0.4, exposure:0.35, needs:'digitalID',
+    ind:{ corruption:-3, poverty:-1, technology:2 }, mood:{ tech:4, prof:3, seniors:2, youth:-2, faith:-2 }, rev:2, exp:-2,
+    mods:{ delivery:0.22 }, salience:{ integrity:5 } }),
+
+  O({ id:'sparePartsPool', name:'A National Pool of Spares', cat:'Money without appropriation', dept:'chan',
+    blurb:'Generators, pumps, rolling stock parts and ambulance engines are held centrally and drawn against, rather than ordered by each authority when the thing has already broken. The pool paid for itself in the second winter, in one week, in one state.',
+    cost:4, upkeep:0.45, exposure:0.1,
+    ind:{ infrastructure:2, healthcare:1, energy:1 }, mood:{ labour:3, smallbiz:2, prof:2 }, exp:5,
+    mods:{ works:0.06, delivery:0.14 }, nationEff:{ services:0.22 } }),
+
+  O({ id:'frontierLiaison', name:'One Desk for the Frontier', cat:'Abroad by proclamation', dept:'pres',
+    blurb:'Customs, the border force, the veterinary service and the port health office answer at one desk, staffed around the clock, and a lorry held at the frontier is now held by one authority instead of four in turn. The average detention falls from eleven hours to three.',
+    cost:4, upkeep:0.4, exposure:0.15,
+    ind:{ economy:2, safety:1, corruption:-1 }, mood:{ smallbiz:4, tech:2, prof:2, veterans:-1 }, rev:2,
+    mods:{ delivery:0.16 }, salience:{ migration:5 } }),
+
+  O({ id:'reserveCall', name:'The Rolling Call of the Reserve', cat:'Emergency and territory', dept:'pres',
+    blurb:'A tenth of the reserve is called for a month at a time on a published rota, so the units are current rather than on paper and the employers know a year ahead which month they lose a man. The first rotation found that a third of the addresses on the roll were wrong.',
+    cost:5, upkeep:0.6, exposure:0.28,
+    ind:{ military:3, economy:-1, safety:1 }, mood:{ veterans:6, faith:2, seniors:2, youth:-3, tech:-2 }, exp:6,
+    mods:{ army:0.35, unrest:-0.2 }, salience:{ safety:6 },
+    nationEff:{ order:0.15 } })
 ]);
 
 /* ---------- the Executive tab's order book ---------- */
@@ -25630,17 +25868,36 @@ function v10OrderTags(o) {
   if (o.mods && o.mods.works) t.push('<span class="tag ' + (o.mods.works > 0 ? 'up' : 'down') + '">Public works ' + (o.mods.works > 0 ? '+' : '') + Math.round(o.mods.works * 100) + '%</span>');
   for (k in ((o.mods && o.mods.polCost) || {})) t.push('<span class="tag ' + (o.mods.polCost[k] < 1 ? 'up' : 'down') + '">' + esc(k) + ' measures ' + Math.round((o.mods.polCost[k] - 1) * 100) + '%</span>');
   for (k in (o.salience || {})) t.push('<span class="tag">' + esc(ISSUE[k] ? ISSUE[k].name : k) + ' held at ' + Math.round(50 + o.salience[k]) + '</span>');
+  /* S15: four modifier fields were carried by orders and rendered by nothing.
+     Nineteen orders carry mods.unrest, twenty-one mods.crown and nine
+     mods.army, and none of it appeared anywhere on the card the player reads
+     before signing -- the inverse of "a modifier nothing reads is a lie", and
+     the same defect: the card and the model disagree. */
+  if (o.mods && o.mods.unrest) t.push('<span class="tag ' + (o.mods.unrest > 0 ? 'down' : 'up') + '">Unrest ' + (o.mods.unrest > 0 ? '+' : '') + o.mods.unrest + ' a session</span>');
+  if (o.mods && o.mods.crown) t.push('<span class="tag ' + (o.mods.crown > 0 ? 'up' : 'down') + '">The states ' + (o.mods.crown > 0 ? '+' : '') + o.mods.crown + ' a session</span>');
+  if (o.mods && o.mods.army) t.push('<span class="tag ' + (o.mods.army > 0 ? 'up' : 'down') + '">The army ' + (o.mods.army > 0 ? '+' : '') + o.mods.army + ' a session</span>');
+  for (k in (o.nationEff || {})) t.push('<span class="tag ' + (o.nationEff[k] > 0 ? 'up' : 'down') + '">Every region: ' + esc(k) + ' ' + (o.nationEff[k] > 0 ? '+' : '') + o.nationEff[k] + ' a session</span>');
+  for (k in (o.regionEff || {})) t.push('<span class="tag ' + (o.regionEff[k] > 0 ? 'up' : 'down') + '">The region: ' + esc(k) + ' ' + (o.regionEff[k] > 0 ? '+' : '') + o.regionEff[k] + ' a session</span>');
+  if (o.powerEff) t.push('<span class="tag ' + (o.powerEff > 0 ? 'up' : 'down') + '">Relations with the power ' + (o.powerEff > 0 ? '+' : '') + o.powerEff + ' a session</span>');
+  if (o.book && o.book.expire) t.push('<span class="tag down">Every standing order expires after ' + o.book.expire + ' sessions</span>');
+  if (o.book && o.book.lay) t.push('<span class="tag down">A new order waits ' + o.book.lay + ' session on the table</span>');
+  if (o.book && o.book.preBallot) t.push('<span class="tag down">No new order in the session before a ballot</span>');
+  if (o.book && o.book.review) t.push('<span class="tag ' + (o.book.review < 1 ? 'up' : 'down') + '">The court sees the book ' + Math.round((o.book.review - 1) * 100) + '%</span>');
   return t.join('');
 }
 function v10OrderCard(o) {
   var live = [], reg = v10Orders(S);
-  for (var key in reg) if (v10OrderOf(key) === o && reg[key].status === 'inforce') live.push(key);
+  for (var key in reg) if (v10OrderOf(key) === o && (reg[key].status === 'inforce' || reg[key].status === 'laid')) live.push(key);
   var why = v10OrderOpen(S, o, null);
   var cost = cst(o.cost * (S.doctrine === 'executive' ? .72 : 1));
   var afford = S.capital >= cost;
   var standing = live.map(function (key) {
     var rec = reg[key], target = v10OrderTargetOf(key);
-    return '<div class="tagline"><span class="tag up">In force since ' + yearOf(rec.issued) + (target ? ' · ' + esc(v10OrderTitle(o, target).replace(o.name + ' (', '').replace(/\)$/, '')) : '') + '</span>' +
+    return '<div class="tagline">' +
+      (rec.status === 'laid'
+        ? '<span class="tag">On the table until ' + dateLabel(rec.due) + '</span>'
+        : '<span class="tag up">In force since ' + yearOf(rec.issued) + (target ? ' · ' + esc(v10OrderTitle(o, target).replace(o.name + ' (', '').replace(/\)$/, '')) : '') + '</span>') +
+      (rec.expires ? '<span class="tag down">Expires ' + dateLabel(rec.expires) + '</span>' : '') +
       (rec.upheld ? '<span class="tag">Survived the court</span>' : '') +
       (rec.narrowed ? '<span class="tag">Narrowed to ' + Math.round(Math.pow(.72, Math.min(3, rec.narrowed)) * 100) + '%</span>' : '') +
       '<button class="btn ghost" data-order-revoke="' + esc(key) + '">Revoke</button></div>';
@@ -25704,14 +25961,14 @@ document.addEventListener('click', function (e) {
   render();
 });
 function v10OrderPanel() {
-  var inForce = v10OrdersInForce(S), max = v10OrderMax(S), m = v10OrderMods(S);
+  var inForce = v10OrdersInForce(S), m = v10OrderMods(S);
   var cats = {}, shown = 0;
   V10_ORDERS.forEach(function (o) { if (!v10OrderShown(o)) return; shown++; (cats[o.cat] = cats[o.cat] || []).push(o); });
   var body = Object.keys(cats).map(function (c) {
     return '<h3 class="eyebrow" style="margin:12px 0 6px">' + esc(c) + '</h3><div class="cards">' +
       cats[c].map(v10OrderCard).join('') + '</div>';
   }).join('') || '<div class="empty-state">No order matches that filter.</div>';
-  var summary = '<div class="works-summary"><span><b>' + inForce.length + '</b> of ' + max + ' standing</span>' +
+  var summary = '<div class="works-summary"><span><b>' + inForce.length + '</b> standing</span>' +
     '<span><b>' + (Math.round(m.upkeep * 10) / 10) + '</b> capital a session</span>' +
     '<span><b>' + (m.exp ? (m.exp > 0 ? '+' : '') + fmc(m.exp) : fmc(0)) + '</b> on the budget</span>' +
     '<span><b>' + shown + '</b> of ' + V10_ORDERS.length + ' shown</span></div>';
@@ -25719,7 +25976,9 @@ function v10OrderPanel() {
     '<p class="note">An order is not a statute. It directs the machinery of a department you hold, it stands only while you hold that department, ' +
     'it costs capital every session it stands, and you can revoke it. It never changes the law — that is what the houses are for' +
     (S.doctrine === 'executive' ? ', and your executive doctrine signs them at a discount' : '') + '. ' +
-    'Thirty-six of them wait on a statute of yours; the rest need nothing but the department and the capital.</p>' +
+    /* S15: this read "Thirty-six of them wait on a statute of yours" and the
+       real figure was seventeen. It is counted now. */
+    V10_ORDERS.filter(function (x) { return !!x.needs; }).length + ' of them wait on a statute of yours; the rest need nothing but the department and the capital.</p>' +
     v10OrderFilterStrip() + summary + body + '</div>';
 }
 

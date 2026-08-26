@@ -501,8 +501,27 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.exec[o2.dept] = me;
 
     /* TARGET: the same instrument stands separately in two regions */
-    const rt = pick(V10_ORDERS, 'disperseAgencies', x => x.target === 'region' && !x.needs, 'stands in two regions');
-    if (rt) { v10IssueOrder(rt.id, 'somnium'); v10IssueOrder(rt.id, 'thaxia'); out.twoTargets = v10OrderCount(S) === 2; }
+    /* S15: the book is national. This used to issue one region-targeted order
+       against two states and assert it stood twice; no order names a region any
+       more, so the claim that matters is that a NATIONAL order's drift reaches
+       every one of them. */
+    out.regionTargeted = V10_ORDERS.filter(x => x.target === 'region').length;
+    out.powerTargeted = V10_ORDERS.filter(x => x.target === 'power').length;
+    out.regionsTotal = REGIONS.length;
+    out.regionsMoved = 0;
+    /* pick() is deliberately fatal when its fixture has lost the property it
+       was chosen for, so it is called only once the book IS national -- which
+       lets this assertion also be run against the build before S15b and report
+       what that one did instead of aborting the whole evaluate. */
+    if (out.regionTargeted === 0) {
+      const nat = pick(V10_ORDERS, 'disperseAgencies', x => !x.target && x.nationEff, 'reaches every region');
+      const before = {}; REGIONS.forEach(r => { before[r.id] = Object.assign({}, S.regions[r.id]); });
+      v10IssueOrder(nat.id, null);
+      v10OrdersTick(S);
+      out.regionsMoved = REGIONS.filter(r => Object.keys(nat.nationEff)
+        .some(k => S.regions[r.id][k] !== undefined && Math.abs(S.regions[r.id][k] - before[r.id][k]) > 1e-9)).length;
+      v10RevokeOrder(nat.id);
+    }
     S.ruling = keep.ruling; S.coalition = keep.coalition; S.exec = keep.exec;
     S.capital = keep.capital; S.v10.orders = keep.orders;
     return out;
@@ -519,8 +538,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `and revoking put the target back exactly: ${book.restored}`);
   say(book.issued && book.lapsed && book.lapseTold, 'an order dies with its department',
     `in force: ${book.issued} · lapsed when the office changed hands: ${book.lapsed} · said so: ${book.lapseTold}`);
-  say(book.twoTargets === true, 'a targeted order is per target',
-    'the same instrument stands separately in two regions: ' + book.twoTargets);
+  say(book.regionTargeted === 0 && book.regionsMoved === book.regionsTotal && book.powerTargeted > 0,
+    'the order book is national',
+    `${book.regionTargeted} orders make the player name a state, and one national order's drift reached ` +
+    `${book.regionsMoved} of ${book.regionsTotal} regions in a single session · thirteen orders used to deliver their ` +
+    `regional payload to one place, and twelve of the thirteen already carried national effects on top of it · ` +
+    `${book.powerTargeted} orders still name a foreign power, which is a different axis from a state`);
 
   /* S10d — THE WORKS. Forty-eight distinct, and instruments that change what
      a work turns out to be rather than only how fast it is paid for. */
@@ -1273,9 +1296,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.ungated = V10_ORDERS.filter(o => !o.needs).length;
     /* the owner's ruling: the thirty-six added carry no prerequisite of any
        kind, and NONE of them may sneak a req in either */
-    const late = V10_ORDERS.slice(36);
+    /* S11b promised that its thirty-six additions were ungated, and that promise
+       is still the claim. S15b's eighteen are a separate window and are
+       deliberately NOT all ungated -- an order that reaches into the statute
+       book should wait on the statute, which is the file's own rule. */
+    const late = V10_ORDERS.slice(36, 72);
     out.lateCount = late.length;
     out.lateGated = late.filter(o => o.needs).length;
+    const newest = V10_ORDERS.slice(72);
+    out.newCount = newest.length;
+    out.newGated = newest.filter(o => o.needs).length;
+    out.newTargeted = newest.filter(o => o.target).length;
+    out.newHooks = newest.filter(o => o.onIssue || o.onRevoke).length;
     /* O()'s req default is load-bearing: v10OrderOpen calls o.req(st)
        UNGUARDED, so an order without one throws on every card render */
     out.missingReq = V10_ORDERS.filter(o => typeof o.req !== 'function').length;
@@ -1317,9 +1349,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.filterSplits = onlyGated + onlyFree === all && onlyGated > 0 && onlyFree >= 36;
     out.onlyGated = onlyGated; out.onlyFree = onlyFree;
     /* the District exclusion the card has always claimed */
-    const disp = V10_ORDER.disperseAgencies;
-    out.districtExcluded = disp ? !v10OrderTargets(disp).some(t => t.id === 'district') : false;
-    out.otherRegionsKept = disp ? v10OrderTargets(disp).length === REGIONS.length - 1 : false;
+    /* S15: the District exclusion went with the region targeting it qualified.
+       What replaces it is that no order offers a region to target at all. */
+    out.noRegionTargets = V10_ORDERS.every(o => o.target !== 'region');
+    out.targetsOffered = V10_ORDERS.filter(o => o.target).map(o => o.target)
+      .filter((v, i, a) => a.indexOf(v) === i).sort().join(',');
     S.pol = keep.pol; S.v10.orders = keep.orders; S.exec = keep.exec;
     S.capital = keep.capital; S.uiPrefs = keep.prefs;
     return out;
@@ -1328,19 +1362,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      fixed properly. Now that every probe goes through pick(), the comparison
      would be tautological -- pick() throws on the rename this used to catch --
      so the id is reported rather than asserted. */
-  say(book2.total >= 72 && book2.lateCount === book2.total - 36 && book2.lateGated === 0 &&
-      book2.missingReq === 0,
+  say(book2.total >= 90 && book2.lateCount === 36 && book2.lateGated === 0 && book2.missingReq === 0,
     'thirty-six more, and none of them gated',
-    `${book2.total} orders, ${book2.ungated} of them needing no statute · the ${book2.lateCount} registered after the original ` +
-    `thirty-six carry ${book2.lateGated} prerequisites · every order has a callable req (O()'s default is load-bearing for the ` +
-    `unguarded call in v10OrderOpen): ${book2.missingReq === 0} · the probe is ${book2.probe}, named rather than positional`);
+    `${book2.total} orders, ${book2.ungated} of them needing no statute · S11b's ${book2.lateCount} carry ` +
+    `${book2.lateGated} prerequisites, which was its promise · every order has a callable req (O()'s default is ` +
+    `load-bearing for the unguarded call in v10OrderOpen): ${book2.missingReq === 0} · the probe is ${book2.probe}, ` +
+    `named rather than positional`);
+  say(book2.newCount === 18 && book2.newTargeted === 0 && book2.newGated > 0 && book2.newHooks === 3,
+    'eighteen more, every one of them national',
+    `S15b adds ${book2.newCount} orders, ${book2.newTargeted} of which make the player name anything · ` +
+    `${book2.newGated} wait on a statute, because an order that reaches into the book should wait on the book · ` +
+    `and ${book2.newHooks} of them define onIssue or onRevoke, the escape hatch the engine has called at four sites ` +
+    `since S10c and no order had ever defined`);
   say(book2.issued && book2.narrowShrinks && book2.upkeepHeld && book2.courtHeatReal && book2.filterSplits &&
-      book2.districtExcluded && book2.otherRegionsKept,
+      book2.noRegionTargets,
     'a narrowed order is a smaller order',
     `narrowing scales what an order delivers to ${book2.narrowRatio} and again after that, while the upkeep is unchanged: ${book2.upkeepHeld} · ` +
     `the book's total exposure reaches the court at ${book2.courtHeat} instead of being summed into a field nobody read · ` +
     `the page separates ${book2.onlyGated} gated from ${book2.onlyFree} ungated · ` +
-    `the agencies can no longer be dispersed into the District: ${book2.districtExcluded}`);
+    `the only targets any order still offers are ${book2.targetsOffered || '(none)'} -- no order names a state`);
 
   say(needs.blocked && needs.gated > 0, 'an order cannot outrun the book',
     `${needs.gated} of ${needs.total} orders carry a statute prerequisite; one is refused without it and opens with it: ${needs.blocked}` +
@@ -1922,6 +1962,170 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         : (prose.lockedNoReason.length ? prose.lockedNoReason.length + ' locked with no stated reason'
           : `all twenty core categories list twenty-four · ${prose.lockedCount} of them are locked and every one states its condition · ` +
             `the three form books stay hidden · and policyOpen is unchanged, so an emergency statute is still unenactable under a Federal Republic`)));
+
+  /* ============================================================
+     S15b: THE ORDER BOOK. The cap was `var n = 4` read in three places and
+     asserted by no harness; because the check was target-independent and every
+     card calls v10OrderOpen, a government at four standing orders had every
+     button on all 72 cards disabled and the same refusal printed 72 times. And
+     the whole "Orders about orders" category -- five cards promising expiry, a
+     pre-ballot bar, a week on the table, an Attorney's opinion and a printed
+     register -- delivered ind, mood, delivery and polCost and touched the order
+     book nowhere. ============================================================ */
+  const obook = await p2.evaluate(() => {
+    const out = {};
+    const keep = JSON.parse(JSON.stringify({ orders:S.v10.orders, capital:S.capital, exec:S.exec,
+      turn:S.turn, lower:S.lower, last:S.lastElection }));
+    const me = playParty(S);
+    ['pres', 'vpres', 'chan', 'vchan'].forEach(d => S.exec[d] = me);
+    S.ruling = me; S.coalition = [me];
+    const clear = () => { S.v10.orders = {}; S.v10.orderTurn = {}; delete S.v10.decreeShield; delete S.v10.convocation; delete S.v10.oathSworn; S.capital = 3000; };
+    /* Degrade rather than throw on a build that predates S15b, so every one of
+       these assertions can be run against the old file and show what it did.
+       `openBooks` is an S15b order; deliveryUnit is the ungated, untargeted
+       stand-in that has been in the book since S10c. */
+    const has = (id) => !!V10_ORDER[id];
+    const SECOND = has('openBooks') ? 'openBooks' : 'deliveryUnit';
+    const bookOf = () => (v10OrderMods(S).book || { expire:0, lay:0, preBallot:false, review:1 });
+
+    /* 1. no cap: sign every ungated, untargeted order the offices allow */
+    clear();
+    const free = V10_ORDERS.filter(o => !o.target && !o.needs && o.req(S));
+    let signed = 0, refused = null;
+    free.forEach(o => {
+      S.capital = 3000;
+      const why = v10OrderOpen(S, o, null);
+      if (why) { if (!refused) refused = o.id + ': ' + why; return; }
+      v10IssueOrder(o.id, null);
+      if (v10OrderRec(S, o.id)) signed++;
+    });
+    out.freeCount = free.length;
+    out.signed = signed;
+    out.firstRefusal = refused;
+    out.upkeepAt = Math.round(v10OrderMods(S).upkeep * 10) / 10;
+
+    /* 2. every order expires, because the card says every order expires */
+    clear();
+    v10IssueOrder('establishmentFreeze', null);
+    v10IssueOrder('orderExpiry', null);
+    out.expiryStamped = !!(v10OrderRec(S, 'establishmentFreeze') || {}).expires === false;
+    /* the stamp is written when an order is SIGNED, so the freeze signed before
+       the rule carries none and the rule stamps itself */
+    out.ruleStampsItself = !!(v10OrderRec(S, 'orderExpiry') || {}).expires;
+    v10IssueOrder(SECOND, null);
+    out.laterStamped = !!(v10OrderRec(S, SECOND) || {}).expires;
+    const t0 = S.turn;
+    for (let i = 0; i < 3; i++) { S.turn++; v10OrdersTick(S); }
+    out.expiredAway = !v10OrderRec(S, SECOND);
+    out.freezeSurvived = !!v10OrderRec(S, 'establishmentFreeze');
+    S.turn = t0;
+
+    /* 3. a week on the table, and no table when the Assembly is gone */
+    clear();
+    /* the rule lays ITSELF on the table first, so it has to take effect before
+       it can lay anything else -- which is what the card describes */
+    v10IssueOrder('ordersLaidBefore', null);
+    out.ruleLaysItself = (v10OrderRec(S, 'ordersLaidBefore') || {}).status === 'laid';
+    S.turn++; v10OrdersTick(S);
+    v10IssueOrder(SECOND, null);
+    const rec = v10OrderRec(S, SECOND) || {};
+    out.laidStatus = rec.status;
+    out.laidNotInForce = v10OrdersInForce(S).indexOf(SECOND) < 0;
+    S.turn++; v10OrdersTick(S);
+    out.matured = (v10OrderRec(S, SECOND) || {}).status === 'inforce';
+    S.turn -= 2;
+    clear();
+    S.lower = { exists:false, suspended:false };
+    v10IssueOrder('ordersLaidBefore', null);
+    S.turn++; v10OrdersTick(S);
+    v10IssueOrder(SECOND, null);
+    out.noTableNoDelay = (v10OrderRec(S, SECOND) || {}).status === 'inforce';
+    S.turn--;
+    S.lower = JSON.parse(JSON.stringify(keep.lower));
+
+    /* 4. this executive signs nothing new in the session before a ballot */
+    clear();
+    out.barBefore = v10OrderOpen(S, V10_ORDER[SECOND], null);
+    v10IssueOrder('preBallotBar', null);
+    /* isBallotTurn is odd turns, so a ballot is one session away from an even
+       one. Step to an even turn rather than assuming the term arithmetic. */
+    const keepTurn15 = S.turn;
+    if (nextBallot(S.turn) - S.turn > 1) S.turn++;
+    out.ballotIn = nextBallot(S.turn) - S.turn;
+    out.electionsOn = electionsOn(S);
+    out.barAfter = v10OrderOpen(S, V10_ORDER[SECOND], null);
+    S.turn = keepTurn15;
+    S.lastElection = keep.last;
+
+    /* 5. the register exposes the book, the Attorney's opinion shields it */
+    clear();
+    out.reviewPlain = bookOf().review;
+    v10IssueOrder('orderRegister', null);
+    out.reviewRegister = Math.round(bookOf().review * 100) / 100;
+    v10IssueOrder('attorneyOpinion', null);
+    out.reviewBoth = Math.round(bookOf().review * 100) / 100;
+
+    /* 6. the hatch reaches the chamber model S15a built */
+    clear();
+    S.armyLoyalty = 60; S.unity = 60; S.crown = 50;
+    out.decreePlain = Math.round(decreeFavour(S) * 10) / 10;
+    /* the machinery of the decree is gated on a state that has stopped holding
+       elections or a security state of 30, which is the point of it */
+    const keepForm = S.form; S.form = 'oneparty';
+    out.machineryOpen = has('decreeMachinery') ? v10OrderOpen(S, V10_ORDER.decreeMachinery, null) : 'the order does not exist';
+    if (has('decreeMachinery')) v10IssueOrder('decreeMachinery', null);
+    out.decreeShielded = Math.round(decreeFavour(S) * 10) / 10;
+    S.form = keepForm;
+    clear();
+    out.councilPlain = Math.round(councilFavour(S) * 10) / 10;
+    if (has('standingConvocation')) v10IssueOrder('standingConvocation', null);
+    out.councilConvoked = Math.round(councilFavour(S) * 10) / 10;
+    out.decreeConvoked = Math.round(decreeFavour(S) * 10) / 10;
+
+    S.v10.orders = keep.orders; S.capital = keep.capital; S.exec = keep.exec; S.turn = keep.turn;
+    return out;
+  });
+
+  say(obook.signed === obook.freeCount && obook.signed > 12 && obook.upkeepAt > 0,
+    'the order book has no cap',
+    `${obook.signed} of ${obook.freeCount} ungated national orders signed in one session at an upkeep of ` +
+    `${obook.upkeepAt} capital a session, and nothing refused` +
+    (obook.firstRefusal ? ' except ' + obook.firstRefusal : '') +
+    ` · the cap was four, and because it was checked before cost and independently of target, hitting it ` +
+    `disabled every button on all 72 cards at once`);
+
+  say(obook.ruleStampsItself && obook.laterStamped && obook.expiredAway && obook.freezeSurvived,
+    'every order shall expire, including this one',
+    `the rule stamps itself: ${obook.ruleStampsItself} · an order signed after it carries an expiry and is gone ` +
+    `three sessions later: ${obook.expiredAway} · one signed BEFORE it is untouched (${obook.freezeSurvived}), ` +
+    `so a rule arriving late does not retroactively kill the standing book`);
+
+  say(obook.ruleLaysItself && obook.laidStatus === 'laid' && obook.laidNotInForce && obook.matured &&
+      obook.noTableNoDelay,
+    'a week on the table, when there is a table',
+    `the rule lies on the table itself before it can lay anything else (${obook.ruleLaysItself}) · once it is in ` +
+    `force a new order reads "${obook.laidStatus}", contributes nothing while it lies there, and takes effect a ` +
+    `session later · with the Assembly abolished there is nowhere to lay it and it takes effect at once: ` +
+    `${obook.noTableNoDelay}`);
+
+  say(!obook.barBefore && !!obook.barAfter && obook.ballotIn <= 1 && obook.electionsOn,
+    'no order before a ballot',
+    `with a ballot ${obook.ballotIn} session away the same order is refused: "${obook.barAfter}" · ` +
+    `before the rule stood it was open, and the bar reads the calendar rather than a flag`);
+
+  say(obook.reviewPlain === 1 && obook.reviewRegister > 1 && obook.reviewBoth < obook.reviewRegister,
+    'the register exposes the book and the opinion shields it',
+    `the court sees the book at ${obook.reviewPlain} plain, ${obook.reviewRegister} with the register printed, ` +
+    `and ${obook.reviewBoth} with the Attorney's opinion on every order as well · both cards described how an ` +
+    `order stands in law and neither reached the review`);
+
+  say(obook.decreeShielded > obook.decreePlain && obook.councilConvoked > obook.councilPlain &&
+      obook.decreeConvoked < obook.decreePlain && !obook.machineryOpen,
+    'the order book reaches the chamber model',
+    `naming an officer in every department who answers for a decree takes the apparatus from ${obook.decreePlain} ` +
+    `to ${obook.decreeShielded} · a standing convocation takes a suspended house from ${obook.councilPlain} to ` +
+    `${obook.councilConvoked} and the decree the other way to ${obook.decreeConvoked} · this is the first time an ` +
+    `order has reached anything outside its own fifteen aggregate fields`);
 
   /* ============================================================
      9. S15: THE CHAMBER THAT IS NOT THERE.
