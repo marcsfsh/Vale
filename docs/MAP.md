@@ -177,6 +177,52 @@ the live chain — fine, but know they re-bind per sheet.
   says so on the button and the toast says it again on the way in, instead of
   handing the player an inert corpse with no explanation.
 
+## The legislature, and what happens when there isn't one
+
+Three states per chamber, not two (S15). `lowerState(st)` returns `sitting` /
+`suspended` / `abolished` and `upperState(st)` returns `sitting` / `ceremonial`
+/ `abolished`; `lowerOn`, `lowerSits` and `upperOn` are still there and still
+mean what they meant, but nothing in the model should ask a yes/no question
+about a chamber any more.
+
+`billLadder(st)` answers **which rungs this constitution actually has**, and
+`billOpeningStage(st)` says where a bill enters:
+
+| the constitution | the ladder | sessions |
+|---|---|---|
+| Assembly and Senate both sit | committee → assembly → senate | 3 |
+| Assembly sits, no effective Senate | committee → assembly | 2 |
+| Assembly suspended | council | 1 |
+| Assembly abolished, Senate sits | senate | 1 |
+| neither | decree | 1 |
+
+A **council** is the suspended house: the government's own people, who pass
+almost anything, on a favour of `18 + army × .42 + unity × .26 + crown × .16`
+against a bar of 50 — at army 30, unity 30 and crown 20 that reads 42, so it is
+a gradient rather than a rubber stamp. A **decree** is the same figure plus 8:
+no chamber to convince, but the apparatus can still refuse, and when it refuses
+the statute does not enter the book.
+
+**What this replaced.** One substituted number,
+`if (!lowerSits(st)) lower = FORMS[st.form].elections ? 0 : 100;`, in four
+places (`billForecast` and its v6 and v9 wrappers, and `v11ArtForecast`). It
+asked about the CALENDAR when the question is whether a chamber exists, and it
+gave the same answer for a suspended house and an abolished one. A number
+cannot remove a stage, a session of delay, or the sentence "passed the Assembly
+with 100 percent" from the log — which is what an emperor with no Assembly was
+reading. Under a form that still held elections it forced `lower` to 0, driving
+the committee figure to 14 against a bar of 43: **every bill died in committee
+and nothing on screen said why.**
+
+Two more things that follow from a chamber being gone: `doTransition` neutralises
+the Senate on proclaiming any form that has abolished elections (only the Empire
+and the DPR did this for themselves, so a One Party State could be voted down by
+its own upper house), and `capitalIncome`'s majority bonus is no longer paid out
+of a frozen seat map when there is no house to command.
+
+Covered by seven assertions in `tools/roads.js`, all seven of which redden
+against the build before S15a.
+
 ## Turn loop (live chains; identifier calls get the last assignment)
 
 `e` key → confirmEndTurn v8(~13747)→v7(~11941 quickEnd)→v4(~4407) → sheet

@@ -4,7 +4,114 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S14 — Truth, then the seams**, fifth of five. **The slice is complete.** The
+**S15 — The regime is real**, first of eleven PRs. The owner abolished the
+National Assembly and his bills went on passing through it.
+
+### One substituted number, in four places
+
+The Senate has had a real stage skip since v4 (`advanceBills`, the arm that
+reads `upperOn`). The Assembly never had one. The whole of the model's
+knowledge that a chamber had been abolished was this, repeated verbatim in
+`billForecast`, its v6 wrapper, its v9 wrapper and `v11ArtForecast`:
+
+```js
+if (!lowerSits(st)) lower = FORMS[st.form].elections ? 0 : 100;
+```
+
+It asks about the **calendar** when the question is whether a chamber exists,
+and it gives the same answer for a suspended house and an abolished one. A
+number cannot remove a stage, a session of delay, or the sentence "passed the
+Assembly with 100 percent" from the log.
+
+**And under a form that still holds elections it forced `lower` to 0**, which
+drove the committee figure to 14 against a bar of 43. Every bill died in
+committee, and nothing on screen said why. That half of the defect nobody had
+reported, because a player who abolishes the Assembly under a republic is doing
+something the game gave them no reason to expect to work.
+
+### Three states, and the ladder each one has
+
+`lowerState` / `upperState` replace the yes/no. `billLadder(st)` answers which
+rungs this constitution actually has:
+
+| the constitution | the ladder | sessions |
+|---|---|---|
+| Assembly and Senate | committee → assembly → senate | 3 |
+| Assembly, no effective Senate | committee → assembly | 2 |
+| Assembly **suspended** | council | 1 |
+| Assembly **abolished**, Senate sits | senate | 1 |
+| neither | **decree** | 1 |
+
+A council is the suspended house: the government's own people, on a favour of
+`18 + army × .42 + unity × .26 + crown × .16` against a bar of 50. At army 30,
+unity 30 and crown 20 that reads 42 — a gradient, not a rubber stamp with the
+word "almost" in front of it. A decree is the same figure plus 8: no chamber to
+convince, and the apparatus can still refuse. **Measured on the branch: at army
+12, unity 14 and states 8 the decree was refused and the record reads "The
+decree was not carried out: 37% of the apparatus stood behind it."** Ruling by
+decree is not ruling by wish.
+
+### Four more things that followed from a chamber being gone
+
+- **A One Party State could be voted down by its own Senate.** Only the Empire
+  and the DPR neutralised the upper house, and only in their own `apply()`. Any
+  form that has abolished elections now does it on proclamation, and hands the
+  Senate its powers back on returning to a republic. Abolition outright stays
+  the separate, expensive act it is.
+- **`artAbolishUpper` did not abolish.** Its name is the Single Chamber, its
+  text says there shall be one house, its `moves` line says it ends the Senate
+  outright, and its `apply` set `ceremonial`. It now sets `exists = false`, and
+  it has a repeal.
+- **Four Legislative actions had no chamber gate of any kind** — an Emperor with
+  no legislature could hand out committee chairs across both houses and adjourn
+  them early. `actionOpen`'s only chamber test reads `a.house`, which marks
+  *Senate* actions; there was no Assembly marker anywhere.
+- **The majority bonus was paid out of a frozen seat map** when there was no
+  house to command, and the bill card drew four fixed pips of which `assent` has
+  never lit in the file's history. The card now draws the ladder the bill has.
+
+### And the chamber that carries a bill is named
+
+A bill that passed the Assembly with no Senate above it was never reported as
+having passed anything: the log line came *after* the hand-on, so when the lower
+house was the last chamber the bill went straight to assent in silence. The
+decision is reported before the bill moves.
+
+### Seven assertions, and all seven redden
+
+| assertion | against the build before S15a |
+|---|---|
+| a working republic is unchanged | the no-Senate ladder read committee → assembly → **senate** |
+| an abolished Assembly is not in the way | entered at **committee**, and the log mentioned one |
+| a suspended Assembly is a council | no council existed |
+| one chamber left is still a chamber | climbed committee → assembly → senate with no Assembly |
+| a decree still has to be carried out | it failed — in a committee of a house that had been abolished |
+| no bill dies in a committee that does not exist | it did |
+| a One Party State is not voted down by its Senate | the Senate read **sitting** |
+
+The republic assertions ask about the **path**, not the outcome: a veto-2 Senate
+can genuinely refuse a bill, so asserting that it does not would be asserting a
+die roll. What must hold is that a bill visits only stages its constitution has,
+one per session — which is exactly what was false. Verified stable over three
+consecutive runs.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          99 assertions
+PLAYTEST PASS     44 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS   all green
+PACING            standard unchanged: 2 elections won, 8 years governing, 10 records
+```
+
+Next: **S15b**, the order book. `v10OrderMax` is `var n = 4` read in three
+places and asserted by no harness; hitting it disables all 72 cards at once and
+prints the same refusal 72 times. Thirteen orders are region-targeted and twelve
+of them already carry national effects. And the whole "Orders about orders"
+category — five cards claiming to govern expiry, pre-ballot signing, the
+register and the attorney's opinion — touches none of it.
+
+Previously: **S14 — Truth, then the seams**, fifth of five. **The slice is complete.** The
 marker check now says something true, and the three splices whose failure was
 silent are held by the playtest.
 
@@ -2290,6 +2397,7 @@ ratchet 10 → 5, which is now its true floor.
 | S14c the ratchet made honest | **merged** (#45) | the check counted a hand-written aliasCaptured boolean and never asked whether the alias exists or is read, so two sites wearing an unread alias scored green -- one adjudicated in its own capitals as DELIBERATELY NOT CALLED; capture is now DERIVED from the code and the recorded boolean cross-checked against it, a rule validated at 197 agreements out of 199 with exactly the two known disagreements, moving maxDead 5 -> 7 as a correction; all 199 stale line fields deleted (28 were literally 0) in favour of `run.js --sites`; the swapped indicatorTargets#3/#4 aliases put back; five of poison.js's ten anchors pruned as bodies S2 deleted, and --list made self-verifying |
 | S14d the ratchet driven down | **merged** (#46) | S2's floor of five turned out to be three boot statements -- the v4 boot render, the render half of the v5 boot line and two calls on the mobile boot line, all painting screens a later chunk replaced before anyone saw them; with those gone all five bodies poison-proved unreachable ONE AT A TIME against playtest and all 92 roads assertions, and the same five poisons reddened the pre-removal build (4/4/8/4/4 page errors), which is what makes the green runs evidence; bodies deleted, first surviving assignments promoted to declarations, 199 ordinal keys re-derived to 194 with zero alias mismatches; the ratchet now requires `deliberate: true` with a reason on any orphan rather than trusting a ceiling, and the 2 that remain are the two whose replaced bodies are wrong; paints of #view at load 7 -> 5, boot 401.9ms -> 345.6ms |
 | S14e the marker check made honest | **merged** (#47) | 12 of the 25 markers were generic structural strings whose `>= 2 occurrences` rule is vacuously true forever -- listed rather than counted, with a guard against hiding a specific marker among them; the other 12 now assert the pair that matters, that an EMITTER of the literal exists outside the splice, which the old rule could not see (renaming the Records and Honours heading breaks two splices and the old rule passes); one new playtest step splices-land covers the three splices the check could never reach because their markers are built in variables, including the .region-card positional split whose failure puts wrong data on screen, proved on four mutations |
+| S15a the chamber that is not there | **merged** (#48) | the Senate has had a stage skip since v4 and the Assembly never did, so an abolished house still cost a session and still said "passed the Assembly with 100 percent"; abolition was one substituted number in four places that asked about the calendar rather than about existence, and under a form that still held elections it forced the forecast to 0 and killed every bill in a committee of a house that did not exist; three chamber states replace the yes/no, billLadder answers which rungs a constitution actually has, a suspended house is a council on a real favour gradient and an abolished one is a decree the apparatus can refuse; any form that has abolished elections now neutralises its Senate on proclamation, artAbolishUpper abolishes, four ungated Legislative actions got chamber gates, and the majority bonus is no longer paid out of a frozen seat map; seven roads assertions, all seven red on the old build |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
