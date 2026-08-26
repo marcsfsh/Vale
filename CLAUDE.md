@@ -50,6 +50,10 @@ before touching the file.
   six session clocks were counted against `st.turn` and each charged one End
   Session click more than its card printed — the amendment clock said two and
   took three. `roads.js` holds all six.
+- **A per-power list is built at the END of the file, never where the `ACTIONS`
+  literal is evaluated.** `POWERS.push` runs in the S10e chunk, so a list built
+  in the literal freezes the six powers that existed at that moment. Nine
+  diplomacy lists have been rebuilt for exactly this reason across S15j and S16c.
 - **A read must not create.** `v6TreatyRows` installed an empty array for any
   power it was asked about, and one panel asks about all eleven every render, so
   `Object.keys(st.v6.treaties).length >= 3` — the Peacemaker record's test —
@@ -80,7 +84,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **158 content assertions**, the largest harness here: the
+- `tools/roads.js` — **159 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
@@ -97,9 +101,10 @@ you touched; a SKIP is never a PASS.
 - `tools/poison.js` — proves a body is dead before you delete it.
 - `tools/rungs.js` — the authored prose: `--brief` a book, `--apply` a shard
   (idempotent), `--check` the 582 statute ladders against the house style, and
-  `--corpora` the four authored registries — 60 measures, 90 orders, 80
-  articles, 20 treaties, 658 pieces — which fails on a breach and then reports
-  the punctuation residue in the rest of the file without failing on it.
+  `--corpora` the five authored registries — 60 measures, 90 orders, 80
+  articles, 20 treaties, 55 dispatch lines, 724 pieces — which fails on a breach
+  and then reports the punctuation residue in the rest of the file without
+  failing on it.
 - `tools/prose/` — the blind measurement rig: `sweep.js` emits every ladder for
   an unaided reader, `sweepscore.js` scores it. Its README carries the one rule
   these tools exist to enforce: **never re-measure the sample you repaired

@@ -513,6 +513,15 @@ async function corpora() {
          note and a list of tags apiece. It is keyed by id rather than held in
          an array, and its tags are prose the card prints, so each one is
          judged as its own piece. */
+      /* S16c: one authored line per capital per diplomatic instrument, 55 of
+         them. The numbers beside each are COMPOSED from the effect table by
+         `v16DipTip` rather than typed, so there is nothing here to judge but
+         the prose, which is the point. */
+      dispatches: Object.keys(typeof V16_DIP !== 'undefined' ? V16_DIP : {}).map(id => {
+        const row = { id:'dip:' + id, kind:'dispatch', name:(typeof POWER !== 'undefined' && POWER[id] ? POWER[id].short + ' dispatches' : id) };
+        Object.keys(V16_DIP[id]).forEach(k => { row[k] = V16_DIP[id][k]; });
+        return row;
+      }),
       treaties: Object.keys(typeof V6_TREATIES !== 'undefined' ? V6_TREATIES : {}).map(k => {
         const d = V6_TREATIES[k], row = { id:'treaty:' + k, kind:'treaty', name:d.name || '', note:d.note || '' };
         (d.tags || []).forEach((t, i) => { row['tag' + (i + 1)] = t; });
@@ -543,7 +552,7 @@ async function corpora() {
     if (/\binterestingly,/i.test(t)) fail.push(id + ' ' + label + ': throat-clearing');
   }
 
-  ['measures', 'orders', 'articles', 'treaties'].forEach(k => {
+  ['measures', 'orders', 'articles', 'treaties', 'dispatches'].forEach(k => {
     (data[k] || []).forEach(row => {
       /* A DUPLICATE NAME IS THE ONE DEFECT THAT IS SILENT ON THE PAGE. S15g
          found two panels drawing adjacent cards under an identical heading and
@@ -560,7 +569,7 @@ async function corpora() {
     });
   });
 
-  const counts = ['measures', 'orders', 'articles', 'treaties'].map(k => k + ' ' + (data[k] || []).length).join(', ');
+  const counts = ['measures', 'orders', 'articles', 'treaties', 'dispatches'].map(k => k + ' ' + (data[k] || []).length).join(', ');
   console.log('corpora            : ' + counts);
   console.log('authored pieces    : ' + pieces + ', mean ' + Math.round(chars / Math.max(1, pieces)) + ' chars');
   console.log('distinct names     : ' + seenName.size);

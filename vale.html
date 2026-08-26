@@ -31171,6 +31171,381 @@ viewWorld = function () {
                 : html + v15AlliancePanel();
 };
 
+
+/* ==========================================================
+   S16c -- THE FOREIGN OFFICE REACHES EVERY CAPITAL
+
+   Measured on the build before this chunk, driving every leg of every
+   Diplomacy action through its own run and counting which of the eleven
+   capitals moved:
+
+     stateVisit    4/11   summit   3/11   tradeMission 3/11
+     recallAmb     2/11   aidSurge 2/11   armProxy     4/11
+     envoy        11/11   coerce  10/11   sanction    10/11
+
+   Five of the six were written in v4 and widened in v9, when the file
+   modelled six powers and named three of them by hand. `POWERS.push` runs in
+   the S10e chunk, so Valdenmark, Zhen-Kai, Oranje, Khoraz and Tarnow could be
+   sanctioned and pressed and never visited, never brought to a summit, never
+   sent a trade mission, never recalled from and never given aid. S15j rebuilt
+   the envoy, treaty, pressure and accession lists the same way and for the
+   same reason; this is the rest of them.
+
+   And the BASE leg of five of the six -- the option the card offers first --
+   moved no relation with any power at all. "Bring the powers to a table in
+   Vale and keep them there until something is signed" changed international
+   tension and the mood of the professions, and no power noticed.
+
+   Two rules this chunk keeps. The lists are built HERE, at the end of the
+   file, because a list built where the ACTIONS literal is evaluated freezes
+   the six powers that existed at that moment. And every number a tip prints
+   is computed by the same code that applies it, so a card cannot say a thing
+   the model does not do: the authored line carries the flavour and
+   `v16DipTip` composes the arithmetic.
+   ========================================================== */
+
+/* One authored line per capital per instrument. The numbers are not in here;
+   they come from the effect tables below and are printed from them. */
+var V16_DIP = {
+  ostmark: {
+    visit:'The frontier towns turn out on both sides, and the survey commission meets again for the first time in nine years.',
+    summit:'The border is the only item, and everybody in the room has a map of it drawn in a different decade.',
+    trade:'Timber, ore and machine tools across the northern crossings, on the schedule the frontier has wanted since the war.',
+    recall:'The northern crossings feel it within the week, and so do the towns that live off them.',
+    aid:'The floods took the same valley on both sides of the line, and only one government has the helicopters.' },
+  moya: {
+    visit:'Fifteen capitals in eleven days, and in four of them the honour guard is carrying our rifles.',
+    summit:'Reconstruction, and which of the fifteen speaks for the rest of them. Neither question is settled.',
+    trade:'Rolling stock, turbines and a great deal of cement, against reconstruction credits nobody expects to be repaid in full.',
+    recall:'The republics we armed take it as a message and the ones we did not take it as a promotion.',
+    aid:'Grain into the four republics that have had none since the confederation fell.' },
+  sarath: {
+    visit:'The other great power, at last, in front of the cameras. The frontier calls it appeasement before the aircraft has landed.',
+    summit:'Two navies, one hemisphere, and a communique that took four months to draft and eleven minutes to read.',
+    trade:'Grain and aircraft parts, in quantities the general staff of both countries would rather not be published.',
+    recall:'The most serious signal Vale can send without moving a ship, and both capitals know the tariff.',
+    aid:'Aid to a rival, publicly, after an earthquake. It is read at home as weakness and abroad as confidence.' },
+  calavera: {
+    visit:'Nine hundred miles of border apiece and a market on both sides of it, so the visit is mostly about the market.',
+    summit:'Water, migration and the two railways, in that order, and the water takes three days.',
+    trade:'Beef, fruit and assembled goods northward; machinery and credit south. The plains do very well out of it.',
+    recall:'The border does not close, but everything that crosses it slows to the speed of a paper form.',
+    aid:'The hurricane took the coast road and the port with it, and the reconstruction is ours to lead if we want it.' },
+  alliance: {
+    visit:'Our own bloc, and the guarantee restated in every capital in the same words.',
+    summit:'Guarantees reaffirmed, contributions argued over, and a photograph the rivals will study.',
+    trade:'Standardised procurement and the export variants, which is what an alliance is for once the speeches are over.',
+    recall:'Recalling from your own bloc is a message to the bloc, and it will be read as one for years.',
+    aid:'Engineers and field hospitals under the flag, into a member state that asked for them.' },
+  meridian: {
+    visit:'Photographs on a quay, a tonnage agreement, and the exchanges up before the aircraft is home.',
+    summit:'Tariffs and tonnage, and the small maritime states negotiating as though they were one country, which they are not.',
+    trade:'Three hundred exporters and a league that sells to everybody. The orders come back on the same aircraft.',
+    recall:'A league that fights nobody takes it badly, and the freight rates say so within a fortnight.',
+    aid:'A storm took four of the smaller ports, and the League has no fleet of its own to clear them.' },
+  valdenmark: {
+    visit:'A shared language on both sides of the border, and the river argument politely not raised at dinner.',
+    summit:'The river, the river, and then the river. A joint commission is agreed and given no powers.',
+    trade:'Cross-border industry that already exists, given a customs schedule that admits it exists.',
+    recall:'The families on both sides of the border notice first, and they write to their deputies about it.',
+    aid:'The spring flood took the low bank, which is the side that has always flooded and always been ours to help.' },
+  zhenkai: {
+    visit:'The largest manufacturing economy east of the ocean, and a schedule drawn up entirely by our hosts.',
+    summit:'Lending, currency and shipping. They arrive with numbers and leave without having explained any of them.',
+    trade:'Components in, finished goods out, and a deficit the plains will read aloud in the chamber.',
+    recall:'The lending stops before the ambassador has cleared the airport, and nobody says the two are connected.',
+    aid:'A typhoon on their southern coast, and an offer of help that is also an offer to be seen helping.' },
+  oranje: {
+    visit:'The flag, the navy and the accent, all of it received in a palace that costs more to keep than the fleet.',
+    summit:'A former empire with opinions about how the world ought to be arranged, and a seat at every table that arranges it.',
+    trade:'Shipping, insurance and the reinsurance behind it, which is most of what the Dominions still sell.',
+    recall:'A gesture between old powers, understood precisely, and resented for a generation.',
+    aid:'Their overseas territories flooded, and their treasury cannot reach them fast enough.' },
+  khoraz: {
+    visit:'Seven emirates on the strait, and a week of hospitality that is also a week of being weighed.',
+    summit:'The passage and the pipeline. Every other power at the table wants the same two things said differently.',
+    trade:'Refined product one way, plant and engineering the other, and the terms revised every year without fail.',
+    recall:'The strait does not close. The insurance on it rises, which is the same thing more slowly.',
+    aid:'A fire in the largest refinery, and an offer of engineers made before the emirates asked.' },
+  tarnow: {
+    visit:'Small, armed, and certain we are the author of its misfortunes. The visit is the first in thirty years.',
+    summit:'A list of grievances dating to 1912, read out in full, and then a real conversation about the frontier.',
+    trade:'Modest, and worth more as a signal than as a schedule. Both governments know it.',
+    recall:'They have been expecting it since 1912 and will file it with the rest.',
+    aid:'A rival that has just lost a great deal, and an aircraft on the runway with our flag on the tail.' }
+};
+
+/* The arithmetic, by instrument and by the kind of power. Read once by
+   `v16DipEffect` and printed once by `v16DipTip`, so the tip cannot drift
+   from the run. */
+var V16_DIP_ACTS = {
+  stateVisit: { key:'visit', verb:'A state visit was made to ', cost:4, money:4, rel:9,
+    tension:{ rival:-8, neighbour:-4, bloc:-4, alliance:-3, southern:-2, trade:-1 },
+    econ:{ trade:2, southern:1 },
+    dear:{ rival:3 },
+    mood:{ rival:{ prof:6, youth:5, tech:3, veterans:-7, faith:-2 }, alliance:{ prof:5, tech:3, veterans:2 },
+      trade:{ tech:5, smallbiz:3, prof:2 }, southern:{ smallbiz:4, labour:2, prof:2 },
+      bloc:{ prof:4, tech:4, veterans:-3 }, neighbour:{ smallbiz:4, prof:3, veterans:-2 } } },
+  summit: { key:'summit', verb:'A summit was convened with ', cost:6, money:7, rel:8, spill:2,
+    tension:{ rival:-6, neighbour:-4, bloc:-4, alliance:1, southern:-3, trade:-3 },
+    econ:{ trade:3, southern:2, bloc:1 },
+    dear:{ rival:2 },
+    mood:{ rival:{ prof:8, youth:6, faith:4, veterans:-6 }, alliance:{ veterans:8, prof:2, youth:-3 },
+      trade:{ tech:7, smallbiz:5, labour:-3 }, southern:{ smallbiz:5, labour:3, prof:2 },
+      bloc:{ prof:6, tech:4, youth:3 }, neighbour:{ smallbiz:4, prof:4, veterans:-2 } } },
+  tradeMission: { key:'trade', verb:'A trade mission returned from ', cost:4, money:5, rel:6, cash:10,
+    tension:{ rival:-2, neighbour:-1 },
+    econ:{ trade:4, bloc:3, southern:3, neighbour:2, alliance:2, rival:1 },
+    mood:{ rival:{ tech:5, smallbiz:3, veterans:-4 }, alliance:{ veterans:5, tech:4, youth:-3 },
+      trade:{ tech:7, smallbiz:4, labour:-2 }, southern:{ smallbiz:7, faith:2, labour:-2 },
+      bloc:{ tech:5, smallbiz:4, labour:1 }, neighbour:{ smallbiz:5, labour:2, tech:2 } } },
+  recallAmb: { key:'recall', verb:'The ambassador was recalled from ', cost:4, money:0, rel:-10,
+    tension:{ rival:5, neighbour:4, bloc:3, alliance:6, southern:3, trade:3 },
+    econ:{ trade:-2, southern:-1, neighbour:-1 },
+    mood:{ rival:{ veterans:6, smallbiz:2, prof:-3 }, alliance:{ veterans:-4, prof:-6, tech:-3 },
+      trade:{ veterans:4, smallbiz:-3, tech:-5 }, southern:{ veterans:5, smallbiz:-4, labour:-2 },
+      bloc:{ veterans:5, prof:-4, tech:-2 }, neighbour:{ veterans:6, smallbiz:3, prof:-3, tech:-2 } } },
+  aidSurge: { key:'aid', verb:'An emergency aid programme was mounted for ', cost:3, money:12, rel:7,
+    tension:{ rival:-5, neighbour:-3, bloc:-4, alliance:-2, southern:-3, trade:-2 },
+    econ:{},
+    mood:{ rival:{ faith:6, prof:6, youth:5, veterans:-6, smallbiz:-5 }, alliance:{ veterans:6, faith:6, prof:4, smallbiz:-4 },
+      trade:{ prof:5, tech:4, faith:4, smallbiz:-4 }, southern:{ faith:7, labour:4, prof:3, smallbiz:-5 },
+      bloc:{ faith:6, prof:5, tech:3, smallbiz:-4 }, neighbour:{ faith:6, smallbiz:2, prof:4, veterans:-2 } } }
+};
+function v16DipEffect(act, pw) {
+  var d = V16_DIP_ACTS[act];
+  return { cost:d.cost + ((d.dear || {})[pw.kind] || 0), money:d.money,
+    rel:d.rel, tension:d.tension[pw.kind] || 0, econ:(d.econ || {})[pw.kind] || 0,
+    cash:d.cash ? Math.round(d.cash * (pw.kind === 'trade' || pw.kind === 'bloc' ? 1.6 : 1)) : 0,
+    spill:d.spill || 0, mood:d.mood[pw.kind] || {}, verb:d.verb };
+}
+/* The tip is COMPOSED from the effect, never written beside it. A tag that is
+   typed by hand next to the code that contradicts it is the defect this repo
+   has a name for. */
+function v16DipTip(act, pw) {
+  var e = v16DipEffect(act, pw), bits = [];
+  bits.push('Relations with ' + pw.short + ' ' + (e.rel >= 0 ? '+' : '') + e.rel);
+  if (e.tension) bits.push('tension ' + (e.tension >= 0 ? '+' : '') + e.tension);
+  if (e.econ) bits.push('economy ' + (e.econ >= 0 ? '+' : '') + e.econ);
+  if (e.cash) bits.push('treasury ' + fmc(-e.cash));
+  if (e.spill) bits.push('every other capital of the same kind ' + (e.spill >= 0 ? '+' : '') + e.spill);
+  return bits.join(', ') + '. ' + ((V16_DIP[pw.id] || {})[V16_DIP_ACTS[act].key] || '');
+}
+function v16DipRun(act, pw) {
+  return function (S2) {
+    var e = v16DipEffect(act, pw);
+    shiftRel(S2, pw.id, e.rel);
+    if (e.tension) S2.ind.tension = c100(S2.ind.tension + e.tension);
+    if (e.econ) S2.ind.economy = c100(S2.ind.economy + e.econ);
+    if (e.cash) S2.treasury += e.cash;
+    if (e.spill) POWERS.forEach(function (o) { if (o.id !== pw.id && o.kind === pw.kind) shiftRel(S2, o.id, e.spill); });
+    mood(S2, e.mood);
+    logIt(S2, e.verb + pw.name + '.');
+  };
+}
+/* Every capital, every instrument. Built here rather than where the ACTIONS
+   literal is evaluated, which is the whole point. */
+function v16DipOptions(act) {
+  return POWERS.map(function (pw) {
+    var e = v16DipEffect(act, pw);
+    /* `power` so a harness can name the leg by the capital rather than by the
+       words on it. S14's rule is that fixtures are named and never positional,
+       and a label is very nearly positional. */
+    return { label:(act === 'recallAmb' ? 'From the ' : 'To the ') + pw.short + (act === 'summit' ? ' delegation' : ' capitals'),
+      power:pw.id, cost:e.cost, money:e.money, tip:v16DipTip(act, pw), run:v16DipRun(act, pw) };
+  });
+}
+
+
+/* ---------- sanctions are a state, not a gesture ----------
+
+   `sanction` applied a one-off fifteen points of relations and stopped. The
+   card is called "Sanction a Power", a Sanctions Regime statute stands behind
+   it, two executive orders name it in their `needs`, and there was no such
+   thing as a power BEING sanctioned: nothing in the file could be asked
+   whether one was. Now it is a state that rides the save, costs both
+   countries something every session it stands, and can be lifted. */
+function v16Sanctions(st) {
+  var v = st.v6 || (typeof v6EnsureState === 'function' ? v6EnsureState(st).v6 : null);
+  if (!v) return {};
+  if (!v.sanctions || typeof v.sanctions !== 'object') v.sanctions = {};
+  return v.sanctions;
+}
+function v16Sanctioned(st, pid) { return !!v16Sanctions(st)[pid]; }
+function v16SanctionList(st) {
+  var s = v16Sanctions(st);
+  return POWERS.filter(function (p) { return !!s[p.id]; });
+}
+function v16Impose(st, pid) {
+  var s = v16Sanctions(st);
+  if (s[pid]) return false;
+  s[pid] = { since:yearOf(st.turn) };
+  shiftRel(st, pid, -15);
+  st.ind.tension = c100(st.ind.tension + 5);
+  st.ind.economy = c100(st.ind.economy - (POWER[pid].kind === 'southern' || POWER[pid].kind === 'trade' ? 3 : 2));
+  mood(st, { veterans:6, faith:3, tech:-5, smallbiz:-3 });
+  logIt(st, 'Sanctions were imposed on ' + POWER[pid].name + '.');
+  addNews(st, 'Foreign Affairs', 'Sanctions on ' + POWER[pid].short, 'Financial and export controls, announced from the steps and in force from midnight.', 'bad');
+  return true;
+}
+function v16Lift(st, pid) {
+  var s = v16Sanctions(st);
+  if (!s[pid]) return false;
+  delete s[pid];
+  shiftRel(st, pid, 8);
+  st.ind.tension = c100(st.ind.tension - 3);
+  st.ind.economy = c100(st.ind.economy + 1);
+  mood(st, { tech:4, prof:3, smallbiz:2, veterans:-4 });
+  logIt(st, 'The sanctions on ' + POWER[pid].name + ' were lifted.');
+  return true;
+}
+/* What standing sanctions cost, every session, on both sides of the ledger.
+   The Sanctions Regime statute makes them bite harder and the Seize the Frozen
+   Reserves act turns the bite into revenue -- which is what those two statutes
+   have always said and what nothing in the file did. */
+function v16SanctionsTick(st) {
+  var list = v16SanctionList(st);
+  if (!list.length) return;
+  var reg = 1 + (st.pol.sanctionsRegime || 0) * .45;
+  list.forEach(function (pw) {
+    shiftRel(st, pw.id, -1.1 * reg);
+    st.ind.tension = c100(st.ind.tension + .5 * reg);
+    st.ind.economy = c100(st.ind.economy - .35 * (pw.kind === 'trade' || pw.kind === 'southern' ? 1.6 : 1));
+    if (st.acts && st.acts.assetSeizure) st.treasury += 1.5;
+    /* A capital held under controls for long enough with nothing left to lose
+       stops answering the telephone. */
+    if (relOf(st, pw.id) <= 6 && !v6HasTreaty(st, pw.id, 'nonaggression')) st.ind.tension = c100(st.ind.tension + .6);
+  });
+  mood(st, { veterans:.4, tech:-.5, smallbiz:-.35 });
+}
+var v16TickBase = tickTurn;
+tickTurn = function (st) {
+  v16TickBase(st);
+  v16SanctionsTick(st);
+};
+
+/* ---------- the lists, built where every power exists ---------- */
+(function () {
+  var find = function (id) { return ACTIONS.filter(function (a) { return a.id === id; })[0]; };
+
+  ['stateVisit', 'summit', 'tradeMission', 'recallAmb', 'aidSurge'].forEach(function (id) {
+    var a = find(id); if (!a) return;
+    a.opts = v16DipOptions(id);
+  });
+
+  /* The base legs, repaired. Each of these was the first option on its card
+     and moved no relation with any power at all: the card named the powers and
+     the model never asked one. They are kept, because "every capital at once"
+     is a real instrument distinct from choosing one, and they now do it. */
+  var visit = find('stateVisit');
+  if (visit) visit.opts.push({ label:'To the territories', cost:5, money:4,
+    tip:'Territories and protectorates +4. No foreign capital is involved: the possessions are ours.',
+    run:function (S2) { S2.ind.territories = c100(S2.ind.territories + 4); mood(S2, { veterans:6, smallbiz:3, youth:-3 }); logIt(S2, 'A state visit was made to the possessions.'); } });
+
+  var summit = find('summit');
+  if (summit) summit.opts.unshift({ label:'A summit of all the powers', cost:9, money:11,
+    tip:'Relations +3 with every capital, tension -12. Dearer than any single meeting and worth it exactly once a decade.',
+    run:function (S2) { POWERS.forEach(function (p) { shiftRel(S2, p.id, 3); }); S2.ind.tension = c100(S2.ind.tension - 12); mood(S2, { prof:8, youth:6, faith:4, veterans:-6 }); chronicle(S2, 'A summit of all the powers was convened in the capital.'); logIt(S2, 'A summit of all the powers was convened in the capital.'); } });
+  if (summit) summit.opts.push({ label:'A climate summit', cost:6, money:8,
+    tip:'Environment +4, tension -3, and +1 with every capital. The young approve; the plains and the mines do not.',
+    run:function (S2) { POWERS.forEach(function (p) { shiftRel(S2, p.id, 1); }); S2.ind.environment = c100(S2.ind.environment + 4); S2.ind.tension = c100(S2.ind.tension - 3); mood(S2, { youth:8, prof:6, smallbiz:-4, faith:-2 }); S2.salience.climate = c100((S2.salience.climate || 40) + 5); logIt(S2, 'A climate summit was convened in the capital.'); } });
+
+  var trade = find('tradeMission');
+  if (trade) trade.opts.unshift({ label:'The exporters and the bankers, everywhere', cost:6, money:8,
+    tip:'Economy +4, technology +2, and +2 with every trading and bloc capital. Three hundred exporters on one aircraft.',
+    run:function (S2) { POWERS.forEach(function (p) { if (p.kind === 'trade' || p.kind === 'bloc') shiftRel(S2, p.id, 2); }); S2.ind.economy = c100(S2.ind.economy + 4); S2.ind.technology = c100(S2.ind.technology + 2); mood(S2, { tech:7, smallbiz:4, labour:-2 }); logIt(S2, 'A trade mission returned with orders from half the hemisphere.'); } });
+  if (trade) trade.opts.push({ label:'An arms sales mission', cost:5, money:4,
+    tip:'Treasury +$900B, armed forces +1, tension +3, and +4 with every capital already guaranteed by us.',
+    run:function (S2) { S2.treasury += 18; S2.ind.military = c100(S2.ind.military + 1); S2.ind.tension = c100(S2.ind.tension + 3); POWERS.forEach(function (p) { if (p.kind === 'alliance' || (typeof allianceHas === 'function' && allianceHas(S2, p.id))) shiftRel(S2, p.id, 4); }); mood(S2, { veterans:5, tech:4, youth:-5, prof:-3 }); logIt(S2, 'An arms sales mission returned with orders for the export variants.'); } });
+
+  var recall = find('recallAmb');
+  if (recall) recall.opts.unshift({ label:'From every hostile capital', cost:6, money:0,
+    tip:'Relations -8 with every capital below 40, tension +5. A gesture that costs nothing in money and a great deal else.',
+    run:function (S2) { var n = 0; POWERS.forEach(function (p) { if (relOf(S2, p.id) < 40) { shiftRel(S2, p.id, -8); n++; } }); S2.ind.tension = c100(S2.ind.tension + 5); mood(S2, { veterans:6, smallbiz:3, prof:-5, tech:-4 }); logIt(S2, n ? 'Ambassadors were recalled from ' + n + ' capital' + (n === 1 ? '' : 's') + ' for consultations.' : 'The order to recall was drafted and found to name nobody: no capital is hostile enough.'); } });
+
+  var aid = find('aidSurge');
+  if (aid) aid.opts.unshift({ label:'Grain and hospitals, wherever they are needed', cost:5, money:16,
+    tip:'Relations +4 with every capital below 50, tension -6. The congregations and the professions approve; the small firms ask who is paying.',
+    run:function (S2) { var n = 0; POWERS.forEach(function (p) { if (relOf(S2, p.id) < 50) { shiftRel(S2, p.id, 4); n++; } }); S2.ind.tension = c100(S2.ind.tension - 6); mood(S2, { faith:8, prof:6, youth:5, smallbiz:-6, veterans:-3 }); logIt(S2, n ? 'An emergency aid programme was mounted for ' + n + ' capital' + (n === 1 ? '' : 's') + '.' : 'The aid programme found no capital in need of it, and was spent at home.'); } });
+  if (aid) aid.opts.push({ label:'Reconstruction loans', cost:4, money:10,
+    tip:'Debt -4, tension -4, and +3 with every bloc and successor capital. Money that comes back with interest and influence.',
+    run:function (S2) { POWERS.forEach(function (p) { if (p.kind === 'bloc') shiftRel(S2, p.id, 3); }); S2.ind.tension = c100(S2.ind.tension - 4); S2.debt = Math.max(0, S2.debt - 4); mood(S2, { tech:5, prof:4, smallbiz:-3 }); logIt(S2, 'Reconstruction loans were extended abroad.'); } });
+
+  /* Arming a client reached four capitals of eleven, because it named the two
+     KINDS it disliked rather than asking whom the government wanted armed. */
+  var arm = find('armProxy');
+  if (arm) {
+    arm.opts = POWERS.filter(function (p) { return p.kind !== 'alliance'; }).map(function (pw) {
+      return { label:'Against ' + pw.short, power:pw.id, cost:5, money:12,
+        tip:'Relations with ' + pw.short + ' -12 and with every capital of its kind -4. Tension +8, economy +2, and the young and the congregations will hear about it.',
+        run:function (S2) {
+          shiftRel(S2, pw.id, -12);
+          POWERS.forEach(function (o) { if (o.id !== pw.id && o.kind === pw.kind) shiftRel(S2, o.id, -4); });
+          S2.ind.tension = c100(S2.ind.tension + 8); S2.ind.economy = c100(S2.ind.economy + 2);
+          mood(S2, { tech:6, veterans:5, faith:-5, youth:-7, prof:-4 });
+          logIt(S2, 'Weapons were supplied to a client fighting ' + pw.name + ', through three intermediaries.');
+        } };
+    });
+  }
+
+  /* Sanctions: impose on any capital, lift any one of them, or lift the lot.
+     The list is rebuilt at render time by the panel, but the OPTIONS have to
+     name every capital, so they are built here. */
+  var sanc = find('sanction');
+  if (sanc) {
+    sanc.opts = POWERS.filter(function (p) { return p.kind !== 'alliance'; }).map(function (pw) {
+      return { label:'Sanction ' + pw.short, power:pw.id, cost:5, money:0,
+        tip:'Relations -15 at once and -1.1 a session while they stand, tension +5 and +0.5 a session, economy -2. The Sanctions Regime statute makes all of it bite harder.',
+        run:function (S2) { if (!v16Impose(S2, pw.id)) flash(pw.short + ' is already under sanction.'); } };
+    });
+    sanc.opts.push({ label:'Lift the sanctions on one capital', cost:4, money:0,
+      tip:'Relations +8 with the capital that has been under controls longest, tension -3.',
+      run:function (S2) {
+        var list = v16SanctionList(S2);
+        if (!list.length) { flash('No capital is under sanction.'); return; }
+        v16Lift(S2, list[0].id);
+      } });
+    sanc.opts.push({ label:'Lift every sanction', cost:6, money:0,
+      tip:'A thaw. Every capital under controls gains 8, tension falls with each, and the frontier calls it weakness.',
+      run:function (S2) {
+        var list = v16SanctionList(S2);
+        if (!list.length) { flash('No capital is under sanction.'); return; }
+        list.forEach(function (pw) { v16Lift(S2, pw.id); });
+        S2.ind.economy = c100(S2.ind.economy + 2);
+        mood(S2, { tech:6, prof:4, smallbiz:3, veterans:-6, faith:-2 });
+        chronicle(S2, 'The sanctions regime was lifted in full.');
+      } });
+  }
+})();
+
+/* The panel that says which capitals are under controls, because a state
+   nothing on any screen names is a state the player cannot play against. */
+function v16SanctionsPanel() {
+  var list = v16SanctionList(S);
+  if (!list.length) return '';
+  var reg = (S.pol.sanctionsRegime || 0);
+  return '<div class="panel"><h2>Under Sanction</h2>' +
+    '<div class="tablewrap"><table><thead><tr><th>Capital</th><th class="num">Since</th><th class="num">Relations</th><th>What it costs a session</th></tr></thead><tbody>' +
+    list.map(function (pw) {
+      return '<tr><td>' + esc(pw.name) + '</td><td class="num">' + v16Sanctions(S)[pw.id].since + '</td><td class="num">' +
+        Math.round(relOf(S, pw.id)) + '</td><td>relations ' + (-1.1 * (1 + reg * .45)).toFixed(2) +
+        ', tension +' + (.5 * (1 + reg * .45)).toFixed(2) +
+        (S.acts && S.acts.assetSeizure ? ', treasury ' + fmc(-1.5) : '') + '</td></tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<p class="note">' + v8Plural(list.length, 'capital') + ' under financial and export controls' +
+    (reg ? ', with the Sanctions Regime statute at ' + reg + ' making every line of it bite ' + Math.round(reg * 45) + ' per cent harder' : '') +
+    '. Controls are lifted from the Council menu, one capital at a time or all of them at once.</p></div>';
+}
+var v16ViewWorldBase = viewWorld;
+viewWorld = function () {
+  var html = v16ViewWorldBase();
+  var panel = v16SanctionsPanel();
+  if (!panel) return html;
+  var mk = '<div class="grid"><div>';
+  var i = html.indexOf(mk);
+  return i >= 0 ? html.slice(0, i + mk.length) + panel + html.slice(i + mk.length) : html + panel;
+};
+
 /* ---------- boot ---------- */
 (function () {
   S = enrichState(S, false);
