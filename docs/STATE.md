@@ -4,7 +4,120 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, first of eleven PRs. The owner abolished the
+**S15 — The regime is real**, second of eleven PRs. The order book: uncapped,
+national, and the five cards about itself made true.
+
+### The cap, and what it did to the page
+
+`v10OrderMax` was `var n = 4` with two-slot bonuses for the executive doctrine
+and for forms without elections, read in three places and asserted by no
+harness. Because the check ran **before cost** and **independently of target**,
+and `v10OrderCard` calls `v10OrderOpen` for every card, a government at four
+standing orders had every button on all 72 cards disabled and the same refusal
+printed 72 times. The book looked broken rather than full.
+
+Nothing replaces it, because something already did the job: **every order in
+force charges its upkeep against `capitalIncome` every session it stands.**
+Measured on the branch: **60 of 60** ungated national orders signed in one
+session, at an upkeep of **20.5 capital a session**. The brake is a price the
+player can see and weigh.
+
+### No order names a state
+
+Thirteen made you pick one, and **twelve of the thirteen already carried
+national `ind` and `mood` on top** — the target was the smaller half of what
+they did. They carry `nationEff` now, which is `regionEff` for an order that
+names nothing: the drift reaches every region at a fifth of what the
+concentrated version put in one, so eight fifths of the old total, spread, at
+the same upkeep. Thirteen blurbs were rewritten to stop naming a region.
+
+`target` survives for **power** (11 orders) and **work** (1). A foreign power is
+a different axis from a state.
+
+**`pick()` earned its keep the first time this book was touched.** The S14b
+helper named `disperseAgencies` as having lost the property it was chosen for,
+instead of the four assertions silently starting to measure a different order.
+
+### Five cards about the order book that did not touch the order book
+
+The whole "Orders about orders" category promised expiry, a pre-ballot bar, a
+week on the table, an Attorney's opinion and a printed register — and delivered
+`ind`, `mood`, `delivery` and `polCost` like any other order. The file's own
+rule, broken at the level of the prose, in the one category whose entire subject
+is the model.
+
+`m.book` has four fields now, and **both self-applying rules apply to
+themselves**, because the record is written before the book is read:
+
+| the card | what it does |
+|---|---|
+| Every Order Shall Expire | stamps every order signed after it, **including itself**; an order signed *before* it is untouched, so a rule arriving late does not retroactively kill the standing book |
+| Laid Before the House in Seven Days | lies on the table itself first, then lays what follows. **With the Assembly abolished there is no table**, so it does not |
+| No Order Before a Ballot | refuses a new order with a ballot one session away, reading the calendar |
+| The Register of Standing Orders | the court sees the book at **1.45** |
+| The Attorney's Opinion | and at **0.80** with both, because they compound |
+
+### Eighteen more, and the hatch nothing had ever used
+
+Six pragmatic, six progressive, six authoritarian, across the eight categories
+the book already has. **None makes you name anything.** Four wait on a statute,
+because an order that reaches into the book should wait on the book.
+
+Three define **`onIssue` / `onRevoke`** — the escape hatch the engine has called
+at four sites since S10c and no order had ever defined, which is why nothing in
+the book could reach outside its fifteen aggregate fields. What they reach is
+the chamber model S15a built:
+
+| | apparatus | a suspended house |
+|---|---|---|
+| plain | 74.8 | 66.6 |
+| The Machinery of the Decree | **83.6** | — |
+| The Houses Sit Whether Called or Not | **62.3** | **76.3** |
+
+The Oath of the Federal Service purges the service on signature, and revocation
+does not un-purge it. Its card says so in the last sentence rather than leaving
+a modifier quietly behind.
+
+### And four things the card was not telling you
+
+Nineteen orders carry `mods.unrest`, twenty-one `mods.crown` and nine
+`mods.army`, and none of it appeared on the card you read before signing — the
+inverse of "a modifier nothing reads is a lie", and the same defect. The panel
+also said "Thirty-six of them wait on a statute of yours" where the figure was
+**17**; it is counted now. And 72 orders were unsearchable: the command palette
+indexed Actions, Measures, Acts, Extraordinary measures, Programmes, Committees,
+Ministries, Regions, Parties and Powers, and not the largest registry added
+since S10.
+
+### Ten assertions, all ten red on the build before this PR
+
+The clearest is the cap: against the old build the same probe reports
+**"4 of 41 ungated national orders signed"**. Others: the drift reached **0 of 8**
+regions; the court saw the book at **1, 1 and 1** with the register and the
+opinion both standing; the expiry rule stamped itself **false**; the pre-ballot
+bar refused **null**; and the apparatus went from **74.8 to 74.8**.
+
+```
+ALL CHECKS PASS   11/11, 3,026,925 bytes, +21,919 since HEAD of 250,000
+ROADS OK          106 assertions
+PLAYTEST PASS     44 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS   all green
+```
+
+The 31 new and rewritten blurbs carry no em dashes, no non-ASCII, no curly
+quotes and no banned word. Four use "X rather than Y", and all four are the
+informative kind the S13 measurement declined to ban at 7.5 per cent precision:
+each one names the state of affairs it replaced.
+
+Next: **S15c**, the numbers. Very easy at 250 capital and a floor of 150, with
+`capCap` raised to match or the game prints its own waste warning from turn
+three; ten great works on very easy, and the works budget moved with it, because
+works spend bypasses the difficulty multiplier and ten of them would put the
+tier whose blurb is "nothing here can bring you down" into a structural deficit
+from the first commission.
+
+Previously: **S15 — The regime is real**, first of eleven PRs. The owner abolished the
 National Assembly and his bills went on passing through it.
 
 ### One substituted number, in four places
@@ -2398,6 +2511,7 @@ ratchet 10 → 5, which is now its true floor.
 | S14d the ratchet driven down | **merged** (#46) | S2's floor of five turned out to be three boot statements -- the v4 boot render, the render half of the v5 boot line and two calls on the mobile boot line, all painting screens a later chunk replaced before anyone saw them; with those gone all five bodies poison-proved unreachable ONE AT A TIME against playtest and all 92 roads assertions, and the same five poisons reddened the pre-removal build (4/4/8/4/4 page errors), which is what makes the green runs evidence; bodies deleted, first surviving assignments promoted to declarations, 199 ordinal keys re-derived to 194 with zero alias mismatches; the ratchet now requires `deliberate: true` with a reason on any orphan rather than trusting a ceiling, and the 2 that remain are the two whose replaced bodies are wrong; paints of #view at load 7 -> 5, boot 401.9ms -> 345.6ms |
 | S14e the marker check made honest | **merged** (#47) | 12 of the 25 markers were generic structural strings whose `>= 2 occurrences` rule is vacuously true forever -- listed rather than counted, with a guard against hiding a specific marker among them; the other 12 now assert the pair that matters, that an EMITTER of the literal exists outside the splice, which the old rule could not see (renaming the Records and Honours heading breaks two splices and the old rule passes); one new playtest step splices-land covers the three splices the check could never reach because their markers are built in variables, including the .region-card positional split whose failure puts wrong data on screen, proved on four mutations |
 | S15a the chamber that is not there | **merged** (#48) | the Senate has had a stage skip since v4 and the Assembly never did, so an abolished house still cost a session and still said "passed the Assembly with 100 percent"; abolition was one substituted number in four places that asked about the calendar rather than about existence, and under a form that still held elections it forced the forecast to 0 and killed every bill in a committee of a house that did not exist; three chamber states replace the yes/no, billLadder answers which rungs a constitution actually has, a suspended house is a council on a real favour gradient and an abolished one is a decree the apparatus can refuse; any form that has abolished elections now neutralises its Senate on proclamation, artAbolishUpper abolishes, four ungated Legislative actions got chamber gates, and the majority bonus is no longer paid out of a frozen seat map; seven roads assertions, all seven red on the old build |
+| S15b the order book | **merged** (#49) | the cap was `var n = 4` read in three places and asserted by no harness, and because it ran before cost and independently of target it disabled every button on all 72 cards at once and printed the same refusal 72 times; removed outright, with upkeep as the only brake (60 of 60 ungated national orders signed at once, 20.5 capital a session); all 13 region-targeted orders nationalised via a new nationEff, twelve of them having already carried national effects, with 13 blurbs rewritten; the five "Orders about orders" cards made true through a new m.book group, both self-applying rules applying to themselves; 18 new national orders, 3 of them defining the onIssue/onRevoke hatch the engine had called at four sites since S10c and no order had ever defined, reaching the S15a chamber model; four invisible modifier fields rendered, the panel's false 36 counted as 17, and 90 orders indexed in the palette; 10 roads assertions, all 10 red on the old build |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
