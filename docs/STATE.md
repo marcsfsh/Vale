@@ -4,8 +4,106 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, fourth of eleven PRs. Two sessions, and the
-signature: how long a bill takes, and who puts a name to it.
+**S15 — The regime is real**, fifth of eleven PRs. The constitution: three
+articles at a time, two roads to ratification, a convention that does something,
+and thirty-two more articles.
+
+### One article at a time, and one road to it
+
+`c.pending` was a single object and `v11CanPropose`'s first line refused
+everything else with **"Another article is already before the country."** A
+convention could be called and there was still nothing to do with it. It is a
+**list** now, capped at **three**, and at **four** while a convention sits.
+
+**That is a save-shape change, and it is the loud kind.** A save carrying a bare
+object keeps that article, its campaign spending and its clock; the pending panel
+says so, because that is where the article now is. A blob whose `pending` is
+neither null nor article-shaped is dropped and **counted** rather than guessed
+at, and nothing else in that document is touched. The wrap is pure arithmetic in
+`v11Con`, spends no dice, and is idempotent.
+
+### Two roads, two clocks, two juries
+
+| road | sessions | decided on | open when |
+|---|---|---|---|
+| the Assembly | 2, or **1 while a convention sits** | the chambers, then the Senate | the chambers sit |
+| the country | **1** | the country | always |
+
+`a.referendum` was a fixed property that stacked a country vote **on top of** the
+chamber vote, and the whole referendum road was gated off by `electionsOn` — so
+it vanished under precisely the forms that have no other way to pass anything.
+It is now the road such an article must take, and the plebiscite **replaces** the
+chamber test rather than adding to it. The government writes the question, which
+is worth eight points; a campaign is worth half again as much to a country as to
+a chamber; and each plebiscite costs more civil liberties than the last.
+Measured on the branch: under a One Party State with `electionsOn` false and the
+Assembly suspended, an article goes to the country and is decided in **one**
+session, the first plebiscite costs **1.5** of liberties and the second **2**.
+
+### A convention that is an event
+
+It sat six sessions, subtracted 8 from a threshold, and did nothing else. It
+sits **three** now, takes **four** articles at a time, and puts each of them the
+session after it is laid. An article put early that falls short is **not
+struck**: it stands to its full two sessions and is put again, because otherwise
+a convention would be a way of losing articles faster. Measured: four laid
+together, **three settled in that one session** and one stood to its term.
+
+### Eighty articles, ten to a book
+
+Thirty-two more, taking the document from 48 to 80 and every book from six or
+seven to ten. Every one carries its own text and a `moves` line, and every one
+either aggregates into `v11ConEffects` — where each field has a named reader —
+or defines an `apply()` that touches state something else reads. Four of the new
+ones do the second kind: the **Boundary Commission** cuts every party's machine
+to a third, the **Unqualified Vote** ends the weighted roll whatever statute put
+it there, the **Constitutional Bench** seats four more justices, and the
+**Limited Convention** sets `acts.conventionLimits`, which the transition gate
+and the terminal surcharge have both read since S10.
+
+### And the Article of the Equal State now counts the states
+
+Its text says "each state shall count alike in the return, whatever the number of
+its people". Until this PR the return was the one thing it did not touch: `q.pop`
+was inline at both sites that weigh the regions, and the article's id appeared
+once in three megabytes, in its own definition. `v11RegionWeight` is the one
+place both sites now ask, and under the article every region counts one. The
+regional term reads **0.95267** with the states counted by their people and
+**0.94626** with each counting one.
+
+### Nine assertions, all nine red on the build before this PR
+
+`v11PendingCap` did not exist; the book held 48 across `[6 6 7 6 6 6 6 5]`; both
+roads took two sessions and both were decided on the Assembly; the plebiscite
+cost **0** of liberties because there was no plebiscite; the convention sat six
+sessions and took one article; the old-save probe found nothing to migrate; the
+Equal State read **0.95294** either way; and the card offered no roads at all and
+said "Assembly" with the Assembly abolished. The `constitution-page` playtest
+step reddens too, and so does S11d's own ratification assertion, which now asks
+the same question in the new shape.
+
+```
+ALL CHECKS PASS   11/11, 3,080,862 bytes, +26,189 since HEAD of 250,000
+ROADS OK          127 assertions
+PLAYTEST PASS     46 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / CHAMBER   all green
+```
+
+The 32 new articles carry no em dashes, no non-ASCII, no curly quotes and no
+banned word. One uses "X rather than Y", and it is the informative kind the S13
+measurement declined to ban: it names the state of affairs it replaces.
+
+Next: **S15f**, the party treasury. A per-party currency with dues, donors and
+fundraisers behind it; a State Funding of Parties statute; a fourth argument on
+`pv5Spend` defaulting to the nation so no call site moves until it is
+re-pointed; and then the ~198 party-organisation buttons, the seventeen `can:`
+predicates that gate on `S.treasury` directly, the eleven actions that spend it
+inside their own `run()` bodies, `st.campaign.warChest`, and `st.funding` — a
+live vote multiplier with no writer anywhere in the file.
+
+Previously: **S15 — The regime is real**, fourth of eleven PRs. Two sessions, and
+the signature: how long a bill takes, and who puts a name to it.
 
 ### The clock was one token
 
@@ -99,13 +197,6 @@ RUNGS OK / TIERS / TABS / CHAMBER   all green
 
 `billForecast` spends no dice, which is what makes `billPace` safe to call twice
 a session on every bill; determinism is unmoved.
-
-Next: **S15e**, the constitution. Three articles before the country at a time and
-four in convention, against `c.pending`'s single object; two sessions through the
-Assembly or one through a plebiscite the player chooses instead of a referendum
-flag the article carries; a convention that sits three sessions and carries an
-article in one; 32 more articles taking the book from 48 to 80; and the
-plebiscite reopened under the forms that have no other way to pass anything.
 
 Previously: **S15 — The regime is real**, third of eleven PRs. The numbers: what
 Very easy opens on, how many great works a ministry can carry, and what a work
