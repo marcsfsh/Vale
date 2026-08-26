@@ -2173,7 +2173,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const seen = [opened];
       let n = 0;
       while (S.bills.indexOf(b) >= 0 && n < 10) {
-        advanceBills(S); n++; S.turn++;
+        advanceBills(S); n++;
+        /* S15d: a bill that carries its last division goes to an office for
+           signature, and where that office is the player's own party the game
+           asks. These assertions are about the CHAMBERS, so the harness
+           answers the way a player who wants their own bill answers: it
+           signs. Left unanswered the office signs it a session later, which
+           would put a session of the executive into a count of the
+           legislature. */
+        (S.pendingAssent || []).slice().forEach(function (bid) {
+          if (typeof assentEvent !== 'function') return;
+          var ae = assentEvent(S, bid);
+          if (ae && ae.ch && ae.ch[0]) ae.ch[0].f(S);
+        });
+        if (S.pendingAssent) S.pendingAssent = [];
+        S.turn++;
         if (S.bills.indexOf(b) >= 0 && seen[seen.length - 1] !== b.stage) seen.push(b.stage);
       }
       const text = S.log.map(function (l) { return l.text; }).join(' | ');
@@ -2486,6 +2500,245 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       ? `the strip offers ${nums.filterIds.join(', ')} · asked for what is under construction it answers with ` +
         `${nums.shownBuilding} of ${nums.shownAll} cards · it drew all forty-eight in one list before`
       : 'there is no filter on the works panel');
+
+  /* ============================================================
+     11. S15d: TWO SESSIONS, AND THE SIGNATURE.
+
+     The clock was one token: `loops = bill.urgent ? 2 : 1`. Support decided
+     WHETHER a stage passed and never HOW MANY of them ran, so a government
+     holding 1,305 of 1,305 seats with the Senate behind it spent the same
+     three sessions on a bill as a minority spent losing one.
+
+     And BILL_STAGES has carried an 'assent' slot and a name for it since v4
+     with nothing ever setting it: the fourth pip was drawn unlit on every bill
+     card the game has rendered. The chambers called enactBill and the statute
+     was in the book, with no office between them.
+
+     Driven through the real sponsor, the real stage machine and the real
+     billAction handlers. Every probe degrades rather than throws on a build
+     that predates S15d. ============================================================ */
+  const assent = await p3.evaluate(() => {
+    const out = {};
+    const has = (n) => typeof window[n] === 'function';
+    out.hasPace = has('billPace');
+    out.hasAssent = has('assentEvent');
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    const me = playParty(S), STAT = 'incomeTax';
+    const upperSeed = JSON.parse(JSON.stringify(S.upper.seats || {}));
+
+    /* every statute names a department, so every bill has an office */
+    out.noDept = POLICIES.filter((p) => !p.dept).length;
+    out.statutes = POLICIES.length;
+
+    function frame(pct) {
+      S.lower = { exists:true, suspended:false };
+      S.upper = { exists:true, elected:true, veto:2, ceremonial:false, seats:{} };
+      S.form = 'federal'; S.ruling = me; S.coalition = [me];
+      const mine = Math.round(1305 * pct / 100), up = Math.round(120 * pct / 100);
+      S.seats = {}; S.seats[me] = mine; S.seats.pnl = 1305 - mine;
+      S.upper.seats = {}; S.upper.seats[me] = up; S.upper.seats.pnl = 120 - up;
+      S.bills = []; S.changed = {}; S.pol[STAT] = 0; S.capital = 600; S.treasury = 3000;
+      S.log = []; S.pendingAssent = []; S.unity = 60; S.unrest = 20;
+      ['pres','vpres','chan','vchan'].forEach((d) => { S.exec[d] = me; });
+      S.figures.exec = {};
+    }
+    /* answer: which sheet option a player picks, or -1 to leave it. `act` runs
+       once, the first session the bill is refused. */
+    function run(pct, setup, answer, act) {
+      frame(pct);
+      if (setup) setup();
+      const bill = sponsorBill(S, STAT, 1, 'player', 'clean', true);
+      if (!bill) return { sponsored:false };
+      const f0 = billForecast(S, bill);
+      const rec = { sponsored:true, pct:pct,
+        f:{ committee:+f0.committee.toFixed(1), lower:+f0.lower.toFixed(1), upper:+f0.upper.toFixed(1) },
+        carried:has('billCarried') ? billCarried(S, bill, f0) : null,
+        pace:has('billPace') ? billPace(S, bill) : 1,
+        track:has('billTrack') ? billTrack(S, bill) : billLadder(S), sheets:[] };
+      let n = 0, answered = false, acted = false;
+      while (S.bills.indexOf(bill) >= 0 && n < 9) {
+        advanceBills(S); n++;
+        (S.pendingAssent || []).slice().forEach((bid) => {
+          if (!has('assentEvent')) return;
+          const e = assentEvent(S, bid);
+          if (!e) return;
+          rec.sheets.push({ title:e.title, opts:e.ch.map((c) => c.l) });
+          if (answer >= 0 && !answered) { e.ch[answer].f(S); answered = true; }
+        });
+        if (S.pendingAssent) S.pendingAssent = [];
+        if (act && !acted && bill.refused && S.bills.indexOf(bill) >= 0) { act(bill); acted = true; }
+        S.turn++;
+      }
+      const arch = (S.billArchive || []).filter((x) => x.id === bill.id)[0] || {};
+      rec.sessions = n;
+      rec.law = (S.pol[STAT] || 0) > 0;
+      rec.result = arch.result || '(still on the paper)';
+      rec.notes = (arch.notes || bill.notes || []).slice();
+      rec.answered = answered; rec.acted = acted;
+      rec.unity = Math.round(S.unity);
+      return rec;
+    }
+
+    /* THE CLOCK. Sweep the seat share and watch the pace step. */
+    out.sweep = [];
+    for (let pct = 100; pct >= 40; pct -= 2) {
+      frame(pct);
+      const bl = sponsorBill(S, STAT, 1, 'player', 'clean', true);
+      const f = billForecast(S, bl);
+      out.sweep.push({ pct:pct, lower:+f.lower.toFixed(1), upper:+f.upper.toFixed(1),
+        pace:has('billPace') ? billPace(S, bl) : 1 });
+      S.bills = [];
+    }
+    /* the bound the step should land on, derived from the division itself */
+    out.bound = (typeof BILL_BARS === 'object' && typeof BILL_NOISE === 'object')
+      ? BILL_BARS.senate + BILL_NOISE.senate / 2 : null;
+
+    /* END TO END. 100 percent of both houses against 56, which is the last
+       rung of the sweep where a bill still clears both bars and cannot be
+       called safe. */
+    out.safe = run(100, null, 0);
+    out.tight = run(56, null, 0);
+
+    /* THE FOUR ANSWERS. */
+    out.statement = run(100, null, 1);
+    out.sentBack = run(100, null, 2);
+    out.vetoed = run(100, null, 3);
+
+    /* A HOLDER WHO IS NOT YOURS. loyalty is how much of the decision is their
+       party's, so the same officer at 20 and at 95 reads the same bill
+       differently, and the direction follows their party's relation to you. */
+    const hostile = (loy, rel, trait) => () => {
+      S.exec.chan = 'pnl'; S.figures.exec = {}; S.partyRel.pnl = rel;
+      const h = holderOf(S, 'chan'); h.loyalty = loy; h.trait = trait || 'ideologue';
+    };
+    if (has('assentFavour')) {
+      /* A STRONG bill from a party the holder's party is hostile to: the
+         party line is far below the measure, so loyalty drags the reading
+         DOWN toward the line. */
+      frame(100); hostile(95, 6)();
+      const probe = { policy:STAT, dir:1, assemblyVote:96, assentOffice:'chan', notes:[], concessions:0 };
+      out.favLoyalHostile = Math.round(assentFavour(S, probe));
+      holderOf(S, 'chan').loyalty = 20;
+      out.favDisloyalHostile = Math.round(assentFavour(S, probe));
+      /* A WEAK bill from a party the holder's party is close to: the line is
+         above the measure, so loyalty drags the reading UP. Same officer,
+         same field, opposite direction -- which is what makes it a weight
+         rather than a bonus. */
+      const weak = { policy:STAT, dir:1, assemblyVote:30, assentOffice:'chan', notes:[], concessions:0 };
+      S.partyRel.pnl = 92; holderOf(S, 'chan').loyalty = 95;
+      out.favLoyalFriendly = Math.round(assentFavour(S, weak));
+      holderOf(S, 'chan').loyalty = 20;
+      out.favDisloyalFriendly = Math.round(assentFavour(S, weak));
+      /* and what a push is worth, and what a fixer is worth on top */
+      S.partyRel.pnl = 6; holderOf(S, 'chan').loyalty = 95;
+      out.favPlain = Math.round(assentFavour(S, probe));
+      probe.assentPush = 10;
+      out.favPushed = Math.round(assentFavour(S, probe));
+      holderOf(S, 'chan').trait = 'fixer';
+      out.favPushedFixer = Math.round(assentFavour(S, probe));
+      delete probe.assentPush;
+    }
+
+    out.refused = run(100, hostile(96, 6), -1);
+    out.overridden = run(100, hostile(96, 6), -1, (b) => billAction(b.id, 'override'));
+    out.pressed = run(100, hostile(72, 26), -1, (b) => { billAction(b.id, 'pressOffice'); billAction(b.id, 'pressOffice'); });
+    /* the override is refused when the houses did not carry it by enough */
+    out.thinOverride = (function () {
+      frame(100); hostile(96, 6)();
+      const bl = sponsorBill(S, STAT, 1, 'player', 'clean', true);
+      if (!bl) return null;
+      bl.stage = 'assent'; bl.assentOffice = 'chan'; bl.refused = S.turn;
+      bl.assemblyVote = 52; bl.senateVote = 51;
+      const cap = S.capital;
+      billAction(bl.id, 'override');
+      const held = S.bills.indexOf(bl) >= 0 && !(S.pol[STAT] > 0);
+      S.bills = []; S.pol[STAT] = 0;
+      return { held:held, chargedNothing:S.capital === cap };
+    })();
+
+    /* THE PIP. The card draws the track, and the fourth rung is now a rung. */
+    frame(100);
+    const cardBill = sponsorBill(S, STAT, 1, 'player', 'clean', true);
+    if (cardBill) {
+      cardBill.stage = 'assent'; cardBill.assentOffice = 'chan'; cardBill.assemblyVote = 88;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = billCard(cardBill);
+      const stages = [].slice.call(wrap.querySelectorAll('.timeline .stage'));
+      out.cardStages = stages.length;
+      out.cardNow = stages.map((x) => x.className.trim()).join('|');
+      out.cardLabels = [].slice.call(wrap.querySelectorAll('.stage-labels span')).map((x) => x.textContent);
+      out.cardText = wrap.textContent.replace(/\s+/g, ' ');
+      S.bills = []; S.pol[STAT] = 0;
+    }
+    S.upper.seats = upperSeed;
+    return out;
+  });
+
+  const A = assent;
+  const paceAt = (p) => (A.sweep.filter((r) => r.pct === p)[0] || {}).pace;
+  const flip = A.sweep.filter((r, i) => i > 0 && r.pace !== A.sweep[i - 1].pace)[0];
+  say(A.hasPace && paceAt(100) === 2 && paceAt(40) === 1 && !!flip &&
+      A.sweep.filter((r) => r.pace === 2).every((r) => Math.min(r.lower, r.upper) >= A.bound) &&
+      A.sweep.filter((r) => r.pace === 1).every((r) => Math.min(r.lower, r.upper) < A.bound),
+    'the clock is the chamber arithmetic',
+    A.hasPace
+      ? `a bill climbs two stages a session above ${A.bound} percent and one below it, and the step falls at ` +
+        `${flip.pct} percent of the seats where the forecast reads ${flip.lower}/${flip.upper} · that number is ` +
+        `not a constant: it is the division's own bar plus half its own die, so a bill takes two stages exactly ` +
+        `when it cannot lose one · before S15d the pace was 1 for every bill in the game unless six capital had ` +
+        `been spent on urgency`
+      : 'billPace does not exist: the pace is a purchased flag');
+
+  say(A.safe.law && A.safe.sessions === 2 && A.tight.sessions === 3 &&
+      A.safe.pace === 2 && A.tight.pace === 1,
+    'a bill both houses carry takes two sessions',
+    `holding every seat in both houses a statute is law in ${A.safe.sessions} sessions ("${A.safe.result}") · ` +
+    `at 56 percent, where it still clears both bars but can lose a division, the same statute takes ` +
+    `${A.tight.sessions} · the owner counted three and four`);
+
+  say(A.noDept === 0 && A.cardStages === 4 && /assent/.test(A.cardNow.split('|')[3] || '') === false &&
+      A.cardNow.split('|')[3] === 'stage now' && A.cardLabels.join(',') === 'Committee,Assembly,Senate,Assent',
+    'the fourth pip lights',
+    `all ${A.statutes} statutes name a department, so every bill has an office · the card draws ` +
+    `${A.cardStages} rungs [${A.cardLabels.join(' ')}] and the fourth reads "${A.cardNow.split('|')[3]}" · ` +
+    `BILL_STAGES has carried an assent slot and a name for it since v4 and nothing has ever set it, so that pip ` +
+    `was drawn unlit on every bill card this game has rendered`);
+
+  say(A.hasAssent && A.safe.sheets.length === 1 && A.safe.sheets[0].opts.length === 4 &&
+      A.statement.law && /statement/i.test(A.statement.notes.join(' ')) &&
+      A.sentBack.law && /Returned/i.test(A.sentBack.notes.join(' ')) && A.sentBack.sessions > A.safe.sessions &&
+      !A.vetoed.law && /[Vv]etoed at assent/.test(A.vetoed.result),
+    'four ways to answer, not two',
+    A.hasAssent
+      ? `the office your party holds asks, and offers ${A.safe.sheets[0].opts.join(' / ')} · signing with a ` +
+        `statement lands the measure a quarter harder and the parties that voted against read it too · returning ` +
+        `it costs ${A.sentBack.sessions - A.safe.sessions} session(s) and buys a concession · the veto reads ` +
+        `"${A.vetoed.result}" and cost ${60 - A.vetoed.unity} of unity on the government's own bill`
+      : 'there is no assent sheet');
+
+  const spread = A.favLoyalHostile !== undefined
+    && (A.favLoyalHostile < A.favDisloyalHostile) && (A.favLoyalFriendly > A.favDisloyalFriendly);
+  say(spread && A.favPushed > A.favPlain && A.favPushedFixer > A.favPushed,
+    'the office is a person, and loyalty is read',
+    spread
+      ? `a strong bill from a government the holder's party is hostile to reads ${A.favLoyalHostile} at loyalty ` +
+        `95 and ${A.favDisloyalHostile} at loyalty 20; a weak bill from a government it is close to reads ` +
+        `${A.favLoyalFriendly} and ${A.favDisloyalFriendly} · the same field moves the same officer in opposite ` +
+        `directions, because loyalty is how much of the decision is their party's rather than their own · ` +
+        `pressing the office takes ${A.favPlain} to ${A.favPushed}, and a fixer takes it to ${A.favPushedFixer} · ` +
+        `makeFigure has written loyalty on an exec figure since v4 and nothing in three megabytes has read it`
+      : 'assentFavour does not exist, or does not move with loyalty');
+
+  say(!A.refused.law && /Died at assent/.test(A.refused.result) &&
+      A.overridden.law && /over a refusal/i.test(A.overridden.notes.join(' ')) &&
+      A.pressed.law && /pressed/i.test(A.pressed.notes.join(' ')) &&
+      !!A.thinOverride && A.thinOverride.held && A.thinOverride.chargedNothing,
+    'a refusal is beatable, and not for free',
+    `a bill that carried both houses and was refused by an office that is not yours dies on the desk in ` +
+    `${A.refused.sessions} sessions ("${A.refused.result}") · asking the houses to override puts it in the book ` +
+    `in ${A.overridden.sessions} · pressing the office twice turns a refusal into a return and then a signature ` +
+    `in ${A.pressed.sessions} · and an override is refused outright, with nothing charged, when the houses ` +
+    `carried it at 52 percent against a bar of 60`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
