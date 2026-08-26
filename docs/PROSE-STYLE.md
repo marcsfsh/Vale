@@ -211,6 +211,29 @@ first. Two tests before you finish a ladder:
 - Does any earlier rung read as the harsher, larger or more advanced measure? If
   yes, the order is wrong or the later rung is underwritten.
 
+## What the checker cannot judge, and you must
+
+Two rules from the skill above are real but resist a regex. They are yours to
+apply by reading, and the verify pass is asked for them by name.
+
+**"X rather than Y".** The skill names this as the reversed form of negative
+parallelism. It is not mechanically checked here, because a blind judge scored a
+forty-sample of this corpus at **thirty-seven informative to three reflexive**: a
+blanket ban would run at seven per cent precision. Most uses deliver a specific
+by ruling out what a reader would otherwise assume, and deleting the contrast
+loses the prior rule being displaced: "governed by order rather than by statute",
+"received by rather than postmarked by", "market value rather than income
+value". The reflexive ones rule out a category nobody would have assumed, where
+the direct statement carries the same content: "becomes an offence rather than a
+risk" is just "becomes an offence". Write the second kind directly.
+
+**Triads.** The skill bans padding a list to three, not lists of three. This
+corpus holds a hundred and fifty eight three-item lists and most are real
+inventories: "vehicles, premises and goods", "grain, feed and fuel". The banned
+kind is the reflexive adjectival triad reached for as rhythm, "duller, steadier
+and slower". Use however many items the statute actually has, including one, two
+or four.
+
 ## Escalation must be real
 
 `newThisRung` in the brief is the most useful field: an indicator key appearing

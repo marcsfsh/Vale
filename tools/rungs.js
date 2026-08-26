@@ -283,6 +283,26 @@ async function check() {
     if (new RegExp(',\\s+(' + TAILS.join('|') + ')\\b', 'i').test(t)) fail.push(id + ' ' + label + ': participle tail');
     if (/\bnot (just|only|merely|simply)\b/i.test(t)) fail.push(id + ' ' + label + ': negative parallelism');
     if (/\b(isn't|is not) about\b/i.test(t)) fail.push(id + ' ' + label + ': negative parallelism');
+
+    /* "X RATHER THAN Y" IS DELIBERATELY NOT CHECKED HERE, and the reason is a
+       measurement. The style skill names it as the reversed form of negative
+       parallelism, and rebuilding the brief from the skill surfaced that the old
+       paraphrase had dropped it. Before adding the rule, a blind judge scored a
+       forty-sample of the corpus's 276 uses: 37 informative, 3 reflexive. A
+       blanket ban would run at 7.5 per cent precision, worse than the
+       specificity floor this file already demoted at 18 per cent.
+
+       The skill anticipates exactly this: "These are tendencies, not a detector.
+       Human writers use em dashes, triads, and the word crucial all the time.
+       The problem is AI prose reaching for them by reflex, in place of
+       specifics." Most of these deliver a specific by ruling out the thing a
+       reader would otherwise assume: governed by order rather than by statute,
+       received by rather than postmarked by, market value rather than income
+       value. Deleting the contrast loses the prior rule being displaced.
+
+       So this one goes to the verify pass, where judgement lives, and is written
+       into docs/PROSE-STYLE.md's addendum for the readers who can tell the two
+       cases apart. The three the judge caught were fixed in the prose. */
     INFLATED.forEach(w => { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail.push(id + ' ' + label + ': inflated verb "' + w + '"'); });
     if (/(^|[.!?]\s+)(in summary|in conclusion|overall|ultimately)\b/i.test(t)) fail.push(id + ' ' + label + ': summary ending');
     if (/\binterestingly,/i.test(t)) fail.push(id + ' ' + label + ': throat-clearing');
