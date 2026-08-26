@@ -636,6 +636,31 @@ the tool that re-runs it: very easy's capital and works ceiling
 (`tools/roads.js`, the campaign block), and the +460 all-five-channels ceiling
 recorded in `docs/STATE.md`'s open items.
 
+## The party you lead (S16d)
+
+**`S.playAs` is written once, at setup, and by nothing else.** `playParty(st)`
+returns `st.playAs || st.ruling`, and the distinction between the two is the
+whole of "in power" and "in opposition".
+
+Two paths used to write it after setup and both are gone:
+
+- **`switchParty`** ("Change Your Allegiance") is **retired** at the owner's
+  instruction. `carryOver` is not orphaned by it — the ballot path at
+  `runElection` still calls it when the player's own party takes the government.
+- **The Invite card** in `partyActions` said "You go on playing as them" and now
+  hands the government over and leaves the player where they are: junior partner
+  when the invited party cannot carry the chamber alone and the player's seats
+  close the gap, opposition when it can. Unity falls either way.
+
+The `doAction` wrapper (`doAction#1`) that used to *record* a switch into
+`v6.flags.switched` now **refuses** one: `S.playAs` is put back, a line goes in
+the log and an error goes to the console. `roads.js` drives all 325 legs of every
+action and asserts none of them moves the player.
+
+The **Turncoat** record's only earner was `switchParty`. Its **id is kept** so
+the denominator stays at 44 and old hall entries keep their tick; it is now **The
+Handover** and reads `v6.flags.handedOver`.
+
 ## Diplomacy (S16c) — the Foreign Office reaches every capital
 
 Measured before S16c by driving every leg of every Diplomacy action and counting

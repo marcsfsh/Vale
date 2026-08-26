@@ -5,8 +5,13 @@ Update this file in the last commit of every PR.
 ## Current slice
 
 **S16 — Somebody can stop you, and the other half of the game** is **open**.
-Three of twelve PRs: **S16a** the session clocks, **S16b** the treaty book, and
-**S16c** the Foreign Office.
+Four of twelve PRs: **S16a** the session clocks, **S16b** the treaty book,
+**S16c** the Foreign Office and **S16d** one party for the campaign.
+
+**The order below was changed after S16c**: the owner's six explicit
+requirements come first, and the four "somebody can stop you" PRs follow. Three
+of the six are done (the amendment clock, the treaties, the World tab), one is
+done here (one party), and two remain (the other parties, the custom start).
 
 ### What the slice is
 
@@ -21,15 +26,69 @@ are folded in beside them:
 | **a** #60 | **two sessions means two sessions** — the amendment clock, and every other clock counted against the wrong session |
 | **b** #61 | **a treaty is a relationship, not a slot** — many at once, prerequisites, ten more kinds, and a reply the following turn |
 | **c** #62 | **the Foreign Office reaches every capital** — the diplomacy actions the S10e powers never reached, the legs that cost capital and move nothing, and sanctions as a state |
-| d | the court can stop you |
-| e | the street has leverage |
-| f | out of power is a place you play from |
-| g | an opposition deck, and `switchParty` retires |
-| h | the six act: doctrine, memory and initiative for the parties that are not yours |
-| i | the custom start — a scenario editor over the constitution, the statute book, every chamber, the powers and the standings |
+| **d** #63 | **you lead one party for the campaign** — `switchParty` retired and the Invite card repaired |
+| e | the six that are not yours: doctrine, memory and initiative for the parties the player does not lead |
+| f | the custom start — a scenario editor over the constitution, the statute book, every chamber, the powers and the standings |
+| g | the court can stop you |
+| h | the street has leverage |
+| i | out of power is a place you play from, and an opposition deck |
 | j | the long deck folds, and focus survives |
 | k | contrast and the thumb |
 | l | the prose pass and the slice close |
+
+### S16d — you lead one party for the campaign
+
+The owner: *"I think its time we remove the ability to switch the party that the
+player is playing as, because it just complicates it too much."*
+
+**Two paths wrote `S.playAs` after setup**, not one.
+
+1. **`switchParty`** — *Change Your Allegiance*, 14 capital on a 1.25 escalator,
+   seven legs, one per party: cross the floor and take the leadership of any of
+   them. **Retired.**
+2. **The Invite card**, in the party-relations deck, whose own description read
+   *"Hand them the government now, without waiting for the country. **You go on
+   playing as them.**"* That is the same costume change with a different bill.
+
+The second is not deleted, because handing the government to another party
+without an election is a real decision. It is **repaired**: they govern, and
+**you stay who you are**.
+
+| your seats | what happens |
+|---|---|
+| they cannot carry the chamber alone and yours close the gap | you sit in the ministry as the **junior partner**; unity −6 |
+| they carry it alone | you sit **opposite them**, with the machine you built and none of the offices; unity −14 |
+
+Either way your own members did not vote for it, and the sheet says so.
+
+**The assertion is stronger than "one card is gone."** `roads.js` drives **all
+325 legs of every action in the game** and asserts that none of them moves the
+player between parties. Against `main` it names the six that did.
+
+And the `doAction` wrapper that used to *record* a switch now **refuses** one: if
+any future card writes `S.playAs`, it is put back, a line goes in the log and an
+error goes to the console. A guard that says so on the spot beats a flag nothing
+reads.
+
+**The Turncoat record.** Its only earner was `switchParty`. The **id is kept**,
+so the denominator stays at **44** and a hall entry from a campaign that earned
+it keeps its tick — and it asks the harder version of the same move. It is now
+**The Handover**: *handed the government to another party without an election,
+and led one again afterwards.* Measured false on the handover and true once the
+player leads a government again. **A record has been renamed on old hall
+entries; that is a visible change and it is the owner's to reverse.**
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          160 assertions
+PLAYTEST PASS     52 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+PACING            six seeds, identical to the build before this PR
+```
+
+Next: **S16e**, the six that are not yours. The owner's first requirement —
+*"other parties should be more active and less stagnant"* — and the largest
+remaining piece of the slice's second half.
 
 ### S16c — the Foreign Office reaches every capital
 
@@ -3596,6 +3655,7 @@ ratchet 10 → 5, which is now its true floor.
 | S16a two sessions means two sessions | **merged** (#60) | `endTurn` runs every tick and only THEN does `S.turn += 1`, so a tick comparing against `st.turn` stands in the session the click is leaving rather than the one it is producing; four of the game's six session clocks were counted that way -- an article that said two sessions wanted three End Session clicks, a plebiscite that said one wanted two, a manifesto commitment dated eight sessions out survived ten, and a political paper stayed answerable a session past the date printed on it, with its three expiry warnings firing a session early to match; the arc banner's `+ 1` and the ballot counter were the two that were already right, which is what made the other four look deliberate; `roads.js` measures all six through the model in endTurn's own order and names the four that disagreed |
 | S16b treaties are a relationship | **merged** (#61) | `st.v6.treaties[powerId]` was ONE object, so signing a second replaced the first and the same capital could be walked round a non-aggression pact, a defence pact and a non-aggression pact inside one session with the Foreign Office reporting each as a treaty signed; a list per capital with twenty instruments (ten more), sixteen of them written on top of another, terms laid rather than signed with the capital answering at the next session at odds printed before the money is spent, every instrument able to lapse where five never could, annulment that cascades through what stands on it, and the Foreign Office shut in opposition where eleven Negotiate buttons were live; two live defects caught by measurement -- a prerequisite naming a kind defined in a later chunk threw three times before the first screen, and a read that installed an empty array turned the Peacemaker record's `Object.keys` test into "eleven powers exist" and awarded it on every seed with nothing signed |
 | S16c the Foreign Office reaches every capital | **merged** (#62) | five diplomatic actions named a fixed handful of capitals chosen before `POWERS.push` added the S10e five, so a state visit reached 4 of eleven, a summit 3, a trade mission 3, a recall 2, an aid programme 2 and arming a client 4 -- all eleven now, with 55 authored lines and every number on every tip COMPOSED from the same table its run reads; the base leg of five of the six moved no relation with any power at all and each now does what its label says; and sanctions became a state that rides the save, costing both sides every session, multiplied by the Sanctions Regime statute and turned into revenue by Seize the Frozen Reserves -- two statutes that named sanctions where nothing in the file could ask whether one stood |
+| S16d you lead one party | **merged** (#63) | two paths wrote `S.playAs` after setup, not one: `switchParty` ("Change Your Allegiance", seven legs, cross to any party) and the Invite card, whose own description read "You go on playing as them"; the first is retired and the second repaired so the invited party governs and the player stays who they are -- junior partner where their seats are wanted, opposition where they are not, unity down either way because their own members did not vote for it; `roads.js` drives all 325 legs of every action and asserts none moves the player between parties, and the `doAction` wrapper that recorded a switch now refuses one; the Turncoat record kept its id so the denominator stays at 44 and old hall entries keep their tick, and asks the harder version of the same move as The Handover |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
