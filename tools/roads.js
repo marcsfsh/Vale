@@ -3824,6 +3824,171 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `from four to seventy-two is what made it likely · a card with no answers is now skipped rather than fatal ` +
     `(${dispatch.guardCleared})`);
 
+  /* S16e -- THE SIX THAT ARE NOT YOURS. The owner: "other parties should be
+     more active and less stagnant." Measured over fifty sessions before this
+     PR, with the player leading the LP and the FP in government: `st.push` was
+     never written by an AI party for any of them, the best machine any of them
+     built over the whole campaign was +0.32 and five built nothing, and their
+     purses ended between 280 and 809 with nothing spending them. `aiGovern` is
+     the whole of it and it returns unless the player is out of government,
+     runs every other session, and puts a bill on the paper for `st.ruling`
+     alone. Six parties out of seven had no way to act at all.
+
+     Driven through the model in `endTurn`'s own order over sixty sessions. */
+  const six = await page.evaluate(() => {
+    const out = { cards:{}, acts:{}, pushes:{} };
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+    const me = playParty(S);
+    out.built = typeof v16AiTurn === 'function';
+    if (!out.built) {
+      /* a build without this PR: measure what the six can do and say so */
+      for (let i = 0; i < 60; i++) {
+        tickTurn(S); advanceBills(S); aiGovern(S); politicsTick(S);
+        if (S.push) Object.keys(S.push).forEach(k => { out.pushes[k] = (out.pushes[k] || 0) + 1; });
+        S.turn += 1;
+        if (electionsOn(S) && isBallotTurn(S.turn)) runElection(S, false);
+      }
+      PARTIES.forEach(p => { if (p.id !== me) out.acts[p.id] = 0; });
+      out.deck = 0; out.cardsUsed = 0; out.actedAll = false;
+      out.pushedSome = Object.keys(out.pushes).filter(k => k !== me).length;
+      out.builtMachine = 0; out.spentPurse = 0; out.pacts = 0; out.pactPossible = false;
+      out.spentTotal = 0; out.cardWorks = 0; out.cardFails = ['no deck'];
+      out.richest = Math.round(Math.max.apply(null, PARTIES.filter(p => p.id !== me).map(p => partyPurse(S, p.id))));
+      out.spentTotal = 0; out.richest = Math.round(Math.max.apply(null, PARTIES.filter(p => p.id !== me).map(p => partyPurse(S, p.id))));
+      out.sore = 'nobody'; out.grudge0 = null; out.grudge1 = null;
+      out.postureUnderGrudge = null; out.grudgeCools = false;
+      out.redLine = 'unread'; out.redLineBites = false; out.partnerLeaves = false;
+      return out;
+    }
+    const purse0 = {}; PARTIES.forEach(p => { purse0[p.id] = partyPurse(S, p.id); });
+    const mach0 = {}; PARTIES.forEach(p => { mach0[p.id] = S.machine[p.id] || 0; });
+    for (let i = 0; i < 60; i++) {
+      tickTurn(S); advanceBills(S); aiGovern(S); politicsTick(S);
+      if (S.push) Object.keys(S.push).forEach(k => { out.pushes[k] = (out.pushes[k] || 0) + 1; });
+      if (S.funding) { for (const k in S.funding) { S.funding[k] *= .6; if (Math.abs(S.funding[k]) < .02) delete S.funding[k]; } }
+      S.turn += 1;
+      if (electionsOn(S) && isBallotTurn(S.turn)) runElection(S, false);
+    }
+    PARTIES.forEach(p => {
+      if (p.id === me) return;
+      const a = (S.ai || {})[p.id];
+      out.acts[p.id] = a ? a.acts : 0;
+      if (a) Object.keys(a.last).forEach(c => { out.cards[c] = (out.cards[c] || 0) + 1; });
+    });
+    out.deck = (typeof V16_AI_DECK !== 'undefined') ? V16_AI_DECK.length : 0;
+    out.cardsUsed = Object.keys(out.cards).length;
+    out.actedAll = PARTIES.filter(p => p.id !== me).every(p => (out.acts[p.id] || 0) > 0);
+    out.pushedSome = Object.keys(out.pushes).filter(k => k !== me).length;
+    out.builtMachine = PARTIES.filter(p => p.id !== me && (S.machine[p.id] || 0) > mach0[p.id]).length;
+    out.spentPurse = PARTIES.filter(p => p.id !== me && ((S.ai[p.id] || {}).spent || 0) > 100).length;
+    out.spentTotal = Math.round(PARTIES.reduce((n, p) => n + (p.id === me ? 0 : ((S.ai[p.id] || {}).spent || 0)), 0));
+    out.richest = Math.round(Math.max.apply(null, PARTIES.filter(p => p.id !== me).map(p => partyPurse(S, p.id))));
+    out.pacts = S.aiPacts ? Object.keys(S.aiPacts).length : 0;
+
+    /* EACH CARD AS A PROPERTY. Whether a particular card comes up in one
+       sixty-session run is a die, and three runs of this probe read the deck as
+       6, 7 and 7 cards fired. What an assertion should hold is that every card,
+       given a state where it can play, DOES what it says -- which is both
+       deterministic and the stronger claim. S15j paid for the point-estimate
+       lesson once; this is the same lesson. */
+    const cardWorks = {}, cardFails = [];
+    V16_AI_DECK.forEach((c) => {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+      S.ruling = 'fp'; S.coalition = ['fp'];
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && p.id !== 'fp')[0].id;
+      PARTIES.forEach(p => { S.purse = S.purse || {}; S.purse[p.id] = 400; });
+      S.turn = 8;
+      const before = {
+        machine:S.machine[pid] || 0, targetMachine:S.machine[S.ruling] || 0,
+        blocs:JSON.stringify(S.blocs), push:JSON.stringify(S.push || {}),
+        purse:partyPurse(S, pid), funding:(S.funding || {})[pid] || 0,
+        inbox:S.inbox.length, pacts:Object.keys(S.aiPacts || {}).length
+      };
+      if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
+      const line = c.run(S, pid);
+      const moved =
+        c.id === 'organise' ? (S.machine[pid] || 0) > before.machine
+        : c.id === 'campaign' ? ((S.funding || {})[pid] || 0) > before.funding
+        : c.id === 'court' ? JSON.stringify(S.blocs) !== before.blocs
+        : c.id === 'attack' ? (S.machine[S.ruling] || 0) < before.targetMachine
+        : c.id === 'platform' ? JSON.stringify(S.push || {}) !== before.push
+        : c.id === 'pact' ? Object.keys(S.aiPacts || {}).length > before.pacts
+        : c.id === 'demand' ? S.inbox.length > before.inbox
+        : false;
+      const paid = partyPurse(S, pid) < before.purse;
+      cardWorks[c.id] = !!(line && moved && paid);
+      if (!cardWorks[c.id]) cardFails.push(c.id + ': line ' + !!line + ', moved ' + moved + ', paid ' + paid);
+    });
+    out.cardWorks = Object.keys(cardWorks).filter(k => cardWorks[k]).length;
+    out.cardFails = cardFails;
+    /* whether a pact FORMS in any one run is a die; whether one CAN is a
+       property, and a property is what an assertion should hold. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.ruling = 'fp'; S.coalition = ['fp']; S.aiPacts = {};
+    out.pactPossible = PARTIES.filter(p => p.id !== playParty(S) && p.id !== 'fp')
+      .some(p => !!v16PactPartner(S, p.id));
+
+    /* MEMORY: a party that is attacked remembers, and the grudge cools. The
+       party is picked by CIRCUMSTANCE -- out of government and out of the
+       coalition -- because a party in office answers "govern" whatever it
+       thinks of you, which is correct and is not what this asks. */
+    const sore = PARTIES.filter(p => p.id !== me && p.id !== S.ruling &&
+      (S.coalition || []).indexOf(p.id) < 0 && !S.banned[p.id])[0];
+    out.sore = sore && sore.id;
+    out.grudge0 = sore ? v16Grudge(S, sore.id, me) : null;
+    if (sore) v16Resent(S, sore.id, me, 40);
+    out.grudge1 = sore ? v16Grudge(S, sore.id, me) : null;
+    out.postureUnderGrudge = sore ? v16Posture(S, sore.id) : null;
+    for (let i = 0; i < 10; i++) v16AiTurn(S);
+    out.grudgeCools = sore ? v16Grudge(S, sore.id, me) < out.grudge1 : false;
+
+    /* A RED LINE THAT BITES. `coalitionDeals[pid].redLine` has been written
+       and rendered since v5 and read by NOTHING. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+    const partner = PARTIES.filter(p => p.id !== playParty(S))[0].id;
+    S.ruling = playParty(S); S.coalition = [playParty(S), partner]; S.partner = partner;
+    const line = Object.keys(PARTY[partner].wants || {})[0];
+    S.coalitionDeals = S.coalitionDeals || {};
+    S.coalitionDeals[partner] = { satisfaction:70, priorities:[], councils:0, portfolios:0, redLine:line, lastCouncil:-99 };
+    S.pol[line] = PARTY[partner].wants[line];
+    out.redLine = line;
+    if (typeof v16RedLineTick === 'function') v16RedLineTick(S);          /* baseline session */
+    const sat0 = S.coalitionDeals[partner].satisfaction;
+    /* now drive it AWAY from what they exist to defend */
+    S.pol[line] = clamp((S.pol[line] || 0) + (PARTY[partner].wants[line] > 0 ? -1 : 1), 0, POL[line].max);
+    if (typeof v16RedLineTick === 'function') v16RedLineTick(S);
+    out.redLineBites = S.coalitionDeals[partner] ? S.coalitionDeals[partner].satisfaction < sat0 - 5 : true;
+    /* and a partner whose cohesion is gone walks out */
+    if (S.coalitionDeals[partner]) S.coalitionDeals[partner].satisfaction = 8;
+    if (typeof v16RedLineTick === 'function') v16RedLineTick(S);
+    out.partnerLeaves = (S.coalition || []).indexOf(partner) < 0;
+    return out;
+  });
+
+  const sixActs = Object.keys(six.acts).map(k => six.acts[k]);
+  say(six.built && six.deck === 7 && six.cardWorks === 7 && six.cardFails.length === 0 && six.actedAll &&
+      six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
+      six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
+      six.redLineBites && six.partnerLeaves,
+    'the six that are not yours act',
+    `every one of the ${six.deck} cards, given a state where it can play, does what it says and is paid for out of that ` +
+    `party's own money (${six.cardWorks} of ${six.deck}${six.cardFails.length ? '; ' + six.cardFails.join('; ') : ''}) · ` +
+    `over sixty sessions each of the six takes ${sixActs.length ? Math.min.apply(null, sixActs) : 0} to ` +
+    `${sixActs.length ? Math.max.apply(null, sixActs) : 0} initiatives, ${six.builtMachine} of them build an organisation ` +
+    `where the best any of them managed before was +0.32 and five built nothing, all ${six.spentPurse} spend the purse ` +
+    `S15f gave them (${six.spentTotal} of party money across the campaign, none of them ending above ${six.richest}) ` +
+    `where before this PR they ended on 280 to 809 with nothing spending it, and a pact between two parties out of ` +
+    `government is reachable (${six.pactPossible}) · a party REMEMBERS: attacked, the ${String(six.sore).toUpperCase()}'s ` +
+    `grievance goes ${six.grudge0} to ${six.grudge1}, its posture becomes "${six.postureUnderGrudge}", and it cools ` +
+    `(${six.grudgeCools}) · and the red line BITES: driving "${six.redLine}" away from what the partner exists to defend ` +
+    `costs real cohesion (${six.redLineBites}) and a partner whose cohesion is gone walks out (${six.partnerLeaves}) -- ` +
+    `\`coalitionDeals[pid].redLine\` has been written and rendered on the coalition card since v5 and read by NOTHING` +
+    (six.built ? '' : ' · THIS BUILD HAS NO INITIATIVE DECK: aiGovern is the whole of it, it returns unless the player is ' +
+      'out of government, and it acts for st.ruling alone'));
+
   /* S16d -- YOU LEAD ONE PARTY. The owner: "I think its time we remove the
      ability to switch the party that the player is playing as, because it just
      complicates it too much." Two paths wrote `S.playAs` after setup:

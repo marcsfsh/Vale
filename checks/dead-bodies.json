@@ -815,6 +815,22 @@
     "viewWorld#3": {
       "aliasCaptured": true,
       "reason": "alias var v16ViewWorldBase captured above and called; S16c puts the capitals under sanction on the world page, because a state nothing on any screen names is a state the player cannot play against"
+    },
+    "ballot#2": {
+      "aliasCaptured": true,
+      "reason": "alias var v16BallotBase captured above and called; S16e lets two parties out of government pool their vote in a pact, which is what the player's own st.pact has always done and which nothing gave the other six"
+    },
+    "tickTurn#6": {
+      "aliasCaptured": true,
+      "reason": "alias var v16AiTickBase captured above and called; S16e gives every party the player does not lead one initiative a session and makes a coalition partner's written red line bite"
+    },
+    "doAction#2": {
+      "aliasCaptured": true,
+      "reason": "alias var v16DoActionMemory captured above and called; S16e gives a party a memory of the cards played against it -- radicalise, poach, infiltrate, split and ban all did their damage and none of them was remembered by anybody"
+    },
+    "viewParties#2": {
+      "aliasCaptured": true,
+      "reason": "alias var v16ViewPartiesBase captured above and called; S16e puts each party's posture, money, initiative count and grievance on the Parties page, because a posture the player cannot see is not in the game"
     }
   },
   "_maxDeadComment": "S14 PR D takes this 7 -> 2. The five that S2 called the ratchet's true floor were live only through three redundant boot statements -- the v4 boot render, the render half of the v5 boot line, and two calls on the mobile chunk's boot line -- all three painting screens a later chunk replaced before anyone saw them. With those gone every one of the five poison-proved unreachable ON ITS OWN (never in a set: a throw aborts its block and hides the calls after it, which is how S2 lost a day), against the full playtest and all 92 roads assertions, and the same five poisons reddened the build from before the removal. The bodies are deleted and the first surviving assignment of each name is now its declaration. The 2 that remain are regionPartyFactor#1 and actBlocked#1: both bodies were MEANT to be replaced, for reasons S11c and S11d record and S14 PR C did not disturb, so the honest end state for them is a recorded verdict rather than a deletion. PRIOR: S1 set it at 10, S2 -> 5, S14 PR C -> 7 when the check stopped believing a hand-written boolean.",

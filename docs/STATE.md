@@ -5,8 +5,9 @@ Update this file in the last commit of every PR.
 ## Current slice
 
 **S16 — Somebody can stop you, and the other half of the game** is **open**.
-Four of twelve PRs: **S16a** the session clocks, **S16b** the treaty book,
-**S16c** the Foreign Office and **S16d** one party for the campaign.
+Five of twelve PRs: **S16a** the session clocks, **S16b** the treaty book,
+**S16c** the Foreign Office, **S16d** one party for the campaign and **S16e** the
+six that are not yours.
 
 **The order below was changed after S16c**: the owner's six explicit
 requirements come first, and the four "somebody can stop you" PRs follow. Three
@@ -27,7 +28,7 @@ are folded in beside them:
 | **b** #61 | **a treaty is a relationship, not a slot** — many at once, prerequisites, ten more kinds, and a reply the following turn |
 | **c** #62 | **the Foreign Office reaches every capital** — the diplomacy actions the S10e powers never reached, the legs that cost capital and move nothing, and sanctions as a state |
 | **d** #63 | **you lead one party for the campaign** — `switchParty` retired and the Invite card repaired |
-| e | the six that are not yours: doctrine, memory and initiative for the parties the player does not lead |
+| **e** #64 | **the six that are not yours** — an initiative deck, a posture, a memory and a red line that bites |
 | f | the custom start — a scenario editor over the constitution, the statute book, every chamber, the powers and the standings |
 | g | the court can stop you |
 | h | the street has leverage |
@@ -35,6 +36,117 @@ are folded in beside them:
 | j | the long deck folds, and focus survives |
 | k | contrast and the thumb |
 | l | the prose pass and the slice close |
+
+### S16e — the six that are not yours
+
+The owner's first requirement: *"other parties should be more active and less
+stagnant."*
+
+**Measured over fifty sessions before the change**, with the player leading the
+LP and the FP in government:
+
+```
+st.push written deliberately by an AI party : NEVER, for any of them
+machine built by an AI party over a campaign: +0.32 at best, ~0 for five
+purse at the end                            : 280 to 809, unspent
+initiative taken by a party out of government: none of any kind
+```
+
+`aiGovern` is the whole of it and it does three things: it **returns unless the
+player is out of government**, it runs every other session, and it puts a bill
+from `wants` on the paper for `st.ruling` alone. **Six parties out of seven had
+no way to act at all.**
+
+**One initiative every four sessions, per party, from a deck of seven**, chosen
+by a posture that comes from circumstance, paid out of that party's own money
+through the purse S15f gave it, and written into channels the vote model already
+reads:
+
+| card | what it does |
+|---|---|
+| organise | builds `st.machine`, the single largest seat lever in the file |
+| campaign | takes the campaign into the country near a ballot; the only card that writes `st.funding` |
+| court | moves the bloc it is closest to |
+| attack | costs the government machine and gains its own |
+| platform | **writes `st.push`** — toward the middle when losing, back toward its own members when holding |
+| pact | two parties out of government stand down for each other and pool their vote at the count |
+| demand | puts a statute to the government in writing, as a paper in the inbox |
+
+**A party remembers.** `st.ai[pid].grudge[other]` rises when it is attacked,
+poached, infiltrated, split or banned — five cards that all did their damage and
+none of which was remembered by anybody — and a grudge of 35 turns its posture
+to *attack*. Grudges cool.
+
+**The red line bites.** `coalitionDeals[pid].redLine` has been written, and
+rendered on the coalition card, since v5, and read by **nothing**: a government
+could drive a partner's red-line statute in the direction that partner exists to
+prevent, session after session, for free. Crossing it costs eleven points of
+cohesion and a public warning; a partner whose cohesion is gone **walks out**.
+
+### The tuning, and how it was found
+
+The untuned build cost the pacing harness **four elections in five** (mean 5.5 →
+1.2). Finding the dial took a sweep, and the sweep is the interesting part:
+
+| what was swept out | elections won, three seeds |
+|---|---|
+| nothing (untuned) | 1 / 2 / 1 |
+| machine gain to zero | 4 / 2 / 2 |
+| the platform card | 1 / 2 / 1 |
+| the demand card | 2 / 1 / 1 |
+| the campaign card | 1 / 2 / 1 |
+| AI spending no longer writing `funding` | 2 / 2 / 1 |
+| **the whole deck** | **6 / 14 / 3** |
+
+**No single card is the lever and neither is any constant.** What costs the
+harness is the *sum* — six parties each doing something every session for fifty
+of them. So the dial is **cadence**, and a party moves once every four sessions
+on a hash of its own id, which is a party conference rather than a daily paper.
+Swept: cadence 3 → 2.67, **4 → 4.0**, 5 → 3.33, 6 → 3.0 on the mean.
+
+Six seeds, short, at cadence four:
+
+| | 5EED | A1B2 | 00C0 | DEAD | 1234 | 0BAD | mean |
+|---|---|---|---|---|---|---|---|
+| elections won, before | 6 | 10 | 3 | 5 | 6 | 3 | **5.5** |
+| elections won, after | 3 | 6 | 3 | 8 | 4 | 3 | **4.5** |
+| records earned, before | 8 | 9 | 8 | 9 | 9 | 8 | **51/264** |
+| records earned, after | 9 | 8 | 8 | 7 | 7 | 8 | **47/264** |
+
+Every value is inside the pre-PR spread, and the harness takes the first choice
+always and never builds a campaign of its own — S15h measured the player's own
+deck at **+420 seats** at its ceiling, none of which this harness buys.
+**Balance is the owner's**: `V16_AI_CADENCE`, `V16_AI_ORGANISE` and
+`V16_AI_ATTACK` are the dials and they are named.
+
+### A coin flip in the harness, found and closed
+
+`roads.js` has asserted *no two officials share a name* since S10a. 197 given
+names by 200 surnames is 39,400 pairs, which reads as plenty — but the probe
+churns the cast 200 times with about 21 people in public life at once, and
+`200 × (21 × 20 / 2) / 39400` is **a bit over one expected collision**. That
+assertion has been **a coin flip since it was written**; S16e shifted the seeded
+stream and it came up tails. `makeName` now redraws a name already held by
+somebody in public life, up to ten times, which makes the assertion a property.
+Six consecutive green runs.
+
+The S16e assertion itself was rewritten for the same reason: whether a
+particular card comes up in one sixty-session run is a die (three runs read the
+deck as 6, 7 and 7 cards fired), so it holds **every card as a property** —
+given a state where it can play, does it do what it says and is it paid for out
+of that party's own money.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          161 assertions, stable over six runs
+PLAYTEST PASS     53 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+CORPORA OK
+PACING            six seeds, published above
+```
+
+Next: **S16f**, the custom start — the owner's third requirement and the last of
+the six that is not yet done.
 
 ### S16d — you lead one party for the campaign
 
@@ -3656,6 +3768,7 @@ ratchet 10 → 5, which is now its true floor.
 | S16b treaties are a relationship | **merged** (#61) | `st.v6.treaties[powerId]` was ONE object, so signing a second replaced the first and the same capital could be walked round a non-aggression pact, a defence pact and a non-aggression pact inside one session with the Foreign Office reporting each as a treaty signed; a list per capital with twenty instruments (ten more), sixteen of them written on top of another, terms laid rather than signed with the capital answering at the next session at odds printed before the money is spent, every instrument able to lapse where five never could, annulment that cascades through what stands on it, and the Foreign Office shut in opposition where eleven Negotiate buttons were live; two live defects caught by measurement -- a prerequisite naming a kind defined in a later chunk threw three times before the first screen, and a read that installed an empty array turned the Peacemaker record's `Object.keys` test into "eleven powers exist" and awarded it on every seed with nothing signed |
 | S16c the Foreign Office reaches every capital | **merged** (#62) | five diplomatic actions named a fixed handful of capitals chosen before `POWERS.push` added the S10e five, so a state visit reached 4 of eleven, a summit 3, a trade mission 3, a recall 2, an aid programme 2 and arming a client 4 -- all eleven now, with 55 authored lines and every number on every tip COMPOSED from the same table its run reads; the base leg of five of the six moved no relation with any power at all and each now does what its label says; and sanctions became a state that rides the save, costing both sides every session, multiplied by the Sanctions Regime statute and turned into revenue by Seize the Frozen Reserves -- two statutes that named sanctions where nothing in the file could ask whether one stood |
 | S16d you lead one party | **merged** (#63) | two paths wrote `S.playAs` after setup, not one: `switchParty` ("Change Your Allegiance", seven legs, cross to any party) and the Invite card, whose own description read "You go on playing as them"; the first is retired and the second repaired so the invited party governs and the player stays who they are -- junior partner where their seats are wanted, opposition where they are not, unity down either way because their own members did not vote for it; `roads.js` drives all 325 legs of every action and asserts none moves the player between parties, and the `doAction` wrapper that recorded a switch now refuses one; the Turncoat record kept its id so the denominator stays at 44 and old hall entries keep their tick, and asks the harder version of the same move as The Handover |
+| S16e the six that are not yours | **merged** (#64) | `aiGovern` returns unless the player is out of government, runs every other session and acts for `st.ruling` alone, so six parties out of seven had no way to act at all: `st.push` was never written by an AI party, the best machine any of them built over a campaign was +0.32, and their purses ended between 280 and 809 with nothing spending them; one initiative every four sessions from a deck of seven, chosen by a posture that comes from circumstance and paid out of that party's own money, plus a memory of the five cards played against it and a red line that finally bites -- `coalitionDeals[pid].redLine` had been written and rendered since v5 and read by nothing, and a partner whose cohesion is gone now walks out; the cadence was found by sweeping every card and every constant out in turn and finding that none of them was the lever and the sum was; and a coin-flip assertion since S10a, "no two officials share a name", was closed by making `makeName` redraw a name already held |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
