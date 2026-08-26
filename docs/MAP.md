@@ -1112,17 +1112,25 @@ renders; each chunk re-enriches/re-renders (6 renders total at load); v6's boot
 IIFE (~11229) opens `startScreen()` (which offers Resume — never auto-resumes);
 v8/v9 boots rebuild the still-open setup sheet (it is built 3× per load). The
 throwaway game cannot clobber a real autosave: `saveAutosave` requires
-`S.started`, set only in `applyDoctrine`. Fonts are CSS-only (`display=swap`);
-offline, the two font requests fail cosmetically. Keydown handlers stack (v4
+`S.started`, set only in `applyDoctrine`. The fonts are the embedded data URIs
+described above; there are no font requests and nothing is fetched offline.
+Keydown handlers stack (v4
 ~8021, v5 Ctrl+K ~8866, v7 `/` ~12099); document-level click delegation
 accumulates (v8 `[data-v8cmd]` ~13556, v9 `[data-v9cmd]` ~15596).
 
 ## Other known fragilities
 
 - `clamp` (~4426) passes NaN through (every comparison false → returns v).
+  **Still live**, and the one entry here with a recorded near-miss: S11d had a
+  NaN reach the vote model with nothing on screen to say so, caught only by an
+  exhaustive 128-subset probe on the branch.
 - `v6Sandbox` (~10712) swaps 9 globals; since S1 the restore sits in a
   `finally`.
 - `confirm()` is called exactly once (hall-of-fame clear ~13093) — the playtest
   harness stubs it.
-- 93 `Math.random()` sites; the only seeded PRNG is the sandbox's LCG (S3
-  replaces all of it).
+- **One** `Math.random()` site, `rand()`'s pre-game fallback, pinned by
+  `math-random-ratchet`; 111 calls route through the seeded engine. S3 (PR #7)
+  did the replacement this line used to promise. It said "93 sites; the only
+  seeded PRNG is the sandbox's LCG" for eleven slices after that stopped being
+  true, in the section a cold session reads to decide whether the game is
+  reproducible.

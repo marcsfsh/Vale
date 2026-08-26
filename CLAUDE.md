@@ -3,10 +3,10 @@
 One product: `vale.html` — a complete turn-based government simulator in a single
 self-contained file. Everything else in this repo is tooling or documentation.
 
-IMPORTANT: never read `vale.html` whole — it is 1.4 MB and consumes most of a
-context window. Use `grep -n`, Read windows of ≤80 lines, and the Explore agent
-for open-ended sweeps. `docs/MAP.md` holds the structural map; read it before
-touching the file.
+IMPORTANT: never read `vale.html` whole — it is **3.0 MB** and would consume an
+entire context window. Use `grep -n`, Read windows of ≤80 lines, and the Explore
+agent for open-ended sweeps. `docs/MAP.md` holds the structural map; read it
+before touching the file.
 
 ## Invariants (full policy: docs/AGREEMENT.md)
 
@@ -60,6 +60,10 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
+- `tools/roads.js` — **90 content assertions**, the largest harness here: the
+  descent, the constitution, the ministry, the interests, the regional term, the
+  capital floor, and that every one of the 582 statutes carries four distinct
+  rungs. Run it after any content change.
 - `tools/determinism.js` — seven properties of the seeded dice. Drive the model,
   not the modal queue: which queued sheets a UI run pumps depends on click
   timing, so a UI-level comparison measures the harness, not the game.
@@ -68,6 +72,16 @@ you touched; a SKIP is never a PASS.
 - `tools/tiers.js` / `tools/tabs.js` — layout at each tier boundary.
 - `tools/pacing.js` — plays a length option to its end and reports the arc.
 - `tools/poison.js` — proves a body is dead before you delete it.
+- `tools/rungs.js` — the statute prose: `--brief` a book, `--apply` a shard
+  (idempotent), `--check` the whole corpus against the house style.
+- `tools/prose/` — the blind measurement rig: `sweep.js` emits every ladder for
+  an unaided reader, `sweepscore.js` scores it. Its README carries the one rule
+  these tools exist to enforce: **never re-measure the sample you repaired
+  against.**
+
+The prose standard is `docs/PROSE-STYLE.md`: the owner's writing skill carried
+verbatim, plus a statute addendum. All 2,910 authored pieces are written to it.
+`docs/PROSE-RESIDUE.md` names the ladders that two blind readers still fail.
 
 Playwright resolves from the global install (`npm root -g` + `createRequire`);
 bare `require('playwright')` fails from this repo. WebKit downloads are blocked
