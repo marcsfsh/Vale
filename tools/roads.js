@@ -327,12 +327,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.castDupes = worst;
     out.castChurn = 200;
 
-    /* Very easy: six works, and the capital numbers that make six affordable.
-       Every other tier untouched. */
-    out.workMax = ['easy', 'gentle', 'normal', 'hard', 'brutal'].map(k => k + ':' + v8WorkMax({ diff: k })).join(' ');
+    /* Very easy's opening numbers, and the guard that S10a's raise and S15c's
+       raise both stayed on that tier. The berth ladder and the floor itself are
+       asserted at the S15c block below; what is asserted here is that the other
+       four tiers were not carried along with them. */
     out.easyCap = DIFFS.easy.capital + '/' + DIFFS.easy.capMult + '/' + DIFFS.easy.capFlat + '/' + DIFFS.easy.capCap;
+    out.easyFloor = DIFFS.easy.capFloor;
     out.othersUnmoved = DIFFS.normal.capital === 18 && DIFFS.normal.capCap === 70 &&
-      DIFFS.gentle.capital === 40 && DIFFS.brutal.capital === 8;
+      DIFFS.gentle.capital === 40 && DIFFS.gentle.capCap === 110 &&
+      DIFFS.hard.capital === 12 && DIFFS.brutal.capital === 8 && DIFFS.brutal.capCap === 52 &&
+      ['gentle', 'normal', 'hard', 'brutal'].every(k => DIFFS[k].capFloor === undefined);
 
     /* Every justice is named before anybody opens the Judicial page. */
     out.benchNamed = S.court.justices.filter(j => j.name).length + '/' + S.court.justices.length;
@@ -361,9 +365,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(republic.castDupes === 0, 'no two officials share a name',
     republic.castDupes ? republic.castDupes + ' duplicate(s) among ' + republic.castSize
       : republic.castSize + ' in public life, no name twice, through ' + republic.castChurn + ' replacements');
-  say(republic.workMax === 'easy:6 gentle:3 normal:2 hard:2 brutal:2' && republic.othersUnmoved,
-    'very easy builds six', republic.workMax + ' · easy capital/mult/flat/cap ' + republic.easyCap +
-      ' · other tiers unmoved: ' + republic.othersUnmoved);
+  say(republic.easyCap === '250/5.4/26/750' && republic.easyFloor === 150 && republic.othersUnmoved,
+    'the raise stays on very easy',
+    'easy capital/mult/flat/cap ' + republic.easyCap + ' over a floor of ' + republic.easyFloor +
+      ' · the other four tiers carry their own opening stock and ceiling and no floor at all: ' +
+      republic.othersUnmoved);
   say(republic.benchNamed.split('/')[0] === republic.benchNamed.split('/')[1], 'the bench is named on arrival',
     republic.benchNamed + ' justices named without the Judicial page being opened');
 
@@ -2286,6 +2292,200 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       ? `on proclamation the Senate reads ${ch.onePartySenate} and the Assembly ${ch.onePartyLower} · only the Empire and the ` +
         `DPR did this for themselves, so every other authority form kept a full-veto elected Senate over it`
       : 'the oneparty transition is gone');
+
+  /* ============================================================
+     10. S15c: THE NUMBERS.
+
+     Very easy opened on 175 capital with a floor of 75 under the session's
+     income; the owner asked for 250 and 150. The ceiling had to move with them
+     or the tier would fill its own stock in two sessions and print a waste
+     warning at every close.
+
+     The works cap was one ternary giving five tiers three values, so Normal,
+     Hard and Very hard all carried two berths. And the works were the one line
+     of federal spending in the game that difficulty never touched: the base
+     budget applies d.exp to every statute and the v8 wrapper added the works
+     on afterwards, so ten works on Very easy took four fifths of the tier's
+     whole surplus.
+
+     Driven through budget(), v8WorkMax and the real commission dispatcher.
+     Every probe degrades rather than throws on a build that predates S15c, so
+     the whole block can be run against the old file and show what it did.
+     ============================================================ */
+  const nums = await p3.evaluate(() => {
+    const out = { tiers: {}, worksTotal: V8_WORKS.length };
+    const TIERS = ['easy', 'gentle', 'normal', 'hard', 'brutal'];
+
+    /* the raw instalments, read straight off the works rather than through
+       v8WorksSpend -- which is the function under test */
+    const raw = (st) => v8ActiveWorks(st).reduce((s, w) => s + v8WorkPerSession(st, w, st.v8.works[w.id]), 0);
+    const fill = (st, n) => {
+      const elig = V8_WORKS.filter((w) => w.req(st)).slice()
+        .sort((a, b) => (a.cost / a.years) - (b.cost / b.years));
+      elig.slice(-n).forEach((w) => {
+        st.v8.works[w.id] = { status:'active', mode:'steady', cost:w.cost, spent:0,
+          started:st.turn, overruns:0, sessions:0, idle:0, mods:{}, notes:[] };
+      });
+    };
+
+    TIERS.forEach((d) => {
+      S = enrichState(v6NewGame(d, 'v6default', 'standard', 'lp'), false);
+      const berths = v8WorkMax(S), bare = budget(S);
+      fill(S, berths);
+      const full = budget(S), r = raw(S);
+      out.tiers[d] = {
+        berths: berths,
+        /* what the tier charges for what the sites are credited with */
+        charged: +full.works.toFixed(2), rawSpend: +r.toFixed(2),
+        wanted: +(r * DIFFS[d].exp).toFixed(2),
+        bareNet: +bare.net.toFixed(1), share: +(full.works / bare.rev).toFixed(3),
+        surplusShare: bare.net > 0 ? +(full.works / bare.net).toFixed(3) : null
+      };
+    });
+
+    /* Very easy's own numbers, read off a fresh campaign rather than the table */
+    S = enrichState(v6NewGame('easy', 'v6default', 'standard', 'lp'), false);
+    out.easy = { capital: S.capital, income: +capitalIncome(S).toFixed(1), cap: capCap(S) };
+    /* the counterfactual the ceiling had to move to avoid: the new income
+       against the old ceiling of 440 */
+    out.oldCeilingWasteAt = 0;
+    {
+      let c = S.capital;
+      for (let i = 1; i <= 8 && !out.oldCeilingWasteAt; i++) {
+        if (c + capitalIncome(S) > 440.5) out.oldCeilingWasteAt = i;
+        c = Math.min(440, c + capitalIncome(S));
+      }
+    }
+    /* TEN works on Very easy, whatever the tier's berth count is, so the
+       measurement is the same question on both sides of the fix */
+    S = enrichState(v6NewGame('easy', 'v6default', 'standard', 'lp'), false);
+    {
+      const bare = budget(S);
+      fill(S, 10);
+      const full = budget(S);
+      out.tenOnEasy = { works: +full.works.toFixed(1), bareNet: +bare.net.toFixed(1),
+        share: +(full.works / bare.net).toFixed(3), sites: v8ActiveWorks(S).length };
+    }
+    /* the close-of-session waste warning, session by session, on a government
+       that banks every point it earns */
+    out.wasteAt = 0;
+    for (let i = 1; i <= 8 && !out.wasteAt; i++) {
+      if (S.capital + capitalIncome(S) > capCap(S) + .5) out.wasteAt = i;
+      S.capital = clamp(S.capital + capitalIncome(S), -5, capCap(S));
+    }
+
+    /* THE BERTH QUEUE, through the real dispatcher. */
+    S = enrichState(v6NewGame('easy', 'v6default', 'standard', 'lp'), false);
+    S.ruling = playParty(S); S.coalition = [S.ruling];
+    S.capital = 400; S.treasury = 4000;
+    const open = V8_WORKS.filter((w) => w.req(S)).map((w) => w.id);
+    const berths = v8WorkMax(S);
+    open.slice(0, berths).forEach((id) => v8Dispatch('work', id, 'commission'));
+    out.filledBerths = v8ActiveWorks(S).length;
+    const waiter = open[berths], second = open[berths + 1];
+    const capBefore = S.capital, trBefore = S.treasury;
+    v8Dispatch('work', waiter, 'commission');
+    v8Dispatch('work', second, 'commission');
+    const q = () => (S.v8.queue || []);
+    out.queued = q().slice();
+    out.queueFree = S.capital === capBefore && S.treasury === trBefore;
+    out.queueStartedNothing = v8ActiveWorks(S).length === out.filledBerths;
+    /* a berth frees: cancel one, tick, and the head of the queue is taken */
+    const victim = v8ActiveWorks(S)[0];
+    S.v8.works[victim.id].status = 'cancelled';
+    if (typeof v8QueueTick === 'function') v8QueueTick(S);
+    out.promoted = !!(S.v8.works[waiter] && S.v8.works[waiter].status === 'active');
+    out.queueAfter = q().slice();
+    out.paidOnStart = S.capital < capBefore && S.treasury < trBefore;
+
+    /* THE TAPER. Ten sites against one, on the same fresh state, measuring the
+       aggregate the sites hand the country every session. */
+    const siteRun = (n) => {
+      S = enrichState(v6NewGame('easy', 'v6default', 'standard', 'lp'), false);
+      S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+      fill(S, n);
+      v8ActiveWorks(S).forEach((w) => { S.v8.works[w.id].mode = 'crash'; });
+      const u0 = S.macro.unemployment, l0 = S.blocs.labour, c0 = S.ind.corruption;
+      v8WorksTick(S);
+      return { emp: +(u0 - S.macro.unemployment).toFixed(4), lab: +(S.blocs.labour - l0).toFixed(4),
+        cor: +(S.ind.corruption - c0).toFixed(4) };
+    };
+    out.one = siteRun(1);
+    out.ten = siteRun(10);
+
+    /* THE FILTER STRIP. */
+    S = enrichState(v6NewGame('easy', 'v6default', 'standard', 'lp'), false);
+    S.ruling = playParty(S); S.coalition = [S.ruling];
+    out.hasStrip = typeof v8WorkFilterStrip === 'function';
+    if (out.hasStrip) {
+      const strip = document.createElement('div');
+      strip.innerHTML = v8WorkFilterStrip();
+      out.filterIds = [].slice.call(strip.querySelectorAll('[data-workfilter]'))
+        .map((b) => b.getAttribute('data-workfilter'));
+      fill(S, 3);
+      S.uiPrefs.workFilter = 'building';
+      out.shownBuilding = V8_WORKS.filter(v8WorkShown).length;
+      S.uiPrefs.workFilter = 'all';
+      out.shownAll = V8_WORKS.filter(v8WorkShown).length;
+      S.uiPrefs.workFilter = 'all';
+    }
+    return out;
+  });
+
+  const nt = nums.tiers, berthRungs = ['easy', 'gentle', 'normal', 'hard', 'brutal'].map((d) => nt[d].berths);
+  say(nt.easy.berths === 10 && new Set(berthRungs).size === 5 &&
+      berthRungs.every((n, i) => i === 0 || n < berthRungs[i - 1]),
+    'ten berths, and a rung for every tier',
+    `the berths run ${berthRungs.join(' > ')} from Very easy to Very hard · the old ternary gave five tiers three ` +
+    `values and the three hardest all read 2, so Normal, Hard and Very hard were indistinguishable on the one ` +
+    `axis a government's ambition is measured in`);
+
+  say(nums.easy.capital === 250 && nums.easy.income === 150 && nums.easy.cap >= 700 &&
+      nums.wasteAt >= 4 && nums.oldCeilingWasteAt <= 2,
+    'very easy opens on 250 and earns 150',
+    `Very easy starts with ${nums.easy.capital} capital, earns ${nums.easy.income} a session under its floor and ` +
+    `holds ${nums.easy.cap} · a government that banks every point it earns is first told it is wasting capital at ` +
+    `the close of session ${nums.wasteAt} · held at the old ceiling of 440 the same income would fill the stock by ` +
+    `session ${nums.oldCeilingWasteAt} and the close-of-session checklist would print that warning for the rest of ` +
+    `the campaign, which is why the ceiling had to move with the floor`);
+
+  const charged = ['easy', 'gentle', 'normal', 'hard', 'brutal']
+    .every((d) => Math.abs(nt[d].charged - nt[d].wanted) < .01);
+  say(charged && nt.easy.charged < nt.easy.rawSpend && nt.brutal.charged > nt.brutal.rawSpend,
+    'the works are charged at the tier rate',
+    `every tier now charges its own d.exp for a works instalment: Very easy pays ${nt.easy.charged} for ` +
+    `${nt.easy.rawSpend} of building and Very hard pays ${nt.brutal.charged} for ${nt.brutal.rawSpend} · ` +
+    `the base budget has applied d.exp to every statute since v4 and the v8 wrapper added the works on ` +
+    `afterwards, so the works were the one line of federal spending difficulty never touched`);
+
+  const ten = nums.tenOnEasy;
+  say(ten.sites === 10 && ten.bareNet > 0 && ten.share < .5,
+    'ten works do not eat very easy',
+    `ten sites, the dearest the ministry can begin, cost ${ten.works} a session against the tier's ` +
+    `${ten.bareNet} of surplus: ${Math.round(ten.share * 100)} percent of it · charged outside the difficulty ` +
+    `multiplier the same ten cost 133.1, which is 81 percent, on the tier whose blurb is that nothing here can ` +
+    `bring you down`);
+
+  say(nums.filledBerths === 10 && nums.queued.length === 2 && nums.queueFree && nums.queueStartedNothing &&
+      nums.promoted && nums.queueAfter.length === 1 && nums.paidOnStart,
+    'what you commission past the berths waits',
+    `${nums.filledBerths} berths filled, two more commissioned and both in the queue with nothing charged · a berth freed and the ` +
+    `head of the queue was taken and paid for, leaving ${nums.queueAfter.length} waiting · before S15c a ` +
+    `commission at the cap was refused with a flash and the player was told to come back later`);
+
+  say(nums.ten.emp > 0 && nums.ten.emp < nums.one.emp * 4 && nums.ten.lab < nums.one.lab * 4 &&
+      nums.ten.cor < nums.one.cor * 4,
+    'the country notices its first canal',
+    `ten crash sites move unemployment by ${nums.ten.emp} against one site's ${nums.one.emp}, Labour by ` +
+    `${nums.ten.lab} against ${nums.one.lab} and corruption by ${nums.ten.cor} against ${nums.one.cor} · ` +
+    `charged once per work per session and unbounded, ten berths would have been ten times one`);
+
+  say(nums.hasStrip && nums.filterIds.length === 6 && nums.shownBuilding === 3 && nums.shownAll === nums.worksTotal,
+    'the works panel can be asked a question',
+    nums.hasStrip
+      ? `the strip offers ${nums.filterIds.join(', ')} · asked for what is under construction it answers with ` +
+        `${nums.shownBuilding} of ${nums.shownAll} cards · it drew all forty-eight in one list before`
+      : 'there is no filter on the works panel');
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

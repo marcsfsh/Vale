@@ -432,15 +432,22 @@ var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
     capMult:5.4, capFlat:26, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
-    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:175, capCap:440, bond:150, resist:.25,
+    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:250, capCap:750, bond:150, resist:.25,
     /* S12: a FLOOR under the session's capital, not another multiplier. Very
        easy is the tier whose blurb promises "capital by the cartload"; a
        government having a bad session on it should still be able to act. Only
        this tier carries the field, so capitalIncome's floor is a no-op
        everywhere else. Applied in the OUTERMOST wrapper (v12CapitalFloorBase),
        because capitalIncome is wrapped four times after the base and a floor
-       applied earlier is undercut by every wrapper above it. */
-    capFloor:75 },
+       applied earlier is undercut by every wrapper above it.
+       S15c raised the floor to 150 and the opening stock to 250, which forced
+       the ceiling up with them: held at 440, an income of 150 fills the stock
+       by session 2 and the close-of-session checklist prints "of the coming
+       income will be lost" at every close for the rest of the campaign, on the
+       tier whose blurb is "nothing here can bring you down". At 750 a
+       government that banks every point it earns is first told so at the close
+       of session 4, and one that spends is never told so. */
+    capFloor:150 },
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
@@ -17532,6 +17539,7 @@ nav.tabs.grouped .pages .nbadge{min-width:15px;height:15px;font-size:9px;margin-
 .work-card.complete{border-top-color:var(--ok)}
 .work-card.paused{border-top-color:var(--brass-dim)}
 .work-card.cancelled{opacity:.75}
+.work-card.queued{border-top-style:dashed;border-top-color:var(--brass)}
 .work-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}
 .work-kpis div{background:rgba(0,0,0,.23);padding:6px;text-align:center;min-width:0}
 .work-kpis b{display:block;font-family:var(--font-u);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);font-weight:500}
@@ -17660,6 +17668,11 @@ function v8EnsureState(st, fresh) {
   st.enrichVersion = 8;
   var v = st.v8 = st.v8 || {};
   v.works = v.works || {};
+  /* S15c. A save written before the berth queue existed carries no queue and
+     wants none: nothing was waiting, and an empty list says so exactly. This
+     is an addition to the save shape and not a change to it, so there is
+     nothing here for a player to lose. */
+  if (!Array.isArray(v.queue)) v.queue = [];
   v.press = v.press || { narrative:'drift', momentum:1, since:st.turn || 1, scores:{}, nudge:{}, fronts:[], briefed:-99, relaunch:-99, attack:-99, rebut:-99, streak:0, history:[] };
   v.press.nudge = v.press.nudge || {};
   v.press.fronts = v.press.fronts || [];
@@ -17802,8 +17815,20 @@ var V8_WORK = {}; V8_WORKS.forEach(function (w) { V8_WORK[w.id] = w; });
 /* S10a: the tier called "Very easy" builds six at once. Six commissions cost
    five capital each, which is why the same slice raised that tier's opening
    balance, its per-session income and — the one that would otherwise clamp
-   the other two away — its capital ceiling. */
-function v8WorkMax(st) { return st.diff === 'easy' ? 6 : (st.diff === 'gentle' ? 3 : 2); }
+   the other two away — its capital ceiling.
+   S15c: ten on very easy, and a rung for every tier. The old ternary gave five
+   tiers three values, so Normal, Hard and Very hard all carried two and the
+   three hardest tiers in the game were indistinguishable on the one axis a
+   government's ambition is measured in. */
+var V8_WORK_MAX = { easy:10, gentle:4, normal:3, hard:2, brutal:1 };
+function v8WorkMax(st) { var n = V8_WORK_MAX[(st && st.diff) || 'normal']; return n === undefined ? 3 : n; }
+/* The berth queue: what a government commissions while every berth is full.
+   Nothing is charged to join it. The ministry takes the head of the queue the
+   session a berth frees, and charges the commission then. */
+function v8Queue(st) { var v = st && st.v8; if (!v) return []; if (!v.queue) v.queue = []; return v.queue; }
+function v8Queued(st, id) { return v8Queue(st).indexOf(id) >= 0; }
+var V8_PLACES = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+function v8QueuePlace(n) { return V8_PLACES[n - 1] || ('number ' + n); }
 function v8ActiveWorks(st) { if (!st.v8) return []; return V8_WORKS.filter(function (w) { var q = st.v8.works[w.id]; return q && q.status === 'active'; }); }
 /* The condition under which the Treasury stops paying for public works. Read
    by BOTH the budget and the tick, because when they disagreed the session
@@ -17852,7 +17877,21 @@ function v8WorkPerSession(st, w, q) {
   base *= v8WorkFactors(q).rate;
   return q.mode === 'crash' ? base * 1.7 : base;
 }
-function v8WorksSpend(st) { var t = 0; v8ActiveWorks(st).forEach(function (w) { t += v8WorkPerSession(st, w); }); return t; }
+/* What the works COST the budget, as against what they BUILD.
+   v8WorkPerSession is the instalment the site is credited with, and it must
+   stay unscaled or a work would take longer to finish on an easy tier than on
+   a hard one. What the Treasury is charged for that instalment is another
+   number, and until S15c it was the only line of federal spending in the game
+   that difficulty did not touch: the base budget applies d.exp to every
+   statute's expenditure and then this wrapper added the works on afterwards.
+   Measured: the ten dearest works Very easy can begin cost 133.1 a session
+   charged that way, against 164.1 of surplus -- 81 per cent of everything the
+   tier has. Charged like every other expenditure it is 73.2. */
+function v8WorksSpend(st) {
+  var t = 0;
+  v8ActiveWorks(st).forEach(function (w) { t += v8WorkPerSession(st, w); });
+  return t * (v8Diff(st).exp || 1);
+}
 
 /* the works are paid for out of the session budget */
 var v8BudgetBase = budget;
@@ -17869,6 +17908,14 @@ budget = function (st) {
 function v8WorksTick(st) {
   var v = st.v8, over = { easy:.05, gentle:.07, normal:.1, hard:.14, brutal:.18 }[st.diff] || .1;
   var broke = v8WorksBroke(st);
+  /* The site effects were charged once per work per session and nothing
+     bounded them. At six berths that was a rounding error; at ten it is three
+     quarters of a point of unemployment and six points of Labour mood every
+     session, from the works alone, for as long as the government keeps
+     building. So they are gathered here and paid out once, at the root of the
+     count: one site is worth one site, four are worth two, ten are worth about
+     three. A country notices its first canal. It does not notice its tenth. */
+  var sum = { emp:0, lab:0, cor:0, unr:0 }, sites = 0;
   v8ActiveWorks(st).forEach(function (w) {
     var q = v.works[w.id];
     if (q.mode === 'paused') { q.idle = (q.idle || 0) + 1; if (q.idle % 3 === 0) { q.cost = Math.round(q.cost * 1.03); } return; }
@@ -17881,9 +17928,10 @@ function v8WorksTick(st) {
     var spend = v8WorkPerSession(st, w, q), crash = q.mode === 'crash';
     q.spent += spend; q.sessions = (q.sessions || 0) + 1;
     for (var k in (w.during || {})) st.ind[k] = c100(st.ind[k] + w.during[k] * (crash ? 1.5 : 1));
-    st.macro.unemployment = clamp(st.macro.unemployment - (crash ? .08 : .05), 1.8, 19);
-    mood(st, { labour:crash ? .6 : .35 });
-    if (crash) { st.ind.corruption = c100(st.ind.corruption + .25); st.unrest = clamp(st.unrest + .15, 0, 110); }
+    sites++;
+    sum.emp += crash ? .08 : .05;
+    sum.lab += crash ? .6 : .35;
+    if (crash) { sum.cor += .25; sum.unr += .15; }
     if (w.region && st.regions[w.region]) st.regions[w.region].attention = (st.regions[w.region].attention || 0) + .5;
     if (rand() < over * v8WorkFactors(q).overrun) {
       q.cost = Math.round(q.cost * 1.12); q.overruns = (q.overruns || 0) + 1; v.stats.overruns++;
@@ -17895,6 +17943,49 @@ function v8WorksTick(st) {
     }
     if (q.spent >= q.cost) v8CompleteWork(st, w, q);
   });
+  if (sites) {
+    var taper = Math.sqrt(sites) / sites;
+    st.macro.unemployment = clamp(st.macro.unemployment - sum.emp * taper, 1.8, 19);
+    mood(st, { labour:sum.lab * taper });
+    if (sum.cor) st.ind.corruption = c100(st.ind.corruption + sum.cor * taper);
+    if (sum.unr) st.unrest = clamp(st.unrest + sum.unr * taper, 0, 110);
+  }
+  v8QueueTick(st);
+}
+/* A berth frees and the ministry sends for the next contractor. The
+   commission is charged HERE rather than when the work joined the queue,
+   because a queue that took the money up front would be a purchase with a
+   delay attached, and a government that cannot pay when the berth opens keeps
+   its place rather than losing the money and the work together. */
+function v8QueueTick(st) {
+  var q = v8Queue(st), guard = 0;
+  while (q.length && v8ActiveWorks(st).length < v8WorkMax(st) && guard++ < 40) {
+    var id = q[0], w = V8_WORK[id], rec = st.v8.works[id];
+    if (!w || (rec && (rec.status === 'active' || rec.status === 'done'))) { q.shift(); continue; }
+    if (!w.req(st)) {
+      q.shift();
+      logIt(st, w.name + ' left the queue: ' + w.reqText + '.');
+      continue;
+    }
+    var deposit = Math.round(w.cost * .1);
+    if (st.capital < cst(5) || st.treasury < deposit) {
+      if (st.v8.queueTold !== st.turn) {
+        st.v8.queueTold = st.turn;
+        logIt(st, 'A berth stands open and ' + w.name + ' waits at the head of the queue. The ministry cannot pay the deposit.');
+      }
+      return;
+    }
+    q.shift();
+    st.capital -= cst(5); st.treasury -= deposit;
+    var restart = rec && rec.status === 'cancelled';
+    st.v8.works[id] = { status:'active', mode:'steady', cost:Math.round(w.cost * (restart ? 1.15 : 1)), spent:deposit,
+      started:st.turn, overruns:0, sessions:0, idle:0, restarted:restart ? ((rec && rec.restarted) || 0) + 1 : 0,
+      mods:{}, notes:restart ? ['Begun again after cancellation'] : [] };
+    mood(st, { labour:2, tech:1, smallbiz:1 });
+    if (w.region && st.regions[w.region]) st.regions[w.region].federal = c100(st.regions[w.region].federal + 3);
+    logIt(st, 'A berth opened and ' + w.name + ' was commissioned off the queue. Deposit ' + fmc(deposit) + '.');
+    addNews(st, 'Public Works', w.name + ' is commissioned', w.blurb, 'watch');
+  }
 }
 function v8CompleteWork(st, w, q, early) {
   q.status = 'done'; q.done = st.turn; st.v8.stats.worksDone++;
@@ -17936,7 +18027,16 @@ function v8WorkAction(id, arg) {
        statistics. Starting again is allowed — it costs more, and it says so. */
     var restart = q && q.status === 'cancelled';
     if (!w.req(S)) { flash('The conditions are not met: ' + w.reqText + '.'); return; }
-    if (v8ActiveWorks(S).length >= v8WorkMax(S)) { flash('The ministry can carry ' + v8WorkMax(S) + ' grand works at once.'); return; }
+    if (v8ActiveWorks(S).length >= v8WorkMax(S)) {
+      /* Every berth is full, so this joins the queue instead of being refused.
+         Nothing is charged: the deposit and the capital are paid the session a
+         berth opens, by v8QueueTick. */
+      if (v8Queued(S, id)) { flash(w.name + ' is already in the queue.'); return; }
+      v8Queue(S).push(id);
+      logIt(S, w.name + ' was put in the queue. The ministry has ' + v8WorkMax(S) + ' berths and all of them are taken.');
+      render(); toast(w.name + ' is ' + v8QueuePlace(v8Queue(S).length) + ' in the queue.');
+      return;
+    }
     var deposit = Math.round(w.cost * .1);
     if (!pv5Spend(5, deposit, 'Commission ' + w.name)) return;
     v.works[id] = { status:'active', mode:'steady', cost:Math.round(w.cost * (restart ? 1.15 : 1)), spent:deposit,
@@ -17994,6 +18094,23 @@ function v8WorkAction(id, arg) {
     if (w.region && S.regions[w.region]) { S.regions[w.region].federal = c100(S.regions[w.region].federal - 5); S.regions[w.region].prosperity = c100(S.regions[w.region].prosperity - 2); }
     logIt(S, w.name + ' was cancelled with ' + fmc(q.spent) + ' spent and nothing to show for it.');
     addNews(S, 'Public Works', w.name + ' abandoned', 'The site will be sold. The contractor will sue.', 'bad');
+  } else if (arg === 'unqueue') {
+    var qq = v8Queue(S), at = qq.indexOf(id);
+    if (at < 0) return;
+    if (!inPower(S)) { flash('The works belong to the government of the day.'); return; }
+    qq.splice(at, 1);
+    logIt(S, w.name + ' was taken out of the queue.');
+    toast(w.name + ' leaves the queue.');
+  } else if (arg === 'jump') {
+    var jq = v8Queue(S), ji = jq.indexOf(id);
+    if (ji <= 0) return;
+    if (!inPower(S)) { flash('The works belong to the government of the day.'); return; }
+    /* Moving a contractor up the list is a favour, and the ones behind it know
+       who did the moving. */
+    if (!pv5Spend(2, 0, 'Move ' + w.name + ' up the queue')) return;
+    jq.splice(ji, 1); jq.unshift(id);
+    S.ind.corruption = c100(S.ind.corruption + .5);
+    logIt(S, w.name + ' was moved to the head of the queue. The contractors behind it have written to their members.');
   }
   render();
 }
@@ -18029,7 +18146,8 @@ respondInbox = function (id, choice) {
 
 function v8WorkCard(w) {
   var q = S.v8.works[w.id], status = q ? q.status : 'none', mode = q && q.mode, can = inPower(S);
-  var cls = status === 'active' ? (mode === 'paused' ? 'paused' : 'building') : (status === 'done' ? 'complete' : (status === 'cancelled' ? 'cancelled' : ''));
+  var place = v8Queue(S).indexOf(w.id) + 1;
+  var cls = status === 'active' ? (mode === 'paused' ? 'paused' : 'building') : (status === 'done' ? 'complete' : (status === 'cancelled' ? 'cancelled' : (place ? 'queued' : '')));
   var frac = q ? clamp(q.spent / q.cost, 0, 1) : 0;
   var per = q && status === 'active' ? v8WorkPerSession(S, w, q) : w.cost / w.years;
   var left = q && status === 'active' && per > 0 ? Math.ceil((q.cost - q.spent) / per) : null;
@@ -18038,6 +18156,7 @@ function v8WorkCard(w) {
   var state = status === 'active'
     ? (mode === 'paused' ? '<span class="tag down">Suspended' + (q.pausedBy === 'treasury' ? ' by the Treasury' : '') + '</span>' : '<span class="tag up">' + (mode === 'crash' ? 'Crash programme' : 'Building') + ', ' + Math.round(frac * 100) + '%</span>')
     : status === 'done' ? '<span class="tag up">Opened ' + yearOf(q.done) + '</span>'
+    : place ? '<span class="tag">' + v8Cap(v8QueuePlace(place)) + ' in the queue</span>' + (status === 'cancelled' ? '<span class="tag down">Cancelled ' + yearOf(q.cancelled) + ', to begin again</span>' : '')
     : status === 'cancelled' ? '<span class="tag down">Cancelled ' + yearOf(q.cancelled) + '</span>'
     : (w.req(S) ? '<span class="tag">Not begun</span>' : '<span class="tag down">Needs ' + esc(w.reqText) + '</span>');
   var kpis = '<div class="work-kpis"><div><b>Cost</b><span>' + fmc(q ? q.cost : w.cost) + '</span></div><div><b>A session</b><span>' + (status === 'active' && mode === 'paused' ? '\u2014' : fmc(per)) + '</span></div><div><b>' + (status === 'active' ? 'Sessions left' : 'Sessions') + '</b><span>' + (status === 'active' ? (left === null ? '\u2014' : left) : w.years) + '</span></div><div><b>Spent</b><span>' + fmc(q ? q.spent : 0) + '</span></div></div>';
@@ -18059,21 +18178,83 @@ function v8WorkCard(w) {
     });
     if (frac >= .7) btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="openEarly"' + (!can ? ' disabled' : '') +
       ' title="Cut the ribbon in front of a scaffold. A third off everything it was going to deliver, and the professions notice."">Open it early <span class="c">' + cst(3) + '</span></button>';
+  } else if (place) {
+    btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="jump"' + (place === 1 || !can ? ' disabled' : '') +
+      ' title="The contractors behind it will write to their members.">Move it to the head <span class="c">' + cst(2) + '</span></button>';
+    btns += '<button class="btn ghost" data-v8act="work" data-id="' + w.id + '" data-arg="unqueue"' + (!can ? ' disabled' : '') + '>Leave the queue</button>';
   } else if (status !== 'done') {
-    var dep = Math.round(w.cost * .1), ok = can && w.req(S) && v8ActiveWorks(S).length < v8WorkMax(S) && S.capital >= cst(5) && S.treasury >= dep;
-    btns += '<button class="btn" data-v8act="work" data-id="' + w.id + '" data-arg="commission"' + (ok ? '' : ' disabled') + '>Commission <span class="c">' + cst(5) + ', ' + fmc(dep) + '</span></button>';
+    var dep = Math.round(w.cost * .1), full = v8ActiveWorks(S).length >= v8WorkMax(S);
+    var ok = can && w.req(S) && (full || (S.capital >= cst(5) && S.treasury >= dep));
+    btns += '<button class="btn" data-v8act="work" data-id="' + w.id + '" data-arg="commission"' + (ok ? '' : ' disabled') +
+      (full ? ' title="Every berth is taken. Nothing is charged to wait; the commission is paid the session a berth opens."' : '') + '>' +
+      (full ? 'Join the queue' : 'Commission <span class="c">' + cst(5) + ', ' + fmc(dep) + '</span>') + '</button>';
   }
   return '<article class="card work-card ' + cls + '" data-work="' + w.id + '"><div class="bill-title"><h3>' + esc(w.name) + '</h3><span class="bill-no">' + esc(w.tag) + (w.region ? ' \u00b7 ' + esc(REGION[w.region].name) : '') + '</span></div><p class="desc">' + esc(w.blurb) + '</p>' +
     '<div class="meter ' + (status === 'done' ? 'good' : (mode === 'paused' ? 'bad' : '')) + '"><i style="width:' + Math.round(frac * 100) + '%"></i></div>' + kpis +
     '<div class="tagline">' + state + (q && q.overruns ? '<span class="tag down">' + v8Plural(q.overruns, 'overrun') + '</span>' : '') + built + effs + '<span class="tag">Capital +' + w.done.capital + ' on opening</span></div>' +
     (btns ? '<div class="btnrow">' + btns + '</div>' : '') + '</article>';
 }
+function v8Cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+/* The panel drew all forty-eight cards in one list, sorted by status and
+   nothing else. With ten berths and a queue behind them a work is in one of
+   six states, and the page can be asked for one. */
+var V8_WORK_FILTERS = [
+  { id:'all',      label:'All' },
+  { id:'building', label:'Under construction' },
+  { id:'queued',   label:'In the queue' },
+  { id:'open',     label:'Can be begun' },
+  { id:'blocked',  label:'Needs something first' },
+  { id:'done',     label:'Opened' }
+];
+function v8WorkFilter() {
+  var f = S.uiPrefs && S.uiPrefs.workFilter;
+  return V8_WORK_FILTERS.some(function (x) { return x.id === f; }) ? f : 'all';
+}
+function v8WorkShown(w) {
+  var f = v8WorkFilter(); if (f === 'all') return true;
+  var q = S.v8.works[w.id], st = q ? q.status : 'none', queued = v8Queued(S, w.id);
+  if (f === 'building') return st === 'active';
+  if (f === 'queued') return queued;
+  if (f === 'done') return st === 'done';
+  if (f === 'blocked') return st !== 'active' && st !== 'done' && !queued && !w.req(S);
+  return st !== 'active' && st !== 'done' && !queued && w.req(S);
+}
+function v8WorkFilterStrip() {
+  var cur = v8WorkFilter();
+  return '<div class="filters work-filters">' + V8_WORK_FILTERS.map(function (x) {
+    return '<button data-workfilter="' + x.id + '" aria-pressed="' + (x.id === cur) + '">' + esc(x.label) + '</button>';
+  }).join('') + '</div>';
+}
+document.addEventListener('click', function (e) {
+  var b = e.target && e.target.closest && e.target.closest('[data-workfilter]');
+  if (!b || !S || !S.uiPrefs) return;
+  S.uiPrefs.workFilter = b.getAttribute('data-workfilter');
+  render();
+});
 function v8WorksPanel() {
   var active = v8ActiveWorks(S), done = V8_WORKS.filter(function (w) { var q = S.v8.works[w.id]; return q && q.status === 'done'; }).length, spend = v8WorksSpend(S);
-  var summary = '<div class="works-summary"><span><b>' + active.length + '</b> of ' + v8WorkMax(S) + ' under construction</span><span><b>' + fmc(spend) + '</b> a session</span><span><b>' + done + '</b> opened</span></div>';
-  function rank(q) { return !q ? 2 : (q.status === 'active' ? 0 : (q.status === 'done' ? 3 : 2)); }
-  var order = V8_WORKS.slice().sort(function (a, b) { return rank(S.v8.works[a.id]) - rank(S.v8.works[b.id]); });
-  return '<div class="panel"><h2>Grand Works <span class="muted">' + active.length + '</span></h2><p class="note">' + V8_WORKS.length + ' national projects that outlast a parliament. A work is paid for out of the budget every session until it opens, and the estimate rises when the ground disappoints. The ministry can carry ' + v8WorkMax(S) + ' at once. A crash programme finishes in half the time at seventy percent more a session, and the contractors know it — and once a work is under way there is more to decide than how fast to pay for it.</p>' + summary + '<div class="works-list">' + order.map(v8WorkCard).join('') + '</div></div>';
+  var queue = v8Queue(S), shown = 0;
+  function rank(w) {
+    var q = S.v8.works[w.id];
+    if (q && q.status === 'active') return 0;
+    if (v8Queued(S, w.id)) return 1;
+    if (q && q.status === 'done') return 4;
+    return w.req(S) ? 2 : 3;
+  }
+  var order = V8_WORKS.filter(function (w) { var keep = v8WorkShown(w); if (keep) shown++; return keep; })
+    .sort(function (a, b) { return rank(a) - rank(b) || queue.indexOf(a.id) - queue.indexOf(b.id); });
+  /* built after the filter has run, because the strip prints how much of the
+     book it is hiding */
+  var summary = '<div class="works-summary"><span><b>' + active.length + '</b> of ' + v8WorkMax(S) + ' under construction</span><span><b>' + fmc(spend) + '</b> a session</span>' +
+    (queue.length ? '<span><b>' + queue.length + '</b> waiting</span>' : '') + '<span><b>' + done + '</b> opened</span>' +
+    (shown < V8_WORKS.length ? '<span><b>' + shown + '</b> of ' + V8_WORKS.length + ' shown</span>' : '') + '</div>';
+  var list = order.length ? '<div class="works-list">' + order.map(v8WorkCard).join('') + '</div>'
+    : '<div class="empty-state">No work matches that filter.</div>';
+  var n = v8WorkMax(S);
+  var berths = 'The ministry has ' + n + (n === 1 ? ' berth, and what you commission past it' : ' berths, and what you commission past them') +
+    ' waits in a queue. Nothing is charged to wait: the commission is paid the session a berth opens.';
+  return '<div class="panel"><h2>Grand Works <span class="muted">' + active.length + '</span></h2><p class="note">' + V8_WORKS.length + ' national projects that outlast a parliament. A work is paid for out of the budget every session until it opens, and the estimate rises when the ground disappoints. ' + berths + ' A crash programme finishes in half the time at seventy percent more a session, and the contractors know it — and once a work is under way there is more to decide than how fast to pay for it.</p>' +
+    v8WorkFilterStrip() + summary + list + '</div>';
 }
 
 /* ==========================================================

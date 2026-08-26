@@ -4,8 +4,99 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, second of eleven PRs. The order book: uncapped,
-national, and the five cards about itself made true.
+**S15 — The regime is real**, third of eleven PRs. The numbers: what Very easy
+opens on, how many great works a ministry can carry, and what a work costs the
+Treasury as against what it builds.
+
+### 250, 150, and the ceiling that had to move with them
+
+`DIFFS.easy` opens on **250** capital now and floors the session's income at
+**150**, which is what the owner asked for. The third number is the one the ask
+implies: **`capCap` went from 440 to 750**, because the ceiling clamps the other
+two. Held at 440, an income of 150 fills the stock by **session 2** and
+`v8CloseChecklist` prints "of the coming income will be lost" at every close for
+the rest of the campaign, on the tier whose blurb is that nothing here can bring
+you down. At 750 a government that banks every point it earns is first told so
+at the close of session 4, which is what four sessions of spending nothing
+deserves. Both numbers are read off a fresh campaign in the harness rather than
+off the table.
+
+### Ten berths, and a rung for every tier
+
+`v8WorkMax` was one ternary — `easy ? 6 : gentle ? 3 : 2` — giving five tiers
+three values, so **Normal, Hard and Very hard all carried two**: the two hardest
+tiers in the game were indistinguishable on the one axis a government's ambition
+is measured in. It is a table now: **10 / 4 / 3 / 2 / 1**.
+
+### What a work costs is not what it builds
+
+Ten works needed the budget to move with them. `v8WorkPerSession` is the
+instalment the **site** is credited with and has to stay unscaled, or a work
+would take longer to finish on an easy tier than on a hard one. What the
+**Treasury** is charged for that instalment is a different number, and it was
+the one line of federal spending in the game that difficulty never touched: the
+base `budget` applies `d.exp` to every statute's expenditure and the v8 wrapper
+added `b.works` on afterwards. Measured on the branch: ten sites, the dearest
+the ministry can begin, cost **133.1** a session charged that way against Very
+easy's **164.1** of surplus — **81 per cent of everything the tier has**.
+Charged like every other expenditure it is **73.2**, or 45 per cent.
+
+### The country notices its first canal
+
+The site effects — unemployment, Labour mood, and corruption and unrest on a
+crash programme — were applied once per work per session and nothing bounded
+them. At six berths that is a rounding error; at ten it is three quarters of a
+point of unemployment and six points of Labour every session, from the works
+alone, for as long as the government keeps building. `v8WorksTick` gathers them
+across every site now and pays them out once, scaled by `sqrt(n)/n`: one site is
+worth one, four are worth two, ten are worth about three. Measured: ten crash
+sites move unemployment by **0.253** against one site's **0.08**.
+
+### A berth queue, and a question the panel can be asked
+
+A commission past the last berth used to be refused with a flash. It joins
+`st.v8.queue` now — an addition to the save shape, backfilled empty by
+`v8EnsureState`, so nothing a player has is worth losing. **Nothing is charged
+to wait**: `v8QueueTick` runs at the end of `v8WorksTick`, takes the head of the
+queue the session a berth opens and pays the commission then, and a government
+that cannot pay keeps its place rather than losing the money and the work
+together. A work whose condition lapsed while it waited leaves the queue and the
+log says why. Two capital moves one to the head, and the contractors behind it
+write to their members.
+
+The 48-card panel drew every card in one list sorted by status. It has the
+`.filters` strip the order book has had since S15b: all, under construction, in
+the queue, can be begun, needs something first, opened.
+
+### Eight assertions, all eight red on the build before this PR
+
+The clearest is the charge: against the old build the same probe reports **"Very
+easy pays 82.6 for 82.6 of building"**, and ten works taking **81 per cent** of
+the tier's surplus. Others: the berths read **6 > 3 > 2 > 2 > 2**; Very easy
+opened on **175** and earned **75**; ten crash sites moved unemployment by
+**0.8** against one site's **0.08**, exactly ten times; the queue promoted
+**nothing**; and the works panel answered **"there is no filter"**. The playtest
+step reddens too: the card's button did not read as a queue, clicking it queued
+nothing, and the filter cut 48 cards to 48.
+
+```
+ALL CHECKS PASS   11/11, 3,037,212 bytes, +10,287 since HEAD of 250,000
+ROADS OK          113 assertions
+PLAYTEST PASS     45 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / PACING   all green
+```
+
+Next: **S15d**, two sessions and the signature. A bill with the chambers behind
+it reaches law in two sessions instead of three or four; `BILL_STAGES` has
+carried an `assent` slot and a name for it since v4 and nothing has ever lit it;
+and the holder of an executive office signs, signs with a statement, returns
+with objections or vetoes — with a disposition read from their `loyalty`, a
+field `makeFigure` has written since v4 and nothing has ever read for an exec
+figure.
+
+Previously: **S15 — The regime is real**, second of eleven PRs. The order book:
+uncapped, national, and the five cards about itself made true.
 
 ### The cap, and what it did to the page
 
@@ -109,13 +200,6 @@ The 31 new and rewritten blurbs carry no em dashes, no non-ASCII, no curly
 quotes and no banned word. Four use "X rather than Y", and all four are the
 informative kind the S13 measurement declined to ban at 7.5 per cent precision:
 each one names the state of affairs it replaced.
-
-Next: **S15c**, the numbers. Very easy at 250 capital and a floor of 150, with
-`capCap` raised to match or the game prints its own waste warning from turn
-three; ten great works on very easy, and the works budget moved with it, because
-works spend bypasses the difficulty multiplier and ten of them would put the
-tier whose blurb is "nothing here can bring you down" into a structural deficit
-from the first commission.
 
 Previously: **S15 — The regime is real**, first of eleven PRs. The owner abolished the
 National Assembly and his bills went on passing through it.
@@ -1340,7 +1424,8 @@ The fail-proof: an em dash, a digit and a one-sentence rung seeded into
 Previously: **S12 — The Statute Book Speaks** (PR #34), first of six. Two asks land whole
 here; the third gets its engine, its tooling and its first two categories.
 
-**A floor under very easy.** `DIFFS.easy` carries `capFloor:75`, applied in a new
+**A floor under very easy.** `DIFFS.easy` carries `capFloor:75` (S15c raised it to
+150 and the ceiling with it), applied in a new
 **outermost** wrapper on `capitalIncome`. It has to be outermost: the function is
 wrapped four times after its base and a floor applied lower is undercut by every
 wrapper above it. Measured on a deliberately terrible session (approval 5, unrest
