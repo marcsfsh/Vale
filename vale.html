@@ -6818,7 +6818,21 @@ function shuffled(arr) {
   for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rand() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
   return a;
 }
-function makeName() { return rnd(GIVEN) + ' ' + rnd(SURNAME); }
+/* S16e: 197 given names by 200 surnames is 39,400 pairs, which reads as plenty
+   until you notice that a century of play churns the cast a couple of hundred
+   times with about twenty people in public life at once -- and 200 draws
+   against 21 live names is a bit over one expected collision. `roads.js` has
+   asserted "no two officials share a name" since S10a and that assertion has
+   been a COIN FLIP the whole time; S16e's initiative deck shifted the seeded
+   stream and it came up tails. A name already held by somebody in public life
+   is drawn again, up to ten times, which makes the assertion a property. */
+function makeName() {
+  var n = rnd(GIVEN) + ' ' + rnd(SURNAME);
+  for (var i = 0; i < 10 && typeof v16NameHeld === 'function' && v16NameHeld(n); i++) {
+    n = rnd(GIVEN) + ' ' + rnd(SURNAME);
+  }
+  return n;
+}
 function makeFigure(st, pid, minAge) {
   return { name: makeName(), party: pid, age: (minAge || 42) + Math.floor(rand() * 22),
     trait: rnd(TRAITS).id, since: yearOf(st.turn), loyalty: 45 + Math.floor(rand() * 40) };
@@ -31571,6 +31585,362 @@ viewWorld = function () {
   var mk = '<div class="grid"><div>';
   var i = html.indexOf(mk);
   return i >= 0 ? html.slice(0, i + mk.length) + panel + html.slice(i + mk.length) : html + panel;
+};
+
+
+/* ==========================================================
+   S16e -- THE SIX THAT ARE NOT YOURS
+
+   The owner: "other parties should be more active and less stagnant."
+
+   Measured over fifty sessions before this chunk, with the player leading the
+   LP and the FP in government:
+
+     st.push[pid] deliberately written by an AI party : NEVER, for any of them
+     machine built by an AI party over the campaign   : +0.32 at best, ~0 for five
+     purse at the end                                 : 280 to 809, unspent
+     initiative taken by a party out of government    : none of any kind
+
+   `aiGovern` is the whole of it, and it does three things: it returns unless
+   the player is OUT of government, it runs every other session, and it puts a
+   bill from `wants` on the paper for `st.ruling` alone. Six parties out of
+   seven had no way to act at all -- no organisation to build, no bloc to
+   court, no platform to move, no pact to offer, no attack to make, and a purse
+   filling up with money that `partyPurseTick` spent seventy per cent of one
+   session's income from and left the rest of.
+
+   What this chunk adds is one INITIATIVE a session per party, chosen by a
+   POSTURE that comes from circumstance, paid for out of that party's own money
+   through `partySpend`, and written into the channels the vote model already
+   reads: `st.machine`, `st.push`, the bloc moods, `st.funding` and the pacts.
+   And a MEMORY: a party that has been attacked, poached, banned or dropped
+   from a coalition holds a grudge, and the grudge is read where it should be.
+   ========================================================== */
+/* Costs set against what a party actually raises. `partyIncome` pays every
+   party every session and `partyPurseTick` spends seventy per cent of it, so a
+   party out of government runs at forty to sixty in hand: a card at fifty-eight
+   never fired once in sixty measured sessions and a pact at fifty-four never
+   formed at all. The two dear ones came down and the deck now empties. */
+var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22, pact:34, demand:16 };
+/* WHAT AN INITIATIVE IS WORTH. Set by sweeping `tools/pacing.js` over six
+   seeds, not by taste: the machine is the single largest seat lever in the
+   file (S15h measured the party organisation at its ceiling as +154 Assembly
+   seats), so a session of organising that reads small compounds over fifty of
+   them. At .055 and -.035 the six took the harness from 5.5 elections won on
+   the mean to 1.2, which is more than making them active and is a difficulty
+   change the owner did not ask for. The published sweep is in docs/STATE.md.
+   BALANCE IS THE OWNER'S: these two numbers are the dials. */
+var V16_AI_ORGANISE = .030;
+var V16_AI_ATTACK = .018;
+/* HOW OFTEN A PARTY MOVES. This is the dial, and it was found by sweeping
+   rather than chosen: no single card is the lever (each was swept out in turn
+   and none of them recovered the arc), and neither the machine gain nor the
+   funding term is (both were driven to zero and neither did). What costs the
+   harness four elections in five is the SUM -- six parties each doing
+   something every session for fifty sessions. A party moves once every four
+   sessions now, on a hash of its own id so they are not all on the same
+   session, which is a party conference rather than a daily paper.
+   BALANCE IS THE OWNER'S. The published sweep is in docs/STATE.md. */
+var V16_AI_CADENCE = 4;
+/* MONEY SPENT ON AN INITIATIVE IS NOT CAMPAIGN SPENDING. `partySpend` writes
+   `st.funding`, a live multiplier in `supportTargets` capped at .35, and
+   `partyPurseTick` already spends seventy per cent of every AI party's income
+   through it every session -- that IS their campaign. Paying for organisers,
+   a bloc, a platform rewrite or a pact through the same door doubled every AI
+   party's funding term while the player's stayed at zero, and six seeds of
+   `tools/pacing.js` read it as the harness losing four elections in five.
+   Isolated by sweeping each card out in turn: no single card was the lever and
+   turning the machine gain to zero recovered only half of it, which is what
+   pointed at the shared multiplier rather than at any of them.
+   Initiatives are paid for out of the purse and land in their own channels;
+   only the campaign card writes funding, because only the campaign card is a
+   campaign. */
+function v16AiPay(st, pid, money) {
+  if (!money) return;
+  if (!st.purse) st.purse = {};
+  st.purse[pid] = partyPurse(st, pid) - money;
+  var a = v16Ai(st)[pid];
+  if (a) a.spent = (a.spent || 0) + money;
+}
+function v16Ai(st) {
+  if (!st.ai || typeof st.ai !== 'object') st.ai = {};
+  PARTIES.forEach(function (p) {
+    if (!st.ai[p.id]) st.ai[p.id] = { posture:'hold', grudge:{}, last:{}, acts:0, spent:0, since:st.turn };
+    if (st.ai[p.id].spent === undefined) st.ai[p.id].spent = 0;
+    if (!st.ai[p.id].grudge) st.ai[p.id].grudge = {};
+    if (!st.ai[p.id].last) st.ai[p.id].last = {};
+  });
+  return st.ai;
+}
+function v16Grudge(st, pid, against) { return (v16Ai(st)[pid].grudge[against] || 0); }
+/* A party remembers. Called from the cards that give it something to remember:
+   an attack, a poach, a ban, a coalition it was dropped from. */
+function v16Resent(st, pid, against, n) {
+  var a = v16Ai(st)[pid];
+  a.grudge[against] = clamp((a.grudge[against] || 0) + n, 0, 100);
+}
+/* What a party is trying to do this session. Circumstance, not temperament:
+   a party in government defends, a party losing seats moderates, a party with
+   a grudge and no office attacks, a small party with money organises. */
+function v16Posture(st, pid) {
+  var co = st.coalition || [st.ruling];
+  var seats = st.seats[pid] || 0, share = seats / Math.max(1, CFG.seats);
+  var trend = (v16Ai(st)[pid].lastSeats === undefined) ? 0 : seats - v16Ai(st)[pid].lastSeats;
+  var me = playParty(st);
+  if (pid === st.ruling) return 'govern';
+  if (co.indexOf(pid) >= 0) return 'partner';
+  if (v16Grudge(st, pid, me) >= 35 || v16Grudge(st, pid, st.ruling) >= 35) return 'attack';
+  if (trend < 0 && share < .18) return 'moderate';
+  if (share >= .22) return 'consolidate';
+  if (partyPurse(st, pid) >= 120) return 'organise';
+  return 'hold';
+}
+/* The deck. Each entry knows what it costs the party, whether it is available,
+   and what it does -- and every one of them writes a channel the vote model
+   already reads, so an initiative is felt at the next ballot rather than being
+   a line in the log. */
+var V16_AI_DECK = [
+  { id:'organise', post:['organise', 'consolidate', 'hold', 'partner'],
+    can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.organise; },
+    run:function (st, pid) {
+      v16AiPay(st, pid, V16_AI_COST.organise);
+      st.machine[pid] = clamp((st.machine[pid] || 0) + V16_AI_ORGANISE, -.8, 1);
+      return 'The ' + PARTY[pid].short + ' opened agents and halls in eleven more counties.';
+    } },
+  { id:'campaign', post:['consolidate', 'moderate', 'attack', 'govern'],
+    can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.campaign && pv5SessionsToBallot(st) !== null && pv5SessionsToBallot(st) <= 4; },
+    run:function (st, pid) {
+      partySpend(st, pid, V16_AI_COST.campaign);
+      v16Ai(st)[pid].spent = (v16Ai(st)[pid].spent || 0) + V16_AI_COST.campaign;
+      return 'The ' + PARTY[pid].short + ' took the campaign into the country early.';
+    } },
+  { id:'court', post:['moderate', 'consolidate', 'hold', 'partner', 'organise'],
+    can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.court; },
+    run:function (st, pid) {
+      v16AiPay(st, pid, V16_AI_COST.court);
+      var aff = PARTY[pid].aff || {}, best = null;
+      BLOCS.forEach(function (b) { if (best === null || (aff[b.id] || 0) > (aff[best] || 0)) best = b.id; });
+      if (!best) return null;
+      st.blocs[best] = c100((st.blocs[best] || 50) + 2.6);
+      return 'The ' + PARTY[pid].short + ' spent the season courting ' + (BLOC[best] ? BLOC[best].name.toLowerCase() : best) + '.';
+    } },
+  { id:'attack', post:['attack', 'consolidate', 'moderate', 'hold'],
+    can:function (st, pid) { return pid !== st.ruling && (st.coalition || []).indexOf(pid) < 0 && partyPurse(st, pid) >= V16_AI_COST.attack; },
+    run:function (st, pid) {
+      v16AiPay(st, pid, V16_AI_COST.attack);
+      var t = st.ruling;
+      st.machine[t] = clamp((st.machine[t] || 0) - V16_AI_ATTACK * 2, -.8, 1);
+      st.machine[pid] = clamp((st.machine[pid] || 0) + V16_AI_ATTACK, -.8, 1);
+      shiftPartyRel(st, pid, -3);
+      if (t === playParty(st)) st.unity = c100((st.unity === undefined ? 60 : st.unity) - 1.2);
+      return 'The ' + PARTY[pid].short + ' ran a month of committees and press against the ' + PARTY[t].short + '.';
+    } },
+  { id:'platform', post:['moderate', 'consolidate', 'attack'],
+    can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.platform; },
+    run:function (st, pid) {
+      v16AiPay(st, pid, V16_AI_COST.platform);
+      var q = ppos(st, pid), h = PARTY[pid].home, g = govPos(st);
+      /* Losing seats moves a party toward the middle of the country; holding
+         them moves it back toward its own people. Both are real and the file
+         had neither: `st.push` was written by three PLAYER cards and by
+         nothing else in three megabytes. */
+      var toward = v16Posture(st, pid) === 'moderate' ? g : h;
+      st.push = st.push || {};
+      st.push[pid] = { e:(toward.e - q.e) * .22, a:(toward.a - q.a) * .22 };
+      return 'The ' + PARTY[pid].short + ' rewrote its platform ' +
+        (toward === g ? 'toward the middle of the country.' : 'back toward its own members.');
+    } },
+  { id:'pact', post:['moderate', 'attack', 'hold'],
+    can:function (st, pid) {
+      if (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.pact) return false;
+      return !!v16PactPartner(st, pid);
+    },
+    run:function (st, pid) {
+      var o = v16PactPartner(st, pid); if (!o) return null;
+      v16AiPay(st, pid, V16_AI_COST.pact);
+      st.aiPacts = st.aiPacts || {};
+      st.aiPacts[pid] = { with:o, since:st.turn };
+      shiftPartyRel(st, pid, -2);
+      return 'The ' + PARTY[pid].short + ' and the ' + PARTY[o].short + ' agreed to stand down for each other in most seats.';
+    } },
+  { id:'demand', post:['partner', 'attack', 'hold'],
+    can:function (st, pid) { return pid !== st.ruling && partyPurse(st, pid) >= V16_AI_COST.demand && !!partyDemandPolicy(st, pid); },
+    run:function (st, pid) {
+      var d = partyDemandPolicy(st, pid); if (!d) return null;
+      v16AiPay(st, pid, V16_AI_COST.demand);
+      addInbox(st, { type:'faction_demand', title:'The ' + PARTY[pid].short + ' Ask for ' + POL[d.policy].name,
+        from:pid, faction:0,
+        body:'The ' + PARTY[pid].name + ' have written asking the government to ' +
+          (d.dir > 0 ? 'carry ' : 'withdraw ') + POL[d.policy].name +
+          '. They have not said what follows if it is refused, which is itself an answer.' });
+      return 'The ' + PARTY[pid].short + ' put ' + POL[d.policy].name + ' to the government in writing.';
+    } }
+];
+/* Who a party would stand down for: nearest in position, out of government,
+   not somebody it holds a grudge against, and not already in a pact. */
+function v16PactPartner(st, pid) {
+  var q = ppos(st, pid), best = null, bestD = .62;
+  PARTIES.forEach(function (o) {
+    if (o.id === pid || o.id === st.ruling || st.banned[o.id]) return;
+    if ((st.coalition || []).indexOf(o.id) >= 0) return;
+    if (st.aiPacts && (st.aiPacts[o.id] || st.aiPacts[pid])) return;
+    if (v16Grudge(st, pid, o.id) >= 20) return;
+    var d = dist2(q, ppos(st, o.id));
+    if (d < bestD) { bestD = d; best = o.id; }
+  });
+  return best;
+}
+/* One initiative a session per party, and a cooldown per card so a party does
+   not do the same thing twice running. The die picks among what the posture
+   allows and the money reaches, which keeps a party in character without
+   making it a metronome -- the same reason `partyDemandPolicy` draws rather
+   than sorting. */
+function v16AiTurn(st) {
+  var ai = v16Ai(st), me = playParty(st), lines = [];
+  PARTIES.forEach(function (p) {
+    if (p.id === me || st.banned[p.id]) return;
+    var a = ai[p.id];
+    if ((st.turn + v15Hash(p.id)) % V16_AI_CADENCE) return;
+    var post = v16Posture(st, p.id);
+    a.posture = post;
+    var open = V16_AI_DECK.filter(function (c) {
+      if (c.post.indexOf(post) < 0) return false;
+      if (st.turn - (a.last[c.id] || -99) < 4) return false;
+      try { return c.can(st, p.id); } catch (e) { return false; }
+    });
+    if (!open.length) return;
+    var pick = open[Math.floor(rand() * open.length)];
+    var line = null;
+    try { line = pick.run(st, p.id); } catch (e) { line = null; }
+    if (line) {
+      a.last[pick.id] = st.turn; a.acts++;
+      lines.push(line);
+    }
+  });
+  /* grudges cool, slowly */
+  PARTIES.forEach(function (p) {
+    var g = ai[p.id].grudge;
+    for (var k in g) { g[k] = Math.max(0, g[k] - .6); if (g[k] < .05) delete g[k]; }
+    ai[p.id].lastSeats = st.seats[p.id] || 0;
+  });
+  /* The player is told what the others did. Three lines is a session's news,
+     not a wall: the rest is on the Parties page. */
+  lines.slice(0, 3).forEach(function (l) { logIt(st, l); });
+  if (lines.length) st.aiLast = lines;
+}
+/* Two AI parties in a pact pool their vote at the count, which is what the
+   player's own `st.pact` has always done. */
+var v16BallotBase = ballot;
+ballot = function (st) {
+  var res = v16BallotBase(st);
+  if (!st.aiPacts) return res;
+  for (var pid in st.aiPacts) {
+    var o = st.aiPacts[pid].with;
+    if (!res[pid] || !res[o]) continue;
+    var pool = (res[pid] + res[o]) * .06;
+    res[pid] += pool * .5; res[o] += pool * .5;
+  }
+  return res;
+};
+/* A RED LINE THAT BITES. `coalitionDeals[pid].redLine` has been written since
+   v5, rendered on the coalition card since v5, and read by NOTHING: a
+   government could drive a partner's red-line statute in the direction that
+   partner exists to prevent, session after session, and the only consequence
+   was the slow satisfaction drift every priority produces. Crossing it now
+   costs real cohesion, and a partner whose cohesion is gone walks out. */
+function v16RedLineTick(st) {
+  if (!st.coalitionDeals) return;
+  (st.coalition || []).forEach(function (pid) {
+    if (pid === st.ruling) return;
+    var d = st.coalitionDeals[pid]; if (!d || !d.redLine || !POL[d.redLine]) return;
+    var want = (PARTY[pid].wants || {})[d.redLine];
+    if (want === undefined) return;
+    var lv = st.pol[d.redLine] || 0;
+    var off = Math.abs(lv - want);
+    if (d.redLineWas === undefined) { d.redLineWas = off; return; }
+    if (off > d.redLineWas + .001) {
+      /* it moved AWAY from what they exist to defend, this session */
+      d.satisfaction = c100((d.satisfaction || 50) - 11);
+      st.partyRel[pid] = c100((st.partyRel[pid] || 50) - 6);
+      v16Resent(st, pid, st.ruling, 12);
+      logIt(st, 'The ' + PARTY[pid].short + ' called ' + POL[d.redLine].name +
+        ' a breach of the coalition agreement. It was their red line and it was written down.');
+      addNews(st, 'The Coalition', PARTY[pid].short + ' warn on ' + POL[d.redLine].name,
+        'The partner has said in public what it said in the room. Cohesion is at ' + Math.round(d.satisfaction) + '.', 'bad');
+    }
+    d.redLineWas = off;
+    if ((d.satisfaction || 50) <= 12) {
+      st.coalition = (st.coalition || []).filter(function (x) { return x !== pid; });
+      if (st.partner === pid) st.partner = null;
+      delete st.coalitionDeals[pid];
+      st.partyRel[pid] = c100((st.partyRel[pid] || 50) - 10);
+      v16Resent(st, pid, st.ruling, 25);
+      logIt(st, 'The ' + PARTY[pid].short + ' left the government. The red line was ' + POL[d.redLine].name + '.');
+      addNews(st, 'The Coalition', PARTY[pid].short + ' leave the government',
+        'The partner has withdrawn. The arithmetic on the order paper changed this morning.', 'bad');
+      chronicle(st, 'The ' + PARTY[pid].short + ' left the government over ' + POL[d.redLine].name + '.');
+    }
+  });
+}
+var v16AiTickBase = tickTurn;
+tickTurn = function (st) {
+  v16AiTickBase(st);
+  v16RedLineTick(st);
+  v16AiTurn(st);
+};
+/* The cards that give a party something to remember. Each of these already
+   did its damage and none of them was remembered by anybody. */
+var v16DoActionMemory = doAction;
+doAction = function (a, opt) {
+  var target = null;
+  if (a && /^(radicalise|poach|infiltrate|split|ban)$/.test(a.id)) target = a.pid || null;
+  v16DoActionMemory(a, opt);
+  if (target) v16Resent(S, target, playParty(S), 14);
+};
+/* What the Parties page says about them. A posture the player cannot see is a
+   posture that is not in the game. */
+function v16AiPanel() {
+  var me = playParty(S), ai = v16Ai(S);
+  var rows = PARTIES.filter(function (p) { return p.id !== me && !S.banned[p.id]; }).map(function (p) {
+    var a = ai[p.id], g = a.grudge[me] || 0;
+    return '<tr><td><span class="dot" style="background:' + p.color + '"></span> ' + esc(p.short) + '</td>' +
+      '<td>' + esc(V16_POSTURE_SAY[a.posture] || a.posture) + '</td>' +
+      '<td class="num">' + Math.round(partyPurse(S, p.id)) + '</td>' +
+      '<td class="num">' + a.acts + ' &middot; ' + fmc(-(a.spent || 0)) + '</td>' +
+      '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') + '</td></tr>';
+  }).join('');
+  return '<div class="panel"><h2>What the Others Are Doing</h2>' +
+    '<div class="tablewrap"><table><thead><tr><th>Party</th><th>This session</th><th class="num">Their money</th><th class="num">Initiatives &middot; spent</th><th>Toward you</th></tr></thead><tbody>' +
+    rows + '</tbody></table></div>' +
+    (S.aiLast && S.aiLast.length ? '<ul class="tight">' + S.aiLast.slice(0, 4).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '') +
+    '<p class="note">Each of them takes one initiative a session, paid for out of its own money, and what it chooses comes from where it stands rather than from a table. A party that has been attacked, poached or dropped remembers it.</p></div>';
+}
+/* Everybody in public life, for the name draw above. Guarded at every step:
+   `makeName` is called during `newGame` before any of these exist. */
+function v16NameHeld(name) {
+  if (typeof S === 'undefined' || !S) return false;
+  var f = S.figures;
+  if (f) {
+    if (f.leaders) for (var k in f.leaders) if (f.leaders[k] && f.leaders[k].name === name) return true;
+    if (f.exec) for (var o in f.exec) if (f.exec[o] && f.exec[o].name === name) return true;
+  }
+  if (S.v6 && S.v6.governors) for (var r in S.v6.governors) if (S.v6.governors[r] && S.v6.governors[r].name === name) return true;
+  if (S.ministers) for (var m in S.ministers) if (S.ministers[m] && S.ministers[m].name === name) return true;
+  return false;
+}
+var V16_POSTURE_SAY = {
+  govern:'Governing', partner:'In the ministry with you', attack:'Coming after the government',
+  moderate:'Moving toward the middle', consolidate:'Holding what it has',
+  organise:'Building the organisation', hold:'Waiting'
+};
+var v16ViewPartiesBase = viewParties;
+viewParties = function () {
+  var html = v16ViewPartiesBase();
+  var mk = '<div class="grid"><div>';
+  var i = html.indexOf(mk);
+  return i >= 0 ? html.slice(0, i + mk.length) + v16AiPanel() + html.slice(i + mk.length)
+                : v16AiPanel() + html;
 };
 
 /* ---------- boot ---------- */

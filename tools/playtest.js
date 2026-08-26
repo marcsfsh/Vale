@@ -1440,6 +1440,35 @@ async function run() {
       `-- before this PR the sheet listed ten cards against one slot, signing on the click and ` +
       `replacing whatever was in it` + (tr.built ? '' : ' -- THIS BUILD HAS NO PROPOSAL PATH'));
 
+    /* S16e: the six on the page. A posture the player cannot see is not in the
+       game, so the model side in roads.js is only half of it. */
+    const sixp = await page.evaluate(() => {
+      const out = { built:typeof v16AiTurn === 'function' };
+      const keep = { tab:UI.tab };
+      if (out.built) for (let i = 0; i < 12; i++) { v16AiTurn(S); S.turn += 1; }
+      UI.tab = 'parties'; render();
+      const panel = [...document.querySelectorAll('#view .panel')]
+        .filter(x => /What the Others Are Doing/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      out.found = !!panel;
+      if (panel) {
+        const t = panel.textContent;
+        out.rows = panel.querySelectorAll('tbody tr').length;
+        out.saysPosture = /Governing|Waiting|Building the organisation|Holding what it has|Moving toward the middle|Coming after the government|In the ministry with you/.test(t);
+        out.saysMoney = /\d/.test(t);
+        out.saysMemory = /Nothing on file|A grievance on file|They have not forgotten/.test(t);
+        out.saysHow = /one initiative a session/.test(t);
+      }
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('the-others-on-the-page',
+      sixp.built && sixp.found && sixp.rows === 6 && sixp.saysPosture && sixp.saysMoney &&
+      sixp.saysMemory && sixp.saysHow,
+      `the Parties page carries what the other six are doing: ${sixp.rows} rows, each naming the posture ` +
+      `(${sixp.saysPosture}), the money it has left and what it has spent (${sixp.saysMoney}), and what it holds ` +
+      `against the player (${sixp.saysMemory}), with the rule stated on the panel (${sixp.saysHow})` +
+      (sixp.built ? '' : ' -- THIS BUILD HAS NO INITIATIVE DECK'));
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

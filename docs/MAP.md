@@ -636,6 +636,54 @@ the tool that re-runs it: very easy's capital and works ceiling
 (`tools/roads.js`, the campaign block), and the +460 all-five-channels ceiling
 recorded in `docs/STATE.md`'s open items.
 
+## The other six (S16e)
+
+`aiGovern` is not the whole of AI politics any more. It still puts a government
+bill on the paper; **`v16AiTurn`, in a `tickTurn` wrapper, gives every party the
+player does not lead one initiative every `V16_AI_CADENCE` sessions.**
+
+- **`st.ai[pid]`** = `{posture, grudge:{}, last:{}, acts, spent, lastSeats}`.
+  Created on read by `v16Ai(st)`; rides the save.
+- **`v16Posture(st, pid)`** decides what a party is trying to do this session
+  from circumstance: `govern`, `partner`, `attack` (a grudge of 35+),
+  `moderate` (losing and small), `consolidate` (22%+ of the chamber),
+  `organise` (money in hand), `hold`.
+- **`V16_AI_DECK`** is seven cards. Each names the postures it belongs to, a
+  `can`, and a `run` that returns the line the log prints. A card is picked by
+  a die from what the posture allows, the money reaches and the four-session
+  per-card cooldown permits.
+- **Money.** `v16AiPay` decrements the purse and records `spent`. It does
+  **not** write `st.funding` — `partySpend` does that, `partyPurseTick` already
+  spends 70% of every AI party's income through it every session, and paying
+  for organisers or a bloc through the same door double-counts a capped
+  multiplier the player never writes at all. Only the `campaign` card uses
+  `partySpend`, because only the campaign card is a campaign.
+- **`st.push[pid]`** is written by the `platform` card. Before S16e it was
+  written by three PLAYER cards and by nothing else in three megabytes.
+  `driftParties` consumes and clears it at each election.
+- **`st.aiPacts[pid] = {with, since}`** pools two out-of-government parties'
+  vote at the count, in a `ballot` wrapper, the way `st.pact` always has for
+  the player.
+- **Memory.** `v16Resent(st, pid, against, n)` from a `doAction` wrapper on
+  `radicalise`, `poach`, `infiltrate`, `split` and `ban`. `v16Grudge` reads it;
+  grudges cool by .6 a session.
+- **`v16RedLineTick`** makes `coalitionDeals[pid].redLine` bite. It has been
+  written and rendered on the coalition card since v5 and was read by nothing.
+  Moving the statute away from what the partner exists to defend costs 11 of
+  cohesion; cohesion at 12 or below and the partner **leaves the government**.
+- **`v16AiPanel`** puts all of it on the Parties page.
+
+**The dial is `V16_AI_CADENCE`, and it was found by sweeping.** No single card
+is the lever and neither is any constant — the machine gain to zero recovers
+only half the arc, and turning the whole deck off recovers all of it. What costs
+the player is the *sum*. `V16_AI_ORGANISE` and `V16_AI_ATTACK` are the other two
+dials. Balance is the owner's; `docs/STATE.md` carries the published sweep.
+
+**`makeName` redraws.** 39,400 pairs against ~21 people in public life and 200
+churns is a bit over one expected collision, so `roads.js`'s *no two officials
+share a name* had been a coin flip since S10a. A name already held is drawn
+again, up to ten times.
+
 ## The party you lead (S16d)
 
 **`S.playAs` is written once, at setup, and by nothing else.** `playParty(st)`
