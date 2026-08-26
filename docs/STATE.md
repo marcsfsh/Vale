@@ -5,9 +5,12 @@ Update this file in the last commit of every PR.
 ## Current slice
 
 **S16 — Somebody can stop you, and the other half of the game** is **open**.
-Five of twelve PRs: **S16a** the session clocks, **S16b** the treaty book,
-**S16c** the Foreign Office, **S16d** one party for the campaign and **S16e** the
-six that are not yours.
+Six of twelve PRs: **S16a** the session clocks, **S16b** the treaty book,
+**S16c** the Foreign Office, **S16d** one party for the campaign, **S16e** the
+six that are not yours and **S16f** the custom start.
+
+**All six of the owner's explicit requirements are done.** What remains is the
+half the slice is named for.
 
 **The order below was changed after S16c**: the owner's six explicit
 requirements come first, and the four "somebody can stop you" PRs follow. Three
@@ -29,13 +32,86 @@ are folded in beside them:
 | **c** #62 | **the Foreign Office reaches every capital** — the diplomacy actions the S10e powers never reached, the legs that cost capital and move nothing, and sanctions as a state |
 | **d** #63 | **you lead one party for the campaign** — `switchParty` retired and the Invite card repaired |
 | **e** #64 | **the six that are not yours** — an initiative deck, a posture, a memory and a red line that bites |
-| f | the custom start — a scenario editor over the constitution, the statute book, every chamber, the powers and the standings |
+| **f** #65 | **the custom start** — a scenario editor over the constitution, the statute book, every chamber, the powers and the standings |
 | g | the court can stop you |
 | h | the street has leverage |
 | i | out of power is a place you play from, and an opposition deck |
 | j | the long deck folds, and focus survives |
 | k | contrast and the thumb |
 | l | the prose pass and the slice close |
+
+### S16f — the custom start
+
+The owner: *"a custom start feature, where you can set the constitution,
+policies & their ladder level, assembly/senate/executive/judicial/ministerial/
+gubernatorial makeups, relations between powers, current party standings, etc.
+- basically a scenario editor/sandbox mode."*
+
+The eleven openings are eleven fixed literals. **This is the twelfth, and the
+player writes it.** Ten sections, ~410 controls, one sheet reached from the
+start screen:
+
+| section | what it sets |
+|---|---|
+| the constitution | the form of the state, and any of the **80 articles** already in force |
+| the statute book | any of the **582 statutes** at any of its four rungs, by category |
+| the National Assembly | seats by party, and whether the house sits, is suspended or is abolished |
+| the Senate | seats by party, its veto, and whether it sits, is ceremonial, suspended or abolished |
+| the executive | the four great offices, and how many portfolios are filled — **the ministry follows**, because a minister takes the party of the office they answer to |
+| the judiciary | which way the sixteen justices lean, which is what the court gap reads |
+| the states | who holds each of the eight governorships |
+| the powers | relations with each of the **eleven capitals**, and which of the twenty instruments are already written with them |
+| the parties | each of the seven's relations, organisation and money |
+| the country | the fifteen indicators, and the whole exchequer |
+
+**Where it lands is the design.** `v6NewGame` builds the state and `enrichState`
+fills it in; the blob is applied **between them**, in a `v6NewGame` wrapper, so
+every ensure chain in the file runs over the edited state exactly as it runs
+over a scenario's. Nothing here reaches into a live campaign: a custom start is
+a **start**.
+
+**Every field is optional** — a field left as it stands takes whatever the
+chosen opening gives, so a custom start can be one changed number or the whole
+board. The start screen says how many fields are set, and the whole thing
+round-trips as text so a start can be kept and given away.
+
+**An id this build does not carry is dropped and COUNTED**, and the sheet says
+how many. A blob that is not a start at all is refused whole. Same contract as
+the save layer since S1. Measured: one blob setting **all ten axes at once**
+with a piece of rubbish planted on every one of them lands **18 of 18** through
+the real `v6NewGame` and the whole ensure chain, drops **7**, and a campaign
+begun with no custom start is untouched.
+
+### Two things measurement caught
+
+1. **Seats are a share, apportioned against the state's own chamber size.** The
+   first build read `CFG.seats`. At the moment apply runs, the state carries a
+   **191-seat house** and the constant reads **1305** — apportioning against the
+   constant produced a chamber three-quarters empty and a leading party asked
+   for 60 per cent sitting on **nine**.
+2. **`makeName` takes the state.** S16e's dedupe read the global `S`, and during
+   `S = enrichState(v6NewGame(...))` the global still points at the *previous*
+   campaign — so a new government's names were checked against the old
+   government's cast, and two ministers of the same new ministry could collide.
+   That is why *no two officials share a name* flaked again after S16e
+   apparently fixed it. Every caller has the state in hand now; the global is
+   only the fallback. **Eight consecutive green roads runs.**
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          162 assertions, stable over eight runs
+PLAYTEST PASS     54 steps + the WebKit SKIP, stable over three runs
+DETERMINISM PASS  8 properties
+CORPORA OK
+CHAMBER / TIERS / TABS   all green
+PACING            six seeds, identical to the build before this PR
+```
+
+**All six of the owner's explicit requirements are now done.** What remains of
+S16 is the half the slice is named for: the court, the street, and playing from
+opposition, then the phone and contrast pass and the slice close.
+
+Next: **S16g**, the court can stop you.
 
 ### S16e — the six that are not yours
 
@@ -3769,6 +3845,7 @@ ratchet 10 → 5, which is now its true floor.
 | S16c the Foreign Office reaches every capital | **merged** (#62) | five diplomatic actions named a fixed handful of capitals chosen before `POWERS.push` added the S10e five, so a state visit reached 4 of eleven, a summit 3, a trade mission 3, a recall 2, an aid programme 2 and arming a client 4 -- all eleven now, with 55 authored lines and every number on every tip COMPOSED from the same table its run reads; the base leg of five of the six moved no relation with any power at all and each now does what its label says; and sanctions became a state that rides the save, costing both sides every session, multiplied by the Sanctions Regime statute and turned into revenue by Seize the Frozen Reserves -- two statutes that named sanctions where nothing in the file could ask whether one stood |
 | S16d you lead one party | **merged** (#63) | two paths wrote `S.playAs` after setup, not one: `switchParty` ("Change Your Allegiance", seven legs, cross to any party) and the Invite card, whose own description read "You go on playing as them"; the first is retired and the second repaired so the invited party governs and the player stays who they are -- junior partner where their seats are wanted, opposition where they are not, unity down either way because their own members did not vote for it; `roads.js` drives all 325 legs of every action and asserts none moves the player between parties, and the `doAction` wrapper that recorded a switch now refuses one; the Turncoat record kept its id so the denominator stays at 44 and old hall entries keep their tick, and asks the harder version of the same move as The Handover |
 | S16e the six that are not yours | **merged** (#64) | `aiGovern` returns unless the player is out of government, runs every other session and acts for `st.ruling` alone, so six parties out of seven had no way to act at all: `st.push` was never written by an AI party, the best machine any of them built over a campaign was +0.32, and their purses ended between 280 and 809 with nothing spending them; one initiative every four sessions from a deck of seven, chosen by a posture that comes from circumstance and paid out of that party's own money, plus a memory of the five cards played against it and a red line that finally bites -- `coalitionDeals[pid].redLine` had been written and rendered since v5 and read by nothing, and a partner whose cohesion is gone now walks out; the cadence was found by sweeping every card and every constant out in turn and finding that none of them was the lever and the sum was; and a coin-flip assertion since S10a, "no two officials share a name", was closed by making `makeName` redraw a name already held |
+| S16f the custom start | **merged** (#65) | the eleven openings were eleven fixed literals and this is the twelfth: ten sections and about 410 controls over the form and the 80 articles, the 582 statutes at any rung, both houses and whether each sits, the four great offices and the ministry that follows them, the bench, the eight governorships, the eleven capitals and the twenty instruments, the seven parties' relations, organisation and money, and the fifteen indicators plus the exchequer; applied BETWEEN `v6NewGame` and `enrichState` so every ensure chain runs over the edited state as it runs over a scenario's, with every id checked against what the build carries and anything else dropped and counted; two things measurement caught -- seats apportioned against `CFG.seats` rather than the state's own 191-seat house put a party asked for 60 per cent on nine, and S16e's name dedupe was reading the global `S`, which during `S = enrichState(v6NewGame(...))` is still the previous campaign |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts

@@ -636,6 +636,42 @@ the tool that re-runs it: very easy's capital and works ceiling
 (`tools/roads.js`, the campaign block), and the +460 all-five-channels ceiling
 recorded in `docs/STATE.md`'s open items.
 
+## The custom start (S16f)
+
+The twelfth opening, written by the player. **`UI.setup.custom`** holds the
+blob; **`v16CustomApply(st, blob)`** lands it **between `v6NewGame` and
+`enrichState`**, in a `v6NewGame` wrapper, so every ensure chain in the file
+runs over the edited state exactly as it runs over a scenario's. Nothing here
+reaches into a live campaign: a custom start is a START.
+
+**Ten axes**, one `<details>` section each, ~410 controls on one sheet: the
+constitution (form + any of the 80 articles), the statute book (any of the 582
+at any rung, by category), the Assembly, the Senate, the executive (which also
+decides the ministry — a minister takes the party of the office they answer to)
+plus how many portfolios are filled, the bench, the eight governorships, the
+eleven capitals and what is written with them, the seven parties' relations,
+organisation and money, and the fifteen indicators plus the exchequer.
+
+- **Every field is optional.** A field left blank takes whatever the chosen
+  opening gives. `v16CustomCount` is what the start screen prints.
+- **Seats are a SHARE.** The chamber has a constitutional size the editor may
+  not change, so what the player types is apportioned. Read the size from
+  **the state**, not from `CFG.seats` — measured, the state opens with a
+  191-seat house at the moment apply runs and the constant reads 1305, and
+  apportioning against the constant produced a chamber three-quarters empty.
+- **An id this build does not carry is dropped and COUNTED.** `v16CustomClean`
+  checks every id against `FORMS`, `V11_ART`, `POL`, `PARTY`, `REGIONS`,
+  `POWER`, `V6_TREATIES` and the indicator list; the sheet says how many were
+  dropped. A blob that is not a start at all is refused whole (`lost === -1`).
+  Same contract as the save layer since S1.
+- The blob round-trips as text in the sheet, so a start can be kept and shared.
+
+**`makeName(st)` takes the state.** During `S = enrichState(v6NewGame(...))`
+the global `S` still points at the *previous* campaign, so the S16e dedupe was
+checking a new government's names against the old government's cast and two
+ministers of the same new ministry could collide. Every caller has the state in
+hand; the global is only the fallback.
+
 ## The other six (S16e)
 
 `aiGovern` is not the whole of AI politics any more. It still puts a government
