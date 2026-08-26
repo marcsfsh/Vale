@@ -182,7 +182,31 @@ const TAILS = ('ensuring reflecting highlighting showcasing underscoring contrib
 
 const PHRASES = ['stands as', 'serves as', 'align with', 'aligns with', 'a testament to',
   'plays a key', 'plays a vital', 'valuable insights', 'in conclusion', 'it is important to note',
-  'it is worth noting', 'key role', 'marks a shift', 'sets the stage'];
+  'it is worth noting', 'key role', 'marks a shift', 'sets the stage',
+  /* S13: added when the brief was rebuilt from the style skill verbatim. The
+     first brief was a 112-line paraphrase of a 161-line skill, and everything
+     below is a rule the paraphrase dropped. Twenty-five authoring agents and
+     this checker were all working from the paraphrase, so none of them ever saw
+     these. Copying the source instead of summarising it is the actual fix; these
+     entries are what the summary cost. */
+  'a turning point', 'focal point', 'indelible mark', 'deeply rooted',
+  'broader shift', 'wider move', 'increasingly adopt', 'part of a wider',
+  'best practice', 'widely recommended', 'industry standard', 'well documented',
+  'multiple sources', 'leading experts',
+  'diverse array', 'commitment to', 'in the heart of',
+  'experts argue', 'experts say', 'observers have noted', 'industry reports',
+  'some critics', 'several publications', 'many users report',
+  'despite these', 'future outlook',
+  'functions as', 'represents the', 'maintains a', 'serves to',
+  'keep in mind that', 'it is worth mentioning',
+  'could potentially', 'may possibly', 'might possibly',
+  'everything in between'];
+
+/* Copula avoidance and inflated verbs, both named by the skill: "write wrote not
+   authored, moved not relocated, used not utilized, tried not attempted, started
+   not commenced, sent not disseminated". */
+const INFLATED = ('authored relocated utilised utilized commenced disseminated ' +
+  'exemplifies renowned groundbreaking nestled').split(' ');
 
 function sentences(t) {
   return String(t).split(/(?<=[.!?])\s+/).map(x => x.trim()).filter(Boolean);
@@ -238,7 +262,16 @@ async function check() {
     if (/\d/.test(t)) fail.push(id + ' ' + label + ': digit (the mechanics line above already carries every number)');
     const lower = t.toLowerCase();
     BANNED.forEach(w => { if (new RegExp('\\b' + w + '\\b').test(lower)) fail.push(id + ' ' + label + ': banned word "' + w + '"'); });
-    PHRASES.forEach(w => { if (lower.indexOf(w) >= 0) fail.push(id + ' ' + label + ': banned phrase "' + w + '"'); });
+    /* WORD BOUNDARIES, NOT indexOf. This list was matched as a raw substring
+       from the day it was written. When S13 added entries from the style skill
+       it fired twice, both times inside a longer word: "serves to" inside
+       "deserves to be annoyed", and "in summary" inside "publishes in summary",
+       which is a summarised edition and not the banned closing paragraph. A
+       phrase rule that matches mid-word measures spelling, not writing. */
+    PHRASES.forEach(w => {
+      const rx = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      if (rx.test(t)) fail.push(id + ' ' + label + ': banned phrase "' + w + '"');
+    });
     /* THE PARTICIPLE TAIL IS A NAMED CLASS, not any -ing word after a comma.
        A first version banned /,\s+[a-z]+ing\b/ outright and produced nine hits
        on the first batch, every one of them a false positive: "Board, lodging
@@ -249,6 +282,30 @@ async function check() {
        teaches its reader to skip it. */
     if (new RegExp(',\\s+(' + TAILS.join('|') + ')\\b', 'i').test(t)) fail.push(id + ' ' + label + ': participle tail');
     if (/\bnot (just|only|merely|simply)\b/i.test(t)) fail.push(id + ' ' + label + ': negative parallelism');
+    if (/\b(isn't|is not) about\b/i.test(t)) fail.push(id + ' ' + label + ': negative parallelism');
+
+    /* "X RATHER THAN Y" IS DELIBERATELY NOT CHECKED HERE, and the reason is a
+       measurement. The style skill names it as the reversed form of negative
+       parallelism, and rebuilding the brief from the skill surfaced that the old
+       paraphrase had dropped it. Before adding the rule, a blind judge scored a
+       forty-sample of the corpus's 276 uses: 37 informative, 3 reflexive. A
+       blanket ban would run at 7.5 per cent precision, worse than the
+       specificity floor this file already demoted at 18 per cent.
+
+       The skill anticipates exactly this: "These are tendencies, not a detector.
+       Human writers use em dashes, triads, and the word crucial all the time.
+       The problem is AI prose reaching for them by reflex, in place of
+       specifics." Most of these deliver a specific by ruling out the thing a
+       reader would otherwise assume: governed by order rather than by statute,
+       received by rather than postmarked by, market value rather than income
+       value. Deleting the contrast loses the prior rule being displaced.
+
+       So this one goes to the verify pass, where judgement lives, and is written
+       into docs/PROSE-STYLE.md's addendum for the readers who can tell the two
+       cases apart. The three the judge caught were fixed in the prose. */
+    INFLATED.forEach(w => { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail.push(id + ' ' + label + ': inflated verb "' + w + '"'); });
+    if (/(^|[.!?]\s+)(in summary|in conclusion|overall|ultimately)\b/i.test(t)) fail.push(id + ' ' + label + ': summary ending');
+    if (/\binterestingly,/i.test(t)) fail.push(id + ' ' + label + ': throat-clearing');
     proper.forEach(n => { if (n.length > 3 && lower.indexOf(n) >= 0) fail.push(id + ' ' + label + ': live proper noun "' + n + '"'); });
     const ss = sentences(t);
     ss.forEach(s => {
@@ -296,7 +353,7 @@ async function check() {
     p.rungs.forEach((t, i) => {
       const ss = scan(p.id, 'rung' + (i + 1), t) || [];
       if (ss.length < 2 || ss.length > 5) fail.push(p.id + ' rung' + (i + 1) + ': ' + ss.length + ' sentences, want 2 to 5');
-      if (t.length < 90 || t.length > 340) fail.push(p.id + ' rung' + (i + 1) + ': ' + t.length + ' chars, want 90 to 340');
+      if (t.length < 90 || t.length > 460) fail.push(p.id + ' rung' + (i + 1) + ': ' + t.length + ' chars, want 90 to 460');
       /* THE SPECIFICITY FLOOR. The description has to share vocabulary with
          its own subject: its name, its group, its one-line desc, or something
          the rung actually moves.

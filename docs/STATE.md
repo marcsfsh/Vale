@@ -13,6 +13,97 @@ complete.** Empire, Imperium, the People's State and The Charter close the book:
 the owner's order specified. The file stands at **2,951,257 bytes of the
 3,100,000 allowed**, against a projection of 2,948,134 made three batches ago.
 
+**S13a — Carry the skill, do not summarise it** (PR #41). The owner asked whether
+the uploaded `writing-style` skill had actually been used on the statute prose.
+It had, but not whole, and the gap is worth recording because it was invisible
+from inside the pipeline.
+
+### The defect was a paraphrase
+
+The authoring brief was **112 lines standing in for a 161-line skill**. It
+carried three of the four forms of negative parallelism the skill names and
+dropped the fourth, **"X rather than Y"**. Twenty-five authoring agents and the
+mechanical checker were all working from the paraphrase, so none of them ever saw
+that rule, and nothing downstream could notice a rule that was never stated.
+
+**The fix is to stop paraphrasing.** `docs/PROSE-STYLE.md` is now the skill's own
+text, unchanged, followed by a statute addendum carrying only what the skill
+cannot know about this surface: no digits, exactly four rungs, ASCII, the length
+window, bloc and indicator names as required vocabulary, and the one-axis rule.
+It is **committed** rather than living in a gitignored working directory, so the
+repository holds the standard its prose was written to.
+
+### Audited, not asserted
+
+Every rule in the skill, run over all **2,910 authored pieces**:
+
+| rule | hits |
+|---|---|
+| copula avoidance | 1 |
+| inflated verbs | 1 |
+| significance inflation, trend framing, borrowed authority, promotional tone, vague attribution, challenges-and-outlook, throat-clearing, hedging stacks, summary endings, false ranges, participle tails, banned words | **0 each** |
+
+Two genuine hits, both fixed: a land register **maintained** where the same
+sentence already **keeps** a police force, and papers **jointly authored** rather
+than written.
+
+### The new rules caught a five-year-old bug in the old ones
+
+Adding the dropped rules fired twice, both times **inside a longer word**:
+"serves to" within *deserves to be annoyed*, "in summary" within *publishes in
+summary*, which is a summarised edition and not the banned closing paragraph.
+`PHRASES` had been matched with a raw `indexOf` since the day it was written. **A
+phrase rule that matches mid-word measures spelling, not writing.** It now uses
+word boundaries, and "in summary" only counts sentence-initially.
+
+### "X rather than Y" is deliberately not checked
+
+The dropped rule turned out to be the one that must not be mechanised. It appears
+in **276 pieces across 223 statutes, 38 per cent of the book**. A blind judge
+scored a forty-sample: **37 informative, 3 reflexive.** A blanket ban would run at
+**7.5 per cent precision**, worse than the specificity floor demoted at 18.
+
+The skill anticipates the case in its own closing note: *"These are tendencies,
+not a detector. Human writers use em dashes, triads, and the word crucial all the
+time. The problem is AI prose reaching for them by reflex, in place of
+specifics."* Most uses here deliver a specific by ruling out what a reader would
+otherwise assume, and deleting the contrast loses the prior rule being displaced:
+governed by order rather than by statute, received by rather than postmarked by,
+market value rather than income value.
+
+The three the judge caught ruled out a category nobody would have assumed and
+were rewritten. The rule now lives in the brief's addendum for the verify pass,
+with the measurement recorded in the checker beside the decision not to automate
+it. **Triads** get the same treatment: 158 three-item lists, mostly real
+inventories, so the addendum separates "vehicles, premises and goods" from
+"duller, steadier and slower" instead of banning both.
+
+### The caps are lifted
+
+`maxBytes` **3,100,000 to 10,000,000** on the owner's ruling that the cap is
+soft. The check is **kept, not deleted**, because it still catches the one
+failure that threatens this file: a runaway `--apply` duplicating a region, which
+came close twice in S12. The prose window widens to **90-460** characters and the
+target mean is deleted; length follows what a ladder needs.
+
+```
+ALL CHECKS PASS   11/11, 2,951,249 bytes of 10,000,000
+ROADS OK          90 assertions
+RUNGS OK          2,328 descriptions, mean 240
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+Fail-proof: seven dropped-rule violations seeded into one rung on a scratch copy
+produce eight problems and exit 1, with all eight script blocks still compiling
+so the checker is reading prose and not a broken splice.
+
+Next: **S13b**, the exhaustive ladder sweep. Every S12 figure came from a
+40-ladder sample, so roughly 500 of 582 ladders have never been read by anyone.
+
+Previously: **S12 — The Statute Book Speaks** (PR #39), sixth of six. **The slice is complete.**
+
 ### Correction: the post-repair ordering figures in PRs #36 to #39 are inflated
 
 **What was wrong.** Each batch sampled forty ladders, measured them blind,
@@ -1673,6 +1764,7 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 4 | **merged** (#37) | Energy, Environment, Infrastructure and Technology: the first batch authored under the one-axis rule and the first measured before apply; drafts cleared the shipped baseline unrepaired at 75.0 and 80.0 per cent exact, repair cost 17 rung fields against the previous batch's 123, and after it both blind readers returned 92.5 / 85.0 / 0.950; the overuse rule was narrowed after firing on two bloc names |
 | S12 prose, batch 5 | **merged** (#38) | Defence, Authority, Elections, Federalism and Foreign: 480 rung descriptions and 120 refreshed one-liners; drafts cleared the baseline unrepaired again and both blind readers returned identical scores at every stage, 92.5 / 85.0 / 0.950 after a 9-statute repair; attribution 60 of 60; the corpus rule caught a phrase four agents had independently converged on across three batches |
 | S12 prose, batch 6 | **merged** (#39) | Empire, Imperium, People's State and The Charter close the book: 582 of 582 statutes speak, 2,910 pieces of authored prose; the two largest books sharded by group covered both exactly; highest ordering scores of the project at 93.1 / 87.5 / 0.950; whole-corpus blind attribution 118 of 120; the style guide's own worked example was found to have propagated its sentence shape into 21 statutes across 13 books |
+| S13a style fidelity | **merged** (#41) | the authoring brief was a 112-line paraphrase of a 161-line skill and had dropped a rule; it is now the skill verbatim plus a statute addendum, committed as docs/PROSE-STYLE.md; audit of all 2,910 pieces came back clean on twelve rule families and two hits; the phrase matcher was fixed from substring to word boundary; "X rather than Y" measured at 7.5% precision and was deliberately left to judgement; maxBytes 3.1M to 10M |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
