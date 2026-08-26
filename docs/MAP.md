@@ -562,6 +562,46 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
+## S15 — what the slice was, and what it left (S15k)
+
+The owner played a campaign and found the authority mechanics decorative:
+abolish the National Assembly and your bills still spend a session passing
+through it. That was one instance of a pattern with a name already in this file
+— **a modifier nothing reads is a lie on the card** — and it survived in every
+system the slice touched. Eleven PRs, each shipping the assertion that reddens
+without its fix:
+
+| PR | the card said | the model did |
+|---|---|---|
+| **a** | bills go through an abolished Assembly | the Senate had a stage skip and the Assembly had **none**; abolition was one substituted number in four places that asked about the *calendar* |
+| **b** | seventy-two order cards | `var n = 4`, read in three places, asserted by no harness, disabling all 72 at once |
+| **c** | very easy is "a safe seat" | six works, a capital ceiling three turns wide, and a works budget outside the difficulty multiply |
+| **d** | four stages on every bill card | the fourth pip had never been lit since v4, and support decided *whether* a stage passed, never *how many* ran |
+| **e** | a constitution you assemble | one article at a time, always two sessions, a convention worth `-8` |
+| **f** | a party pays for its own politics | 27 of 57 party actions billed the exchequer, and `st.funding` had **no writer anywhere in the file** |
+| **g** | sixty extraordinary measures | 25, and six of the eleven openings rendered **no cards at all** |
+| **h** | build the majority before the writ | the machine was counted twice and the caucuses were worth **0 seats** |
+| **i** | a named holder of every great office | the office was won by a *party*, and the person was minted afterwards and thrown away |
+| **j** | expand the Northern Alliance | one relation number, and a statute whose id appeared **once in three megabytes** |
+
+**What the harnesses gained across the slice:** `roads.js` 106 → **155**
+assertions, `playtest.js` 44 → **52** steps, and one new mode,
+`tools/rungs.js --corpora`, which holds the three registries S15 wrote into to
+the statute book's own house style and fails on a breach.
+
+**The punctuation residue is reported and not repaired.** `--corpora` found and
+fixed three breaches in the order book; the rest of the file carries 32 lines
+with an em dash inside a sentence, 22 of them Question Time authored before S13
+carried the owner's writing skill into the repo. Rewriting an audited corpus on
+a checker's say-so is the move this repo does not make; the count is live in the
+tool and the classification is in `docs/PROSE-RESIDUE.md`.
+
+**Three numbers the slice moved and the owner may want to rule on**, each with
+the tool that re-runs it: very easy's capital and works ceiling
+(`tools/pacing.js`), `V15_MACHINE_GAIN` and the campaign channel spread
+(`tools/roads.js`, the campaign block), and the +460 all-five-channels ceiling
+recorded in `docs/STATE.md`'s open items.
+
 ## The Northern Alliance (S15j)
 
 **It was one relation number on a power row.** `st.powers.alliance`, seeded at

@@ -4,8 +4,95 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, tenth of eleven PRs. The Northern Alliance is a set
-of members, and the statute that expands it expands it.
+**S15 — The regime is real** is **complete**: eleven PRs, #48 through #58. The
+prose pass and the slice close.
+
+### What the slice was
+
+The owner played a campaign and found the authority mechanics decorative:
+abolish the National Assembly and your bills still spend a session passing
+through it. That was one instance of a pattern this repo already had a name for
+— **a modifier nothing reads is a lie on the card** — and it survived in every
+system the slice touched.
+
+| PR | the card said | the model did |
+|---|---|---|
+| **a** #48 | bills go through an abolished Assembly | the Senate had a stage skip and the Assembly had **none** |
+| **b** #49 | seventy-two order cards | `var n = 4`, asserted by no harness, disabling all 72 at once |
+| **c** #50 | very easy is "a safe seat" | six works and a capital ceiling three turns wide |
+| **d** #51 | four stages on every bill card | the fourth pip had never been lit since v4 |
+| **e** #52 | a constitution you assemble | one article at a time, always two sessions |
+| **f** #53 | a party pays for its own politics | 27 of 57 party actions billed the exchequer |
+| **g** #54 | sixty extraordinary measures | 25, and six of eleven openings saw **no cards at all** |
+| **h** #55 | build the majority before the writ | the caucuses were worth **0 seats** |
+| **i** #56 | a named holder of every great office | the office was won by a *party* |
+| **j** #57 | expand the Northern Alliance | one relation number, and a statute read by nothing |
+
+Every one of the eleven shipped **the assertion that reddens without its fix**.
+Across the slice `roads.js` went 106 → **155** assertions and `playtest.js`
+44 → **52** steps.
+
+### The prose pass
+
+`node tools/rungs.js --corpora` is new: it holds the three registries S15 wrote
+into — **60 measures, 90 orders, 80 articles, 548 authored pieces across 230
+distinct names** — to the same house style the 582 statute ladders are held to,
+and **fails** on a breach. It found three on the build it was written against: a
+curly apostrophe in `compartmentOrder` and an em dash apiece in `clemencyDocket`
+and `orderRegister`. All three are fixed.
+
+**Measured across all ten preceding PRs: S15 added two em dashes in total**, one
+in a code comment and one in the Grand Works panel note. The second is fixed
+here. That is the standard holding.
+
+### The residue is reported and not repaired
+
+The same run then reports, and never fails on, what is left in the rest of the
+file: 27 comment lines that reach no screen, 6 dashes standing for "none", 9
+ranges — and **32 lines with an em dash inside a sentence, 22 of them Question
+Time**, authored in S10f/g before S13 carried the owner's writing skill into the
+repo. **None of them is S15's.** Rewriting an audited corpus on a checker's
+say-so is the move this repo does not make, and CLAUDE.md is explicit that the
+2,910 audited pieces stay as they are. The classification is in
+`docs/PROSE-RESIDUE.md` and the count is live in the tool, so it cannot rot.
+
+The blind ordering sweep through `tools/prose/` was **not run, and did not need
+to be**: S15 added no statute ladder. Its README's one rule — never re-measure
+the sample you repaired against — is unchanged and unspent.
+
+### One harness repair
+
+The S15j accession assertion keyed itself to a printed percentage off a single
+400-draw sample from the seeded engine, and went red the moment an earlier probe
+consumed a different number of rolls. It asserts the **property** now: the roll
+is real, neither all nor nothing, and a better-prepared question carries more
+often than a worse one. Measured: 12 of 400 at a printed 2, and 369 of 400 at a
+printed 92.
+
+### Documents
+
+`docs/AGREEMENT.md` gains the slice order through S15 and two more lines on the
+verification bar — content changes run `roads.js` and, where they touch the
+ladders or the three registries, `rungs.js --check` and `--corpora`; balance
+changes run `pacing.js` and publish the before and after, with balance itself
+staying the owner's to rule. `docs/MAP.md` carries the slice's own table.
+`CLAUDE.md`'s command list names the new mode.
+
+```
+ALL CHECKS PASS   11/11, 3,172,843 bytes, -11 since HEAD of 250,000
+ROADS OK          155 assertions
+PLAYTEST PASS     51 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK          582 ladders, 2,328 rungs
+CORPORA OK        548 pieces, 230 distinct names
+TIERS / TABS / CHAMBER   all green
+```
+
+Next: the owner's ruling. Three numbers this slice moved are recorded in the
+open items below with the tool that re-runs each, and nothing else is queued.
+
+Previously: **S15 — The regime is real**, tenth of eleven PRs. The Northern
+Alliance is a set of members, and the statute that expands it expands it.
 
 ### It was one relation number on a power row
 
@@ -70,12 +157,6 @@ PLAYTEST PASS     51 steps + the WebKit SKIP
 DETERMINISM PASS  8 properties
 RUNGS OK / TIERS / TABS / CHAMBER   all green
 ```
-
-Next: **S15k**, the prose pass and the slice close. Every authored line in S15a
-through S15j measured against `docs/PROSE-STYLE.md` with `tools/rungs.js
---check`, a blind ordering sweep over any new ladder content through
-`tools/prose/`, and `docs/MAP.md`, `docs/STATE.md` and `docs/AGREEMENT.md`
-brought up to date for the whole slice.
 
 Previously: **S15 — The regime is real**, ninth of eleven PRs. Executive offices:
 the office is won by a person now, and the person is somebody the player built.
@@ -3209,19 +3290,36 @@ ratchet 10 → 5, which is now its true floor.
 | S14e the marker check made honest | **merged** (#47) | 12 of the 25 markers were generic structural strings whose `>= 2 occurrences` rule is vacuously true forever -- listed rather than counted, with a guard against hiding a specific marker among them; the other 12 now assert the pair that matters, that an EMITTER of the literal exists outside the splice, which the old rule could not see (renaming the Records and Honours heading breaks two splices and the old rule passes); one new playtest step splices-land covers the three splices the check could never reach because their markers are built in variables, including the .region-card positional split whose failure puts wrong data on screen, proved on four mutations |
 | S15a the chamber that is not there | **merged** (#48) | the Senate has had a stage skip since v4 and the Assembly never did, so an abolished house still cost a session and still said "passed the Assembly with 100 percent"; abolition was one substituted number in four places that asked about the calendar rather than about existence, and under a form that still held elections it forced the forecast to 0 and killed every bill in a committee of a house that did not exist; three chamber states replace the yes/no, billLadder answers which rungs a constitution actually has, a suspended house is a council on a real favour gradient and an abolished one is a decree the apparatus can refuse; any form that has abolished elections now neutralises its Senate on proclamation, artAbolishUpper abolishes, four ungated Legislative actions got chamber gates, and the majority bonus is no longer paid out of a frozen seat map; seven roads assertions, all seven red on the old build |
 | S15b the order book | **merged** (#49) | the cap was `var n = 4` read in three places and asserted by no harness, and because it ran before cost and independently of target it disabled every button on all 72 cards at once and printed the same refusal 72 times; removed outright, with upkeep as the only brake (60 of 60 ungated national orders signed at once, 20.5 capital a session); all 13 region-targeted orders nationalised via a new nationEff, twelve of them having already carried national effects, with 13 blurbs rewritten; the five "Orders about orders" cards made true through a new m.book group, both self-applying rules applying to themselves; 18 new national orders, 3 of them defining the onIssue/onRevoke hatch the engine had called at four sites since S10c and no order had ever defined, reaching the S15a chamber model; four invisible modifier fields rendered, the panel's false 36 counted as 17, and 90 orders indexed in the palette; 10 roads assertions, all 10 red on the old build |
+| S15c the numbers | **merged** (#50) | very easy's blurb promised a tier nothing could bring you down on and gave six works against a capital ceiling a floored session filled in three turns; ten works on very easy, a distinct ceiling for each of the five tiers, the works budget brought inside the difficulty multiply (ten works cost ~113 against ~97 of headroom, a structural deficit from the first commission), the per-work side effects tapered, and a queue and a filter on the 48-card panel |
+| S15d two sessions and the signature | **merged** (#51) | laws took three or four sessions from one token, `bill.urgent ? 2 : 1`, and support decided WHETHER a stage passed and never how many ran; a fully supported bill clears two stages in a session now, and the fourth pip -- an 'assent' slot BILL_STAGES has carried since v4 and nothing ever set -- is lit by a real signature stage: sign, sign with a statement, return with objections, veto; a hostile holder's disposition reads their `loyalty`, the first reader of that field on an exec figure, and a refusal is beatable by an override the chambers have to have earned |
+| S15e the constitution | **merged** (#52) | one article could be before the country at a time, always two sessions, and a convention that subtracted 8 from a threshold; three pending slots and four in convention, two routes with two clocks (the Assembly in two sessions, a plebiscite in one, and the plebiscite stays open under a form with no elections because that is what a plebiscite is for), a convention that sits three sessions and carries an article in one, 32 more articles taking the book to 80, and a save-shape migration from a bare object to a list that says so on the page |
+| S15f the party treasury | **merged** (#53) | 57 party actions and 27 of them billed the exchequer, including an opposition party buying organisers out of a treasury it does not control and a fighting fund whose own card says the money comes from donors; `st.purse[pid]` with dues, donors, a state-funding act and graft, re-pointed by two lines because the purse is a property of where the action came from; `st.funding` gets the writer it never had; and two ledger repairs, a debt charged three times and a capital panel whose rows summed to ~5 beside a printed 75 |
+| S15g extraordinary measures | **merged** (#54) | 25 measures, 23 of them universal, and three parties with nothing of their own -- and when tier 1 was shut the panel rendered NO CARDS AT ALL, the state on turn one of six of the eleven openings; 60 in eight books with a locked card and a stated reason for every one of them, ten distinct refusals where there was one sentence, `X(o)` given the gating vocabulary the other three registries have carried for slices, standing modifiers with named readers, authored unrest, repeal, and a ratchet that compounds where signing all 25 used to move the apparatus by zero |
+| S15h campaigning | **merged** (#55) | the machine was applied in supportTargets AND again in ballot on a psupport that converges on the target, worth +219 seats at its ceiling against +24 for the whole Campaign page and 0 for the caucuses; read once now at a gain set against pacing, and what ballot's second pass does instead is TURNOUT, which `grep -i turnout` found nowhere in the vote model; measured 219/24/0/40/62 becomes 177/96/61/84/61, and `v15CampaignSeats` puts each of the five on the page in seats |
+| S15i executive offices and persons | **merged** (#56) | the office was won by a PARTY -- vote share, a push keyed on `st.ruling`, noise, and a flat 1.18 -- and a person was minted afterwards by holderOf and thrown away when the party changed; a bench of 19 named people from the ministry, the states, the leadership and the office, a nomination the player can name, terms that accumulate on the person, an article of the limited term that finally limits one, an ambitious minister who leaves the cabinet to take a great office and runners-up who remember; and no die rolled anywhere in it, because the panel previews the nomination on the render path |
+| S15j the Northern Alliance | **merged** (#57) | one relation number on a power row, and a statute whose id appeared once in three megabytes; a membership set, an accession that spends a die at odds printed before the player spends, members that are never the country Vale fights and that come in when it does, the Foreign Office's four target lists rebuilt from six capitals to eleven (they were built at the moment the ACTIONS literal was evaluated, before the S10e push), five cards that named the Alliance and moved nothing, and a treaty action that produced no treaty |
+| S15k the prose pass and the close | **merged** (#58) | `rungs.js --corpora`: the 60 measures, 90 orders and 80 articles held to the statute book's own house style, 548 pieces across 230 distinct names, failing on a breach -- it found three, a curly apostrophe and two em dashes in the order book; S15 itself added two em dashes across ten PRs, one in a comment and one in a panel note; the punctuation residue in the rest of the file measured, classified and REPORTED rather than repaired (32 in-sentence uses, 22 of them Question Time, none of them S15's); one flaky assertion turned from a point estimate into a property; AGREEMENT, MAP, STATE and CLAUDE.md brought up to date |
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
 
-- **A balance ruling S15h needs (owner's, per AGREEMENT.md).** All five campaign
-  channels at their ceiling at once is now **+460** Assembly seats where it was
-  +352 — a government that has built the organisation, the ground campaign, the
-  caucuses, the endorsements and the party purse takes 682 of 1305 and an
-  outright majority. The arc `tools/pacing.js` plays is unchanged (3 elections
-  won and 10 years governing over fifty sessions, against 2 and 8), because that
-  harness takes the first choice always and builds none of the five. If the
-  ceiling is too generous the lever is `V15_MACHINE_GAIN` and the three
-  player-only weights beside it, and the sweep table is in `docs/MAP.md`.
+- **Three numbers S15 moved, each with the tool that re-runs it.** Balance is
+  the owner's per AGREEMENT.md; these are stated rather than defended.
+  1. **Very easy** opens at 250 capital with a 750 ceiling, a 150 income floor
+     and ten works (S15c). `node tools/pacing.js`.
+  2. **`V15_MACHINE_GAIN` is 1.15** (S15h), and the sweep behind it is in
+     `docs/MAP.md`: un-squaring the party organisation without a gain to hold it
+     up hands the harness every election it fights. `node tools/pacing.js`, and
+     the campaign block of `node tools/roads.js` prints the five-channel table.
+  3. **All five campaign channels at their ceiling at once is +460** Assembly
+     seats where it was +352, so a government that builds everything takes an
+     outright majority. The arc pacing plays is unchanged, because that harness
+     builds none of the five.
+
+- **The punctuation residue** (S15k): 32 lines carry an em dash inside a
+  sentence, 22 of them Question Time authored before S13. Measured, classified
+  in `docs/PROSE-RESIDUE.md`, and deliberately **not** repaired. `node
+  tools/rungs.js --corpora` prints the live count.
 
 - **Artifact localStorage probe:** published (build B live) at
   https://claude.ai/code/artifact/096870e0-8c13-4ab7-a09c-2d7e1422d67d — the

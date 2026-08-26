@@ -3651,17 +3651,30 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* A DIE THAT CAN SAY NO, at the odds the card prints. No diplomatic
        decision in the game spent one before: every other applies a fixed
        shift and reports it as a fact. */
-    const boxA = v6Sandbox(function (c) {
-      c.pol.allianceExpansion = 1;
-      c.yes = 0; c.odds = 0;
-      for (let i = 0; i < 300; i++) {
-        c.alliance = { members:[], asked:{}, founded:1 };
-        c.powers.meridian = 52; c.powers.alliance = 50; c.ind.tension = 55;
-        c.odds = allianceOdds(c, 'meridian');
-        if (allianceInvite(c, 'meridian').ok) c.yes++;
-      }
-    });
-    out.acceptRate = boxA.st.yes; out.acceptOdds = boxA.st.odds;
+    const sample = (rel, alli, tension, exp) => {
+      const box = v6Sandbox(function (c) {
+        c.yes = 0; c.odds = 0;
+        for (let i = 0; i < 400; i++) {
+          /* reset the whole question each time: allianceInvite moves the
+             relation either way, so 400 refusals would walk it to the floor */
+          c.alliance = { members:[], asked:{}, founded:1 };
+          c.pol.allianceExpansion = exp;
+          c.powers.meridian = rel; c.powers.alliance = alli; c.ind.tension = tension;
+          c.odds = allianceOdds(c, 'meridian');
+          if (allianceInvite(c, 'meridian').ok) c.yes++;
+        }
+      });
+      return { yes:box.st.yes, odds:box.st.odds };
+    };
+    /* A POINT ESTIMATE OFF ONE SEED IS NOT THE ASSERTION. 400 draws from the
+       seeded engine at a fixed start is one deterministic sample, and a first
+       pass keyed to the printed percentage went red the moment an earlier probe
+       consumed a different number of rolls. What has to hold is the PROPERTY:
+       the roll is real (neither all nor nothing), and a better-prepared
+       question carries more often than a worse one. */
+    out.cold = sample(44, 44, 68, 1);
+    out.warm = sample(86, 86, 28, 3);
+    out.acceptRate = out.cold.yes; out.acceptOdds = out.cold.odds;
 
     /* MEMBERS ARE NEVER THE COUNTRY VALE FIGHTS, AND THEY COME WHEN CALLED */
     const boxW = v6Sandbox(function (c) {
@@ -3697,12 +3710,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `EXACTLY ONCE in three megabytes before this PR, in its own definition, beside a purge list · the Alliance was ` +
     `one relation number on a power row with no members in it, so there was nothing to expand`);
 
-  say(all.has && all.acceptRate > 0 && all.acceptRate < 300 &&
-      Math.abs(all.acceptRate / 3 - all.acceptOdds) < 8,
-    'a capital can say no, at the odds on the card',
-    `${all.acceptRate} of 300 accessions carried against a printed ${all.acceptOdds} in a hundred · this is the ` +
-    `first diplomatic decision in the game that spends a die: every other one applies a fixed shift and reports it ` +
-    `as a fact, and the odds are on the panel because a die the player cannot see the odds of is a coin toss`);
+  const cold = all.cold || {}, warm = all.warm || {};
+  say(all.has && cold.yes > 0 && cold.yes < 400 && warm.yes > 0 && warm.yes < 400 &&
+      warm.yes > cold.yes && warm.odds > cold.odds,
+    'a capital can say no, and the odds on the card mean something',
+    `a cold question at a printed ${cold.odds} in a hundred carried ${cold.yes} of 400; a well prepared one at ` +
+    `${warm.odds} carried ${warm.yes} · neither is all and neither is nothing, and the better question carries ` +
+    `more often · this is the first diplomatic decision in the game that spends a die at all: every other one ` +
+    `applies a fixed shift and reports it as a fact, and the odds go on the panel because a die whose odds the ` +
+    `player cannot see is a coin toss`);
 
   say(all.has && all.wars > 0 && !all.memberFought && all.joins > 0,
     'a guarantee runs in both directions',

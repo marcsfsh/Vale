@@ -440,11 +440,139 @@ async function check() {
 }
 
 /* ---------------- dispatch ---------------- */
+/* ---------------- what is left, and whose call it is ------------------------
+
+   REPORTED, NEVER FAILED. The three registries above are held to the standard
+   because S15 wrote into all three. The rest of the file's player-facing prose
+   is 2,910 audited pieces plus the surfaces around them, and CLAUDE.md is
+   explicit that the audited pieces stay as they are: rewriting somebody else's
+   corpus on a checker's say-so is exactly the move this repo does not make.
+
+   So this counts, classifies and names. A dash standing alone for "none" and an
+   en dash between two numbers are typography and not a style question at all;
+   what is worth a ruling is the em dash used INSIDE a sentence, which the house
+   style names as a tendency. The number is live rather than a note in a
+   document that rots. */
+function residue() {
+  const src = fs.readFileSync(FILE, 'utf8').split('\n');
+  let glyph = 0, ranges = 0, comments = 0;
+  const prose = [];
+  src.forEach((l, n) => {
+    if (l.indexOf('base64,') >= 0) return;
+    if (!/[—’…–]/.test(l)) return;
+    const st = l.trim();
+    if (st.charAt(0) === '*' || st.slice(0, 2) === '/*' || st.slice(0, 2) === '//') { comments++; return; }
+    const re = /'((?:[^'\\]|\\.)*)'/g;
+    let m;
+    while ((m = re.exec(l)) !== null) {
+      const t = m[1];
+      (t.match(/[—’…–]/g) || []).forEach(ch => {
+        if (t.trim() === ch) glyph++;
+        else if (new RegExp('[A-Za-z]\\s?' + ch).test(t)) prose.push({ line:n + 1, ch:ch, t:t.slice(0, 90) });
+        else ranges++;
+      });
+    }
+  });
+  console.log('\nresidue outside the three corpora (reported, not failed):');
+  console.log('  in a comment, not on any screen : ' + comments + ' line(s)');
+  console.log('  a glyph standing for "none"     : ' + glyph);
+  console.log('  a range or a separator          : ' + ranges);
+  console.log('  INSIDE A SENTENCE               : ' + prose.length + '  <- the owner\'s call, listed in docs/PROSE-RESIDUE.md');
+  const byLine = {};
+  prose.forEach(x => { byLine[x.line] = byLine[x.line] || x; });
+  Object.keys(byLine).slice(0, 6).forEach(k => console.log('    ' + k + '  ' + byLine[k].t));
+  if (Object.keys(byLine).length > 6) console.log('    ... and ' + (Object.keys(byLine).length - 6) + ' more lines');
+}
+
+/* ---------------- the corpora S15 extended ----------------------------------
+
+   `--check` measures the statute book, which is 582 ladders and 2,328 rungs and
+   is the corpus S12 and S13 audited. S15 wrote 35 more extraordinary measures,
+   18 more standing orders and 32 more constitutional articles, plus a `moves`
+   line on every article and a `reqText` on every measure -- none of which the
+   statute checker can see, because none of them is a POLICY.
+
+   Same house style, same word lists, one tool. What is NOT carried over from
+   the rung rules is deliberate: rung prose bans digits and braces because the
+   mechanics line above it already carries every number and because the leak
+   guard hunts braces, and neither is true of a card name or an article's text.
+   The character rule is kept whole -- one rule kills em dashes, en dashes,
+   curly quotes, ellipses and non-breaking spaces. */
+async function corpora() {
+  const data = await readGame(() => {
+    const grab = (list, kind, fields) => (list || []).map(o => {
+      const row = { id:o.id, kind:kind, name:o.name || '' };
+      fields.forEach(f => { if (typeof o[f] === 'string' && o[f].trim()) row[f] = o[f]; });
+      return row;
+    });
+    return {
+      measures: grab(typeof EXTRA !== 'undefined' ? EXTRA : [], 'measure', ['desc', 'blurb', 'reqText', 'moves']),
+      orders: grab(typeof V10_ORDERS !== 'undefined' ? V10_ORDERS : [], 'order', ['desc', 'blurb', 'reqText', 'moves']),
+      articles: grab(typeof V11_ARTICLES !== 'undefined' ? V11_ARTICLES : [], 'article', ['text', 'moves', 'reqText'])
+    };
+  });
+
+  const fail = [], note = [];
+  const seenName = new Map();
+  let pieces = 0, chars = 0;
+
+  function judge(id, label, t) {
+    pieces++; chars += t.length;
+    const bad = [...t].find(ch => ch.charCodeAt(0) > 127);
+    if (bad) fail.push(id + ' ' + label + ': non-ascii ' + JSON.stringify(bad));
+    const lower = t.toLowerCase();
+    BANNED.forEach(w => { if (new RegExp('\\b' + w + '\\b').test(lower)) fail.push(id + ' ' + label + ': banned word "' + w + '"'); });
+    PHRASES.forEach(w => {
+      const rx = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      if (rx.test(t)) fail.push(id + ' ' + label + ': banned phrase "' + w + '"');
+    });
+    if (new RegExp(',\\s+(' + TAILS.join('|') + ')\\b', 'i').test(t)) fail.push(id + ' ' + label + ': participle tail');
+    if (/\bnot (just|only|merely|simply)\b/i.test(t)) fail.push(id + ' ' + label + ': negative parallelism');
+    if (/\b(isn't|is not) about\b/i.test(t)) fail.push(id + ' ' + label + ': negative parallelism');
+    INFLATED.forEach(w => { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail.push(id + ' ' + label + ': inflated verb "' + w + '"'); });
+    if (/(^|[.!?]\s+)(in summary|in conclusion|overall|ultimately)\b/i.test(t)) fail.push(id + ' ' + label + ': summary ending');
+    if (/\binterestingly,/i.test(t)) fail.push(id + ' ' + label + ': throat-clearing');
+  }
+
+  ['measures', 'orders', 'articles'].forEach(k => {
+    (data[k] || []).forEach(row => {
+      /* A DUPLICATE NAME IS THE ONE DEFECT THAT IS SILENT ON THE PAGE. S15g
+         found two panels drawing adjacent cards under an identical heading and
+         the command palette indexing both under the same name. */
+      const key = row.name.toLowerCase().trim();
+      if (key) {
+        if (seenName.has(key)) fail.push(row.id + ': name collides with ' + seenName.get(key) + ' ("' + row.name + '")');
+        else seenName.set(key, row.id);
+      }
+      Object.keys(row).forEach(f => {
+        if (f === 'id' || f === 'kind') return;
+        judge(row.id, f, row[f]);
+      });
+    });
+  });
+
+  const counts = ['measures', 'orders', 'articles'].map(k => k + ' ' + (data[k] || []).length).join(', ');
+  console.log('corpora            : ' + counts);
+  console.log('authored pieces    : ' + pieces + ', mean ' + Math.round(chars / Math.max(1, pieces)) + ' chars');
+  console.log('distinct names     : ' + seenName.size);
+  if (note.length) note.forEach(n => console.log('  ' + n));
+  residue();
+  if (fail.length) {
+    console.log('\n' + fail.length + ' to fix:');
+    fail.slice(0, 40).forEach(f => console.log('  ' + f));
+    if (fail.length > 40) console.log('  ... and ' + (fail.length - 40) + ' more');
+    console.log('\nCORPORA FAIL');
+    process.exit(1);
+  }
+  console.log('\nCORPORA OK');
+}
+
 const a = process.argv.slice(2);
 if (a[0] === '--brief' && a[1]) brief(a.slice(1).join(' '));
 else if (a[0] === '--apply' && a[1]) apply(a.slice(1));
 else if (a[0] === '--check') check();
+else if (a[0] === '--corpora') corpora();
 else {
-  console.log('usage:\n  node tools/rungs.js --brief <Category>\n  node tools/rungs.js --apply <shard.json ...>\n  node tools/rungs.js --check');
+  console.log('usage:\n  node tools/rungs.js --brief <Category>\n  node tools/rungs.js --apply <shard.json ...>\n  node tools/rungs.js --check\n  node tools/rungs.js --corpora');
   process.exit(1);
 }

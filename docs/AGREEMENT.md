@@ -94,6 +94,11 @@ record the re-ruling here. Sources: [docs:…] = verified Claude Code doc claim,
    for the owner's iPhone — gated on the localStorage-persistence probe verdict
    (see STATE.md); until confirmed, Artifact builds are look-and-feel only.
 7. Anything not runnable is a named SKIP with its substitute — never silent.
+8. Content changes: `tools/roads.js` and, where the change touches the
+   statute ladders or the measure, order and article registries,
+   `tools/rungs.js --check` and `tools/rungs.js --corpora`.
+9. Balance changes: `tools/pacing.js`, with the before and after published.
+   Balance itself stays the owner's to rule.
 
 ## Slice order
 
@@ -101,7 +106,18 @@ S0 tooling (this) → S1 correctness → S2 chain consolidation (poison-proof
 deletions) → S3 seeded PRNG → S4 look mockups (parallel S1–S3; ≥5 dark-first
 directions, owner picks) → S5 token foundation (fonts embedded, link out) →
 S6+ refresh tab-by-tab (breakpoint consolidation first; viz redesign) → S7
-onboarding → S8 pacing honesty. STATE.md tracks live status.
+onboarding → S8 pacing honesty → S9 the descent and the statute book → S10 the
+order book, the works and the despatch box → S11 the record, the federation,
+the constitution and the ministry → S12/S13 the rung prose and the house style
+→ S14 the documents and the ratchets → **S15 the regime is real**.
+STATE.md tracks live status.
+
+**S15 is the first slice driven by a played campaign rather than by a survey of
+the source.** Its rule, and the one it leaves behind: *a modifier nothing reads
+is a lie on the card.* Nine subsystems were measured against what their own
+prose promised, and every one of the eleven PRs shipped the assertion that
+reddens without its fix. Where a number had to move, the PR published the
+measurement it moved against and named the tool that re-runs it.
 
 ---
 
