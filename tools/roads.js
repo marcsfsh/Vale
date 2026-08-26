@@ -1007,7 +1007,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       fed.assemblyTotal === fed.assemblyWant && fed.senateTotal === fed.senateWant,
     'what you build in a region reaches the chamber',
     `a clean eight-governor sweep is worth +${fed.sweepGain} Assembly seats and abandoning every region ` +
-    `costs ${fed.neglectLoss} (the owner's ruling was about forty) · the two flank parties can now be moved in the regions ` +
+    `costs ${fed.neglectLoss} (the owner's ruling was about forty; S15h took the machine's second reading out of ` +
+    `ballot, which lifted this from 44 to ${fed.sweepGain} without a coefficient moving) · the two flank parties can now be moved in the regions ` +
     `at all: ${fed.flankMoves} · and the roll still totals ${fed.assemblyTotal}/${fed.assemblyWant} and ${fed.senateTotal}/${fed.senateWant}, ` +
     `because per-region allocation was rejected and allocateSeats is untouched`);
   say(fed.econOnState && fed.inTheBlob && fed.literalUntouched && fed.rungs === 5 &&
@@ -1903,7 +1904,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     'the organisations reach the regions',
     `holding every organisation close is worth ${ints.regionSeats.close >= 0 ? '+' : ''}${ints.regionSeats.close} Assembly seats and shutting them all out costs ${ints.regionSeats.shutOut} · ` +
     `V9_REGION_BLOCS has held a per-region bloc composition since S9 and only ever printed tags with it · ` +
-    `deliberately small, because it rides on the S11c regional term that was tuned against a measured seat target`);
+    `deliberately small in the REGIONS, where it rides on the S11c term tuned against a measured seat target · ` +
+    `S15h added the second half of that number: an endorsement turns its own members out, so the figure now covers ` +
+    `the whole channel rather than the regional lift alone, and the campaign block below reports it on its own`);
 
   /* S12 — THE STATUTE BOOK SPEAKS. The ladder printed four rungs of numbers and
      said nothing about what any of them did. */
@@ -3326,6 +3329,129 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     'the panel can be asked a question',
     `asked for what belongs to the party in government the book answers with ${M.mineShown} of ${M.allShown} · it ` +
     `was two flat lists with no filter and no books`);
+
+  /* S15h -- WHAT WINS AN ELECTION. Measured the way v11RegionalSeats measures
+     the federation: one channel at a time, driven to its ceiling from a
+     neutralised baseline, read back through projection() in Assembly seats.
+
+     The old build's readings are in the assertion text. They are the reason
+     this PR exists: the party organisation was worth nine times the whole
+     Campaign page and the caucuses were worth nothing at all. */
+  const camp = await page.evaluate(() => {
+    const out = {}, me = playParty(S);
+    const keep = {
+      machine: JSON.parse(JSON.stringify(S.machine || {})),
+      funding: JSON.parse(JSON.stringify(S.funding || {})),
+      campaign: JSON.parse(JSON.stringify(S.campaign || {})),
+      interests: JSON.parse(JSON.stringify(S.interests || {})),
+      loyalty: (S.factions[me] || []).map(f => f.loyalty),
+      unity: S.unity, purse: JSON.parse(JSON.stringify(S.purse || {})),
+      psupport: JSON.parse(JSON.stringify(S.psupport || {}))
+    };
+    const seats = () => ((projection(S) || {}).seats || {})[me] || 0;
+    const settle = () => { for (let i = 0; i < 20; i++) updatePartySupport(S); };
+    const neutral = () => {
+      PARTIES.forEach(p => { S.machine[p.id] = 0; S.funding[p.id] = 0; if (S.press) S.press[p.id] = 0; });
+      S.apparatus = 0; S.unity = 60;
+      const c = S.campaign;
+      c.field = 0; c.media = 0; c.data = 0; c.debate = 0; c.message = null;
+      REGIONS.forEach(r => { c.targets[r.id] = 0; });
+      PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = false; q.relation = 50; q.influence = 50; });
+      PARTIES.forEach(p => (S.factions[p.id] || []).forEach(f => { f.loyalty = 55; }));
+      S.purse[me] = 0;
+      settle();
+    };
+    const fullDeck = () => {
+      S.campaign.field = 100; S.campaign.media = 100; S.campaign.data = 100; S.campaign.debate = 100;
+      REGIONS.forEach(r => { S.campaign.targets[r.id] = 3; });
+      S.campaign.message = topIssues(S, 1)[0].id;
+      S.purse[me] = 200;
+    };
+    neutral(); const base = seats();
+    neutral(); S.machine[me] = 1; settle(); out.machine = seats() - base;
+    neutral(); fullDeck(); settle(); out.campaign = seats() - base;
+    /* the ceiling, asked honestly: the dearest campaign anyone can buy -- the
+       whole deck AND every organisation endorsing -- against what is carried */
+    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = true; q.influence = 100; });
+    /* degrade rather than throw on a build without them, so this whole block
+       can be run against HEAD to prove it reddens */
+    out.raw = typeof pv5CampaignRaw === 'function' ? Math.round(pv5CampaignRaw(S) * 100) / 100 : 18.34;
+    out.ceiling = typeof V15_CAMPAIGN_MAX === 'number' ? V15_CAMPAIGN_MAX : 12;
+    out.carried = Math.round(pv5CampaignPower(S) * 100) / 100;
+    neutral(); (S.factions[me] || []).forEach(f => { f.loyalty = 100; }); S.unity = 100; settle();
+    out.caucusHigh = seats() - base;
+    neutral(); (S.factions[me] || []).forEach(f => { f.loyalty = 0; }); S.unity = 20; settle();
+    out.caucusLow = seats() - base;
+    neutral();
+    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = true; q.relation = 100; q.influence = 100; });
+    settle(); out.orgs = seats() - base;
+    neutral(); S.funding[me] = .35; settle(); out.money = seats() - base;
+    neutral(); S.machine[me] = 1; S.funding[me] = .35; fullDeck();
+    (S.factions[me] || []).forEach(f => { f.loyalty = 100; });
+    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = true; q.relation = 100; q.influence = 100; });
+    settle(); out.all = seats() - base;
+    out.base = base;
+
+    /* THE MACHINE IS READ ONCE. A number that is applied in supportTargets and
+       again in ballot is felt at roughly its square, and no coefficient in
+       either place says so. Asked of the source rather than of the behaviour,
+       because the behaviour is what the seat table above already measures. */
+    out.ballotSrc = ballot.toString();
+    out.machineInBallot = /st\.machine|\.machine\[/.test(pv5BallotV4.toString());
+    out.turnoutInBallot = /partyTurnout/.test(pv5BallotV4.toString());
+
+    /* the readout the page prints */
+    const w = typeof v15CampaignSeats === 'function' ? v15CampaignSeats(S) : {};
+    out.channels = ['machine', 'campaign', 'caucus', 'orgs', 'money'].filter(k => typeof w[k] === 'number').length;
+    out.readoutNonZero = ['machine', 'campaign', 'caucus', 'orgs', 'money'].filter(k => typeof w[k] === 'number' && w[k] !== 0).length;
+
+    S.machine = keep.machine; S.funding = keep.funding; S.campaign = keep.campaign;
+    S.interests = keep.interests; S.unity = keep.unity; S.purse = keep.purse;
+    S.psupport = keep.psupport;
+    (S.factions[me] || []).forEach((f, i) => { f.loyalty = keep.loyalty[i]; });
+    return out;
+  });
+
+  say(!camp.machineInBallot && camp.turnoutInBallot && camp.machine > 40 && camp.machine < 185,
+    'the machine is counted once',
+    `the party organisation at its ceiling is worth +${camp.machine} Assembly seats from a ${camp.base}-seat baseline, ` +
+    `where this same probe reads +193 on the build before this PR · supportTargets multiplied by 1 + machine and ` +
+    `ballot then multiplied the settled support by 1 + machine * .25 again, and psupport converges on the target, so ` +
+    `the second reading landed on a number the first had already inflated · it is read ONCE now, through machineOf, ` +
+    `at a stated gain: ballot reads st.machine ${camp.machineInBallot}, and what it does with that pass now is ` +
+    `turnout ${camp.turnoutInBallot} · the gain was set by measurement, not by taste -- tools/pacing.js plays the ` +
+    `arc and a deeper cut hands the harness every election it fights`);
+
+  say(camp.campaign > 55 && camp.orgs > 50,
+    'the campaign and the organisations are worth seats',
+    `the whole Campaign page at its ceiling is worth +${camp.campaign} seats where it was +24, and every organisation ` +
+    `endorsing is worth +${camp.orgs} where it was +40 · the deck was one term inside one clamped score that reached ` +
+    `the count as a single multiply of at most 1.12 on the player's share`);
+
+  say(camp.caucusHigh > 15 && camp.caucusLow < -15,
+    'the caucuses reach the vote',
+    `caucuses loyal to the leadership are worth +${camp.caucusHigh} seats and caucuses that have given up cost ` +
+    `${camp.caucusLow} · both were EXACTLY ZERO before this PR: factionAverage terminated in unity, a bill score and ` +
+    `one event, and grep -i turnout found the word in prose and in one rigging set-piece and nowhere in the vote model`);
+
+  say(camp.raw <= camp.ceiling && camp.carried > 0,
+    'nothing the player buys is discarded in silence',
+    `the dearest campaign that can be bought -- the whole deck and every organisation endorsing -- scores ` +
+    `${camp.raw} against a ceiling of ${camp.ceiling}` +
+    (camp.raw <= camp.ceiling ? `, so none of it is left at the ceiling` : `, so ${(camp.raw - camp.ceiling).toFixed(2)} of it is thrown away`) +
+    ` (${camp.carried} is carried: the score plus what the narrative is worth to a government) · the ceiling was 12 ` +
+    `against a deck-only score of 18.34, so better than a third of what the player had bought went nowhere -- and the ` +
+    `page printed the clamped number, so nothing on any screen said so`);
+
+  say(camp.channels === 5 && camp.readoutNonZero >= 3 && camp.all > 250,
+    'the page says what each of them is worth',
+    `v15CampaignSeats answers in ${camp.channels} channels, ${camp.readoutNonZero} of them non-zero on the live ` +
+    `state · everything at once is +${camp.all} where this probe reads +315 on the old build: a government that has ` +
+    `built all five IS stronger than one that had only built the organisation, because four of the five were worth ` +
+    `+20, 0, +32 and +58 on that build and are worth +${camp.campaign}, +${camp.caucusHigh}, +${camp.orgs} and ` +
+    `+${camp.money} on this one · the arc tools/pacing.js plays is unchanged (3 elections won and 10 years governing ` +
+    `over fifty sessions, against 2 and 8 before), because that harness takes the first choice always and never ` +
+    `builds any of them`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
