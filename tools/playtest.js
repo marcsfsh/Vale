@@ -765,36 +765,67 @@ async function run() {
          wall the sixth order asked to be rid of elsewhere */
       out.collapsedOnArrival = V11_BOOKS.filter(b => v7DefaultCollapsed('state', b.name.toLowerCase())).length;
       out.artButtons = document.querySelectorAll('#view [data-art]').length;
-      /* lay one through the real button, not the model */
-      const btn = document.querySelector('#view [data-art]:not([disabled])');
-      out.clickable = !!btn;
-      if (btn) {
-        const id = btn.getAttribute('data-art');
-        btn.click();
-        out.laid = !!(S.v11 && S.v11.con && S.v11.con.pending && S.v11.con.pending.id === id);
+      /* S15e: every card offers two roads now, one to the chambers and one to
+         the country, so a card carries two data-art buttons. */
+      const list = () => Array.isArray(S.v11.con.pending) ? S.v11.con.pending
+        : (S.v11.con.pending ? [S.v11.con.pending] : []);
+      out.routes = [...new Set([...document.querySelectorAll('#view [data-artroute]')]
+        .map(b => b.getAttribute('data-artroute')))].sort().join(',');
+      /* lay THREE through the real buttons, not the model */
+      const ids = [];
+      for (let i = 0; i < 3; i++) {
+        const b2 = document.querySelector('#view [data-artroute="assembly"]:not([disabled])') ||
+          document.querySelector('#view [data-art]:not([disabled])');
+        if (!b2) break;
+        ids.push(b2.getAttribute('data-art'));
+        b2.click();
         render();
-        out.pendingShown = /Before the Country/.test(document.getElementById('view').innerHTML) &&
-          document.querySelectorAll('#view [data-artcampaign]').length === 1;
-        /* and it survives a save and a reload of the blob */
-        const blob = JSON.stringify(S);
-        const back = JSON.parse(blob);
-        out.ridesTheSave = !!(back.v11 && back.v11.con && back.v11.con.pending && back.v11.con.pending.id === id);
-        /* put it */
-        S.turn = S.v11.con.pending.due; v11ConTick(S);
-        out.resolved = !S.v11.con.pending;
-        out.docOrFailed = v11ConCount(S) === 1 || !!S.v11.con.failed[id];
       }
+      out.clickable = ids.length === 3;
+      out.laid = list().length === 3 && ids.every(id => list().some(p => p.id === id));
+      out.pendingCards = document.querySelectorAll('#view .pending-art').length;
+      out.campaignBtns = document.querySelectorAll('#view [data-artcampaign]').length;
+      /* the fourth is refused, and the card says why */
+      const b4 = document.querySelector('#view [data-artroute="assembly"][disabled]');
+      out.fourthDisabled = !!b4 && /already before the country/.test(b4.getAttribute('title') || '');
+      out.pendingShown = /Before the Country/.test(document.getElementById('view').innerHTML) && out.pendingCards === 3;
+      /* and they survive a save and a reload of the blob */
+      const back = JSON.parse(JSON.stringify(S));
+      out.ridesTheSave = !!(back.v11 && back.v11.con && Array.isArray(back.v11.con.pending) &&
+        back.v11.con.pending.length === 3);
+      /* put them: one tick, three verdicts. Degrades on a build that predates
+         S15e, where nothing was laid because there is no plebiscite road and
+         only one article may be pending -- Math.max of an empty list is
+         -Infinity and would take the turn counter with it. */
+      const dues = list().map(p => p.due);
+      if (dues.length) { S.turn = Math.max.apply(null, dues); v11ConTick(S); }
+      out.resolved = dues.length > 0 && list().length === 0;
+      out.docOrFailed = ids.length > 0 && ids.every(id => v11Adopted(S, id) || !!S.v11.con.failed[id]);
+      /* an old save's single pending article is kept and the page says so */
+      const oldBlob = JSON.parse(JSON.stringify(S));
+      oldBlob.v11.con.pending = { id:'artPreamble', repeal:false, laid:1, due:3, campaign:0 };
+      UI.conMigrated = 0;
+      const fixed = v11Con(oldBlob);
+      out.migrated = Array.isArray(fixed.pending) && fixed.pending.length === 1 &&
+        fixed.pending[0].id === 'artPreamble' && UI.conMigrated === 1;
+      render();
+      out.migrationSaid = !!document.querySelector('#view [data-con-warning]');
+      UI.conMigrated = 0;
       S.capital = keep.capital; S.ruling = keep.ruling; S.coalition = keep.coalition; S.turn = keep.turn;
-      if (S.v11) S.v11.con = { arts:{}, order:[], pending:null, failed:{}, conv:0, convUsed:0 };
+      if (S.v11) S.v11.con = { arts:{}, order:[], pending:[], failed:{}, conv:0, convUsed:0, plebiscites:0 };
       UI.tab = 'chamber'; render();
       return out;
     });
     step('constitution-page', con.hasDoc && con.hasPending && con.hasActs && con.books === 8 &&
-      con.collapsedOnArrival === 8 && con.artButtons >= 40 && con.clickable && con.laid &&
-      con.pendingShown && con.ridesTheSave && con.resolved && con.docOrFailed,
+      con.collapsedOnArrival === 8 && con.artButtons >= 160 && con.routes === 'assembly,plebiscite' &&
+      con.clickable && con.laid && con.pendingCards === 3 && con.campaignBtns === 3 &&
+      con.fourthDisabled && con.pendingShown && con.ridesTheSave && con.resolved && con.docOrFailed &&
+      con.migrated && con.migrationSaid,
       `${con.titles} panels: the document, what is before the country, ${con.books} books (all ${con.collapsedOnArrival} collapsed on arrival) and the acts; ` +
-      `${con.artButtons} article controls; laying one through its own button puts it before the country (${con.laid}), ` +
-      `the pending panel appears with its campaign control (${con.pendingShown}), it rides the save (${con.ridesTheSave}), and two sessions later it is put (${con.resolved})`);
+      `${con.artButtons} article controls offering ${con.routes}; three laid through their own buttons appear as ` +
+      `${con.pendingCards} cards with ${con.campaignBtns} campaign controls (${con.laid}), the fourth is refused on the card ` +
+      `(${con.fourthDisabled}), they ride the save (${con.ridesTheSave}), one tick settles all three (${con.resolved}); ` +
+      `and a save carrying one pending article keeps it and is told so on the page (${con.migrated}/${con.migrationSaid})`);
 
     step('chairs-and-pools', late.chairButtons > 0 && late.chairNamed && late.questionPool >= 160 && late.paperPool >= 32 && late.powers >= 11,
       `${late.chairButtons} chair controls while leading, chairs are named: ${late.chairNamed}; ` +

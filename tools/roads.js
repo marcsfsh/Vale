@@ -1612,20 +1612,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        and it can FAIL, changing nothing but the cost of having failed. */
     blank();
     S.capital = 200;
-    v11ProposeArticle('artPreamble', false);
-    out.laid = !!S.v11.con.pending;
-    out.contestSessions = S.v11.con.pending ? S.v11.con.pending.due - S.turn : 0;
-    out.oneAtATime = v11CanPropose(S, V11_ART.artQuorum, false);
-    S.turn = S.v11.con.pending.due; v11ConTick(S);
+    v11ProposeArticle('artPreamble', false, 'assembly');
+    /* S15e: `pending` is a LIST now, capped at three, so what this asks is the
+       same question in the new shape: the article is on the list, it takes two
+       sessions, and the list refuses a fourth rather than a second. */
+    /* Degrades on a build that predates S15e, where pending was one object. */
+    const pendList = Array.isArray(S.v11.con.pending) ? S.v11.con.pending
+      : (S.v11.con.pending ? [S.v11.con.pending] : []);
+    const pend0 = pendList[0] || null;
+    out.laid = !!pend0;
+    out.contestSessions = pend0 ? pend0.due - S.turn : 0;
+    out.pendingIsList = Array.isArray(S.v11.con.pending);
+    out.capNow = typeof v11PendingCap === 'function' ? v11PendingCap(S) : 1;
+    S.turn = pend0.due; v11ConTick(S);
     out.carried = v11Adopted(S, 'artPreamble');
     out.recorded = S.v11.con.arts.artPreamble || null;
     const docBefore = v11ConCount(S), unity0 = S.unity;
-    S.v11.con.pending = { id:'artAbolishUpper', repeal:false, laid:S.turn, due:S.turn, campaign:0 };
+    const stub = { id:'artAbolishUpper', repeal:false, laid:S.turn, due:S.turn, campaign:0, route:'assembly' };
+    S.v11.con.pending = out.pendingIsList ? [stub] : stub;
     PARTIES.forEach(q => { S.partyRel[q.id] = 0; });
     v11ConTick(S);
     out.failedChangedNothing = !v11Adopted(S, 'artAbolishUpper') && v11ConCount(S) === docBefore;
     out.failCost = +(unity0 - S.unity).toFixed(1);
-    out.coolOff = !!v11CanPropose(S, V11_ART.artAbolishUpper, false);
+    out.coolOff = !!v11CanPropose(S, V11_ART.artAbolishUpper, false, 'assembly');
 
     /* THE SENATE COULD ONLY BLOCK ACTS THAT WERE ABOUT THE SENATE. `house` is
        the BOOK an act is filed under, not the chamber that votes it. */
@@ -1664,12 +1673,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     'an entrenched article resists repeal',
     `plain ${con.threshPlain}%, entrenched ${con.threshEntrenched}% to carry and ${con.threshRepeal}% to strike out · ` +
     `Of Procedure then raises every later bar by ${con.procedureBites} and a sitting convention lowers it by ${con.conventionBites}`);
-  say(con.laid && con.contestSessions === 2 && typeof con.oneAtATime === 'string' && con.carried &&
+  say(con.laid && con.contestSessions === 2 && con.pendingIsList && con.capNow === 3 && con.carried &&
       con.recorded && con.recorded.margin > 0 && con.failedChangedNothing && con.failCost > 0 && con.coolOff,
     'ratification is a vote, and it can fail',
     !con.carried ? 'the article never carried' : (!con.failedChangedNothing ? 'a failed article changed the document'
       : `laid, contested for ${con.contestSessions} sessions, carried at ${con.recorded.margin}% and recorded against ${con.recorded.year} · ` +
-        `only one may be before the country at a time · a defeat costs ${con.failCost} of unity, changes no article, and bars the question for six sessions`));
+        `${con.capNow} may be before the country at a time · a defeat costs ${con.failCost} of unity, changes no article, and bars the question for six sessions`));
   say(con.blockableNow > 0,
     'the Senate can block an act that is not about the Senate',
     `${con.blockableNow} of ${con.nonSenateActs} acts outside the Senate's own book are refused by a hostile Senate with a full veto; before this slice actBlocked returned false for every one of them on its first line`);
@@ -2739,6 +2748,216 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `in ${A.overridden.sessions} · pressing the office twice turns a refusal into a return and then a signature ` +
     `in ${A.pressed.sessions} · and an override is refused outright, with nothing charged, when the houses ` +
     `carried it at 52 percent against a bar of 60`);
+
+  /* ============================================================
+     12. S15e: THE CONSTITUTION.
+
+     `c.pending` was ONE object and v11CanPropose refused with "Another article
+     is already before the country", so a convention could be called and there
+     was still nothing to do with it. Every article took two sessions and was
+     decided on the chambers; `a.referendum` was a fixed property that stacked
+     a country vote ON TOP of the chamber vote, and the whole referendum road
+     was closed under exactly the forms that have no other way to pass
+     anything. The convention sat six sessions and subtracted 8 from a
+     threshold and did nothing else.
+     ============================================================ */
+  const consti = await p3.evaluate(() => {
+    const out = {};
+    const has = (n) => typeof window[n] === 'function';
+    out.hasCap = has('v11PendingCap');
+    out.hasVerdict = has('v11ArtVerdict');
+
+    /* the book */
+    out.total = V11_ARTICLES.length;
+    out.byBook = {};
+    V11_BOOKS.forEach((b) => { out.byBook[b.id] = V11_ARTICLES.filter((a) => a.book === b.id).length; });
+    out.noMoves = V11_ARTICLES.filter((a) => !a.moves).length;
+    out.noText = V11_ARTICLES.filter((a) => !a.text).length;
+    out.noEffect = V11_ARTICLES.filter((a) => {
+      const m = a.mods || {};
+      const live = Object.keys(m).some((k) => (typeof m[k] === 'object' ? Object.keys(m[k]).length : m[k]));
+      return !live && typeof a.apply !== 'function';
+    }).map((a) => a.id);
+    const names = {}, ids = {};
+    out.dupNames = []; out.dupIds = [];
+    V11_ARTICLES.forEach((a) => {
+      if (names[a.name]) out.dupNames.push(a.name); names[a.name] = 1;
+      if (ids[a.id]) out.dupIds.push(a.id); ids[a.id] = 1;
+    });
+
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    const me = playParty(S);
+    function frame() {
+      S.ruling = me; S.coalition = [me]; S.capital = 1400; S.form = 'federal';
+      S.lower = { exists:true, suspended:false };
+      S.upper = { exists:true, elected:true, veto:2, ceremonial:false, seats:{} };
+      S.seats = {}; S.seats[me] = 1305; S.upper.seats[me] = 120;
+      var c0 = v11Con(S);
+      c0.arts = {}; c0.order = []; c0.failed = {};
+      /* the old build keeps ONE object here; leave its shape alone so every
+         probe below can be run against it and report what it did */
+      c0.pending = Array.isArray(c0.pending) ? [] : null;
+      c0.conv = 0; c0.convUsed = 0; c0.plebiscites = 0;
+      S.acts.equalStates = false;
+      return c0;
+    }
+    const plist = (c0) => Array.isArray(c0.pending) ? c0.pending : (c0.pending ? [c0.pending] : []);
+    const openIds = (route) => V11_ARTICLES
+      .filter((a) => !v11CanPropose(S, a, false, route || 'assembly')).map((a) => a.id);
+
+    /* THREE AT A TIME */
+    let c = frame();
+    const three = openIds().slice(0, 4);
+    three.slice(0, 3).forEach((id) => v11ProposeArticle(id, false, 'assembly'));
+    out.cap = has('v11PendingCap') ? v11PendingCap(S) : 1;
+    out.laid = plist(c).length;
+    out.fourthRefused = v11CanPropose(S, V11_ART[three[3]], false, 'assembly') || '(allowed)';
+    out.dues = plist(c).map((p) => p.due - p.laid);
+    S.turn += 2; v11ConTick(S);
+    out.afterTwo = plist(c).length;
+    out.settled = Object.keys(c.arts).length + Object.keys(c.failed).length;
+
+    /* THE TWO ROADS. Same article, same state, two clocks and two juries. */
+    c = frame();
+    const road = openIds('assembly')[0];
+    v11ProposeArticle(road, false, 'assembly');
+    out.assemblySpan = plist(c).length ? plist(c)[0].due - plist(c)[0].laid : 0;
+    out.assemblyOn = has('v11ArtVerdict') && plist(c).length ? v11ArtVerdict(S, plist(c)[0]).on : 'the Assembly';
+    c = frame();
+    v11ProposeArticle(road, false, 'plebiscite');
+    out.plebSpan = plist(c).length ? plist(c)[0].due - plist(c)[0].laid : 0;
+    out.plebOn = has('v11ArtVerdict') && plist(c).length ? v11ArtVerdict(S, plist(c)[0]).on : 'the Assembly';
+
+    /* THE PLEBISCITE UNDER A FORM WITH NO ELECTIONS. */
+    c = frame();
+    S.form = 'oneparty'; S.lower = { exists:true, suspended:true };
+    out.electionsOn = electionsOn(S);
+    const lib0 = S.ind.liberties;
+    const pid1 = openIds('plebiscite')[0];
+    v11ProposeArticle(pid1, false, 'plebiscite');
+    out.plebOpenNoElections = plist(c).length === 1;
+    out.libFirst = +(lib0 - S.ind.liberties).toFixed(2);
+    S.turn += 1; v11ConTick(S);
+    out.plebSettled = plist(c).length === 0;
+    out.plebCarried = !!c.arts[pid1];
+    const lib1 = S.ind.liberties;
+    const pid2 = openIds('plebiscite')[0];
+    if (pid2) v11ProposeArticle(pid2, false, 'plebiscite');
+    out.libSecond = +(lib1 - S.ind.liberties).toFixed(2);
+    out.plebCount = c.plebiscites;
+
+    /* THE CONVENTION. */
+    c = frame();
+    v11CallConvention();
+    out.convSits = v11ConventionSits(S);
+    out.convSpanSessions = c.conv - S.turn;
+    out.convCap = has('v11PendingCap') ? v11PendingCap(S) : 1;
+    const four = openIds('assembly').slice(0, 4);
+    four.forEach((id) => v11ProposeArticle(id, false, 'assembly'));
+    out.convLaid = plist(c).length;
+    out.convDues = plist(c).map((p) => p.due - p.laid);
+    S.turn += 1; v11ConTick(S);
+    out.convAfterOne = { settled:Object.keys(c.arts).length + Object.keys(c.failed).length, waiting:plist(c).length };
+    out.convStood = plist(c).filter((p) => p.stood).length;
+
+    /* AN OLD SAVE. The one pending article a save could carry, wrapped. */
+    const blob = JSON.parse(JSON.stringify(S));
+    blob.v11.con.pending = { id:'artPreamble', repeal:false, laid:2, due:4, campaign:1 };
+    UI.conMigrated = 0;
+    const back = v11Con(blob);
+    out.mig = { len:plist(back).length, id:(plist(back)[0] || {}).id,
+      campaign:(plist(back)[0] || {}).campaign, route:(plist(back)[0] || {}).route, flag:UI.conMigrated };
+    const blob2 = JSON.parse(JSON.stringify(S));
+    blob2.v11.con.pending = 'not an article';
+    UI.conMigrated = 0;
+    const back2 = v11Con(blob2);
+    out.migBad = { len:plist(back2).length, flag:UI.conMigrated, arts:Object.keys(back2.arts).length };
+    UI.conMigrated = 0;
+
+    /* THE EQUAL STATE actually weighs the return. */
+    c = frame();
+    const plain = regionPartyFactor(S, me);
+    S.acts.equalStates = true;
+    const equal = regionPartyFactor(S, me);
+    S.acts.equalStates = false;
+    out.equalStates = { plain:+plain.toFixed(5), equal:+equal.toFixed(5), moved:plain !== equal,
+      hasApply: typeof V11_ART.artRegionalWeighting.apply === 'function' };
+
+    /* THE CARD names the body there is. */
+    c = frame();
+    S.lower = { exists:false, suspended:false };
+    S.upper = { exists:true, elected:true, veto:2, ceremonial:false, seats:S.upper.seats };
+    const wrap = document.createElement('div');
+    wrap.innerHTML = v11ArtCard(V11_ART[openIds('assembly')[0] || 'artPreamble']);
+    out.cardNoAssembly = wrap.textContent;
+    out.cardSaysAssembly = /Assembly/.test(wrap.textContent);
+    out.cardSaysSenate = /Senate/.test(wrap.textContent);
+    out.cardRoutes = [].slice.call(wrap.querySelectorAll('[data-artroute]')).map((b) => b.getAttribute('data-artroute'));
+    return out;
+  });
+
+  const C = consti;
+  const books = Object.keys(C.byBook).map((k) => C.byBook[k]);
+  say(C.total === 80 && books.length === 8 && books.every((n) => n === 10) &&
+      C.noMoves === 0 && C.noText === 0 && C.noEffect.length === 0 &&
+      C.dupNames.length === 0 && C.dupIds.length === 0,
+    'eighty articles, ten to a book',
+    `${C.total} articles across ${books.length} books [${books.join(' ')}] · every one carries its own text and a ` +
+    `moves line, and every one either aggregates into v11ConEffects or defines an apply() that touches state ` +
+    `something else reads (${C.noEffect.length} that do neither) · no two share a name or an id`);
+
+  say(C.hasCap && C.cap === 3 && C.laid === 3 && /3 articles are already/.test(C.fourthRefused || '') &&
+      C.dues.join(',') === '2,2,2' && C.afterTwo === 0 && C.settled === 3,
+    'three at a time, and they resolve apart',
+    C.hasCap
+      ? `three articles laid on the same session, each with its own two-session clock, all three settled together ` +
+        `and the fourth refused with "${C.fourthRefused}" · c.pending was ONE object before S15e, and the refusal ` +
+        `read "Another article is already before the country"`
+      : 'v11PendingCap does not exist: one article at a time');
+
+  say(C.assemblySpan === 2 && C.plebSpan === 1 && C.assemblyOn !== C.plebOn && /country/.test(C.plebOn),
+    'two roads, two clocks, two juries',
+    `the same article laid before ${C.assemblyOn} takes ${C.assemblySpan} sessions and is decided on the chambers; ` +
+    `laid before ${C.plebOn} it takes ${C.plebSpan} and is decided there instead · a.referendum used to stack a ` +
+    `country vote on top of the chamber vote rather than replace it`);
+
+  say(C.electionsOn === false && C.plebOpenNoElections && C.plebSettled &&
+      C.libFirst > 0 && C.libSecond > C.libFirst && C.plebCount === 2,
+    'the plebiscite is open where nothing else is',
+    `under a One Party State, with electionsOn false and the Assembly suspended, an article goes to the country ` +
+    `and is decided in one session · the first plebiscite costs ${C.libFirst} of civil liberties and the second ` +
+    `${C.libSecond}, because government by plebiscite gets dearer the more of it there is · the referendum road ` +
+    `used to be closed under precisely the forms with no other way to pass anything`);
+
+  say(C.convSits && C.convSpanSessions === 3 && C.convCap === 4 && C.convLaid === 4 &&
+      C.convDues.join(',') === '1,1,1,1' && C.convAfterOne.settled + C.convAfterOne.waiting === 4 &&
+      C.convAfterOne.settled > 0 && C.convStood === C.convAfterOne.waiting,
+    'a convention is an event, not a discount',
+    `it sits ${C.convSpanSessions} sessions, takes ${C.convCap} articles at a time and puts each of them ` +
+    `${C.convDues[0]} session after it is laid · of four laid together ${C.convAfterOne.settled} were settled in ` +
+    `that one session and ${C.convAfterOne.waiting} fell short and stand to the full term rather than being ` +
+    `struck · before S15e a convention sat six sessions and subtracted 8 from a threshold, and nothing else`);
+
+  say(C.mig.len === 1 && C.mig.id === 'artPreamble' && C.mig.campaign === 1 && C.mig.route === 'assembly' &&
+      C.mig.flag === 1 && C.migBad.len === 0 && C.migBad.flag === -1 && C.migBad.arts > 0,
+    'an old save keeps the article it was waiting on',
+    `a save whose c.pending is a bare object loads with that article on the list, its campaign spending intact ` +
+    `(${C.mig.campaign} of 3) and the Assembly road filled in, and the page says so · a blob whose pending is not ` +
+    `article-shaped is dropped and COUNTED rather than guessed at, and the ${C.migBad.arts} articles already in ` +
+    `that document are untouched`);
+
+  say(C.equalStates.hasApply && C.equalStates.moved,
+    'the Equal State weighs the return',
+    `the regional term reads ${C.equalStates.plain} with the states counted by their people and ` +
+    `${C.equalStates.equal} with each counting one · the article says "each state shall count alike in the ` +
+    `return" and until S15e the return was the one thing it did not touch: its id appeared once in three ` +
+    `megabytes, in its own definition`);
+
+  say(!C.cardSaysAssembly && C.cardSaysSenate && C.cardRoutes.join(',') === 'assembly,plebiscite',
+    'the card names the house that is there',
+    `with the Assembly abolished and a Senate that sits, the card offers ${C.cardRoutes.join(' and ')} and does ` +
+    `not mention the Assembly (${C.cardSaysAssembly}) · it read "Lay it before the Assembly" whatever was ` +
+    `standing, and under an elections form with no Assembly no article could ever ratify`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

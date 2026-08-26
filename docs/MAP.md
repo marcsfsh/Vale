@@ -562,10 +562,10 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
-## The constitution (S11d)
+## The constitution (S11d, rebuilt in S15e)
 
-Forty-eight articles in eight books on the `state` tab, assembled over a
-campaign. Before this slice the tab rendered ten FORMS as informational cards
+**Eighty articles in eight books, ten to a book**, on the `state` tab,
+assembled over a campaign. Before this slice the tab rendered ten FORMS as informational cards
 with no button, the transitions open from the current form, a dissolve button
 and the path panels — seventeen controls on a fresh game, thirteen of them
 identical every session for two hundred sessions.
@@ -574,24 +574,60 @@ identical every session for two hundred sessions.
 *unwritten* constitution, which is the historical state of every campaign begun
 before this slice: nothing is lost, because nothing was there, so there is no
 migration and nothing to announce. Shape:
-`{arts:{id → {year, margin, entrenched, turn}}, order:[id], pending, failed:{}, conv, convUsed}`.
+`{arts:{id → {year, margin, entrenched, turn}}, order:[id], pending:[…], failed:{}, conv, convUsed, plebiscites}`.
 
-**Ratification is a vote.** `doTransition` takes capital and applies; an article
-is **laid** (`v11ProposeArticle`), **contested for two sessions** while the
-parties take positions and `salience.federal` rises, and then **put** by
-`v11ConTick` from the v10 `tickTurn` wrapper — before `v11HistTick`, so the
-record deck shows the session an article carried rather than the one after.
-Only one may be before the country at a time. `v11CampaignArticle` spends
-capital to move the vote, which is what makes two sessions a decision rather
-than a wait. A defeat costs capital, five of unity and two of unrest, records
-the year in `failed`, and bars the question for six sessions.
+**`pending` is a LIST since S15e**, capped at three and at four while a
+convention sits. It was one object, and `v11CanPropose` refused everything else
+with "Another article is already before the country" — so a convention could be
+called and there was still nothing to do with it. **The migration is the one
+save-shape change in this slice**: a save carrying a bare object keeps that
+article, its campaign spending and its clock, and the page says so
+(`UI.conMigrated`, rendered as `[data-con-warning]` on the pending panel, which
+is where the article now is); a blob whose `pending` is neither null nor
+article-shaped is dropped and COUNTED rather than guessed at. The wrap lives in
+`v11Con`, which is pure, spends no dice and is idempotent.
+
+**Ratification is a vote, and there are two roads to it.**
+
+| road | sessions | decided on | open when |
+|---|---|---|---|
+| `assembly` | 2, or **1 while a convention sits** | the chambers, then the Senate | the chambers sit |
+| `plebiscite` | **1** | the country | always, including under a form with no elections |
+
+`v11ArtVerdict(st, p)` is the one place that answers what an article is decided
+on. The plebiscite **replaces** the chamber test: before S15e `a.referendum`
+was a fixed property of the article that stacked a country vote *on top of* the
+chambers, and the whole road was closed under precisely the forms that have no
+other way to pass anything. It is now the road such an article must take, the
+government writes the question (worth 8), a campaign is worth half again as much
+to a country as to a chamber, and each plebiscite costs more civil liberties
+than the last (`c.plebiscites`).
+
+`v11CampaignArticle(id)` and `v11WithdrawArticle(id)` take an id; the panel
+draws one card per pending article with its own controls.
+
+**The convention is an event, not a discount.** It sat six sessions and
+subtracted 8 from a threshold and did nothing else. It sits **three** now,
+takes **four** articles at a time, and puts each of them the session after it is
+laid. An article put early that falls short is **not struck**: `p.fast` becomes
+`p.stood`, the due date returns to `laid + 2`, and it is put again — otherwise a
+convention would be a way of losing articles faster. It still costs 24 capital
+and two is all any republic gets.
+
+A defeat costs capital, five of unity and two of unrest, records the year in
+`failed`, and bars the question for six sessions.
 
 **Entrenchment is what makes it a constitution rather than a settings page.**
 `V11_THRESH` — plain **50%**, entrenched **60%** to carry, **66.7%** to strike
 out again. `Of Procedure` moves every later bar (`mods.ratify`), and a sitting
-convention lowers every bar by eight for six sessions. A convention costs 24
-capital and **two is all any republic gets**; otherwise it is a discount a
-patient player always takes.
+convention lowers every bar by eight while it sits.
+
+**`v11RegionWeight(st, r, q)`** is what a region is worth in the return, at both
+sites that weigh them. It exists because the *Article of the Equal State* says
+"each state shall count alike in the return" and, until S15e, the return was the
+one thing it did not touch: `q.pop` was inline at both sites and the article's id
+appeared once in three megabytes, in its own definition. Under
+`acts.equalStates` every region counts one.
 
 **`v11ConEffects(st)` is the one place that computes, on the `v10OrderMods`
 pattern — recomputed, never cached.** EVERY field has a named reader, and the

@@ -27003,7 +27003,7 @@ regionPartyFactor = function (st, pid) {
     /* a region outside federal authority is not listening to the centre */
     if (auto[r.id] && govSide) bonus -= .07;
     fit *= 1 + bonus * V11_REGION_GAIN;
-    var w = (typeof q.pop === 'number' ? q.pop : r.pop);
+    var w = v11RegionWeight(st, r, q);
     total += fit * w; weight += w;
   });
   var f = weight ? total / weight : 1;
@@ -27041,6 +27041,16 @@ regionLeadingParty = function (r) {
 };
 /* What the standing is currently worth, in seats, on the page where it is
    built. Without this the effect is real and unfelt. */
+/* S15e: what a region is worth in the return. It was `q.pop` inline at both
+   sites that weigh the regions, which is why the Article of the Equal State
+   said "each state shall count alike in the return" and changed nothing about
+   the return: there was nowhere for it to say so. Under that article every
+   region counts one, whatever the number of its people, which is what an
+   equal-state clause is. */
+function v11RegionWeight(st, r, q) {
+  if (st && st.acts && st.acts.equalStates) return 1;
+  return (q && typeof q.pop === 'number') ? q.pop : r.pop;
+}
 function v11RegionalSeats(st) {
   var keepG = st.v6 && st.v6.governors ? JSON.parse(JSON.stringify(st.v6.governors)) : null;
   var keepQ = JSON.parse(JSON.stringify(st.regions));
@@ -27396,12 +27406,49 @@ function v11RegisterArticles(list) {
    migration and no loud message: nothing is lost, because nothing was there. */
 function v11Con(st) {
   var v = st.v11 || (st.v11 = {});
-  if (!v.con) v.con = { arts:{}, order:[], pending:null, failed:{}, conv:0, convUsed:0 };
+  if (!v.con) v.con = { arts:{}, order:[], pending:[], failed:{}, conv:0, convUsed:0, plebiscites:0 };
   if (!v.con.arts) v.con.arts = {};
   if (!v.con.order) v.con.order = [];
   if (!v.con.failed) v.con.failed = {};
+  if (v.con.plebiscites === undefined) v.con.plebiscites = 0;
+  /* S15e: `pending` was ONE article and is a list now. A save written before
+     this slice carries either null or a single object, and that object is a
+     real article somebody laid and is waiting on -- dropping it would lose a
+     decision and the capital that bought it, which is the one thing the save
+     contract forbids. It is wrapped, and the page says so until the player
+     has read it. Anything that is neither null nor an article-shaped object
+     cannot be read by this build: it is dropped and COUNTED, on the same
+     pattern the statute ladder uses.
+     Pure arithmetic, no dice, and idempotent -- v11Con is called on every
+     render and the second call has nothing left to do. */
+  if (!Array.isArray(v.con.pending)) {
+    var was = v.con.pending;
+    v.con.pending = [];
+    if (was && typeof was === 'object' && was.id) {
+      v.con.pending.push(was);
+      if (typeof UI !== 'undefined') UI.conMigrated = 1;
+    } else if (was) {
+      if (typeof UI !== 'undefined') UI.conMigrated = -1;
+    }
+  }
+  v.con.pending.forEach(function (p) { if (!p.route) p.route = 'assembly'; });
   return v.con;
 }
+/* How many articles may be before the country at once. Three, and four while
+   a convention sits: that is what calling one buys, along with the eight
+   points off every bar and the session it takes off the clock. */
+function v11PendingCap(st) { return v11ConventionSits(st) ? 4 : 3; }
+function v11Pending(st) { return v11Con(st).pending; }
+function v11PendingOf(st, id) {
+  return v11Pending(st).filter(function (p) { return p.id === id; })[0] || null;
+}
+/* The two roads an article can take, and what each one decides on. */
+var V11_ROUTES = {
+  assembly:   { id:'assembly',   name:'the Assembly',  sessions:2,
+                note:'Two sessions before the houses, decided on the chambers.' },
+  plebiscite: { id:'plebiscite', name:'the country',   sessions:1,
+                note:'One session, decided on the country, and open whether or not there are elections.' }
+};
 function v11Adopted(st, id) {
   var c = st.v11 && st.v11.con;
   return !!(c && c.arts && c.arts[id]);
@@ -27553,79 +27600,153 @@ function v11ArtCost(st, a, repeal) {
   var c = Math.round(a.cost * (repeal ? (a.entrenched ? 1.35 : .85) : 1));
   return cst(c);
 }
-function v11CanPropose(st, a, repeal) {
+/* Which body an article laid TODAY would be put to, given the constitution
+   there is. The cards said "Lay it before the Assembly" whatever was
+   standing, which under an abolished Assembly named a chamber that did not
+   exist. */
+function v11ArtBody(st) {
+  var ls = lowerState(st);
+  if (ls === 'sitting') return 'the Assembly';
+  if (ls === 'suspended') return 'the council';
+  return upperState(st) === 'sitting' ? 'the Senate' : 'the government in council';
+}
+function v11CanPropose(st, a, repeal, route) {
   var c = v11Con(st);
-  if (c.pending) return 'Another article is already before the country.';
+  route = route || 'assembly';
+  if (c.pending.length >= v11PendingCap(st)) {
+    return v11PendingCap(st) + ' articles are already before the country, which is all ' +
+      (v11ConventionSits(st) ? 'a convention' : 'a parliament') + ' will carry at once.';
+  }
+  if (v11PendingOf(st, a.id)) return 'That article is already before the country.';
   if (!inPower(st)) return 'Only a party in government may lay an article.';
   if (repeal && !v11Adopted(st, a.id)) return 'That article is not in the document.';
   if (!repeal && v11Adopted(st, a.id)) return 'That article is already in the document.';
   if ((c.failed[a.id] || -99) + 6 > st.turn) return 'Rejected too recently to be laid again.';
   if (!repeal && !a.req(st)) return a.reqText || 'The conditions are not met.';
+  /* An article the document itself sends to the country cannot be carried by
+     a show of hands in a chamber. The flag was an EXTRA hurdle stacked on the
+     chambers before S15e; it is which road the article must take now. */
+  if (a.referendum && route !== 'plebiscite') return 'This article goes to the country. It cannot be carried in a chamber alone.';
   return null;
 }
-function v11ProposeArticle(id, repeal) {
+function v11ProposeArticle(id, repeal, route) {
   var a = V11_ART[id]; if (!a) return;
-  var why = v11CanPropose(S, a, repeal);
+  route = V11_ROUTES[route] ? route : 'assembly';
+  var why = v11CanPropose(S, a, repeal, route);
   if (why) { flash(why); return; }
   var cost = v11ArtCost(S, a, repeal);
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
   captureUndo((repeal ? 'Repeal ' : 'Lay ') + a.name);
   var c = v11Con(S);
   S.capital -= cost;
-  c.pending = { id:id, repeal:!!repeal, laid:S.turn, due:S.turn + 2, campaign:0 };
+  /* The clock. Two sessions before the houses, one before the country, and
+     one while a convention sits -- but a convention article that is put early
+     and does not carry is not struck: it stands to its full term and is put
+     again, which is what "in one session if there is enough support" means. */
+  var conv = v11ConventionSits(S);
+  var span = route === 'plebiscite' ? 1 : (conv ? 1 : 2);
+  c.pending.push({ id:id, repeal:!!repeal, laid:S.turn, due:S.turn + span, campaign:0,
+    route:route, fast:route === 'assembly' && conv });
   S.salience.federal = c100((S.salience.federal || 50) + 7);
-  logIt(S, (repeal ? 'Repeal of ' : '') + a.name + ' was laid before the Assembly.');
-  chronicle(S, (repeal ? 'A repeal of ' : 'An amendment, ') + a.name + ', was laid before the Assembly.');
+  if (route === 'plebiscite') {
+    /* Government by plebiscite is a real instrument and it has a real price:
+       it costs the standing of everything that is decided any other way, and
+       it costs more each time it is used. */
+    c.plebiscites = (c.plebiscites || 0) + 1;
+    var bite = 1 + Math.min(3, c.plebiscites * .5);
+    S.ind.liberties = c100(S.ind.liberties - bite);
+    S.salience.integrity = c100((S.salience.integrity || 50) + 5);
+    mood(S, { prof:-2, youth:1 });
+    logIt(S, (repeal ? 'Repeal of ' : '') + a.name + ' was laid before the country. It is the ' +
+      v11Ordinal(c.plebiscites) + ' plebiscite of this republic.');
+    chronicle(S, (repeal ? 'A repeal of ' : 'An amendment, ') + a.name + ', went to the country.');
+  } else {
+    logIt(S, (repeal ? 'Repeal of ' : '') + a.name + ' was laid before ' + v11ArtBody(S) + '.');
+    chronicle(S, (repeal ? 'A repeal of ' : 'An amendment, ') + a.name + ', was laid before ' + v11ArtBody(S) + '.');
+  }
   render();
 }
+var V11_ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+function v11Ordinal(n) { return V11_ORDINALS[n - 1] || ('number ' + n); }
 /* The contest: capital spent while an article is before the country moves the
-   vote, which is what makes the two sessions a decision rather than a wait. */
-function v11CampaignArticle() {
-  var c = v11Con(S); if (!c.pending) return;
+   vote, which is what makes the sessions a decision rather than a wait. */
+function v11CampaignArticle(id) {
+  var p = v11PendingOf(S, id); if (!p) return;
   var cost = cst(5);
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
-  if ((c.pending.campaign || 0) >= 3) { flash('The case has been made as fully as it can be.'); return; }
+  if ((p.campaign || 0) >= 3) { flash('The case has been made as fully as it can be.'); return; }
   captureUndo('Campaign for the article');
   S.capital -= cost;
-  c.pending.campaign = (c.pending.campaign || 0) + 1;
+  p.campaign = (p.campaign || 0) + 1;
   S.salience.federal = c100((S.salience.federal || 50) + 4);
   render();
 }
-function v11WithdrawArticle() {
-  var c = v11Con(S); if (!c.pending) return;
+function v11WithdrawArticle(id) {
+  var c = v11Con(S), p = v11PendingOf(S, id); if (!p) return;
   captureUndo('Withdraw the article');
-  var a = V11_ART[c.pending.id];
-  c.pending = null;
+  var a = V11_ART[p.id];
+  c.pending = c.pending.filter(function (x) { return x !== p; });
   S.unity = c100((S.unity || 60) - 3);
   logIt(S, 'The government withdrew ' + (a ? a.name : 'the article') + ' rather than lose it.');
   render();
 }
 
-function v11ConTick(st) {
-  var c = st.v11 && st.v11.con;
-  if (!c || !c.pending) return;
-  if (st.turn < c.pending.due) return;
-  var p = c.pending, a = V11_ART[p.id];
-  c.pending = null;
-  if (!a) return;
+/* What an article laid on a given road is decided on, and by how much. The
+   plebiscite REPLACES the chamber test rather than stacking on top of it:
+   before S15e `a.referendum` was an extra hurdle, so an article that went to
+   the country had to carry the houses as well. */
+function v11ArtVerdict(st, p) {
+  var a = V11_ART[p.id];
   var f = v11ArtForecast(st, a, p.repeal);
   var boost = (p.campaign || 0) * 4.5;
   var need = v11ConThreshold(st, a, p.repeal);
+  if (p.route === 'plebiscite') {
+    /* The government writes the question, which is worth something, and a
+       campaign is worth half as much again to a country as to a chamber. */
+    var country = f.country + boost * 1.5 + 8;
+    return { ok:country >= need, margin:country, need:need, on:'the country' };
+  }
   var lower = f.lower + boost;
   var upper = f.upper + boost * .6;
-  var ok = lower >= need && (upper >= 50 || upperState(st) !== 'sitting');
-  if (ok && a.referendum) ok = (f.country + boost) >= 50;
-  if (ok) {
-    if (p.repeal) v11RepealArticle(st, a, Math.round(lower));
-    else v11AdoptArticle(st, a, Math.round(lower));
-  } else {
-    c.failed[a.id] = st.turn;
-    st.capital = clamp(st.capital - 3, -5, capCap(st));
-    st.unity = c100((st.unity || 60) - 5);
-    st.unrest = clamp(st.unrest + 2, 0, 110);
-    logIt(st, a.name + ' failed to carry: ' + Math.round(lower) + ' per cent against a bar of ' + Math.round(need) + '.');
-    chronicle(st, a.name + ' was put to the Assembly and failed to carry.');
-  }
+  return { ok:lower >= need && (upper >= 50 || upperState(st) !== 'sitting'),
+    margin:lower, need:need, on:v11ArtBody(st) };
+}
+function v11ConTick(st) {
+  var c = st.v11 && st.v11.con;
+  if (!c || !Array.isArray(c.pending) || !c.pending.length) return;
+  /* Every article on the list is resolved on its own clock. They were one
+     object before S15e, so an article could not be laid while another was
+     waiting and there was nothing to iterate. */
+  c.pending.slice().forEach(function (p) {
+    if (st.turn < p.due) return;
+    var a = V11_ART[p.id];
+    if (!a) { c.pending = c.pending.filter(function (x) { return x !== p; }); return; }
+    var v = v11ArtVerdict(st, p);
+    /* A convention article put early and short of the bar is not struck: it
+       stands to the full two sessions and is put again. That is what "carries
+       in one session if there is enough support" has to mean, or a convention
+       would be a way of losing articles faster. */
+    if (!v.ok && p.fast && !p.stood) {
+      p.stood = true; p.due = p.laid + 2; p.fast = false;
+      logIt(st, a.name + ' was put early to the convention at ' + Math.round(v.margin) +
+        ' per cent against a bar of ' + Math.round(v.need) + ', and stands to its full term.');
+      return;
+    }
+    c.pending = c.pending.filter(function (x) { return x !== p; });
+    if (v.ok) {
+      if (p.repeal) v11RepealArticle(st, a, Math.round(v.margin));
+      else v11AdoptArticle(st, a, Math.round(v.margin));
+      if (p.route === 'plebiscite') chronicle(st, 'The country voted on ' + a.name + ' and carried it.');
+    } else {
+      c.failed[a.id] = st.turn;
+      st.capital = clamp(st.capital - 3, -5, capCap(st));
+      st.unity = c100((st.unity || 60) - 5);
+      st.unrest = clamp(st.unrest + 2, 0, 110);
+      logIt(st, a.name + ' failed to carry before ' + v.on + ': ' + Math.round(v.margin) +
+        ' per cent against a bar of ' + Math.round(v.need) + '.');
+      chronicle(st, a.name + ' was put to ' + v.on + ' and failed to carry.');
+    }
+  });
 }
 function v11AdoptArticle(st, a, margin) {
   var c = v11Con(st);
@@ -27647,10 +27768,14 @@ function v11RepealArticle(st, a, margin) {
 }
 
 /* ---------- the convention ----------
-   The owner's plan asked that the player be able to CALL one. It is expensive,
-   it sits for six sessions, it lowers every bar by eight points, and it can be
-   called only twice in a campaign — otherwise it is simply a discount that a
-   patient player always takes. */
+   The owner's plan asked that the player be able to CALL one. It is expensive
+   and it can be called only twice in a campaign, otherwise it is a discount a
+   patient player always takes.
+   S15e made it an EVENT rather than a discount. It sat for six sessions and
+   subtracted 8 from every bar and did nothing else. It sits for THREE now, and
+   in those three it carries four articles at a time instead of three and puts
+   each of them a session after it is laid instead of two. The eight points off
+   the bar are still there; they are no longer the whole of it. */
 function v11CallConvention() {
   var c = v11Con(S);
   if (v11ConventionSits(S)) { flash('The convention is already sitting.'); return; }
@@ -27660,11 +27785,12 @@ function v11CallConvention() {
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
   captureUndo('Call a constitutional convention');
   S.capital -= cost;
-  c.conv = S.turn + 6;
+  c.conv = S.turn + 3;
   c.convUsed = (c.convUsed || 0) + 1;
   S.salience.federal = c100((S.salience.federal || 50) + 12);
   S.unrest = clamp(S.unrest + 3, 0, 110);
-  logIt(S, 'A constitutional convention was called and will sit for six sessions.');
+  logIt(S, 'A constitutional convention was called. It sits for three sessions, takes four articles at a time, ' +
+    'puts each of them the session after it is laid, and every bar is eight points lower while it does.');
   chronicle(S, 'A constitutional convention was called.');
   render();
 }
@@ -27895,8 +28021,15 @@ v11RegisterArticles([
   A({ id:'artRegionalWeighting', book:'franchise', name:'Article of the Equal State', cost:14,
       pos:{ e:.2, a:.2 },
       text:'Each state shall count alike in the return, whatever the number of its people.',
-      moves:'the small states hold more against the capital, and the union sits easier',
-      mods:{ autonomy:-6, ind:{ liberties:-1 } } }),
+      moves:'every region counts one in the return instead of counting its population, so the small states hold ' +
+        'more against the capital and the union sits easier',
+      /* S15e: it carried autonomy and a point of liberties and touched the
+         return nowhere, which is what an article about how the return is
+         counted has to do to be an article at all. v11RegionWeight is the one
+         place both weighing sites now ask. */
+      mods:{ autonomy:-6, ind:{ liberties:-1 } },
+      apply:function (st) { st.acts.equalStates = true; },
+      repeal:function (st) { st.acts.equalStates = false; } }),
 
   /* ===== III. OF TERMS AND OFFICES ===== */
   A({ id:'artQuadrennial', book:'offices', name:'Article of the Quadrennial Assembly', cost:15,
@@ -28099,12 +28232,219 @@ v11RegisterArticles([
       mods:{ capital:.3, ind:{ liberties:2 } } })
 ]);
 
+/* ==========================================================
+   S15e: THIRTY-TWO MORE ARTICLES, 48 -> 80.
+
+   Four to five a book, so every book of the constitution holds ten. Registered
+   separately from the first forty-eight because the page groups by book and the
+   registry is a flat list: order in the array decides nothing, and a second
+   call is a smaller edit than eight splices into the first.
+
+   Every one carries a `moves` line that names what it does, and every effect it
+   claims is either a field of v11ConEffects with a named reader or an apply()
+   touching state something else reads. An article that says a thing the model
+   does not do is the defect this whole slice exists to remove.
+   ========================================================== */
+v11RegisterArticles([
+
+  /* ===== I. OF THE CHAMBERS ===== */
+  A({ id:'artStandingCommittees', book:'chambers', name:'Article of the Standing Committees', cost:13,
+      pos:{ e:0, a:-.3 },
+      text:'No bill shall be put to either house until a standing committee has reported upon it.',
+      moves:'committees read what the houses pass, so the book costs more to move and less of it is written by people nobody can name',
+      mods:{ polCost:{ Authority:1.06, Security:1.06, Taxation:1.04 }, ind:{ corruption:-3, liberties:1 } } }),
+  A({ id:'artMoneyBills', book:'chambers', name:'Article of the Money Bills', cost:15,
+      pos:{ e:-.1, a:-.2 },
+      text:'A bill whose principal purpose is a charge upon the revenue shall be amended in the Assembly alone.',
+      moves:'the Senate loses its hold on the budget: taxation and welfare get cheaper and the upper house counts for less in the document',
+      mods:{ senate:-.4, polCost:{ Taxation:.9, Welfare:.92 }, rev:1 } }),
+  A({ id:'artPublicGallery', book:'chambers', name:'Article of the Open Doors', cost:11,
+      pos:{ e:0, a:-.45 },
+      text:'Both houses shall sit in public, and their papers shall be published within the session.',
+      moves:'nothing can be settled quietly: corruption falls, liberties rise, and the government earns less capital a session because every bargain is on the record',
+      mods:{ capital:-.35, ind:{ corruption:-4, liberties:3 } } }),
+  A({ id:'artReservedSeats', book:'chambers', name:'Article of the Territorial Seats', cost:16,
+      pos:{ e:0, a:.15 },
+      text:'The territories and protectorates shall return members to the Assembly, and shall be counted in the roll.',
+      moves:'the territories send members, which steadies the union and gives the government a bloc it did not have to win',
+      mods:{ autonomy:-4, capital:.4, ind:{ territories:4 } },
+      apply:function (st) { st.acts.territorialSeats = true; },
+      repeal:function (st) { st.acts.territorialSeats = false; } }),
+
+  /* ===== II. OF THE FRANCHISE ===== */
+  A({ id:'artResidentFranchise', book:'franchise', name:'Article of the Resident Franchise', cost:17,
+      pos:{ e:-.3, a:-.4 },
+      text:'Every person resident five years in Vale shall be entered upon the roll.',
+      moves:'the roll widens beyond citizenship; the franchise reaches further and the country reads as freer',
+      mods:{ franchise:.6, ind:{ liberties:3 } } }),
+  A({ id:'artPostalBallot', book:'franchise', name:'Article of the Postal Ballot', cost:10,
+      pos:{ e:-.15, a:-.25 },
+      text:'The ballot may be cast by post, and shall be counted with the rest.',
+      moves:'more of the roll votes, and a ballot nobody watched being cast is a ballot somebody will argue about',
+      mods:{ franchise:.35, ind:{ liberties:1, corruption:1.5 } } }),
+  A({ id:'artBoundaryCommission', book:'franchise', name:'Article of the Boundary Commission', cost:19, entrenched:true,
+      pos:{ e:0, a:-.35 },
+      text:'The boundaries of the constituencies shall be settled by commission, and not by either house.',
+      moves:'the machines are taken off the map: every party\'s organisation is cut back toward nothing and stays there',
+      mods:{ ind:{ corruption:-4, liberties:2 } },
+      /* The machine is the thing a boundary commission actually takes away,
+         and st.machine is where the file keeps it. */
+      apply:function (st) { PARTIES.forEach(function (p) { st.machine[p.id] = clamp((st.machine[p.id] || 0) * .35, -.8, 1); }); } }),
+  A({ id:'artNoPropertyTest', book:'franchise', name:'Article of the Unqualified Vote', cost:18, entrenched:true, referendum:true,
+      pos:{ e:-.45, a:-.4 },
+      text:'No test of property, income or letters shall be required of any elector.',
+      moves:'ends the weighted roll outright, whatever statute put it there, and widens the franchise',
+      mods:{ franchise:.5, ind:{ liberties:4 } },
+      apply:function (st) { st.acts.wealthFranchise = false; },
+      repeal:function () {} }),
+
+  /* ===== III. OF TERMS AND OFFICES ===== */
+  A({ id:'artStaggeredOffices', book:'offices', name:'Article of the Staggered Offices', cost:15,
+      pos:{ e:0, a:.1 },
+      text:'The four executive offices shall be renewed in turn, and not together.',
+      moves:'the executive is never all new at once: the government earns more capital a session and the document is harder to change',
+      mods:{ capital:.45, ratify:2 } }),
+  A({ id:'artRecall', book:'offices', name:'Article of the Recall', cost:17,
+      pos:{ e:-.35, a:-.3 },
+      text:'An officer of the state may be removed upon the petition of the electors who returned them.',
+      moves:'every officeholder can be taken out by the people who put them in; the country is freer, cleaner and angrier',
+      mods:{ ind:{ liberties:3, corruption:-3 }, unrest:1.5 } }),
+  A({ id:'artMinisterialResponsibility', book:'offices', name:'Article of Ministerial Responsibility', cost:13,
+      pos:{ e:-.1, a:-.25 },
+      text:'A minister shall answer to the house for every act of their department.',
+      moves:'departments are answered for, so the ministry runs cleaner and costs a little less to run',
+      mods:{ ind:{ corruption:-3 }, exp:-1.5 } }),
+
+  /* ===== IV. OF EMERGENCY POWERS ===== */
+  A({ id:'artEmergencyRenewal', book:'emergency', name:'Article of the Renewed Proclamation', cost:16, entrenched:true,
+      pos:{ e:0, a:-.6 },
+      text:'A proclamation of emergency shall lapse at the close of the session unless both houses renew it.',
+      moves:'emergency powers run out unless the houses vote them again, and a floor goes under civil liberties that no statute can dig beneath',
+      mods:{ emergency:-8, libFloor:30, ind:{ liberties:2 } } }),
+  A({ id:'artStandingEmergency', book:'emergency', name:'Article of the Standing Proclamation', cost:20,
+      pos:{ e:.1, a:.65 },
+      text:'A proclamation of emergency shall stand until the executive revokes it.',
+      moves:'the emergency does not end on its own: the security state is stronger, the country quieter, and liberties are lower for as long as it stands',
+      mods:{ emergency:9, unrest:-2.5, ind:{ liberties:-5, safety:3 } } }),
+  A({ id:'artArmedForcesBar', book:'emergency', name:'Article of the Barracks', cost:19, entrenched:true,
+      pos:{ e:-.1, a:-.7 },
+      text:'The armed forces shall not be employed against the people of Vale.',
+      moves:'the army stays in barracks whatever the proclamation says: liberties rise, the emergency reach falls, and public safety is somebody else\'s job',
+      mods:{ emergency:-7, ind:{ liberties:4, safety:-2.5 } } }),
+  A({ id:'artEmergencyAssent', book:'emergency', name:'Article of the Assent to Proclaim', cost:15,
+      pos:{ e:0, a:-.5 },
+      text:'No emergency shall be proclaimed without the assent of both houses given beforehand.',
+      moves:'the houses have to agree before the state may act, which narrows the emergency and raises every bar in this document',
+      mods:{ emergency:-6, ratify:3 } }),
+
+  /* ===== V. OF THE COURTS ===== */
+  A({ id:'artAdvisoryOpinion', book:'courts', name:'Article of the Advisory Opinion', cost:12,
+      pos:{ e:0, a:-.15 },
+      text:'The government may ask the court whether a measure is lawful before it is taken.',
+      moves:'the government finds out first: articles carry a little more easily and less is done that has to be undone',
+      mods:{ ratify:-2, ind:{ corruption:-1.5, liberties:1 } } }),
+  A({ id:'artChargedFund', book:'courts', name:'Article of the Charged Fund', cost:14,
+      pos:{ e:.1, a:-.3 },
+      text:'The salaries of the justices shall be charged upon the fund, and shall not be voted.',
+      moves:'the bench cannot be starved by a vote: it costs the budget every session and it cannot be bought',
+      mods:{ exp:2, ind:{ corruption:-2.5, liberties:1 } } }),
+  A({ id:'artRecusal', book:'courts', name:'Article of the Interested Justice', cost:9,
+      pos:{ e:0, a:-.2 },
+      text:'A justice with an interest in a cause shall not sit upon it.',
+      moves:'the bench stops hearing its own business, which is worth two points of corruption and nothing else',
+      mods:{ ind:{ corruption:-2.5 } } }),
+  A({ id:'artConstitutionalBench', book:'courts', name:'Article of the Constitutional Bench', cost:21, entrenched:true,
+      pos:{ e:0, a:-.25 },
+      text:'A separate bench shall sit upon the constitution, and upon nothing else.',
+      moves:'four more justices, sitting only on this document, and every article after it is harder to carry',
+      mods:{ ratify:4, ind:{ liberties:2 } },
+      apply:function (st) { if (st.court) st.court.size = Math.min(24, (st.court.size || 16) + 4); },
+      repeal:function (st) { if (st.court) st.court.size = Math.max(9, (st.court.size || 20) - 4); } }),
+
+  /* ===== VI. OF THE FEDERATION ===== */
+  A({ id:'artInterstateCommerce', book:'federation', name:'Article of the Commerce Between States', cost:16,
+      pos:{ e:.15, a:.25 },
+      text:'Trade between the states shall be settled by the capital, and by no state alone.',
+      moves:'the capital takes the trade power: the states pull harder against it, and federal receipts rise',
+      mods:{ autonomy:5, rev:2.5, polCost:{ Capital:.94, Infrastructure:.94 } } }),
+  A({ id:'artStateGuard', book:'federation', name:'Article of the State Guard', cost:15,
+      pos:{ e:0, a:.2 },
+      text:'Each state shall keep a guard under its own governor, and the capital shall not command it.',
+      moves:'the states keep their own armed men: the union sits easier, public safety improves and the federal army is smaller',
+      mods:{ autonomy:-8, ind:{ safety:2.5, military:-2.5 } } }),
+  A({ id:'artFederalDistrict', book:'federation', name:'Article of the Federal District', cost:12,
+      pos:{ e:0, a:.15 },
+      text:'The seat of government shall be a district of the union, and shall lie under no state.',
+      moves:'the capital sits on its own ground, which is worth capital every session and a little more pull from the states',
+      mods:{ autonomy:2.5, capital:.45 } }),
+  A({ id:'artUnfundedMandateBar', book:'federation', name:'Article of the Paid Mandate', cost:17,
+      pos:{ e:-.15, a:-.2 },
+      text:'The capital shall not require of a state what the capital does not pay for.',
+      moves:'every federal instruction arrives with the money for it: the states are content and the budget carries the cost',
+      mods:{ autonomy:-7, exp:4 } }),
+
+  /* ===== VII. OF RIGHTS ===== */
+  A({ id:'artFreeAssembly', book:'rights', name:'Article of Free Assembly', cost:15, entrenched:true,
+      pos:{ e:-.25, a:-.6 },
+      text:'The people may assemble, and may petition, and shall not be dispersed for doing either.',
+      moves:'a floor under civil liberties that no statute can dig beneath, and a country that gathers when it is angry',
+      mods:{ libFloor:34, ind:{ liberties:3 }, unrest:1.5 } }),
+  A({ id:'artPrivacyRight', book:'rights', name:'Article of the Private Papers', cost:16, entrenched:true,
+      pos:{ e:-.2, a:-.55 },
+      text:'The papers, correspondence and effects of a person shall not be searched without a warrant sworn before a judge.',
+      moves:'a warrant for everything: liberties rise, a floor goes under them, and the police lose something they were using',
+      mods:{ libFloor:32, ind:{ liberties:3, safety:-2 } } }),
+  A({ id:'artRightToCounsel', book:'rights', name:'Article of the Right to Counsel', cost:13,
+      pos:{ e:-.3, a:-.4 },
+      text:'No person shall answer a criminal charge without counsel, and the state shall find one for those who cannot.',
+      moves:'the state pays for the defence it prosecutes against: liberties up, corruption down, and a line on the budget',
+      mods:{ ind:{ liberties:2.5, corruption:-1.5 }, exp:1.5 } }),
+  A({ id:'artRightToEducation', book:'rights', name:'Article of the Right to Schooling', cost:15,
+      pos:{ e:-.45, a:-.25 },
+      text:'Every child in Vale shall be schooled at the charge of the state until the age of sixteen.',
+      moves:'schooling becomes a right rather than a programme: education rises, and it is paid for every session',
+      mods:{ ind:{ education:3.5, liberties:1 }, exp:2.5 } }),
+
+  /* ===== VIII. OF PROCEDURE ===== */
+  A({ id:'artNoSameSession', book:'procedure', name:'Article of the Second Session', cost:11,
+      pos:{ e:0, a:-.15 },
+      text:'No article shall be struck out in the session in which it was carried.',
+      moves:'a majority cannot write and unwrite the constitution in an afternoon; every bar in this document rises',
+      mods:{ ratify:2.5 } }),
+  A({ id:'artPublishedDraft', book:'procedure', name:'Article of the Published Draft', cost:10,
+      pos:{ e:0, a:-.35 },
+      text:'The text of an article shall be published before it is laid, and shall not be altered after.',
+      moves:'the country reads it before the houses do, which makes an article easier to carry and harder to disown',
+      mods:{ ratify:-3, ind:{ liberties:1.5 } } }),
+  A({ id:'artConventionBar', book:'procedure', name:'Article of the Limited Convention', cost:14,
+      pos:{ e:0, a:-.1 },
+      text:'A convention shall consider only what it was called for, and shall not sit upon the form of the state.',
+      moves:'a convention can no longer be used to change the form of the state, and a terminal proclamation costs more',
+      /* acts.conventionLimits is read at the transition gate and again in the
+         surcharge, which is the whole of what this article is claiming. */
+      apply:function (st) { st.acts.conventionLimits = true; },
+      repeal:function (st) { st.acts.conventionLimits = false; },
+      mods:{ ratify:1.5, ind:{ liberties:1 } } }),
+  A({ id:'artStateRatification', book:'procedure', name:'Article of the Assent of the States', cost:18, entrenched:true,
+      pos:{ e:0, a:.1 },
+      text:'No article shall be carried without the assent of half the states.',
+      moves:'the states get a veto over this document: every bar rises sharply and the union sits easier for having it',
+      mods:{ ratify:6, autonomy:-5 } }),
+  A({ id:'artCodification', book:'procedure', name:'Article of the Codification', cost:13,
+      pos:{ e:0, a:-.2 },
+      text:'The constitutional acts in force shall be gathered into this document and read as part of it.',
+      moves:'the acts and the articles become one text: the document is easier to amend because there is only one of it, and the government gains a little standing for having tidied it',
+      mods:{ ratify:-2.5, capital:.35, ind:{ liberties:1 } } })
+]);
+
 /* ---------- the page ---------- */
 function v11ArtCard(a) {
   var st = S, adopted = v11Adopted(st, a.id);
-  var c = v11Con(st), pending = c.pending && c.pending.id === a.id;
+  var c = v11Con(st), pending = !!v11PendingOf(st, a.id);
   var repeal = adopted;
-  var why = v11CanPropose(st, a, repeal);
+  var whyAssembly = v11CanPropose(st, a, repeal, 'assembly');
+  var whyCountry = v11CanPropose(st, a, repeal, 'plebiscite');
+  var why = whyAssembly && whyCountry ? whyAssembly : null;
   var cost = v11ArtCost(st, a, repeal);
   var f = v11ArtForecast(st, a, repeal);
   var need = v11ConThreshold(st, a, repeal);
@@ -28115,16 +28455,28 @@ function v11ArtCard(a) {
     (adopted && rec ? '<span class="tag up">In force since ' + rec.year + ', carried at ' + rec.margin + '%</span>' : '');
   var read = '<p class="desc">' + esc(a.text) + '</p>' +
     (a.moves ? '<p class="note">It moves: ' + esc(a.moves) + '</p>' : '');
+  /* S15e: the card said "Assembly" and "Lay it before the Assembly" whatever
+     was standing, which under an abolished Assembly named a chamber that did
+     not exist and offered a road that did not lead anywhere. */
+  var body = v11ArtBody(st);
   var bar = pending
     ? '<p class="note">Before the country now.</p>'
-    : '<p class="note">Assembly ' + Math.round(f.lower) + '% against a bar of ' + Math.round(need) + '%' +
+    : '<p class="note">' + esc(body.charAt(0).toUpperCase() + body.slice(1)) + ' ' + Math.round(f.lower) + '% against a bar of ' + Math.round(need) + '%' +
       (upperOn(st) && st.upper.veto > 0 && !st.upper.ceremonial ? ' · Senate ' + Math.round(f.upper) + '%' : '') +
-      (a.referendum ? ' · the country ' + Math.round(f.country) + '%' : '') + '</p>';
-  var btn = pending ? '' :
-    '<div class="btnrow"><button class="btn" data-art="' + a.id + '" data-artrepeal="' + (repeal ? 1 : 0) + '"' +
-    (why || st.capital < cost ? ' disabled title="' + esc(why || 'Not enough political capital.') + '"' : '') + '>' +
-    (repeal ? 'Move its repeal' : 'Lay it before the Assembly') +
-    ' <span class="c">' + cost + ' cap</span></button></div>';
+      ' · the country ' + Math.round(f.country + 8) + '%</p>';
+  function road(route, label, tip) {
+    var w = v11CanPropose(st, a, repeal, route);
+    return '<button class="btn' + (route === 'plebiscite' ? ' ghost' : '') + '" data-art="' + a.id +
+      '" data-artrepeal="' + (repeal ? 1 : 0) + '" data-artroute="' + route + '"' +
+      (w || st.capital < cost ? ' disabled title="' + esc(w || 'Not enough political capital.') + '"' : ' title="' + esc(tip) + '"') +
+      '>' + esc(label) + ' <span class="c">' + cost + ' cap</span></button>';
+  }
+  var btn = pending ? '' : '<div class="btnrow">' +
+    road('assembly', repeal ? 'Move its repeal before ' + body : 'Lay it before ' + body,
+      V11_ROUTES.assembly.note + (v11ConventionSits(st) ? ' One while the convention sits.' : '')) +
+    road('plebiscite', repeal ? 'Put the repeal to the country' : 'Put it to the country',
+      V11_ROUTES.plebiscite.note + ' It costs civil liberties, and more of them every time.') +
+    '</div>';
   return '<article class="card' + (adopted ? ' on' : '') + '"><h3>' + esc(a.name) + '</h3>' +
     read + '<div class="tagline">' + tags + '</div>' + bar + btn + '</article>';
 }
@@ -28137,9 +28489,10 @@ function v11DocumentPanel() {
       '<p class="note">Vale has no written constitution. What governs it is the form of the state, the ' +
       'statutes in force and the acts carried below &mdash; a settlement of practice rather than a document. ' +
       'Lay an article before the Assembly and this page begins to hold one.</p>' +
-      '<p class="note muted">An article is proposed, contested for two sessions while the parties take their ' +
-      'positions, and then put. It can fail. An entrenched article needs three fifths to carry and two thirds ' +
-      'to strike out again, which is what makes the document constrain the government that wrote it.</p></div>';
+      '<p class="note muted">An article is laid before the chambers and contested for two sessions, or put to the ' +
+      'country and decided in one. Three may be before the country at a time, four while a convention sits. It can ' +
+      'fail. An entrenched article needs three fifths to carry and two thirds to strike out again, which is what ' +
+      'makes the document constrain the government that wrote it.</p></div>';
   }
   var rows = c.order.map(function (id, i) {
     var a = V11_ART[id], rec = c.arts[id];
@@ -28174,35 +28527,53 @@ function v11DocumentPanel() {
 
 function v11PendingPanel() {
   var st = S, c = v11Con(st);
-  var conv = v11ConventionSits(st);
+  var conv = v11ConventionSits(st), cap = v11PendingCap(st);
   var convLine = '<p class="note">' + (conv
-    ? 'A constitutional convention is sitting until ' + yearOf(c.conv) + '. Every bar is eight points lower while it does.'
-    : 'No convention is sitting. Calling one lowers every bar by eight points for six sessions, and two is all any republic is believed for.') + '</p>' +
+    ? 'A constitutional convention is sitting until ' + yearOf(c.conv) + '. While it does the country carries four ' +
+      'articles at a time instead of three, each is put the session after it is laid instead of two sessions after, ' +
+      'and every bar is eight points lower.'
+    : 'No convention is sitting. Calling one takes the list to four, puts each article a session after it is laid, ' +
+      'and lowers every bar by eight points, for three sessions. Two is all any republic is believed for.') + '</p>' +
     '<div class="btnrow"><button class="btn" data-conv="1"' +
     (conv || (c.convUsed || 0) >= 2 || !inPower(st) || st.capital < cst(24) ? ' disabled' : '') +
     '>Call a convention <span class="c">' + cst(24) + ' cap</span></button></div>';
-  if (!c.pending) {
-    return '<div class="panel"><h2>Before the Country</h2>' +
-      '<p class="note muted">Nothing is before the country. One article may be laid at a time.</p>' +
-      convLine + '</div>';
+  /* S15e: the save that carried ONE pending article, wrapped. Said here rather
+     than on the setup sheet, because here is where the article now is. */
+  var migrated = (typeof UI !== 'undefined' && UI.conMigrated)
+    ? '<p class="note" data-con-warning="1" style="color:var(--brass)">' + (UI.conMigrated > 0
+        ? 'That save was written when one article could be before the country at a time. Three can now, and the one it was waiting on is on the list below.'
+        : 'That save carried something before the country that this build cannot read as an article. It was set aside rather than guessed at; nothing else in the constitution was touched.') +
+      '</p>' : '';
+  var head = '<div class="panel"><h2>Before the Country <span class="muted">' + c.pending.length + ' of ' + cap + '</span></h2>' + migrated;
+  if (!c.pending.length) {
+    return head + '<p class="note muted">Nothing is before the country. ' + cap + ' articles may be laid at a time' +
+      (conv ? ' while the convention sits' : '') + '.</p>' + convLine + '</div>';
   }
-  var a = V11_ART[c.pending.id];
-  if (!a) return '<div class="panel"><h2>Before the Country</h2>' + convLine + '</div>';
-  var f = v11ArtForecast(st, a, c.pending.repeal);
-  var boost = (c.pending.campaign || 0) * 4.5;
-  var need = v11ConThreshold(st, a, c.pending.repeal);
-  return '<div class="panel"><h2>Before the Country</h2>' +
-    '<h3>' + (c.pending.repeal ? 'Repeal of ' : '') + esc(a.name) + '</h3>' +
-    '<p class="desc">' + esc(a.text) + '</p>' +
-    '<p class="note">Put to the Assembly in ' + Math.max(0, c.pending.due - st.turn) + ' session(s). ' +
-    'Assembly ' + Math.round(f.lower + boost) + '% against a bar of ' + Math.round(need) + '%' +
-    (upperOn(st) && st.upper.veto > 0 && !st.upper.ceremonial ? ' · Senate ' + Math.round(f.upper + boost * .6) + '%' : '') +
-    (a.referendum ? ' · the country ' + Math.round(f.country + boost) + '%' : '') + '.</p>' +
-    '<div class="btnrow">' +
-    '<button class="btn" data-artcampaign="1"' + ((c.pending.campaign || 0) >= 3 || S.capital < cst(5) ? ' disabled' : '') +
-    '>Make the case <span class="c">' + cst(5) + ' cap</span></button>' +
-    '<button class="btn ghost" data-artwithdraw="1">Withdraw it</button></div>' +
-    convLine + '</div>';
+  var rows = c.pending.map(function (p) {
+    var a = V11_ART[p.id];
+    if (!a) return '';
+    var v = v11ArtVerdict(st, p), f = v11ArtForecast(st, a, p.repeal);
+    var boost = (p.campaign || 0) * 4.5;
+    var left = Math.max(0, p.due - st.turn);
+    var route = V11_ROUTES[p.route] || V11_ROUTES.assembly;
+    return '<article class="card pending-art"><div class="bill-title"><h3>' + (p.repeal ? 'Repeal of ' : '') + esc(a.name) +
+      '</h3><span class="bill-no">' + esc(route.name) + '</span></div>' +
+      '<p class="desc">' + esc(a.text) + '</p>' +
+      '<p class="note">Put to ' + esc(v.on) + ' in ' + left + ' session' + (left === 1 ? '' : 's') + '. ' +
+      esc(v.on.charAt(0).toUpperCase() + v.on.slice(1)) + ' ' + Math.round(v.margin) + '% against a bar of ' + Math.round(v.need) + '%' +
+      (p.route === 'assembly' && upperOn(st) && st.upper.veto > 0 && !st.upper.ceremonial
+        ? ' · Senate ' + Math.round(f.upper + boost * .6) + '%' : '') + '.</p>' +
+      '<div class="tagline">' +
+      (p.fast ? '<span class="tag up">Put early by the convention</span>' : '') +
+      (p.stood ? '<span class="tag">Put early, did not carry, stands to its term</span>' : '') +
+      (a.entrenched ? '<span class="tag up">Entrenched</span>' : '') +
+      '<span class="tag">' + (p.campaign || 0) + ' of 3 cases made</span></div>' +
+      '<div class="btnrow">' +
+      '<button class="btn" data-artcampaign="' + esc(p.id) + '"' + ((p.campaign || 0) >= 3 || S.capital < cst(5) ? ' disabled' : '') +
+      '>Make the case <span class="c">' + cst(5) + ' cap</span></button>' +
+      '<button class="btn ghost" data-artwithdraw="' + esc(p.id) + '">Withdraw it</button></div></article>';
+  }).join('');
+  return head + '<div class="cards">' + rows + '</div>' + convLine + '</div>';
 }
 
 /* The constitutional acts came home. Twenty of the thirty-two rendered on
@@ -28260,9 +28631,9 @@ v7DefaultCollapsed = function (tab, norm) {
 document.addEventListener('click', function (ev) {
   var b = ev.target && ev.target.closest ? ev.target.closest('[data-art],[data-artcampaign],[data-artwithdraw],[data-conv]') : null;
   if (!b) return;
-  if (b.hasAttribute('data-art')) v11ProposeArticle(b.getAttribute('data-art'), b.getAttribute('data-artrepeal') === '1');
-  else if (b.hasAttribute('data-artcampaign')) v11CampaignArticle();
-  else if (b.hasAttribute('data-artwithdraw')) v11WithdrawArticle();
+  if (b.hasAttribute('data-art')) v11ProposeArticle(b.getAttribute('data-art'), b.getAttribute('data-artrepeal') === '1', b.getAttribute('data-artroute') || 'assembly');
+  else if (b.hasAttribute('data-artcampaign')) v11CampaignArticle(b.getAttribute('data-artcampaign'));
+  else if (b.hasAttribute('data-artwithdraw')) v11WithdrawArticle(b.getAttribute('data-artwithdraw'));
   else if (b.hasAttribute('data-conv')) v11CallConvention();
 });
 
@@ -28733,7 +29104,7 @@ regionPartyFactor = function (st, pid) {
   var total = 0, weight = 0;
   REGIONS.forEach(function (r) {
     var q = st.regions && st.regions[r.id]; if (!q) return;
-    var w = (typeof q.pop === 'number' ? q.pop : r.pop);
+    var w = v11RegionWeight(st, r, q);
     total += v11InterestRegionLift(st, r.id) * w; weight += w;
   });
   if (!weight) return f;
