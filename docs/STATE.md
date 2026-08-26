@@ -4,7 +4,89 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S14 — Truth, then the seams**, fourth of five PRs. The five bodies S2 called
+**S14 — Truth, then the seams**, fifth of five. **The slice is complete.** The
+marker check now says something true, and the three splices whose failure was
+silent are held by the playtest.
+
+### Half the check was vacuous
+
+The rule was: this marker literal occurs at least twice somewhere in the file.
+For twelve of the twenty-five markers that is **true forever, whatever anyone
+renames** — `</div>` occurs 800 times, `<div` 824, `</button>` 185,
+`</div></div>` 129, `<div class="btnrow">` 50, and seven more generic HTML
+fragments. A green line about those was never evidence of anything.
+
+They are adjudicated in `checks/markers.json` as `structural`: **listed, not
+counted**, with the splices that use them covered by a playtest step instead.
+Hiding a specific marker in that list fails — the check requires a structural
+entry to occur at least three times outside its own splice.
+
+For the rest the question is now a real one: **does an emitter of this literal
+exist anywhere outside the splice call sites?** That is the pair the splice
+depends on, and it is exactly what a renamed heading breaks.
+
+The two rules are not the same rule, demonstrated rather than argued. Rename the
+`Records and Honours` heading in the emitter and **two** splices break, a
+`v8Insert` and a v9 `indexOf`:
+
+| | verdict |
+|---|---|
+| the old rule | **PASS** — the two splice sites keep the count at 2 |
+| the new rule | **FAIL** — `no emitter anywhere outside its call site` |
+
+### The three the check could never see
+
+The discovery regex needs the literal inline at the call site, so a marker built
+in a **variable** has never been among the 25 at all:
+
+| site | what fails | what the player sees |
+|---|---|---|
+| `viewFederation`'s `'<article class="card region-card">'` split | `parts[i]` is paired with `REGIONS[i-1]`; a second `.region-card` anywhere shifts every pairing | **wrong data**: every governor strip on the wrong region |
+| the v9 region-action splice | its marker is built per region, cut at `</button>` | all of `V9_REGION_ACTS` gone from the federation tab |
+| the v10 Question Time splice | `lastIndexOf('<div class="btnrow">')` | 164 authored questions revert to v8's generic row, which still works, so the loss is invisible. `chairs-and-pools` checks the pool SIZE, never a rendered reply |
+
+One new playtest step, **`splices-land`**, holds all three: every region card
+carries its own governor's strip and heading, all ten region actions reach all
+eight regions, and Question Time answers with the ids the authored options name.
+
+Proved on four separate mutations:
+
+| mutation | what `splices-land` said |
+|---|---|
+| `REGIONS[i-1]` → `REGIONS[i]` | governor strips mis-assigned on **8 of 8** region cards |
+| the `.region-card` marker renamed in the splicer | the same, 8 of 8 |
+| the region-action marker renamed | region actions missing on all eight regions |
+| the Question Time button-row marker renamed | `the first mismatch is "record" where "localDifficulty" was authored` |
+
+The fourth is the one worth reading twice: v8's own row also carries
+`data-v8act="qt"` buttons with ids of its own, so **the counts match and the
+feature is still gone**. A step that counted buttons would have passed.
+
+```
+ALL CHECKS PASS   11/11, 25 markers: 12 pairs asserted, 1 adjudicated, 12 listed
+ROADS OK          92 assertions
+PLAYTEST PASS     44 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+`vale.html` is untouched in this PR.
+
+### The slice, end to end
+
+Marker/seam consolidation had been "next" since S2 and was deferred five times.
+
+| PR | what it did |
+|---|---|
+| **#43** S14a | eleven false statements in the three documents; the 62-ladder residue rescued from a gitignored path |
+| **#44** S14b | `clamp` announces bad input instead of passing it on, and the detector found a live one on its first run: briefing a schooled minister refunded the ceiling the college had sold them; seven positional probes named; the size check given a growth bound |
+| **#45** S14c | the dead-body ratchet stopped believing a hand-written boolean, 5 → 7 as a correction; 199 stale line fields deleted; half of `poison.js`'s registry pruned and made self-verifying |
+| **#46** S14d | S2's "true floor" of five turned out to be three redundant boot statements; all five bodies deleted with proofs in both directions; 7 → 2, and the ratchet now demands a reason rather than a ceiling; 7 paints at load → 5, boot 402 ms → 346 ms |
+| **#47** S14e | the marker check made honest, and the three silent splices covered |
+
+Next: nothing is queued. The largest remaining items are the owner's, below.
+
+Previously: **S14 — Truth, then the seams**, fourth of five PRs. The five bodies S2 called
 the ratchet's floor are gone, and the check now asks for a reason rather than a
 number.
 
@@ -2203,11 +2285,12 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 6 | **merged** (#39) | Empire, Imperium, People's State and The Charter close the book: 582 of 582 statutes speak, 2,910 pieces of authored prose; the two largest books sharded by group covered both exactly; highest ordering scores of the project at 93.1 / 87.5 / 0.950; whole-corpus blind attribution 118 of 120; the style guide's own worked example was found to have propagated its sentence shape into 21 statutes across 13 books |
 | S13a style fidelity | **merged** (#41) | the authoring brief was a 112-line paraphrase of a 161-line skill and had dropped a rule; it is now the skill verbatim plus a statute addendum, committed as docs/PROSE-STYLE.md; audit of all 2,910 pieces came back clean on twelve rule families and two hits; the phrase matcher was fixed from substring to word boundary; "X rather than Y" measured at 7.5% precision and was deliberately left to judgement; maxBytes 3.1M to 10M |
 | S13b the whole book read aloud | **merged** (#42) | all 582 ladders read blind twice, not sampled: 66.7 / 67.7 per cent exact with 163 failed by both readers; 458 rung fields repaired across 163 statutes with no non-target touched; re-read by two fresh readers at 85.4 / 84.4 per cent, tau 0.946 / 0.938, failures down to 62; the one-axis rule measured on the whole population at 59.2 per cent before it against 77.8 after, and the batches that predated it closed to 81.7 |
-| S14d the ratchet driven down | **merged** (#46) | S2's floor of five turned out to be three boot statements -- the v4 boot render, the render half of the v5 boot line and two calls on the mobile boot line, all painting screens a later chunk replaced before anyone saw them; with those gone all five bodies poison-proved unreachable ONE AT A TIME against playtest and all 92 roads assertions, and the same five poisons reddened the pre-removal build (4/4/8/4/4 page errors), which is what makes the green runs evidence; bodies deleted, first surviving assignments promoted to declarations, 199 ordinal keys re-derived to 194 with zero alias mismatches; the ratchet now requires `deliberate: true` with a reason on any orphan rather than trusting a ceiling, and the 2 that remain are the two whose replaced bodies are wrong; paints of #view at load 7 -> 5, boot 401.9ms -> 345.6ms |
-| S14c the ratchet made honest | **merged** (#45) | the check counted a hand-written aliasCaptured boolean and never asked whether the alias exists or is read, so two sites wearing an unread alias scored green -- one adjudicated in its own capitals as DELIBERATELY NOT CALLED; capture is now DERIVED from the code and the recorded boolean cross-checked against it, a rule validated at 197 agreements out of 199 with exactly the two known disagreements, moving maxDead 5 -> 7 as a correction; all 199 stale line fields deleted (28 were literally 0) in favour of `run.js --sites`; the swapped indicatorTargets#3/#4 aliases put back; five of poison.js's ten anchors pruned as bodies S2 deleted, and --list made self-verifying |
-| S14b three live defects | **merged** (#44) | clamp answered NaN with NaN and bounds the wrong way round with the wrong bound; both are now named on screen and in the console and a bound is returned, with the predicate measured on an instrumented copy first (zero faults across playtest, zero across sixty turns, exactly one across roads) -- and that one was real: the brief branch clamped a schooled minister back to a hardcoded 96 against a ceiling of 102, refunding the college for 2 capital, 96.30 -> 96.00 before and 99.33 after; seven positional .filter(...)[0] probes named through pick(), demonstrated by a renamed order that the old playtest passed 41/41 on; the size check given a growth bound of 250,000 against HEAD, sized from the largest legitimate commit in this file's history (204,136) |
 | S14a documents made true | **merged** (#43) | eleven false statements across CLAUDE.md, MAP.md and STATE.md, every one true when written: the size line said 1.4 MB against 3.0, MAP said 93 Math.random() sites eleven slices after S3 made it 1, MAP contradicted itself fourteen lines apart on whether the fonts are fetched, the ratchet bullet was wrong on three of six figures, the marker count was given as both 21 and 25, and a colour-vision question S7 had answered was still listed as open; the 62-ladder handoff lived only in a gitignored path and is now docs/PROSE-RESIDUE.md; roads.js, rungs.js, tools/prose/ and PROSE-STYLE.md added to the command list; no code touched |
-| **Marker/seam consolidation** | **in progress — S14 PRs B to E** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. **25** literal splice markers (this row said 21 until S14 counted them with the check's own regex); dead-body ratchet 5 → 0. S14 splits it: PR B the three live defects, PR C the ratchet made honest (5 → 7, a correction), PR D the ratchet driven to zero with poison proofs, PR E the marker check split so it stops implying cover it does not have — **13 of its 24 multi-occurrence markers can never fail**, and the two markers whose failure puts wrong data on screen are held in variables and have never been seen by it |
+| S14b three live defects | **merged** (#44) | clamp answered NaN with NaN and bounds the wrong way round with the wrong bound; both are now named on screen and in the console and a bound is returned, with the predicate measured on an instrumented copy first (zero faults across playtest, zero across sixty turns, exactly one across roads) -- and that one was real: the brief branch clamped a schooled minister back to a hardcoded 96 against a ceiling of 102, refunding the college for 2 capital, 96.30 -> 96.00 before and 99.33 after; seven positional .filter(...)[0] probes named through pick(), demonstrated by a renamed order that the old playtest passed 41/41 on; the size check given a growth bound of 250,000 against HEAD, sized from the largest legitimate commit in this file's history (204,136) |
+| S14c the ratchet made honest | **merged** (#45) | the check counted a hand-written aliasCaptured boolean and never asked whether the alias exists or is read, so two sites wearing an unread alias scored green -- one adjudicated in its own capitals as DELIBERATELY NOT CALLED; capture is now DERIVED from the code and the recorded boolean cross-checked against it, a rule validated at 197 agreements out of 199 with exactly the two known disagreements, moving maxDead 5 -> 7 as a correction; all 199 stale line fields deleted (28 were literally 0) in favour of `run.js --sites`; the swapped indicatorTargets#3/#4 aliases put back; five of poison.js's ten anchors pruned as bodies S2 deleted, and --list made self-verifying |
+| S14d the ratchet driven down | **merged** (#46) | S2's floor of five turned out to be three boot statements -- the v4 boot render, the render half of the v5 boot line and two calls on the mobile boot line, all painting screens a later chunk replaced before anyone saw them; with those gone all five bodies poison-proved unreachable ONE AT A TIME against playtest and all 92 roads assertions, and the same five poisons reddened the pre-removal build (4/4/8/4/4 page errors), which is what makes the green runs evidence; bodies deleted, first surviving assignments promoted to declarations, 199 ordinal keys re-derived to 194 with zero alias mismatches; the ratchet now requires `deliberate: true` with a reason on any orphan rather than trusting a ceiling, and the 2 that remain are the two whose replaced bodies are wrong; paints of #view at load 7 -> 5, boot 401.9ms -> 345.6ms |
+| S14e the marker check made honest | **merged** (#47) | 12 of the 25 markers were generic structural strings whose `>= 2 occurrences` rule is vacuously true forever -- listed rather than counted, with a guard against hiding a specific marker among them; the other 12 now assert the pair that matters, that an EMITTER of the literal exists outside the splice, which the old rule could not see (renaming the Records and Honours heading breaks two splices and the old rule passes); one new playtest step splices-land covers the three splices the check could never reach because their markers are built in variables, including the .region-card positional split whose failure puts wrong data on screen, proved on four mutations |
+| **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
 

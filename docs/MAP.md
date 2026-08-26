@@ -40,6 +40,24 @@ Everything else is innerHTML-rendered into those ids.
    the reusable `v8Insert(html, marker, extra, fallbackPrepend)` (~13475) with
    graceful fallback; v9 splices on attribute strings/`lastIndexOf` and
    replace-ranges (viewJudicial swaps v4's whole Roll panel).
+
+   **What the marker check does and does not reach** (S14). 25 markers are
+   discovered as literals written inline at the call site. For 12 of them the
+   check asserts the pair that matters: an **emitter** of the string exists
+   somewhere outside the splice call, which is what a renamed heading or class
+   breaks. 12 more are generic structural strings — `</div>` at 800 occurrences,
+   `<div` at 824, `</button>` at 185 — where the old `>= 2 occurrences` rule was
+   vacuously true forever; they are listed in `checks/markers.json` and covered
+   by the playtest instead of counted. One has no emitter at all and is
+   adjudicated.
+
+   **A marker held in a variable is invisible to it by construction.** The
+   discovery regex needs the literal at the call site, so the two splices whose
+   failure puts *wrong data* on screen have never been among the 25:
+   `viewFederation`'s `'<article class="card region-card">'` positional split,
+   where a second `.region-card` anywhere mis-assigns every governor strip by
+   one region, and the v9 region-action splice. Both, plus the v10 Question Time
+   button-row splice, are held by the playtest step `splices-land`.
 4. **DOM sentinels**: `var cards = sh.querySelector('.cards'); if (!cards)
    return;` — renaming a class silently disables the feature.
 5. **CSS**: equal specificity, source order wins; v7/v8 scope with body classes
