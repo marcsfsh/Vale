@@ -3303,6 +3303,18 @@ ratchet 10 → 5, which is now its true floor.
 
 ## Open items / environment facts
 
+- **Fixed on the way to S16 (PR #59): a hard-lock reachable from turn one.**
+  `v10OrderEvent` returned `choices:` where `runQueue` reads `e.ch` -- the only
+  one of the file's seven event factories that did. `runQueue` sets `UI.busy`
+  **before** the read and calls `showSheet` **after** it, so when the court took
+  up an executive order the session stopped with no card on screen and no way
+  forward. Reachable with any order in force and a court gap over `.42`, which
+  is where a normal game opens (`.62`); **S15b uncapping the order book from
+  four to seventy-two is what made it likely**. Fixed, guarded (a dispatch with
+  no answers is now skipped and logged rather than fatal) and asserted:
+  `roads.js` checks all seven factories, drives a real order case to the sheet
+  and answers it.
+
 - **Three numbers S15 moved, each with the tool that re-runs it.** Balance is
   the owner's per AGREEMENT.md; these are stated rather than defended.
   1. **Very easy** opens at 250 capital with a 750 ceiling, a 150 income floor

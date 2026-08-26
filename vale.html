@@ -17468,6 +17468,15 @@ var runQueue = function (done) {
   if (!UI.queue.length) { UI.busy = false; done(); return; }
   UI.busy = true;
   var e = UI.queue.shift();
+  /* A card with no answers is a card nobody can dismiss, and the line below
+     that sets UI.busy has already run. Skip it loudly rather than hard-lock
+     the session on it: roads.js asserts every factory returns a `ch`, and this
+     is what catches the seventh one somebody writes. */
+  if (!e || !e.ch || !e.ch.length) {
+    if (e && e.title) logIt(S, 'A dispatch arrived with no answers on it and was set aside: ' + e.title + '.');
+    runQueue(done);
+    return;
+  }
   S.v6.stats.events++;
   var kicker = 'Dispatch, ' + esc(dateLabel(S.turn - 1));
   if (e.arc && V6_ARC[e.arc]) { var arc = V6_ARC[e.arc], a = S.v6.arcs.active, idx = a ? arc.phases.map(function (p) { return p.id; }).indexOf(a.phase) : 0; kicker = 'Crisis · ' + esc(arc.name) + ' · part ' + (idx + 1) + ' of ' + arc.phases.length; }
@@ -27661,7 +27670,12 @@ function v10OrderEvent(st) {
     id:'v10orderCase', title:'The Court Takes Up ' + (o ? o.name : 'an Order'),
     text:'A challenge to ' + title + ' has reached the bench, and the bench has agreed to hear it. ' +
       'The argument against is the same one every time: that this is legislation by another name, and that the House was never asked.',
-    choices:[
+    /* `ch`, not `choices`. runQueue reads `e.ch`, and this was the only one of
+       the six event factories in the file that answered to a different name:
+       the court taking up an order threw inside runQueue, after UI.busy had
+       been set and before showSheet was reached, and the game stopped there
+       with no sheet and no way forward. */
+    ch:[
       { l:'Comply and revoke it', s:'The order ends. Liberties and the court recover; the benches behind you do not.',
         f:function (S2) {
           if (S2.v10.orders[key]) { delete S2.v10.orders[key]; if (o && o.onRevoke) o.onRevoke(S2, target); }
