@@ -549,6 +549,59 @@ async function run() {
     });
     step('works-instruments', late.instrumentButtons >= 4 && late.builtTagShown && late.worksCount >= 48,
       `${late.worksCount} works; a work under way offers ${late.instrumentButtons} instruments and the card says how it is being built: ${late.builtTagShown}`);
+
+    /* S15c: the berth queue and the filter, through the rendered page rather
+       than through the model. The queue's whole point is that a commission at
+       the cap is no longer refused, and the only place a player meets that is
+       the button on the card. */
+    const berth = await page.evaluate(() => {
+      const me = playParty(S), out = {};
+      const keep = { ruling:S.ruling, coalition:S.coalition, capital:S.capital, treasury:S.treasury,
+        works:JSON.parse(JSON.stringify(S.v8.works)), queue:(S.v8.queue || []).slice(),
+        filter:S.uiPrefs.workFilter, tab:UI.tab };
+      S.ruling = me; S.coalition = [me]; S.capital = 400; S.treasury = 6000;
+      S.v8.works = {}; S.v8.queue = [];
+
+      const open = V8_WORKS.filter(x => x.req(S)).map(x => x.id);
+      out.berths = v8WorkMax(S);
+      open.slice(0, out.berths).forEach(id => v8WorkAction(id, 'commission'));
+      out.filled = v8ActiveWorks(S).length;
+
+      UI.tab = 'nation'; render();
+      const waiter = open[out.berths];
+      const card = document.querySelector('[data-work="' + waiter + '"]');
+      const join = card && card.querySelector('[data-arg="commission"]');
+      out.saysJoin = !!(join && !join.disabled && /queue/i.test(join.textContent));
+      const cap0 = S.capital;
+      if (join) join.click();
+      out.inQueue = (S.v8.queue || []).indexOf(waiter) === 0;
+      out.chargedNothing = S.capital === cap0;
+
+      const after = document.querySelector('[data-work="' + waiter + '"]');
+      out.cardQueued = !!(after && after.classList.contains('queued') && /first in the queue/i.test(after.textContent));
+      out.canLeave = !!(after && after.querySelector('[data-arg="unqueue"]'));
+
+      const chip = document.querySelector('[data-workfilter="queued"]');
+      out.hasStrip = !!chip;
+      if (chip) chip.click();
+      out.shownQueued = document.querySelectorAll('.works-list .work-card').length;
+      const all = document.querySelector('[data-workfilter="all"]');
+      if (all) all.click();
+      out.shownAll = document.querySelectorAll('.works-list .work-card').length;
+
+      S.v8.works = keep.works; S.v8.queue = keep.queue; S.uiPrefs.workFilter = keep.filter;
+      S.ruling = keep.ruling; S.coalition = keep.coalition; S.capital = keep.capital; S.treasury = keep.treasury;
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('works-queue-and-filter',
+      berth.filled === berth.berths && berth.saysJoin && berth.inQueue && berth.chargedNothing &&
+      berth.cardQueued && berth.canLeave && berth.hasStrip && berth.shownQueued === 1 &&
+      berth.shownAll >= 48,
+      `${berth.filled} of ${berth.berths} berths filled through the cards; the next card's button reads as a queue ` +
+      `(${berth.saysJoin}), clicking it queues without charging (${berth.inQueue}/${berth.chargedNothing}), the card ` +
+      `then says where it stands and offers to leave (${berth.cardQueued}/${berth.canLeave}); the filter strip cuts ` +
+      `${berth.shownAll} cards to ${berth.shownQueued} and back`);
     /* S11a: the record deck. Twenty charts on a page render() rebuilds on every
        action — the whole design is that a collapsed panel is a SLOT and opening
        it fills it, so this has to be walked in a real browser. */

@@ -878,6 +878,26 @@ ladder as `lin`, and expands four channels into five rows each:
   build. **No two works may share a NAME**: the id-keyed merge guard cannot
   see that collision, which is how two Somnium Sea Walls shipped, and roads.js
   asserts it.
+  - **Berths** (S15c). `V8_WORK_MAX` is a table, one entry per tier
+    (10/4/3/2/1); it replaced a ternary that gave five tiers three values, so
+    the three hardest all read 2. What you commission past the last berth goes
+    into `st.v8.queue`, a list of ids added to the save shape by
+    `v8EnsureState`; nothing is charged to join it and `v8QueueTick` — called
+    at the end of `v8WorksTick` — takes the head and pays the commission the
+    session a berth opens.
+  - **What a work costs is not what it builds.** `v8WorkPerSession` is the
+    instalment the SITE is credited with and is deliberately unscaled, or a
+    work would take longer on an easy tier than on a hard one.
+    `v8WorksSpend` is what the TREASURY is charged for it, and since S15c it
+    multiplies by `d.exp` like every other line of federal spending. The base
+    `budget` applies `d.exp` internally and the v8 wrapper adds `b.works`
+    afterwards, so until S15c the works were the one expenditure difficulty
+    never touched.
+  - **The site effects are paid once, at the root of the count.**
+    `v8WorksTick` gathers unemployment, Labour mood, corruption and unrest
+    across every active site and applies the sum scaled by `sqrt(n)/n`. They
+    were per-work and unbounded, which was a rounding error at six berths and
+    three quarters of a point of unemployment a session at ten.
 - **Committee chairs** (S10e) are apportioned by seats (`pv5ApportionChairs`,
   largest remainder) and are NAMED people with a party, a temperament and a
   year. `pv5AssignChair` hands one out while you lead. Four older affordances
