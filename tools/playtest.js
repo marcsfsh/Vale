@@ -1077,6 +1077,69 @@ async function run() {
       `money out of the party's purse (${pf.purseSpent}) and writes st.funding (${pf.fundingWritten}); and a ` +
       `fundraising drive raises party money (${pf.driveRaised})`);
 
+    /* S15g: the measures panel, through the rendered page. The case that
+       matters is the one that rendered nothing: a party with no book of its
+       own, on turn one, under a constitution that opens nothing. */
+    const xm = await page.evaluate(() => {
+      const out = {};
+      const keep = { tab:UI.tab, ruling:S.ruling, playAs:S.playAs, coalition:S.coalition,
+        cap:S.capital, extra:JSON.parse(JSON.stringify(S.extra || {})),
+        filter:S.uiPrefs && S.uiPrefs.extraFilter };
+      S.ruling = 'sd'; S.playAs = 'sd'; S.coalition = ['sd']; S.capital = 500;
+      if (S.uiPrefs) S.uiPrefs.extraFilter = 'all';
+      S.extra = {};
+      UI.tab = 'exec'; render();
+      const panel = [...document.querySelectorAll('#view .panel')]
+        .filter(x => /Extraordinary Measures/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      out.found = !!panel;
+      if (panel) {
+        out.cards = panel.querySelectorAll('.card').length;
+        out.locked = panel.querySelectorAll('.card.locked').length;
+        out.reasons = panel.querySelectorAll('.card .note.muted').length;
+        out.books = panel.querySelectorAll('h3.eyebrow').length;
+        out.filters = panel.querySelectorAll('[data-extrafilter]').length;
+        out.signButtons = panel.querySelectorAll('[data-extra]').length;
+        out.allDisabled = [...panel.querySelectorAll('[data-extra]')].every(b => b.disabled);
+      }
+      /* the filter cuts the list */
+      const chip = document.querySelector('#view [data-extrafilter="mine"]');
+      if (chip) { chip.click(); }
+      const panel2 = [...document.querySelectorAll('#view .panel')]
+        .filter(x => /Extraordinary Measures/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      out.mineCards = panel2 ? panel2.querySelectorAll('.card').length : 0;
+      const all = document.querySelector('#view [data-extrafilter="all"]');
+      if (all) all.click();
+
+      /* a government that CAN sign one: sign it through the card, then repeal
+         it through the card */
+      S.ruling = 'pnl'; S.playAs = 'pnl'; S.coalition = ['pnl']; S.capital = 800;
+      render();
+      const btn = document.querySelector('#view [data-extra]:not([disabled])');
+      out.signable = !!btn;
+      if (btn) {
+        const id = btn.getAttribute('data-extra');
+        btn.click();
+        out.signed = S.extra[id];
+        render();
+        const rep = document.querySelector('#view [data-extrarepeal="' + id + '"]:not([disabled])');
+        out.repealable = !!rep;
+        if (rep) { rep.click(); out.repealed = S.extra[id]; }
+      }
+      S.extra = keep.extra; S.ruling = keep.ruling; S.playAs = keep.playAs;
+      S.coalition = keep.coalition; S.capital = keep.cap;
+      if (S.uiPrefs) S.uiPrefs.extraFilter = keep.filter;
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('measures-render-locked',
+      xm.found && xm.cards >= 60 && xm.locked > 0 && xm.reasons === xm.cards && xm.books >= 6 &&
+      xm.filters >= 4 && xm.allDisabled && xm.mineCards > 0 && xm.mineCards < xm.cards &&
+      xm.signable && xm.signed === 'pending' && xm.repealable && xm.repealed === 'repealed',
+      `a Social Democrat on turn one sees ${xm.cards} cards in ${xm.books} books, ${xm.locked} of them locked, ` +
+      `every one carrying its reason (${xm.reasons}) and every sign button off (${xm.allDisabled}) -- the panel ` +
+      `rendered no cards at all before this PR; the filter cuts ${xm.cards} to ${xm.mineCards}; and a government ` +
+      `that can sign one signs it through the card (${xm.signed}) and repeals it through the card (${xm.repealed})`);
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

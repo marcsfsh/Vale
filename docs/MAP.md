@@ -562,6 +562,50 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
+## Extraordinary measures (S15g)
+
+**Sixty measures in eight books** — one per party plus a universal book — on the
+`exec` tab. There were 25, twenty-three of them open to anyone and two belonging
+to a party, so the Social Democrats, the Federal Party and the Coalition for
+Unity and Progress had **nothing of their own at all**.
+
+**`X(o)` supplies defaults now.** It was `function X(o) { return o; }` — the
+identity function — so every optional field was read defensively at ten call
+sites. It fills `tier`, `cost`, `book`, `eff`, `mood`, `mods`, `power`,
+`exposure`, `unrest`, `security`, `req` and `reqText`, and **derives `security`
+from the measure's own liberties cost** when it is not authored, the same idiom
+`P()` uses to freeze a statute's `auth` valence from its rung-one row.
+
+**`extraWhy(st, m)` is the reason, in words.** The gate was one external
+predicate and one string — "That is not open to this government" — whatever the
+reason. There are ten distinct sentences now, covering the party book, `only`,
+`needs` (a statute the measure cannot outrun), `forms`, `after` (a measure that
+must be upheld first), `req`/`reqText`, the precedent floor and the tier gate.
+`extraAvailable` is `extraWhy(st, m) === ''`.
+
+**The panel renders locked cards.** The S12 rule: a player counting the page
+should never conclude the book is unfinished. A Social Democrat on turn one of a
+Federal Republic sees all sixty cards, locked, each carrying its own reason,
+grouped by book, with a filter.
+
+**`extraMods(st)` is what a measure stands for**, on the `v10OrderMods` pattern
+— recomputed, never cached, every field with a named reader: `unrest` →
+`unrestTarget`, `ind` → `indicatorTargets`, `polCost` → `policyCost`, plus
+`extraSecurity` → `securityState`. The four wrappers are installed **last in the
+file**, beside v12's capital floor, so they are outermost and no existing
+wrapper index in `checks/dead-bodies.json` shifted.
+
+**The ratchet compounds.** `securityState` opened the measures at 30 and 50, read
+them in the court's hold formula and printed them on the panel, and signing all
+twenty-five moved it by **exactly zero**. Measures build the apparatus that
+opened them now, capped at 24.
+
+**A measure can be repealed** by the government that signed it (`extraRepeal`),
+at capital, giving back the liberties and part of the unrest. Only the court
+could undo one before, so it was a one-way ratchet whatever the government came
+to think of it. The unrest cost is authored per measure rather than 6-or-13 by
+tier, and `exposure` is per measure rather than one number for the whole tier.
+
 ## The party purse (S15f)
 
 **`st.purse[pid]` is money a party owns**, in the same units as the treasury,
