@@ -3171,6 +3171,162 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         `total of 75`
       : 'the Political Capital panel was not rendered');
 
+  /* ============================================================
+     14. S15g: EXTRAORDINARY MEASURES.
+
+     Twenty-five measures, twenty-three of them open to anyone, TWO belonging
+     to a party, and nothing at all for the Social Democrats, the Federal Party
+     or the Coalition for Unity and Progress. `X(o)` was the identity function,
+     so there were no defaults and no gating vocabulary: no cat, no req, no
+     reqText, no needs, no forms. The gate was one external predicate and one
+     refusal string -- "That is not open to this government" -- whatever the
+     reason. And when tier 1 was shut the panel rendered NO CARDS AT ALL, which
+     is the state on turn one of six of the eleven openings.
+
+     Signing all twenty-five moved the security state by exactly zero.
+     ============================================================ */
+  const measures = await p3.evaluate(() => {
+    const out = {};
+    const has = (n) => typeof window[n] === 'function';
+    out.hasWhy = has('extraWhy');
+    out.hasMods = has('extraMods');
+
+    /* the book */
+    out.total = EXTRA.length;
+    out.byBook = {};
+    (typeof EXTRA_BOOKS !== 'undefined' ? EXTRA_BOOKS : [{ id:'universal' }]).forEach((b) => {
+      out.byBook[b.id] = EXTRA.filter((m) => m.book === b.id).length;
+    });
+    out.partiesWithABook = PARTIES.filter((p) => EXTRA.some((m) => m.book === p.id)).length;
+    const names = {}; out.dupNames = [];
+    EXTRA.forEach((m) => { if (names[m.name]) out.dupNames.push(m.name); names[m.name] = 1; });
+    out.noEffect = EXTRA.filter((m) => {
+      const mm = m.mods || {};
+      const standing = Object.keys(mm).some((k) => (typeof mm[k] === 'object' ? Object.keys(mm[k]).length : mm[k]));
+      return !Object.keys(m.eff || {}).length && !Object.keys(m.mood || {}).length && !standing &&
+        !m.money && !m.states && !m.army && !m.gerry && !m.wreck && !m.security;
+    }).map((m) => m.id);
+    out.defaults = EXTRA.filter((m) => m.unrest === undefined || m.exposure === undefined ||
+      m.book === undefined || typeof m.req !== 'function').length;
+
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    /* THE PANEL RENDERS FOR A PARTY WITH NOTHING OPEN. A Social Democrat on
+       turn one of a Federal Republic: the hardest case there is. */
+    S.ruling = 'sd'; S.playAs = 'sd'; S.coalition = ['sd']; S.capital = 400;
+    if (S.uiPrefs) S.uiPrefs.extraFilter = 'all';
+    const wrap = document.createElement('div');
+    wrap.innerHTML = prerogativePanel();
+    out.sd = {
+      cards: wrap.querySelectorAll('.card').length,
+      locked: wrap.querySelectorAll('.card.locked').length,
+      reasons: wrap.querySelectorAll('.card .note.muted').length,
+      filters: wrap.querySelectorAll('[data-extrafilter]').length,
+      ownBook: EXTRA.filter((m) => m.book === 'sd').length
+    };
+    /* and the reasons are DIFFERENT reasons */
+    const whys = {};
+    EXTRA.forEach((m) => { const w = has('extraWhy') ? extraWhy(S, m) : 'That is not open to this government.'; if (w) whys[w] = 1; });
+    out.distinctWhy = Object.keys(whys).length;
+    out.sampleWhy = Object.keys(whys).slice(0, 3);
+
+    /* THE RATCHET COMPOUNDS. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.ruling = 'rsf'; S.playAs = 'rsf'; S.coalition = ['rsf']; S.capital = 900;
+    const ss0 = securityState(S);
+    ['signingStatements', 'classifyRecords', 'executivePrivilege'].forEach((id) => { if (EXTRA_BY[id]) S.extra[id] = 'upheld'; });
+    out.ratchet = { before:+ss0.toFixed(1), after:+securityState(S).toFixed(1) };
+
+    /* THE STANDING MODIFIERS REACH THEIR READERS. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.ruling = 'rsf'; S.playAs = 'rsf'; S.coalition = ['rsf'];
+    const bare = { unrest:unrestTarget(S), poverty:indicatorTargets(S).poverty, cost:policyCost('minimumWage', 1) };
+    ['x15workersCouncils', 'x15requisition'].forEach((id) => { if (EXTRA_BY[id]) S.extra[id] = 'upheld'; });
+    const withm = { unrest:unrestTarget(S), poverty:indicatorTargets(S).poverty, cost:policyCost('minimumWage', 1) };
+    out.standing = {
+      unrest:[+bare.unrest.toFixed(2), +withm.unrest.toFixed(2)],
+      poverty:[+bare.poverty.toFixed(2), +withm.poverty.toFixed(2)],
+      cost:[bare.cost, withm.cost],
+      moved: withm.unrest !== bare.unrest && withm.poverty !== bare.poverty && withm.cost !== bare.cost
+    };
+
+    /* AUTHORABLE UNREST, and REPEAL. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.ruling = 'rsf'; S.playAs = 'rsf'; S.coalition = ['rsf']; S.capital = 900; S.unrest = 30;
+    const distinctUnrest = {};
+    EXTRA.forEach((m) => { distinctUnrest[m.unrest] = 1; });
+    out.unrestValues = Object.keys(distinctUnrest).length;
+    const target = EXTRA_BY.x15requisition;
+    if (target) {
+      const u0 = S.unrest;
+      doExtra(target);
+      out.signed = { status:S.extra[target.id], unrestUp:+(S.unrest - u0).toFixed(1), authored:target.unrest };
+      const lib0 = S.ind.liberties, u1 = S.unrest;
+      if (has('extraRepeal')) extraRepeal(target.id);
+      out.repealed = { status:S.extra[target.id], libertiesBack:S.ind.liberties > lib0, unrestDown:S.unrest < u1 };
+    }
+
+    /* THE FILTER. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.ruling = 'pnl'; S.playAs = 'pnl'; S.coalition = ['pnl'];
+    if (S.uiPrefs) {
+      S.uiPrefs.extraFilter = 'mine';
+      out.mineShown = EXTRA.filter((m) => (has('extraShown') ? extraShown(m) : true)).length;
+      S.uiPrefs.extraFilter = 'all';
+      out.allShown = EXTRA.filter((m) => (has('extraShown') ? extraShown(m) : true)).length;
+      S.uiPrefs.extraFilter = 'all';
+    }
+    return out;
+  });
+
+  const M = measures;
+  const bookCounts = Object.keys(M.byBook).map((k) => M.byBook[k]);
+  const partyBooks = Object.keys(M.byBook).filter((k) => k !== 'universal').map((k) => M.byBook[k]);
+  say(M.total >= 60 && M.partiesWithABook === 7 && M.dupNames.length === 0 &&
+      M.noEffect.length === 0 && M.defaults === 0 &&
+      partyBooks.length === 7 && Math.min.apply(null, partyBooks) >= 5,
+    'every party has a book of its own',
+    `${M.total} measures across ${Object.keys(M.byBook).length} books [${bookCounts.join(' ')}] and all seven ` +
+    `parties have one · there were 25, twenty-three of them open to anyone and two belonging to a party, so the ` +
+    `Social Democrats, the Federal Party and the Coalition for Unity and Progress had nothing of their own at all · ` +
+    `${M.defaults} measures are missing a constructor default and ${M.noEffect.length} move nothing`);
+
+  say(M.sd.cards === M.total && M.sd.locked > 0 && M.sd.reasons === M.total && M.sd.filters >= 4 &&
+      M.sd.ownBook >= 5 && M.distinctWhy >= 5,
+    'a locked book is still a book',
+    `a Social Democrat on turn one of a Federal Republic -- the case that rendered NO CARDS AT ALL before this PR -- ` +
+    `sees ${M.sd.cards} cards, ${M.sd.locked} of them locked, and every one of them carries the reason it is locked ` +
+    `(${M.sd.reasons}) · there are ${M.distinctWhy} distinct reasons where there was one sentence, for example ` +
+    `"${M.sampleWhy[0]}"`);
+
+  say(M.ratchet.after > M.ratchet.before,
+    'the measures build the apparatus that opened them',
+    `three measures in force take the security state from ${M.ratchet.before} to ${M.ratchet.after} · the ratchet ` +
+    `ran one way before S15g: securityState opened the measures at 30 and 50, read them in the court's hold ` +
+    `formula and printed them on the panel, and signing all twenty-five of them moved it by exactly zero`);
+
+  say(M.hasMods && M.standing.moved,
+    'a measure stands for something',
+    `two measures in force move the unrest target from ${M.standing.unrest[0]} to ${M.standing.unrest[1]}, the ` +
+    `poverty target from ${M.standing.poverty[0]} to ${M.standing.poverty[1]} and a Labour statute from ` +
+    `${M.standing.cost[0]} capital to ${M.standing.cost[1]} · every field of extraMods has a named reader, on the ` +
+    `v11ConEffects pattern · a measure moved a stock once at signature and then stood for the rest of the campaign ` +
+    `doing nothing but pay capital`);
+
+  const sg = M.signed || {}, rp = M.repealed || {};
+  say(M.unrestValues >= 6 && !!M.signed && sg.unrestUp === sg.authored &&
+      !!M.repealed && rp.status === 'repealed' && rp.libertiesBack && rp.unrestDown,
+    'the unrest is authored, and a measure can be undone',
+    `the book carries ${M.unrestValues} distinct unrest costs where there were two, 6 and 13 by tier · signing the ` +
+    `one measured raised unrest by exactly the ${sg.authored} it authors · and the government that signed it ` +
+    `can repeal it (${rp.status}), which gives back the liberties and takes back part of the unrest · ` +
+    `before this PR only the COURT could undo a measure, so it was a one-way ratchet whatever the government came ` +
+    `to think of it`);
+
+  say(M.mineShown > 0 && M.mineShown < M.allShown,
+    'the panel can be asked a question',
+    `asked for what belongs to the party in government the book answers with ${M.mineShown} of ${M.allShown} · it ` +
+    `was two flat lists with no filter and no books`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

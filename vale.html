@@ -6818,7 +6818,51 @@ function ageFigures(st) {
 var EXTREME1 = ['rsf', 'lp', 'tvc', 'pnl'];
 var EXTREME2 = ['rsf', 'pnl'];
 
-function X(o) { return o; }
+/* ==========================================================
+   S15g: THE MEASURE CONSTRUCTOR.
+
+   It was `function X(o) { return o; }` -- the identity function, supplying no
+   defaults, so every optional field was read defensively at ten call sites and
+   an omitted one was a silent undefined. Every other registry in the file has
+   a constructor that fills in what an author left out: P freezes an auth
+   valence and builds five ladder tables, O fills cost, upkeep, exposure and
+   the gate, A fills cost, position and mods.
+
+   And the measures had NO GATING VOCABULARY at all -- no cat, no req, no
+   reqText, no needs, no forms. The gate was one external predicate and one
+   refusal string, "That is not open to this government", which is the same
+   sentence whether the reason is your party, the apparatus, the constitution,
+   a missing statute or two precedents you have not earned. */
+function X(o) {
+  o.tier = o.tier || 1;
+  o.cost = o.cost || 8;
+  /* Which book it is filed under: `universal`, or a party id. The panel and
+     the filter read it, and a party book is a gate as well as a heading. */
+  o.book = o.book || 'universal';
+  if (o.only && o.only.length === 1 && !o.bookSet) o.book = o.only[0];
+  o.eff = o.eff || {};
+  o.mood = o.mood || {};
+  o.mods = o.mods || {};
+  o.power = o.power === undefined ? .5 : o.power;
+  /* How exposed it is to the court, per measure, instead of one number for
+     the whole tier. */
+  o.exposure = o.exposure === undefined ? (o.tier === 2 ? .38 : .12) : o.exposure;
+  /* What signing it costs the country in unrest, authored rather than
+     hard-coded 6-or-13 by tier. */
+  o.unrest = o.unrest === undefined ? (o.tier === 2 ? 13 : 6) : o.unrest;
+  /* What it adds to the apparatus. Until S15g the ratchet ran one way:
+     legislating the security state opened the measures, and signing every one
+     of the twenty-five moved the security state by exactly zero.
+     Derived from what the measure costs in liberties when it is not authored,
+     which is the same idiom P() uses to freeze a statute's auth valence from
+     its rung-one liberties row -- and for the same reason: an author who says
+     what a thing does to liberties has already said how much apparatus it
+     builds. */
+  if (o.security === undefined) o.security = Math.max(0, Math.round(-(o.eff.liberties || 0) * .35));
+  if (!o.req) o.req = function () { return true; };
+  if (!o.reqText) o.reqText = '';
+  return o;
+}
 var EXTRA = [
   /* tier one: contending with the law */
   X({ id:'signingStatements', tier:1, name:'Signing Statements', cost:8,
@@ -6889,6 +6933,187 @@ var EXTRA = [
 ];
 var EXTRA_BY = {}; EXTRA.forEach(function (x) { EXTRA_BY[x.id] = x; });
 
+/* ==========================================================
+   S15g: THE PARTY BOOKS.
+
+   Twenty-five measures, twenty-three of them open to anyone, and TWO belonging
+   to a party. The Social Democrats, the Federal Party and the Coalition for
+   Unity and Progress had nothing of their own at all, so on turn one of six of
+   the eleven openings the panel rendered no cards whatever.
+
+   Thirty-five more here, five for each of the seven parties, so every party
+   has a book: what THAT party does when it decides the ordinary machinery is
+   not enough. The twenty-five that were here keep their ids, their numbers and
+   their place in the universal book.
+
+   The three fields the old registry had no vocabulary for are used
+   throughout: `needs` (a statute this measure cannot outrun), `req`/`reqText`
+   (a condition with a sentence), and `after` (a measure that must be upheld
+   first). Every one of them prints on the card as the reason it is closed.
+   ========================================================== */
+[
+  /* ===== THE REVOLUTIONARY SOCIALIST FRONT ===== */
+  X({ id:'x15workersCouncils', tier:1, book:'rsf', name:'Councils in the Workplaces', cost:9, power:.9, unrest:4, security:2, exposure:.2,
+      desc:'Every workplace above two hundred returns a council with the right to see the books and to stop the line. The employers were not consulted, and the statute they would have cited has been suspended.',
+      eff:{ liberties:2, economy:-5 }, mood:{ labour:14, youth:8, tech:-12, smallbiz:-10, prof:-4 },
+      mods:{ unrest:-2, ind:{ poverty:-3 }, polCost:{ Labour:.86, Capital:1.12 } } }),
+  X({ id:'x15requisition', tier:1, book:'rsf', name:'Requisition of Empty Housing', cost:8, power:.7, unrest:7, security:3, exposure:.3,
+      desc:'Anything vacant for a year is taken into use, with the compensation set by a tribunal the owners do not sit on. The first hundred keys were handed over on television.',
+      eff:{ poverty:-6, liberties:-4, economy:-3 }, mood:{ labour:11, youth:10, prof:-6, smallbiz:-9, tech:-7 },
+      mods:{ unrest:-3, ind:{ poverty:-2 } } }),
+  X({ id:'x15bankControl', tier:2, book:'rsf', name:'Direction of the Banks', cost:15, power:2, unrest:12, security:5, exposure:.45,
+      needs:'nationalBank', reqText:'a national bank of your own',
+      desc:'Lending is directed by the ministry rather than the board: what is financed, at what rate, and to whom. The exchanges closed for two days and reopened lower.',
+      eff:{ economy:-9, technology:-7, liberties:-7, corruption:5 }, mood:{ tech:-22, prof:-11, labour:9, smallbiz:-12 },
+      mods:{ ind:{ poverty:-4 }, polCost:{ Capital:.8, Welfare:.86 }, delivery:.3 } }),
+  X({ id:'x15landCommittees', tier:2, book:'rsf', name:'Committees on the Land', cost:14, power:1.7, unrest:15, security:4, exposure:.5,
+      desc:'The great estates are broken up by committees elected in the villages, and the registry is instructed to record what they decide. Two counties have refused to send the deeds.',
+      eff:{ agriculture:-8, poverty:-5, liberties:-6 }, mood:{ labour:10, smallbiz:-16, faith:-8, youth:6 },
+      mods:{ unrest:2, ind:{ agriculture:-3 } } }),
+  X({ id:'x15strikeShield', tier:1, book:'rsf', name:'The Strike Is Lawful, Always', cost:7, power:.6, unrest:5, security:1, exposure:.22,
+      desc:'No injunction runs against a strike, no damages lie, and no officer may be sent to a picket. The law of restraint of trade is declared not to apply.',
+      eff:{ liberties:4, economy:-4 }, mood:{ labour:13, youth:6, smallbiz:-8, tech:-9 },
+      mods:{ unrest:-2, polCost:{ Labour:.84 } } }),
+
+  /* ===== THE LABOR PARTY ===== */
+  X({ id:'x15emergencyWages', tier:1, book:'lp', name:'The Wage Is Set by Proclamation', cost:8, power:.7, unrest:5, security:2, exposure:.24,
+      desc:'A floor under every wage, announced from the ministry and enforced by inspectors who arrive without notice. The tribunal that would have heard the appeals has been stood down.',
+      eff:{ poverty:-5, economy:-3, liberties:-2 }, mood:{ labour:12, youth:5, smallbiz:-11, tech:-6 },
+      mods:{ unrest:-2, polCost:{ Labour:.88 } } }),
+  X({ id:'x15sequestrateFunds', tier:1, book:'lp', name:'Sequestrate the Employers\' Funds', cost:9, power:.8, unrest:7, security:2, exposure:.34,
+      desc:'The federations that fought the last dispute find their accounts in the hands of a receiver appointed by the ministry. What the receiver does with them is not in the instrument.',
+      eff:{ liberties:-5, corruption:4, economy:-2 }, mood:{ labour:10, tech:-11, smallbiz:-9, prof:-5 }, money:14,
+      mods:{ crown:-.3 } }),
+  X({ id:'x15publicWorksDecree', tier:1, book:'lp', name:'Public Works Without Appropriation', cost:9, power:.8, unrest:4, security:2, exposure:.3,
+      desc:'The sites are opened and the invoices are sent to a treasury that has not voted for them. Every one of them is in a county the party lost.',
+      eff:{ infrastructure:5, corruption:5, liberties:-3 }, mood:{ labour:9, smallbiz:4, prof:-6 }, money:-16,
+      mods:{ delivery:.35, ind:{ infrastructure:3 } } }),
+  X({ id:'x15dismissTheBench', tier:2, book:'lp', name:'Retire the Industrial Bench', cost:13, power:1.5, unrest:11, security:5, exposure:.44,
+      after:'x15sequestrateFunds',
+      desc:'Every judge who has heard a labour case in a decade is retired on full pension, and the replacements are named the same afternoon.',
+      eff:{ liberties:-11, corruption:6 }, mood:{ labour:8, prof:-15, smallbiz:-9, tech:-8 },
+      mods:{ polCost:{ Labour:.82, Justice:1.1 } } }),
+  X({ id:'x15nationaliseByOrder', tier:2, book:'lp', name:'Take the Utilities by Order', cost:15, power:1.9, unrest:13, security:5, exposure:.46,
+      desc:'Water, power and the ports pass to the state on the signature, with the compensation to be settled later and by somebody else.',
+      eff:{ economy:-7, infrastructure:4, liberties:-8, corruption:4 }, mood:{ labour:12, tech:-18, smallbiz:-11, prof:-7 },
+      mods:{ ind:{ energy:3, infrastructure:2 }, polCost:{ Energy:.85 } } }),
+
+  /* ===== THE SOCIAL DEMOCRATS ===== */
+  X({ id:'x15emergencyClimate', tier:1, book:'sd', name:'Rule the Emergency of the Climate', cost:9, power:.8, unrest:6, security:2, exposure:.28,
+      desc:'The proclamation names carbon as the emergency and takes the powers that go with one: siting, permits and the grid, all decided at the ministry.',
+      eff:{ environment:7, economy:-5, liberties:-3 }, mood:{ youth:12, prof:7, tech:-6, smallbiz:-10, labour:-4 },
+      mods:{ ind:{ environment:4, energy:2 }, polCost:{ Environment:.82, Energy:.88 } } }),
+  X({ id:'x15citizensAssembly', tier:1, book:'sd', name:'Govern Through a Citizens Assembly', cost:8, power:.6, unrest:4, security:1, exposure:.18,
+      desc:'Four hundred people drawn by lot sit in place of the committees, and what they recommend is enacted without a division. Nobody voted for any of them, which is the argument for it and against it.',
+      eff:{ liberties:2, corruption:-4 }, mood:{ youth:11, prof:9, faith:-6, veterans:-7, seniors:-5 },
+      mods:{ unrest:-2, ind:{ corruption:-3 } } }),
+  X({ id:'x15dataProtectionDecree', tier:1, book:'sd', name:'Seize the Data of the Platforms', cost:8, power:.7, unrest:5, security:3, exposure:.3,
+      needs:'privacyLaw', reqText:'a privacy statute to seize it under',
+      desc:'The files come to the ministry, on the ground that the ministry is the only body large enough to hold them safely. The companies agree with the reasoning and not the destination.',
+      eff:{ technology:-6, liberties:-4, corruption:3 }, mood:{ tech:-15, prof:4, youth:3 },
+      mods:{ ind:{ technology:-2 }, polCost:{ Technology:.86 } } }),
+  X({ id:'x15universalProvision', tier:2, book:'sd', name:'Provision Without a Vote', cost:14, power:1.6, unrest:9, security:4, exposure:.4,
+      desc:'Housing, medicine and the fare are provided at the point of use by direction, and the estimates follow in the spring. The professions were consulted and the accountants were not.',
+      eff:{ poverty:-8, healthcare:5, liberties:-5, corruption:4 }, mood:{ labour:10, youth:9, prof:5, smallbiz:-12, tech:-9 }, money:-22,
+      mods:{ unrest:-4, ind:{ poverty:-4, healthcare:3 } } }),
+  X({ id:'x15greenTribunals', tier:2, book:'sd', name:'Tribunals for the Environment', cost:13, power:1.5, unrest:10, security:5, exposure:.42,
+      after:'x15emergencyClimate',
+      desc:'A bench that hears no defence but the technical one, with the power to close a works overnight and no appeal that stays the order.',
+      eff:{ environment:8, economy:-7, liberties:-9 }, mood:{ youth:9, prof:3, tech:-13, smallbiz:-14, labour:-6 },
+      mods:{ ind:{ environment:5 }, polCost:{ Environment:.78 } } }),
+
+  /* ===== THE FEDERAL PARTY ===== */
+  X({ id:'x15emergencyBudget', tier:1, book:'fp', name:'The Budget by Executive Instrument', cost:8, power:.9, unrest:6, security:2, exposure:.3,
+      desc:'The estimates are made law by signature when the houses will not pass them, and the departments are told to spend against the instrument.',
+      eff:{ corruption:4, liberties:-4 }, mood:{ prof:-6, smallbiz:3, tech:4, labour:-5 }, money:12,
+      mods:{ delivery:.3, polCost:{ Taxation:.9 } } }),
+  X({ id:'x15deregulateByDecree', tier:1, book:'fp', name:'Suspend the Rulebook', cost:8, power:.7, unrest:5, security:1, exposure:.26,
+      desc:'Every regulation made in the last decade is suspended for two years while a commission decides which of them were worth having.',
+      eff:{ economy:6, environment:-6, safety:-4, liberties:-2 }, mood:{ tech:12, smallbiz:11, prof:-7, labour:-9, youth:-6 },
+      mods:{ ind:{ economy:3, environment:-2 }, polCost:{ Capital:.84 } } }),
+  X({ id:'x15chartersOverride', tier:1, book:'fp', name:'Charter Over the States', cost:9, power:.8, unrest:6, security:3, exposure:.32,
+      desc:'A federal charter is written for any enterprise that asks, and it overrides whatever the state legislature had to say about the matter.',
+      eff:{ economy:5, liberties:-4, corruption:4 }, mood:{ tech:10, smallbiz:6, faith:-5 }, states:-14,
+      mods:{ crown:-.5, ind:{ economy:2 } } }),
+  X({ id:'x15receivership', tier:2, book:'fp', name:'Put the States into Receivership', cost:14, power:1.8, unrest:12, security:5, exposure:.46,
+      desc:'A state that cannot meet its obligations is administered from the capital, with a commissioner in place of the governor and the legislature adjourned.',
+      eff:{ liberties:-11, corruption:5, economy:3 }, mood:{ tech:6, prof:-9, faith:-8, smallbiz:-5 }, states:-26,
+      mods:{ crown:-1, delivery:.4, polCost:{ Federalism:.8 } } }),
+  X({ id:'x15exchangeControl', tier:2, book:'fp', name:'Close the Exchanges to the Outside', cost:13, power:1.6, unrest:11, security:5, exposure:.42,
+      desc:'Capital may not leave without a licence, and the licences are granted at the ministry. The rate stops being a market price and becomes a decision.',
+      eff:{ economy:-5, technology:-5, corruption:6, liberties:-7 }, mood:{ tech:-14, smallbiz:-6, labour:5 }, money:20,
+      mods:{ ind:{ tension:2 }, polCost:{ Foreign:1.14 } } }),
+
+  /* ===== THE COALITION FOR UNITY AND PROGRESS ===== */
+  X({ id:'x15nationalService', tier:1, book:'cup', name:'A Year of Service, by Proclamation', cost:8, power:.8, unrest:7, security:3, exposure:.3,
+      desc:'Every eighteen-year-old is called for a year of service, uniformed or otherwise, and the exemptions are decided by a board that publishes nothing.',
+      eff:{ military:5, education:-3, liberties:-5 }, mood:{ veterans:12, faith:7, youth:-14, prof:-6 },
+      mods:{ ind:{ military:3, safety:2 }, polCost:{ Defence:.86 } } }),
+  X({ id:'x15languageOfState', tier:1, book:'cup', name:'One Language of the State', cost:7, power:.6, unrest:8, security:3, exposure:.32,
+      desc:'Federal business is conducted in one language, and the schools that taught in another have a year to change. The instruction was issued in that language alone.',
+      eff:{ liberties:-6, education:-2 }, mood:{ faith:8, veterans:6, youth:-8, prof:-9 },
+      mods:{ unrest:2, ind:{ liberties:-2 } } }),
+  X({ id:'x15civicOath', tier:1, book:'cup', name:'The Oath of Civic Loyalty', cost:8, power:.7, unrest:6, security:4, exposure:.28,
+      desc:'Every officer of the state, every teacher and every holder of a licence swears to the constitution as the government reads it. Refusal is not an offence; it is simply the end of the appointment.',
+      eff:{ liberties:-7, corruption:-2, safety:2 }, mood:{ veterans:9, faith:8, prof:-11, youth:-7 },
+      mods:{ ind:{ corruption:-2 }, delivery:.25 } }),
+  X({ id:'x15unityFront', tier:2, book:'cup', name:'A Government of National Unity, Compulsory', cost:13, power:1.6, unrest:12, security:6, exposure:.44,
+      desc:'Every party returning members is required to name ministers, and a party that declines is held to have withdrawn from public life.',
+      eff:{ liberties:-13, corruption:5 }, mood:{ veterans:8, faith:6, prof:-13, youth:-11, labour:-6 }, wreck:.18,
+      mods:{ unrest:-2, polCost:{ Authority:.86 } } }),
+  X({ id:'x15singleCurriculum', tier:2, book:'cup', name:'One Curriculum, Nationally Set', cost:12, power:1.4, unrest:10, security:5, exposure:.4,
+      after:'x15languageOfState',
+      desc:'What is taught, in what order and out of which book is settled in the capital, and the inspectorate arrives unannounced to see that it is.',
+      eff:{ education:4, liberties:-10 }, mood:{ faith:9, veterans:5, youth:-12, prof:-13 },
+      mods:{ ind:{ education:3 }, polCost:{ Education:.82, Culture:.9 } } }),
+
+  /* ===== THE TRADITIONAL VALUES COALITION ===== */
+  X({ id:'x15publicMorals', tier:1, book:'tvc', name:'A Standard of Public Morals', cost:7, power:.6, unrest:7, security:3, exposure:.28,
+      desc:'Broadcast, print and the stage are held to a standard written by a board of clergy and magistrates, and a licence is what it takes to argue with them.',
+      eff:{ liberties:-7, safety:2 }, mood:{ faith:14, veterans:6, youth:-13, prof:-10, tech:-6 },
+      mods:{ ind:{ liberties:-2 }, polCost:{ Culture:.84 } } }),
+  X({ id:'x15familyRegistry', tier:1, book:'tvc', name:'The Registry of Households', cost:8, power:.7, unrest:6, security:4, exposure:.3,
+      desc:'Every household is registered with a head and a composition, and the allowances follow the register rather than the claim.',
+      eff:{ liberties:-6, poverty:-2, corruption:-2 }, mood:{ faith:11, seniors:6, youth:-9, prof:-8 },
+      mods:{ ind:{ corruption:-2 }, delivery:.3 } }),
+  X({ id:'x15chaplainsInService', tier:1, book:'tvc', name:'Chaplains in Every Service', cost:7, power:.6, unrest:4, security:2, exposure:.22,
+      desc:'A chaplain is appointed to every school, barracks and hospital of the state, with a right of access nobody may refuse.',
+      eff:{ liberties:-4, healthcare:1 }, mood:{ faith:13, veterans:7, seniors:5, youth:-9, prof:-8 },
+      mods:{ unrest:-2 } }),
+  X({ id:'x15morallUnfitOffice', tier:2, book:'tvc', name:'A Test of Fitness for Office', cost:12, power:1.4, unrest:11, security:5, exposure:.42,
+      after:'x15publicMorals',
+      desc:'A board decides who is fit to hold office, on grounds it states in general terms and applies in particular ones.',
+      eff:{ liberties:-14, corruption:4 }, mood:{ faith:10, veterans:4, prof:-15, youth:-13 }, wreck:.16,
+      mods:{ polCost:{ Elections:.84 } } }),
+  X({ id:'x15schoolsToTheChurches', tier:2, book:'tvc', name:'Hand the Schools to the Churches', cost:13, power:1.5, unrest:12, security:4, exposure:.44,
+      desc:'The schools pass to the communities that will run them on their own principles, and the federal inspectorate is instructed not to attend.',
+      eff:{ education:-5, liberties:-9 }, mood:{ faith:15, seniors:5, youth:-12, prof:-14, tech:-7 },
+      mods:{ ind:{ education:-3 }, polCost:{ Education:1.12, Culture:.84 } } }),
+
+  /* ===== THE PATRIOT NATIONALIST LEAGUE ===== */
+  X({ id:'x15borderEmergency', tier:1, book:'pnl', name:'Proclaim the Border an Emergency', cost:8, power:.8, unrest:8, security:5, exposure:.3,
+      desc:'The frontier counties are administered under the proclamation: checkpoints inland, the ordinary courts suspended for entry offences, and the garrison in support of the police.',
+      eff:{ liberties:-8, safety:4, tension:3 }, mood:{ veterans:11, faith:6, smallbiz:4, youth:-11, prof:-10 },
+      mods:{ ind:{ safety:3 }, army:.4, polCost:{ Immigration:.82 } } }),
+  X({ id:'x15citizenshipReview', tier:1, book:'pnl', name:'Review Every Naturalisation', cost:9, power:.8, unrest:9, security:5, exposure:.34,
+      desc:'Every certificate issued in twenty years is reopened, and the burden of showing it was properly granted rests on the holder.',
+      eff:{ liberties:-9, corruption:3 }, mood:{ veterans:10, faith:5, youth:-12, prof:-12, tech:-7 },
+      mods:{ unrest:2, polCost:{ Immigration:.84 } } }),
+  X({ id:'x15industriesToTheNation', tier:1, book:'pnl', name:'The Strategic Industries Are the Nation\'s', cost:9, power:.9, unrest:7, security:4, exposure:.32,
+      desc:'Steel, shipping and the ports are declared strategic and placed under direction, and foreign holdings in them are bought out at a price the ministry names.',
+      eff:{ economy:-4, military:3, liberties:-5, tension:3 }, mood:{ veterans:9, labour:7, tech:-13, smallbiz:-4 }, money:10,
+      mods:{ ind:{ military:2, tension:2 } } }),
+  X({ id:'x15militiaAuxiliaries', tier:2, book:'pnl', name:'Raise the Auxiliaries', cost:14, power:1.8, unrest:16, security:8, exposure:.48,
+      after:'x15borderEmergency',
+      desc:'A uniformed auxiliary force under the ministry rather than the general staff, recruited from the movement and sworn to the government of the day.',
+      eff:{ liberties:-16, safety:3, military:-3 }, mood:{ veterans:7, faith:3, prof:-16, youth:-14, labour:-9 }, army:9, wreck:.2,
+      mods:{ unrest:-3, army:1, ind:{ safety:3 } } }),
+  X({ id:'x15treasonCourts', tier:2, book:'pnl', name:'Courts for the Treason of the Age', cost:15, power:2, unrest:15, security:7, exposure:.5,
+      desc:'A special bench for offences against the nation, sitting without a jury, with an appeal that lies to the executive.',
+      eff:{ liberties:-19, safety:3, corruption:6 }, mood:{ veterans:6, faith:3, prof:-18, youth:-15, labour:-8 }, wreck:.24,
+      mods:{ polCost:{ Justice:.82, Authority:.84 }, ind:{ liberties:-3 } } })
+].forEach(function (m) { if (!EXTRA_BY[m.id]) { EXTRA.push(m); EXTRA_BY[m.id] = m; } });
+
 function extraTierAllowed(st, tier) {
   /* Until S9d this was gated by ruling party alone: an FP, CUP or SD
      government could NEVER sign one, at any liberties level, under any form —
@@ -6902,12 +7127,73 @@ function extraTierAllowed(st, tier) {
   return EXTREME2.indexOf(st.ruling) >= 0 || !!FORMS[st.form].terminal ||
     ((st.precedents || 0) >= 2 && (ss >= 50 || !FORMS[st.form].elections));
 }
-function extraAvailable(st, m) {
-  if (!extraTierAllowed(st, m.tier)) return false;
-  if (m.only && m.only.indexOf(st.ruling) < 0) return false;
-  if (st.extra[m.id]) return false;
-  if (m.tier === 2 && (st.precedents || 0) < 2) return false;
-  return true;
+/* S15g: WHY a measure is closed, in words the player can act on -- the same
+   contract policyWhy has carried since S12 and v10OrderOpen since S10c. One
+   refusal string for five different reasons is a gate that reads as a bug. */
+function extraWhy(st, m) {
+  if (!leads(st)) return 'Only the party leading the government may sign one.';
+  if (st.extra[m.id] === 'upheld') return 'It is already in force, and settled law.';
+  if (st.extra[m.id] === 'pending') return 'It is signed and before the courts.';
+  if (st.extra[m.id] === 'struck') return 'The court struck it down. It cannot be signed again.';
+  if (m.book !== 'universal' && m.book !== st.ruling) {
+    return 'This belongs to the ' + (PARTY[m.book] ? PARTY[m.book].short : m.book) + '. No other government would attempt it.';
+  }
+  if (m.only && m.only.indexOf(st.ruling) < 0) {
+    return 'Open only to ' + m.only.map(function (x) { return PARTY[x].short; }).join(' or ') + '.';
+  }
+  if (m.needs && !(st.pol[m.needs] > 0)) {
+    return 'Requires ' + (POL[m.needs] ? POL[m.needs].name : m.needs) + '. A measure cannot outrun its own statute book.';
+  }
+  if (m.forms && m.forms.indexOf(st.form) < 0) {
+    return 'Only under the ' + m.forms.map(function (f) { return FORMS[f] ? FORMS[f].name : f; }).join(' or the ') + '.';
+  }
+  if (m.after && st.extra[m.after] !== 'upheld') {
+    return 'Not before ' + (EXTRA_BY[m.after] ? EXTRA_BY[m.after].name : m.after) + ' has been upheld.';
+  }
+  if (!m.req(st)) return m.reqText ? 'Requires ' + m.reqText + '.' : 'The conditions are not yet met.';
+  if (m.tier === 2 && (st.precedents || 0) < 2) {
+    return 'Two upheld measures of the first degree are needed first. You have ' + (st.precedents || 0) + '.';
+  }
+  if (!extraTierAllowed(st, m.tier)) {
+    return m.tier === 1
+      ? 'The state has not moved far enough: a security apparatus of 30 (it stands at ' + Math.round(securityState(st)) +
+        '), a constitution on the authority road, or no elections at all.'
+      : 'The second degree needs a terminal constitution, or two precedents and a police state.';
+  }
+  return '';
+}
+function extraAvailable(st, m) { return extraWhy(st, m) === ''; }
+/* What the measures in force add to the apparatus. The ratchet ran one way
+   before S15g and it compounds now: legislating the security state opens the
+   measures, and the measures build the security state. Capped, so a book of
+   sixty cannot on its own reach the total state. */
+function extraSecurity(st) {
+  var v = 0;
+  for (var k in (st.extra || {})) {
+    if (st.extra[k] !== 'pending' && st.extra[k] !== 'upheld') continue;
+    var m = EXTRA_BY[k]; if (!m) continue;
+    v += m.security || 0;
+  }
+  return Math.min(24, v);
+}
+/* The standing modifiers a measure leaves behind, on the v10OrderMods pattern:
+   recomputed, never cached, every field with a named reader. `eff` is the
+   one-shot the signature does to the stocks; `mods` is what stands while the
+   measure does. */
+function extraMods(st) {
+  var m = { unrest:0, ind:{}, polCost:{}, delivery:0, crown:0, army:0 };
+  for (var k in (st.extra || {})) {
+    if (st.extra[k] !== 'pending' && st.extra[k] !== 'upheld') continue;
+    var x = EXTRA_BY[k]; if (!x || !x.mods) continue;
+    var d = x.mods, j;
+    m.unrest += d.unrest || 0;
+    m.delivery += d.delivery || 0;
+    m.crown += d.crown || 0;
+    m.army += d.army || 0;
+    for (j in (d.ind || {})) m.ind[j] = (m.ind[j] || 0) + d.ind[j];
+    for (j in (d.polCost || {})) m.polCost[j] = (m.polCost[j] || 1) * d.polCost[j];
+  }
+  return m;
 }
 function extraActive(st) {
   var n = 0;
@@ -6941,7 +7227,7 @@ function doExtra(m) {
       S.machine[q.id] = clamp((S.machine[q.id] || 0) - m.wreck, -.8, 1);
     });
   }
-  S.unrest = clamp(S.unrest + (m.tier === 1 ? 6 : 13), 0, 110);
+  S.unrest = clamp(S.unrest + m.unrest, 0, 110);
   logIt(S, m.name + '. The question of its legality is now open.');
   chronicle(S, m.name + ' was signed into effect.');
   render();
@@ -6951,11 +7237,13 @@ function extraReview(st) {
   var pending = [];
   for (var k in st.extra) { if (st.extra[k] === 'pending') pending.push(k); }
   if (!pending.length || st.pendingExtra) return;
+  /* one at a time still: the court hears one case a session, and the sheet is
+     answered before the next is taken up */
   var id = pending[Math.floor(rand() * pending.length)];
   if (rand() > .42) return;
   var m = EXTRA_BY[id];
   var friendly = st.court.justices.length ? courtWith(st) / st.court.justices.length : .5;
-  var hold = clamp(friendly * 1.3 - (m.tier === 2 ? .38 : .12) + (st.precedents || 0) * .04 +
+  var hold = clamp(friendly * 1.3 - m.exposure + (st.precedents || 0) * .04 +
     (st.acts.courtStripping ? .25 : 0) + securityState(st) * .002, .04, .96);
   if (rand() < hold) {
     st.extra[id] = 'upheld';
@@ -12944,45 +13232,138 @@ function viewExec() {
     cabPanel + execPanel + '</div><div>' + prerogativePanel() + '</div></div>';
 }
 
+/* S15g: the card renders whether or not the measure is open, with the reason
+   it is closed printed on it -- the S12 rule that a player counting the page
+   should never conclude the book is unfinished. Before this slice a Social
+   Democrat saw one paragraph where a system should be, permanently. */
 function extraCard(m) {
-  var st = S.extra[m.id];
-  var open = extraAvailable(S, m), c = cst(m.cost);
-  var tag = st === 'upheld' ? '<span class="tag up">Upheld, and settled law</span>'
-    : st === 'pending' ? '<span class="tag down">Before the courts</span>'
-    : st === 'struck' ? '<span class="tag down">Struck down</span>'
-    : (open ? '<span class="tag">Available</span>' : '<span class="tag down">Not open to this government</span>');
+  var stat = S.extra[m.id];
+  var why = extraWhy(S, m), open = why === '', c = cst(m.cost);
+  var tag = stat === 'upheld' ? '<span class="tag up">Upheld, and settled law</span>'
+    : stat === 'pending' ? '<span class="tag down">Before the courts</span>'
+    : stat === 'struck' ? '<span class="tag down">Struck down</span>'
+    : (open ? '<span class="tag">Available</span>' : '<span class="tag down">Closed</span>');
   var effs = [];
   for (var k in (m.eff || {})) effs.push('<span class="tag ' + effClass(k, m.eff[k]) + '">' + esc(IND[k].name) + ' ' + (m.eff[k] > 0 ? '+' : '') + m.eff[k] + '</span>');
-  return '<div class="card"><h3>' + esc(m.name) + '</h3><p class="desc">' + esc(m.desc) + '</p>' +
-    '<div class="tagline">' + tag + '<span class="tag up">Capital +' + (m.power || 0).toFixed(1) + ' a year</span>' +
-    (m.only ? '<span class="tag">' + esc(m.only.map(function (x) { return PARTY[x].short; }).join(', ')) + ' only</span>' : '') +
+  var stands = [];
+  if (m.mods.unrest) stands.push('unrest ' + (m.mods.unrest > 0 ? '+' : '') + m.mods.unrest + ' while it stands');
+  if (m.security) stands.push('the apparatus +' + m.security);
+  for (var ik in (m.mods.ind || {})) stands.push(IND[ik].name.toLowerCase() + ' ' + (m.mods.ind[ik] > 0 ? '+' : '') + m.mods.ind[ik] + ' at target');
+  for (var pk in (m.mods.polCost || {})) stands.push(pk.toLowerCase() + ' statutes at ' + Math.round(m.mods.polCost[pk] * 100) + ' per cent');
+  if (m.mods.delivery) stands.push('delivery ' + (m.mods.delivery > 0 ? '+' : '') + m.mods.delivery);
+  if (m.mods.crown) stands.push('the states ' + (m.mods.crown > 0 ? '+' : '') + m.mods.crown);
+  if (m.mods.army) stands.push('the services ' + (m.mods.army > 0 ? '+' : '') + m.mods.army);
+  var canRepeal = (stat === 'upheld' || stat === 'pending') && leads(S) && S.capital >= cst(Math.max(3, Math.round(m.cost * .6)));
+  return '<div class="card' + (open ? '' : ' locked') + '"><h3>' + esc(m.name) + '</h3><p class="desc">' + esc(m.desc) + '</p>' +
+    '<div class="tagline">' + tag +
+    '<span class="tag up">Capital +' + (m.power || 0).toFixed(1) + ' a year</span>' +
+    '<span class="tag">Unrest +' + m.unrest + ' on signature</span>' +
+    (m.book !== 'universal' ? '<span class="tag">' + esc(PARTY[m.book] ? PARTY[m.book].name : m.book) + '</span>' : '') +
     '</div><div class="tagline">' + effs.join('') + '</div>' +
+    (stands.length ? '<p class="note">While it stands: ' + esc(stands.join('; ')) + '.</p>' : '') +
+    (why ? '<p class="note muted">' + esc(why) + '</p>' : '') +
     '<div class="btnrow"><button class="btn" data-extra="' + m.id + '"' +
-    ((open && S.capital >= c) ? '' : ' disabled') + '>Sign it <span class="c">' + c + '</span></button></div></div>';
+    ((open && S.capital >= c) ? '' : ' disabled' + (why ? ' title="' + esc(why) + '"' : '')) + '>Sign it <span class="c">' + c + '</span></button>' +
+    ((stat === 'upheld' || stat === 'pending')
+      ? '<button class="btn ghost" data-extrarepeal="' + m.id + '"' + (canRepeal ? '' : ' disabled') +
+        ' title="Undo it yourself, before the court or a successor does. What it gained goes back, and the record keeps the fact that it stood."' +
+        '>Repeal it <span class="c">' + cst(Math.max(3, Math.round(m.cost * .6))) + '</span></button>' : '') +
+    '</div></div>';
+}
+/* Undoing your own measure. The court's `comply` branch has done this since
+   v4 and the government could never do it for itself: a measure was a one-way
+   ratchet whatever the government came to think of it. */
+function extraRepeal(id) {
+  var m = EXTRA_BY[id]; if (!m) return;
+  var stat = S.extra[id];
+  if (stat !== 'upheld' && stat !== 'pending') { flash('There is nothing to repeal.'); return; }
+  if (!leads(S)) { flash('Only the party leading the government may repeal one.'); return; }
+  var c = cst(Math.max(3, Math.round(m.cost * .6)));
+  if (S.capital < c) { flash('Not enough political capital.'); return; }
+  captureUndo('Repeal ' + m.name);
+  S.capital -= c;
+  S.extra[id] = 'repealed';
+  if (S.pendingExtra === id) S.pendingExtra = null;
+  for (var k in (m.eff || {})) S.ind[k] = c100(S.ind[k] - m.eff[k]);
+  if (m.mood) mood(S, scaleObj(m.mood, -1));
+  if (m.states) S.crown = c100(S.crown - m.states);
+  if (m.gerry) S.gerry[S.ruling] = Math.max(0, (S.gerry[S.ruling] || 0) - m.gerry);
+  S.unrest = clamp(S.unrest - m.unrest * .4, 0, 110);
+  mood(S, { prof:3, youth:2 });
+  S.ind.liberties = c100(S.ind.liberties + Math.max(1, m.unrest * .3));
+  logIt(S, m.name + ' was repealed by the government that signed it.');
+  chronicle(S, m.name + ' was repealed.');
+  render();
+}
+document.addEventListener('click', function (e) {
+  var b = e.target && e.target.closest && e.target.closest('[data-extrarepeal]');
+  if (!b || b.disabled) return;
+  extraRepeal(b.getAttribute('data-extrarepeal'));
+});
+/* The books. Seven parties with measures of their own, and a universal book
+   any government that has gone far enough can reach. Before S15g there were
+   two flat lists, twenty-three measures open to anyone, and three parties --
+   the Social Democrats, the Federal Party and the Coalition for Unity and
+   Progress -- with nothing of their own at all. */
+var EXTRA_BOOKS = [{ id:'universal', name:'Open to any government' }].concat(
+  PARTIES.slice().sort(function (a, b) { return a.order - b.order; })
+    .map(function (p) { return { id:p.id, name:p.name }; }));
+var EXTRA_FILTERS = [
+  { id:'all',    label:'All' },
+  { id:'open',   label:'Open now' },
+  { id:'mine',   label:'Yours' },
+  { id:'force',  label:'In force' },
+  { id:'closed', label:'Closed' }
+];
+function extraFilter() {
+  var f = S.uiPrefs && S.uiPrefs.extraFilter;
+  return EXTRA_FILTERS.some(function (x) { return x.id === f; }) ? f : 'all';
+}
+function extraShown(m) {
+  var f = extraFilter(); if (f === 'all') return true;
+  var stat = S.extra[m.id];
+  if (f === 'force') return stat === 'upheld' || stat === 'pending';
+  if (f === 'mine') return m.book === S.ruling;
+  if (f === 'open') return extraAvailable(S, m);
+  return !extraAvailable(S, m) && stat !== 'upheld' && stat !== 'pending';
+}
+document.addEventListener('click', function (e) {
+  var b = e.target && e.target.closest && e.target.closest('[data-extrafilter]');
+  if (!b || !S || !S.uiPrefs) return;
+  S.uiPrefs.extraFilter = b.getAttribute('data-extrafilter');
+  render();
+});
+function prerogativePanel() {
+  var t1 = extraTierAllowed(S, 1), t2 = extraTierAllowed(S, 2), cur = extraFilter();
+  var ss = Math.round(securityState(S));
+  var strip = '<div class="filters extra-filters">' + EXTRA_FILTERS.map(function (x) {
+    return '<button data-extrafilter="' + x.id + '" aria-pressed="' + (x.id === cur) + '">' + esc(x.label) + '</button>';
+  }).join('') + '</div>';
+  var note = '<p class="note">Each of these contends with the law rather than following it. Signing one takes effect at once, ' +
+    'pays capital every year it stands, builds the apparatus, and goes on the docket: the court may take it up, and it either ' +
+    'upholds it, which makes the next one easier, or strikes it, and then you comply, defy, or impeach the majority. ' +
+    'You can also repeal your own. ' + (S.precedents || 0) + ' upheld so far, and the apparatus stands at ' + ss + '.</p>' +
+    (t1 ? '' : '<p class="note">Nothing here is open to a ' + esc(PARTY[S.ruling].short) + ' government under this constitution. ' +
+      'The first degree opens to the parties of the extremes, and to ANY government once the state has moved: an apparatus of 30, ' +
+      'a constitution on the authority road, or no elections at all. Every card below says which of those it is waiting for.</p>') +
+    (t1 && !t2 ? '<p class="note">The second degree is closed. It opens to the Revolutionary Socialist Front and the Patriot Nationalist ' +
+      'League, under a terminal constitution, or on two upheld precedents with a police state or no elections.</p>' : '');
+  var shown = 0;
+  var body = EXTRA_BOOKS.map(function (b) {
+    var list = EXTRA.filter(function (m) { return m.book === b.id && extraShown(m); });
+    if (!list.length) return '';
+    shown += list.length;
+    list.sort(function (x, y) { return x.tier - y.tier; });
+    return '<h3 class="eyebrow" style="margin:14px 0 6px">' + esc(b.name) +
+      (b.id === S.ruling ? ' · yours' : '') + '</h3><div class="cards">' + list.map(extraCard).join('') + '</div>';
+  }).join('') || '<div class="empty-state">No measure matches that filter.</div>';
+  var summary = '<div class="works-summary"><span><b>' + extraActive(S) + '</b> standing</span>' +
+    '<span><b>' + (S.precedents || 0) + '</b> upheld</span>' +
+    '<span><b>' + ss + '</b> apparatus</span>' +
+    '<span><b>' + shown + '</b> of ' + EXTRA.length + ' shown</span></div>';
+  return '<div class="panel"><h2>Extraordinary Measures</h2>' + note + strip + summary + body + '</div>';
 }
 
-function prerogativePanel() {
-  var t1 = extraTierAllowed(S, 1), t2 = extraTierAllowed(S, 2);
-  var head = '<div class="panel"><h2>Extraordinary Measures</h2>';
-  if (!t1) {
-    return head + '<p class="note">Measures of this kind are open to the parties of the extremes \u2014 the Revolutionary Socialist Front, ' +
-      'the Labor Party, the Traditional Values Coalition or the Patriot Nationalist League \u2014 and to ANY government once the state itself has ' +
-      'moved: a built security apparatus (Security State 30; it stands at ' + Math.round(securityState(S)) + '), a constitution on the authority road, ' +
-      'or no elections at all. A ' + esc(PARTY[S.ruling].short) + ' government under this constitution has neither the constituency nor the machinery.</p></div>';
-  }
-  var note = '<p class="note">Each of these contends with the law rather than following it. Signing one takes effect at once and pays capital every year it stands, ' +
-    'but it goes on the docket: the court may take it up, and it either upholds it, which makes the next one easier, or strikes it, ' +
-    'and then you comply, defy, or impeach the majority. ' + (S.precedents || 0) + ' upheld so far.</p>';
-  var one = '<div class="subhead">First degree</div><div class="cards">' +
-    EXTRA.filter(function (m) { return m.tier === 1; }).map(extraCard).join('') + '</div>';
-  var two = t2
-    ? '<div class="subhead" style="margin-top:16px">Second degree</div>' +
-      ((S.precedents || 0) < 2 ? '<p class="note">Two upheld measures of the first degree are needed before the second degree opens.</p>' : '') +
-      '<div class="cards">' + EXTRA.filter(function (m) { return m.tier === 2; }).map(extraCard).join('') + '</div>'
-    : '<div class="subhead" style="margin-top:16px">Second degree</div><p class="note">Closed to a ' + esc(PARTY[S.ruling].short) +
-      ' government. Only the Revolutionary Socialist Front and the Patriot Nationalist League will go that far.</p>';
-  return head + note + one + two + '</div>';
-}
 
 function viewJudicial() {
   var gp = govPos(S), cp = courtPos(S);
@@ -21847,7 +22228,12 @@ allocateSeats = function (st, res, total, force) {
   X({ id:'v9loyaltyBoards', tier:2, name:'Loyalty Boards for the Service', cost:11,
       desc:'Every federal officer examined for loyalty by a board of the ruling party, and dismissed by it.',
       eff:{ liberties:-8, corruption:6, safety:2 }, mood:{ prof:-14, youth:-8, labour:-4, veterans:4 }, power:1.1 }),
-  X({ id:'v9partyCourts', tier:2, name:'Party Tribunals', cost:12,
+  /* S15g: this and `partyTribunals` both read "Party Tribunals", so the panel
+     drew two adjacent cards with an identical heading and the command palette
+     indexed both under the same name. The roads check for name collisions
+     compared the orders against the measures and never the measures against
+     themselves. */
+  X({ id:'v9partyCourts', tier:2, name:'Tribunals of the Movement', cost:12,
       desc:'Political offences tried before tribunals of the party rather than the courts of the republic.',
       eff:{ liberties:-10, safety:3, corruption:5 }, mood:{ prof:-15, youth:-10, faith:-4, veterans:3 }, power:1.2 })
 ].forEach(function (m) { if (!EXTRA_BY[m.id]) { EXTRA.push(m); EXTRA_BY[m.id] = m; } });
@@ -29578,6 +29964,38 @@ capitalIncome = function (st) {
   var v = v12CapitalFloorBase(st);
   var d = DIFFS[(st && st.diff) || 'normal'] || DIFFS.normal;
   return d.capFloor ? Math.max(v, d.capFloor) : v;
+};
+
+/* ==========================================================
+   S15g: WHAT THE MEASURES IN FORCE ACTUALLY DO.
+
+   Every field of extraMods has a named reader, on the v11ConEffects pattern:
+   unrest -> unrestTarget, ind -> indicatorTargets, polCost -> policyCost,
+   security -> securityState. Before this slice a measure moved a stock once
+   at signature and then stood for the rest of the campaign doing nothing but
+   pay capital, which is why signing all twenty-five of them moved the
+   apparatus by zero.
+   ========================================================== */
+var v15UnrestTargetBase = unrestTarget;
+unrestTarget = function (st) {
+  return clamp(v15UnrestTargetBase(st) + extraMods(st).unrest, 0, 110);
+};
+var v15IndTargetsBase = indicatorTargets;
+indicatorTargets = function (st) {
+  var t = v15IndTargetsBase(st), m = extraMods(st);
+  for (var k in m.ind) if (t[k] !== undefined) t[k] = c100(t[k] + m.ind[k]);
+  return t;
+};
+var v15PolicyCostBase = policyCost;
+policyCost = function (id, dir) {
+  var c = v15PolicyCostBase(id, dir), p = POL[id];
+  if (!p || !S) return c;
+  var f = extraMods(S).polCost[p.cat];
+  return f ? Math.max(1, Math.round(c * f)) : c;
+};
+var v15SecurityStateBase = securityState;
+securityState = function (st) {
+  return clamp(v15SecurityStateBase(st) + extraSecurity(st), 0, 100);
 };
 
 /* ---------- boot ---------- */

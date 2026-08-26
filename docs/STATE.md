@@ -4,8 +4,104 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, sixth of eleven PRs. The party treasury: a party
-pays for its own politics.
+**S15 — The regime is real**, seventh of eleven PRs. Extraordinary measures:
+sixty of them, in eight books, and every one that is closed says why.
+
+### Twenty-five measures, and three parties with nothing
+
+Twenty-three were open to anyone and two belonged to a party. **The Social
+Democrats, the Federal Party and the Coalition for Unity and Progress had
+nothing of their own at all** — and when tier 1 was shut the panel rendered **no
+cards whatever**, which is the state on turn one of six of the eleven openings.
+
+**Sixty now, in eight books**: 23 universal and five or six for each of the
+seven parties. Every party has a book of what it does when it decides the
+ordinary machinery is not enough.
+
+### The constructor was the identity function
+
+`function X(o) { return o; }`. No defaults, so every optional field was read
+defensively at ten call sites and an omitted one was a silent `undefined`. And
+there was **no gating vocabulary at all** — no `cat`, no `req`, no `reqText`, no
+`needs`, no `forms` — so the gate was one external predicate and one refusal
+string, *"That is not open to this government"*, whether the reason was your
+party, the apparatus, the constitution, a missing statute or two precedents you
+had not earned.
+
+`X(o)` fills twelve fields now and **derives `security` from the measure's own
+liberties cost**, the same idiom `P()` has used since S9f to freeze a statute's
+`auth` valence from its rung-one row: an author who has said what a thing does to
+liberties has already said how much apparatus it builds.
+
+`extraWhy(st, m)` gives **ten distinct sentences** where there was one, and
+`extraAvailable` is now `extraWhy(st, m) === ''`.
+
+### A locked book is still a book
+
+A Social Democrat on turn one of a Federal Republic — the case that rendered
+nothing — sees **60 cards in 8 books, all 60 locked, every one carrying the
+reason it is locked**, with a filter across them. That is the S12 rule applied
+where it was still missing: a player counting the page should never conclude the
+book is unfinished.
+
+### The ratchet compounds, and a measure stands for something
+
+`securityState` opened the measures at 30 and 50, read them in the court's hold
+formula and printed them on the panel, and **signing all twenty-five of them
+moved it by exactly zero**. Three in force take it from 0 to 5 now, capped at 24.
+
+And a measure moved a stock once at signature and then stood for the rest of the
+campaign doing nothing but pay capital. `extraMods` is the standing part, on the
+`v10OrderMods` pattern, every field with a named reader. Measured: two measures
+in force move the unrest target, the poverty target and the price of a Labour
+statute.
+
+The four wrappers are installed **last in the file**, beside v12's capital floor,
+so they are outermost and **no existing wrapper index in
+`checks/dead-bodies.json` shifted** — an early insertion would have renumbered
+`indicatorTargets#6` and `policyCost#6` out from under their adjudications.
+
+### Authored unrest, per-measure exposure, and repeal
+
+The unrest cost was `m.tier === 1 ? 6 : 13`; the book carries **eight distinct
+values** now. The court's exposure was `.12` or `.38` by tier; it is per measure.
+And the government that signed a measure can **repeal** it, at capital, giving
+back the liberties and part of the unrest — only the court could undo one before,
+so it was a one-way ratchet whatever the government came to think of it.
+
+Also fixed: `partyTribunals` and `v9partyCourts` both read **"Party Tribunals"**,
+so the panel drew two adjacent cards with an identical heading and the command
+palette indexed both under the same name. The roads collision check compared the
+orders against the measures and never the measures against themselves.
+
+### Six assertions, all six red on the build before this PR
+
+25 measures in one book; a Social Democrat saw **0 cards** and **one** distinct
+reason; three measures in force took the apparatus from 0 to 0; two in force
+moved the unrest target from 12.14 to 12.14, the poverty target from 29.12 to
+29.12 and a Labour statute from 20 capital to 20; there was nothing to repeal;
+and there was no filter. The `measures-render-locked` playtest step reddens too.
+
+```
+ALL CHECKS PASS   11/11, 3,130,187 bytes, +31,468 since HEAD of 250,000
+ROADS OK          140 assertions
+PLAYTEST PASS     48 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / CHAMBER   all green
+```
+
+The 35 new measures carry no em dashes, no non-ASCII, no curly quotes and no
+banned word.
+
+Next: **S15h**, campaigning. The machine is applied in `supportTargets` **and
+again** in `ballot`, so it is felt at roughly its square; the campaign's own
+scalar is `clamp(0, 12)` against a measured raw score of 17.9, so over a third of
+what the player buys is discarded with nothing on screen saying so; caucuses are
+worth **0 seats** at any investment; and eight organisations at their ceiling are
+worth +25 against the machine's +350.
+
+Previously: **S15 — The regime is real**, sixth of eleven PRs. The party
+treasury: a party pays for its own politics.
 
 ### Fifty-seven party actions, twenty-seven of them billed to the exchequer
 
@@ -112,15 +208,6 @@ RUNGS OK / TIERS / TABS / CHAMBER   all green
 The purse rides the save, an old save with no purse is seeded from seats, a
 corrupt value is repaired rather than passed on, and `v6Sandbox` keeps its clone
 to itself.
-
-Next: **S15g**, extraordinary measures. About sixty replacing twenty-five, four
-to six for each of the seven parties plus a universal book; the gating vocabulary
-`POLICIES`, `V10_ORDERS` and `V11_ARTICLES` all already carry; an `extraWhy`
-mirroring `policyWhy`; standing modifiers rather than one-shot stock hits;
-per-measure exposure; authorable unrest; repeal; measures feeding
-`securityState` instead of sitting downstream of it; and a panel that renders
-locked cards instead of the paragraph a Social Democrat sees where a system
-should be.
 
 Previously: **S15 — The regime is real**, fifth of eleven PRs. The constitution:
 three articles at a time, two roads to ratification, a convention that does
