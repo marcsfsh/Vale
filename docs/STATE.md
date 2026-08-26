@@ -4,8 +4,91 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, eighth of eleven PRs. Campaigning: five systems
-reach the count, and one of them was worth nine times the other four together.
+**S15 — The regime is real**, ninth of eleven PRs. Executive offices: the office
+is won by a person now, and the person is somebody the player built.
+
+### There was no candidate
+
+An executive office was won by a **party**. The whole contest was four numbers:
+national vote share, a push keyed on `st.ruling`, a noise band, and a flat
+**`1.18`** for whichever party held it. Not one attribute of the sitting holder
+entered it — not their name, their age, their trait, nor the `loyalty` the assent
+stage reads. A person was minted **afterwards** by `holderOf` and thrown away the
+moment the party changed, so nobody could hold an office twice, be beaten and
+come back, or be barred from a third term. The report of the result named the
+party and never a person.
+
+### The bench already existed and could not stand for anything
+
+Sixteen ministers have carried competence, loyalty, ambition, exposure and a
+trait since v5. Eight governors have carried standing, approval and their own
+term count since v6. Every party has had a leader since v4. **`ambition` was
+written six ways and read twice**: a −0.29-a-session loyalty drag, and a `>= 55`
+gate on a button whose whole effect was `+1` to a rank integer on the *same
+portfolio*.
+
+Measured on the harness state: a party now puts up one of **19 named people**
+from three of the four places a candidate can come from, **14 of 14** ministers
+who wanted a great office and did not get it lose loyalty and gain ambition for
+it, and a minister who wins one **leaves the cabinet** to take it.
+
+### Incumbency belongs to the person
+
+The sitting holder standing again is worth **1.32** against **1.08** for the same
+party running a new face — competence, terms served and exposure, clamped. It was
+a flat 1.18 keyed on the party, so a beloved twenty-year technocrat and an
+eighty-year-old nobody the party had installed the week before were the same
+number.
+
+### Three things that were wired to nothing
+
+| was | is |
+|---|---|
+| `execPush` wrote `S.execPush[S.ruling]`, keyed on **no office**, and the read lifted **both** contests of the pair. Its money came from the national **treasury** | four options, one per office. Credited to `playParty(S)`, so a junior partner no longer buys the senior partner's ticket, and paid out of party funds |
+| `promoteProtege` picked a **random** office and minted a **stranger** with a hand-picked trait and `loyalty: 85` | four options, and the person who arrives is a minister, a governor or the party leader |
+| `artTermLimit` has read *"no person shall hold the same great office for more than two terms together"* since S11d, has **no `apply()`**, and **no executive term counter existed anywhere in the file** | a sitting holder on two terms is barred, and the party puts somebody else up |
+
+`ageSucceed` takes the successor off the bench too. Measured over eighty
+sessions: **11 successions, every one of them out of the leadership or the
+states**, where every one used to be a name nobody had seen.
+
+### No die is rolled anywhere in this model
+
+`execBench`, `execNominate` and `v15Person` are all on the render path, and a
+roll there makes the campaign's dice depend on how many times the player looked
+at a screen. Every derived value comes off a hash of the person's own name.
+`makeFigure` is **untouched** for the same reason: `v15Person` backfills on read,
+so old saves, the ten sites that build a figure by hand and the v10 rename
+wrapper all get one treatment — and the dice stream is byte-identical.
+
+### Five assertions and a playtest step, all six red on the build before this PR
+
+The old build reads: a bench of **0**, a holder with no competence and no term
+count, the sitting holder and a new face both worth **1.18**, a ticket with no
+offices to aim at that credits the senior partner, and an executive page that
+emitted **no control of its own at all**.
+
+```
+ALL CHECKS PASS   11/11, 3,160,328 bytes, +17,624 since HEAD of 250,000
+ROADS OK          150 assertions
+PLAYTEST PASS     50 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / CHAMBER   all green
+PACING            4 elections won over fifty sessions against 3; all lengths
+                  reach their end year
+```
+
+Next: **S15j**, the Northern Alliance. It is not a membership set — it is **one
+relation number on a bloc row**. The statute named "Expand the Northern Alliance"
+is read by nothing in 3 MB. No diplomatic decision in the game spends a die: an
+invitation cannot be refused because there is nothing to invite anyone to. Two
+Alliance cards call no `shiftRel` at all, "Conclude a Treaty" costs 8 capital and
+writes no treaty, and four diplomacy target lists were built before the five S10e
+powers existed.
+
+Previously: **S15 — The regime is real**, eighth of eleven PRs. Campaigning: five
+systems reach the count, and one of them was worth nine times the other four
+together.
 
 ### The machine was counted twice, and everything else was worth nothing
 
@@ -91,14 +174,6 @@ PLAYTEST PASS     49 steps + the WebKit SKIP
 DETERMINISM PASS  8 properties
 RUNGS OK / TIERS / TABS / CHAMBER / PACING   all green
 ```
-
-Next: **S15i**, executive offices and persons. There is no candidate: the office
-is won by a *party* and a person is minted afterwards by `holderOf` and thrown
-away when the party loses. Four things are wired to nothing — `ambition`'s only
-outlet is +1 rank in the same portfolio, `promoteProtege` is this whole feature
-implemented as a coin toss, `execPush` cannot be aimed and credits the senior
-partner when a junior spends it, and `artTermLimit` counts terms nobody records.
-Incumbency is keyed on the party (the 1.18 multiplier), not on the person.
 
 Previously: **S15 — The regime is real**, seventh of eleven PRs. Extraordinary
 measures: sixty of them, in eight books, and every one that is closed says why.
