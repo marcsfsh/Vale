@@ -2959,6 +2959,218 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `not mention the Assembly (${C.cardSaysAssembly}) · it read "Lay it before the Assembly" whatever was ` +
     `standing, and under an elections form with no Assembly no article could ever ratify`);
 
+  /* ============================================================
+     13. S15f: THE PARTY TREASURY.
+
+     "It's weird to me that you use the NATION's treasury to fund YOUR party's
+     actions." Fifty-seven party actions, twenty-seven of them charging the
+     exchequer, including a fighting fund whose own card says the money comes
+     from donors, and an opposition party buying newspapers and organisers out
+     of a treasury it does not control.
+
+     And st.funding: a live multiplier in supportTargets with a decay in
+     endTurn and NO WRITER ANYWHERE IN THE FILE, so the vote model's slot for
+     what a party's money buys was permanently zero.
+     ============================================================ */
+  const purse = await p3.evaluate(() => {
+    const out = {};
+    const has = (n) => typeof window[n] === 'function';
+    out.hasPurse = has('partyPurse');
+    out.hasIncome = has('partyIncome');
+
+    /* the tiers */
+    out.tiers = {};
+    ['easy', 'gentle', 'normal', 'hard', 'brutal'].forEach((d) => {
+      S = enrichState(v6NewGame(d, 'v6default', 'standard', 'lp'), false);
+      const me = playParty(S);
+      out.tiers[d] = {
+        purse: has('partyPurse') ? Math.round(partyPurse(S, me)) : 0,
+        income: has('partyIncome') ? +partyIncome(S, me).total.toFixed(1) : 0
+      };
+    });
+
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    const me = playParty(S);
+    S.ruling = me; S.coalition = [me]; S.capital = 2000; S.treasury = 4000;
+    if (S.purse) PARTIES.forEach((p) => { S.purse[p.id] = 600; });
+    S.funding = {};
+
+    /* EVERY party action, driven through the real dispatcher, and the
+       national treasury must not move by a single unit. */
+    const t0 = S.treasury;
+    let moneyActs = 0, ran = 0, spent = 0;
+    PARTIES.forEach((p) => {
+      partyActions(p.id).forEach((a) => {
+        const m = actionMoney(a);
+        if (!m) return;
+        moneyActs++;
+        const before = has('partyPurse') ? partyPurse(S, me) : 0;
+        try { if (!a.can || a.can()) { doAction(a); ran++; spent += before - (has('partyPurse') ? partyPurse(S, me) : 0); } } catch (e) {}
+      });
+    });
+    out.moneyActs = moneyActs;
+    out.ran = ran;
+    out.treasuryDelta = Math.round(S.treasury - t0);
+    out.spentFromPurse = Math.round(spent);
+    out.fundingWritten = Object.keys(S.funding || {}).length;
+
+    /* THE TWO TRAPS. Seventeen can: predicates read S.treasury directly, so a
+       button could promise what the handler would refuse; and the buttons are
+       drawn from a second copy of the same arithmetic. Both are asked the way
+       a player meets them: what the CARD does when the purse is full and the
+       exchequer is empty, and the other way round. */
+    out.stillReadTreasury = [];
+    PARTIES.forEach((p) => {
+      partyActions(p.id).forEach((a) => {
+        if (a.can && /S\.treasury/.test(String(a.can))) out.stillReadTreasury.push(a.id);
+      });
+    });
+    function buttonsFor(pid) {
+      UI.tab = 'parties'; render();
+      const cards = [].slice.call(document.querySelectorAll('#view [data-party="' + pid + '"][data-pact]'));
+      const acts = {}; partyActions(pid).forEach((a) => { acts[a.id] = a; });
+      return cards.filter((b) => { const a = acts[b.getAttribute('data-pact')]; return a && actionMoney(a); });
+    }
+    S.capital = 2000;
+    S.treasury = 4000;
+    if (S.purse) PARTIES.forEach((p) => { S.purse[p.id] = 0; });
+    let bs = buttonsFor(me);
+    out.pooredButtons = { total:bs.length, enabled:bs.filter((b) => !b.disabled).length };
+    S.treasury = 0;
+    if (S.purse) PARTIES.forEach((p) => { S.purse[p.id] = 600; });
+    bs = buttonsFor(me);
+    const acts2 = {}; partyActions(me).forEach((a) => { acts2[a.id] = a; });
+    /* A button still off with a full purse must be off for a reason that is
+       not money -- a press share already at its ceiling, a leader already
+       co-opted, a house that does not sit. */
+    const offForOther = bs.filter((b) => {
+      if (!b.disabled) return false;
+      const a = acts2[b.getAttribute('data-pact')];
+      return !!a && has('actionCanPay') && actionCanPay(a, actionMoney(a));
+    }).length;
+    out.richButtons = { total:bs.length, enabled:bs.filter((b) => !b.disabled).length, offForOther:offForOther };
+    UI.tab = 'chamber'; render();
+    S.treasury = 4000;
+
+    /* st.funding reaches the vote */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.funding = {};
+    const base = supportTargets(S)[me];
+    S.funding[me] = .2;
+    const rich = supportTargets(S)[me];
+    out.fundingMovesTheVote = rich > base;
+    out.fundingLift = +((rich / base - 1) * 100).toFixed(2);
+    /* and party money is what writes it */
+    S.funding = {};
+    if (has('partySpend')) partySpend(S, me, 40);
+    out.spendWritesFunding = +((S.funding[me] || 0)).toFixed(3);
+
+    /* the other six parties are paid and spend, so their money matters too */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.funding = {};
+    if (has('partyPurseTick')) partyPurseTick(S);
+    out.aiFunded = Object.keys(S.funding || {}).filter((k) => k !== playParty(S) && S.funding[k] > 0).length;
+
+    /* the Act */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    const noAct = has('partyIncome') ? partyIncome(S, me).subsidy : 0;
+    S.acts.partyFunding = true;
+    const withAct = has('partyIncome') ? partyIncome(S, me).subsidy : 0;
+    out.act = { exists: ACTS.some((a) => a.id === 'partyFunding'), before:+noAct.toFixed(1), after:+withAct.toFixed(1) };
+
+    /* the balance line adds up */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.debt = 600;
+    /* a constitutional article with a fiscal effect, so v11ConBudgetBase fires */
+    const bc = v11Con(S);
+    bc.arts = {}; bc.order = [];
+    if (V11_ART.artInterstateCommerce) {
+      bc.arts.artInterstateCommerce = { year:2025, margin:60 };
+      bc.order.push('artInterstateCommerce');
+    }
+    const bd = budget(S);
+    out.budget = { rev:+bd.rev.toFixed(2), exp:+bd.exp.toFixed(2), net:+bd.net.toFixed(2),
+      interest:+bd.interest.toFixed(2), adds:Math.abs(bd.net - (bd.rev - bd.exp)) < .005 };
+
+    /* the Ledger capital panel */
+    S = enrichState(v6NewGame('easy', 'v6default', 'standard', 'lp'), false);
+    S.ruling = playParty(S); S.coalition = [S.ruling];
+    UI.tab = 'ledger'; render();
+    const capPanel = [].slice.call(document.querySelectorAll('#view .panel'))
+      .filter((x) => /Political Capital/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+    if (capPanel) {
+      const cells = [].slice.call(capPanel.querySelectorAll('tbody tr'));
+      const nums = cells.map((tr) => parseFloat((tr.querySelector('.num') || {}).textContent || '0'));
+      const total = nums[nums.length - 1];
+      const rows = nums.slice(0, -1).reduce((a, b2) => a + b2, 0);
+      out.ledger = { rows:nums.length - 1, total:+total.toFixed(1), sum:+rows.toFixed(1),
+        adds:Math.abs(total - rows) < .9, real:+capitalIncome(S).toFixed(1) };
+    }
+    UI.tab = 'chamber'; render();
+    return out;
+  });
+
+  const F = purse;
+  const tier = (k) => F.tiers[k] || { purse:0, income:0 };
+  say(F.hasPurse && F.hasIncome && tier('easy').income > tier('normal').income * 3 &&
+      tier('normal').income > tier('brutal').income &&
+      tier('easy').purse > 140 && tier('brutal').purse > 0,
+    'every party has money of its own',
+    F.hasPurse
+      ? `a party opens with ${tier('easy').purse} and raises ${tier('easy').income} a session on Very easy, ` +
+        `${tier('normal').purse}/${tier('normal').income} on Normal and ${tier('brutal').purse}/${tier('brutal').income} ` +
+        `on Very hard · party actions cost between three and thirteen, so the owner's "cake walk" is one tier's dial ` +
+        `(purseMult) rather than the exchequer's`
+      : 'there is no party purse');
+
+  say(F.ran > 40 && F.treasuryDelta === 0 && F.spentFromPurse > 0,
+    'the nation does not fund your party',
+    `${F.ran} of ${F.moneyActs} money-bearing party actions were driven through the real dispatcher and the national ` +
+    `treasury moved by ${F.treasuryDelta} · ${F.spentFromPurse} came out of the parties' own purses instead · ` +
+    `before S15f every one of them charged the exchequer, and eleven of them did it inside their own run() bodies ` +
+    `past a hand-kept array of ids that doAction had to consult`);
+
+  say(F.stillReadTreasury.length === 0 && F.pooredButtons.total > 6 &&
+      F.pooredButtons.enabled === 0 &&
+      F.richButtons.enabled + F.richButtons.offForOther === F.richButtons.total,
+    'the card is priced in the money that pays for it',
+    F.stillReadTreasury.length
+      ? F.stillReadTreasury.length + ' can: predicate(s) still read S.treasury: ' + F.stillReadTreasury.slice(0, 4).join(', ')
+      : `no can: predicate on a party action reads the national treasury · with the purse empty and the exchequer ` +
+        `holding 4,000, ${F.pooredButtons.enabled} of ${F.pooredButtons.total} money-bearing buttons are live; with ` +
+        `the purse full and the exchequer at nothing, ${F.richButtons.enabled} of ${F.richButtons.total} are and ` +
+        `the other ${F.richButtons.offForOther} are held back by something that is not money · ` +
+        `seventeen predicates and five separate button strips read S.treasury by hand before this PR`);
+
+  say(F.fundingMovesTheVote && F.spendWritesFunding > 0 && F.aiFunded >= 5,
+    'party money reaches the ballot',
+    `st.funding is a live multiplier in supportTargets with a decay in endTurn and, until this PR, no writer ` +
+    `anywhere in the file · forty of party money now writes ${F.spendWritesFunding} of it, which is worth ` +
+    `${F.fundingLift} percent of the vote at 0.2 · and ${F.aiFunded} of the six parties the player does not lead ` +
+    `are paid and spend in the same session tick, which is what makes an AI party's finances matter`);
+
+  say(F.act.exists && F.act.before === 0 && F.act.after > 0,
+    'the law the owner meant',
+    `the State Funding of Parties Act pays every party that returns members a grant on the size of its return: ` +
+    `the subsidy channel reads ${F.act.before} without it and ${F.act.after} with it · it is an act rather than a ` +
+    `statute because the twenty core statute categories hold exactly twenty-four each and that count is a contract`);
+
+  say(F.budget.adds,
+    'the balance line adds up',
+    `revenue ${F.budget.rev} less expenditure ${F.budget.exp} is ${F.budget.net}, and interest of ` +
+    `${F.budget.interest} is counted once · v11ConBudgetBase and v11DeptBudgetBase both computed ` +
+    `rev - exp - interest, and interest is already inside exp when the base returns, so a save with a fiscal ` +
+    `article and a department settlement charged the debt three times on the line the Ledger prints`);
+
+  say(!!F.ledger && F.ledger.adds && F.ledger.rows >= 11,
+    'the capital panel adds up to its own total',
+    F.ledger
+      ? `${F.ledger.rows} rows summing to ${F.ledger.sum} against a printed total of ${F.ledger.total}, which is ` +
+        `the real capitalIncome · the table re-typed eleven of the base's terms by hand, omitted the rest and all ` +
+        `five wrappers, and printed the real figure underneath: on Very easy the rows summed to about 5 beside a ` +
+        `total of 75`
+      : 'the Political Capital panel was not rendered');
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

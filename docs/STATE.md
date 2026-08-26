@@ -4,9 +4,127 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, fifth of eleven PRs. The constitution: three
-articles at a time, two roads to ratification, a convention that does something,
-and thirty-two more articles.
+**S15 — The regime is real**, sixth of eleven PRs. The party treasury: a party
+pays for its own politics.
+
+### Fifty-seven party actions, twenty-seven of them billed to the exchequer
+
+The owner's words: "it's weird to me that you use the NATION's treasury to fund
+YOUR party's actions." Measured on the old build, driving every money-bearing
+party action through the real dispatcher: **the national treasury moved by
+−628**. That included an opposition party buying newspapers and organisers out
+of a treasury it does not control, patronage inside your own parliamentary
+caucus, and a **fighting fund whose own card says the money comes from donors**.
+
+**`st.purse[pid]` is money a party owns.** Backfilled in the v4 enrich beside
+`st.partyRel`, seeded from seats and the tier's dial, and it rides the save like
+everything else on `S`.
+
+| tier | opens with | a session |
+|---|---|---|
+| Very easy | 158 | 142.8 |
+| Normal | 44 | 39.7 |
+| Very hard | 32 | 28.6 |
+
+Party actions cost between three and thirteen, so the owner's "cake walk" on
+Very easy is one number — `purseMult`, the tier's own dial — rather than the
+exchequer's `rev`, which is 2 there for reasons that belong to the budget.
+
+### The seam is one argument, and the route is not a property of the button
+
+`pv5Spend(cap, money, label, purse)`. The fourth argument defaults to the nation,
+so **no call site changed behaviour until it was re-pointed**. And the route is a
+property of **where the action came from**: `partyActions` stamps
+`purse:'party'` on the whole list in its tail, so fifty-seven actions were
+re-pointed by two lines instead of two hundred buttons one at a time.
+
+**`moneyHandled` is gone.** Eleven party actions deducted their own money inside
+`run()`, past a hand-kept array of ids that `doAction` had to consult to know
+whether to skip the subtraction. `doAction` pays for all of them uniformly now,
+out of the purse the action names.
+
+The two traps the plan named are both closed and both asked end to end: **no
+`can:` predicate on a party action reads `S.treasury`** any more (there were
+seventeen), and with the purse empty and the exchequer holding 4,000 **none** of
+the money-bearing buttons is live, while with the purse full and the exchequer at
+nothing **eleven of thirteen** are and the other two are held back by something
+that is not money.
+
+### Three channels, and a law
+
+Dues from seats and `st.machine` (the file's de-facto membership); donations from
+the blocs, by `BLOC_WEALTH` and closeness, plus the organisations' relations; and
+a state subsidy that exists only while the **State Funding of Parties Act**
+stands. A fourth posture, taking what is offered, raises a third again and costs
+corruption and liberties every session.
+
+It is an **act** rather than a statute because the twenty core statute categories
+hold exactly twenty-four each and that count is a contract the harness enforces;
+and because what the owner described — "unless that law is passed" — is binary,
+which is what an act is.
+
+### And st.funding has a writer
+
+`st.funding[pid]` is a live multiplier in `supportTargets` with a decay in
+`endTurn` and, until this PR, **no writer anywhere in the file**. The vote model
+had a slot for what a party's money buys and it was permanently zero. Party
+spending writes it now, at `money × .002` capped at .35, worth **12.4 per cent**
+of the vote at 0.2 — and `partyPurseTick` pays and spends for the six parties the
+player does not lead, which is what makes an AI party's finances matter.
+
+`st.campaign.warChest` is retired into it. It was a party purse with one earner,
+one three-point deduction and a single read capped at 30 and weighted .09, and
+nothing in the file ever paid for a party action out of it.
+
+### Two ledger repairs
+
+**The debt was charged three times.** `v11ConBudgetBase` and `v11DeptBudgetBase`
+both computed `net = rev - exp - interest`, and interest is already inside `exp`
+when the base returns. On a save with a fiscal article and a department
+settlement, the balance line the Ledger prints understated the session by twice
+the interest.
+
+**The Political Capital panel did not add up to its own total.** It re-typed
+eleven of `capitalIncome`'s twenty-odd terms by hand, omitted the rest and all
+five wrappers, and printed the real `capitalIncome` underneath: on Very easy the
+rows summed to **2.6** against a printed total of **150**. It carries the
+`lowerSits` guard the base got in S15a now, and one measured residual row for
+everything it cannot itemise, so the rows sum to the total whatever is added
+later. In opposition, where the base replaces the whole formula, it says so.
+
+### Seven assertions, all seven red on the build before this PR
+
+`partyPurse` did not exist; the treasury moved by −628; the buttons were live on
+an empty purse and dead on a full one; forty of party money wrote **0** of
+`st.funding` and **none** of the six other parties was funded; the subsidy read 0
+with the Act as well as without it; the balance line was out by the interest; and
+the capital panel's rows summed to 2.6 against 150. The `party-funds-panel`
+playtest step reddens too.
+
+```
+ALL CHECKS PASS   11/11, 3,098,719 bytes, +17,857 since HEAD of 250,000
+ROADS OK          134 assertions
+PLAYTEST PASS     47 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / CHAMBER   all green
+```
+
+The purse rides the save, an old save with no purse is seeded from seats, a
+corrupt value is repaired rather than passed on, and `v6Sandbox` keeps its clone
+to itself.
+
+Next: **S15g**, extraordinary measures. About sixty replacing twenty-five, four
+to six for each of the seven parties plus a universal book; the gating vocabulary
+`POLICIES`, `V10_ORDERS` and `V11_ARTICLES` all already carry; an `extraWhy`
+mirroring `policyWhy`; standing modifiers rather than one-shot stock hits;
+per-measure exposure; authorable unrest; repeal; measures feeding
+`securityState` instead of sitting downstream of it; and a panel that renders
+locked cards instead of the paragraph a Social Democrat sees where a system
+should be.
+
+Previously: **S15 — The regime is real**, fifth of eleven PRs. The constitution:
+three articles at a time, two roads to ratification, a convention that does
+something, and thirty-two more articles.
 
 ### One article at a time, and one road to it
 
@@ -93,14 +211,6 @@ RUNGS OK / TIERS / TABS / CHAMBER   all green
 The 32 new articles carry no em dashes, no non-ASCII, no curly quotes and no
 banned word. One uses "X rather than Y", and it is the informative kind the S13
 measurement declined to ban: it names the state of affairs it replaces.
-
-Next: **S15f**, the party treasury. A per-party currency with dues, donors and
-fundraisers behind it; a State Funding of Parties statute; a fourth argument on
-`pv5Spend` defaulting to the nation so no call site moves until it is
-re-pointed; and then the ~198 party-organisation buttons, the seventeen `can:`
-predicates that gate on `S.treasury` directly, the eleven actions that spend it
-inside their own `run()` bodies, `st.campaign.warChest`, and `st.funding` — a
-live vote multiplier with no writer anywhere in the file.
 
 Previously: **S15 — The regime is real**, fourth of eleven PRs. Two sessions, and
 the signature: how long a bill takes, and who puts a name to it.

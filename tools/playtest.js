@@ -1021,6 +1021,62 @@ async function run() {
       `to ${sig.afterReturn}; a refused bill offers both levers (${sig.pressBtn}/${sig.overrideBtn}) and the ` +
       `override puts it in the book and is paid for (${sig.overrodeToLaw}/${sig.overridePaid})`);
 
+    /* S15f: the party purse, through the rendered page. The roads harness
+       drives the model; what only the page can answer is whether the panel is
+       on BOTH exits of viewParties (the no-elections early return is the one
+       a terminal form takes), whether a real click spends party money, and
+       whether the fundraiser raises it. */
+    const pf = await page.evaluate(() => {
+      const out = {}, me = playParty(S);
+      const keep = { tab:UI.tab, form:S.form, cap:S.capital, tre:S.treasury, ruling:S.ruling,
+        coalition:S.coalition, purse:JSON.parse(JSON.stringify(S.purse || {})), funding:S.funding };
+      S.ruling = me; S.coalition = [me]; S.capital = 400; S.treasury = 2000; S.funding = {};
+      if (S.purse) PARTIES.forEach(p => { S.purse[p.id] = 300; });
+      const titles = () => [...document.querySelectorAll('#view .panel h2')].map(h => h.textContent.trim());
+
+      UI.tab = 'parties'; render();
+      out.onElections = titles().some(t => /Party Funds/.test(t));
+      /* the exit a terminal form takes */
+      S.form = 'oneparty'; render();
+      out.onNoElections = titles().some(t => /Party Funds/.test(t));
+      S.form = keep.form; render();
+
+      /* a real click on a money-bearing party action spends the purse */
+      const acts = {}; partyActions(me).forEach(a => { acts[a.id] = a; });
+      const btn = [...document.querySelectorAll('#view [data-party="' + me + '"][data-pact]')]
+        .filter(b => { const a = acts[b.getAttribute('data-pact')]; return a && actionMoney(a) && !b.disabled; })[0];
+      out.clickable = !!btn;
+      if (btn) {
+        const t0 = S.treasury, p0 = typeof partyPurse === 'function' ? partyPurse(S, me) : 0;
+        btn.click();
+        out.treasuryUnmoved = S.treasury === t0;
+        out.purseSpent = (typeof partyPurse === 'function' ? partyPurse(S, me) : 0) < p0;
+        out.fundingWritten = (S.funding && S.funding[me] > 0) || false;
+      }
+
+      /* the fundraiser raises it */
+      render();
+      const fb2 = document.querySelector('#view [data-fundact="drive"]');
+      out.hasDrive = !!fb2;
+      if (fb2 && !fb2.disabled) {
+        const p1 = partyPurse(S, me);
+        fb2.click();
+        out.driveRaised = partyPurse(S, me) > p1;
+      }
+
+      S.purse = keep.purse; S.funding = keep.funding; S.capital = keep.cap; S.treasury = keep.tre;
+      S.ruling = keep.ruling; S.coalition = keep.coalition; S.form = keep.form;
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('party-funds-panel',
+      pf.onElections && pf.onNoElections && pf.clickable && pf.treasuryUnmoved && pf.purseSpent &&
+      pf.fundingWritten && pf.hasDrive && pf.driveRaised,
+      `the Party Funds panel is on both exits of viewParties (${pf.onElections}/${pf.onNoElections}); a real click on ` +
+      `a money-bearing party action leaves the national treasury where it was (${pf.treasuryUnmoved}), takes the ` +
+      `money out of the party's purse (${pf.purseSpent}) and writes st.funding (${pf.fundingWritten}); and a ` +
+      `fundraising drive raises party money (${pf.driveRaised})`);
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`
