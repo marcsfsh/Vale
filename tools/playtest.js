@@ -894,6 +894,102 @@ async function run() {
       UI.tab = keep; render();
       return out;
     });
+    /* S15d: the signature, through the rendered page. The roads harness drives
+       the model; what only the page can answer is whether the sheet the queue
+       shows is the assent sheet, whether its four buttons are wired, and
+       whether the card draws the fourth pip and the two levers on a refused
+       bill. */
+    const sig = await page.evaluate(() => {
+      const out = {}, me = playParty(S), STAT = 'incomeTax';
+      const keep = { tab:UI.tab, bills:S.bills, pol:S.pol[STAT], seats:JSON.parse(JSON.stringify(S.seats)),
+        exec:JSON.parse(JSON.stringify(S.exec)), cap:S.capital, tre:S.treasury,
+        upper:JSON.parse(JSON.stringify(S.upper)), lower:JSON.parse(JSON.stringify(S.lower)),
+        ruling:S.ruling, coalition:S.coalition, queue:UI.queue, pending:S.pendingAssent };
+      S.lower = { exists:true, suspended:false };
+      S.upper = { exists:true, elected:true, veto:2, ceremonial:false, seats:{} };
+      S.ruling = me; S.coalition = [me];
+      S.seats = {}; S.seats[me] = 1305;
+      S.upper.seats = {}; S.upper.seats[me] = 120;
+      S.bills = []; S.pol[STAT] = 0; S.capital = 600; S.treasury = 3000; S.pendingAssent = [];
+      ['pres','vpres','chan','vchan'].forEach(d => { S.exec[d] = me; });
+      S.figures.exec = {};
+
+      /* run it to the desk */
+      const bill = sponsorBill(S, STAT, 1, 'player', 'clean', true);
+      out.sponsored = !!bill;
+      out.pace = typeof billPace === 'function' ? billPace(S, bill) : 1;
+      for (let i = 0; i < 4 && bill.stage !== 'assent' && S.bills.indexOf(bill) >= 0; i++) {
+        advanceBills(S); if (bill.stage !== 'assent') S.turn++;
+      }
+      out.stage = bill && bill.stage;
+      out.queued = (S.pendingAssent || []).indexOf(bill.id) >= 0;
+
+      /* the card: four pips, the fourth lit, and the office named */
+      UI.tab = 'houses'; render();
+      /* the article carries no data-bill of its own -- the buttons do -- so
+         it is found by the bill number printed on it */
+      const findCard = (id) => [].slice.call(document.querySelectorAll('article.bill'))
+        .filter(a => { const n = a.querySelector('.bill-no'); return n && n.textContent.trim() === id; })[0] || null;
+      const card = findCard(bill.id);
+      out.cardFound = !!card;
+      if (card) {
+        const st = [].slice.call(card.querySelectorAll('.timeline .stage'));
+        out.pips = st.length;
+        out.lastPip = st.length ? st[st.length - 1].className.trim() : '';
+        out.labels = [].slice.call(card.querySelectorAll('.stage-labels span')).map(x => x.textContent).join(',');
+        out.saysOffice = /Chancellor/.test(card.textContent);
+      }
+
+      /* the sheet, through the real queue. Degrades rather than throws on a
+         build that predates S15d, so this step can be run against the old
+         file and show what it did. */
+      UI.queue = (typeof assentEvent === 'function' ? [assentEvent(S, bill.id)] : []).filter(Boolean);
+      out.hasEvent = UI.queue.length === 1;
+      let done = false;
+      runQueue(() => { done = true; });
+      const sheet = document.getElementById('sheet');
+      out.sheetTitle = sheet ? (sheet.querySelector('h2') || {}).textContent : '';
+      const choices = sheet ? [].slice.call(sheet.querySelectorAll('[data-ev]')) : [];
+      out.choices = choices.map(c => (c.childNodes[0] || {}).textContent || c.textContent.split('\n')[0]);
+      /* pick "Return it with objections" so the outcome is visible without
+         ending the bill */
+      if (choices[2]) choices[2].click();
+      out.afterReturn = bill.stage;
+      out.returnedFlag = !!bill.returned;
+      out.queueDrained = done;
+
+      /* a refused bill offers the two levers */
+      bill.stage = 'assent'; bill.assentOffice = 'chan'; bill.refused = S.turn;
+      bill.assemblyVote = 88; S.exec.chan = 'pnl'; S.figures.exec = {};
+      render();
+      const card2 = findCard(bill.id);
+      out.pressBtn = !!(card2 && card2.querySelector('[data-bill-action="pressOffice"]'));
+      const ov = card2 && card2.querySelector('[data-bill-action="override"]');
+      out.overrideBtn = !!ov && !ov.disabled;
+      const cap0 = S.capital;
+      if (ov) ov.click();
+      out.overrodeToLaw = (S.pol[STAT] || 0) > 0;
+      out.overridePaid = S.capital < cap0;
+
+      S.bills = keep.bills; S.pol[STAT] = keep.pol; S.seats = keep.seats; S.exec = keep.exec;
+      S.capital = keep.cap; S.treasury = keep.tre; S.upper = keep.upper; S.lower = keep.lower;
+      S.ruling = keep.ruling; S.coalition = keep.coalition; S.pendingAssent = keep.pending || [];
+      UI.queue = keep.queue || []; UI.busy = false;
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('assent-sheet-and-pip',
+      sig.stage === 'assent' && sig.queued && sig.pips === 4 && sig.lastPip === 'stage now' &&
+      sig.labels === 'Committee,Assembly,Senate,Assent' && sig.saysOffice &&
+      sig.choices.length === 4 && /Asked to Sign/.test(sig.sheetTitle) &&
+      sig.afterReturn !== 'assent' && sig.returnedFlag &&
+      sig.pressBtn && sig.overrideBtn && sig.overrodeToLaw && sig.overridePaid,
+      `a bill that carried both houses sits at ${sig.stage}; the card draws ${sig.pips} pips ` +
+      `[${sig.labels}] with the last reading "${sig.lastPip}" and names the office (${sig.saysOffice}); ` +
+      `the queue shows "${sig.sheetTitle}" with ${sig.choices.length} answers; returning it puts the bill back ` +
+      `to ${sig.afterReturn}; a refused bill offers both levers (${sig.pressBtn}/${sig.overrideBtn}) and the ` +
+      `override puts it in the book and is paid for (${sig.overrodeToLaw}/${sig.overridePaid})`);
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

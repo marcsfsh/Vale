@@ -617,6 +617,13 @@ var BILL_STAGES = ['committee','assembly','senate','assent'];
    They are not in BILL_STAGES because BILL_STAGES is the FULL ladder of a
    working republic; which rungs a given bill actually has to climb is answered
    by billLadder(), because under a decree there is only one. */
+/* S15d: the bar each division is tested against, and the width of the die
+   rolled against it. They were four pairs of literals buried inside
+   advanceBills, so nothing outside that function could ask whether a bill was
+   SAFE -- which is the question the two-session path turns on. Changing a
+   number here changes the division and the answer together. */
+var BILL_BARS  = { committee:43, assembly:50, council:50, senate:50, decree:50 };
+var BILL_NOISE = { committee:14, assembly:13, council:13, senate:13, decree:13 };
 var BILL_STAGE_NAMES = { committee:'Committee', assembly:'Assembly', senate:'Senate', assent:'Assent', council:'Council', decree:'Decree', passed:'Law', failed:'Failed', withdrawn:'Withdrawn', killed:'Killed' };
 
 var BLOC = {}; BLOCS.forEach(function (b) { BLOC[b.id] = b; });
@@ -8158,6 +8165,187 @@ function enactBill(st, bill) {
   addNews(st, 'From the Palace', bill.title + ' becomes law', 'The final text carried ' + bill.concessions + ' recorded concession' + (bill.concessions === 1 ? '' : 's') + '.', 'good');
 }
 
+/* ==========================================================
+   S15d: THE SIGNATURE.
+
+   BILL_STAGES has carried an 'assent' slot and a name for it since v4, and
+   nothing has ever set it: the fourth pip has been drawn unlit on every bill
+   card this game has ever rendered. The chambers called enactBill and the
+   statute was in the book.
+
+   The chambers hand the bill to an office now. Every statute carries a
+   `dept`; the party holding that department signs. If that is your party you
+   decide, four ways. If it is not, the HOLDER decides -- and the holder is a
+   person with a `loyalty` that makeFigure has written since v4 and that
+   nothing in three megabytes has ever read for an exec figure.
+   ========================================================== */
+function assentOffice(st, bill) {
+  var p = POL[bill.policy];
+  if (!p || !p.dept || !DEPTS[p.dept]) return null;
+  if (!st.exec || !st.exec[p.dept]) return null;
+  return p.dept;
+}
+function assentIsMine(st, bill) {
+  var d = bill.assentOffice || assentOffice(st, bill);
+  return !!d && st.exec[d] === playParty(st);
+}
+/* How the holder reads it. `loyalty` is HOW MUCH OF THE DECISION IS THEIR
+   PARTY'S: an officer at 90 votes their party's line on a bill they have not
+   read, and one at 25 judges the measure on the numbers it carried and can be
+   talked to. That is what the field was always for, and this is the first
+   place in the file that asks it. */
+function assentFavour(st, bill) {
+  var d = bill.assentOffice || assentOffice(st, bill);
+  if (!d) return 100;
+  var who = st.exec[d], f = holderOf(st, d), fc = billForecast(st, bill);
+  var line = clamp(st.partyRel && st.partyRel[who] !== undefined ? st.partyRel[who] : 50, 0, 100);
+  if (who === st.ruling || (st.coalition || []).indexOf(who) >= 0) line = clamp(line + 14, 0, 100);
+  var merits = clamp(bill.assemblyVote || bill.senateVote || fc.lower, 0, 100);
+  var w = clamp(f.loyalty === undefined ? 60 : f.loyalty, 0, 100) / 100;
+  if (f.trait === 'ideologue') w = clamp(w + .2, 0, 1);
+  if (f.trait === 'technocrat') w = clamp(w - .2, 0, 1);
+  var v = line * w + merits * (1 - w);
+  v += (bill.assentPush || 0) * (f.trait === 'fixer' ? 1.6 : 1);
+  var auth = (POL[bill.policy] && POL[bill.policy].auth) || 0;
+  if (f.trait === 'hardliner' && auth < 0) v -= 7;
+  if (f.trait === 'liberal' && auth > 0) v -= 7;
+  if (bill.confidence) v += 5;
+  if (st.diff === 'easy') v = Math.max(72, v);
+  return clamp(v, 0, 100);
+}
+/* Where a returned bill goes back to: the last chamber that carried it. */
+function billLastChamber(st) {
+  var l = billLadder(st);
+  return l[l.length - 1] || billOpeningStage(st);
+}
+/* The chambers are done. Where they used to call enactBill they hand the bill
+   to the office instead. Returns true when the bill has left the loop. */
+function billToAssent(st, bill) {
+  var d = assentOffice(st, bill);
+  if (!d) { enactBill(st, bill); return true; }
+  bill.stage = 'assent';
+  bill.assentOffice = d;
+  if (assentIsMine(st, bill)) {
+    /* An emperor holds all four offices, so under a terminal form every bill
+       would ask. The player can hand the office a standing instruction; the
+       default is to ask, because being asked is the feature. */
+    if (st.uiPrefs && st.uiPrefs.autoAssent) {
+      var af = holderOf(st, d);
+      bill.notes.push('Signed on a standing instruction');
+      logIt(st, af.name + ' signed ' + bill.title + ' on the standing instruction of the government.');
+      enactBill(st, bill);
+      return true;
+    }
+    st.pendingAssent = st.pendingAssent || [];
+    if (st.pendingAssent.indexOf(bill.id) < 0) st.pendingAssent.push(bill.id);
+    logIt(st, bill.title + ' carried its last division and went to ' + DEPTS[d].name + ' for signature.');
+    return true;
+  }
+  return assentResolve(st, bill);
+}
+/* The holder decides. Signs, sends it back once with objections, or refuses.
+   A refusal is not the end of it: the bill stays on the desk and the
+   government can press the office or ask the houses to override. */
+function assentResolve(st, bill) {
+  var d = bill.assentOffice, who = st.exec[d], f = holderOf(st, d), v = assentFavour(st, bill);
+  /* An office that sent it back once and got the concession it asked for
+     signs what comes back. Objections are a price, not a refusal in
+     instalments. */
+  if (v >= 55 || (bill.returned && v >= 45)) {
+    bill.notes.push('Signed by ' + f.name);
+    logIt(st, f.name + ' signed ' + bill.title + '.');
+    enactBill(st, bill);
+    return true;
+  }
+  if (v >= 45 && !bill.returned) {
+    bill.returned = st.turn;
+    delete bill.refused;
+    bill.concessions++;
+    bill.stage = billLastChamber(st);
+    bill.notes.push('Returned with objections by ' + f.name);
+    logIt(st, f.name + ' returned ' + bill.title + ' to the ' + (BILL_STAGE_NAMES[bill.stage] || bill.stage) +
+      ' with objections. It is a session behind, and a concession heavier.');
+    addNews(st, DEPTS[d].name, bill.title + ' is sent back', f.name + ' asked for changes rather than refuse it outright.', 'watch');
+    return true;
+  }
+  if (!bill.refused) {
+    bill.refused = st.turn;
+    bill.notes.push('Refused assent by ' + f.name);
+    logIt(st, f.name + ' refused to sign ' + bill.title + '. It carried the houses and it is not law.');
+    addNews(st, DEPTS[d].name, bill.title + ' is refused assent', f.name + ' of the ' + PARTY[who].short +
+      ' will not put a name to it. The houses can override, at sixty percent.', 'bad');
+    return true;
+  }
+  /* Refused, and still refused. Three sessions on the desk and it dies there. */
+  if (st.turn - bill.refused >= 3) {
+    archiveBill(st, bill, 'failed', 'Died at assent: ' + DEPTS[d].name + ' never signed it');
+    st.legacy.billsFailed++;
+    logIt(st, bill.title + ' died on the desk at ' + DEPTS[d].name + '. Nobody ever signed it.');
+  }
+  return true;
+}
+/* The sheet the player is shown when the office is their party's. Four ways
+   to answer a bill that has carried, not two. */
+function assentEvent(st, id) {
+  var bill = billById(st, id);
+  if (!bill || bill.stage !== 'assent' || !bill.assentOffice) return null;
+  var d = bill.assentOffice, f = holderOf(st, d), fc = billForecast(st, bill);
+  var margin = Math.round(bill.assemblyVote || bill.senateVote || fc.lower);
+  var mine = bill.sponsor === playParty(st);
+  var against = PARTIES.filter(function (p) { return p.id !== playParty(st) && partyBillSupport(st, p.id, bill) < 45; })
+    .map(function (p) { return p.id; });
+  return ev({
+    id:'assent_' + bill.id, kind:'assent',
+    title:'The ' + DEPTS[d].name + ' Is Asked to Sign',
+    text:bill.title + ' carried its last division at ' + margin + ' percent and is on the desk of ' + f.name +
+      ', who holds the office in your party\'s name. Nothing in it is law until a name is on it.',
+    ch:[
+      { l:'Sign it', s:'It becomes law as the houses wrote it.',
+        f:function (S2) { var b = billById(S2, id); if (b) { b.notes.push('Signed'); enactBill(S2, b); } } },
+      { l:'Sign it, and say what it is for',
+        s:'Law, and a statement from the office. Capital ' + cst(1) + '. The measure lands a quarter harder and the parties that voted against read the statement too.',
+        f:function (S2) {
+          var b = billById(S2, id); if (!b) return;
+          var p = POL[b.policy], before = S2.pol[b.policy] || 0;
+          S2.capital -= cst(1);
+          b.notes.push('Signed with a statement');
+          enactBill(S2, b);
+          if (p.mood) mood(S2, polMoodDelta(p, before, S2.pol[b.policy], .12));
+          S2.unity = c100((S2.unity || 60) + 2);
+          against.forEach(function (pid) { shiftPartyRel(S2, pid, -3); });
+          var iss = issueForPolicy(p); if (iss) S2.salience[iss.id] = c100(S2.salience[iss.id] + 4);
+        } },
+      { l:'Return it with objections',
+        s:'Back to the house for a session with a concession written in. Capital ' + cst(2) + ', unity -3, the professions +2.',
+        f:function (S2) {
+          var b = billById(S2, id); if (!b) return;
+          S2.capital -= cst(2);
+          b.returned = S2.turn; b.concessions++;
+          b.stage = billLastChamber(S2);
+          b.notes.push('Returned by the office with objections');
+          S2.unity = c100((S2.unity || 60) - 3);
+          mood(S2, { prof:2 });
+          logIt(S2, b.title + ' was sent back to the ' + (BILL_STAGE_NAMES[b.stage] || b.stage) + ' by the office that was asked to sign it.');
+        } },
+      { l:'Veto it',
+        s:mine ? 'Your own bill dies on your own desk. Unity -9, and the country notices.'
+               : 'It dies on the desk. The ' + (PARTY[bill.sponsor] ? PARTY[bill.sponsor].short : 'sponsor') + ' will not forget it.',
+        f:function (S2) {
+          var b = billById(S2, id); if (!b) return;
+          var carried = Math.max(b.assemblyVote || 0, b.senateVote || 0);
+          archiveBill(S2, b, 'failed', 'Vetoed at assent by ' + DEPTS[d].name);
+          S2.legacy.billsFailed++;
+          S2.unity = c100((S2.unity || 60) - (mine ? 9 : 3));
+          shiftPartyRel(S2, b.sponsor, mine ? -6 : -12);
+          if (carried >= 60) S2.unrest = clamp(S2.unrest + 2.5, 0, 110);
+          if (!mine) S2.capital = clamp(S2.capital + 2, -5, capCap(S2));
+          logIt(S2, b.title + ' was vetoed at assent. It had carried at ' + Math.round(carried) + ' percent.');
+          addNews(S2, DEPTS[d].name, b.title + ' is vetoed', 'The houses passed it and the office would not sign it.', 'bad');
+        } }
+    ]
+  });
+}
+
 function failBill(st, bill, chamber, vote) {
   archiveBill(st, bill, 'failed', 'Defeated in the ' + chamber + ', ' + vote.toFixed(0) + '% in favour');
   st.legacy.billsFailed++;
@@ -8175,11 +8363,47 @@ function failBill(st, bill, chamber, vote) {
    passed a House that does not exist went on to the next stage regardless. */
 function billAfterLower(st, bill) {
   if (upperState(st) === 'sitting') { bill.stage = 'senate'; return false; }
-  enactBill(st, bill); return true;
+  return billToAssent(st, bill);
+}
+/* S15d: THE CLOCK. `loops = bill.urgent ? 2 : 1` was the whole of it -- a
+   purchased flag and nothing else -- so a government holding 900 of the 1,305
+   seats with the Senate behind it spent exactly as many sessions on a bill as
+   a minority spent losing one. Support decided WHETHER a stage passed and
+   never HOW MANY of them ran in a session.
+
+   A bill is SAFE at a stage when the worst roll the die can give still clears
+   the bar: BILL_BARS and BILL_NOISE are the same numbers the division itself
+   uses. A bill safe at every stage it has left cannot lose a division, and a
+   house does not spend a session on a division it cannot lose -- it takes two
+   stages. Urgency still buys one more on top of whatever the arithmetic gives,
+   which is the first time the six capital it costs has bought anything a
+   strong government could not already have. */
+function billStageValue(f, stage) {
+  return stage === 'senate' ? f.upper : (stage === 'committee' ? f.committee : f.lower);
+}
+function billSafe(st, bill, stage, f) {
+  var bar = BILL_BARS[stage];
+  if (bar === undefined) return false;
+  f = f || billForecast(st, bill);
+  return billStageValue(f, stage) - BILL_NOISE[stage] / 2 >= bar;
+}
+function billCarried(st, bill, f) {
+  f = f || billForecast(st, bill);
+  var ladder = billLadder(st), at = ladder.indexOf(bill.stage);
+  var rest = at < 0 ? [bill.stage] : ladder.slice(at);
+  if (!rest.length) return false;
+  return rest.every(function (s) { return billSafe(st, bill, s, f); });
+}
+function billPace(st, bill) {
+  return 1 + (billCarried(st, bill) ? 1 : 0) + (bill.urgent ? 1 : 0);
 }
 function advanceBills(st) {
+  /* The sheets the close of this session will ask for. Rebuilt every session,
+     so a bill the player never answered for is decided by its office below
+     rather than queued again for ever. */
+  st.pendingAssent = [];
   st.bills.slice().forEach(function (bill) {
-    var loops = bill.urgent ? 2 : 1;
+    var loops = billPace(st, bill);
     /* A bill on the paper when the chamber it was laid in is taken away does
        not sit in a stage that no longer exists. It moves to whatever the
        constitution leaves standing, and the log says so. */
@@ -8190,7 +8414,7 @@ function advanceBills(st) {
     } else if (bill.stage === 'council' && lowerState(st) !== 'suspended') {
       bill.stage = open; bill.notes.push('Carried over when the council was dissolved');
     } else if (bill.stage === 'senate' && upperState(st) !== 'sitting') {
-      enactBill(st, bill); bill.urgent = false; return;
+      billToAssent(st, bill); bill.urgent = false; return;
     }
     while (loops-- > 0 && st.bills.indexOf(bill) >= 0) {
       var f = billForecast(st, bill), roll;
@@ -8198,9 +8422,9 @@ function advanceBills(st) {
         /* No chamber stands between the government and the statute book. The
            apparatus can still refuse, and the refusal is the whole difference
            between ruling by decree and ruling by wish. */
-        roll = f.lower + (rand() - .5) * 13;
+        roll = f.lower + (rand() - .5) * BILL_NOISE.decree;
         if (st.diff === 'easy') roll = Math.max(68, roll);
-        if (roll < 50) {
+        if (roll < BILL_BARS.decree) {
           archiveBill(st, bill, 'failed', 'The decree was not carried out: ' + roll.toFixed(0) + '% of the apparatus stood behind it');
           st.legacy.billsFailed++;
           st.unity = c100((st.unity || 60) - 4);
@@ -8216,9 +8440,9 @@ function advanceBills(st) {
       } else if (bill.stage === 'council') {
         /* The suspended house: a council of the government's own people. One
            session, and it usually says yes. */
-        roll = f.lower + (rand() - .5) * 13;
+        roll = f.lower + (rand() - .5) * BILL_NOISE.council;
         if (st.diff === 'easy') roll = Math.max(68, roll);
-        if (roll < 50) { failBill(st, bill, 'council', roll); break; }
+        if (roll < BILL_BARS.council) { failBill(st, bill, 'council', roll); break; }
         bill.assemblyVote = roll;
         /* S15: the chamber's decision is reported BEFORE the bill is handed on.
            It used to be reported after, so when the lower house was the last
@@ -8228,30 +8452,44 @@ function advanceBills(st) {
         logIt(st, bill.title + ' was approved by the council with ' + roll.toFixed(0) + ' percent.');
         if (billAfterLower(st, bill)) break;
       } else if (bill.stage === 'committee') {
-        roll = f.committee + (rand() - .5) * 14;
+        roll = f.committee + (rand() - .5) * BILL_NOISE.committee;
         if (st.diff === 'easy') roll = Math.max(72, roll);
-        if (roll < 43) { failBill(st, bill, 'committee', roll); break; }
+        if (roll < BILL_BARS.committee) { failBill(st, bill, 'committee', roll); break; }
         bill.stage = 'assembly'; bill.notes.push('Reported from committee');
         logIt(st, bill.title + ' was reported from committee.');
       } else if (bill.stage === 'assembly') {
-        roll = f.lower + (rand() - .5) * 13;
+        roll = f.lower + (rand() - .5) * BILL_NOISE.assembly;
         if (st.diff === 'easy') roll = Math.max(68, roll);
-        if (roll < 50) { failBill(st, bill, 'Assembly', roll); break; }
+        if (roll < BILL_BARS.assembly) { failBill(st, bill, 'Assembly', roll); break; }
         bill.assemblyVote = roll;
         bill.notes.push('Passed the Assembly');
         logIt(st, bill.title + ' passed the Assembly with ' + roll.toFixed(0) + ' percent.');
         if (billAfterLower(st, bill)) break;
       } else if (bill.stage === 'senate') {
-        roll = f.upper + (rand() - .5) * 13;
+        roll = f.upper + (rand() - .5) * BILL_NOISE.senate;
         if (st.diff === 'easy') roll = Math.max(66, roll);
-        if (roll >= 50) { bill.senateVote = roll; enactBill(st, bill); break; }
+        if (roll >= BILL_BARS.senate) { bill.senateVote = roll; billToAssent(st, bill); break; }
         if (st.upper.veto === 1 && !bill.delayed) {
           bill.delayed = true; bill.upperDeal += 5; bill.notes.push('Returned by the Senate with amendments');
           logIt(st, 'The Senate returned ' + bill.title + ' with amendments and a one-session delay.');
           break;
         }
-        if (st.upper.veto === 1 && bill.delayed && f.lower >= 56) { enactBill(st, bill); break; }
+        if (st.upper.veto === 1 && bill.delayed && f.lower >= 56) { billToAssent(st, bill); break; }
         failBill(st, bill, 'Senate', roll); break;
+      } else if (bill.stage === 'assent') {
+        /* It entered the session already on a desk: either the office is
+           yours and the sheet went unanswered, or a holder who is not yours
+           refused it and is being asked again with whatever the government
+           has spent on them since. */
+        if (assentIsMine(st, bill)) {
+          var mf = holderOf(st, bill.assentOffice);
+          bill.notes.push('Signed without ceremony');
+          logIt(st, mf.name + ' signed ' + bill.title + ' without waiting to be asked again.');
+          enactBill(st, bill);
+        } else {
+          assentResolve(st, bill);
+        }
+        break;
       }
     }
     bill.urgent = false;
@@ -8267,10 +8505,21 @@ function billAction(id, action) {
   if (action === 'kill' && !outright(S)) { flash('Only a party that holds the Assembly outright can take a bill off the paper.'); return; }
   if ((action === 'amendIt' || action === 'delayIt') && !inPower(S)) { flash('Only a government controls the order paper.'); return; }
   if (action === 'talkOut' && inPower(S)) { flash('A government does not obstruct its own House.'); return; }
+  /* S15d. Gated at the point of effect, like every other bill lever: the
+     buttons are only drawn on a refused bill, and the handler says so anyway
+     because a card can be stale by a session. */
+  if (action === 'pressOffice' || action === 'override') {
+    if (!inPower(S)) { flash('Only a government asks an office to sign.'); return; }
+    if (b.stage !== 'assent' || !b.refused) { flash('Nothing is waiting on a signature.'); return; }
+    if (action === 'override' && Math.max(b.assemblyVote || 0, b.senateVote || 0) < 60) {
+      flash('The houses carried it at ' + Math.round(Math.max(b.assemblyVote || 0, b.senateVote || 0)) +
+        ' percent. Sixty is the bar for overriding a refusal.'); return;
+    }
+  }
   if (['kill', 'amendIt', 'delayIt', 'talkOut', 'pressure'].indexOf(action) >= 0 && b.owner === 'player') { flash('That is your own bill.'); return; }
   var costs = { whip:4, bargain:5, amend:3, confidence:7, urgent:6, support:2, oppose:2, withdraw:0,
-    pressure:3, amendIt:4, delayIt:5, talkOut:4, kill:8 };
-  var monies = { bargain:8, pressure:5, amendIt:4 };
+    pressure:3, amendIt:4, delayIt:5, talkOut:4, kill:8, pressOffice:3, override:6 };
+  var monies = { bargain:8, pressure:5, amendIt:4, pressOffice:6 };
   var c = cst(costs[action] || 0), m = monies[action] || 0;
   if (S.capital < c || (m && S.treasury < m)) { flash('The resources are not available.'); return; }
   captureUndo('Work on ' + b.title);
@@ -8338,6 +8587,28 @@ function billAction(id, action) {
     S.salience.integrity = c100((S.salience.integrity || 50) + 3);
     logIt(S, b.title + ' was struck from the order paper. The government did not trouble the House with a vote.');
     addNews(S, 'Parliament', b.title + ' killed', 'The majority took it off the paper without a division. The ' + PARTY[b.sponsor].short + ' called it an abuse of the House.', 'bad');
+  }
+  if (action === 'pressOffice') {
+    /* Private, effective and remembered. A fixer takes it better than most. */
+    var po = holderOf(S, b.assentOffice), fixer = po.trait === 'fixer';
+    b.assentPush = (b.assentPush || 0) + (fixer ? 12 : 8);
+    b.notes.push('The office was pressed');
+    S.ind.corruption = c100(S.ind.corruption + (fixer ? 1.4 : .7));
+    po.loyalty = clamp((po.loyalty === undefined ? 60 : po.loyalty) - 4, 0, 100);
+    logIt(S, 'Somebody went to see ' + po.name + ' about ' + b.title + '.');
+  }
+  if (action === 'override') {
+    /* The houses put it in the book over the office. Constitutional, costly,
+       and the holder's party reads it as exactly what it is. */
+    var oh = holderOf(S, b.assentOffice), owho = S.exec[b.assentOffice];
+    var ocarried = Math.max(b.assemblyVote || 0, b.senateVote || 0);
+    b.notes.push('Enacted over a refusal of assent');
+    enactBill(S, b);
+    shiftPartyRel(S, owho, -12);
+    S.unity = c100((S.unity || 60) - 3);
+    if (ocarried < 68) S.unrest = clamp(S.unrest + 2, 0, 110);
+    logIt(S, b.title + ' was put in the book over ' + oh.name + '\u2019s refusal, on ' + Math.round(ocarried) + ' percent of the houses.');
+    addNews(S, 'Parliament', b.title + ' passes over a refusal', 'The houses enacted it without the signature the constitution asks for. The ' + PARTY[owho].short + ' called it what it is.', 'watch');
   }
   if (action === 'withdraw') {
     archiveBill(S, b, 'withdrawn', 'Withdrawn by its sponsor');
@@ -9005,6 +9276,14 @@ function billLadder(st) {
   if (up) out.push('senate');
   if (!out.length) out.push('decree');
   return out;
+}
+/* What the CARD draws: the chambers, and the signature when this statute
+   needs one. billLadder stays the chambers alone, because every other
+   consumer is asking which divisions a bill must win. */
+function billTrack(st, bill) {
+  var l = billLadder(st);
+  if (bill && l.indexOf('decree') < 0 && assentOffice(st, bill)) l = l.concat(['assent']);
+  return l;
 }
 /* Where a bill enters. No Assembly and no Senate that sits means no chamber
    stands between the government and the statute book. */
@@ -11226,6 +11505,14 @@ function endTurn() {
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
   if (S.pendingExtra) fired.unshift(extraEvent(S.pendingExtra));
+  /* S15d: the bills that carried and are waiting on an office your own party
+     holds. Queued on the same pattern as every other pending decision here;
+     a bill left unanswered is signed by its office at the next session
+     rather than asked about again. */
+  if (S.pendingAssent && S.pendingAssent.length) {
+    S.pendingAssent.forEach(function (bid) { var ae = assentEvent(S, bid); if (ae) fired.unshift(ae); });
+    S.pendingAssent = [];
+  }
   if (S.pendingRitual) { if (typeof v10RitualEvent === 'function') fired.unshift(v10RitualEvent(S)); S.pendingRitual = null; }
   if (S.v10 && S.v10.pendingOrder && typeof v10OrderEvent === 'function') fired.unshift(v10OrderEvent(S));
   if (typeof v6ExtraEvents === 'function') fired = v6ExtraEvents(S).concat(fired);
@@ -11873,7 +12160,7 @@ function upperStrip() {
 }
 
 function billCard(b) {
-  var ladder = billLadder(S);
+  var ladder = billTrack(S, b);
   if (ladder.indexOf(b.stage) < 0) ladder = [b.stage].concat(ladder);
   var f = billForecast(S, b), current = ladder.indexOf(b.stage);
   var timeline = ladder.map(function (s, i) { return '<span class="stage ' + (i < current ? 'done' : (i === current ? 'now' : '')) + '"></span>'; }).join('');
@@ -11913,6 +12200,19 @@ function billCard(b) {
       act('kill','Kill the bill',8,0,false,'Your party holds the Assembly alone. Take it off the paper without a division — and be seen to.');
     }
   }
+  /* S15d: the bill carried and the office will not sign it. Two ways out, one
+     private and one constitutional, and the constitutional one is only open
+     when the houses carried it by enough to justify going over a holder's
+     head. */
+  if (b.stage === 'assent' && b.refused && inPower(S)) {
+    var hold = holderOf(S, b.assentOffice), carried = Math.max(b.assemblyVote || 0, b.senateVote || 0);
+    act('pressOffice','Press the office',3,6,(b.assentPush || 0) >= 24,
+      'Send someone to see ' + hold.name + ' privately. It moves the holder, and it is the kind of thing that gets remembered.');
+    act('override','Ask the houses to override',6,0, carried < 60,
+      carried < 60
+        ? 'The houses carried it at ' + Math.round(carried) + ' percent. Sixty is the bar for going over a refusal.'
+        : 'The houses carried it at ' + Math.round(carried) + ' percent, which is enough to put it in the book over the office. ' + hold.name + ' will not forget it.');
+  }
   if (b.owner === 'player') act('withdraw','Withdraw',0,0,false,'Remove the bill from the order paper.');
   var sponsor = PARTY[b.sponsor] ? PARTY[b.sponsor].short : 'Government';
   return '<article class="card bill ' + (b.owner === 'player' ? '' : 'ai') + '"><div class="bill-title"><h3>' + esc(b.title) + '</h3><span class="bill-no">' + esc(b.id) + '</span></div>' +
@@ -11920,7 +12220,12 @@ function billCard(b) {
     '<div class="timeline">' + timeline + '</div><div class="stage-labels">' + labels + '</div>' +
     '<div class="support-pair"><div class="support-box"><b><span>Assembly forecast</span><span>' + Math.round(f.lower) + '%</span></b><div class="bar ' + (f.lower >= 50 ? 'b-ok' : 'b-bad') + '"><i style="width:' + f.lower.toFixed(0) + '%"></i></div></div>' +
     '<div class="support-box"><b><span>Senate forecast</span><span>' + Math.round(f.upper) + '%</span></b><div class="bar ' + (f.upper >= 50 ? 'b-ok' : 'b-bad') + '"><i style="width:' + f.upper.toFixed(0) + '%"></i></div></div></div>' +
-    '<div class="tagline"><span class="tag">' + esc(BILL_STAGE_NAMES[b.stage]) + '</span><span class="tag">' + esc(f.issue.name) + ' ' + Math.round(S.salience[f.issue.id]) + '</span>' +
+    '<div class="tagline"><span class="tag">' + esc(BILL_STAGE_NAMES[b.stage]) + '</span>' +
+    (b.stage === 'assent' && b.assentOffice
+      ? '<span class="tag ' + (b.refused ? 'down' : 'up') + '">' + esc(DEPTS[b.assentOffice].name) + ': ' +
+        esc(holderOf(S, b.assentOffice).name) + (b.refused ? ' will not sign' : ' has it') + '</span>' : '') +
+    (b.returned ? '<span class="tag">Returned with objections</span>' : '') +
+    '<span class="tag">' + esc(f.issue.name) + ' ' + Math.round(S.salience[f.issue.id]) + '</span>' +
     '<span class="tag">' + b.concessions + ' concession' + (b.concessions === 1 ? '' : 's') + '</span>' +
     (b.confidence ? '<span class="tag down">Confidence matter</span>' : '') + (b.playerPosition ? '<span class="tag up">Your line: ' + esc(b.playerPosition) + '</span>' : '') + '</div>' +
     (b.notes.length ? '<p class="desc">Procedure: ' + esc(b.notes.join(' · ')) + '.</p>' : '') + '<div class="btnrow">' + actions.join('') + '</div></article>';
@@ -17355,6 +17660,7 @@ function v7MenuList() {
     '<button data-command-quick="1"><kbd>\u00b7</kbd><span>' + (S.uiPrefs.quickEnd ? 'Ask before closing each session' : 'Close sessions without asking') + '</span><small>Toggle</small></button>' +
     '<button data-command-report="1"><kbd>\u00b7</kbd><span>' + (S.uiPrefs.report !== false ? 'Stop showing the Gazette after each session' : 'Show the Gazette after each session') + '</span><small>Toggle</small></button>' +
     '<button data-command-previews="1"><kbd>\u00b7</kbd><span>' + (S.uiPrefs.previews !== false ? 'Hide effect forecasts on choices' : 'Show effect forecasts on choices') + '</span><small>Toggle</small></button>' +
+    '<button data-command-assent="1"><kbd>\u00b7</kbd><span>' + (S.uiPrefs.autoAssent ? 'Ask before an office of yours signs a bill' : 'Let your own offices sign without asking') + '</span><small>Toggle</small></button>' +
     '<button data-command-compact="1"><kbd>\u00b7</kbd><span>' + (S.uiPrefs.compact ? 'Use comfortable density' : 'Use compact density') + '</span><small>Toggle</small></button>' +
     '<button data-command-help="1"><kbd>?</kbd><span>Field guide</span><small>Open</small></button>' +
     '<button data-command-save="1"><kbd>S</kbd><span>Save, export or restore</span><small>Open</small></button>' +
@@ -17380,6 +17686,7 @@ function v7Menu() {
         q('[data-command-quick]', function () { S.uiPrefs.quickEnd = !S.uiPrefs.quickEnd; hideSheet(); render(); toast(S.uiPrefs.quickEnd ? 'End session now closes the session at once.' : 'End session asks first.'); });
         q('[data-command-report]', function () { S.uiPrefs.report = S.uiPrefs.report === false; hideSheet(); render(); toast(S.uiPrefs.report ? 'The Gazette will appear after each session.' : 'The Gazette will wait in the menu.'); });
         q('[data-command-previews]', function () { S.uiPrefs.previews = S.uiPrefs.previews === false; hideSheet(); render(); });
+        q('[data-command-assent]', function () { S.uiPrefs.autoAssent = !S.uiPrefs.autoAssent; hideSheet(); render(); toast(S.uiPrefs.autoAssent ? 'Your offices will sign what the houses send them.' : 'You will be asked before an office of yours signs.'); });
         q('[data-command-compact]', function () { S.uiPrefs.compact = !S.uiPrefs.compact; hideSheet(); render(); });
         q('[data-command-help]', function () { hideSheet(); helpDialog(); });
         q('[data-command-save]', function () { hideSheet(); saveDialog(); });

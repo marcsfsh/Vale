@@ -223,6 +223,49 @@ of a frozen seat map when there is no house to command.
 Covered by seven assertions in `tools/roads.js`, all seven of which redden
 against the build before S15a.
 
+### The clock, and the signature (S15d)
+
+**How many stages a bill climbs in a session is the chamber arithmetic.** It was
+`loops = bill.urgent ? 2 : 1` — a purchased flag and nothing else, so support
+decided *whether* a stage passed and never *how many* ran. `BILL_BARS` and
+`BILL_NOISE` are now one table, read by the division itself and by
+`billSafe(st, bill, stage, f)`, which asks whether the worst roll the die can
+give still clears the bar. `billCarried` is that for every stage a bill has
+left; `billPace` is `1 + carried + urgent`. **A bill takes two stages a session
+exactly when it cannot lose a division**, and the step falls at the bar plus
+half the die (56.5 on both houses) rather than on a constant somebody chose.
+
+**`billLadder` is the chambers; `billTrack` is what the card draws.** Every
+other consumer of the ladder is asking which divisions a bill must win, so the
+signature is appended only for the card.
+
+**The assent stage is real.** `BILL_STAGES` has carried an `'assent'` slot and a
+name for it since v4 and nothing ever set it. Where the chamber arms called
+`enactBill` they call `billToAssent` now. Every one of the 582 statutes carries
+a `dept`, so every bill has an office; the party holding that department signs.
+
+| the office | what happens |
+|---|---|
+| your party's | `st.pendingAssent` collects the bill and `endTurn` queues `assentEvent` beside the other pending decisions. Four answers: sign, sign with a statement, return with objections, veto. `uiPrefs.autoAssent` hands the office a standing instruction instead |
+| anyone else's | `assentResolve` runs at once: sign at 55, return once with objections at 45, refuse below it. A refused bill sits on the desk for three sessions and then dies there |
+
+**`assentFavour` is the first reader of `loyalty` on an exec figure.**
+`makeFigure` has written the field since v4 and every `.loyalty` read in the
+file is a faction, a minister or a party leader. Here it is the WEIGHT ON THE
+PARTY LINE: `line × w + merits × (1 − w)`, where `line` is the holder's party's
+relation to you and `merits` is what the chambers actually gave the bill. An
+officer at 90 votes their party's line on a bill they have not read; one at 20
+judges the measure and can be talked to. `ideologue` adds to the weight,
+`technocrat` takes from it, `fixer` takes a push at 1.6.
+
+**A refusal is beatable, at a price.** `pressOffice` (3 capital, 6 money) adds
+to `bill.assentPush` and costs the holder's loyalty and the country's view of
+corruption. `override` (6 capital) needs the houses to have carried it at 60,
+enacts it over the refusal, and costs 12 of the holder's party's relation.
+`advanceBills` clears `st.pendingAssent` at the top of every session, so a bill
+the player never answered for is signed by its own office rather than asked
+about for ever.
+
 ## Turn loop (live chains; identifier calls get the last assignment)
 
 `e` key → confirmEndTurn v8(~13747)→v7(~11941 quickEnd)→v4(~4407) → sheet

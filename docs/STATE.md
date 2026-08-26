@@ -4,9 +4,112 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, third of eleven PRs. The numbers: what Very easy
-opens on, how many great works a ministry can carry, and what a work costs the
-Treasury as against what it builds.
+**S15 — The regime is real**, fourth of eleven PRs. Two sessions, and the
+signature: how long a bill takes, and who puts a name to it.
+
+### The clock was one token
+
+`loops = bill.urgent ? 2 : 1`. That was the whole of it. Support decided
+*whether* a stage passed and never *how many* of them ran, so a government
+holding **1,305 of 1,305 seats** with the Senate behind it spent exactly as many
+sessions on a bill as a minority spent losing one, and the only way to buy a
+session was six capital on urgency.
+
+The four bars and four die widths were literals inside `advanceBills`, which is
+why nothing outside it could ask the question the two-session path turns on. They
+are one table now — `BILL_BARS` and `BILL_NOISE` — read by the division itself
+and by `billSafe`, which asks whether **the worst roll the die can give still
+clears the bar**. `billPace` is `1 + carried + urgent`, and a bill takes two
+stages a session exactly when it cannot lose a division. Measured across the
+seat share:
+
+```
+seats   Assembly   Senate   stages a session
+100%      98.7      98.3      2
+ 58%      58.8      58.7      2
+ 56%      56.9      56.4      1
+ 40%      41.7      41.3      1
+```
+
+The step falls at **56.5**, which is not a number anybody chose: it is the
+division's own bar (50) plus half its own die (13). A bill with both houses
+behind it is law in **two sessions**; at 56 percent of the seats, where it still
+clears both bars but can lose a division, the same bill takes **three**.
+
+### And nobody had ever signed anything
+
+`BILL_STAGES` has carried an `'assent'` slot and a name for it since v4 and
+**nothing has ever set it**, so the fourth pip was drawn unlit on every bill card
+this game has rendered. The chambers called `enactBill` and the statute was in
+the book.
+
+All **582** statutes name a department, so every bill has an office, and the
+party holding that department signs it.
+
+**If it is yours, you are asked.** Four answers, not two: sign; sign and say what
+it is for (the measure lands a quarter harder, and the parties that voted against
+read the statement too); return it with objections (a session, and a concession
+written in); veto it (on your own party's bill, nine of unity and a country that
+noticed). `uiPrefs.autoAssent` hands the office a standing instruction instead,
+because an emperor holds all four.
+
+**If it is not, a person decides.** `assentFavour` is the first reader of
+`loyalty` on an exec figure in the file's history: `makeFigure` has written the
+field since v4 and every one of the thirty-odd `.loyalty` reads is a faction, a
+minister or a party leader. Here it is the **weight on the party line** —
+`line × w + merits × (1 − w)` — so the same officer moves in opposite directions
+on the same field:
+
+```
+                         loyalty 95   loyalty 20
+a strong bill from a
+government they oppose         6           60
+a weak bill from a
+government they are with      92           55
+```
+
+An officer at 95 votes their party's line on a bill they have not read. One at 20
+reads the bill. `ideologue` adds to the weight, `technocrat` takes from it, and a
+`fixer` takes a push at one and a half.
+
+**A refusal is beatable, and not for free.** Press the office (3 capital, 6
+money: it moves the holder, costs their loyalty and the country's view of
+corruption) or ask the houses to override (6 capital, and only when they carried
+it at 60, and 12 of the holder's party's relation). Do neither for three sessions
+and the bill dies on the desk. Measured on the branch: refused and left alone,
+dead in **5** sessions; overridden, law in **2**; pressed twice, refused becomes
+returned becomes signed, law in **4**.
+
+### Six assertions, all six red on the build before this PR
+
+The clearest is the pip: on the old build the card draws `[Assent Committee
+Assembly Senate]` with the fourth reading `stage` and nothing lit, because
+`assent` was never on the ladder and got prepended. Others: `billPace` does not
+exist; a fully backed bill took **3** sessions and so did a contested one; there
+was no sheet; `assentFavour` did not exist; and the refusal, the override and the
+press all reported `Received assent` because no office was ever asked.
+
+```
+ALL CHECKS PASS   11/11, 3,054,673 bytes, +17,461 since HEAD of 250,000
+ROADS OK          119 assertions
+PLAYTEST PASS     46 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / CHAMBER   all green
+```
+
+`billForecast` spends no dice, which is what makes `billPace` safe to call twice
+a session on every bill; determinism is unmoved.
+
+Next: **S15e**, the constitution. Three articles before the country at a time and
+four in convention, against `c.pending`'s single object; two sessions through the
+Assembly or one through a plebiscite the player chooses instead of a referendum
+flag the article carries; a convention that sits three sessions and carries an
+article in one; 32 more articles taking the book from 48 to 80; and the
+plebiscite reopened under the forms that have no other way to pass anything.
+
+Previously: **S15 — The regime is real**, third of eleven PRs. The numbers: what
+Very easy opens on, how many great works a ministry can carry, and what a work
+costs the Treasury as against what it builds.
 
 ### 250, 150, and the ceiling that had to move with them
 
@@ -86,14 +189,6 @@ PLAYTEST PASS     45 steps + the WebKit SKIP
 DETERMINISM PASS  8 properties
 RUNGS OK / TIERS / TABS / PACING   all green
 ```
-
-Next: **S15d**, two sessions and the signature. A bill with the chambers behind
-it reaches law in two sessions instead of three or four; `BILL_STAGES` has
-carried an `assent` slot and a name for it since v4 and nothing has ever lit it;
-and the holder of an executive office signs, signs with a statement, returns
-with objections or vetoes — with a disposition read from their `loyalty`, a
-field `makeFigure` has written since v4 and nothing has ever read for an exec
-figure.
 
 Previously: **S15 — The regime is real**, second of eleven PRs. The order book:
 uncapped, national, and the five cards about itself made true.
