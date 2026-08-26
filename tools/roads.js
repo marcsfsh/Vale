@@ -3737,6 +3737,69 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `and withdrawing entirely from the Alliance used to leave the relation, the drift bonus, the war exemption and ` +
     `the war edge all exactly where they were`);
 
+  /* EVERY DISPATCH CAN BE ANSWERED. `runQueue` reads `e.ch`, sets UI.busy
+     before it does, and shows the sheet after -- so a factory that answers to
+     a different name throws between the two and the session stops with no
+     card on screen and no way forward. `v10OrderEvent` returned `choices` and
+     was reachable from turn one of a normal game: any order in force, a court
+     gap over .42 (it opens at .62), and two dice. S15b uncapping the order
+     book from four to seventy-two is what made it likely. */
+  const dispatch = await page.evaluate(() => {
+    const out = { factories: {}, bad: [] };
+    const names = ['rulingEvent', 'extraEvent', 'assentEvent', 'v10OrderEvent', 'v9CaseEvent', 'v10RitualEvent', 'v6ArcEvent'];
+    names.forEach((n) => {
+      let src = null;
+      try { src = String(eval(n)); } catch (e) { out.factories[n] = 'missing'; return; }
+      const key = /\bch\s*:/.test(src) ? 'ch' : (/\bchoices\s*:/.test(src) ? 'choices' : 'none');
+      out.factories[n] = key;
+      if (key !== 'ch') out.bad.push(n + ' returns ' + key);
+    });
+    out.readsCh = /e\.ch\b/.test(String(runQueue));
+    /* and the live article: build the order case the way endTurn does and put
+       it through the real queue */
+    const keep = { v10: JSON.parse(JSON.stringify(S.v10 || {})), busy: UI.busy, queue: UI.queue };
+    S.v10 = S.v10 || {}; S.v10.orders = S.v10.orders || {};
+    const hot = V10_ORDERS.slice().sort((a, x) => (x.exposure || 0) - (a.exposure || 0))[0];
+    S.v10.orders[hot.id] = { status:'live', narrowed:0, upheld:false };
+    S.v10.pendingOrder = hot.id;
+    const ev = v10OrderEvent(S);
+    out.order = hot.name;
+    out.answers = (ev.ch || []).length;
+    UI.busy = false; UI.queue = [ev];
+    out.threw = null;
+    try { runQueue(function () {}); } catch (e) { out.threw = String(e).split('\n')[0]; }
+    out.buttons = document.querySelectorAll('#sheet [data-ev]').length;
+    /* answer it, so the harness also proves the choice lands. hideSheet hides
+       the modal rather than emptying the sheet, so ask the modal. */
+    out.openBefore = document.getElementById('modal').hidden === false;
+    const narrowed0 = (S.v10.orders[hot.id] || {}).narrowed || 0;
+    const btn = document.querySelector('#sheet [data-ev="1"]');
+    if (btn) btn.click();
+    out.answered = document.getElementById('modal').hidden === true;
+    out.tookEffect = ((S.v10.orders[hot.id] || {}).narrowed || 0) > narrowed0;
+    /* the empty-card guard: a dispatch with no answers is skipped, not fatal */
+    UI.busy = false; UI.queue = [{ id:'v15empty', title:'A card with no answers', text:'x' }];
+    out.guardThrew = null;
+    try { runQueue(function () {}); } catch (e) { out.guardThrew = String(e).split('\n')[0]; }
+    out.guardCleared = UI.busy === false;
+    S.v10 = keep.v10; UI.busy = keep.busy; UI.queue = keep.queue;
+    return out;
+  });
+
+  say(dispatch.bad.length === 0 && dispatch.readsCh && !dispatch.threw &&
+      dispatch.answers === 3 && dispatch.buttons === 3 && dispatch.openBefore &&
+      dispatch.answered && dispatch.tookEffect &&
+      !dispatch.guardThrew && dispatch.guardCleared,
+    'every dispatch can be answered',
+    `all ${Object.keys(dispatch.factories).length} event factories return a \`ch\` array (${dispatch.bad.length} did not) ` +
+    `and runQueue reads one (${dispatch.readsCh}) · the court taking up "${dispatch.order}" renders ` +
+    `${dispatch.buttons} answers, takes one and the order is narrowed by it ` +
+    `(${dispatch.answered}/${dispatch.tookEffect}) · v10OrderEvent returned \`choices\`, so ` +
+    `runQueue threw on e.ch.forEach AFTER setting UI.busy and BEFORE showSheet, and the session stopped there with ` +
+    `no card and no way forward -- reachable from turn one with any order in force, and S15b uncapping the book ` +
+    `from four to seventy-two is what made it likely · a card with no answers is now skipped rather than fatal ` +
+    `(${dispatch.guardCleared})`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
