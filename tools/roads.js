@@ -682,10 +682,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.wordAtWar = relWord(relOf(S, 'sarath'), S, 'sarath');
     out.wordOther = relWord(relOf(S, 'moya'), S, 'moya');
 
-    /* the treaty */
-    S.v6.treaties.sarath = { kind:'defence', since:2028 };
+    /* the treaties. S16b: a power holds a LIST, so war has to void all of
+       them and not just the one that was in the slot. */
+    /* every probe degrades rather than throwing on a build without S16b's
+        accessors, so the harness reports a FAILURE with the diagnosis instead
+        of a ReferenceError with a stack. */
+    const inForce = (pid) => (typeof v6Treaties === 'function') ? v6Treaties(S, pid)
+      : (S.v6.treaties[pid] && S.v6.treaties[pid].kind ? [S.v6.treaties[pid]] : []);
+    const three = [{ kind:'nonaggression', since:2026 }, { kind:'defence', since:2028 }, { kind:'trade', since:2029 }];
+    S.v6.treaties.sarath = (typeof v6Treaties === 'function') ? three : three[2];
+    out.treatyVoidedFrom = inForce('sarath').length;
     v6TreatiesTick(S);
-    out.treatyVoided = !S.v6.treaties.sarath;
+    out.treatyVoided = inForce('sarath').length === 0;
 
     /* a war won at the table is recorded */
     S.war = { power:'sarath', year:2030, momentum:10, turns:4, cost:0 };
@@ -724,10 +732,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     const keepMil = S.ind.military, keepTr = S.v6.treaties, keepPol = S.pol;
     S.pol = {}; S.ind.military = 40; S.v6.treaties = {};
     const m0 = indicatorTargets(S).military;
-    S.v6.treaties = { ostmark:{ kind:'defence', since:2030 } };
+    const one = (k) => ({ ostmark:(typeof v6Treaties === 'function') ? [{ kind:k, since:2030 }] : { kind:k, since:2030 } });
+    S.v6.treaties = one('defence');
     out.defenceMil = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
-    S.v6.treaties = { ostmark:{ kind:'arms', since:2030 } };
+    S.v6.treaties = one('arms');
     out.armsMil = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
+    /* and the same reading taken through a PRE-S16b save, which carries one
+       bare object per power: the migration has to make it identical. */
+    S.v6.treaties = { ostmark:{ kind:'defence', since:2030 } };
+    out.defenceMilOldSave = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
+    S.v6.treaties = (typeof v6Treaties === 'function')
+      ? { ostmark:[{ kind:'defence', since:2030 }, { kind:'basing', since:2032 }] }
+      : { ostmark:{ kind:'defence', since:2030 } };
+    out.stackedMil = Math.round((indicatorTargets(S).military - m0) * 100) / 100;
     S.ind.military = keepMil; S.v6.treaties = keepTr; S.pol = keepPol;
     return out;
   });
@@ -737,15 +754,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `300 identical rolls with one power at 12 declared ${world.declaredOnHostile}, every one of them on that power`);
   say(world.wordAtWar === 'at war' && world.wordOther === 'correct', 'nobody is allied and at war',
     `a power at 88 relations you are fighting reads "${world.wordAtWar}"; everyone else still reads normally ("${world.wordOther}")`);
-  say(world.treatyVoided, 'war annuls the treaty it contradicts',
-    'a defence pact with the country you are fighting is void, not still paying out');
+  say(world.treatyVoided && world.treatyVoidedFrom === 3, 'war annuls every treaty it contradicts',
+    `${world.treatyVoidedFrom} instruments with the country you are fighting -- a non-aggression pact, a defence pact and a trade agreement -- are all void, not still paying out; ` +
+    'before S16b a power could hold only one, so this could only ever have been asked of one');
   say(world.powerCount >= 11 && world.allSeeded && world.backfilled && world.noNaN,
     'eleven powers, none of them NaN',
     `${world.powerCount} powers, all seeded: ${world.allSeeded}; a six-power save backfills: ${world.backfilled}; ` +
     `shiftRel on an unknown power no longer produces NaN: ${world.noNaN}`);
-  say(world.defenceMil === 1.5 && world.armsMil === -1.5 && world.treatyKinds >= 8,
+  say(world.defenceMil === 1.5 && world.armsMil === -1.5 && world.treatyKinds >= 20 &&
+      world.defenceMilOldSave === world.defenceMil && world.stackedMil === 3.5,
     'a treaty does what its card says',
-    `${world.treatyKinds} instruments · a defence pact moves the armed-forces target by ${world.defenceMil} and an arms treaty by ${world.armsMil} — both advertised on their cards since v6 and implemented by nothing`);
+    `${world.treatyKinds} instruments · a defence pact moves the armed-forces target by ${world.defenceMil} and an arms treaty by ${world.armsMil} — both advertised on their cards since v6 and implemented by nothing · ` +
+    `a defence pact and a basing agreement standing together move it by ${world.stackedMil}, which no save could express before S16b · ` +
+    `and a pre-S16b save carrying one bare object per power reads ${world.defenceMilOldSave}, identical, through the migration`);
   say(world.victoryRecorded, 'a war won at the table counts',
     'suing for peace records the victory instead of nulling the war before the tick that would have');
 
@@ -3799,6 +3820,136 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `no card and no way forward -- reachable from turn one with any order in force, and S15b uncapping the book ` +
     `from four to seventy-two is what made it likely · a card with no answers is now skipped rather than fatal ` +
     `(${dispatch.guardCleared})`);
+
+  /* S16b -- A TREATY IS A RELATIONSHIP, NOT A SLOT. `st.v6.treaties[pid]` held
+     ONE instrument, so signing a second replaced the first and the same capital
+     could be walked round a non-aggression pact, a defence pact and a
+     non-aggression pact again inside one session, the Foreign Office reporting
+     each of them as a treaty signed. Twenty instruments may stand with one
+     capital now, gated on the relation and on what is already written, and
+     nothing is signed on the click: a proposal is laid at odds printed before
+     the money is spent and the power answers at the next session. */
+  const treaty = await page.evaluate(() => {
+    const out = { built:typeof v6TreatyPropose === 'function' };
+    if (!out.built) {
+      /* a build without this PR. Measure what its store can express and say so,
+         rather than throwing a ReferenceError at the harness. */
+      out.kinds = Object.keys(V6_TREATIES).length;
+      out.withNeeds = Object.keys(V6_TREATIES).filter(k => (V6_TREATIES[k].needs || []).length).length;
+      out.noFloor = Object.keys(V6_TREATIES).filter(k => V6_TREATIES[k].floor === undefined && k !== 'trade');
+      out.silent = [];
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.powers.meridian = 99;
+      out.openCold = Object.keys(V6_TREATIES).filter(k => relOf(S, 'meridian') >= V6_TREATIES[k].min).length;
+      out.whyShut = 'nothing: the relation was the only gate';
+      S.v6.treaties.meridian = { kind:'nonaggression', since:2030 };
+      S.v6.treaties.meridian = { kind:'defence', since:2030 };
+      out.stacked = 1;
+      out.inForceSameSession = 1; out.awaiting = 0; out.laid = true;
+      out.answered = true; out.signedNext = true; out.cascade = []; out.leftStanding = 1;
+      out.cascadeSound = false; out.cold = 0; out.warm = 0;
+      out.migratedKind = false; out.migratedCount = 0; out.lostCount = 0; out.lostDropped = false;
+      return out;
+    }
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+    S.ruling = playParty(S); S.coalition = [playParty(S)]; S.capital = 9000; S.treasury = 99000;
+    const PW = 'meridian';
+    out.kinds = Object.keys(V6_TREATIES).length;
+    out.withNeeds = Object.keys(V6_TREATIES).filter(k => (V6_TREATIES[k].needs || []).length).length;
+    /* every instrument can lapse: five of the ten in the file before this slice
+       had no branch anywhere in the tick and could stand through a total
+       collapse in relations for two hundred sessions */
+    out.noFloor = Object.keys(V6_TREATIES).filter(k => V6_TREATIES[k].floor === undefined && k !== 'trade');
+    /* every tag on every card names something the model reads */
+    out.silent = Object.keys(V6_TREATIES).filter(k => {
+      const d = V6_TREATIES[k];
+      return !d.tags || !d.tags.length || !d.note ||
+        !(d.targets || d.mil || d.econ || d.tech || d.pov || d.corr || d.drift || d.upkeep || d.warmth || d.floor !== undefined);
+    });
+
+    /* 1. the relation alone does not open the ladder */
+    S.powers[PW] = 99;
+    out.openCold = Object.keys(V6_TREATIES).filter(k => v6TreatyOpen(S, PW, k)).length;
+    out.whyShut = v6TreatyWhy(S, PW, 'basing');
+
+    /* 2. laying a proposal does not sign it, and the answer comes one session
+       later -- driven in endTurn's own order, per S16a */
+    out.laidOdds = v6TreatyOdds(S, PW, 'consular');
+    out.laid = v6TreatyPropose(PW, 'consular');
+    out.inForceSameSession = v6Treaties(S, PW).length;
+    out.awaiting = v6TreatyTalks(S, PW).length;
+    v6TreatiesTick(S); S.turn += 1;
+    out.answered = v6TreatyTalks(S, PW).length === 0;
+    out.signedNext = v6HasTreaty(S, PW, 'consular');
+
+    /* 3. the whole ladder can stand at once */
+    Object.keys(V6_TREATIES).sort((a, b) => V6_TREATIES[a].min - V6_TREATIES[b].min).forEach(k => {
+      for (let i = 0; i < 40 && !v6HasTreaty(S, PW, k); i++) {
+        S.capital = 9000; S.treasury = 99000; S.powers[PW] = 99;
+        if (!v6TreatyOpen(S, PW, k)) break;
+        v6TreatyPropose(PW, k);
+        v6TreatiesTick(S); S.turn += 1;
+      }
+    });
+    out.stacked = v6Treaties(S, PW).length;
+
+    /* 4. a prerequisite means something in both directions: pull the bottom
+       instrument out and everything written on it comes away with it */
+    const before = v6TreatyKinds(S, PW).slice();
+    const gone = v6TreatyAnnul(S, PW, 'nonaggression');
+    out.cascade = gone.slice().sort();
+    out.leftStanding = v6Treaties(S, PW).length;
+    out.cascadeSound = gone.every(k => before.indexOf(k) >= 0) &&
+      gone.indexOf('defence') >= 0 && gone.indexOf('basing') >= 0 && out.leftStanding === before.length - gone.length;
+
+    /* 5. the die is real, and better prepared ground carries more often. The
+       odds are stored ON the proposal when it is laid, so the number the card
+       printed is the number that is rolled and no render path spends a die. */
+    const sample = (rel, depth) => {
+      let yes = 0;
+      for (let i = 0; i < 300; i++) {
+        S.v6.treaties[PW] = [];
+        S.powers[PW] = rel; S.capital = 9000; S.treasury = 99000;
+        S.v6.treatyAsks = {};
+        if (depth) ['consular', 'border', 'environment'].forEach(k => S.v6.treaties[PW].push({ kind:k, since:2030 }));
+        if (!v6TreatyOpen(S, PW, 'nonaggression')) continue;
+        v6TreatyPropose(PW, 'nonaggression');
+        v6TreatiesTick(S); S.turn += 1;
+        if (v6HasTreaty(S, PW, 'nonaggression')) yes++;
+      }
+      return yes;
+    };
+    out.cold = sample(44, false);
+    out.warm = sample(96, true);
+
+    /* 6. the old save shape, through the load path */
+    S.v6.treaties = { meridian:{ kind:'trade', since:2031 }, tarnow:'a blob this build cannot read' };
+    UI.treatiesMigrated = 0; UI.treatiesLost = 0;
+    const rows = v6Treaties(S, 'meridian');
+    out.migratedKind = rows.length === 1 && rows[0].kind;
+    out.migratedCount = UI.treatiesMigrated;
+    out.lostCount = UI.treatiesLost;
+    out.lostDropped = v6Treaties(S, 'tarnow').length === 0;
+    return out;
+  });
+
+  say(treaty.built && treaty.kinds === 20 && treaty.withNeeds >= 16 && treaty.noFloor.length === 0 && treaty.silent.length === 0 &&
+      treaty.openCold === 4 && /Written on top of/.test(treaty.whyShut) &&
+      treaty.laid && treaty.inForceSameSession === 0 && treaty.awaiting === 1 &&
+      treaty.answered && treaty.signedNext && treaty.stacked === 20 && treaty.cascadeSound &&
+      treaty.cold > 0 && treaty.cold < 300 && treaty.warm > treaty.cold &&
+      treaty.migratedKind === 'trade' && treaty.migratedCount === 1 && treaty.lostCount === 1 && treaty.lostDropped,
+    'a treaty is a relationship, not a slot',
+    `${treaty.kinds} instruments, ${treaty.withNeeds} of them written on top of another, and every one of them can lapse ` +
+    `(${treaty.noFloor.length} with neither a floor nor a condition) with no silent card among them (${treaty.silent.length}) · ` +
+    `at 99 relations and nothing signed only ${treaty.openCold} are on the table and a basing agreement answers "${treaty.whyShut}" · ` +
+    `laying terms signs nothing that session (${treaty.inForceSameSession} in force, ${treaty.awaiting} awaiting) and the capital answers at the next (${treaty.signedNext}) · ` +
+    `all ${treaty.stacked} can stand with ONE power at once, where the store held exactly one before this PR · ` +
+    `annulling the non-aggression pact takes ${treaty.cascade.length} instruments with it (${treaty.cascade.join(', ')}) and leaves ${treaty.leftStanding} standing · ` +
+    `the answer is a die: ${treaty.cold} of 300 at a cold 44 with nothing written, ${treaty.warm} of 300 at 96 with three instruments already in force · ` +
+    `and a pre-S16b save carrying one bare object per power migrates (${treaty.migratedCount} carried, ${treaty.lostCount} unreadable dropped and counted)` +
+    (treaty.built ? '' : ' · THIS BUILD HAS NO PROPOSAL PATH: st.v6.treaties[pid] is one object, so a second instrument REPLACES the first and terms are signed on the click'));
 
   /* S16a -- A CLOCK THAT SAYS A NUMBER CHARGES THAT NUMBER. `endTurn` runs
      `tickTurn`, `politicsTick` and `v6ExtraEvents` and only THEN does

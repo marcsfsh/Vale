@@ -1317,6 +1317,100 @@ async function run() {
       `${al.acceded}), with the roster on the page afterwards (${al.rosterShown}) -- the Alliance used to be one ` +
       `number on the world page with no members, no roster and nothing to open`);
 
+    /* S16b: the terms sheet, driven through the real UI. The model side is in
+       tools/roads.js; what this asks is whether the page a player actually
+       clicks tells them what is written, what is on the table, what is locked
+       and why, and whether laying terms signs anything that session. */
+    const tr = await page.evaluate(() => {
+      const out = {};
+      const keep = { tab:UI.tab, cap:S.capital, tre:S.treasury,
+        powers:JSON.parse(JSON.stringify(S.powers)),
+        treaties:JSON.parse(JSON.stringify(S.v6.treaties || {})) };
+      /* degrades rather than throwing on a build without S16b: the harness
+         reports a FAILURE with the diagnosis instead of a stack. */
+      out.built = typeof v6TreatyPropose === 'function';
+      S.capital = 900; S.treasury = 9000; S.powers.meridian = 92;
+      if (out.built) S.v6.treaties.meridian = []; else delete S.v6.treaties.meridian;
+      var live = (pid) => (out.built ? v6Treaties(S, pid)
+        : (S.v6.treaties[pid] && S.v6.treaties[pid].kind ? [S.v6.treaties[pid]] : []));
+      var talks = (pid) => (out.built ? v6TreatyTalks(S, pid) : []);
+      UI.tab = 'world'; render();
+
+      const negotiate = document.querySelector('#view [data-treaty-open="meridian"]');
+      out.hasButton = !!negotiate;
+      if (negotiate) negotiate.click();
+      const sheet = document.getElementById('sheet');
+      const text = sheet ? sheet.textContent : '';
+      out.sheetOpen = document.getElementById('modal').hidden === false;
+      out.saysNoLimit = /no limit on how many may stand/.test(text);
+      out.subheads = [...sheet.querySelectorAll('.sheet-sub')].map(x => x.textContent);
+      out.saysLockedReason = /Written on top of/.test(text);
+      out.saysOdds = /in a hundred/.test(text);
+      out.openButtons = sheet.querySelectorAll('[data-treaty-kind]').length;
+
+      /* lay terms: it must cost, and it must NOT sign */
+      const pick = sheet.querySelector('[data-treaty-kind="consular"]') || sheet.querySelector('[data-treaty-kind]');
+      out.kindPicked = pick && pick.getAttribute('data-treaty-kind');
+      const c0 = S.capital;
+      if (pick) pick.click();
+      out.paid = S.capital < c0;
+      out.notSigned = live('meridian').length === 0;
+      out.awaiting = talks('meridian').length;
+
+      /* the page says a proposal is out, and so does the sheet reopened */
+      UI.tab = 'world'; render();
+      out.pageSaysAwaiting = /awaiting an answer/.test(document.getElementById('view').textContent);
+      var again = document.querySelector('#view [data-treaty-open="meridian"]');
+      if (again) again.click();
+      out.subheadsAwaiting = [...document.getElementById('sheet').querySelectorAll('.sheet-sub')].map(x => x.textContent);
+      if (typeof hideSheet === 'function') hideSheet();
+
+      /* one session, and the capital answers */
+      if (out.built) { v6TreatiesTick(S); S.turn += 1; }
+      out.settled = out.built && talks('meridian').length === 0;
+      out.signed = out.built ? v6HasTreaty(S, 'meridian', out.kindPicked) : live('meridian').length > 0;
+      render();
+      out.pageSaysInForce = !out.signed ||
+        /In force|instrument/.test(document.getElementById('view').textContent);
+      var third = document.querySelector('#view [data-treaty-open="meridian"]');
+      if (third) third.click();
+      out.subheadsInForce = [...document.getElementById('sheet').querySelectorAll('.sheet-sub')].map(x => x.textContent);
+      out.canAnnul = document.getElementById('sheet').querySelectorAll('[data-treaty-annul]').length;
+      if (typeof hideSheet === 'function') hideSheet();
+
+      /* and a second instrument does not replace the first */
+      if (out.signed && out.built) {
+        S.capital = 900;
+        const before = v6TreatyKinds(S, 'meridian').slice();
+        const next = Object.keys(V6_TREATIES).filter(k => v6TreatyOpen(S, 'meridian', k))[0];
+        if (next) { v6TreatyPropose('meridian', next); v6TreatiesTick(S); S.turn += 1; }
+        out.keptTheFirst = before.every(k => v6HasTreaty(S, 'meridian', k));
+      } else out.keptTheFirst = !!out.built;
+
+      S.capital = keep.cap; S.treasury = keep.tre; S.powers = keep.powers;
+      S.v6.treaties = keep.treaties; UI.tab = keep.tab;
+      if (typeof hideSheet === 'function') hideSheet();
+      render();
+      return out;
+    });
+    step('terms-sheet',
+      tr.built && tr.hasButton && tr.sheetOpen && tr.saysNoLimit && tr.subheads.length >= 2 &&
+      tr.subheadsAwaiting.indexOf('Awaiting their answer') >= 0 &&
+      tr.subheadsInForce.indexOf('In force') >= 0 && tr.canAnnul > 0 &&
+      tr.saysLockedReason && tr.saysOdds && tr.openButtons > 0 && tr.paid &&
+      tr.notSigned && tr.awaiting === 1 && tr.pageSaysAwaiting && tr.settled &&
+      tr.pageSaysInForce && tr.keptTheFirst,
+      `the terms sheet groups twenty instruments by state -- [${tr.subheads.join(', ')}] with nothing signed, ` +
+      `[${tr.subheadsAwaiting.join(', ')}] once terms are laid, [${tr.subheadsInForce.join(', ')}] once they are ` +
+      `answered, with ${tr.canAnnul} of them annullable -- `+
+      `states that nothing limits how many may stand with one capital (${tr.saysNoLimit}), prints the odds before the ` +
+      `money is spent (${tr.saysOdds}) and says of a locked one what it is written on top of (${tr.saysLockedReason}); ` +
+      `a real click on "${tr.kindPicked}" is paid for (${tr.paid}) and signs NOTHING that session (${tr.notSigned}, ` +
+      `${tr.awaiting} awaiting, and the world page says so: ${tr.pageSaysAwaiting}), the capital answers at the next ` +
+      `(settled ${tr.settled}, signed ${tr.signed}), and a second instrument leaves the first standing ` +
+      `(${tr.keptTheFirst}) -- before this PR the sheet listed ten cards against one slot, signing on the click and ` +
+      `replacing whatever was in it` + (tr.built ? '' : ' -- THIS BUILD HAS NO PROPOSAL PATH'));
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

@@ -6551,9 +6551,11 @@ function allianceOdds(st, id) {
   if (p.kind === 'trade') v += 10;
   if (p.kind === 'neighbour') v -= 6;
   if (st.war) v -= 12;
-  var t = st.v6 && st.v6.treaties && st.v6.treaties[id];
-  if (t && t.kind === 'defence') v += 16;
-  else if (t && t.kind === 'nonaggression') v += 8;
+  if (typeof v6HasTreaty === 'function') {
+    if (v6HasTreaty(st, id, 'defence')) v += 16;
+    else if (v6HasTreaty(st, id, 'nonaggression')) v += 8;
+    if (v6HasTreaty(st, id, 'friendship')) v += 6;
+  }
   /* asking again and again is not free */
   v -= (allianceState(st).asked[id] || 0) * 9;
   return clamp(Math.round(v), 2, 92);
@@ -6640,8 +6642,8 @@ function warTick(st) {
            filter took a power's KIND and its treaties and had no way to ask
            whether it was in the bloc, because the bloc had no members. */
         if (allianceHas(st, p.id)) return;
-        if (st.v6 && st.v6.treaties && st.v6.treaties[p.id] &&
-            (st.v6.treaties[p.id].kind === 'nonaggression' || st.v6.treaties[p.id].kind === 'defence')) return;
+        if (typeof v6HasTreaty === 'function' &&
+            (v6HasTreaty(st, p.id, 'nonaggression') || v6HasTreaty(st, p.id, 'defence'))) return;
         if (relOf(st, p.id) >= 55) return;
         cands.push(p.id);
       });
@@ -13959,8 +13961,7 @@ function viewWorld() {
        Both now read the same numbers the roll does. */
     var risk = 0, watch = 0;
     POWERS.forEach(function (pw) { if (pw.kind === 'alliance' || pw.kind === 'trade') return;
-      var t = S.v6 && S.v6.treaties && S.v6.treaties[pw.id];
-      if (t && (t.kind === 'nonaggression' || t.kind === 'defence')) return;
+      if (v6HasTreaty(S, pw.id, 'nonaggression') || v6HasTreaty(S, pw.id, 'defence')) return;
       var r = relOf(S, pw.id);
       if (r < 34) risk += 1; else if (r < 55) watch += 1; });
     warPanel = '<div class="panel"><h2>Vale Is at Peace</h2>' +
@@ -16026,89 +16027,362 @@ function v6GovernorAction(id, action) {
    TREATIES
    ========================================================== */
 var V6_TREATIES = {
-  nonaggression: { name:'Non-aggression pact', min:42, cost:5, money:3, upkeep:0,
+  nonaggression: { name:'Non-aggression pact', min:42, cost:5, money:3, upkeep:0, needs:[], drift:.6, floor:30,
     note:'Neither side may open a war on the other. Breaks if relations fall below 30.',
-    tags:['War risk from this power: none', 'Relations drift +0.6 a session'] },
-  trade: { name:'Trade agreement', min:50, cost:6, money:4, upkeep:0,
+    tags:['War risk from this power: none', 'Relations drift +0.6 a session', 'Lapses if relations fall below 30'] },
+  trade: { name:'Trade agreement', min:50, cost:6, money:4, upkeep:0, needs:['consular'], drift:.3, floor:26,
     note:'Receipts rise and the exchanges approve. Tariffs at level 2 or above void it.',
-    tags:['Revenue +$150B a session', 'Technology and finance +1 a session', 'Farmers -0.5 a session'] },
-  defence: { name:'Defence pact', min:64, cost:8, money:6, upkeep:4, mil:1.5,
+    tags:['Revenue +$150B a session', 'Technology and finance +1 a session', 'Farmers -0.5 a session', 'Lapses if relations fall below 26'] },
+  defence: { name:'Defence pact', min:64, cost:8, money:6, upkeep:4, mil:1.5, needs:['nonaggression'], drift:.4, floor:40,
     note:'A mutual guarantee. They fight beside you and you pay for the bases.',
-    tags:['War momentum +1 a session', 'Armed forces +1.5 target', 'Tension +1 a session', 'Upkeep $200B a session'] },
-  arms: { name:'Arms limitation treaty', min:48, cost:6, money:2, upkeep:0, mil:-1.5,
+    tags:['War momentum +1 a session', 'Armed forces +1.5 target', 'Tension +1 a session', 'Upkeep $200B a session', 'Lapses if relations fall below 40'] },
+  arms: { name:'Arms limitation treaty', min:48, cost:6, money:2, upkeep:0, mil:-1.5, needs:['nonaggression'], floor:28,
     note:'Both sides cap the force they keep on the frontier.',
-    tags:['Tension -1.5 a session', 'Armed forces -1.5 target', 'Veterans -0.6 a session'] },
+    tags:['Tension -1.5 a session', 'Armed forces -1.5 target', 'Veterans -0.6 a session', 'Collapses if the armed forces pass 82'] },
   /* S10e: four more instruments, so a relationship has somewhere to go
      between "correct" and a mutual guarantee. */
-  transit: { name:'Transit and passage accord', min:44, cost:5, money:3, upkeep:0, econ:1.2,
+  transit: { name:'Transit and passage accord', min:44, cost:5, money:3, upkeep:0, econ:1.2, needs:['consular'], drift:.4, floor:26,
+    targets:{ infrastructure:.6 },
     note:'Our shipping through their water and their freight across our rail, at published rates.',
-    tags:['Economy +1.2 target', 'Infrastructure +0.6 target', 'Relations drift +0.4 a session'] },
-  science: { name:'Scientific exchange', min:52, cost:5, money:4, upkeep:1, tech:1.4,
+    tags:['Economy +1.2 target', 'Infrastructure +0.6 target', 'Relations drift +0.4 a session', 'Lapses if relations fall below 26'] },
+  science: { name:'Scientific exchange', min:52, cost:5, money:4, upkeep:1, tech:1.4, needs:['cultural'], floor:34,
     note:'Their laboratories and ours, on paper at least, and a great many visiting fellowships.',
-    tags:['Technology +1.4 target', 'Education +0.7 target', 'The professions approve'] },
-  labour: { name:'Labour movement convention', min:46, cost:4, money:2, upkeep:0, pov:-1.1,
+    tags:['Technology +1.4 target', 'Education +0.7 target', 'Upkeep $50B a session', 'Lapses if relations fall below 34'] },
+  labour: { name:'Labour movement convention', min:46, cost:4, money:2, upkeep:0, pov:-1.1, needs:['consular'], floor:26,
     note:'Their people may work here and ours there, with the papers recognised on both sides.',
-    tags:['Poverty -1.1 target', 'Organised labour uneasy', 'Small business pleased'] },
-  extradition: { name:'Extradition and legal assistance', min:40, cost:4, money:1, upkeep:0, corr:-1.3,
+    tags:['Poverty -1.1 target', 'Organised labour uneasy', 'Lapses if relations fall below 26'] },
+  extradition: { name:'Extradition and legal assistance', min:40, cost:4, money:1, upkeep:0, corr:-1.3, needs:['consular'], floor:24,
     note:'Neither capital is a place to keep money that should be somewhere else.',
-    tags:['Corruption -1.3 target', 'Civil liberties -0.5 target', 'The exchanges dislike it'] }
+    tags:['Corruption -1.3 target', 'Civil liberties -0.5 target', 'Lapses if relations fall below 24'] },
+  cultural: { name:'Cultural exchange', min:45, cost:4, money:2, upkeep:0, needs:['consular'], drift:.8, floor:24,
+    note:'Students, orchestras and television. Cheap, slow, and it makes the next treaty easier.',
+    tags:['Relations drift +0.8 a session', 'Tension -0.5 a session', 'The young +0.3 a session'] },
+  research: { name:'Research compact', min:55, cost:6, money:4, upkeep:0, needs:['science'], floor:40,
+    note:'Shared laboratories, exchanges of scientists and a joint space programme. Technology rises; the security services worry about what is shared.',
+    tags:['Technology +1 a session', 'Education +0.5 a session', 'Revenue +$50B a session', 'Tension +0.3 a session'] },
+  /* S16b: ten more instruments, and a ladder for all twenty. A relationship
+     with a capital is a stack of agreements built on each other, not a slot
+     holding the last thing signed. `needs` names what must already stand;
+     `min` is the relation the capital will not go below; `targets` is a map of
+     indicator target shifts, read once in the `indicatorTargets` wrapper so a
+     tag on a card is a claim the model has to answer for. */
+  consular: { name:'Consular convention', min:30, cost:3, money:1, upkeep:0, needs:[], drift:.5, floor:18,
+    note:'Each capital keeps a mission in the other and its people may be found when they go missing. Every further instrument is written on top of this one.',
+    tags:['Relations drift +0.5 a session', 'The first rung: eight terms are written on it', 'Lapses if relations fall below 18'] },
+  border: { name:'Boundary and demarcation treaty', min:36, cost:4, money:2, upkeep:0, needs:[], drift:.4, floor:22,
+    targets:{ tension:-.9 },
+    note:'The line is surveyed, marked and published, and each side undertakes to police its own half of it. Old maps become an argument nobody can win.',
+    tags:['International tension -0.9 target', 'Relations drift +0.4 a session', 'Lapses if relations fall below 22'] },
+  fisheries: { name:'Fisheries and seabed convention', min:44, cost:5, money:3, upkeep:0, needs:['border'], floor:26,
+    targets:{ economy:.7, environment:.9, agriculture:-.4 },
+    note:'Quotas, closed seasons and who may drill beyond the shelf. The fleets test it every year and the tribunal sits every year.',
+    tags:['Economy +0.7 target', 'Environment +0.9 target', 'Agriculture -0.4 target'] },
+  environment: { name:'Environmental protocol', min:46, cost:5, money:3, upkeep:0, needs:[], floor:28,
+    targets:{ environment:1.2, economy:-.4 },
+    note:'Emissions counted the same way on both sides of the frontier, with an inspectorate that may cross it. Industry on both sides says it will be the ruin of them.',
+    tags:['Environment +1.2 target', 'Economy -0.4 target', 'The young approve'] },
+  investment: { name:'Investment protection treaty', min:52, cost:6, money:4, upkeep:0, needs:['trade'], floor:34,
+    targets:{ economy:1.1, liberties:-.3 },
+    note:'Their money is safe here and ours is safe there, and a tribunal outside either country decides when it is not. Sovereignty is the price and the exchanges think it cheap.',
+    tags:['Economy +1.1 target', 'Revenue +$100B a session', 'Civil liberties -0.3 target'] },
+  currency: { name:'Monetary and clearing agreement', min:56, cost:7, money:5, upkeep:2, needs:['trade', 'investment'], floor:40,
+    targets:{ economy:1.3 },
+    note:'A clearing union, a published band and a line of credit each way. Cheap money crosses the frontier and so, in time, does the inflation of whoever is on the other end of it.',
+    tags:['Economy +1.3 target', 'Revenue +$150B a session', 'Inflation +0.1 a session', 'Upkeep $100B a session'] },
+  friendship: { name:'Treaty of friendship', min:58, cost:6, money:3, upkeep:0, needs:['consular', 'cultural'], drift:1.1, floor:30, warmth:9,
+    note:'A statement of permanent good relations, signed on a balcony, with nothing enforceable in it at all. It is read out at the opening of every negotiation that follows.',
+    tags:['Relations drift +1.1 a session', 'Every further term is 9 points likelier', 'Nothing in it is enforceable'] },
+  nuclear: { name:'Nuclear non-proliferation accord', min:54, cost:6, money:3, upkeep:0, needs:['arms'], floor:32,
+    targets:{ tension:-2.2, military:-.8 },
+    note:'Neither side builds one and both submit to counting. The general staff regard the inspection regime as the most dangerous clause in it.',
+    tags:['International tension -2.2 target', 'Armed forces -0.8 target', 'Veterans and the services object'] },
+  intel: { name:'Intelligence liaison', min:66, cost:7, money:5, upkeep:1, needs:['defence'], floor:44,
+    targets:{ safety:.9, liberties:-.6 },
+    note:'Their service and ours read some of the same traffic and each passes on what it thinks the other should have. What arrives is never quite what was asked for.',
+    tags:['Public safety +0.9 target', 'Civil liberties -0.6 target', 'War momentum +0.6 a session', 'Upkeep $50B a session'] },
+  basing: { name:'Basing and status of forces agreement', min:72, cost:9, money:7, upkeep:5, needs:['defence', 'intel'], floor:50,
+    targets:{ military:2 },
+    note:'Their aircraft fly from our fields and their people answer to their own courts while they are here. The towns beside the fields will be an election issue for a generation.',
+    tags:['Armed forces +2 target', 'War momentum +1.4 a session', 'Unrest +0.5 a session', 'Upkeep $250B a session'] }
 };
-function v6TreatyWith(st, pid) { return st.v6 && st.v6.treaties[pid] ? st.v6.treaties[pid] : null; }
+/* S16b: A RELATIONSHIP, NOT A SLOT. `st.v6.treaties[pid]` held ONE instrument,
+   `{kind, since}`, so signing a second REPLACED the first: a player could put a
+   non-aggression pact, then a defence pact, then a non-aggression pact through
+   the same capital in a single session, with the Foreign Office reporting each
+   of them as a treaty signed and the stats counting all three.
+
+   It is a LIST now. As many instruments may stand with a capital as it will
+   carry, and what gates one is exactly what the owner asked for: the relation,
+   and whether the terms it is written on top of already exist. Nothing is
+   signed on the click either. A proposal is LAID, at odds printed before the
+   capital is spent, and the power answers at the next session.
+
+   Entries are `{kind, since, laid}` in force and `{kind, laid, odds, pending}`
+   while an answer is outstanding. Read them through the accessors: TWELVE
+   places indexed `treaties[pid]` directly before this slice and every one of
+   them would have read an array where it expected an object. */
+function v6TreatiesEnsure(st) {
+  var v = st.v6 || (typeof v6EnsureState === 'function' ? v6EnsureState(st).v6 : null);
+  if (!v) return {};
+  if (!v.treaties || typeof v.treaties !== 'object') v.treaties = {};
+  if (!v.treatyAsks || typeof v.treatyAsks !== 'object') v.treatyAsks = {};
+  for (var pid in v.treaties) {
+    var t = v.treaties[pid];
+    if (Array.isArray(t)) continue;
+    /* A save written before this slice carries one instrument per power as a
+       bare object. That is a treaty somebody negotiated and paid for, so it is
+       WRAPPED rather than dropped. Anything that is neither an array nor a
+       treaty-shaped object cannot be read by this build: it is dropped and
+       COUNTED, on the pattern the statute ladder and the constitution use, and
+       the world page says so until the player has read it.
+       Pure arithmetic, no dice, and idempotent: this is called on every read
+       and the second call has nothing left to do. */
+    if (t && typeof t === 'object' && t.kind && V6_TREATIES[t.kind]) {
+      v.treaties[pid] = [{ kind:t.kind, since:t.since, laid:t.laid || 0 }];
+      if (typeof UI !== 'undefined') UI.treatiesMigrated = (UI.treatiesMigrated || 0) + 1;
+    } else {
+      v.treaties[pid] = [];
+      if (t && typeof UI !== 'undefined') UI.treatiesLost = (UI.treatiesLost || 0) + 1;
+    }
+  }
+  return v.treaties;
+}
+function v6TreatyRows(st, pid) {
+  var tr = v6TreatiesEnsure(st);
+  if (!Array.isArray(tr[pid])) tr[pid] = [];
+  return tr[pid];
+}
+function v6Treaties(st, pid) { return v6TreatyRows(st, pid).filter(function (t) { return !t.pending; }); }
+function v6TreatyTalks(st, pid) { return v6TreatyRows(st, pid).filter(function (t) { return t.pending; }); }
+function v6HasTreaty(st, pid, kind) {
+  return v6Treaties(st, pid).some(function (t) { return t.kind === kind; });
+}
+function v6TreatyPendingKind(st, pid, kind) {
+  return v6TreatyTalks(st, pid).some(function (t) { return t.kind === kind; });
+}
+function v6TreatyKinds(st, pid) { return v6Treaties(st, pid).map(function (t) { return t.kind; }); }
+/* An Alliance capital cannot open a war on Vale whatever the paperwork says, so
+   the non-aggression pact is excluded from its terms sheet. That has to make it
+   IMPLIED for anything written on top of it, or the two instruments that need
+   one could never be reached inside the bloc. */
+function v6TreatyImplied(st, pid, kind) {
+  if (kind !== 'nonaggression') return false;
+  var pw = POWER[pid];
+  return !!(pw && (pw.kind === 'alliance' || (typeof allianceHas === 'function' && allianceHas(st, pid))));
+}
+function v6TreatyExcluded(st, pid, kind) {
+  return kind === 'nonaggression' && !!(POWER[pid] && POWER[pid].kind === 'alliance');
+}
+function v6TreatyMissing(st, pid, kind) {
+  var d = V6_TREATIES[kind]; if (!d || !d.needs) return [];
+  /* An id this build does not carry is skipped rather than dereferenced. A
+     prerequisite is a forward reference into the registry, and the registry
+     used to be split across two chunks: see the note where `research` and
+     `cultural` were moved out of the later one. */
+  return d.needs.filter(function (n) { return V6_TREATIES[n] && !v6HasTreaty(st, pid, n) && !v6TreatyImplied(st, pid, n); });
+}
+function v6TreatyAsks(st, pid, kind) {
+  var v = st.v6; if (!v || !v.treatyAsks) return 0;
+  return v.treatyAsks[pid + ':' + kind] || 0;
+}
+/* Why a term is not on the table, in the words the card prints. Empty means it
+   is. S15g's rule: render the locked card and state the reason, never an empty
+   panel and never a button that refuses after the click. */
+function v6TreatyWhy(st, pid, kind) {
+  var d = V6_TREATIES[kind]; if (!d) return 'No such instrument.';
+  if (st.war && st.war.power === pid) return 'The two countries are at war.';
+  if (v6TreatyExcluded(st, pid, kind)) return 'They are in the Alliance. Neither may open a war on the other already.';
+  if (v6HasTreaty(st, pid, kind)) return 'Already in force.';
+  if (v6TreatyPendingKind(st, pid, kind)) return 'Laid, and awaiting their answer.';
+  var miss = v6TreatyMissing(st, pid, kind);
+  if (miss.length) return 'Written on top of ' + miss.map(function (n) { return V6_TREATIES[n].name.toLowerCase(); }).join(' and ') + ', which ' + (miss.length === 1 ? 'is' : 'are') + ' not in force.';
+  var rel = relOf(st, pid);
+  if (rel < d.min) return 'Needs relations at ' + d.min + '; they stand at ' + Math.round(rel) + '.';
+  return '';
+}
+function v6TreatyOpen(st, pid, kind) { return v6TreatyWhy(st, pid, kind) === ''; }
+/* What a capital will do with the proposal, decided when it is LAID and stored
+   on it, so the number the player read is the number that is rolled and the
+   render path never touches a die. Depth is the point: every instrument already
+   standing makes the next one likelier, which is what makes this a relationship
+   rather than a slot. */
+function v6TreatyOdds(st, pid, kind) {
+  var d = V6_TREATIES[kind]; if (!d) return 0;
+  var rel = relOf(st, pid), v = 14;
+  v += (rel - d.min) * 1.7;
+  v += v6Treaties(st, pid).length * 5;
+  v6Treaties(st, pid).forEach(function (t) { var w = V6_TREATIES[t.kind]; if (w && w.warmth) v += w.warmth; });
+  v -= Math.max(0, st.ind.tension - 45) * .6;
+  v -= (d.upkeep || 0) * 1.6;
+  v -= (d.cost || 0) * .8;
+  v += (st.pol.foreignAid || 0) * 2.5;
+  if (typeof allianceHas === 'function' && allianceHas(st, pid)) v += 12;
+  if (st.war) v -= 14;
+  v -= v6TreatyAsks(st, pid, kind) * 11;
+  return clamp(Math.round(v), 3, 94);
+}
+/* Laying a proposal. The capital and the money buy the NEGOTIATION, not the
+   instrument: a refusal costs the same as an acceptance, which is what makes
+   the odds on the card worth reading. */
+function v6TreatyPropose(pid, kind) {
+  var pw = POWER[pid], d = V6_TREATIES[kind];
+  if (!pw || !d) return false;
+  var why = v6TreatyWhy(S, pid, kind);
+  if (why) { flash(why); return false; }
+  var odds = v6TreatyOdds(S, pid, kind);
+  if (!pv5Spend(d.cost, d.money, 'Terms proposed to ' + pw.short)) return false;
+  v6TreatyRows(S, pid).push({ kind:kind, laid:S.turn, odds:odds, pending:true });
+  S.v6.treatyAsks[pid + ':' + kind] = v6TreatyAsks(S, pid, kind) + 1;
+  logIt(S, 'A ' + d.name.toLowerCase() + ' was proposed to ' + pw.name + ' at ' + odds + ' in a hundred. They answer at the next session.');
+  return true;
+}
+/* Annulling. Everything written on top of the instrument falls with it, which
+   is what a prerequisite has to mean, and the log names each one. */
+function v6TreatyAnnul(st, pid, kind, quiet) {
+  var d = V6_TREATIES[kind]; if (!d) return [];
+  var rows = v6TreatyRows(st, pid), gone = [];
+  var drop = function (k) {
+    for (var i = rows.length - 1; i >= 0; i--) if (rows[i].kind === k && !rows[i].pending) { rows.splice(i, 1); gone.push(k); }
+    Object.keys(V6_TREATIES).forEach(function (o) {
+      var w = V6_TREATIES[o];
+      if (w.needs && w.needs.indexOf(k) >= 0 && v6HasTreaty(st, pid, o) && !v6TreatyImplied(st, pid, k)) drop(o);
+    });
+  };
+  drop(kind);
+  if (gone.length && !quiet) {
+    shiftRel(st, pid, -(6 + d.cost));
+    mood(st, { prof:-3 });
+    logIt(st, 'Vale annulled the ' + gone.map(function (k) { return V6_TREATIES[k].name.toLowerCase(); }).join(', the ') + ' with ' + POWER[pid].short + '.');
+  }
+  return gone;
+}
+/* The answer, one session after the proposal was laid. `v6TreatiesTick` runs
+   before `S.turn += 1`, so a proposal laid on session N is answered by the tick
+   that closes N and read by the player on entering N + 1. That is what "the
+   following turn" means and S16a is why it is spelt this way. */
+function v6TreatyAnswer(st) {
+  POWERS.forEach(function (pw) {
+    var rows = v6TreatyRows(st, pw.id);
+    rows.slice().forEach(function (t) {
+      if (!t.pending || t.laid > st.turn) return;
+      var d = V6_TREATIES[t.kind]; if (!d) { rows.splice(rows.indexOf(t), 1); return; }
+      var dead = v6TreatyWhy(st, pw.id, t.kind);
+      /* the ground can move between the laying and the answer */
+      if (dead && dead !== 'Laid, and awaiting their answer.') {
+        rows.splice(rows.indexOf(t), 1);
+        logIt(st, 'The proposal of a ' + d.name.toLowerCase() + ' to ' + pw.short + ' was withdrawn: ' + dead.charAt(0).toLowerCase() + dead.slice(1));
+        return;
+      }
+      if (rand() * 100 < t.odds) {
+        delete t.pending; t.since = yearOf(st.turn + 1);
+        shiftRel(st, pw.id, 8);
+        st.v6.stats.treaties++;
+        mood(st, t.kind === 'defence' ? { veterans:5, prof:2, youth:-3 } : (t.kind === 'arms' || t.kind === 'nuclear' ? { prof:5, youth:4, veterans:-4 } : { prof:3, tech:3 }));
+        logIt(st, pw.name + ' signed the ' + d.name.toLowerCase() + '.');
+        addNews(st, 'Foreign Affairs', d.name + ' signed with ' + pw.short, 'The instrument was initialled in the capital and comes into force this session.', 'good');
+        chronicle(st, d.name + ' with ' + pw.short + '.');
+      } else {
+        rows.splice(rows.indexOf(t), 1);
+        shiftRel(st, pw.id, -3);
+        logIt(st, pw.name + ' declined the ' + d.name.toLowerCase() + '.');
+        addNews(st, 'Foreign Affairs', pw.short + ' declines terms', 'The proposal was refused. Asking again will be read as pressure and answered as such.', 'bad');
+      }
+    });
+  });
+}
 function v6TreatiesTick(st) {
   var v = st.v6;
+  v6TreatyAnswer(st);
   POWERS.forEach(function (pw) {
-    var t = v.treaties[pw.id]; if (!t) return;
+    var rows = v6TreatyRows(st, pw.id);
+    if (!rows.length) return;
     /* A treaty with the country you are FIGHTING used to stay in force and
-       keep paying out — a mutual-defence pact charging its upkeep every
-       session and shifting relations +0.4 TOWARD the enemy, which is most of
-       how a power ended up reading "allied" and "at war" at once. War annuls
-       the instrument, loudly. */
+       keep paying out. War annuls every instrument, loudly. */
     if (st.war && st.war.power === pw.id) {
-      delete v.treaties[pw.id];
-      logIt(st, 'The ' + V6_TREATIES[t.kind].name.toLowerCase() + ' with ' + pw.short + ' is void. The two countries are at war.');
-      addNews(st, 'Foreign Affairs', 'Treaty with ' + pw.short + ' void', 'A state of war annuls it. The lawyers will argue about the clauses for a decade.', 'bad');
+      var names = rows.filter(function (t) { return !t.pending; }).map(function (t) { return V6_TREATIES[t.kind].name.toLowerCase(); });
+      v.treaties[pw.id] = [];
+      if (names.length) {
+        logIt(st, 'The ' + names.join(', the ') + ' with ' + pw.short + ' ' + (names.length === 1 ? 'is' : 'are') + ' void. The two countries are at war.');
+        addNews(st, 'Foreign Affairs', (names.length === 1 ? 'Treaty' : names.length + ' treaties') + ' with ' + pw.short + ' void', 'A state of war annuls them. The lawyers will argue about the clauses for a decade.', 'bad');
+      }
       return;
     }
     var rel = relOf(st, pw.id);
-    if (t.kind === 'nonaggression') { shiftRel(st, pw.id, .6); if (rel < 30) { delete v.treaties[pw.id]; logIt(st, 'The non-aggression pact with ' + pw.short + ' lapsed. Relations had fallen too far to sustain it.'); } }
-    if (t.kind === 'trade') { mood(st, { tech:1, smallbiz:-.5 }); shiftRel(st, pw.id, .3); if ((st.pol.tariffs || 0) >= 3) { delete v.treaties[pw.id]; shiftRel(st, pw.id, -8); logIt(st, 'The trade agreement with ' + pw.short + ' was voided by the tariff schedule.'); } }
-    if (t.kind === 'defence') { st.treasury -= V6_TREATIES.defence.upkeep; st.ind.tension = c100(st.ind.tension + 1); shiftRel(st, pw.id, .4); if (rel < 40) { delete v.treaties[pw.id]; logIt(st, pw.short + ' gave notice on the defence pact.'); } }
-    if (t.kind === 'arms') { st.ind.tension = c100(st.ind.tension - 1.5); mood(st, { veterans:-.6 }); if (st.ind.military > 82) { delete v.treaties[pw.id]; shiftRel(st, pw.id, -10); logIt(st, 'The arms treaty with ' + pw.short + ' collapsed under the weight of the rearmament.'); } }
+    v6Treaties(st, pw.id).forEach(function (t) {
+      var d = V6_TREATIES[t.kind];
+      if (d.drift) shiftRel(st, pw.id, d.drift);
+      if (d.upkeep) st.treasury -= d.upkeep;
+      /* The relation floors are in the registry and read below, so what is
+         left in each of these is only what is particular to it. */
+      if (t.kind === 'trade') { mood(st, { tech:1, smallbiz:-.5 }); if ((st.pol.tariffs || 0) >= 3) { v6TreatyAnnul(st, pw.id, t.kind, true); shiftRel(st, pw.id, -8); logIt(st, 'The trade agreement with ' + pw.short + ' was voided by the tariff schedule.'); } }
+      if (t.kind === 'defence') { st.ind.tension = c100(st.ind.tension + 1); }
+      if (t.kind === 'arms') { st.ind.tension = c100(st.ind.tension - 1.5); mood(st, { veterans:-.6 }); if (st.ind.military > 82) { v6TreatyAnnul(st, pw.id, t.kind, true); shiftRel(st, pw.id, -10); logIt(st, 'The arms treaty with ' + pw.short + ' collapsed under the weight of the rearmament.'); } }
+      if (t.kind === 'currency') { st.macro.inflation += .1; }
+      if (t.kind === 'basing') { st.unrest = clamp(st.unrest + .5, 0, 110); }
+      /* S16b: every instrument can now lapse. Five of the ten in the file
+         before this slice had no branch anywhere in the tick and could stand
+         for two hundred sessions through a collapse in relations. */
+      if (d.floor !== undefined && rel < d.floor && v6HasTreaty(st, pw.id, t.kind)) {
+        v6TreatyAnnul(st, pw.id, t.kind, true);
+        logIt(st, 'The ' + d.name.toLowerCase() + ' with ' + pw.short + ' lapsed. Relations stand at ' + Math.round(rel) + ' against a floor of ' + d.floor + '.');
+      }
+    });
   });
+}
+function v6TreatyCard(pid, k) {
+  var d = V6_TREATIES[k], why = v6TreatyWhy(S, pid, k), rows = v6TreatyRows(S, pid);
+  var live = rows.filter(function (t) { return t.kind === k && !t.pending; })[0];
+  var talk = rows.filter(function (t) { return t.kind === k && t.pending; })[0];
+  var fx = '<span class="fx">' + d.tags.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</span>';
+  if (live) {
+    return '<button class="choice" data-treaty-annul="' + k + '"><b>' + esc(d.name) + '</b> <span class="c">in force since ' + live.since + '</span><small>' +
+      esc(d.note) + ' Annulling it costs ' + cst(3) + ' capital and ' + (6 + d.cost) + ' points of relations, and anything written on top of it falls with it.</small>' + fx + '</button>';
+  }
+  if (talk) {
+    return '<button class="choice" disabled><b>' + esc(d.name) + '</b> <span class="c">laid, ' + talk.odds + ' in a hundred</span><small>' +
+      esc(d.note) + ' The proposal is with them and they answer at the next session.</small>' + fx + '</button>';
+  }
+  if (why) {
+    return '<button class="choice" disabled><b>' + esc(d.name) + '</b> <span class="c">' + cst(d.cost) + ' cap, ' + fmc(d.money) + '</span><small>' +
+      esc(d.note) + ' ' + esc(why) + '</small>' + fx + '</button>';
+  }
+  return '<button class="choice" data-treaty-kind="' + k + '"><b>' + esc(d.name) + '</b> <span class="c">' + cst(d.cost) + ' cap, ' + fmc(d.money) + ' &middot; ' + v6TreatyOdds(S, pid, k) + ' in a hundred</span><small>' +
+    esc(d.note) + ' The capital and the money buy the negotiation. They answer at the next session, and a refusal costs the same as a signature.</small>' + fx + '</button>';
 }
 function v6TreatyDialog(pid) {
   var pw = POWER[pid]; if (!pw) return;
-  var rel = relOf(S, pid), have = v6TreatyWith(S, pid);
-  var opts = Object.keys(V6_TREATIES).map(function (k) {
-    var t = V6_TREATIES[k], ok = rel >= t.min && !(have && have.kind === k) && !(pw.kind === 'alliance' && (k === 'nonaggression'));
-    return '<button class="choice" data-treaty-kind="' + k + '"' + (ok ? '' : ' disabled') + '><b>' + esc(t.name) + '</b> <span class="c">' + cst(t.cost) + ' cap, ' + fmc(t.money) + '</span><small>' + esc(t.note) + (rel < t.min ? ' Needs relations at ' + t.min + '; they stand at ' + Math.round(rel) + '.' : '') + '</small><span class="fx">' + t.tags.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</span></button>';
-  }).join('');
-  showSheet('<div class="kicker">Foreign Office</div><h2 id="sheetTitle">Negotiate with ' + esc(pw.name) + '</h2><p>' + esc(pw.note) + ' Relations stand at ' + Math.round(rel) + ', ' + relWord(rel, S, pw.id) + '.' + (have ? ' A ' + V6_TREATIES[have.kind].name.toLowerCase() + ' has been in force since ' + have.since + '.' : '') + '</p><div class="choices">' + opts +
-    (have ? '<button class="choice" data-treaty-annul="1">Annul the ' + esc(V6_TREATIES[have.kind].name.toLowerCase()) + ' <span class="c">' + cst(3) + ' cap</span><small>Relations fall by 15 and the country notices.</small></button>' : '') +
-    '<button class="choice" data-close="1">Return</button></div>', function (node) {
+  var rel = relOf(S, pid);
+  var order = Object.keys(V6_TREATIES).sort(function (a, b) {
+    return (V6_TREATIES[a].min - V6_TREATIES[b].min) || (V6_TREATIES[a].name < V6_TREATIES[b].name ? -1 : 1);
+  });
+  var live = order.filter(function (k) { return v6HasTreaty(S, pid, k); });
+  var laid = order.filter(function (k) { return v6TreatyPendingKind(S, pid, k); });
+  var open = order.filter(function (k) { return v6TreatyOpen(S, pid, k); });
+  var shut = order.filter(function (k) { return live.indexOf(k) < 0 && laid.indexOf(k) < 0 && open.indexOf(k) < 0; });
+  var section = function (title, list) {
+    return list.length ? '<h3 class="sheet-sub">' + esc(title) + '</h3><div class="choices">' +
+      list.map(function (k) { return v6TreatyCard(pid, k); }).join('') + '</div>' : '';
+  };
+  showSheet('<div class="kicker">Foreign Office</div><h2 id="sheetTitle">Negotiate with ' + esc(pw.name) + '</h2>' +
+    '<p>' + esc(pw.note) + ' Relations stand at ' + Math.round(rel) + ', ' + relWord(rel, S, pid) + '. ' +
+    (live.length ? v8Plural(live.length, 'instrument') + ' in force' : 'Nothing is in force') +
+    (laid.length ? ', ' + v8Plural(laid.length, 'proposal') + ' awaiting an answer' : '') +
+    ', and ' + v8Plural(open.length, 'term') + ' on the table. There is no limit on how many may stand at once: what governs is the relation and what is already written.</p>' +
+    section('In force', live) + section('Awaiting their answer', laid) +
+    section('On the table', open) + section('Not available', shut) +
+    '<div class="choices"><button class="choice" data-close="1">Return</button></div>', function (node) {
       node.querySelectorAll('[data-treaty-kind]').forEach(function (b) {
         b.addEventListener('click', function () {
-          var k = b.getAttribute('data-treaty-kind'), t = V6_TREATIES[k];
-          if (!pv5Spend(t.cost, t.money, 'Treaty with ' + pw.short)) return;
-          /* Replacing a treaty used to be a bare overwrite: the old instrument was
-     dropped with no penalty, no log line naming it and no chronicle entry,
-     while still counting as a new treaty — where ANNULLING one costs capital
-     and fifteen points of relations. Say what is being torn up. */
-  var had = S.v6.treaties[pid];
-  if (had) {
-    logIt(S, 'The ' + V6_TREATIES[had.kind].name.toLowerCase() + ' with ' + POWER[pid].short + ' of ' + had.since + ' was superseded.');
-    shiftRel(S, pid, -5);
-  }
-  S.v6.treaties[pid] = { kind:k, since:yearOf(S.turn) }; shiftRel(S, pid, 12); S.v6.stats.treaties++;
-          mood(S, k === 'defence' ? { veterans:5, prof:2, youth:-3 } : (k === 'arms' ? { prof:5, youth:4, veterans:-4 } : { prof:3, tech:3 }));
-          logIt(S, 'A ' + t.name.toLowerCase() + ' was signed with ' + pw.name + '.'); chronicle(S, t.name + ' with ' + pw.short + '.');
-          hideSheet(); render(); toast('Treaty signed.');
+          if (!v6TreatyPropose(pid, b.getAttribute('data-treaty-kind'))) return;
+          hideSheet(); render(); toast('Terms proposed. They answer at the next session.');
         });
       });
-      var an = node.querySelector('[data-treaty-annul]'); if (an) an.addEventListener('click', function () {
-        if (!pv5Spend(3, 0, 'Annul treaty with ' + pw.short)) return;
-        delete S.v6.treaties[pid]; shiftRel(S, pid, -15); mood(S, { prof:-3 });
-        logIt(S, 'The treaty with ' + pw.name + ' was annulled.'); hideSheet(); render();
+      node.querySelectorAll('[data-treaty-annul]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!pv5Spend(3, 0, 'Annul terms with ' + pw.short)) return;
+          v6TreatyAnnul(S, pid, b.getAttribute('data-treaty-annul'));
+          hideSheet(); render(); toast('Annulled.');
+        });
       });
     });
 }
@@ -16117,7 +16391,13 @@ var v6BudgetV5 = budget;
 budget = function (st) {
   var b = v6BudgetV5(st);
   if (st.v6) {
-    var trade = 0; POWERS.forEach(function (pw) { var t = st.v6.treaties[pw.id]; if (t && t.kind === 'trade') trade += 3; });
+    var trade = 0; POWERS.forEach(function (pw) {
+      /* S16b: one power may hold several instruments, so this counts the
+         paying ones rather than asking whether THE treaty is a trade one. */
+      if (v6HasTreaty(st, pw.id, 'trade')) trade += 3;
+      if (v6HasTreaty(st, pw.id, 'investment')) trade += 2;
+      if (v6HasTreaty(st, pw.id, 'currency')) trade += 3;
+    });
     if (trade) { b.rev += trade; b.net = b.rev - b.exp; }
   }
   return b;
@@ -16129,7 +16409,7 @@ warTick = function (st) {
   var wasWar = st.war ? JSON.parse(JSON.stringify(st.war)) : null;
   if (!st.war) {
     var saved = {};
-    POWERS.forEach(function (pw) { var t = v.treaties[pw.id]; if (t && t.kind === 'nonaggression') { saved[pw.id] = st.powers[pw.id]; st.powers[pw.id] = Math.max(st.powers[pw.id], 60); } });
+    POWERS.forEach(function (pw) { if (v6HasTreaty(st, pw.id, 'nonaggression')) { saved[pw.id] = st.powers[pw.id]; st.powers[pw.id] = Math.max(st.powers[pw.id], 60); } });
     v6WarTickBase(st);
     for (var k in saved) st.powers[k] = saved[k];
     if (st.war) { st.war.strategy = null; st.war.weariness = 0; v.stats.wars++; }
@@ -16141,7 +16421,12 @@ warTick = function (st) {
     var w = st.war;
     if (strat === 'total') { w.momentum += 2.2; st.treasury -= 8 + st.ind.military * .06; st.unrest += 1.6; st.ind.economy = c100(st.ind.economy - .6); mood(st, { youth:-1.2, labour:-.8 }); }
     if (strat === 'defensive') { w.momentum -= .9; st.treasury += 4 + st.ind.military * .04; st.unrest -= .9; }
-    POWERS.forEach(function (pw) { var t = v.treaties[pw.id]; if (t && t.kind === 'defence' && pw.id !== w.power) w.momentum += 1; });
+    POWERS.forEach(function (pw) {
+      if (pw.id === w.power) return;
+      if (v6HasTreaty(st, pw.id, 'defence')) w.momentum += 1;
+      if (v6HasTreaty(st, pw.id, 'intel')) w.momentum += .6;
+      if (v6HasTreaty(st, pw.id, 'basing')) w.momentum += 1.4;
+    });
     w.weariness = clamp((w.weariness || 0) + (strat === 'total' ? 6 : strat === 'defensive' ? 2.5 : 4), 0, 100);
     if (w.weariness > 60) { st.unrest += (w.weariness - 60) * .12; mood(st, { prof:-.8, youth:-1 }); }
   } else if (wasWar) {
@@ -17552,8 +17837,15 @@ function v6Advisors(st) {
   }
   if ((st.unity || 60) < 45) out.push({ who:'Party Chair', t:'Unity is failing', p:'Unity ' + Math.round(st.unity) + '. Consult the caucuses on the Parties page, keep a promise, or stop dragging the party from its platform.', urgent:(st.unity || 60) < 35, jump:'parties' });
   if (next !== null && next <= 2 && pv5CampaignPower(st) < V15_CAMPAIGN_MAX * .33) out.push({ who:'Campaign Director', t:'The ballot is close and the campaign is thin', p:'Campaign power ' + pv5CampaignPower(st).toFixed(1) + '. Field, media and data on the Campaign page all raise it.', urgent:next <= 1, jump:'campaign' });
-  var treatyable = POWERS.filter(function (pw) { return !v.treaties[pw.id] && relOf(st, pw.id) >= 64; });
-  if (treatyable.length && !st.war) out.push({ who:'Foreign Secretary', t:'Terms are available', p:treatyable.map(function (pw) { return pw.short; }).join(', ') + ' would sign. A trade agreement pays; a defence pact costs and protects.', calm:true, jump:'world' });
+  /* S16b: a power is worth naming when a term is OPEN, not when nothing at
+     all has been signed with it. The old test read `!v.treaties[pw.id]`, so a
+     capital that had signed one instrument dropped off the brief for good. */
+  var treatyable = POWERS.filter(function (pw) {
+    return !st.war && Object.keys(V6_TREATIES).some(function (k) { return v6TreatyOpen(st, pw.id, k); });
+  });
+  var awaiting = POWERS.filter(function (pw) { return v6TreatyTalks(st, pw.id).length; });
+  if (awaiting.length) out.push({ who:'Foreign Secretary', t:'Proposals are with them', p:awaiting.map(function (pw) { return pw.short + ' (' + v6TreatyTalks(st, pw.id).length + ')'; }).join(', ') + '. Each capital answers at the next session.', calm:true, jump:'world' });
+  if (treatyable.length && !st.war) out.push({ who:'Foreign Secretary', t:'Terms are available', p:treatyable.map(function (pw) { return pw.short + ' (' + Object.keys(V6_TREATIES).filter(function (k) { return v6TreatyOpen(st, pw.id, k); }).length + ')'; }).join(', ') + '. Nothing limits how many instruments may stand with one capital; the relation and what is already written do.', calm:true, jump:'world' });
   if (st.ind.tension > 62 && !st.war) out.push({ who:'Foreign Secretary', t:'Tension at ' + Math.round(st.ind.tension), p:'An arms treaty, a summit, or a quieter frontier. The war roll is made every session.', urgent:st.ind.tension > 75, jump:'world' });
   if (st.inbox.some(function (i) { return i.deadline <= st.turn; })) out.push({ who:'Private Office', t:'Papers expire this session', p:st.inbox.filter(function (i) { return i.deadline <= st.turn; }).length + ' paper' + (st.inbox.filter(function (i) { return i.deadline <= st.turn; }).length === 1 ? '' : 's') + ' unanswered. Expiry is a decision with consequences.', urgent:false, jump:'parties' });
   out.sort(function (a, b) { return (b.urgent ? 2 : (b.calm ? 0 : 1)) - (a.urgent ? 2 : (a.calm ? 0 : 1)); });
@@ -17636,8 +17928,31 @@ function v6WarCouncilPanel() {
     '<div class="war-strategy">' + sb('limited', 'Limited war', 'Normal cost and momentum.') + sb('total', 'Total mobilisation', 'Momentum +2.2 a year; treasury, growth and the young pay.') + sb('defensive', 'Defensive', 'Momentum -0.9 a year; cheaper and calmer.') + '</div></div>';
 }
 function v6TreatiesPanel() {
-  var lines = POWERS.map(function (pw) { var t = S.v6.treaties[pw.id]; return t ? '<tr><td>' + esc(pw.name) + '</td><td>' + esc(V6_TREATIES[t.kind].name) + '</td><td class="num">' + t.since + '</td></tr>' : ''; }).join('');
-  return '<div class="panel"><h2>Treaties in Force</h2>' + (lines ? '<table><thead><tr><th>Power</th><th>Treaty</th><th class="num">Since</th></tr></thead><tbody>' + lines + '</tbody></table>' : '<p class="note">None. Each power card below can open negotiations; relations set what is available.</p>') + '</div>';
+  /* S16b: one row per INSTRUMENT, not one per power. The table used to print
+     at most eleven lines because the store held at most one treaty a capital. */
+  var lines = '', signed = 0, laid = 0;
+  POWERS.forEach(function (pw) {
+    v6Treaties(S, pw.id).forEach(function (t) {
+      signed++;
+      lines += '<tr><td>' + esc(pw.name) + '</td><td>' + esc(V6_TREATIES[t.kind].name) + '</td><td class="num">' + t.since + '</td></tr>';
+    });
+    v6TreatyTalks(S, pw.id).forEach(function (t) {
+      laid++;
+      lines += '<tr class="muted"><td>' + esc(pw.name) + '</td><td>' + esc(V6_TREATIES[t.kind].name) + '</td><td class="num">laid, ' + t.odds + '%</td></tr>';
+    });
+  });
+  var note = signed || laid
+    ? '<p class="note">' + v8Plural(signed, 'instrument') + ' in force across ' +
+      v8Plural(POWERS.filter(function (pw) { return v6Treaties(S, pw.id).length; }).length, 'capital') +
+      (laid ? ', and ' + v8Plural(laid, 'proposal') + ' awaiting an answer. A capital answers at the session after the terms are laid.' : '. There is no limit on how many may stand with one capital.') + '</p>'
+    : '';
+  var lost = (typeof UI !== 'undefined' && UI.treatiesLost)
+    ? '<p class="note warn">' + v8Plural(UI.treatiesLost, 'treaty', 'treaties') + ' in the saved campaign could not be read by this build and ' + (UI.treatiesLost === 1 ? 'was' : 'were') + ' dropped. Nothing else in the save was touched.</p>' : '';
+  var moved = (typeof UI !== 'undefined' && UI.treatiesMigrated)
+    ? '<p class="note">' + v8Plural(UI.treatiesMigrated, 'treaty', 'treaties') + ' from a saved campaign ' + (UI.treatiesMigrated === 1 ? 'was' : 'were') + ' carried into the new form, where a capital may hold as many as it will sign.</p>' : '';
+  return '<div class="panel"><h2>Treaties in Force</h2>' + lost + moved +
+    (lines ? '<table><thead><tr><th>Power</th><th>Instrument</th><th class="num">Since</th></tr></thead><tbody>' + lines + '</tbody></table>' + note
+      : '<p class="note">None. Each power card below can open negotiations; the relation and what is already written set what is available.</p>') + '</div>';
 }
 var v6ViewWorldV5 = viewWorld;
 viewWorld = function () {
@@ -17645,9 +17960,15 @@ viewWorld = function () {
   POWERS.forEach(function (pw) {
     var marker = '<div class="card"><h3>' + esc(pw.name) + '</h3>', i = html.indexOf(marker); if (i < 0) return;
     var j = html.indexOf('</div></div>', i); if (j < 0) return;
-    var t = S.v6.treaties[pw.id], rel = relOf(S, pw.id);
-    var can = Object.keys(V6_TREATIES).filter(function (k) { return rel >= V6_TREATIES[k].min && !(t && t.kind === k); }).length;
-    var extra = '<div class="treaty-line">' + (t ? '<span class="tag up">' + esc(V6_TREATIES[t.kind].name) + ', ' + t.since + '</span>' : '<span class="tag">No treaty</span>') + (can ? '<span class="tag">' + can + ' term' + (can === 1 ? '' : 's') + ' available</span>' : '') + '</div>' +
+    var live = v6Treaties(S, pw.id), talks = v6TreatyTalks(S, pw.id);
+    /* S16b: what is OPEN, asked of the same function the sheet asks. The old
+       count was `rel >= min`, which ignored every prerequisite and offered a
+       basing agreement to a capital that had never signed a consular one. */
+    var can = Object.keys(V6_TREATIES).filter(function (k) { return v6TreatyOpen(S, pw.id, k); }).length;
+    var extra = '<div class="treaty-line">' +
+      (live.length ? live.map(function (t) { return '<span class="tag up">' + esc(V6_TREATIES[t.kind].name) + ', ' + t.since + '</span>'; }).join('') : '<span class="tag">No treaty</span>') +
+      (talks.length ? '<span class="tag">' + v8Plural(talks.length, 'proposal') + ' awaiting an answer</span>' : '') +
+      (can ? '<span class="tag">' + can + ' term' + (can === 1 ? '' : 's') + ' on the table</span>' : '') + '</div>' +
       '<div class="btnrow"><button class="btn ghost" data-treaty-open="' + pw.id + '"' + (S.war && S.war.power === pw.id ? ' disabled' : '') + '>Negotiate</button></div>';
     html = html.slice(0, j + 6) + extra + html.slice(j + 6);
   });
@@ -18785,7 +19106,7 @@ function v7Index() {
   POLICIES.forEach(function (p) { if (!policyOpen(S, p)) return; out.push({ kind:'Measure', name:p.name, text:p.desc + ' ' + p.cat + ' ' + (p.grp || '') + ' ' + v7FieldWords('', p.eff, p.mood) + (p.rev ? ' revenue' : '') + (p.exp ? ' cost spending' : ''), tab:'policy', sel:'[data-pol="' + p.id + '"]', pol:p, note:'Level ' + (S.pol[p.id] || 0) + ' of ' + p.max + ' · ' + p.cat }); });
   REGIONS.forEach(function (r) { var g = v.governors[r.id]; out.push({ kind:'Region', name:r.name, text:r.character + ' ' + g.name + ' governor', tab:'federation', sel:'[data-region="' + r.id + '"]', note:'Governor ' + g.name + ', ' + PARTY[g.party].short }); });
   PARTIES.forEach(function (p) { out.push({ kind:'Party', name:p.name, text:p.blurb + ' ' + p.short, tab:'parties', sel:'[data-party="' + p.id + '"]', note:(S.seats[p.id] || 0) + ' seats · trust ' + Math.round(S.partyRel[p.id] || 50) }); });
-  POWERS.forEach(function (pw) { out.push({ kind:'Power', name:pw.name, text:pw.note + ' treaty ' + pw.short, tab:'world', sel:'[data-treaty-open="' + pw.id + '"]', note:'Relations ' + Math.round(relOf(S, pw.id)) + (v.treaties[pw.id] ? ' · ' + V6_TREATIES[v.treaties[pw.id].kind].name : '') }); });
+  POWERS.forEach(function (pw) { out.push({ kind:'Power', name:pw.name, text:pw.note + ' treaty ' + pw.short, tab:'world', sel:'[data-treaty-open="' + pw.id + '"]', note:'Relations ' + Math.round(relOf(S, pw.id)) + (v6Treaties(S, pw.id).length ? ' · ' + v8Plural(v6Treaties(S, pw.id).length, 'instrument') : '') }); });
   V6_PROGRAMMES.forEach(function (pr) { out.push({ kind:'Programme', name:pr.name, text:pr.blurb + ' programme', tab:'policy', sel:'[data-programme="' + pr.id + '"]', note:(v.programme === pr.id ? 'Adopted · ' : '') + pr.lean }); });
   ACTS.forEach(function (a) { out.push({ kind:'Act', name:a.name, text:a.desc + ' constitutional act', key:'act2:' + a.id, sel:'[data-act2="' + a.id + '"]', note:'Constitutional act, ' + a.cost + ' capital' }); });
   TRANSITIONS.forEach(function (t) { out.push({ kind:'Constitution', name:t.name, text:(t.req || '') + ' ' + FORMS[t.to].name, key:'tr:' + t.id, sel:'[data-tr="' + t.id + '"]', note:'To ' + FORMS[t.to].name }); });
@@ -22634,7 +22955,7 @@ budget = function (st) {
   var b = v9BudgetBase(st);
   if (st.v8 && st.v8.rules && st.v8.rules.richCountry) { b.rev *= 1.08; b.net = b.rev - b.exp; }
   if (st.v6 && st.v6.treaties) {
-    var extra = 0; POWERS.forEach(function (pw) { var t = st.v6.treaties[pw.id]; if (t && t.kind === 'research') extra += 1; });
+    var extra = 0; POWERS.forEach(function (pw) { if (v6HasTreaty(st, pw.id, 'research')) extra += 1; });
     if (extra) { b.rev += extra; b.net = b.rev - b.exp; }
   }
   return b;
@@ -22672,20 +22993,24 @@ figureEffects = function (st) {
   });
 };
 
-V6_TREATIES.research = { name:'Research compact', min:55, cost:6, money:4, upkeep:0,
-  note:'Shared laboratories, exchanges of scientists and a joint space programme. Technology rises; the security services worry about what is shared.',
-  tags:['Technology +1 a session', 'Education +0.5 a session', 'Revenue +$50B a session', 'Tension +0.3 a session'] };
-V6_TREATIES.cultural = { name:'Cultural exchange', min:45, cost:4, money:2, upkeep:0,
-  note:'Students, orchestras and television. Cheap, slow, and it makes the next treaty easier.',
-  tags:['Relations drift +0.8 a session', 'Tension -0.5 a session', 'The young +0.3 a session'] };
+/* S16b: `research` and `cultural` were DEFINED HERE, in a chunk that runs long
+   after the registry literal, and moving them into it is not cosmetic. A
+   prerequisite is a forward reference: the moment `science` was given
+   `needs:['cultural']`, every boot render between the two chunks read
+   `V6_TREATIES.cultural.name` off undefined and threw three times before the
+   first screen. The registry is one literal now and `v6TreatyMissing` skips an
+   id it cannot find, so a future split fails soft rather than at boot. The v9
+   tick wrapper below still holds what is particular to these two. */
 var v9TreatiesTickBase = v6TreatiesTick;
 v6TreatiesTick = function (st) {
   v9TreatiesTickBase(st);
   var v = st.v6; if (!v || !v.treaties) return;
+  /* S16b: the two instruments this chunk added, read off the list. Their drift
+     and their floor are in the registry now, so all this holds is what is
+     particular to each of them. */
   POWERS.forEach(function (pw) {
-    var t = v.treaties[pw.id]; if (!t) return;
-    if (t.kind === 'research') { st.ind.technology = c100(st.ind.technology + 1); st.ind.education = c100(st.ind.education + .5); st.ind.tension = c100(st.ind.tension + .3); if (relOf(st, pw.id) < 40) { delete v.treaties[pw.id]; logIt(st, 'The research compact with ' + pw.short + ' lapsed as relations cooled.'); } }
-    if (t.kind === 'cultural') { shiftRel(st, pw.id, .8); st.ind.tension = c100(st.ind.tension - .5); mood(st, { youth:.3 }); }
+    if (v6HasTreaty(st, pw.id, 'research')) { st.ind.technology = c100(st.ind.technology + 1); st.ind.education = c100(st.ind.education + .5); st.ind.tension = c100(st.ind.tension + .3); }
+    if (v6HasTreaty(st, pw.id, 'cultural')) { st.ind.tension = c100(st.ind.tension - .5); mood(st, { youth:.3 }); }
   });
 };
 
@@ -22949,6 +23274,14 @@ render = function () {
    than the 12px mechanics line above it, and the rung would read upside down.
    The div also keeps user-agent paragraph margins out of a 6px grid gap. */
 .tier .rung-say{margin-top:6px;font-size:13.5px;line-height:1.5;color:var(--ivory-dim)}
+
+/* S16b: the subheading that groups a long terms sheet. The Foreign Office
+   sheet lists twenty instruments in four states and needs to say which state
+   each block is in. `.sheet h2` (the title) is left alone; this is the rung
+   below it, and it goes at the END of the last stylesheet because CSS chunks
+   in this file conflict by source order and the last one wins. */
+.sheet .sheet-sub{margin:18px 0 8px;font-family:var(--font-u);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ivory-dim)}
+.sheet .sheet-sub:first-of-type{margin-top:10px}
 </style>
 <script>
 'use strict';
@@ -26011,15 +26344,22 @@ function v10OrderMods(st) {
 var v10TreatyTargetsBase = indicatorTargets;
 indicatorTargets = function (st) {
   var t = v10TreatyTargetsBase(st);
-  var tr = st.v6 && st.v6.treaties; if (!tr) return t;
-  for (var pid in tr) {
-    var d = V6_TREATIES[tr[pid].kind]; if (!d) continue;
-    if (d.mil) t.military = c100(t.military + d.mil);
-    if (d.econ) t.economy = c100(t.economy + d.econ);
-    if (d.tech) { t.technology = c100(t.technology + d.tech); t.education = c100(t.education + d.tech * .5); }
-    if (d.pov) t.poverty = c100(t.poverty + d.pov);
-    if (d.corr) { t.corruption = c100(t.corruption + d.corr); t.liberties = c100(t.liberties - .5); }
-  }
+  if (!st.v6 || !st.v6.treaties) return t;
+  /* S16b: every instrument a capital holds, not the one in the slot. `targets`
+     is the general map the ten new kinds carry; the five named fields are the
+     older spelling and both are read here so a tag stays a claim the model
+     answers for. */
+  POWERS.forEach(function (pw) {
+    v6Treaties(st, pw.id).forEach(function (row) {
+      var d = V6_TREATIES[row.kind]; if (!d) return;
+      if (d.mil) t.military = c100(t.military + d.mil);
+      if (d.econ) t.economy = c100(t.economy + d.econ);
+      if (d.tech) { t.technology = c100(t.technology + d.tech); t.education = c100(t.education + d.tech * .5); }
+      if (d.pov) t.poverty = c100(t.poverty + d.pov);
+      if (d.corr) { t.corruption = c100(t.corruption + d.corr); t.liberties = c100(t.liberties - .5); }
+      if (d.targets) for (var k in d.targets) if (t[k] !== undefined) t[k] = c100(t[k] + d.targets[k]);
+    });
+  });
   return t;
 };
 
