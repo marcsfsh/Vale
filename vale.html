@@ -8657,7 +8657,58 @@ function confirmEndTurn() {
 /* ============================================================
    HELPERS
    ============================================================ */
-function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+/* S14: `clamp` used to hand a poisoned number straight back. Every comparison
+   against NaN is false, so `clamp(NaN, 0, 100)` returned NaN and the caller
+   stored it -- S11d nearly shipped one into the ballot weight itself, with
+   nothing on screen to say so (docs/STATE.md). Bounds the wrong way round are
+   the same family: `clamp(-.1, 0, -2)` answers 0, which is neither bound the
+   caller meant, and the S11e ministry code was doing exactly that.
+
+   The S9a rule is that nothing is lost quietly. Both cases are now named, on
+   screen and in the console, and a bound is returned instead of the poison.
+   The banner is built and attached by hand rather than rendered: it must
+   survive whatever state broke the model, and it must not depend on a marker
+   or a splice.
+
+   Cost: the in-range path is the same two comparisons it always was. Only a
+   value that falls outside its bounds pays for the call. */
+var V14_FAULTS = [];
+function v14Fault(kind, v, a, b) {
+  var line = kind + ' -- clamp(' + String(v) + ', ' + String(a) + ', ' + String(b) + ')';
+  if (V14_FAULTS.indexOf(line) >= 0) return;      /* each distinct fault once */
+  if (V14_FAULTS.length < 12) V14_FAULTS.push(line);
+  try { console.error('vale: ' + line + '\n' + (new Error()).stack); } catch (e) { }
+  v14FaultBanner();
+}
+function v14FaultBanner() {
+  if (typeof document === 'undefined' || !document.body) return;
+  var el = document.getElementById('v14-fault');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'v14-fault';
+    el.setAttribute('data-number-fault', '1');
+    el.setAttribute('role', 'alert');
+    /* inline, and at the TOP: the turn bar is at the bottom and a player must
+       still be able to end the session. No stylesheet rule, so no chunk can
+       lose to source order and no width threshold is invented. */
+    el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;padding:8px 12px;' +
+      'font-family:var(--font-b);font-size:13px;line-height:1.35;font-weight:600;' +
+      'background:var(--oxblood);color:var(--ivory);border-bottom:2px solid var(--bad)';
+    document.body.appendChild(el);
+  }
+  el.textContent = 'A number went bad in the model: ' + V14_FAULTS[0] +
+    (V14_FAULTS.length > 1 ? ' (and ' + (V14_FAULTS.length - 1) + ' more -- the console has all of them)' : '') +
+    '. Figures from here on may be wrong. Please report this.';
+}
+function clamp(v, a, b) {
+  if (v >= a && v <= b) return v;                 /* the ordinary case */
+  return v14Clamp(v, a, b);
+}
+function v14Clamp(v, a, b) {
+  if (a > b) { v14Fault('bounds the wrong way round', v, a, b); var t = a; a = b; b = t; }
+  else if (!(v >= a) && !(v <= b)) { v14Fault('a value that is not a number', v, a, b); return a; }
+  return v < a ? a : (v > b ? b : v);
+}
 function c100(v) { return clamp(v, 0, 100); }
 function fm(v) {
   var n = Math.round(Math.abs(v) * CFG.MONEY);
@@ -27573,9 +27624,15 @@ pv5MinisterAction = function (key, action) {
        and briefing a minister who is already excellent is honestly cheap
        rather than dishonestly free. */
     if (!pv5Spend(2, 0, 'Brief ' + m.name)) return;
-    var room = 96 - m.competence;
-    var gain = clamp(Math.min(5, room * .55 + 1), 0, room);
-    m.competence = clamp(m.competence + gain, 0, 96);
+    /* S14: this read 96 while v11MinisterCeiling gives a SCHOOLED minister up
+       to 102, so briefing one who was already past 96 clamped them back down
+       to it -- the college's own purchase refunded, silently, for 2 capital.
+       The inverted bounds it also produced (room negative) are what found it:
+       clamp(-.1, 0, -2) returns 0, which is neither bound. */
+    var ceil = v11MinisterCeiling(m);
+    var room = ceil - m.competence;
+    var gain = clamp(Math.min(5, room * .55 + 1), 0, Math.max(0, room));
+    m.competence = clamp(m.competence + gain, 0, ceil);
     m.loyalty = clamp(m.loyalty + 4, 0, 100);
     m.briefings = (m.briefings || 0) + 1;
     /* and a briefing is also a week of the leader's attention: it takes a

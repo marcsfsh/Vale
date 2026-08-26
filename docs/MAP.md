@@ -795,9 +795,10 @@ ladder as `lin`, and expands four channels into five rows each:
   feature looked implemented.
 - **Powers** (S10e): 11. `st.powers` is written as a whole literal in FOUR
   places and two consumers read it raw, so a new power needs `v10EnsurePowers`
-  in the enrich chain or an old save yields `Math.max(undefined, n)` = NaN,
-  which `clamp` passes through. Treaty effects reach the game through
-  `indicatorTargets`, like orders.
+  in the enrich chain or an old save yields `Math.max(undefined, n)` = NaN.
+  Since S14 `clamp` announces that instead of passing it on, so the save shows
+  a fault banner rather than a wrong number. Treaty effects reach the game
+  through `indicatorTargets`, like orders.
 - **Question Time** (S10f/g): 164 authored questions over 14 subjects — SEVEN
   ways of asking each from the government benches and four or five from the
   opposition, so a subject that comes round twice does not come round in the
@@ -1120,10 +1121,18 @@ accumulates (v8 `[data-v8cmd]` ~13556, v9 `[data-v9cmd]` ~15596).
 
 ## Other known fragilities
 
-- `clamp` (~4426) passes NaN through (every comparison false → returns v).
-  **Still live**, and the one entry here with a recorded near-miss: S11d had a
-  NaN reach the vote model with nothing on screen to say so, caught only by an
-  exhaustive 128-subset probe on the branch.
+- `clamp` (~8660, and this entry said 4426 until S14) used to pass NaN through:
+  every comparison against NaN is false, so the poison came straight back and
+  the caller stored it. **Fixed in S14** and no longer a fragility. Two kinds of
+  bad input are now named on screen (`[data-number-fault]`, built by hand, not
+  rendered) and in the console, and a bound is returned instead of the poison:
+  a value that cannot be ordered against its bounds, and bounds the wrong way
+  round. The near-miss that argued for it: S11d had a NaN reach the vote model
+  with nothing on screen to say so, caught only by an exhaustive 128-subset
+  probe on the branch. The detector then found a live one on its first run --
+  `pv5MinisterAction` briefing a schooled minister called `clamp(-.1, 0, -2)`
+  and clamped them back to a hardcoded 96, refunding the ceiling the college
+  had just sold them. `roads.js` asserts `V14_FAULTS` is empty after all 92.
 - `v6Sandbox` (~10712) swaps 9 globals; since S1 the restore sits in a
   `finally`.
 - `confirm()` is called exactly once (hall-of-fame clear ~13093) — the playtest

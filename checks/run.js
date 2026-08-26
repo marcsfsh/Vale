@@ -13,6 +13,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const FILE = process.env.VALE_FILE || path.join(ROOT, 'vale.html');
@@ -285,10 +286,39 @@ function reassignmentSites(text) {
 }
 
 /* ---- 8. size budget ---- */
+// Two bounds, because the absolute one stopped doing the job. The owner ruled
+// the ceiling soft and it went to 10 MB against a 3 MB file; the failure this
+// check is actually kept for -- a runaway --apply duplicating a region, which
+// came close twice in S12 -- is a few hundred KB and would sail under it for
+// years. So the biting bound is GROWTH against the last commit, sized from
+// this file's own history (see baseline.json's _growthComment).
 {
   const bytes = Buffer.byteLength(src, 'utf8');
-  report('size-budget', bytes <= baseline.maxBytes,
-    `${bytes.toLocaleString('en-US')} bytes of ${baseline.maxBytes.toLocaleString('en-US')} allowed`);
+  const git = (cmd) => execSync(cmd, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  let head = null, why = '';
+  try {
+    const n = Number(git('git cat-file -s ' + git('git rev-parse HEAD:vale.html')));
+    if (Number.isFinite(n) && n > 0) head = n; else why = 'git reported no size for HEAD:vale.html';
+  } catch (e) {
+    why = 'nothing committed at HEAD:vale.html to compare against';
+  }
+  // A copy under VALE_FILE (the proof-of-failure drill, a poison build) is not
+  // this repo's vale.html, so growth against HEAD would be meaningless there.
+  if (process.env.VALE_FILE && path.resolve(process.env.VALE_FILE) !== path.join(ROOT, 'vale.html')) {
+    head = null; why = 'VALE_FILE names a copy, not the repo\'s own vale.html';
+  }
+  const grew = head === null ? 0 : bytes - head;
+  const overCap = bytes > baseline.maxBytes;
+  const overGrowth = head !== null && grew > baseline.maxGrowthBytes;
+  const size = `${bytes.toLocaleString('en-US')} bytes of ${baseline.maxBytes.toLocaleString('en-US')}`;
+  report('size-budget', !overCap && !overGrowth,
+    overCap ? `${size} — over the ceiling`
+      : overGrowth ? `+${grew.toLocaleString('en-US')} bytes since HEAD, over the ` +
+        `${baseline.maxGrowthBytes.toLocaleString('en-US')} growth bound — the largest legitimate commit in this ` +
+        `file's history added 204,136. Split the change, or raise maxGrowthBytes with the case for it`
+      : `${size}, ` + (head === null ? `growth not measured (${why})`
+        : `${grew >= 0 ? '+' : ''}${grew.toLocaleString('en-US')} since HEAD of ` +
+          `${baseline.maxGrowthBytes.toLocaleString('en-US')} allowed`));
 }
 
 /* ---- report ---- */

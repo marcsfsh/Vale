@@ -55,6 +55,21 @@ try { playwright = require('playwright'); } catch (e) {
    longer contains the per-step values it was derived from. */
 const FULLBUILD = require('./fullbuild-baseline.json');
 
+/* S14: FIXTURES ARE NAMED, NEVER TAKEN BY POSITION. A `.filter(...)[0]` probe
+   picks whatever happens to be first in the array, so inserting an order above
+   it or reordering the book leaves the assertion passing about a DIFFERENT
+   order than the one it was written for -- green, and measuring something
+   else. 40 of the 72 orders satisfy the predicate below, so the drift is real
+   rather than theoretical. pick() names the fixture and re-asserts the
+   property it was chosen for: change that order and this throws HERE, instead
+   of quietly moving the test. */
+const PICK = `window.pick = function (list, id, pred, what) {
+  var hit = list.filter(function (x) { return x.id === id; });
+  if (hit.length !== 1) throw new Error('pick(' + what + '): ' + id + ' matches ' + hit.length + ' entries, expected exactly 1 -- the fixture was renamed or removed');
+  if (pred && !pred(hit[0])) throw new Error('pick(' + what + '): ' + id + ' no longer has the property it was picked for');
+  return hit[0];
+};`;
+
 let fail = 0;
 const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(34) + detail); };
 
@@ -62,6 +77,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   const browser = await playwright.chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.addInitScript(() => { window.confirm = () => true; });
+  await page.addInitScript(PICK);
   await page.goto(URL);
   await page.waitForSelector('[data-setup-begin]', { timeout: 15000 });
   await page.click('[data-setup-begin]');
@@ -461,7 +477,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.collisions = V10_ORDERS.filter(o => pol.has(o.name.toLowerCase()) || act.has(o.name.toLowerCase()) || ext.has(o.name.toLowerCase())).map(o => o.name);
 
     /* the country drifts toward an order and back again, exactly */
-    const o = V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0];
+    const o = pick(V10_ORDERS, 'establishmentFreeze', x => !x.target && !x.needs && Object.keys(x.ind || {}).length, 'drift and return');
     const key = Object.keys(o.ind)[0];
     const t0 = indicatorTargets(S)[key];
     v10IssueOrder(o.id, null);
@@ -475,7 +491,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* LIFE: it lapses when the department changes hands. A DIFFERENT order —
        re-issuing the same one this session is refused, which would make this
        pass over nothing. */
-    const o2 = V10_ORDERS.filter(x => !x.target && !x.needs && x.id !== o.id)[0];
+    const o2 = pick(V10_ORDERS, 'deliveryUnit', x => !x.target && !x.needs && x.id !== o.id, 'lapses with the department');
     v10IssueOrder(o2.id, null);
     out.issued = v10OrderCount(S) === 1;
     S.exec[o2.dept] = PARTIES.filter(x => x.id !== me)[0].id;
@@ -485,7 +501,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.exec[o2.dept] = me;
 
     /* TARGET: the same instrument stands separately in two regions */
-    const rt = V10_ORDERS.filter(x => x.target === 'region' && !x.needs)[0];
+    const rt = pick(V10_ORDERS, 'disperseAgencies', x => x.target === 'region' && !x.needs, 'stands in two regions');
     if (rt) { v10IssueOrder(rt.id, 'somnium'); v10IssueOrder(rt.id, 'thaxia'); out.twoTargets = v10OrderCount(S) === 2; }
     S.ruling = keep.ruling; S.coalition = keep.coalition; S.exec = keep.exec;
     S.capital = keep.capital; S.v10.orders = keep.orders;
@@ -1145,6 +1161,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   // 6. and it REFUSES without the flag (fresh page)
   const p2 = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await p2.addInitScript(() => { window.confirm = () => true; });
+  await p2.addInitScript(PICK);
   await p2.goto(URL);
   await p2.waitForSelector('[data-setup-begin]', { timeout: 15000 });
   await p2.click('[data-setup-begin]');
@@ -1220,7 +1237,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        it carried ("an order cannot outrun its own statute book") survives as
        `needs:` on an ORDER, so the gate is asserted against the new book. */
     let gatedCount = 0;
-    const ord = V10_ORDERS.filter(o => o.needs)[0];
+    const ord = pick(V10_ORDERS, 'maritimeExclusion', x => !!x.needs, 'an order that needs a statute');
     /* S11b: this used to initialise `blocked = true`, so if NO order carried a
        `needs` the body never ran and the assertion passed while testing
        nothing. The sixth order adds thirty-six deliberately UNGATED orders, so
@@ -1265,12 +1282,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* the probes in this file and in playtest are positional — the first
        untargeted, ungated order with an `ind` must still be the one the
        original book put there */
-    out.probe = (V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0] || {}).id;
+    out.probe = pick(V10_ORDERS, 'establishmentFreeze', x => !x.target && !x.needs && Object.keys(x.ind || {}).length, 'order-book probe').id;
     /* NARROWING MUST MAKE AN ORDER SMALLER. It cost capital and treasury,
        printed a tag, and changed nothing at all. */
     S.exec = { pres:playParty(S), vpres:playParty(S), chan:playParty(S), vchan:playParty(S) };
     S.capital = 99;
-    const o = V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0];
+    const o = pick(V10_ORDERS, 'establishmentFreeze', x => !x.target && !x.needs && Object.keys(x.ind || {}).length, 'order-book upkeep');
     const ik = Object.keys(o.ind)[0];
     S.v10.orders = {}; S.v10.orderTurn = {};
     v10IssueOrder(o.id, null);
@@ -1307,12 +1324,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.capital = keep.capital; S.uiPrefs = keep.prefs;
     return out;
   });
+  /* S11b pinned the probe's id here as a canary against exactly the drift S14
+     fixed properly. Now that every probe goes through pick(), the comparison
+     would be tautological -- pick() throws on the rename this used to catch --
+     so the id is reported rather than asserted. */
   say(book2.total >= 72 && book2.lateCount === book2.total - 36 && book2.lateGated === 0 &&
-      book2.missingReq === 0 && book2.probe === 'establishmentFreeze',
+      book2.missingReq === 0,
     'thirty-six more, and none of them gated',
     `${book2.total} orders, ${book2.ungated} of them needing no statute · the ${book2.lateCount} registered after the original ` +
     `thirty-six carry ${book2.lateGated} prerequisites · every order has a callable req (O()'s default is load-bearing for the ` +
-    `unguarded call in v10OrderOpen): ${book2.missingReq === 0} · the positional probe is still ${book2.probe}`);
+    `unguarded call in v10OrderOpen): ${book2.missingReq === 0} · the probe is ${book2.probe}, named rather than positional`);
   say(book2.issued && book2.narrowShrinks && book2.upkeepHeld && book2.courtHeatReal && book2.filterSplits &&
       book2.districtExcluded && book2.otherRegionsKept,
     'a narrowed order is a smaller order',
@@ -1346,6 +1367,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   // ---- S9e: the content, proven reachable ----
   const p3 = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await p3.addInitScript(() => { window.confirm = () => true; });
+  await p3.addInitScript(PICK);
   await p3.goto(URL);
   await p3.waitForSelector('[data-setup-begin]', { timeout: 15000 });
   await p3.click('[data-setup-begin]');
@@ -1654,6 +1676,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     for (let i = 0; i < 6; i++) pv5MinisterTick(S);
     out.schooledPast96 = S.ministers[key].competence > 96;
 
+    /* S14: AND BRIEFING A SCHOOLED MINISTER MUST NOT UNDO THE COLLEGE. The
+       brief branch clamped to a hardcoded 96 while v11MinisterCeiling gives a
+       schooled minister up to 102, so briefing one who was already past 96
+       knocked them straight back down to it: the ceiling the player had just
+       bought, refunded, for 2 capital, with nothing on screen to say so. The
+       same line was calling clamp(-.1, 0, -2) -- bounds the wrong way round,
+       which is what the fault detector caught it by. */
+    seed(95);
+    pv5MinisterAction(key, 'train'); pv5MinisterAction(key, 'train');
+    for (let i = 0; i < 8; i++) pv5MinisterTick(S);
+    const above = S.ministers[key].competence;
+    pv5MinisterAction(key, 'brief');
+    out.schooledCeil = v11MinisterCeiling(S.ministers[key]);
+    out.schooledBefore = +above.toFixed(2);
+    out.schooledAfter = +S.ministers[key].competence.toFixed(2);
+    out.schooledKept = above > 96 && S.ministers[key].competence >= above - 1e-9;
+
     /* SIDELINE was the only paid action in the game that made the government
        worse at everything: it cut the department's RANK. */
     seed(); const cb0 = cabinetBonus(S), amb0 = S.ministers[key].ambition, q0 = cabQuality(S, key);
@@ -1772,6 +1811,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     'the college beats waiting, and does not undo itself',
     `three visits gave ${min.collegeGains.join('/')} (it gave 5/2/2, and each visit made the next worse) · ` +
     `a schooled minister's ceiling is ${min.collegeCeiling} and the session tick no longer drags them back to 96: ${min.schooledPast96}`);
+  say(min.schooledKept, 'a briefing does not undo the college',
+    `a schooled minister at ${min.schooledBefore} against a ceiling of ${min.schooledCeil} reads ${min.schooledAfter} after a briefing ` +
+    `· the old body clamped the brief to a hardcoded 96, so the two capital spent on the ceiling were refunded on the spot`);
   say(min.sidelineWorse === 0 && min.sidelineRank && min.sidelineAmbition > 0 && min.sidelineDelivered,
     'sidelining a rival no longer guts the government',
     min.sidelineWorse ? min.sidelineWorse + ' indicators still made worse by it'
@@ -1880,6 +1922,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         : (prose.lockedNoReason.length ? prose.lockedNoReason.length + ' locked with no stated reason'
           : `all twenty core categories list twenty-four · ${prose.lockedCount} of them are locked and every one states its condition · ` +
             `the three form books stay hidden · and policyOpen is unchanged, so an emergency statute is still unenactable under a Federal Republic`)));
+
+  /* S14: and after all of it, ask the page whether any number went bad. The
+     whole harness runs on one page, so V14_FAULTS holds every unorderable
+     value and every pair of bounds the wrong way round that any of the roads
+     above produced. Empty is the assertion; it is not a summary of the
+     others, because a fault does not fail anything by itself -- that is the
+     defect it exists to catch. */
+  const faults = await page.evaluate(() => (window.V14_FAULTS || []).slice());
+  say(faults.length === 0, 'no number went bad on any road',
+    faults.length ? faults.length + ' clamp fault(s): ' + faults.slice(0, 2).join(' | ')
+      : 'V14_FAULTS is empty after every road, every transition and every ministry action');
 
   await browser.close();
   console.log(fail ? '\n' + fail + ' CHECK(S) FAILED' : '\nROADS OK');

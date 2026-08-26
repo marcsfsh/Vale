@@ -4,7 +4,103 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S14 — Truth, then the seams**, first of five PRs. No code in this one: it
+**S14 — Truth, then the seams**, second of five PRs. Three live defects, and a
+fourth the first fix found on its way past.
+
+### A number that is not a number is now announced
+
+`clamp` (`:8660`) answered NaN with NaN. Every comparison against NaN is false,
+so the poison came straight back and the caller stored it. S11d had one reach
+**the ballot weight itself** with nothing on screen to say so, caught by an
+exhaustive 128-subset probe on the branch and never fixed at the source.
+
+Both bad inputs are now named rather than passed on: a value that cannot be
+ordered against its bounds, and **bounds the wrong way round** — `clamp(-.1, 0,
+-2)` used to answer 0, which is neither bound the caller meant. Each distinct
+fault is said once, to the console with a stack and to a banner built by hand
+and attached to `document.body`. Built by hand deliberately: it has to survive
+whatever state broke the model, and a rendered notice would be one more thing a
+marker or a splice could lose. A bound is returned instead of the poison.
+
+**The predicate was measured before it shipped**, on an instrumented copy that
+only counted. Zero faults across `playtest.js` (41 steps, all 15 views, reload,
+resume, corrupt save), zero across sixty turns of ordinary play, and **exactly
+one** across `roads.js`.
+
+### The one it found
+
+That one was real. `pv5MinisterAction`'s brief branch clamped to a hardcoded
+**96** while `v11MinisterCeiling` gives a schooled minister up to **102**, so
+briefing a minister the college had already carried past 96 knocked them
+straight back down to it. The ceiling the player had just bought, refunded on
+the spot, for 2 capital, silently — which is the exact defect S11e wrote that
+branch to fix, reappearing through a door S11e itself opened.
+
+Measured on the branch: a schooled minister at **96.30** against a ceiling of
+100 read **96.00** after a briefing. It now reads **99.33**.
+
+### Fixtures are named, never taken by position
+
+Seven probes across the two harnesses picked their subject with
+`.filter(...)[0]`. **40 of the 72 orders satisfy the first predicate**, so
+inserting an order above it leaves the assertion passing about a different
+order than the one it was written for.
+
+The drift, demonstrated rather than argued: rename `establishmentFreeze` in the
+game and **the old `playtest.js` passes all 41 steps**, having tested some other
+order, while the old `roads.js` fails exactly one assertion — the canary S11b
+pinned at one of the seven sites, which caught the rename and could not stop the
+other six from retargeting. Every probe now goes through `pick(list, id, pred,
+what)`, which throws by name when its fixture is gone or has lost the property
+it was chosen for. S11b's canary comparison is dropped: with `pick` it would be
+tautological.
+
+### The size check can catch what it is kept for again
+
+At a 10 MB ceiling against a 3.0 MB file it could not. `baseline.json` says the
+check is kept for **a runaway apply duplicating a region**, which is a few
+hundred KB. The absolute ceiling stays; the biting bound is now growth against
+`HEAD:vale.html`, at **250,000 bytes**, taken from this file's own history — the
+largest legitimate single-commit growth ever recorded here is 204,136 (S10d/e/f),
+then 167,628 (S9h) and 135,356 (S12 PR6). A copy under `VALE_FILE` or a repo
+with nothing committed says so rather than passing quietly.
+
+### Every change ships with the mutation that reddens it
+
+| the fix | the proof |
+|---|---|
+| clamp announces bad input | `nan-is-announced` on the pre-fix file: `clamp(NaN,0,100)` answered NaN, `clamp(5,10,0)` answered 10, 0 faults latched, no banner |
+| the ministry ceiling | `a briefing does not undo the college` on the pre-fix file: 96.30 → **96.00** |
+| `V14_FAULTS` empty after every road | a mutant with the ministry fix reverted and the loud clamp kept: **2 clamp faults**, both named with their arguments |
+| named fixtures | the renamed-order build above: new harnesses name it, old ones pass |
+| the growth bound | a clone with 300 KB of the file duplicated into itself: **+300,344 over the bound** |
+
+Render cost of the clamp change, three collapsed-render samples each side:
+8.45-9.71 ms after against 8.54-11.10 ms before. The ranges overlap; there is no
+difference to measure at this resolution. The in-range path is the same two
+comparisons it always was, and only a value outside its bounds pays for the
+call.
+
+```
+ALL CHECKS PASS   11/11, 2,998,414 bytes of 10,000,000, +3,152 since HEAD of 250,000
+ROADS OK          92 assertions
+PLAYTEST PASS     42 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+`vale.html` gains the fault machinery and loses four lines: the old `clamp`, and
+the three lines of the brief branch that read 96.
+
+Next: **PR C**, the dead-body ratchet made honest before it is moved.
+`checks/run.js` counts a hand-written `aliasCaptured` boolean and never checks
+that the alias exists or is ever read, so two sites (`v11RegionFactorBase`,
+`v11ActBlockedBase`, the second adjudicated as **"DELIBERATELY NOT CALLED"**)
+are as orphaned as the five it counts and score green. The true count is 7.
+Then **PR D** drives it to zero with poison proofs, and **PR E** splits the
+marker check.
+
+Previously: **S14 — Truth, then the seams**, first of five PRs. No code in this one: it
 makes the three documents say what is true, and rescues a handoff that would
 have died on the next clone.
 
@@ -1924,6 +2020,7 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 6 | **merged** (#39) | Empire, Imperium, People's State and The Charter close the book: 582 of 582 statutes speak, 2,910 pieces of authored prose; the two largest books sharded by group covered both exactly; highest ordering scores of the project at 93.1 / 87.5 / 0.950; whole-corpus blind attribution 118 of 120; the style guide's own worked example was found to have propagated its sentence shape into 21 statutes across 13 books |
 | S13a style fidelity | **merged** (#41) | the authoring brief was a 112-line paraphrase of a 161-line skill and had dropped a rule; it is now the skill verbatim plus a statute addendum, committed as docs/PROSE-STYLE.md; audit of all 2,910 pieces came back clean on twelve rule families and two hits; the phrase matcher was fixed from substring to word boundary; "X rather than Y" measured at 7.5% precision and was deliberately left to judgement; maxBytes 3.1M to 10M |
 | S13b the whole book read aloud | **merged** (#42) | all 582 ladders read blind twice, not sampled: 66.7 / 67.7 per cent exact with 163 failed by both readers; 458 rung fields repaired across 163 statutes with no non-target touched; re-read by two fresh readers at 85.4 / 84.4 per cent, tau 0.946 / 0.938, failures down to 62; the one-axis rule measured on the whole population at 59.2 per cent before it against 77.8 after, and the batches that predated it closed to 81.7 |
+| S14b three live defects | **merged** (#44) | clamp answered NaN with NaN and bounds the wrong way round with the wrong bound; both are now named on screen and in the console and a bound is returned, with the predicate measured on an instrumented copy first (zero faults across playtest, zero across sixty turns, exactly one across roads) -- and that one was real: the brief branch clamped a schooled minister back to a hardcoded 96 against a ceiling of 102, refunding the college for 2 capital, 96.30 -> 96.00 before and 99.33 after; seven positional .filter(...)[0] probes named through pick(), demonstrated by a renamed order that the old playtest passed 41/41 on; the size check given a growth bound of 250,000 against HEAD, sized from the largest legitimate commit in this file's history (204,136) |
 | S14a documents made true | **merged** (#43) | eleven false statements across CLAUDE.md, MAP.md and STATE.md, every one true when written: the size line said 1.4 MB against 3.0, MAP said 93 Math.random() sites eleven slices after S3 made it 1, MAP contradicted itself fourteen lines apart on whether the fonts are fetched, the ratchet bullet was wrong on three of six figures, the marker count was given as both 21 and 25, and a colour-vision question S7 had answered was still listed as open; the 62-ladder handoff lived only in a gitignored path and is now docs/PROSE-RESIDUE.md; roads.js, rungs.js, tools/prose/ and PROSE-STYLE.md added to the command list; no code touched |
 | **Marker/seam consolidation** | **in progress — S14 PRs B to E** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. **25** literal splice markers (this row said 21 until S14 counted them with the check's own regex); dead-body ratchet 5 → 0. S14 splits it: PR B the three live defects, PR C the ratchet made honest (5 → 7, a correction), PR D the ratchet driven to zero with poison proofs, PR E the marker check split so it stops implying cover it does not have — **13 of its 24 multi-occurrence markers can never fail**, and the two markers whose failure puts wrong data on screen are held in variables and have never been seen by it |
 
