@@ -11630,26 +11630,20 @@ var ACTIONS = [
       return { label:d.label, cost:(d.id === 'home' ? 8 : 6), tip:d.note,
         run:function (S) { advanceAgenda(S, d); } };
     }) }),
-  A({ id:'switchParty', cat:'Agenda', name:'Change Your Allegiance', cost:14, cool:4, esc:1.25,
-    desc:'Take up the leadership of another party and carry your network across. Your old party keeps its own machine and a grudge.',
-    opts: PARTIES.map(function (pw) {
-      return { label:'Lead the ' + pw.short, cost:14, tip:'Cross to the ' + pw.name + '.',
-        run:function (S) {
-          if (pw.id === playParty(S)) { flash('You already lead them.'); return; }
-          var old = playParty(S);
-          carryOver(S, old, pw.id);
-          S.playAs = pw.id;
-          S.machine[old] = clamp((S.machine[old] || 0) - .12, -.8, 1);
-          S.agendaShift = { e:0, a:0 };
-          S.unity = clamp(50 + (S.apparatus || 0) * 40, 5, 100);
-          S.partyRel[pw.id] = 76;
-          refreshManifesto(S, true);
-          S.ind.corruption += 2;
-          mood(S, { prof:-4, youth:-3 });
-          logIt(S, 'You left the ' + PARTY[old].short + ' and took the leadership of the ' + pw.short + '.');
-          chronicle(S, 'A change of allegiance from the ' + PARTY[old].short + ' to the ' + pw.short + '.');
-        } };
-    }) }),
+  /* S16d: `switchParty` -- "Change Your Allegiance", 14 capital, cross the
+     floor and take the leadership of any of the seven -- is RETIRED at the
+     owner's instruction: "I think its time we remove the ability to switch the
+     party that the player is playing as, because it just complicates it too
+     much." It was one of two paths that wrote `S.playAs` after setup. The other
+     is the Invite card below, which said "You go on playing as them" and now
+     hands the government away and leaves you where you are, which is a better
+     decision than the one it replaced.
+
+     `S.playAs` is written once, at setup, and by nothing else for the rest of
+     the campaign. `roads.js` asserts that with the state literal in hand.
+
+     `carryOver` is NOT orphaned by this: it still runs when the player's own
+     party takes the government at a ballot. */
   A({ id:'oppositionAttack', cat:'Agenda', name:'Oppose the Government', cost:4, cool:1,
     desc:'You are out of office. This is the work: hold them to account, and make sure the country notices.',
     can:function () { return !inPower(S); },
@@ -11806,7 +11800,7 @@ function partyActions(pid) {
       can:function () { return !S.banned[pid] && S.pact !== pid && lowerSits(S); },
       run:function () { S.pact = pid; logIt(S, 'An electoral pact was concluded with the ' + p.short + '.'); } });
     list.push({ id:'invite', name:'Invite them to form a government', cost:20, kind:'boost',
-      desc:'Hand them the government now, without waiting for the country. You go on playing as them.',
+      desc:'Hand them the government now, without waiting for the country. You stay who you are: the junior partner if your seats are wanted, the opposition if they are not.',
       can:function () {
         if (S.banned[pid] || pid === S.ruling) return false;
         var largest = null;
@@ -11815,21 +11809,38 @@ function partyActions(pid) {
           ((S.seats[pid] || 0) + (S.seats[S.ruling] || 0)) > CFG.seats / 2;
       },
       run:function () {
-        var old = PARTY[S.ruling];
-        var oldPlay = playParty(S);
+        /* S16d: this used to write `S.playAs = pid` and say "You go on playing
+           as them", which was the second of the two paths that changed the
+           party the player leads. You hand the government over and you stay who
+           you are: the junior partner where your seats are wanted, the
+           opposition where they are not. That is a real decision where the old
+           one was a costume change. */
+        var old = PARTY[S.ruling], me = playParty(S);
+        /* You are wanted only if they NEED you: a party that can carry the
+           chamber alone does not take a partner it has just been handed the
+           government by. */
+        var theirs = S.seats[pid] || 0, ours = S.seats[me] || 0;
+        var junior = pid !== me && theirs <= CFG.seats / 2 && (theirs + ours) > CFG.seats / 2;
         S.ruling = pid;
-        S.partner = ((S.seats[pid] || 0) > CFG.seats / 2) ? null : old.id;
-        S.coalition = S.partner ? [pid, old.id] : [pid];
-        if (oldPlay !== pid) { carryOver(S, oldPlay, pid); S.playAs = pid; refreshManifesto(S, true); }
+        S.partner = junior ? me : null;
+        S.coalition = junior ? [pid, me] : [pid];
         var m = {};
         BLOCS.forEach(function (b) { m[b.id] = ((p.aff[b.id] || 0) - (old.aff[b.id] || 0)) * 5; });
         mood(S, m);
         S.capital = clamp(S.capital - 2, -5, capCap(S));
-        logIt(S, 'The ' + p.short + ' were invited to form a ministry. You govern as them now.');
+        /* your own members did not vote for this, and they say so */
+        S.unity = c100((S.unity === undefined ? 60 : S.unity) - (junior ? 6 : 14));
+        shiftPartyRel(S, pid, 14);
+        (S.v6.flags = S.v6.flags || {}).handedOver = S.turn;
+        logIt(S, 'The ' + p.short + ' were invited to form a ministry. The ' + PARTY[me].short +
+          (junior ? ' remain in it as the junior partner.' : ' are out of government.'));
+        chronicle(S, 'The government was handed to the ' + p.short + ' without an election.');
         showSheet('<div class="kicker">A Change of Government</div><h2>' + esc(p.name) + '</h2>' +
-          '<p>The seals of office pass without an election. You now govern as the ' + esc(p.short) +
-          ', and their platform is the one your backbenchers expect you to carry.</p>' +
-          '<div class="choices"><button class="choice" data-close="1">Take office</button></div>');
+          '<p>The seals of office pass without an election. You are still the ' + esc(PARTY[me].short) + ', and ' +
+          (junior ? 'your seats are wanted: you sit in the ministry as the junior partner, with their platform on the order paper and your name on it.'
+                  : 'your seats are not wanted: you sit opposite them now, with the machine you built and none of the offices.') +
+          ' Unity fell ' + (junior ? 'six' : 'fourteen') + ' points, because your own members did not vote for this.</p>' +
+          '<div class="choices"><button class="choice" data-close="1">Very well</button></div>');
       } });
     list.push({ id:'infiltrate', name:'Place people inside them', cost:7, money:6, kind:'boost',
       desc:'Staffers, treasurers and a press officer, all of whom will still be there in ten years.',
@@ -16751,7 +16762,14 @@ var V6_ACHIEVEMENTS = [
   { id:'proportional', name:'The Fair Count', note:'Proportional representation enacted.', test:function (st) { return st.electoral === 'pr'; } },
   { id:'unicameral', name:'One Chamber', note:'The Senate was abolished.', test:function (st) { return !upperOn(st); } },
   { id:'packed', name:'The Bench Is Yours', note:'Three quarters of the court sat with the government.', test:function (st) { return st.court.justices.length && courtWith(st) / st.court.justices.length >= .75; } },
-  { id:'turncoat', name:'Turncoat', note:'Crossed the floor to lead another party.', test:function (st) { return st.v6.flags && st.v6.flags.switched; } },
+  /* S16d: this was Turncoat, "Crossed the floor to lead another party", and
+     the only thing that could earn it was `switchParty`, which is retired. The
+     ID IS KEPT so that a hall entry from a campaign that earned it keeps its
+     tick and the denominator stays at 44; what it asks for is the harder and
+     more interesting version of the same move -- give the government away and
+     take it back from the country. */
+  { id:'turncoat', name:'The Handover', note:'Handed the government to another party without an election, and led one again afterwards.',
+    test:function (st) { var f = st.v6.flags || {}; return f.handedOver !== undefined && inPower(st) && st.turn > f.handedOver; } },
   { id:'programme', name:'Delivered', note:'Completed a policy programme.', test:function (st) { return Object.keys(st.v6.programmesDone).length >= 1; } },
   { id:'centenary', name:'The Middle Years', note:'Reached {d}, the midpoint of the period.', req:function (st) { return v6Midpoint(st); }, test:function (st) { return yearOf(st.turn) >= v6Midpoint(st); } },
   { id:'survivor', name:'Survivor', note:'Brought unrest back below 50 from above 90.', test:function (st) { return st.v6.flags && st.v6.flags.survived; } },
@@ -17512,7 +17530,16 @@ var v6DoActionBase = doAction;
 doAction = function (a, opt) {
   var me = playParty(S);
   v6DoActionBase(a, opt);
-  if (playParty(S) !== me) { S.v6.flags = S.v6.flags || {}; S.v6.flags.switched = true; }
+  /* S16d: NO ACTION CAN DO THIS ANY MORE. `switchParty` is retired and the
+     Invite card leaves `S.playAs` alone, so the only writer left is setup. The
+     guard is kept and inverted: if an action ever moves the player between
+     parties again it is a defect, and the file says so on the spot rather than
+     quietly recording a flag that nothing reads. */
+  if (playParty(S) !== me) {
+    S.playAs = me;
+    logIt(S, 'A card attempted to move you between parties and was refused. You lead the ' + PARTY[me].short + ' for the campaign.');
+    try { console.error('vale: ' + (a && a.id) + ' wrote S.playAs; since S16d nothing but setup may.'); } catch (e) { }
+  }
 };
 
 /* ---------- snapshot before the session closes ---------- */

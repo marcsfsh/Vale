@@ -3824,6 +3824,86 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `from four to seventy-two is what made it likely · a card with no answers is now skipped rather than fatal ` +
     `(${dispatch.guardCleared})`);
 
+  /* S16d -- YOU LEAD ONE PARTY. The owner: "I think its time we remove the
+     ability to switch the party that the player is playing as, because it just
+     complicates it too much." Two paths wrote `S.playAs` after setup:
+     `switchParty` ("Change Your Allegiance", 14 capital, cross to any of the
+     seven) and the Invite card, whose own description read "You go on playing
+     as them". The first is retired; the second hands the government away and
+     leaves the player where they are, which is a better decision than the one
+     it replaced.
+
+     This drives EVERY leg of EVERY action and asserts none of them moves the
+     player between parties, which is stronger than asserting one card is gone. */
+  const oneParty = await page.evaluate(() => {
+    const out = { movers:[] };
+    out.switchGone = ACTIONS.filter(a => a.id === 'switchParty').length === 0;
+    ACTIONS.forEach((a) => {
+      const legs = (a.opts && a.opts.length) ? a.opts : [{ label:a.name, run:a.run }];
+      legs.forEach((leg) => {
+        S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+        S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+        S.ruling = playParty(S); S.coalition = [playParty(S)]; S.capital = 900; S.treasury = 9000;
+        const me = playParty(S);
+        try { if (leg.run) leg.run(S); } catch (e) { return; }
+        if (playParty(S) !== me) out.movers.push(a.id + ' / ' + (leg.label || ''));
+      });
+    });
+    out.legs = ACTIONS.reduce((n, a) => n + ((a.opts && a.opts.length) || 1), 0);
+
+    /* the Invite card, which is where the second path lived */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
+    S.ruling = playParty(S); S.coalition = [playParty(S)]; S.capital = 900; S.treasury = 9000;
+    const me = playParty(S);
+    const other = PARTIES.filter(p => p.id !== me)[0].id;
+    /* they cannot carry the chamber alone and our seats close the gap: wanted */
+    S.seats[other] = Math.floor(CFG.seats * 0.45); S.seats[me] = Math.floor(CFG.seats * 0.30);
+    const inv = partyActions(other).filter(x => x.id === 'invite')[0];
+    out.inviteFound = !!inv;
+    if (inv) {
+      const u0 = S.unity;
+      inv.run(S);
+      out.stillMe = playParty(S) === me;
+      out.rulingIsThem = S.ruling === other;
+      out.junior = S.coalition.indexOf(me) >= 0;
+      out.unityFell = S.unity < u0;
+      out.handedFlag = (S.v6.flags || {}).handedOver !== undefined;
+      /* and the same card when your seats are NOT wanted puts you out */
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.ruling = playParty(S); S.coalition = [playParty(S)]; S.capital = 900;
+      /* they carry it alone, so our seats are not wanted: out */
+      S.seats[other] = Math.floor(CFG.seats * 0.60); S.seats[me] = Math.floor(CFG.seats * 0.05);
+      partyActions(other).filter(x => x.id === 'invite')[0].run(S);
+      out.oppositionWhenUnwanted = S.coalition.indexOf(me) < 0 && !inPower(S);
+    }
+    /* the record keeps its id, so the denominator and old hall entries hold */
+    const rec = V6_ACHIEVEMENTS.filter(a => a.id === 'turncoat')[0];
+    out.recordCount = V6_ACHIEVEMENTS.length;
+    out.recName = rec && rec.name;
+    out.recFalseOnHandover = rec && !rec.test(S);
+    S.ruling = me; S.coalition = [me]; S.turn += 3;
+    out.recTrueOnReturn = rec && rec.test(S);
+    return out;
+  });
+
+  say(oneParty.switchGone && oneParty.movers.length === 0 && oneParty.inviteFound &&
+      oneParty.stillMe && oneParty.rulingIsThem && oneParty.junior && oneParty.unityFell &&
+      oneParty.handedFlag && oneParty.oppositionWhenUnwanted &&
+      oneParty.recordCount === 44 && oneParty.recName === 'The Handover' &&
+      oneParty.recFalseOnHandover && oneParty.recTrueOnReturn,
+    'you lead one party for the campaign',
+    `all ${oneParty.legs} legs of every action driven, and ${oneParty.movers.length} of them move the player between ` +
+    `parties${oneParty.movers.length ? ' (' + oneParty.movers.slice(0, 3).join(', ') + ')' : ''}: "Change Your Allegiance" ` +
+    `is retired (${oneParty.switchGone}) and the Invite card, whose own description read "You go on playing as them", ` +
+    `hands the government over and leaves you where you are -- they govern (${oneParty.rulingIsThem}), you are still ` +
+    `yourself (${oneParty.stillMe}), you sit in it as the junior partner where your seats are wanted (${oneParty.junior}) ` +
+    `and opposite them where they are not (${oneParty.oppositionWhenUnwanted}), and your own members did not vote for it ` +
+    `(unity fell: ${oneParty.unityFell}) · the Turncoat record kept its ID so the denominator stays at ` +
+    `${oneParty.recordCount} and an old hall entry keeps its tick, and asks the harder version of the same move: ` +
+    `"${oneParty.recName}" is false on the handover (${oneParty.recFalseOnHandover}) and true once you lead a ` +
+    `government again (${oneParty.recTrueOnReturn})`);
+
   /* S16c -- THE FOREIGN OFFICE REACHES EVERY CAPITAL. Measured on the build
      before this PR by driving every leg of every Diplomacy action through its
      own run and counting which of the eleven capitals moved: stateVisit 4,
