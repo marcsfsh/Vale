@@ -1254,6 +1254,69 @@ async function run() {
       `up (${nm.nowNominee}); and each office card names the holder's competence and term (${nm.personOnCard}) -- ` +
       `the page used to print a name, an age and a trait, and emitted no control of its own at all`);
 
+    /* S15j: the Alliance, through the rendered page. What only the page can
+       answer is whether the panel states the odds before the player spends,
+       and whether a real click on Open Accession Talks changes the roster. */
+    const al = await page.evaluate(() => {
+      const out = {};
+      const keep = { tab:UI.tab, cap:S.capital, tre:S.treasury, pol:S.pol.allianceExpansion,
+        alliance:S.alliance ? JSON.parse(JSON.stringify(S.alliance)) : null,
+        powers:JSON.parse(JSON.stringify(S.powers)), uses:JSON.parse(JSON.stringify(S.uses || {})) };
+      S.capital = 400; S.treasury = 1500;
+
+      /* at rung zero the panel says so and the button refuses */
+      S.pol.allianceExpansion = 0;
+      if (typeof allianceState === 'function') allianceState(S).members = [];
+      UI.tab = 'world'; render();
+      const panelOf = () => [...document.querySelectorAll('#view .panel')]
+        .filter(x => /The Northern Alliance/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      const p0 = panelOf();
+      out.found = !!p0;
+      out.saysStatute = !!p0 && /statute/.test(p0.textContent);
+      out.saysOddsHeading = !!p0 && /Would accede/.test(p0.textContent);
+
+      /* at rung two, a real click carries or refuses, and either way the page
+         has already told the player the odds */
+      S.pol.allianceExpansion = 2;
+      PARTIES.forEach(() => {});
+      S.powers.meridian = 90; S.powers.alliance = 88; S.ind.tension = 25;
+      render();
+      const p1 = panelOf();
+      out.oddsShown = !!p1 && /\d+%/.test(p1.textContent);
+      const btn = [...document.querySelectorAll('#view [data-act="accede"]')]
+        .filter(b => !b.disabled)[0];
+      out.clickable = !!btn;
+      if (btn) {
+        const before = typeof allianceMembers === 'function' ? allianceMembers(S).length : 0;
+        const c0 = S.capital;
+        /* pick the Meridian option by index so the odds above are the ones tested */
+        const idx = [...document.querySelectorAll('#view [data-act="accede"]')]
+          .map(b => b.textContent).findIndex(t => /Meridian/.test(t));
+        const target = idx >= 0 ? document.querySelectorAll('#view [data-act="accede"]')[idx] : btn;
+        target.click();
+        out.paid = S.capital < c0;
+        out.answered = typeof allianceMembers === 'function' &&
+          (allianceMembers(S).length === before + 1 || allianceMembers(S).length === before);
+        out.acceded = typeof allianceHas === 'function' && allianceHas(S, 'meridian');
+      }
+      render();
+      const p2 = panelOf();
+      out.rosterShown = !!p2 && (!out.acceded || /Meridian/.test(p2.textContent));
+
+      S.capital = keep.cap; S.treasury = keep.tre; S.pol.allianceExpansion = keep.pol;
+      S.alliance = keep.alliance; S.powers = keep.powers; S.uses = keep.uses;
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('alliance-roster',
+      al.found && al.saysStatute && al.saysOddsHeading && al.oddsShown && al.clickable &&
+      al.paid && al.answered && al.rosterShown,
+      `the world page carries the Alliance panel: it names the statute that admits members (${al.saysStatute}), ` +
+      `prints what every unopened accession would answer (${al.saysOddsHeading}/${al.oddsShown}), and a real click ` +
+      `on Open Accession Talks is paid for (${al.paid}) and answered either way (${al.answered}; acceded ` +
+      `${al.acceded}), with the roster on the page afterwards (${al.rosterShown}) -- the Alliance used to be one ` +
+      `number on the world page with no members, no roster and nothing to open`);
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

@@ -4,8 +4,81 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, ninth of eleven PRs. Executive offices: the office
-is won by a person now, and the person is somebody the player built.
+**S15 — The regime is real**, tenth of eleven PRs. The Northern Alliance is a set
+of members, and the statute that expands it expands it.
+
+### It was one relation number on a power row
+
+`st.powers.alliance`, seeded at 74, drifting like any other — a bloc with **no
+members in it**. The statute named **Expand the Northern Alliance** carries four
+authored rungs about association, accession and guarantee, and its id appeared
+**exactly once in three megabytes**: in its own definition. Nothing could be
+expanded because there was nothing to be a member of.
+
+`st.alliance.members` is that set, created on write, so a save from before this
+slice has an Alliance with no members — which is exactly what it had.
+
+### The first diplomatic decision in the game that spends a die
+
+Every other one applies a fixed shift and reports it as a fact. An accession is a
+question, and the answer can be no: **76 of 300** carried against a **printed 26
+in a hundred**. The odds are on the panel before the player spends, because a die
+whose odds cannot be seen is a coin toss. They read relations, the Alliance's own
+standing, the statute's rung, the tension, the capital's kind, any standing
+treaty, whether Vale is at war, and how many times that capital has already been
+asked.
+
+### A guarantee runs in both directions
+
+Which is what the Alliance's own card has said since v4. Measured over **374 war
+rolls** with two members at 78 and every other power at 12: Vale went to war with
+a member **not once**, and members came in on our side 541 times. The candidate
+filter took a power's `kind` and its treaties and had no way to ask whether it
+was in the bloc; the only mechanical trace of an ally fighting was a flat `+1` of
+momentum for a defence pact.
+
+### The Foreign Office could reach six capitals of eleven
+
+`POWERS.push` runs in the S10e chunk. The envoy, treaty, pressure and sanction
+lists were built with `POWERS.map` **at the moment the `ACTIONS` literal and the
+v9 widening IIFE were evaluated**, long before it. So **the order book could name
+Tarnow and the Foreign Office could not**, in a game that has shipped those five
+powers since S10e. Measured on the old build: 6 / 6 / 5 / 6 targets. Now
+11 / 11 / 10 / 10, plus 10 for accession.
+
+### Five cards that named the Alliance and did not touch it
+
+Convening it, withdrawing from it **entirely**, a state visit to its capitals,
+and the arc line whose own summary read *"the alliance cools"* — none of them
+moved the relation. Withdrawing entirely left the relation, the drift bonus, the
+war exemption and the war edge all exactly where they were; it empties the roster
+now. And **Conclude a Treaty produced no treaty**: 8 capital and 6 of money for a
+relation shift, with no entry in Treaties in Force, no progress toward the
+Peacemaker record and no line in the stats. The game had two "sign a treaty"
+surfaces and only one of them signed one.
+
+### Five assertions and a playtest step, all six red on the build before this PR
+
+The old build reads: 6/6/5/6/0 diplomacy targets, `allianceCap` undefined, no
+die to roll, no membership for the war filter to consult, all four cards moving
+nothing, and a world page with no Alliance panel at all.
+
+```
+ALL CHECKS PASS   11/11, 3,172,854 bytes, +12,526 since HEAD of 250,000
+ROADS OK          155 assertions
+PLAYTEST PASS     51 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / CHAMBER   all green
+```
+
+Next: **S15k**, the prose pass and the slice close. Every authored line in S15a
+through S15j measured against `docs/PROSE-STYLE.md` with `tools/rungs.js
+--check`, a blind ordering sweep over any new ladder content through
+`tools/prose/`, and `docs/MAP.md`, `docs/STATE.md` and `docs/AGREEMENT.md`
+brought up to date for the whole slice.
+
+Previously: **S15 — The regime is real**, ninth of eleven PRs. Executive offices:
+the office is won by a person now, and the person is somebody the player built.
 
 ### There was no candidate
 
@@ -77,14 +150,6 @@ RUNGS OK / TIERS / TABS / CHAMBER   all green
 PACING            4 elections won over fifty sessions against 3; all lengths
                   reach their end year
 ```
-
-Next: **S15j**, the Northern Alliance. It is not a membership set — it is **one
-relation number on a bloc row**. The statute named "Expand the Northern Alliance"
-is read by nothing in 3 MB. No diplomatic decision in the game spends a die: an
-invitation cannot be refused because there is nothing to invite anyone to. Two
-Alliance cards call no `shiftRel` at all, "Conclude a Treaty" costs 8 capital and
-writes no treaty, and four diplomacy target lists were built before the five S10e
-powers existed.
 
 Previously: **S15 — The regime is real**, eighth of eleven PRs. Campaigning: five
 systems reach the count, and one of them was worth nine times the other four

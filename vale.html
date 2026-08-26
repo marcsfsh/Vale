@@ -6510,6 +6510,94 @@ function seedPowers(st) {
 }
 function shiftRel(st, id, n) { st.powers[id] = c100(relOf(st, id) + n); }
 
+/* ---------- the Northern Alliance, as a set of members (S15j) ---------------
+
+   IT WAS ONE RELATION NUMBER ON A POWER ROW. `st.powers.alliance` -- a single
+   figure, drifting like any other, describing a bloc with no members in it. The
+   statute named "Expand the Northern Alliance" carries four authored rungs
+   about accession, association and guarantee, and its id appeared exactly once
+   in three megabytes: in its own definition. Nothing could be expanded because
+   there was nothing to be a member OF.
+
+   `st.alliance.members` is that set. Created on write, so a save from before
+   this slice has an alliance with no members, which is exactly what it had.
+   The `alliance` power row stays as what it always was: the standing of the
+   institution itself. */
+var V15_ALLY_CAP = [0, 2, 4, 6];
+function allianceState(st) {
+  var v = st.alliance;
+  if (!v) v = st.alliance = { members:[], asked:{}, founded:st.turn };
+  if (!v.members) v.members = [];
+  if (!v.asked) v.asked = {};
+  return v;
+}
+function allianceMembers(st) { return allianceState(st).members.slice(); }
+function allianceHas(st, id) { return allianceState(st).members.indexOf(id) >= 0; }
+/* THE STATUTE IS READ. Nothing may accede at rung zero, which is what the
+   statute's own first rung says arrives with it. */
+function allianceCap(st) { return V15_ALLY_CAP[clamp(Math.round(st.pol.allianceExpansion || 0), 0, 3)]; }
+function allianceEligible(st) {
+  return POWERS.filter(function (p) { return p.kind !== 'alliance' && !allianceHas(st, p.id); });
+}
+/* what a capital weighs when it is asked to sign a guarantee. Printed on the
+   card, because a die the player cannot see the odds of is a coin toss. */
+function allianceOdds(st, id) {
+  var p = POWER[id]; if (!p) return 0;
+  var v = (relOf(st, id) - 46) * 1.9;
+  v += (relOf(st, 'alliance') - 50) * .5;
+  v += (st.pol.allianceExpansion || 0) * 7;
+  v -= Math.max(0, st.ind.tension - 50) * .5;
+  if (p.kind === 'rival') v -= 34;
+  if (p.kind === 'trade') v += 10;
+  if (p.kind === 'neighbour') v -= 6;
+  if (st.war) v -= 12;
+  var t = st.v6 && st.v6.treaties && st.v6.treaties[id];
+  if (t && t.kind === 'defence') v += 16;
+  else if (t && t.kind === 'nonaggression') v += 8;
+  /* asking again and again is not free */
+  v -= (allianceState(st).asked[id] || 0) * 9;
+  return clamp(Math.round(v), 2, 92);
+}
+function allianceWhy(st, id) {
+  if (allianceHas(st, id)) return 'Already a member.';
+  if (!allianceCap(st)) return 'Nothing may accede until the Expand the Northern Alliance statute stands at one.';
+  if (allianceMembers(st).length >= allianceCap(st)) return 'The statute admits ' + allianceCap(st) + ' and the Alliance is full.';
+  if (st.war && st.war.power === id) return 'They are at war with Vale.';
+  return '';
+}
+/* THE FIRST DIPLOMATIC DECISION IN THE GAME THAT SPENDS A DIE. Every other one
+   applies a fixed shift and reports it as a fact. */
+function allianceInvite(st, id) {
+  var v = allianceState(st), odds = allianceOdds(st, id);
+  v.asked[id] = (v.asked[id] || 0) + 1;
+  if (rand() * 100 < odds) {
+    v.members.push(id);
+    shiftRel(st, id, 9); shiftRel(st, 'alliance', 5);
+    st.ind.tension = c100(st.ind.tension + 3);
+    return { ok:true, odds:odds };
+  }
+  shiftRel(st, id, -5); shiftRel(st, 'alliance', -3);
+  return { ok:false, odds:odds };
+}
+/* A GUARANTEE RUNS IN BOTH DIRECTIONS, which is what the Alliance's own card
+   has said since v4 and what nothing in the model has ever done. */
+function allianceJoin(st) {
+  var w = st.war; if (!w) return 0;
+  if (!w.joined) w.joined = [];
+  var n = 0;
+  allianceMembers(st).forEach(function (id) {
+    if (w.joined.indexOf(id) >= 0 || id === w.power) return;
+    var odds = clamp((relOf(st, id) - 40) * 1.6 + (st.pol.allianceCommitments || 0) * 9 -
+      Math.max(0, st.ind.tension - 50) * .3, 4, 88);
+    if (rand() * 100 < odds) {
+      w.joined.push(id); n++;
+      st.ind.tension = c100(st.ind.tension + 2);
+      logIt(st, POWER[id].name + ' invoked the Alliance article and came in on our side.');
+    }
+  });
+  return n;
+}
+
 function powersTick(st) {
   var t = st.ind.tension, mil = st.ind.military, terr = st.ind.territories;
   POWERS.forEach(function (p) {
@@ -6548,6 +6636,10 @@ function warTick(st) {
       var worst = null, cands = [];
       POWERS.forEach(function (p) {
         if (p.kind === 'alliance' || p.kind === 'trade') return;
+        /* S15j: members of the Alliance do not go to war with each other. The
+           filter took a power's KIND and its treaties and had no way to ask
+           whether it was in the bloc, because the bloc had no members. */
+        if (allianceHas(st, p.id)) return;
         if (st.v6 && st.v6.treaties && st.v6.treaties[p.id] &&
             (st.v6.treaties[p.id].kind === 'nonaggression' || st.v6.treaties[p.id].kind === 'defence')) return;
         if (relOf(st, p.id) >= 55) return;
@@ -6563,13 +6655,17 @@ function warTick(st) {
       mood(st, { veterans:9, faith:4, youth:-6, prof:-4, tech:-4 });
       logIt(st, 'War with ' + POWER[worst].name + '. The reserves have been called and the frontier is closed.');
       chronicle(st, 'War broke out with ' + POWER[worst].short + '.');
+      allianceJoin(st);
     }
     return;
   }
   var w = st.war, p = POWER[w.power];
   w.turns += 1;
+  /* a member that stayed out in the first year can still come in */
+  allianceJoin(st);
   var edge = (st.ind.military - 55) * .05 + (st.ind.technology - 55) * .02 +
-    (st.armyLoyalty - 55) * .03 + (relOf(st, 'alliance') - 50) * .02 - (st.ind.corruption - 50) * .02;
+    (st.armyLoyalty - 55) * .03 + (relOf(st, 'alliance') - 50) * .02 - (st.ind.corruption - 50) * .02 +
+    (w.joined || []).length * 1.7;
   w.momentum += edge + (rand() - .5) * 4;
   var spend = 9 + st.ind.military * .12;
   st.treasury -= spend; w.cost += spend;
@@ -6584,8 +6680,11 @@ function warTick(st) {
       st.ind.tension = c100(st.ind.tension - 12);
       st.unrest -= 8; st.capital = clamp(st.capital + 10, -5, capCap(st));
       shiftRel(st, w.power, 14);
+      (w.joined || []).forEach(function (id) { shiftRel(st, id, 9); });
+      if ((w.joined || []).length) shiftRel(st, 'alliance', 7);
       mood(st, { veterans:16, faith:7, smallbiz:6, seniors:5, prof:3 });
-      logIt(st, 'The war with ' + p.short + ' ended in victory after ' + w.turns + ' years.');
+      logIt(st, 'The war with ' + p.short + ' ended in victory after ' + w.turns + ' years' +
+        ((w.joined || []).length ? ', with ' + w.joined.length + ' of the Alliance in the field beside us.' : '.'));
       chronicle(st, 'Victory over ' + p.short + ' after ' + w.turns + ' years.');
     } else if (w.momentum < -4) {
       st.ind.territories = c100(st.ind.territories - 10);
@@ -6593,6 +6692,9 @@ function warTick(st) {
       st.unrest += 18; st.capital = clamp(st.capital - 10, -5, capCap(st));
       st.armyLoyalty = c100(st.armyLoyalty - 12);
       shiftRel(st, w.power, -10);
+      /* a guarantee that was called and did not hold costs the bloc */
+      (w.joined || []).forEach(function (id) { shiftRel(st, id, -7); });
+      if ((w.joined || []).length) shiftRel(st, 'alliance', -6);
       mood(st, { veterans:-18, prof:-9, youth:-7, faith:-6, labour:-5 });
       logIt(st, 'The war with ' + p.short + ' ended in defeat after ' + w.turns + ' years.');
       chronicle(st, 'Defeat by ' + p.short + ' after ' + w.turns + ' years.');
@@ -7584,8 +7686,8 @@ var EVENTS = [
     ch:[
       { l:'Deploy a carrier group and two brigades', s:'Costs money. Tension and standing rise.',
         f:function (S) { S.treasury -= 13; S.ind.tension += 8; S.ind.military += 3; mood(S, { veterans:9, prof:3, youth:-6, labour:-3 }); } },
-      { l:'Convene the Northern Alliance', s:'Costs capital, lowers tension.',
-        f:function (S) { S.capital -= 4; S.ind.tension -= 7; mood(S, { prof:6, youth:5, veterans:-5 }); } },
+      { l:'Convene the Northern Alliance', s:'Costs capital, lowers tension. The Alliance is glad to be asked.',
+        f:function (S) { S.capital -= 4; S.ind.tension -= 7; shiftRel(S, 'alliance', 6); mood(S, { prof:6, youth:5, veterans:-5 }); } },
       { l:'Arm one side and stay out', s:'Revenue now, trouble later.',
         f:function (S) { S.treasury += 9; S.ind.tension += 5; mood(S, { tech:5, veterans:3, youth:-6, faith:-5 }); } }
     ] }),
@@ -7814,8 +7916,12 @@ var EVENTS = [
   ev({ id:'foreignCondemnation', closed:true, w:7, title:'The Alliance Suspends Vale',
     text:'The Northern Alliance has suspended our participation and four capitals have recalled their ambassadors.',
     ch:[
-      { l:'Withdraw from the Alliance entirely', s:'Tension rises, hands are free.',
-        f:function (S) { S.ind.tension += 9; S.ind.military += 2; mood(S, { veterans:6, prof:-8, tech:-6 }); } },
+      { l:'Withdraw from the Alliance entirely', s:'Tension rises, hands are free, and every member goes with it.',
+        f:function (S) { S.ind.tension += 9; S.ind.military += 2; shiftRel(S, 'alliance', -34);
+          var mem = allianceMembers(S); allianceState(S).members = [];
+          mem.forEach(function (id) { shiftRel(S, id, -12); });
+          if (mem.length) logIt(S, 'Vale left the Northern Alliance, and ' + mem.length + ' guarantee' + (mem.length === 1 ? '' : 's') + ' lapsed with it.');
+          mood(S, { veterans:6, prof:-8, tech:-6 }); } },
       { l:'Offer a controlled return to elections', s:'Costs a great deal of standing internally.',
         f:function (S) { S.ind.tension -= 7; S.capital -= 8; mood(S, { prof:7, youth:6, veterans:-6 }); } },
       { l:'Ignore it', s:'Trade suffers.',
@@ -11214,7 +11320,7 @@ var ACTIONS = [
   A({ id:'stateVisit', cat:'Diplomacy', name:'Make a State Visit', cost:5, money:5, cool:2,
     desc:'A week abroad, photographed throughout.',
     opts:[
-      { label:'To the Alliance capitals', cost:5, run:function (S) { S.ind.tension -= 5; mood(S, { prof:5, tech:3, veterans:2 }); logIt(S, 'A state visit was made to the Alliance capitals.'); } },
+      { label:'To the Alliance capitals', cost:5, run:function (S) { S.ind.tension -= 5; shiftRel(S, 'alliance', 9); mood(S, { prof:5, tech:3, veterans:2 }); logIt(S, 'A state visit was made to the Alliance capitals.'); } },
       { label:'To a Moya successor state', cost:6, run:function (S) { S.ind.tension -= 8; S.ind.economy += 2; mood(S, { prof:4, tech:4, veterans:-5, faith:-2 }); logIt(S, 'A state visit was made to the successor states.'); } },
       { label:'To the territories', cost:5, run:function (S) { S.ind.territories += 4; mood(S, { veterans:6, smallbiz:3, youth:-3 }); logIt(S, 'A state visit was made to the possessions.'); } }
     ] }),
@@ -25132,7 +25238,7 @@ var V10_ROAD_EVENTS = [
       { l:'A commission, with sentences', s:'Tension -2, liberties +3, the services -4. Somebody senior goes down.',
         f:function (S) { S.ind.tension = c100(S.ind.tension - 2); S.ind.liberties = c100(S.ind.liberties + 3); S.armyLoyalty = c100(S.armyLoyalty - 4); logIt(S, 'The commission sat, and for once it sentenced.'); } },
       { l:'Fakes, and an insult to Vale', s:'Tension +4, the alliance cools. Nobody abroad believes it; nobody at home says so.',
-        f:function (S) { S.ind.tension = c100(S.ind.tension + 4); mood(S, { prof:-4 }); logIt(S, 'The photographs were declared fakes, in a statement nobody kept.'); } }
+        f:function (S) { S.ind.tension = c100(S.ind.tension + 4); shiftRel(S, 'alliance', -5); mood(S, { prof:-4 }); logIt(S, 'The photographs were declared fakes, in a statement nobody kept.'); } }
     ] }),
   ev({ id:'v10securityBudget', w:7, cond:function (S) { return securityState(S) >= 30; },
     title:'The Bureau Asks Double',
@@ -30547,6 +30653,123 @@ document.addEventListener('click', function (ev) {
   if (!b || b.disabled) return;
   v15Nominate(b.getAttribute('data-nominate'), b.getAttribute('data-nominee'));
 });
+
+/* ==========================================================
+   S15j: THE FOREIGN OFFICE CAN REACH ELEVEN CAPITALS.
+
+   `POWERS.push` runs in the S10e chunk. The four diplomacy target lists were
+   built with `POWERS.map` and `POWERS.filter` at the moment the ACTIONS literal
+   and the v9 widening IIFE were EVALUATED, which is long before it. So the
+   order book could name Tarnow and the Foreign Office could not: five of the
+   eleven powers could not be sent an envoy, offered a treaty, pressured or
+   sanctioned, in a game that has shipped them since S10e.
+
+   Rebuilt here, at the end of the file, where POWERS is complete. `data-opt` is
+   an ARRAY INDEX rather than an id, so these arrays are replaced whole before
+   anything renders, never appended to a rendered one.
+
+   NOTE: `A(o)` at this point in the file is the ARTICLE constructor, which
+   shadows the ACTIONS one file-wide. Nothing below calls it. */
+function v15Action(id) { return ACTIONS.filter(function (x) { return x.id === id; })[0]; }
+(function () {
+  var envoy = v15Action('envoy'), treaty = v15Action('treaty'), coerce = v15Action('coerce'),
+      sanction = v15Action('sanction');
+  if (envoy) envoy.opts = POWERS.map(function (pw) {
+    return { label:'To ' + pw.short, cost:4, money:4, run:function (S) {
+      shiftRel(S, pw.id, 11); S.ind.tension = c100(S.ind.tension - 1.5);
+      logIt(S, 'An envoy was received in ' + pw.name + '.'); } };
+  });
+  /* THE TREATY ACTION NOW WRITES A TREATY. It cost 8 capital and 6 of money,
+     moved the relation by 22 and produced no instrument: no entry in Treaties
+     in Force, no progress toward the Peacemaker record, no line in the stats.
+     The game had two "sign a treaty" surfaces and only one of them signed
+     one. It hands off to the same dialog the world page uses, so there is one
+     treaty path and the terms are chosen rather than assumed. */
+  if (treaty) treaty.opts = POWERS.map(function (pw) {
+    return { label:pw.short, cost:0, money:0, tip:'Opens the terms available with ' + pw.short + ' at present relations.',
+      run:function () { v6TreatyDialog(pw.id); } };
+  });
+  if (coerce) coerce.opts = POWERS.filter(function (pw) { return pw.kind !== 'alliance'; }).map(function (pw) {
+    return { label:pw.short, cost:6, run:function (S) {
+      var r = relOf(S, pw.id);
+      S.ind.tension = c100(S.ind.tension + 7);
+      if (r < 45 && S.ind.military > 60) { S.ind.territories = c100(S.ind.territories + 4); shiftRel(S, pw.id, -14);
+        mood(S, { veterans:8, smallbiz:4, youth:-6, prof:-5 }); logIt(S, pw.name + ' conceded under pressure.'); }
+      else { shiftRel(S, pw.id, -18); mood(S, { veterans:4, prof:-6, tech:-5, youth:-5 });
+        logIt(S, pw.name + ' refused, publicly.'); } } };
+  });
+  if (sanction && sanction.opts) {
+    /* keep the generic first option and the "lift every sanction" last, and
+       rebuild the targeted middle over all eleven */
+    var head = sanction.opts[0], tail = sanction.opts[sanction.opts.length - 1];
+    var mid = POWERS.filter(function (p) { return p.kind !== 'alliance' && p.kind !== 'trade'; }).map(function (pw) {
+      return { label:'On ' + pw.short, cost:5, run:function (S2) {
+        shiftRel(S2, pw.id, -15); S2.ind.tension = c100(S2.ind.tension + 5);
+        S2.ind.economy = c100(S2.ind.economy - 2);
+        logIt(S2, 'Sanctions were imposed on ' + pw.name + '.'); } };
+    });
+    sanction.opts = [head].concat(mid, [tail]);
+  }
+  /* ---------- accession, and a die that can say no ----------
+     The statute "Expand the Northern Alliance" carries four authored rungs
+     about association, membership and guarantee, and its id appeared exactly
+     once in three megabytes: in its own definition. This is what reads it. */
+  ACTIONS.push({ id:'accede', cat:'Diplomacy', name:'Open Accession Talks', cost:7, money:9, cool:2, pay:true,
+    desc:'A capital is asked to accede to the Northern Alliance. It is a question, and the answer can be no.',
+    can:function () { return allianceCap(S) > 0; },
+    opts: POWERS.filter(function (pw) { return pw.kind !== 'alliance'; }).map(function (pw) {
+      return { label:pw.short, cost:7, money:9,
+        tip:'The odds are printed on the Alliance panel and move with relations, tension and the statute.',
+        run:function (S) {
+          var why = allianceWhy(S, pw.id);
+          if (why) { flash(why); return; }
+          var r = allianceInvite(S, pw.id);
+          if (r.ok) {
+            logIt(S, pw.name + ' acceded to the Northern Alliance, at ' + r.odds + ' in a hundred.');
+            chronicle(S, pw.short + ' acceded to the Northern Alliance.');
+          } else {
+            logIt(S, pw.name + ' declined to accede, and said so where it would be reported. The odds were ' +
+              r.odds + ' in a hundred.');
+          }
+        } };
+    }) });
+})();
+
+/* ---------- what the Alliance is, on the page ---------- */
+function v15AlliancePanel() {
+  var mem = allianceMembers(S), cap = allianceCap(S);
+  var rows = mem.map(function (id) {
+    var p = POWER[id]; if (!p) return '';
+    return '<tr><td>' + esc(p.name) + '</td><td>' + esc(p.kind) + '</td><td class="num">' + Math.round(relOf(S, id)) +
+      '</td><td>' + esc(relWord(relOf(S, id), S, id)) + '</td></tr>';
+  }).join('');
+  var open = allianceEligible(S).map(function (p) {
+    var why = allianceWhy(S, p.id);
+    return '<tr><td>' + esc(p.short) + '</td><td class="num">' + (why ? '&mdash;' : allianceOdds(S, p.id) + '%') +
+      '</td><td>' + esc(why || 'Talks can be opened.') + '</td></tr>';
+  }).join('');
+  var w = S.war, joined = (w && w.joined) || [];
+  return '<div class="panel"><h2>The Northern Alliance</h2>' +
+    '<p class="note">The Alliance was one relation number and no members. It is a bloc with a roll now: ' +
+    '<b>' + mem.length + '</b> of a possible <b>' + cap + '</b> ' +
+    (cap ? 'under the Expand the Northern Alliance statute, which nothing read before this. ' :
+           'until the Expand the Northern Alliance statute stands at one, and nothing may accede below it. ') +
+    'Members are never the country Vale goes to war with, and they can be called on when it does' +
+    (joined.length ? ' &mdash; ' + joined.length + ' of them are in the field now.' : '.') + '</p>' +
+    (mem.length ? '<div class="tablewrap"><table><thead><tr><th>Member</th><th>Kind</th><th class="num">Relations</th><th>Standing</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+                : '<p class="note muted">Nobody has acceded. Vale is the Alliance.</p>') +
+    '<div class="subhead">What accession talks would answer</div>' +
+    '<div class="tablewrap"><table><thead><tr><th>Capital</th><th class="num">Would accede</th><th>Standing of the question</th></tr></thead><tbody>' +
+    open + '</tbody></table></div></div>';
+}
+var v15ViewWorldBase = viewWorld;
+viewWorld = function () {
+  var html = v15ViewWorldBase();
+  var mk = '<div class="grid"><div>';
+  var i = html.indexOf(mk);
+  return i >= 0 ? html.slice(0, i + mk.length) + v15AlliancePanel() + html.slice(i + mk.length)
+                : html + v15AlliancePanel();
+};
 
 /* ---------- boot ---------- */
 (function () {
