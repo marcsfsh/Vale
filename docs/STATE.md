@@ -13,7 +13,98 @@ complete.** Empire, Imperium, the People's State and The Charter close the book:
 the owner's order specified. The file stands at **2,951,257 bytes of the
 3,100,000 allowed**, against a projection of 2,948,134 made three batches ago.
 
-**S13a — Carry the skill, do not summarise it** (PR #41). The owner asked whether
+**S13b — The whole book read aloud** (PR #42). Every S12 ordering figure came
+from a forty-ladder sample, and the repair pass fixed exactly the ladders that
+sample failed, then re-scored the same forty. Roughly five hundred of the five
+hundred and eighty two ladders had never been read by anyone. This reads all of
+them.
+
+### Three rounds, no sampling
+
+| | placements | exact | tau | mis-ordered by both |
+|---|---|---|---|---|
+| **round 1**, readers A and B | 82.1 / 82.4% | 66.7 / 67.7% | 0.861 / 0.864 | **163 of 582, 28.0%** |
+| **round 3**, readers C and D | **92.3 / 91.5%** | **85.4 / 84.4%** | **0.946 / 0.938** | **62 of 582, 10.7%** |
+
+Round 1's two readers gave **identical orderings on 89 per cent** of the book
+without seeing each other's work, which is what makes "both readers failed it" a
+selection worth acting on rather than one reader's quirk. Round 3 used **fresh
+readers and fresh shuffles**, and neither took any part in choosing what got
+repaired.
+
+### The one-axis rule, measured on the whole population
+
+Round 1 split by the batch that authored each book:
+
+| authored | before | after |
+|---|---|---|
+| **before the one-axis rule** (PR 1-3, 240 statutes) | **59.2%** | **81.7%** |
+| **after it** (PR 4-5, 216 statutes) | **77.8%** | **89.4%** |
+| the imperial books (PR 6) | 61.9% | 85.7% |
+
+An eighteen point gap landing exactly where the rule entered the brief, on all
+582 rather than a sample. It also means the weakest books were the ones written
+first: **Capital at 37.5 per cent, Health at 45.8, and Taxation at 50** - and
+Taxation is the book whose worked example every later agent was anchored to. The
+repair prompt for it said so.
+
+After the sweep no book sits below 66.7 per cent, and the batch that had been
+worst, PR 2, went from 56.2 to 83.3.
+
+### The repair
+
+**163 statutes, 458 rung fields, no `desc` lines, and no non-target statute
+touched in any of the twenty-three books.** Every one of those counts is a diff
+against a snapshot taken before the agent ran, not a figure the agent reported.
+
+The corpus rules then caught the repairs putting "or not at all" back into seven
+statutes after it had been trimmed to five earlier in the slice. **This is the
+fourth time a repair pass has reintroduced a phrase an earlier pass removed**,
+which is why the rule runs over the whole corpus after every apply rather than
+over the books that changed. Twenty-three agents rewriting in parallel cannot see
+each other.
+
+The prose mean moved from **240 to 259 characters**. The cap was lifted to ten
+megabytes at the top of this slice and the widened window is being spent where a
+ladder needed room to establish one axis, not on making every description longer.
+
+### What this number is and is not
+
+This is an **exhaustive audit of a fixed corpus**, not an estimate of unseen
+prose. The population is these 582 ladders; there is no future test set. Round 3
+is still in-sample in the sense that the repairs were chosen by round 1, and it
+is reported as such. What it is not is the S12 mistake: the selection set is the
+whole book, so there is no unread tail, and the readers who produced the final
+number had nothing to do with picking the targets.
+
+The generalisation evidence stays what it always was, the **draft-stage** figures
+taken before any repair touched a batch: 37.5 and 30.0 per cent for PR 3, then
+75.0 and 80.0 for PR 4 once the rule existed.
+
+### Sixty-two ladders still resist
+
+Both round-3 readers still fail 62 of 582. They are recorded in
+`tools/out/rungs/sweep-repair.json` for whoever picks this up. A second repair
+round on them is available and was not run: the marginal ladder here is one where
+two rungs are genuinely close in severity, and forcing a gap risks the failure
+that matters more, prose that reads in order and describes nothing.
+
+```
+ALL CHECKS PASS   11/11, 2,995,262 bytes of 10,000,000
+ROADS OK          90 assertions
+RUNGS OK          2,328 descriptions, mean 259
+PLAYTEST PASS     41 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+TIERS             no width scrolls sideways
+```
+
+Every changed line in `vale.html` is a `desc:`, a `rungs:[`, a quoted rung string
+or its closing bracket. Filtered on exactly that, residue **zero**.
+
+Next: **marker/seam consolidation**, deferred out of S2 and S6 and the largest
+remaining stabilisation item. 25 literal splice markers, dead-body ratchet 5 to 0.
+
+Previously: **S13a — Carry the skill, do not summarise it** (PR #41). The owner asked whether
 the uploaded `writing-style` skill had actually been used on the statute prose.
 It had, but not whole, and the gap is worth recording because it was invisible
 from inside the pipeline.
@@ -1765,6 +1856,7 @@ ratchet 10 → 5, which is now its true floor.
 | S12 prose, batch 5 | **merged** (#38) | Defence, Authority, Elections, Federalism and Foreign: 480 rung descriptions and 120 refreshed one-liners; drafts cleared the baseline unrepaired again and both blind readers returned identical scores at every stage, 92.5 / 85.0 / 0.950 after a 9-statute repair; attribution 60 of 60; the corpus rule caught a phrase four agents had independently converged on across three batches |
 | S12 prose, batch 6 | **merged** (#39) | Empire, Imperium, People's State and The Charter close the book: 582 of 582 statutes speak, 2,910 pieces of authored prose; the two largest books sharded by group covered both exactly; highest ordering scores of the project at 93.1 / 87.5 / 0.950; whole-corpus blind attribution 118 of 120; the style guide's own worked example was found to have propagated its sentence shape into 21 statutes across 13 books |
 | S13a style fidelity | **merged** (#41) | the authoring brief was a 112-line paraphrase of a 161-line skill and had dropped a rule; it is now the skill verbatim plus a statute addendum, committed as docs/PROSE-STYLE.md; audit of all 2,910 pieces came back clean on twelve rule families and two hits; the phrase matcher was fixed from substring to word boundary; "X rather than Y" measured at 7.5% precision and was deliberately left to judgement; maxBytes 3.1M to 10M |
+| S13b the whole book read aloud | **merged** (#42) | all 582 ladders read blind twice, not sampled: 66.7 / 67.7 per cent exact with 163 failed by both readers; 458 rung fields repaired across 163 statutes with no non-target touched; re-read by two fresh readers at 85.4 / 84.4 per cent, tau 0.946 / 0.938, failures down to 62; the one-axis rule measured on the whole population at 59.2 per cent before it against 77.8 after, and the batches that predated it closed to 81.7 |
 | **Marker/seam consolidation** | **pending — next slice** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it. 21 literal splice markers; dead-body ratchet 5 → 0. The largest remaining stabilisation item and the user's stated co-priority |
 
 ## Open items / environment facts
