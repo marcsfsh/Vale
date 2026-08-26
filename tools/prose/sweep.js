@@ -10,7 +10,7 @@
  *   node sweep.js <book...>            writes sweep-NN.md + sweep-key.json
  *   CHUNK=60 SEED=... to vary
  */
-const fs = require('fs'), path = require('path'), D = __dirname;
+const fs = require('fs'), path = require('path'), D = process.env.RUNGS_OUT || path.join(__dirname, '..', 'out', 'rungs');
 const books = process.argv.slice(2);
 if (!books.length) { console.error('usage: sweep.js <book> [book...]'); process.exit(1); }
 const CHUNK = Number(process.env.CHUNK || 60);

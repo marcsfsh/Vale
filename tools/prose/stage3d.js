@@ -12,7 +12,7 @@
  * Everything needed is already on disk: briefs carry rungNames and each
  * statute's name/id/category, drafts carry desc and rungs.
  */
-const fs = require('fs'), path = require('path'), D = __dirname;
+const fs = require('fs'), path = require('path'), D = process.env.RUNGS_OUT || path.join(__dirname, '..', 'out', 'rungs');
 const books = process.argv.slice(2);
 if (!books.length) { console.error('usage: stage3d.js <book> [book...]'); process.exit(1); }
 const TAG = process.env.TAG || 'draft';
