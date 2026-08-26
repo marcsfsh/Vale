@@ -66,6 +66,21 @@ async function drainModals(page, maxClicks) {
   return !(await page.evaluate(() => !document.getElementById('modal').hidden));
 }
 
+/* S14: FIXTURES ARE NAMED, NEVER TAKEN BY POSITION. A `.filter(...)[0]` probe
+   picks whatever happens to be first in the array, so inserting an order above
+   it or reordering the book leaves the assertion passing about a DIFFERENT
+   order than the one it was written for -- green, and measuring something
+   else. 40 of the 72 orders satisfy the predicate below, so the drift is real
+   rather than theoretical. pick() names the fixture and re-asserts the
+   property it was chosen for: change that order and this throws HERE, instead
+   of quietly moving the test. */
+const PICK = `window.pick = function (list, id, pred, what) {
+  var hit = list.filter(function (x) { return x.id === id; });
+  if (hit.length !== 1) throw new Error('pick(' + what + '): ' + id + ' matches ' + hit.length + ' entries, expected exactly 1 -- the fixture was renamed or removed');
+  if (pred && !pred(hit[0])) throw new Error('pick(' + what + '): ' + id + ' no longer has the property it was picked for');
+  return hit[0];
+};`;
+
 async function boot(page) {
   await page.goto(URL);
   await page.waitForSelector('[data-setup-begin]', { timeout: 15000 });
@@ -88,6 +103,7 @@ async function run() {
     errors.push('console.error: ' + m.text());
   });
   await page.addInitScript(() => { window.confirm = () => true; });
+  await page.addInitScript(PICK);
 
   await boot(page);
   step('boot', true, 'setup sheet visible');
@@ -743,7 +759,7 @@ async function run() {
       UI.tab = 'exec'; render();
       const panel = [...document.querySelectorAll('.panel h2')].some(h => /Order Book/.test(h.textContent));
       const buttons = document.querySelectorAll('[data-order]').length;
-      const o = V10_ORDERS.filter(x => !x.target && !x.needs && Object.keys(x.ind || {}).length)[0];
+      const o = pick(V10_ORDERS, 'establishmentFreeze', x => !x.target && !x.needs && Object.keys(x.ind || {}).length, 'the order the panel issues');
       const key = Object.keys(o.ind)[0];
       const t0 = indicatorTargets(S)[key];
       v10IssueOrder(o.id, null);
@@ -898,6 +914,42 @@ async function run() {
 
   step('console-errors', errors.length === 0, `${errors.length} error(s)` + (errors.length ? ': ' + errors.slice(0, 2).join(' | ') : '') +
     (offline.length ? `; ${offline.length} expected-offline resource failure(s) (fonts — exemption dies with the external-ref allowlist)` : ''));
+
+  // -- a number that is not a number is announced, not stored (S14). Its own
+  //    page: the probe deliberately fires console.error, which the step above
+  //    counts, and the point of the fix is that it fires.
+  {
+    const np = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+    await np.addInitScript(() => { window.confirm = () => true; });
+    await np.goto(URL);
+    await np.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await np.click('[data-setup-begin]');
+    await np.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await np.click('[data-doctrine]');
+    await np.waitForTimeout(250);
+    const nan = await np.evaluate(() => {
+      const before = !!document.querySelector('[data-number-fault]');
+      const got = clamp(NaN, 0, 100);          /* used to come back NaN */
+      const inv = clamp(5, 10, 0);             /* bounds the wrong way round */
+      const el = document.querySelector('[data-number-fault]');
+      return {
+        before, got, inv, shown: !!el,
+        finite: typeof got === 'number' && isFinite(got),
+        says: el ? el.textContent.slice(0, 64) : '',
+        top: el ? Math.round(el.getBoundingClientRect().top) : -1,
+        latched: (window.V14_FAULTS || []).length,
+        /* and every ordinary answer is exactly what it always was */
+        ordinary: clamp(42, 0, 100) === 42 && clamp(-3, 0, 100) === 0 &&
+                  clamp(300, 0, 100) === 100 && clamp(0, 0, 100) === 0 && clamp(100, 0, 100) === 100,
+      };
+    });
+    step('nan-is-announced', nan.before === false && nan.finite && nan.shown &&
+      nan.latched === 2 && nan.ordinary && nan.inv === 5,
+      `clamp(NaN,0,100) answered ${nan.got} (it used to answer NaN and the caller stored it), ` +
+      `clamp(5,10,0) answered ${nan.inv}, ${nan.latched} distinct fault(s) latched, ` +
+      `banner at y=${nan.top}: "${nan.says}"`);
+    await np.close();
+  }
 
   // -- endings are not allowed to lose anything (fresh page: this one corrupts
   //    the hall and ends the game). The hall gets the autosave's S1 loudness
