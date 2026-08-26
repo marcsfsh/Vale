@@ -562,6 +562,82 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
+## Campaigning and the vote model (S15h)
+
+**Five channels reach the count, and before this slice one of them was worth
+nine times the other four together.** Measured with `projection()` against a
+neutralised counterfactual, one channel at a time, from a 222-seat baseline on
+normal:
+
+| channel | before | after |
+|---|---|---|
+| the party organisation (`st.machine`) | +219 | **+177** |
+| the campaign deck (field, media, data, debate, message, targets) | +24 | **+96** |
+| the caucuses | **0** | **+61**, and **-60** when they are abandoned |
+| the organisations (endorsements) | +40 | **+84** |
+| party money (`st.funding`) | +62 | +61 |
+| all five at once | +352 | +460 |
+
+**The machine was counted twice.** `supportTargets` multiplied a party's raw
+weight by `1 + machine`; `ballot` then multiplied the *settled* support by
+`1 + machine * .25` again — and `psupport` converges on the target, so the
+second reading landed on a number the first had already inflated. It is read
+**once** now, through `machineOf(st, pid)`, at `V15_MACHINE_GAIN`.
+
+**`V15_MACHINE_GAIN` is set against `tools/pacing.js`, never by eye.** The
+opening literal gives the Federal Party `.63` and the player `.25`, so the
+machine *is* the only structural lead any opposition has. Un-squaring it without
+a gain to hold it up cuts it to +97, and the harness then wins **every election
+it fights and governs all fifty sessions**. Sweep: `.58` → 18 wins / 50 years,
+`1.15` → 3 / 10, `1.40` → 7 / 16, against HEAD's 2 / 8. It ships at **1.15**,
+where the arc is what it was. The sweep is not monotone — a single early flip
+cascades — so retune it by running the tool, not by interpolating.
+
+**What `ballot`'s second pass does now is TURNOUT.** `grep -i turnout` found the
+word in prose and in one rigging set-piece and **nowhere in the vote model**.
+`partyTurnout(st, pid)` is a multiplier clamped to `V15_TURNOUT_SPAN`
+`[.70, 1.34]`, and it is where the three neglected systems reach the count:
+
+- **the caucuses**, through `factionAverage` — symmetric, every party has them.
+  `factionAverage` used to terminate in `st.unity`, a bill score and one event,
+  none of which the vote model reads.
+- **the ground campaign**, `field` and `data`, and **unity** — player only.
+- **the endorsements**, through `endorsedTurnout`, weighted by how much of that
+  bloc the party can claim at all (`affOf`) — player only, and `PV5_INTERESTS`
+  is a v5 table so the function is guarded with `typeof`.
+
+**The campaign's ceiling was throwing away better than a third of itself in
+silence.** `clamp(power, 0, 12)` against a raw score that measures **18.34**
+with the deck at its ceiling and no endorsement held at all — and the page
+printed the *clamped* number, so nothing on any screen said so. The score is
+computed unclamped in `pv5CampaignRaw` and clamped in `pv5CampaignPower` now, the
+ceiling is `V15_CAMPAIGN_MAX` (26, above the 23.5 the dearest possible campaign
+scores), the ballot conversion is `power / V15_CAMPAIGN_DIV`, and the three
+thresholds keyed to the old 12 (the objective's `*8.33`, its `done` and `risk`
+bars, the advisor's) are keyed to the constant.
+
+**`v15CampaignSeats(st)` is `v11RegionalSeats` generalised** — live standing
+through `projection()`, then one channel neutralised and read again, restored by
+reassigning deep clones. It answers in five channels and it is what three panels
+print: `v15CampaignWorth` on the Campaign page (spliced above **`<div
+class="panel"><h2>Poll and Seat Projection</h2>`** by the `viewCampaign` wrapper,
+the only one that function has), a sentence in `factionPanel`, and a third
+`macro-tile` in the S11e organisations panel.
+
+**Two write-only fields got readers.** `st.campaign.history` has recorded the
+share, the seats and the campaign power at every ballot since v5 and nothing had
+ever read it; `st.campaign.lastAction` has been written on every campaign click
+and read by nothing. Both are on the new panel. `st.campaign.field` still has no
+reader outside `pv5CampaignPower` and `partyTurnout`, which is now two.
+
+**Not touched, deliberately:** `press` and `apparatus` are double-applied in
+exactly the same way (`1 + press` then `1 + press * .6`; `1 + apparatus` then
+`1 + apparatus * .5`), and `regionPartyFactor` is applied twice on one ballot by
+design — S11c tuned `V11_REGION_GAIN` against that. Un-squaring press or
+apparatus would move the authority path S15a and S15g were measured against.
+S11c's own eight-governor sweep moved 44 → 51 and S11e's organisation figure
+15 → 41 as a consequence of the machine change alone; both assertions say so.
+
 ## Extraordinary measures (S15g)
 
 **Sixty measures in eight books** — one per party plus a universal book — on the

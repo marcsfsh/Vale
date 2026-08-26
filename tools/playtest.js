@@ -1140,6 +1140,68 @@ async function run() {
       `rendered no cards at all before this PR; the filter cuts ${xm.cards} to ${xm.mineCards}; and a government ` +
       `that can sign one signs it through the card (${xm.signed}) and repeals it through the card (${xm.repealed})`);
 
+    /* S15h: the seat readouts, through the rendered page. What only the page
+       can answer is whether the three panels carry the figure at all and
+       whether it MOVES when the player buys something -- a readout computed
+       once at boot would look identical to a live one on a single render. */
+    const cw = await page.evaluate(() => {
+      const out = {}, me = playParty(S);
+      const keep = { tab:UI.tab, cap:S.capital, ruling:S.ruling, playAs:S.playAs,
+        coalition:S.coalition, purse:JSON.parse(JSON.stringify(S.purse || {})),
+        campaign:JSON.parse(JSON.stringify(S.campaign || {})) };
+      S.ruling = me; S.coalition = [me]; S.capital = 400;
+      if (S.purse) PARTIES.forEach(p => { S.purse[p.id] = 400; });
+
+      UI.tab = 'campaign'; render();
+      const panel = [...document.querySelectorAll('#view .panel')]
+        .filter(x => /What the Campaign Is Worth/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      out.found = !!panel;
+      if (panel) {
+        out.tiles = panel.querySelectorAll('.macro-tile').length;
+        out.labels = [...panel.querySelectorAll('.macro-tile b')].map(b => b.textContent.trim());
+        out.text = panel.textContent;
+        out.saysCeiling = /ceiling/.test(out.text);
+      }
+      /* it is LIVE: buy ground organisation and the campaign's own figure moves */
+      const readCampaign = () => {
+        const p = [...document.querySelectorAll('#view .panel')]
+          .filter(x => /What the Campaign Is Worth/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+        if (!p) return null;
+        const t = [...p.querySelectorAll('.macro-tile')]
+          .filter(x => /The campaign/.test((x.querySelector('b') || {}).textContent || ''))[0];
+        return t ? t.querySelector('strong').textContent.trim() : null;
+      };
+      const before = readCampaign();
+      const fieldBtn = document.querySelector('#view [data-campaign-action="field"]:not([disabled])');
+      out.canBuy = !!fieldBtn;
+      if (fieldBtn) { fieldBtn.click(); fieldBtn.click(); fieldBtn.click(); }
+      render();
+      out.moved = before !== null && readCampaign() !== before;
+      out.before = before; out.after = readCampaign();
+
+      /* the caucus panel and the organisations panel carry their own figure */
+      UI.tab = 'parties'; render();
+      const fp = [...document.querySelectorAll('#view .panel')]
+        .filter(x => /The Caucuses Inside/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      out.caucusSays = !!fp && /Assembly seat/.test(fp.textContent);
+      UI.tab = 'interests'; render();
+      const ip = [...document.querySelectorAll('#view .panel')]
+        .filter(x => /What the Organisations Are Worth/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+      out.orgSays = !!ip && /Worth in the Assembly/.test(ip.textContent);
+
+      S.campaign = keep.campaign; S.purse = keep.purse; S.capital = keep.cap;
+      S.ruling = keep.ruling; S.playAs = keep.playAs; S.coalition = keep.coalition;
+      UI.tab = keep.tab; render();
+      return out;
+    });
+    step('campaign-worth-readout',
+      cw.found && cw.tiles === 5 && cw.saysCeiling && cw.canBuy && cw.moved && cw.caucusSays && cw.orgSays,
+      `the Campaign page carries a seat readout with ${cw.tiles} channels [${(cw.labels || []).join(', ')}] and a ` +
+      `line about the ceiling (${cw.saysCeiling}); buying ground organisation moves the campaign's own figure from ` +
+      `${cw.before} to ${cw.after}; the caucus panel states what the caucuses are worth (${cw.caucusSays}) and the ` +
+      `organisations panel states theirs (${cw.orgSays}) -- the page used to print a "point potential" on a scale ` +
+      `nothing else in the game uses`);
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

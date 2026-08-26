@@ -10090,6 +10090,138 @@ function tickTurn(st) {
   sessionSystemsTick(st);
 }
 
+/* ---------- what an election is actually won with (S15h) --------------------
+
+   THE MACHINE WAS COUNTED TWICE. `supportTargets` multiplied a party's raw
+   weight by `1 + machine`, and `ballot` then multiplied the settled support by
+   `1 + machine * .25` again -- and since `psupport` converges on the target,
+   the second reading lands on a number the first had already inflated. At the
+   ceiling that was worth +219 Assembly seats on its own, against +24 for
+   everything on the Campaign page put together and +0 for the caucuses. The
+   party organisation decided the election and the campaign decorated it.
+
+   It is read ONCE now, through `machineOf`, at a gain, and what `ballot` does
+   with its second pass is the thing an election-day model was missing
+   entirely: TURNOUT. `grep -i turnout` found the word in prose and in one
+   rigging event, and nowhere in the vote model.
+
+   Turnout is where the three neglected systems reach the count. A party whose
+   caucuses are behind the leadership gets its vote to the polling station; one
+   whose caucuses have given up does not, however well it polls. The ground
+   organisation the player buys session by session on the Campaign page carries
+   people out. And an organisation that has endorsed the party turns out its own
+   members, weighted by how much of that bloc the party can claim at all.
+
+   Retune the gains, not the terms. Measured one channel at a time from a
+   222-seat neutral baseline on normal, against the build before this slice:
+
+     the party organisation   +219 -> +177     the caucuses      0 -> +61 / -60
+     the campaign deck         +24 ->  +96     the organisations  +40 -> +84
+     party money               +62 ->  +61     all five at once  +352 -> +460
+
+   V15_MACHINE_GAIN IS SET BY MEASUREMENT, NOT BY TASTE. Un-squaring the machine
+   without a gain to hold it up cuts it to +97 -- and `tools/pacing.js` then
+   plays a campaign in which the harness wins EVERY election it fights and
+   governs all fifty sessions, because the machine is where the opening
+   literal's `fp: .63` lives and cutting it removes the only structural lead any
+   opposition has. At 1.15 the arc it plays is what it was: three elections won
+   and ten years governing over fifty sessions, against two and eight. The
+   sweep is in the PR. Retune this number against pacing, never by eye. */
+var V15_MACHINE_GAIN = 1.15;
+var V15_TURNOUT_GAIN = .46;
+var V15_TURNOUT_SPAN = [.70, 1.34];
+/* the campaign's own ceiling. It was 12 against a raw score that measured
+   18.34 with the deck at its ceiling and no endorsements at all, so better than
+   a third of what the player had bought was discarded -- with nothing on any
+   screen saying so, because the page printed the clamped number. */
+var V15_CAMPAIGN_MAX = 26;
+var V15_CAMPAIGN_DIV = 62;
+
+function machineOf(st, pid) {
+  return clamp((st.machine && st.machine[pid]) || 0, -.8, 1) * V15_MACHINE_GAIN;
+}
+
+/* an endorsement turns its own members out, in proportion to how much of that
+   bloc the party can claim in the first place. Guarded because PV5_INTERESTS is
+   a v5 table and this is v4 code. */
+function endorsedTurnout(st, pid) {
+  if (typeof PV5_INTERESTS === 'undefined' || !st.interests) return 0;
+  var v = 0;
+  PV5_INTERESTS.forEach(function (g) {
+    var q = st.interests[g.id];
+    if (!q || !q.endorsement) return;
+    v += Math.max(0, affOf(st, pid, g.bloc)) * ((q.influence || 50) / 100) * .17;
+  });
+  return v;
+}
+
+function partyTurnout(st, pid) {
+  var v = (factionAverage(st, pid) - 55) / 42;
+  if (pid === playParty(st)) {
+    v += ((st.unity === undefined ? 60 : st.unity) - 60) / 130;
+    var c = st.campaign;
+    if (c) v += Math.min(100, c.field || 0) / 330 + Math.min(100, c.data || 0) / 660;
+    v += endorsedTurnout(st, pid);
+  }
+  return clamp(1 + v * V15_TURNOUT_GAIN, V15_TURNOUT_SPAN[0], V15_TURNOUT_SPAN[1]);
+}
+
+/* WHAT A CHANNEL IS WORTH IN SEATS, on the v11RegionalSeats pattern: read the
+   live standing back through projection(), then neutralise one channel and read
+   it again. The difference is the answer in the unit the player cares about.
+
+   Every one of these systems was real before this slice and three of the four
+   were unfelt, which is the failure this whole slice exists to remove -- so the
+   number goes on the page beside the buttons that move it. */
+function v15CampaignSeats(st) {
+  var me = playParty(st), out = { machine:0, campaign:0, caucus:0, orgs:0, money:0, total:0 };
+  var seats = function () {
+    try { return ((projection(st) || {}).seats || {})[me] || 0; } catch (e) { return null; }
+  };
+  var live = seats();
+  if (live === null) return out;
+  var keepM = st.machine ? st.machine[me] : 0;
+  var keepF = st.funding ? st.funding[me] : 0;
+  var keepC = st.campaign ? JSON.parse(JSON.stringify(st.campaign)) : null;
+  var keepI = st.interests ? JSON.parse(JSON.stringify(st.interests)) : null;
+  var keepL = (st.factions && st.factions[me] || []).map(function (f) { return f.loyalty; });
+  var keepU = st.unity;
+  var measure = function (kill) {
+    kill();
+    var n = seats();
+    restore();
+    return n === null ? 0 : live - n;
+  };
+  var restore = function () {
+    if (st.machine) st.machine[me] = keepM;
+    if (st.funding) st.funding[me] = keepF;
+    if (keepC) st.campaign = JSON.parse(JSON.stringify(keepC));
+    if (keepI) st.interests = JSON.parse(JSON.stringify(keepI));
+    if (st.factions && st.factions[me]) st.factions[me].forEach(function (f, i) { f.loyalty = keepL[i]; });
+    st.unity = keepU;
+  };
+  out.machine = measure(function () { if (st.machine) st.machine[me] = 0; });
+  out.money = measure(function () { if (st.funding) st.funding[me] = 0; });
+  out.campaign = measure(function () {
+    var c = st.campaign; if (!c) return;
+    c.field = 0; c.media = 0; c.data = 0; c.debate = 0; c.message = null;
+    REGIONS.forEach(function (r) { if (c.targets) c.targets[r.id] = 0; });
+  });
+  out.caucus = measure(function () {
+    if (st.factions && st.factions[me]) st.factions[me].forEach(function (f) { f.loyalty = 55; });
+    st.unity = 60;
+  });
+  out.orgs = measure(function () {
+    if (typeof PV5_INTERESTS === 'undefined' || !st.interests) return;
+    PV5_INTERESTS.forEach(function (g) {
+      var q = st.interests[g.id]; if (!q) return;
+      q.endorsement = false; q.relation = 50; q.influence = 50;
+    });
+  });
+  out.total = out.machine + out.money + out.campaign + out.caucus + out.orgs;
+  return out;
+}
+
 function supportTargets(st) {
   var fr = franchiseLevel(st);
   var raw = {}, total = 0;
@@ -10111,7 +10243,7 @@ function supportTargets(st) {
       v += weight * a * appeal;
     });
     v *= 1 + (st.funding && st.funding[p.id] ? st.funding[p.id] : 0) +
-             (st.machine && st.machine[p.id] ? st.machine[p.id] : 0) +
+             machineOf(st, p.id) +
              (p.id === st.ruling ? (st.apparatus || 0) : 0);
     v *= regionPartyFactor(st, p.id);
     v *= 1 + ((st.press && st.press[p.id]) || 0);
@@ -10187,7 +10319,10 @@ function ballot(st, noise) {
     if (st.banned[p.id]) { res[p.id] = 0; return; }
     var base = (st.psupport[p.id] || 0);
     base += ((tgt[p.id] || 0) - base) * .35;
-    base *= 1 + ((st.machine && st.machine[p.id]) || 0) * .25 + ((st.press && st.press[p.id]) || 0) * .6 +
+    /* S15h: the machine's second reading is gone from here. What decides the
+       day on top of the settled polling is who actually voted. */
+    base *= partyTurnout(st, p.id);
+    base *= 1 + ((st.press && st.press[p.id]) || 0) * .6 +
       (p.id === st.ruling ? (st.apparatus || 0) * .5 : 0);
     base *= regionPartyFactor(st, p.id);
     if (p.id === st.ruling) base += inc;
@@ -12948,7 +13083,11 @@ function factionPanel() {
       '<div class="axis"><span>Economic left</span><span>Economic right</span></div><div class="axis-line"><i style="left:'+marker.toFixed(0)+'%"></i></div>'+
       '<div class="btnrow">'+fb('consult','Consult',3,0)+fb('patronage','Reward',4,5)+fb('promote','Promote',5,0)+fb('discipline','Discipline',5,0)+'</div></article>';
   }).join('');
-  return '<div class="panel"><h2>The Caucuses Inside the '+esc(PARTY[me].short)+'</h2><p class="note">The party is not one mind. Each caucus has weight, a policy position and loyalty to the leadership. Their weighted loyalty feeds unity; marginalising one changes who the party is.</p><div class="cards">'+cards+'</div></div>';
+  /* S15h: the caucuses reached unity, the whip and a bill score, and nothing
+     that reached a seat. They turn the party's own vote out now, so the panel
+     can say what they are worth in the chamber. */
+  var worth = v15CampaignSeats(S).caucus;
+  return '<div class="panel"><h2>The Caucuses Inside the '+esc(PARTY[me].short)+'</h2><p class="note">The party is not one mind. Each caucus has weight, a policy position and loyalty to the leadership. Their weighted loyalty feeds unity, and it decides how much of its own vote the party gets to a polling station: a caucus that has given up on the leadership does not knock on doors for it. As they stand they are worth <b>'+(worth>=0?'+':'')+worth+'</b> Assembly seat'+(Math.abs(worth)===1?'':'s')+' against a party whose caucuses were merely indifferent.</p><div class="cards">'+cards+'</div></div>';
 }
 
 /* ==========================================================
@@ -14211,17 +14350,25 @@ function pv5CoalitionTick(st){
 
 /* ---------- campaigning ---------- */
 function pv5SessionsToBallot(st){return electionsOn(st)?Math.max(0,nextBallot(st.turn)-st.turn):null;}
-function pv5CampaignPower(st){
+/* S15h: the score is computed unclamped and clamped separately, so the page can
+   say how much of what the player bought is being carried and how much is being
+   left at the ceiling. The ceiling itself went from 12 to 26 against a raw
+   score that measured 18.34 with the deck full and no endorsement held at all;
+   the campaign was discarding better than a third of itself in silence. */
+function pv5CampaignRaw(st){
   var c=st.campaign||{},near=pv5SessionsToBallot(st),decay=near===null?.45:(near<=2?1:near<=5?.82:.62);
   var assets=(c.field||0)*.28+(c.media||0)*.25+(c.data||0)*.18+(c.debate||0)*.2+Math.min(30,partyPurse(st,playParty(st))*.35)*.09;
   var issue=ISSUE[c.message||'jobs'],fit=issue?(st.salience[issue.id]||40)/100:0;
   var targetWeight=0;REGIONS.forEach(function(r){targetWeight+=Math.min(3,(c.targets&&c.targets[r.id])||0)*r.pop/100;});
   var end=0;PV5_INTERESTS.forEach(function(g){var q=st.interests&&st.interests[g.id];if(q&&q.endorsement)end+=q.influence/100;});
-  return clamp((assets*.11+fit*2.8+targetWeight*2.1+end*.65)*decay,0,12);
+  return (assets*.11+fit*2.8+targetWeight*2.1+end*.65)*decay;
+}
+function pv5CampaignPower(st){
+  return clamp(pv5CampaignRaw(st),0,V15_CAMPAIGN_MAX);
 }
 var pv5BallotV4=ballot;
 ballot=function(st,noise){
-  var res=pv5BallotV4(st,noise),me=playParty(st),bonus=pv5CampaignPower(st)/100;
+  var res=pv5BallotV4(st,noise),me=playParty(st),bonus=pv5CampaignPower(st)/V15_CAMPAIGN_DIV;
   if(res[me]!==undefined&&electionsOn(st))res[me]*=1+bonus;
   var total=0;PARTIES.forEach(function(p){total+=res[p.id]||0;});PARTIES.forEach(function(p){res[p.id]=(res[p.id]||0)/(total||1);});
   return res;
@@ -14586,7 +14733,7 @@ function pv5CampaignAction(action,id){
     /* S15f: the drive raises money, and the money is the party's. warChest
        was a party purse that nothing ever paid a party action out of; this is
        what it was always trying to be. */
-    if(!pv5Spend(2,0,'Hold a fundraising drive'))return;
+    if(!pv5Spend(2,0,'Hold a fundraising drive',myPurse()))return;
     var raise=Math.round(14*((DIFFS[S.diff]||DIFFS.normal).rev||1)+partyIncome(S,playParty(S)).donors*.5);
     partyEarn(S,playParty(S),raise);c.field=clamp(c.field+2,0,100);
     S.ind.corruption=c100(S.ind.corruption+1);mood(S,{tech:1,smallbiz:1,labour:-1});
@@ -14620,7 +14767,7 @@ function pv5Objectives(st){
     {name:'Hold the coalition',detail:rels.length?'Weakest partner relationship '+Math.round(coalition)+'.':'No coalition partner binds the government.',value:coalition,target:55,done:coalition>=65,risk:coalition<35,jump:'government'},
     {name:'Keep fiscal command',detail:(b.net>=0?'+':'')+fm(b.net)+' balance; '+st.macro.rating+' credit.',value:clamp(55+b.net,0,100),target:55,done:b.net>=0&&['AAA','AA','A'].indexOf(st.macro.rating)>=0,risk:b.net<-25,jump:'ledger'},
     {name:'Clean government',detail:activeScandals+' active scandal'+(activeScandals===1?'':'s')+'; integrity '+Math.round(100-st.ind.corruption)+'.',value:100-st.ind.corruption,target:58,done:activeScandals===0&&st.ind.corruption<42,risk:activeScandals>1||st.ind.corruption>65,jump:'government'},
-    {name:'Prepare the ballot',detail:next===null?'No free ballot scheduled.':next+' session'+(next===1?'':'s')+' away; campaign power '+pv5CampaignPower(st).toFixed(1)+'.',value:pv5CampaignPower(st)*8.33,target:55,done:pv5CampaignPower(st)>=7,risk:next!==null&&next<=2&&pv5CampaignPower(st)<3,jump:'campaign'}
+    {name:'Prepare the ballot',detail:next===null?'No free ballot scheduled.':next+' session'+(next===1?'':'s')+' away; campaign power '+pv5CampaignPower(st).toFixed(1)+'.',value:pv5CampaignPower(st)*(100/V15_CAMPAIGN_MAX),target:55,done:pv5CampaignPower(st)>=V15_CAMPAIGN_MAX*.58,risk:next!==null&&next<=2&&pv5CampaignPower(st)<V15_CAMPAIGN_MAX*.25,jump:'campaign'}
   ];
 }
 function pv5ObjectivesPanel(){
@@ -17032,7 +17179,7 @@ function v6Advisors(st) {
     out.push({ who:'Party Chair', t:'In opposition, ' + (st.oppYears || 0) + ' years', p:'Build the machine, work the movements, support or oppose government bills, and wait for the ballot' + (next !== null ? ' in ' + next + ' session' + (next === 1 ? '' : 's') : '') + '.', calm:true, jump:'parties' });
   }
   if ((st.unity || 60) < 45) out.push({ who:'Party Chair', t:'Unity is failing', p:'Unity ' + Math.round(st.unity) + '. Consult the caucuses on the Parties page, keep a promise, or stop dragging the party from its platform.', urgent:(st.unity || 60) < 35, jump:'parties' });
-  if (next !== null && next <= 2 && pv5CampaignPower(st) < 4) out.push({ who:'Campaign Director', t:'The ballot is close and the campaign is thin', p:'Campaign power ' + pv5CampaignPower(st).toFixed(1) + '. Field, media and data on the Campaign page all raise it.', urgent:next <= 1, jump:'campaign' });
+  if (next !== null && next <= 2 && pv5CampaignPower(st) < V15_CAMPAIGN_MAX * .33) out.push({ who:'Campaign Director', t:'The ballot is close and the campaign is thin', p:'Campaign power ' + pv5CampaignPower(st).toFixed(1) + '. Field, media and data on the Campaign page all raise it.', urgent:next <= 1, jump:'campaign' });
   var treatyable = POWERS.filter(function (pw) { return !v.treaties[pw.id] && relOf(st, pw.id) >= 64; });
   if (treatyable.length && !st.war) out.push({ who:'Foreign Secretary', t:'Terms are available', p:treatyable.map(function (pw) { return pw.short; }).join(', ') + ' would sign. A trade agreement pays; a defence pact costs and protects.', calm:true, jump:'world' });
   if (st.ind.tension > 62 && !st.war) out.push({ who:'Foreign Secretary', t:'Tension at ' + Math.round(st.ind.tension), p:'An arms treaty, a summit, or a quieter frontier. The war roll is made every session.', urgent:st.ind.tension > 75, jump:'world' });
@@ -19368,7 +19515,7 @@ blocTarget = function (st, b) { var v = v8BlocTargetBase(st, b); if (st.v8) v +=
 var v8CapitalBase = capitalIncome;
 capitalIncome = function (st) { var v = v8CapitalBase(st); if (st.v8) { var n = v8Narrative(st); v += inPower(st) ? n.cap : -n.cap * .5; } return Math.max(-2, v); };
 var v8CampaignBase = pv5CampaignPower;
-pv5CampaignPower = function (st) { var pw = v8CampaignBase(st); if (st.v8) { var n = v8Narrative(st); pw = clamp(pw + (inPower(st) ? n.campaign : -n.campaign * .5), 0, 12); } return pw; };
+pv5CampaignPower = function (st) { var pw = v8CampaignBase(st); if (st.v8) { var n = v8Narrative(st); pw = clamp(pw + (inPower(st) ? n.campaign : -n.campaign * .5), 0, V15_CAMPAIGN_MAX); } return pw; };
 
 function v8PressAction(id) {
   var v = S.v8, pr = v.press, me = playParty(S), power = inPower(S);
@@ -29909,6 +30056,14 @@ viewInterests = function () {
     '<div class="macro-tile"><b>Endorsements held</b><strong>' + ends.length + '</strong><small>each survives one ballot, then lapses</small></div>' +
     '<div class="macro-tile"><b>Statutes they cheapen</b><strong>' + (ends.length ? Math.round((1 - Math.pow(.88, ends.length)) * 100) + '%' : '&mdash;') +
       '</strong><small>off anything their bloc wants, never less than a point</small></div>' +
+    /* S15h: an endorsement mobilised a bloc and fed a campaign score that was
+       clamped away. It also turns its own members out now, so the page can
+       state the whole channel in the unit that decides the government. */
+    (function () {
+      var n = v15CampaignSeats(S).orgs;
+      return '<div class="macro-tile"><b>Worth in the Assembly</b><strong class="' + (n > 0 ? 'pos' : n < 0 ? 'neg' : '') + '">' +
+        (n >= 0 ? '+' : '') + n + '</strong><small>seats against a country where none of them had been cultivated</small></div>';
+    })() +
     '</div>' +
     (lift.length ? '<p class="note" style="margin-top:8px">Where they are concentrated, they move the regions: ' +
       esc(lift.slice(0, 3).map(function (x) { return x.r.name + ' ' + (x.v > 0 ? '+' : '') + x.v.toFixed(2); }).join(', ')) +
@@ -29996,6 +30151,71 @@ policyCost = function (id, dir) {
 var v15SecurityStateBase = securityState;
 securityState = function (st) {
   return clamp(v15SecurityStateBase(st) + extraSecurity(st), 0, 100);
+};
+
+/* ==========================================================
+   S15h: WHAT THE CAMPAIGN IS WORTH, IN SEATS.
+
+   The federation page has said what the states are worth since S11c, against a
+   neutralised counterfactual, because an effect the player cannot feel is an
+   effect that is not there. The campaign page had a "point potential" -- a
+   number on a scale nothing else in the game uses, produced by a formula whose
+   output was silently truncated by better than a third.
+
+   Five channels, one line each, in Assembly seats. The panel also states the
+   two things the old page hid: how much of the score the ceiling is holding
+   back, and what the last campaigns actually returned -- st.campaign.history
+   has recorded the share, the seats and the power at every ballot since v5 and
+   nothing has ever read it.
+   ========================================================== */
+function v15CampaignWorth() {
+  var w = v15CampaignSeats(S), raw = pv5CampaignRaw(S), carried = pv5CampaignPower(S);
+  var tile = function (label, n, note) {
+    return '<div class="macro-tile"><b>' + label + '</b><strong class="' + (n > 0 ? 'pos' : n < 0 ? 'neg' : '') + '">' +
+      (n > 0 ? '+' : '') + n + '</strong><small>' + note + '</small></div>';
+  };
+  var spill = raw - V15_CAMPAIGN_MAX;
+  var ceiling = spill > .05
+    ? '<p class="note" style="margin-top:8px">The campaign is at its ceiling. It is scoring <b>' + raw.toFixed(1) +
+      '</b> and carrying <b>' + V15_CAMPAIGN_MAX + '</b>, so ' + spill.toFixed(1) +
+      ' of what has been bought is doing nothing. Spend the next session on something the ceiling does not cover.</p>'
+    : '<p class="note" style="margin-top:8px">The campaign is carrying <b>' + carried.toFixed(1) + '</b> against a ceiling of <b>' +
+      V15_CAMPAIGN_MAX + '</b>. Nothing bought so far is being discarded.</p>';
+  /* st.campaign.lastAction has been written on every campaign click since v5
+     and read by nothing. It answers the one question the page could not: how
+     long it has been since anybody did anything here. */
+  var last = S.campaign && S.campaign.lastAction, idle = (last === undefined || last < 0) ? null : S.turn - last;
+  var quiet = idle === null
+    ? '<p class="note muted" style="margin-top:8px">Nothing has been spent on the campaign yet.</p>'
+    : idle >= 3
+      ? '<p class="note" style="margin-top:8px">Nothing has been spent on the campaign for <b>' + idle +
+        '</b> session' + (idle === 1 ? '' : 's') + ', and field, media and voter data all decay while it sits.</p>'
+      : '';
+  var hist = ((S.campaign && S.campaign.history) || []).slice(0, 3).map(function (h) {
+    return '<li>Session ' + h.turn + ': ' + (h.share * 100).toFixed(1) + ' percent and ' + h.seats +
+      ' seats, on a campaign worth ' + (h.power || 0).toFixed(1) + '.</li>';
+  }).join('');
+  return '<div class="panel"><h2>What the Campaign Is Worth</h2>' +
+    '<p class="note">Each figure is this party\'s Assembly seats as they stand, against the same country with that ' +
+    'one thing never built. The organisation, the ground campaign, the caucuses, the organisations and the money ' +
+    'are separate systems and they are not worth the same.</p>' +
+    '<div class="macro-grid">' +
+    tile('The party organisation', w.machine, 'branches, agents and the members on the register') +
+    tile('The campaign', w.campaign, 'field, media, voter data, the message and the targeted regions') +
+    tile('The caucuses', w.caucus, 'how much of its own vote the party gets to a polling station') +
+    tile('The organisations', w.orgs, 'endorsements, and the blocs behind them') +
+    tile('Party money', w.money, 'what has been spent out of the party purse, which decays fast') +
+    '</div>' + ceiling + quiet +
+    (hist ? '<p class="note" style="margin-top:8px">What the last campaigns returned:</p><ul class="note">' + hist + '</ul>'
+          : '<p class="note muted" style="margin-top:8px">No federal ballot has been fought yet.</p>') +
+    '</div>';
+}
+var v15ViewCampaignBase = viewCampaign;
+viewCampaign = function () {
+  var html = v15ViewCampaignBase();
+  var mk = '<div class="panel"><h2>Poll and Seat Projection</h2>';
+  var i = html.indexOf(mk);
+  return i >= 0 ? html.slice(0, i) + v15CampaignWorth() + html.slice(i) : html + v15CampaignWorth();
 };
 
 /* ---------- boot ---------- */

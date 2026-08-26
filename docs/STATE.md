@@ -4,8 +4,104 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S15 — The regime is real**, seventh of eleven PRs. Extraordinary measures:
-sixty of them, in eight books, and every one that is closed says why.
+**S15 — The regime is real**, eighth of eleven PRs. Campaigning: five systems
+reach the count, and one of them was worth nine times the other four together.
+
+### The machine was counted twice, and everything else was worth nothing
+
+`supportTargets` multiplied a party's raw weight by `1 + machine`. `ballot` then
+multiplied the **settled** support by `1 + machine * .25` again — and `psupport`
+converges on the target, so the second reading landed on a number the first had
+already inflated. Measured with `projection()` against a neutralised
+counterfactual, one channel at a time, from a 222-seat baseline on normal:
+
+| channel | before | after |
+|---|---|---|
+| the party organisation | **+219** | **+177** |
+| the campaign deck | +24 | **+96** |
+| the caucuses | **0** | **+61**, and **-60** abandoned |
+| the organisations | +40 | **+84** |
+| party money | +62 | +61 |
+| all five at once | +352 | +460 |
+
+The whole Campaign page — field, media, voter data, debate school, the national
+message and three levels of organisers in all eight regions — was worth **+24
+seats**. The caucuses were worth **nothing at all**: `factionAverage` terminates
+in unity, a bill score and one event, and none of those is read by
+`supportTargets`, `ballot` or `allocateSeats`.
+
+### There was no turnout in the vote model
+
+`grep -i turnout` found the word in prose and in one rigging set-piece and
+**nowhere in the model**. What `ballot`'s second pass does now is turnout, and it
+is where the three neglected systems reach the count: the caucuses through
+`factionAverage` (symmetric — every party has them), the ground campaign and
+unity, and the endorsements weighted by how much of that bloc the party can
+claim at all. A party whose caucuses have given up on the leadership does not
+get its vote to a polling station, however well it polls.
+
+### The ceiling was throwing a third of the campaign away in silence
+
+`clamp(power, 0, 12)` against a raw score that measures **18.34** with the deck
+at its ceiling and no endorsement held — and **the page printed the clamped
+number**, so nothing on any screen said so. The score is computed unclamped and
+clamped separately now, the ceiling is 26 against the 23.5 the dearest possible
+campaign scores, and the panel says what is being carried and what is being left.
+
+### V15_MACHINE_GAIN is set against pacing, never by eye
+
+The opening literal gives the Federal Party `.63` and the player `.25`, so the
+machine **is** the only structural lead any opposition has. Un-squaring it
+without a gain to hold it up cuts it to +97 — and `tools/pacing.js` then plays a
+campaign in which the harness **wins every election it fights and governs all
+fifty sessions**:
+
+| gain | elections won | years governing (of 50) |
+|---|---|---|
+| the build before this PR | 2 | 8 |
+| `.58` | **18** | **50** |
+| **`1.15` (ships)** | 3 | 10 |
+| `1.40` | 7 | 16 |
+
+The sweep is not monotone — one early flip cascades through fifty sessions — so
+retune it by running the tool, not by interpolating between these rows.
+
+### The page says what each of them is worth
+
+`v15CampaignSeats` is `v11RegionalSeats` generalised: the live standing through
+`projection()`, then one channel neutralised and read again. Three panels print
+it — a five-channel readout on the Campaign page, a sentence in the caucus panel
+and a tile in the organisations panel. **Two write-only fields got readers**:
+`st.campaign.history` has recorded the share, the seats and the power at every
+ballot since v5, and `st.campaign.lastAction` has been written on every campaign
+click, and nothing had ever read either.
+
+### Five assertions and a playtest step, all six red on the build before this PR
+
+The old build reads: machine +193, campaign +20, caucuses +0 and 0, organisations
++32, `v15CampaignSeats` in 0 channels, and a Campaign page with no seat readout
+at all. S11c's eight-governor sweep moved 44 → 51 and S11e's organisation figure
+15 → 41 as a consequence of the machine change alone; both assertions say so
+rather than being quietly re-baselined.
+
+```
+ALL CHECKS PASS   11/11, 3,142,704 bytes, +12,517 since HEAD of 250,000
+ROADS OK          145 assertions
+PLAYTEST PASS     49 steps + the WebKit SKIP
+DETERMINISM PASS  8 properties
+RUNGS OK / TIERS / TABS / CHAMBER / PACING   all green
+```
+
+Next: **S15i**, executive offices and persons. There is no candidate: the office
+is won by a *party* and a person is minted afterwards by `holderOf` and thrown
+away when the party loses. Four things are wired to nothing — `ambition`'s only
+outlet is +1 rank in the same portfolio, `promoteProtege` is this whole feature
+implemented as a coin toss, `execPush` cannot be aimed and credits the senior
+partner when a junior spends it, and `artTermLimit` counts terms nobody records.
+Incumbency is keyed on the party (the 1.18 multiplier), not on the person.
+
+Previously: **S15 — The regime is real**, seventh of eleven PRs. Extraordinary
+measures: sixty of them, in eight books, and every one that is closed says why.
 
 ### Twenty-five measures, and three parties with nothing
 
@@ -92,13 +188,6 @@ RUNGS OK / TIERS / TABS / CHAMBER   all green
 
 The 35 new measures carry no em dashes, no non-ASCII, no curly quotes and no
 banned word.
-
-Next: **S15h**, campaigning. The machine is applied in `supportTargets` **and
-again** in `ballot`, so it is felt at roughly its square; the campaign's own
-scalar is `clamp(0, 12)` against a measured raw score of 17.9, so over a third of
-what the player buys is discarded with nothing on screen saying so; caucuses are
-worth **0 seats** at any investment; and eight organisations at their ceiling are
-worth +25 against the machine's +350.
 
 Previously: **S15 — The regime is real**, sixth of eleven PRs. The party
 treasury: a party pays for its own politics.
@@ -2983,6 +3072,16 @@ ratchet 10 → 5, which is now its true floor.
 | **Marker/seam consolidation** | **done — S14, PRs #43 to #47** | deferred out of S2 to S6, then silently dropped when S6a/b/c merged without it, and "next" for eleven slices. Closed in five PRs: the documents made true, three live defects fixed, the dead-body ratchet corrected and then driven 7 -> 2 with the two survivors adjudicated deliberate, and the marker check split so it stops implying cover it does not have. The three splices whose failure was silent are covered by playtest assertions rather than by a count |
 
 ## Open items / environment facts
+
+- **A balance ruling S15h needs (owner's, per AGREEMENT.md).** All five campaign
+  channels at their ceiling at once is now **+460** Assembly seats where it was
+  +352 — a government that has built the organisation, the ground campaign, the
+  caucuses, the endorsements and the party purse takes 682 of 1305 and an
+  outright majority. The arc `tools/pacing.js` plays is unchanged (3 elections
+  won and 10 years governing over fifty sessions, against 2 and 8), because that
+  harness takes the first choice always and builds none of the five. If the
+  ceiling is too generous the lever is `V15_MACHINE_GAIN` and the three
+  player-only weights beside it, and the sweep table is in `docs/MAP.md`.
 
 - **Artifact localStorage probe:** published (build B live) at
   https://claude.ai/code/artifact/096870e0-8c13-4ab7-a09c-2d7e1422d67d — the
