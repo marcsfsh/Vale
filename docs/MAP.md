@@ -562,6 +562,52 @@ so renaming that button deletes every `V9_REGION_ACTS` button. The S11c panels
 (`v11ViewFederationBase`) that cuts the five generic Strategic Risks lines by
 walking div depth rather than splicing on a marker.
 
+## The party purse (S15f)
+
+**`st.purse[pid]` is money a party owns**, in the same units as the treasury,
+backfilled in the v4 enrich beside `st.partyRel` and seeded from seats and the
+tier's `purseMult`. Before this slice **57 party actions, 27 of them charging
+the exchequer**, paid for a party's campaigning, organisers, newspapers,
+caucuses and interest groups out of the national treasury, including an
+opposition party doing it out of a treasury it does not control.
+
+**The seam is one argument.** `pv5Spend(cap, money, label, purse)` — `purse`
+defaults to the nation, so no call site changed behaviour until it was
+re-pointed. `myPurse()` is the player's party.
+
+**The route is a property of where the action came from, not of the button.**
+`partyActions` stamps `purse:'party'` on the whole list in its tail, and the v9
+extension does the same, so 57 actions were re-pointed by two lines rather than
+two hundred. `actionPurse(a)` and `actionCanPay(a, m)` are what `doAction` and
+every button strip ask. **`moneyHandled` is gone**: eleven party actions
+deducted their own money inside `run()` past a hand-kept array of ids, and
+`doAction` pays for all of them uniformly now.
+
+**`partyIncome(st, pid)` has three channels with three readers**: dues from
+seats and `st.machine` (the file's de-facto membership), donations from the
+blocs by `BLOC_WEALTH` and `affOf` closeness plus the organisations' relations,
+and a state subsidy that is there only while the **State Funding of Parties
+Act** stands (`acts.partyFunding`). A fourth, `purseGraft`, raises a third again
+and costs corruption and liberties every session. `partyPurseTick` pays **every**
+party, including the six the player does not lead.
+
+**`st.funding[pid]` has a writer.** It is a live multiplier in `supportTargets`
+with a decay in `endTurn` and, until this slice, **no writer anywhere in the
+file** — the vote model had a slot for what a party's money buys and it was
+permanently zero. `partySpend` writes it at `money × .002`, capped at .35.
+
+**`st.campaign.warChest` is retired.** It was a party purse with one earner, one
+three-point deduction and a single read capped at 30 and weighted .09, and
+nothing ever paid for a party action out of it.
+
+Two ledger repairs went with it: `v11ConBudgetBase` and `v11DeptBudgetBase` both
+computed `net = rev - exp - interest` when interest is already inside `exp` when
+the base returns, so a save with a fiscal article and a department settlement
+**charged the debt three times** on the line the Ledger prints; and the Political
+Capital panel, which re-typed eleven of `capitalIncome`'s terms by hand and
+omitted the rest and all five wrappers, now carries the `lowerSits` guard the
+base got in S15a and a **measured residual** for everything it cannot itemise.
+
 ## The constitution (S11d, rebuilt in S15e)
 
 **Eighty articles in eight books, ten to a book**, on the `state` tab,

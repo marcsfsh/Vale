@@ -432,7 +432,7 @@ var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
     capMult:5.4, capFlat:26, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
-    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:250, capCap:750, bond:150, resist:.25,
+    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:250, capCap:750, bond:150, resist:.25, purseMult:3.6,
     /* S12: a FLOOR under the session's capital, not another multiplier. Very
        easy is the tier whose blurb promises "capital by the cartload"; a
        government having a bad session on it should still be able to act. Only
@@ -451,11 +451,11 @@ var DIFFS = {
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
-    incumbent:0, noCollapse:false, treasury:110, debt:200, capital:18, capCap:70, bond:64, resist:1 },
+    incumbent:0, noCollapse:false, treasury:110, debt:200, capital:18, capCap:70, bond:64, resist:1, purseMult:1 },
   hard: { key:'hard', name:'Hard', tag:'A Hung Assembly',
     blurb:'Inherited debt, a restless country, an angrier court, and a caucus that counts every vote.',
     capMult:.85, capFlat:-.5, polCost:1.25, rev:.9, exp:1.1, unrest:1.25, moodBonus:-5, eventPain:1.3,
-    incumbent:-.03, noCollapse:false, treasury:62, debt:290, capital:12, capCap:60, bond:54, resist:1.2 }
+    incumbent:-.03, noCollapse:false, treasury:62, debt:290, capital:12, capCap:60, bond:54, resist:1.2, purseMult:.85 }
 };
 function D() { return DIFFS[(S && S.diff) || 'normal']; }
 function cst(n) { return Math.max(1, Math.round(n * D().polCost)); }
@@ -6069,6 +6069,23 @@ var TRANSITIONS = [
 
 /* ---------------- constitutional acts ---------------- */
 var ACTS = [
+  /* S15f: the law the owner meant -- "unless that law is passed". It is an
+     ACT rather than a statute because the twenty core statute categories hold
+     exactly twenty-four each and that count is a contract; and because what
+     the owner described is binary, which is what an act is. partyIncome is
+     its reader. */
+  { id:'partyFunding', house:'Elections', name:'State Funding of Parties', cost:16,
+    req:'The Assembly sits, and the government holds a third of it',
+    desc:'A grant from the exchequer to every party that returns members, paid on the size of its return and audited. Nobody has to take the donation they would rather refuse.',
+    ok:function (S) { return lowerSits(S) && govShare(S) >= .33 && !S.acts.partyFunding; },
+    done:function (S) { return !!S.acts.partyFunding; },
+    apply:function (S) {
+      S.acts.partyFunding = true;
+      S.ind.corruption = c100(S.ind.corruption - 5);
+      S.ind.liberties = c100(S.ind.liberties + 1.5);
+      mood(S, { prof:4, labour:3, youth:2, smallbiz:-4, tech:-3 });
+      logIt(S, 'The State Funding of Parties Act was carried. Every party that returns members is paid a grant on its return.');
+    } },
   { id:'reconciliation', house:'Senate', name:'Reconciliation Rules', cost:20,
     req:'Government holds 35 percent of the Assembly, and either the Senate has been packed to a lean of 0.35 or below, or reconciliation has been threatened',
     desc:'Carry the programme on a simple majority in the Senate, with no ability to hold it at the desk.',
@@ -7705,6 +7722,32 @@ function enrichState(st, fresh) {
       }
     });
 
+    /* S15f: THE PARTY PURSE. Every party has money of its own, and it is the
+       money that pays for party things -- campaigning, organisers, the press,
+       the caucuses, the interest groups. Until this slice the national
+       treasury paid for all of it: 57 party actions, 27 of them charging the
+       exchequer, including an opposition party attacking the government out of
+       a treasury it does not control, and a "fighting fund" whose own card
+       says the money comes from donors.
+
+       Backfilled here, beside partyRel, for the same reason partyRel is: this
+       is the only pass that runs before every other ensure and before every
+       tick, so every reader downstream can assume a number. Seeded from seats,
+       which is what a party's income is made of. Pure arithmetic, no dice. */
+    st.purse = st.purse || {};
+    PARTIES.forEach(function (p) {
+      if (typeof st.purse[p.id] !== 'number' || !isFinite(st.purse[p.id])) {
+        var pm = ((DIFFS[st.diff] || DIFFS.normal).purseMult) || 1;
+        st.purse[p.id] = Math.round((18 + ((st.seats && st.seats[p.id]) || 0) / CFG.seats * 130) * pm);
+      }
+    });
+    /* st.funding is a live multiplier in supportTargets with a decay in
+       endTurn and, until S15f, NO WRITER ANYWHERE IN THE FILE: the vote model
+       had a slot for what a party's money buys and it was permanently zero.
+       Party spending writes it now (partySpend), so the socket is filled by
+       the thing it was cut for. */
+    st.funding = st.funding || {};
+
     st.regions = st.regions || {};
     REGIONS.forEach(function (r, idx) {
       if (!st.regions[r.id]) {
@@ -8851,8 +8894,10 @@ function factionAction(pid, idx, action) {
   var f = (S.factions[pid] || [])[idx]; if (!f) return;
   var costs = { consult:3, patronage:4, promote:5, discipline:5 }, money = action === 'patronage' ? 5 : 0;
   var c = cst(costs[action] || 0);
-  if (S.capital < c || (money && S.treasury < money)) { flash('The resources are not available.'); return; }
-  captureUndo('Manage ' + f.name); S.capital -= c; if (money) S.treasury -= money;
+  /* S15f: patronage inside your own parliamentary party is the clearest case
+     in the file of the exchequer paying for a party's internal politics. */
+  if (S.capital < c || (money && partyPurse(S, pid) < money)) { flash('The resources are not available.'); return; }
+  captureUndo('Manage ' + f.name); S.capital -= c; if (money) partySpend(S, pid, money);
   if (action === 'consult') { f.loyalty = c100(f.loyalty + 10); S.unity = c100(S.unity + 2); }
   if (action === 'patronage') { f.loyalty = c100(f.loyalty + 17); f.favours += 6; S.ind.corruption = c100(S.ind.corruption + 3); }
   if (action === 'promote') { f.strength = clamp(f.strength + 5, 10, 70); f.loyalty = c100(f.loyalty + 7); S.factions[pid].forEach(function (o) { if (o !== f) o.strength = Math.max(10, o.strength - 2.5); }); }
@@ -10909,12 +10954,12 @@ function partyActions(pid) {
   if (!mine) {
     list.push({ id:'fund', name:'Subsidise the party fund', cost:6, money:10, kind:'boost',
       desc:'Money for agents, halls, printing and the register. The organisation keeps what it builds.',
-      can:function () { return S.treasury >= 10 && !S.banned[pid]; },
-      run:function () { S.treasury -= 10; S.machine[pid] = clamp((S.machine[pid] || 0) + .16, -.8, 1); S.ind.corruption += 2; logIt(S, 'The government put money into the ' + p.short + ' organisation.'); } });
+      can:function () { return partyPurse(S, pid) >= 10 && !S.banned[pid]; },
+      run:function () { S.machine[pid] = clamp((S.machine[pid] || 0) + .16, -.8, 1); S.ind.corruption += 2; logIt(S, 'The government put money into the ' + p.short + ' organisation.'); } });
     list.push({ id:'givepress', name:'Give them the newspapers', cost:8, money:13, kind:'boost',
       desc:'Two dailies and a chain of weeklies swing behind them and stay there.',
-      can:function () { return S.treasury >= 13 && (S.press[pid] || 0) < .3 && !S.banned[pid]; },
-      run:function () { S.treasury -= 13; S.press[pid] = (S.press[pid] || 0) + .1; S.ind.corruption += 3; logIt(S, 'The press was turned over to the ' + p.short + '.'); } });
+      can:function () { return partyPurse(S, pid) >= 13 && (S.press[pid] || 0) < .3 && !S.banned[pid]; },
+      run:function () { S.press[pid] = (S.press[pid] || 0) + .1; S.ind.corruption += 3; logIt(S, 'The press was turned over to the ' + p.short + '.'); } });
     list.push({ id:'drawseats', name:'Draw them favourable seats', cost:9, kind:'boost',
       desc:'A boundary commission that finds their voters conveniently concentrated. Permanent and cumulative.',
       can:function () { return lowerSits(S) && (S.gerry[pid] || 0) < .34 && !S.banned[pid]; },
@@ -10931,9 +10976,9 @@ function partyActions(pid) {
       } });
     list.push({ id:'defect', name:'Encourage defections', cost:8, money:9, kind:'boost',
       desc:'Members cross the floor to them, with the promise of a safe seat and a place on the front bench.',
-      can:function () { return lowerOn(S) && S.treasury >= 9 && !S.banned[pid]; },
+      can:function () { return lowerOn(S) && partyPurse(S, pid) >= 9 && !S.banned[pid]; },
       run:function () {
-        S.treasury -= 9;
+        
         var take = Math.round(CFG.seats * .035), got = 0;
         PARTIES.slice().sort(function (a, b) { return (S.seats[b.id] || 0) - (S.seats[a.id] || 0); }).forEach(function (q) {
           if (q.id === pid || got >= take) return;
@@ -10947,9 +10992,9 @@ function partyActions(pid) {
       } });
     list.push({ id:'pushLeft', name:'Push their platform your way', cost:8, money:7, kind:'boost',
       desc:'Fund the wing of the party that agrees with you and let it win the next policy conference.',
-      can:function () { return S.treasury >= 7 && !S.banned[pid]; },
+      can:function () { return partyPurse(S, pid) >= 7 && !S.banned[pid]; },
       run:function () {
-        S.treasury -= 7;
+        
         var g = govPos(S), q = ppos(S, pid);
         S.push = S.push || {};
         S.push[pid] = { e: (g.e - q.e) * .3, a: (g.a - q.a) * .3 };
@@ -11000,8 +11045,8 @@ function partyActions(pid) {
       } });
     list.push({ id:'infiltrate', name:'Place people inside them', cost:7, money:6, kind:'boost',
       desc:'Staffers, treasurers and a press officer, all of whom will still be there in ten years.',
-      can:function () { return S.treasury >= 6 && !S.banned[pid]; },
-      run:function () { S.treasury -= 6; S.coopted[pid] = true; S.ind.corruption += 4;
+      can:function () { return partyPurse(S, pid) >= 6 && !S.banned[pid]; },
+      run:function () { S.coopted[pid] = true; S.ind.corruption += 4;
         S.push = S.push || {}; var g = govPos(S), q = ppos(S, pid);
         S.push[pid] = { e:(g.e - q.e) * .18, a:(g.a - q.a) * .18 };
         logIt(S, 'The ' + p.short + ' machine was quietly staffed from the government side.'); } });
@@ -11020,8 +11065,8 @@ function partyActions(pid) {
       } });
     list.push({ id:'audit', name:'Audit their accounts', cost:6, money:4,
       desc:'Federal auditors through the party fund. Something is always wrong.',
-      can:function () { return S.treasury >= 4 && !S.banned[pid]; },
-      run:function () { S.treasury -= 4;
+      can:function () { return partyPurse(S, pid) >= 4 && !S.banned[pid]; },
+      run:function () { 
         S.machine[pid] = clamp((S.machine[pid] || 0) - .12, -.8, 1);
         S.ind.corruption += 3; mood(S, { prof:-3 });
         logIt(S, 'The ' + p.short + ' accounts were placed under federal audit.'); } });
@@ -11169,8 +11214,8 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
       } });
     list.push({ id:'coopt', name:'Co-opt the leader', cost:9, money:6,
       desc:'A ministry, a peerage, or a colonial governorship.',
-      can:function () { return S.treasury >= 6 && !S.coopted[pid] && !S.banned[pid]; },
-      run:function () { S.treasury -= 6; S.coopted[pid] = true; S.machine[pid] = clamp((S.machine[pid] || 0) - .05, -.8, 1); S.ind.corruption += 3; logIt(S, 'The ' + p.short + ' leader accepted office.'); } });
+      can:function () { return partyPurse(S, pid) >= 6 && !S.coopted[pid] && !S.banned[pid]; },
+      run:function () { S.coopted[pid] = true; S.machine[pid] = clamp((S.machine[pid] || 0) - .05, -.8, 1); S.ind.corruption += 3; logIt(S, 'The ' + p.short + ' leader accepted office.'); } });
     list.push({ id:'discredit', name:'Wreck the organisation', cost:8,
       desc:'Prosecute the agents, sue the newspaper, and let the scandal run through a whole session.',
       can:function () { return !S.banned[pid]; },
@@ -11217,20 +11262,20 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
   } else {
     list.push({ id:'organise', name:'Build the party machine', cost:7, money:9, kind:'boost',
       desc:'Paid agents in every constituency, a register kept up to date, halls booked a year ahead.',
-      can:function () { return S.treasury >= 9; },
-      run:function () { S.treasury -= 9; S.machine[pid] = clamp((S.machine[pid] || 0) + .16, -.8, 1); logIt(S, 'The party organisation was put on a paid footing.'); } });
+      can:function () { return partyPurse(S, pid) >= 9; },
+      run:function () { S.machine[pid] = clamp((S.machine[pid] || 0) + .16, -.8, 1); logIt(S, 'The party organisation was put on a paid footing.'); } });
     list.push({ id:'press', name:'Buy the newspapers', cost:8, money:13, kind:'boost',
       desc:'Two dailies and a chain of provincial weeklies, bought through a friendly company.',
-      can:function () { return S.treasury >= 13 && (S.press[pid] || 0) < .3; },
-      run:function () { S.treasury -= 13; S.press[pid] = (S.press[pid] || 0) + .1; S.ind.corruption += 3; mood(S, { youth:-4, prof:-2 }); logIt(S, 'The party acquired a chain of newspapers.'); } });
+      can:function () { return partyPurse(S, pid) >= 13 && (S.press[pid] || 0) < .3; },
+      run:function () { S.press[pid] = (S.press[pid] || 0) + .1; S.ind.corruption += 3; mood(S, { youth:-4, prof:-2 }); logIt(S, 'The party acquired a chain of newspapers.'); } });
     list.push({ id:'gerry', name:'Redraw the constituencies', cost:9, kind:'boost',
       desc:'A boundary commission of reliable men. Permanent, and cumulative.',
       can:function () { return lowerSits(S) && (S.gerry[pid] || 0) < .34; },
       run:function () { S.gerry[pid] = (S.gerry[pid] || 0) + .09; S.ind.corruption += 4; S.ind.liberties -= 2; mood(S, { youth:-6, prof:-4 }); logIt(S, 'The constituency boundaries were redrawn.'); } });
     list.push({ id:'register', name:'Work the register', cost:6, money:5, kind:'boost',
       desc:'Objections to hostile voters, and every friendly lodger entered twice over.',
-      can:function () { return lowerSits(S) && S.treasury >= 5; },
-      run:function () { S.treasury -= 5; S.machine[pid] = clamp((S.machine[pid] || 0) + .08, -.8, 1); S.ind.corruption += 3; logIt(S, 'The electoral register was worked over by the agents.'); } });
+      can:function () { return lowerSits(S) && partyPurse(S, pid) >= 5; },
+      run:function () { S.machine[pid] = clamp((S.machine[pid] || 0) + .08, -.8, 1); S.ind.corruption += 3; logIt(S, 'The electoral register was worked over by the agents.'); } });
     list.push({ id:'purgeList', name:'Deselect the disloyal', cost:8, kind:'boost',
       desc:'Refuse the endorsement to your own members who have voted against you. The caucus gets smaller and quieter.',
       can:function () { return lowerSits(S); },
@@ -11239,8 +11284,8 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
         logIt(S, 'A round of deselections went through the government caucus.'); } });
     list.push({ id:'conference', name:'Hold a policy conference', cost:5, money:4, kind:'boost',
       desc:'Four days, a thousand delegates, and a platform you are then bound to.',
-      can:function () { return S.treasury >= 4; },
-      run:function () { S.treasury -= 4;
+      can:function () { return partyPurse(S, pid) >= 4; },
+      run:function () { 
         S.machine[pid] = clamp((S.machine[pid] || 0) + .09, -.8, 1);
         var g = govPos(S), h = PARTY[pid].home, q = ppos(S, pid);
         q.e += (h.e - q.e) * .25; q.a += (h.a - q.a) * .25;
@@ -11357,8 +11402,14 @@ list.push({ id:'reselect', name:'Change your own leader', cost:9, kind:'internal
       can:function () { return true; },
       run:function () { S.capital += 3; S.ind.corruption += 1; logIt(S, 'The whips brought the backbenches into line.'); } });
   }
-  var moneyHandled = ['fund','givepress','defect','pushLeft','infiltrate','audit','coopt','organise','press','register','conference'];
-  list.forEach(function (a) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.moneyHandled = moneyHandled.indexOf(a.id) >= 0; });
+  /* S15f. This used to carry a hand-kept array of eleven ids whose run()
+     bodies deducted the money themselves, with doAction skipping the
+     subtraction for exactly those and guarding on the treasury for all of
+     them. The eleven inline deductions are gone and doAction pays for every
+     party action uniformly, out of the PARTY's purse: a party action is party
+     business by definition, which is why the whole list is stamped here
+     rather than two hundred buttons being re-pointed one at a time. */
+  list.forEach(function (a) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.purse = 'party'; });
   return list;
 }
 
@@ -11394,15 +11445,29 @@ function actionOpen(a) {
 }
 function actionsIn(cat) { return ACTIONS.filter(function (a) { return a.cat === cat; }); }
 
+/* S15f: which purse an action is paid out of. It is a property of WHERE THE
+   ACTION CAME FROM, not of each of the two hundred buttons that draw it: a
+   party action is party business by definition, so partyActions stamps the
+   whole list at once and nothing else had to be edited. */
+function actionPurse(a) { return a && a.purse === 'party' ? playParty(S) : null; }
+function actionCanPay(a, m) {
+  if (!a.pay || !m) return true;
+  var from = actionPurse(a);
+  return (from ? partyPurse(S, from) : S.treasury) >= m;
+}
 function doAction(a, opt) {
   var c = actionCost(a, opt), m = actionMoney(a, opt);
+  var purse = actionPurse(a);
   if (S.capital < c) { flash('Not enough political capital.'); return; }
   if (!actionOpen(a)) { flash('That is not available now.'); return; }
   if (!actionReady(a)) { flash('Not again so soon. ' + actionWait(a) + ' years to wait.'); return; }
-  if (a.pay && m && S.treasury < m) { flash('The treasury cannot meet it.'); return; }
+  if (a.pay && m && !actionCanPay(a, m)) {
+    flash(purse ? 'The ' + PARTY[purse].short + ' cannot meet it out of its own funds.' : 'The treasury cannot meet it.');
+    return;
+  }
   captureUndo(a.name);
   S.capital -= c;
-  if (a.pay && m && !a.moneyHandled) S.treasury -= m;
+  if (a.pay && m) { if (purse) partySpend(S, purse, m); else S.treasury -= m; }
   (opt && opt.run ? opt.run : a.run)(S);
   S.uses[actionKey(a)] = (S.uses[actionKey(a)] || 0) + 1;
   if (a.cool) S.cooldown[actionKey(a)] = S.turn;
@@ -12324,7 +12389,7 @@ function actionCard(a) {
   var opts = a.opts || [{ label: a.verb || 'Do it' }];
   var btns = opts.map(function (o, i) {
     var c = actionCost(a, o), m = actionMoney(a, o);
-    var can = open && ready && S.capital >= c && (!a.pay || !m || S.treasury >= m);
+    var can = open && ready && S.capital >= c && actionCanPay(a, m);
     return '<button class="btn' + (i ? ' ghost' : '') + '" data-act="' + a.id + '" data-opt="' + i + '"' +
       (can ? '' : ' disabled') + (o.tip ? ' title="' + esc(o.tip) + '"' : '') + '>' + esc(o.label) +
       ' <span class="c">' + c + (m ? ', ' + fmc(m) : '') + '</span></button>';
@@ -12588,7 +12653,7 @@ function viewFederation() {
 function factionPanel() {
   var me = playParty(S), fs = S.factions[me] || [], lead = fs.slice().sort(function (a,b) { return b.strength-a.strength; })[0];
   var cards = fs.map(function (f, idx) {
-    function fb(a,l,c,m) { var ok=S.capital>=cst(c)&&(!m||S.treasury>=m); return '<button class="btn ghost" data-faction-party="'+me+'" data-faction="'+idx+'" data-faction-action="'+a+'"'+(ok?'':' disabled')+'>'+l+' <span class="c">'+cst(c)+(m?', '+fmc(m):'')+'</span></button>'; }
+    function fb(a,l,c,m) { var ok=S.capital>=cst(c)&&(!m||partyPurse(S,me)>=m); return '<button class="btn ghost" data-faction-party="'+me+'" data-faction="'+idx+'" data-faction-action="'+a+'"'+(ok?'':' disabled')+'>'+l+' <span class="c">'+cst(c)+(m?', '+fmc(m):'')+'</span></button>'; }
     var marker = clamp((ppos(S,me).e + f.e + 1.5) / 3 * 100,0,100);
     return '<article class="card faction-card '+(f===lead?'leading':'')+'"><div class="bill-title"><h3>'+esc(f.name)+'</h3><span class="bill-no">'+Math.round(f.strength)+'% of party</span></div><p class="desc">Demands '+esc(f.demand)+'.</p>'+
       '<div class="row"><span class="lab small">Loyalty</span><span class="bar '+(f.loyalty>60?'b-ok':(f.loyalty<40?'b-bad':'b-ox'))+'"><i style="width:'+f.loyalty.toFixed(0)+'%"></i></span><span class="val">'+Math.round(f.loyalty)+'</span></div>'+
@@ -12596,6 +12661,88 @@ function factionPanel() {
       '<div class="btnrow">'+fb('consult','Consult',3,0)+fb('patronage','Reward',4,5)+fb('promote','Promote',5,0)+fb('discipline','Discipline',5,0)+'</div></article>';
   }).join('');
   return '<div class="panel"><h2>The Caucuses Inside the '+esc(PARTY[me].short)+'</h2><p class="note">The party is not one mind. Each caucus has weight, a policy position and loyalty to the leadership. Their weighted loyalty feeds unity; marginalising one changes who the party is.</p><div class="cards">'+cards+'</div></div>';
+}
+
+/* ==========================================================
+   S15f: THE PARTY FUNDS PANEL.
+   Three channels with three readers, and a card per party so the money the
+   other six raise is visible -- their spending writes st.funding, which the
+   vote model reads.
+   ========================================================== */
+var PARTY_FUND_ACTS = [
+  { id:'drive',  name:'Hold a fundraising drive', cost:2, note:'Dinners, subscriptions and a letter to everyone on the list. What it raises depends on who gives to you.' },
+  { id:'appeal', name:'Appeal to the membership', cost:3, note:'A smaller sum, raised from your own members, and they remember being asked.' },
+  { id:'graft',  name:'Take what is offered', cost:1, note:'Stop asking where it came from. A third again every session, and corruption and liberties pay for it.' },
+  { id:'clean',  name:'Refuse what is offered', cost:2, note:'Close the account nobody wants to explain. The income falls back and the professions notice.' }
+];
+function partyFundAction(id) {
+  var me = playParty(S), inc = partyIncome(S, me);
+  if (!S.purseGraft) S.purseGraft = {};
+  if (id === 'drive') {
+    if (!pv5Spend(2, 0, 'Hold a fundraising drive')) return;
+    var raise = Math.round(inc.donors * 1.6 + 8);
+    partyEarn(S, me, raise);
+    S.ind.corruption = c100(S.ind.corruption + .8);
+    logIt(S, 'The ' + PARTY[me].short + ' raised ' + fmc(raise) + ' from its donors.');
+  } else if (id === 'appeal') {
+    if (!pv5Spend(3, 0, 'Appeal to the membership')) return;
+    var got = Math.round(inc.dues * 1.4 + 4);
+    partyEarn(S, me, got);
+    S.unity = c100((S.unity || 60) + 2);
+    S.machine[me] = clamp((S.machine[me] || 0) + .02, -.8, 1);
+    logIt(S, 'The ' + PARTY[me].short + ' raised ' + fmc(got) + ' from its own members.');
+  } else if (id === 'graft') {
+    if (S.purseGraft[me]) { flash('The account is already open.'); return; }
+    if (!pv5Spend(1, 0, 'Take what is offered')) return;
+    S.purseGraft[me] = true;
+    S.ind.corruption = c100(S.ind.corruption + 3);
+    logIt(S, 'The ' + PARTY[me].short + ' stopped asking where the money came from.');
+    addNews(S, 'Party Funds', 'Questions about the ' + PARTY[me].short + ' accounts',
+      'Nobody has produced a document, and nobody has produced an explanation either.', 'watch');
+  } else if (id === 'clean') {
+    if (!S.purseGraft[me]) { flash('There is nothing to close.'); return; }
+    if (!pv5Spend(2, 0, 'Refuse what is offered')) return;
+    delete S.purseGraft[me];
+    S.ind.corruption = c100(S.ind.corruption - 4);
+    mood(S, { prof:3 });
+    logIt(S, 'The ' + PARTY[me].short + ' closed the account it could not explain.');
+  }
+  render();
+}
+document.addEventListener('click', function (e) {
+  var b = e.target && e.target.closest && e.target.closest('[data-fundact]');
+  if (!b || b.disabled) return;
+  partyFundAction(b.getAttribute('data-fundact'));
+});
+function partyFundsPanel() {
+  var me = playParty(S), lv = !!(S.acts && S.acts.partyFunding);
+  if (!S.purseGraft) S.purseGraft = {};
+  var rows = PARTIES.slice().sort(function (a, b) { return (S.seats[b.id] || 0) - (S.seats[a.id] || 0); }).map(function (p) {
+    var inc = partyIncome(S, p.id), have = partyPurse(S, p.id);
+    var w = clamp(have / 260 * 100, 0, 100);
+    return '<div class="row"><span class="lab"><span class="dot" style="background:' + p.color + '"></span> ' + esc(p.short) +
+      (p.id === me ? ' (yours)' : '') + '</span>' +
+      '<span class="bar ' + (have > 60 ? 'b-ok' : (have < 12 ? 'b-bad' : 'b-ox')) + '"><i style="width:' + w.toFixed(0) + '%"></i></span>' +
+      '<span class="val">' + fmc(have) + ' · ' + fmc(inc.total) + ' a session</span></div>';
+  }).join('');
+  var mine = partyIncome(S, me);
+  var chan = '<table><tbody>' +
+    '<tr><td>Dues from the seats and the members</td><td class="num">' + fmc(mine.dues) + '</td></tr>' +
+    '<tr><td>Donations from the blocs that are close to you</td><td class="num">' + fmc(mine.donors) + '</td></tr>' +
+    (mine.graft ? '<tr><td>What nobody asked about</td><td class="num">' + fmc(mine.graft) + '</td></tr>' : '') +
+    '<tr><td>State funding' + (lv ? '' : ' (the Act has not been carried)') + '</td><td class="num">' + fmc(mine.subsidy) + '</td></tr>' +
+    '<tr><th>A session</th><td class="num">' + fmc(mine.total) + '</td></tr></tbody></table>';
+  var btns = PARTY_FUND_ACTS.map(function (a) {
+    var off = (a.id === 'graft' && S.purseGraft[me]) || (a.id === 'clean' && !S.purseGraft[me]) || S.capital < cst(a.cost);
+    return '<button class="btn ghost" data-fundact="' + a.id + '"' + (off ? ' disabled' : '') +
+      ' title="' + esc(a.note) + '">' + esc(a.name) + ' <span class="c">' + cst(a.cost) + '</span></button>';
+  }).join('');
+  return '<div class="panel"><h2>Party Funds</h2>' +
+    '<p class="note">A party pays for its own campaigning, its own organisers, its own newspapers and its own caucuses. ' +
+    'The national treasury pays for none of it' + (lv ? ', except the grant the State Funding of Parties Act makes to every party that returns members' : '') +
+    '. Money spent on the party is felt at the ballot and wears off over about three sessions.</p>' +
+    chan + '<div class="btnrow">' + btns + '</div>' +
+    '<div class="subhead" style="margin-top:12px">What every party has</div>' + rows + '</div>';
 }
 
 function viewParties() {
@@ -12610,7 +12757,7 @@ function viewParties() {
         if (kind === 'internal') return a.kind === 'internal';
         return !a.kind;
       }).map(function (a) {
-        var ac=actionCost(a), am=actionMoney(a), ok = (!a.can || a.can()) && actionReady(a) && S.capital >= ac && (!am || S.treasury >= am);
+        var ac=actionCost(a), am=actionMoney(a), ok = (!a.can || a.can()) && actionReady(a) && S.capital >= ac && actionCanPay(a, am);
         return '<button class="btn ' + (kind ? '' : 'ghost') + '" data-party="' + p.id + '" data-pact="' + a.id + '"' +
           (ok ? '' : ' disabled') + ' title="' + esc(a.desc) + '">' + esc(a.name) +
           ' <span class="c">' + ac + (am ? ', ' + fmc(am) : '') + '</span></button>';
@@ -12672,7 +12819,7 @@ function viewParties() {
       '</tbody></table></div>';
     var cards2 = PARTIES.slice().sort(function (a, b) { return (S.seats[b.id] || 0) - (S.seats[a.id] || 0); }).map(function (p) {
       var acts = partyActions(p.id).map(function (a) {
-        var ac=actionCost(a), am=actionMoney(a), ok = (!a.can || a.can()) && actionReady(a) && S.capital >= ac && (!am || S.treasury >= am);
+        var ac=actionCost(a), am=actionMoney(a), ok = (!a.can || a.can()) && actionReady(a) && S.capital >= ac && actionCanPay(a, am);
         return '<button class="btn ghost" data-party="' + p.id + '" data-pact="' + a.id + '"' +
           (ok ? '' : ' disabled') + ' title="' + esc(a.desc) + '">' + esc(a.name) +
           ' <span class="c">' + ac + (am ? ', ' + fmc(am) : '') + '</span></button>';
@@ -12683,7 +12830,7 @@ function viewParties() {
         (S.coopted[p.id] ? '<span class="tag up">Leader co-opted</span>' : '') + '</div>' +
         '<div class="btnrow">' + acts + '</div></div>';
     }).join('');
-    return politicalInboxPanel() + factionPanel() + closedPanel + '<div class="panel"><h2>The Other Parties</h2>' +
+    return politicalInboxPanel() + partyFundsPanel() + factionPanel() + closedPanel + '<div class="panel"><h2>The Other Parties</h2>' +
       '<p class="note">They cannot be beaten at a poll because there is no poll. They can be funded, split, absorbed or dissolved.</p>' +
       '<div class="cards">' + cards2 + '</div></div>';
   }
@@ -12746,7 +12893,7 @@ function viewParties() {
     '</tbody></table>' +
     '<div class="cards" style="margin-top:14px">' + actionsIn('Agenda').map(actionCard).join('') + '</div></div>';
 
-  return politicalInboxPanel() + agendaPanel + factionPanel() + projPanel + ownPanel + leaders +
+  return politicalInboxPanel() + partyFundsPanel() + agendaPanel + factionPanel() + projPanel + ownPanel + leaders +
     '<div class="panel"><h2>Parties</h2>' +
     '<p class="note">You govern as whichever party holds the government. Money, favours, newspapers and boundaries move the rest, and any of them can be lifted into power and played from the inside.</p>' +
     '<div class="cards">' + cards + '</div></div>' +
@@ -13003,10 +13150,19 @@ function viewLedger() {
   }
 
   var cap = capitalIncome(S);
+  /* S15f: this table re-typed eleven of the base's twenty-odd terms by hand,
+     omitted the rest, omitted all five wrappers, and printed the REAL
+     capitalIncome as its total -- so the rows and the total were computed by
+     two different code paths and were never expected to sum. Two things fix
+     it without pretending the wrappers can be itemised: the majority row
+     carries the same lowerSits guard the base got in S15a, and everything
+     the table cannot itemise is measured as one residual against the real
+     figure rather than left out. In opposition the base replaces the whole
+     formula, so the table is replaced with it. */
   var capRows = [
     ['Standing of the government', (approval(S) - 45) / 10],
     ['Form of government', FORMS[S.form].capBonus],
-    ['Majority or coalition', seatShare(S, [S.ruling]) > .5 ? 1.4 : (S.partner ? -.8 : 0)],
+    ['Majority or coalition', !lowerSits(S) ? 0 : (seatShare(S, [S.ruling]) > .5 ? 1.4 : (S.partner ? -.8 : 0))],
     ['Backbench strain', -agendaStrain(S)],
     ['Strain of the new agenda', -pushback(S).strain],
     ['Public disorder', -S.unrest / 45],
@@ -13023,8 +13179,22 @@ function viewLedger() {
     '<table style="margin-top:14px"><thead><tr><th>Expenditure</th><th class="num">Amount</th></tr></thead><tbody>' + rows(expRows) +
     '<tr><th>Total expenditure</th><td class="num">' + fmc(b.exp) + '</td></tr>' +
     '<tr><th>Balance</th><td class="num ' + (b.net >= 0 ? 'pos' : 'neg') + '">' + fm(b.net) + '</td></tr></tbody></table></div>' +
-    '<div class="panel"><h2>Political Capital</h2><table><tbody>' +
+    '<div class="panel"><h2>Political Capital</h2>' +
+    (standing(S) === 'opposition'
+      ? '<p class="note">In opposition the session\'s capital is not the government\'s arithmetic at all: it is a base of 1.6, what the country thinks of the government, and what your own organisation and network are worth. The rows below are the government\'s and do not apply to you.</p>'
+      : '') +
+    '<table><tbody>' +
     capRows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td class="num ' + (r[1] >= 0 ? 'pos' : 'neg') + '">' + (r[1] >= 0 ? '+' : '') + r[1].toFixed(1) + '</td></tr>'; }).join('') +
+    (function () {
+      /* Difficulty, the standing modifiers and all five wrappers of
+         capitalIncome, measured as what the real figure has that the rows do
+         not, instead of a list that goes stale the next time one is added. */
+      var sum = 0; capRows.forEach(function (r) { sum += r[1]; });
+      var rest = cap - sum;
+      return Math.abs(rest) < .05 ? ''
+        : '<tr><td>Difficulty, doctrine, the order book, the constitution and the floor</td><td class="num ' +
+          (rest >= 0 ? 'pos' : 'neg') + '">' + (rest >= 0 ? '+' : '') + rest.toFixed(1) + '</td></tr>';
+    })() +
     '<tr><th>Per session</th><td class="num">' + (cap >= 0 ? '+' : '') + cap.toFixed(1) + '</td></tr></tbody></table></div>' +
     '<div class="panel"><h2>Treasury Actions</h2><div class="cards">' +
     actionsIn('Treasury').map(actionCard).join('') + '</div></div>' +
@@ -13479,7 +13649,13 @@ function pv5EnsureState(st, fresh) {
     }
   });
   Object.keys(st.coalitionDeals).forEach(function(pid){if((st.coalition||[]).indexOf(pid)<0)st.coalitionDeals[pid].former=true;});
-  st.campaign=st.campaign||{warChest:8,field:12,media:8,data:6,debate:0,message:'jobs',targets:{},lastAction:-99,history:[]};
+  /* S15f: warChest is gone. It was a party purse with one earner, one
+     three-point deduction and a single read capped at 30 and weighted .09,
+     and nothing in the file ever paid for a party action out of it. What it
+     was trying to be is st.purse, which every party has and which every party
+     action is now paid from. A save that carries the old key keeps it and
+     nothing reads it. */
+  st.campaign=st.campaign||{field:12,media:8,data:6,debate:0,message:'jobs',targets:{},lastAction:-99,history:[]};
   st.campaign.targets=st.campaign.targets||{};
   REGIONS.forEach(function(r){if(st.campaign.targets[r.id]===undefined)st.campaign.targets[r.id]=0;});
   st.fiscal=st.fiscal||{stance:'balanced',priority:'productivity',revenue:'broad',changed:-99,credibility:58};
@@ -13656,7 +13832,7 @@ function pv5CoalitionTick(st){
 function pv5SessionsToBallot(st){return electionsOn(st)?Math.max(0,nextBallot(st.turn)-st.turn):null;}
 function pv5CampaignPower(st){
   var c=st.campaign||{},near=pv5SessionsToBallot(st),decay=near===null?.45:(near<=2?1:near<=5?.82:.62);
-  var assets=(c.field||0)*.28+(c.media||0)*.25+(c.data||0)*.18+(c.debate||0)*.2+Math.min(30,c.warChest||0)*.09;
+  var assets=(c.field||0)*.28+(c.media||0)*.25+(c.data||0)*.18+(c.debate||0)*.2+Math.min(30,partyPurse(st,playParty(st))*.35)*.09;
   var issue=ISSUE[c.message||'jobs'],fit=issue?(st.salience[issue.id]||40)/100:0;
   var targetWeight=0;REGIONS.forEach(function(r){targetWeight+=Math.min(3,(c.targets&&c.targets[r.id])||0)*r.pop/100;});
   var end=0;PV5_INTERESTS.forEach(function(g){var q=st.interests&&st.interests[g.id];if(q&&q.endorsement)end+=q.influence/100;});
@@ -13673,14 +13849,36 @@ var pv5RunElectionV4=runElection;
 runElection=function(st,early){
   var before=pv5CampaignPower(st),r=pv5RunElectionV4(st,early),me=playParty(st),share=r.res[me]||0;
   st.campaign.history.unshift({turn:st.turn,share:share,seats:r.seats[me]||0,power:before});if(st.campaign.history.length>12)st.campaign.history.length=12;
-  st.campaign.warChest=Math.round((st.campaign.warChest||0)*.22);st.campaign.field*=.58;st.campaign.media*=.36;st.campaign.data*=.72;st.campaign.debate=0;
+  st.campaign.field*=.58;st.campaign.media*=.36;st.campaign.data*=.72;st.campaign.debate=0;
   REGIONS.forEach(function(reg){st.campaign.targets[reg.id]=Math.max(0,Math.floor((st.campaign.targets[reg.id]||0)/2));});
   PV5_INTERESTS.forEach(function(g){if(st.interests[g.id])st.interests[g.id].endorsement=false;});
   st.v5Stats.campaigns++;return r;
 };
+/* S15f: every party is paid its own income at the close of every session,
+   including the six the player does not lead -- which is what makes an AI
+   party's finances matter at all, because partySpend writes st.funding and
+   supportTargets reads it. */
+function partyPurseTick(st) {
+  PARTIES.forEach(function (p) {
+    var inc = partyIncome(st, p.id);
+    partyEarn(st, p.id, inc.total);
+    /* An AI party spends what it raises on the thing the vote model reads.
+       The player's own party spends nothing it was not told to. */
+    if (p.id !== playParty(st)) {
+      var spend = Math.min(partyPurse(st, p.id), inc.total * .7);
+      if (spend > 0) partySpend(st, p.id, spend);
+    }
+  });
+  /* Money raised corruptly is money somebody knows about. */
+  var g = st.purseGraft && st.purseGraft[playParty(st)];
+  if (g) {
+    st.ind.corruption = c100(st.ind.corruption + .9);
+    st.ind.liberties = c100(st.ind.liberties - .3);
+  }
+}
 function pv5CampaignTick(st){
   var c=st.campaign;c.field=Math.max(0,c.field*.985);c.media=Math.max(0,c.media*.9);c.data=Math.max(0,c.data*.99);c.debate=Math.max(0,c.debate-5);
-  c.warChest=Math.max(0,c.warChest+(st.machine[playParty(st)]||0)*1.8+.6);
+  partyPurseTick(st);
 }
 
 /* ---------- fiscal framework ---------- */
@@ -13760,11 +13958,96 @@ respondInbox=function(id,choice){
   it.outcome=choice;it.resolved=S.turn;S.inbox=S.inbox.filter(function(x){return x.id!==id;});S.inboxArchive.unshift(it);render();toast('Political paper answered.');
 };
 
-/* ---------- direct system actions ---------- */
-function pv5Spend(cap,money,label){
-  cap=cst(cap||0);money=money||0;if(S.capital<cap||(money&&S.treasury<money)){flash('The resources are not available.');return false;}
-  captureUndo(label);S.capital-=cap;S.treasury-=money;return true;
+/* ==========================================================
+   S15f: THE PARTY PURSE.
+
+   `pv5Spend(cap, money, label)` charged S.treasury from sixty-seven call
+   sites, and the owner's complaint is exactly right about what that means: a
+   party in opposition bought newspapers, organisers, a fighting fund and a
+   press office out of a national treasury it does not control, and the
+   government paid for its own campaign with public money whether or not a
+   statute allowed it.
+
+   The fourth argument is the purse. It defaults to the nation, so no call
+   site changed behaviour until it was re-pointed.
+   ========================================================== */
+function partyPurse(st, pid) {
+  if (!st.purse) st.purse = {};
+  var v = st.purse[pid];
+  return (typeof v === 'number' && isFinite(v)) ? v : 0;
 }
+/* Money leaving a party's own hands. It also writes st.funding -- the live
+   multiplier in supportTargets that had a decay in endTurn and no writer
+   anywhere in the file, so the vote model's slot for what a party's money
+   buys was permanently zero. The decay is x.6 a session, so a party that
+   stops spending loses it. */
+function partySpend(st, pid, money) {
+  if (!money) return;
+  if (!st.purse) st.purse = {};
+  st.purse[pid] = partyPurse(st, pid) - money;
+  if (!st.funding) st.funding = {};
+  st.funding[pid] = clamp((st.funding[pid] || 0) + money * .002, 0, .35);
+}
+function partyEarn(st, pid, money) {
+  if (!st.purse) st.purse = {};
+  st.purse[pid] = clamp(partyPurse(st, pid) + money, -20, 2000);
+}
+/* What a party raises in a session, and where from. Three channels, each with
+   a reader that can be pointed at: DUES from the seats it holds and the
+   organisation behind them; DONATIONS from the blocs that are close to it,
+   weighted by what those blocs have to give; and a STATE SUBSIDY, which is
+   only there when the statute is. */
+function partyIncome(st, pid) {
+  var d = DIFFS[(st && st.diff) || 'normal'] || DIFFS.normal;
+  var seats = ((st.seats && st.seats[pid]) || 0) / CFG.seats;
+  var machine = clamp((st.machine && st.machine[pid]) || 0, -.8, 1);
+  /* Dues: members pay them, and the machine is what the file has always used
+     for how many members there are. */
+  var dues = 8 + seats * 70 + Math.max(0, machine) * 30;
+  /* Donations: a bloc gives to a party it is close to, and the propertied
+     blocs have more to give. BLOC_WEALTH is the file's own table for that and
+     was read in exactly one place before this. */
+  var donors = 0;
+  BLOCS.forEach(function (b) {
+    var fit = affOf(st, pid, b.id);
+    if (fit <= 0) return;
+    donors += (BLOC_WEALTH[b.id] || 1) * b.pop * fit * ((st.blocs && st.blocs[b.id]) || 50) / 100 * 54;
+  });
+  /* And the organisations, for the party whose relations the file models. */
+  if (pid === playParty(st) && st.interests) {
+    PV5_INTERESTS.forEach(function (g) {
+      var q = st.interests[g.id]; if (!q) return;
+      if (q.relation < 55) return;
+      donors += (q.relation - 55) / 45 * (q.influence || 50) / 100 * 9;
+      if (q.endorsement) donors += 4;
+    });
+  }
+  /* The State Funding of Parties Act, the law the owner meant: while it
+     stands the exchequer pays every party that returns members a grant on the
+     size of its return, and the party purse stops being private money alone. */
+  var subsidy = (st.acts && st.acts.partyFunding) ? (12 + seats * 130) : 0;
+  var graft = 0;
+  if (st.purseGraft && st.purseGraft[pid]) graft = (dues + donors) * .35;
+  /* The tier's own dial, not the budget's: the owner asked that raising party
+     money on Very easy be a cake walk, and d.rev is 2 there for reasons that
+     belong to the exchequer. */
+  var k = d.purseMult || 1;
+  var total = (dues + donors + subsidy + graft) * k;
+  return { dues:dues * k, donors:donors * k, subsidy:subsidy * k, graft:graft * k, total:total };
+}
+/* ---------- direct system actions ---------- */
+function pv5Spend(cap,money,label,purse){
+  cap=cst(cap||0);money=money||0;
+  var from = purse && PARTY[purse] ? purse : null;
+  var have = from ? partyPurse(S, from) : S.treasury;
+  if(S.capital<cap||(money&&have<money)){flash(from?'The '+PARTY[from].short+' cannot meet it out of its own funds.':'The resources are not available.');return false;}
+  captureUndo(label);S.capital-=cap;
+  if (from) partySpend(S, from, money); else S.treasury-=money;
+  return true;
+}
+/* The purse of the party the player leads, which is what every re-pointed
+   call site means by "party money". */
+function myPurse() { return playParty(S); }
 function pv5OpenAppointment(key){
   var row=pv5PortfolioRows().filter(function(x){return x.key===key;})[0];if(!row)return;
   if(!holdsDept(S,row.office)&&inPower(S)){flash('That executive office is controlled outside your governing parties.');return;}
@@ -13891,9 +14174,9 @@ function pv5InterestAction(id,action){
   if(action==='meet'){
     if(!pv5Spend(2,0,'Meet '+g.name))return;q.relation=c100(q.relation+9);q.lastMet=S.turn;logIt(S,'The leadership met the '+g.name+'.');
   }else if(action==='access'){
-    if(!pv5Spend(3,3,'Grant access to '+g.name))return;q.relation=c100(q.relation+14);q.access+=10;S.ind.corruption=c100(S.ind.corruption+2);logIt(S,g.name+' was given formal access to the policy process.');
+    if(!pv5Spend(3,3,'Grant access to '+g.name,myPurse()))return;q.relation=c100(q.relation+14);q.access+=10;S.ind.corruption=c100(S.ind.corruption+2);logIt(S,g.name+' was given formal access to the policy process.');
   }else if(action==='endorse'){
-    if(q.relation<58){flash('The relationship is not strong enough for an endorsement.');return;}if(!pv5Spend(3,5,'Seek endorsement from '+g.name))return;q.endorsement=true;q.relation-=5;S.v5Stats.endorsements++;logIt(S,g.name+' endorsed the '+PARTY[playParty(S)].short+'.');
+    if(q.relation<58){flash('The relationship is not strong enough for an endorsement.');return;}if(!pv5Spend(3,5,'Seek endorsement from '+g.name,myPurse()))return;q.endorsement=true;q.relation-=5;S.v5Stats.endorsements++;logIt(S,g.name+' endorsed the '+PARTY[playParty(S)].short+'.');
   }else if(action==='distance'){
     if(!pv5Spend(1,0,'Distance the government from '+g.name))return;q.relation=c100(q.relation-13);q.access=0;q.endorsement=false;S.ind.corruption=c100(S.ind.corruption-2);mood(S,{prof:2});logIt(S,'The government closed privileged access for '+g.name+'.');
   }
@@ -13915,19 +14198,26 @@ function pv5CoalitionAction(pid,action){
 function pv5CampaignAction(action,id){
   var c=S.campaign;
   if(action==='message'){
-    if(!ISSUE[id]||!pv5Spend(1,0,'Set campaign message'))return;c.message=id;logIt(S,'The campaign message was set around '+ISSUE[id].name.toLowerCase()+'.');
+    if(!ISSUE[id]||!pv5Spend(1,0,'Set campaign message',myPurse()))return;c.message=id;logIt(S,'The campaign message was set around '+ISSUE[id].name.toLowerCase()+'.');
   }else if(action==='target'){
-    if(!REGION[id]||!pv5Spend(2,2,'Target '+REGION[id].name))return;c.targets[id]=Math.min(3,(c.targets[id]||0)+1);c.field+=3;logIt(S,'Organisers were moved into '+REGION[id].name+'.');
+    if(!REGION[id]||!pv5Spend(2,2,'Target '+REGION[id].name,myPurse()))return;c.targets[id]=Math.min(3,(c.targets[id]||0)+1);c.field+=3;logIt(S,'Organisers were moved into '+REGION[id].name+'.');
   }else if(action==='fundraise'){
-    if(!pv5Spend(2,0,'Hold a fundraising drive'))return;c.warChest+=12;S.ind.corruption=c100(S.ind.corruption+1);mood(S,{tech:1,smallbiz:1,labour:-1});logIt(S,'The campaign raised a new national fund.');
+    /* S15f: the drive raises money, and the money is the party's. warChest
+       was a party purse that nothing ever paid a party action out of; this is
+       what it was always trying to be. */
+    if(!pv5Spend(2,0,'Hold a fundraising drive'))return;
+    var raise=Math.round(14*((DIFFS[S.diff]||DIFFS.normal).rev||1)+partyIncome(S,playParty(S)).donors*.5);
+    partyEarn(S,playParty(S),raise);c.field=clamp(c.field+2,0,100);
+    S.ind.corruption=c100(S.ind.corruption+1);mood(S,{tech:1,smallbiz:1,labour:-1});
+    logIt(S,'The '+PARTY[playParty(S)].short+' raised '+fmc(raise)+' at a national fundraising drive.');
   }else if(action==='field'){
-    if(!pv5Spend(3,5,'Build the ground game'))return;c.field=clamp(c.field+12,0,100);S.machine[playParty(S)]=clamp((S.machine[playParty(S)]||0)+.035,-.8,1);logIt(S,'The party opened organisers\' offices across the federation.');
+    if(!pv5Spend(3,5,'Build the ground game',myPurse()))return;c.field=clamp(c.field+12,0,100);S.machine[playParty(S)]=clamp((S.machine[playParty(S)]||0)+.035,-.8,1);logIt(S,'The party opened organisers\' offices across the federation.');
   }else if(action==='media'){
-    if(!pv5Spend(3,7,'Launch media campaign'))return;c.media=clamp(c.media+15,0,100);c.warChest=Math.max(0,c.warChest-3);logIt(S,'A national media campaign went on air.');
+    if(!pv5Spend(3,7,'Launch media campaign',myPurse()))return;c.media=clamp(c.media+15,0,100);logIt(S,'A national media campaign went on air.');
   }else if(action==='data'){
-    if(!pv5Spend(3,6,'Build voter data'))return;c.data=clamp(c.data+12,0,100);S.ind.technology=c100(S.ind.technology+1);logIt(S,'The campaign completed a new national voter file.');
+    if(!pv5Spend(3,6,'Build voter data',myPurse()))return;c.data=clamp(c.data+12,0,100);S.ind.technology=c100(S.ind.technology+1);logIt(S,'The campaign completed a new national voter file.');
   }else if(action==='debate'){
-    if(!pv5Spend(3,1,'Prepare for debates'))return;c.debate=clamp(c.debate+18,0,100);logIt(S,'The leader withdrew for debate preparation.');
+    if(!pv5Spend(3,1,'Prepare for debates',myPurse()))return;c.debate=clamp(c.debate+18,0,100);logIt(S,'The leader withdrew for debate preparation.');
   }
   c.lastAction=S.turn;render();
 }
@@ -14104,7 +14394,7 @@ function viewCampaign(){
   var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td></tr>';}).join('');
   var regionRows=REGIONS.map(function(r){var n=S.campaign.targets[r.id]||0;return '<div class="region-target"><div><b>'+esc(r.name)+'</b><div class="small muted">'+r.pop+'% of Vale · '+esc(r.issues[0])+'</div></div><div class="target-dots">'+[0,1,2].map(function(i){return '<i class="'+(i<n?'on':'')+'"></i>';}).join('')+'</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+'>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
   var messages=topIssues(S,6).map(function(i){return '<button class="strategy-choice" data-campaign-action="message" data-campaign-id="'+i.id+'" aria-pressed="'+(S.campaign.message===i.id)+'"><b>'+esc(i.name)+'</b><small>Salience '+Math.round(S.salience[i.id])+' · '+esc(i.source)+'</small></button>';}).join('');
-  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>War chest</b><strong>'+Math.round(S.campaign.warChest)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
 }
 function pv5FiscalPanel(){
   var f=S.fiscal,b=budget(S);function options(kind){return Object.keys(PV5_FISCAL[kind]).map(function(id){var q=PV5_FISCAL[kind][id];return '<button class="strategy-choice" data-fiscal-kind="'+kind+'" data-fiscal-id="'+id+'" aria-pressed="'+(f[kind]===id)+'"><b>'+esc(q.name)+'</b><small>'+esc(q.note)+'</small></button>';}).join('');}
@@ -14422,11 +14712,11 @@ ENRICH_VERSION = 6;
 DIFFS.gentle = { key:'gentle', name:'Easy', tag:'A Working Majority',
   blurb:'A fuller treasury, a patient country and two houses inclined to let a reasonable programme through. Mistakes cost something, but rarely the government.',
   capMult:1.6, capFlat:4, polCost:.7, rev:1.35, exp:.8, unrest:.65, moodBonus:6, eventPain:.6,
-  incumbent:.06, noCollapse:false, treasury:300, debt:80, capital:40, capCap:110, bond:90, resist:.6 };
+  incumbent:.06, noCollapse:false, treasury:300, debt:80, capital:40, capCap:110, bond:90, resist:.6, purseMult:1.7 };
 DIFFS.brutal = { key:'brutal', name:'Very hard', tag:'A Republic in Arrears',
   blurb:'The books are empty, the debt is ruinous, the country is angry, the Senate is hostile and every measure costs half again as much. Survival is the achievement.',
   capMult:.72, capFlat:-1, polCost:1.45, rev:.82, exp:1.2, unrest:1.45, moodBonus:-9, eventPain:1.5,
-  incumbent:-.06, noCollapse:false, treasury:30, debt:380, capital:8, capCap:52, bond:46, resist:1.4 };
+  incumbent:-.06, noCollapse:false, treasury:30, debt:380, capital:8, capCap:52, bond:46, resist:1.4, purseMult:.72 };
 var V6_DIFF_ORDER = ['easy', 'gentle', 'normal', 'hard', 'brutal'];
 
 /* Forecast adjustments for the new tiers sit beside the original easy/hard lines. */
@@ -14800,7 +15090,7 @@ function v6GovernorAction(id, action) {
   } else if (action === 'challenge') {
     if (g.party === me) { flash('The governor is already one of yours.'); return; }
     if (v6BallotsUntilRegion(S, r) > 1) { flash('The ballot in ' + r.name + ' is too far off to run a challenger at it.'); return; }
-    if (!pv5Spend(4, 6, 'Back a challenger in ' + r.name)) return;
+    if (!pv5Spend(4, 6, 'Back a challenger in ' + r.name, myPurse())) return;
     g.challenge = me; g.standing = c100(g.standing - 14); S.machine[me] = clamp((S.machine[me] || 0) + .02, -.8, 1);
     logIt(S, 'The ' + PARTY[me].short + ' put money and organisers behind a challenger to the governor of ' + r.name + '.');
   } else if (action === 'campaign') {
@@ -14808,7 +15098,7 @@ function v6GovernorAction(id, action) {
        and the weight decays every session, so committing early is wasted. */
     if (!FORMS[S.form].elections) { flash('There is no state ballot to campaign for.'); return; }
     if (v6BallotsUntilRegion(S, r) > 1) { flash('The ballot in ' + r.name + ' is too far off to campaign in.'); return; }
-    if (!pv5Spend(3, 7, 'Campaign in ' + r.name)) return;
+    if (!pv5Spend(3, 7, 'Campaign in ' + r.name, myPurse())) return;
     if (g.pushBy !== me) { g.pushBy = me; g.push = 0; }
     g.push = Math.min(.2, (g.push || 0) + .07);
     S.machine[me] = clamp((S.machine[me] || 0) + .012, -.8, 1);
@@ -14819,7 +15109,7 @@ function v6GovernorAction(id, action) {
        elsewhere if the leader is nobody's idea of an asset. */
     if (!FORMS[S.form].elections) { flash('There is no state ballot to campaign for.'); return; }
     if (v6BallotsUntilRegion(S, r) > 0) { flash('The leader goes in only when the ballot is this session or the next.'); return; }
-    if (!pv5Spend(6, 4, 'Send the leader to ' + r.name)) return;
+    if (!pv5Spend(6, 4, 'Send the leader to ' + r.name, myPurse())) return;
     var ld = leaderOf(S, me), orator = ld.trait === 'orator' ? 1.7 : (ld.trait === 'invisible' ? .5 : 1);
     if (g.pushBy !== me) { g.pushBy = me; g.push = 0; }
     g.push = Math.min(.2, (g.push || 0) + .09 * orator);
@@ -15205,7 +15495,7 @@ var v6BillActionBase = billAction;
 billAction = function (id, action) {
   var b = billById(S, id);
   if (b && action === 'campaignYes') {
-    if (!pv5Spend(3, 8, 'Fund the yes campaign')) return;
+    if (!pv5Spend(3, 8, 'Fund the yes campaign', myPurse())) return;
     b.campaign = (b.campaign || 0) + 6; b.notes.push('Yes campaign funded');
     logIt(S, 'The government funded the yes campaign on ' + POL[b.policy].name + '.'); render(); return;
   }
@@ -15220,7 +15510,7 @@ billCard = function (b) {
     '<div class="support-pair"><div class="support-box"><b><span>Forecast yes</span><span>' + Math.round(yes) + '%</span></b><div class="bar ' + (yes >= 50 ? 'b-ok' : 'b-bad') + '"><i style="width:' + clamp(yes, 0, 100).toFixed(0) + '%"></i></div></div>' +
     '<div class="support-box"><b><span>Campaign</span><span>+' + (b.campaign || 0) + '</span></b><div class="bar"><i style="width:' + Math.min(100, (b.campaign || 0) * 4) + '%"></i></div></div></div>' +
     '<div class="tagline"><span class="tag">Referendum</span><span class="tag">No vote in either house</span><span class="tag">Wins a ten year mandate</span></div>' +
-    '<div class="btnrow"><button class="btn ghost" data-bill="' + b.id + '" data-bill-action="campaignYes"' + (S.capital >= cst(3) && S.treasury >= 8 ? '' : ' disabled') + '>Fund the yes campaign <span class="c">' + cst(3) + ' cap, ' + fmc(8) + '</span></button>' +
+    '<div class="btnrow"><button class="btn ghost" data-bill="' + b.id + '" data-bill-action="campaignYes"' + (S.capital >= cst(3) && partyPurse(S, playParty(S)) >= 8 ? '' : ' disabled') + '>Fund the yes campaign <span class="c">' + cst(3) + ' cap, ' + fmc(8) + '</span></button>' +
     (b.owner === 'player' ? '<button class="btn ghost" data-bill="' + b.id + '" data-bill-action="withdraw">Withdraw</button>' : '') + '</div></article>';
 };
 
@@ -16394,7 +16684,13 @@ function v6GovStrip(r) {
   var g = S.v6.governors[r.id], q = S.regions[r.id], me = playParty(S), same = g.party === me, auto = !!S.v6.autonomy[r.id];
   var ini = g.name.split(' ').map(function (w) { return w.charAt(0); }).join('').slice(0, 2);
   function gb(action, label, cost, money, disabled) {
-    var ok = !disabled && S.capital >= cst(cost) && (!money || S.treasury >= money);
+    /* S15f: three of the seven governor arms are party electioneering --
+       backing a challenger, campaigning in a state and sending your own
+       leader on tour -- and are paid for out of the party's own money. The
+       other four are acts of the federal government. */
+    var fromParty = ['challenge', 'campaign', 'stump'].indexOf(action) >= 0;
+    var have = fromParty ? partyPurse(S, playParty(S)) : S.treasury;
+    var ok = !disabled && S.capital >= cst(cost) && (!money || have >= money);
     return '<button class="btn ghost" data-governor="' + r.id + '" data-governor-action="' + action + '"' + (ok ? '' : ' disabled') + '>' + label + ' <span class="c">' + cst(cost) + (money ? ', ' + fmc(money) : '') + '</span></button>';
   }
   /* Was a forward search for a turn matching the old modular test, giving up
@@ -17584,7 +17880,7 @@ function v7Index() {
     var src = String(a.run || '') + (a.opts || []).map(function (o) { return String(o.run || '') + ' ' + (o.label || ''); }).join(' ');
     out.push({ kind:'Action', name:a.name, text:a.desc + ' ' + a.cat + ' ' + v7FieldWords(src, a.eff, a.mood), key:'act:' + a.id, sel:'[data-act="' + a.id + '"]', cat:a.cat, a:a,
       note:!open ? 'Not available now' : (!ready ? 'Again in ' + actionWait(a) + ' year' + (actionWait(a) === 1 ? '' : 's') : (a.opts ? a.opts.length + ' options' : c + ' capital' + (m && a.pay ? ', ' + fmc(m) : ''))),
-      can:open && ready && !a.opts && S.capital >= c && (!a.pay || !m || S.treasury >= m) });
+      can:open && ready && !a.opts && S.capital >= c && actionCanPay(a, m) });
   });
   POLICIES.forEach(function (p) { if (!policyOpen(S, p)) return; out.push({ kind:'Measure', name:p.name, text:p.desc + ' ' + p.cat + ' ' + (p.grp || '') + ' ' + v7FieldWords('', p.eff, p.mood) + (p.rev ? ' revenue' : '') + (p.exp ? ' cost spending' : ''), tab:'policy', sel:'[data-pol="' + p.id + '"]', pol:p, note:'Level ' + (S.pol[p.id] || 0) + ' of ' + p.max + ' · ' + p.cat }); });
   REGIONS.forEach(function (r) { var g = v.governors[r.id]; out.push({ kind:'Region', name:r.name, text:r.character + ' ' + g.name + ' governor', tab:'federation', sel:'[data-region="' + r.id + '"]', note:'Governor ' + g.name + ', ' + PARTY[g.party].short }); });
@@ -18704,7 +19000,7 @@ function v8PressAction(id) {
   } else if (id === 'relaunch') {
     if (!power) { flash('Only a government can relaunch itself.'); return; }
     if (S.turn - pr.relaunch < 6) { flash('Another relaunch this soon would be noticed. ' + (6 - (S.turn - pr.relaunch)) + ' sessions to wait.'); return; }
-    if (!pv5Spend(7, 4, 'Relaunch the government')) return;
+    if (!pv5Spend(7, 4, 'Relaunch the government', myPurse())) return;
     pr.relaunch = S.turn; v.stats.relaunches++; pr.narrative = 'renewal'; pr.momentum = 1; pr.since = S.turn;
     pr.history.unshift({ turn:S.turn, from:'relaunch', to:'renewal' }); if (pr.history.length > 12) pr.history.length = 12;
     S.unity = c100((S.unity || 60) - 2); mood(S, { youth:2, prof:2 }); v8MakeFronts(S);
@@ -18730,7 +19026,7 @@ function v8PressAction(id) {
     if (!power) { flash('There is no government line for you to rebut with.'); return; }
     if (['chaos', 'sleaze', 'squeeze', 'drift'].indexOf(n) < 0) { flash('There is nothing to rebut. The story is not against you.'); return; }
     if (S.turn - pr.rebut < 2) { flash('The rebuttal unit is already working. Next session.'); return; }
-    if (!pv5Spend(2, 1, 'Rebut the story')) return;
+    if (!pv5Spend(2, 1, 'Rebut the story', myPurse())) return;
     pr.rebut = S.turn; pr.nudge[n] = (pr.nudge[n] || 0) - 1.6; pr.nudge.competence = (pr.nudge.competence || 0) + .6; pr.momentum = Math.max(1, (pr.momentum || 1) - 2);
     logIt(S, 'The rebuttal unit answered every story about ' + V8_NARRATIVES[n].name.toLowerCase() + ' within the hour.');
   } else if (id === 'alternative') {
@@ -20332,16 +20628,16 @@ partyActions = function (pid) {
       run:function () { shiftPartyRel(S, pid, 8); mood(S, { prof:4, seniors:2 }); S.unrest = clamp(S.unrest - 2, 0, 110); logIt(S, 'A joint commission was established with the ' + p.short + '.'); } });
     list.push({ id:'v9leakPolling', name:'Leak their private polling', cost:6, money:4, kind:'attack',
       desc:'Their own numbers, published by a friendly paper with the worst page first. The organisation loses heart.',
-      can:function () { return !S.banned[pid] && S.treasury >= 4; },
+      can:function () { return !S.banned[pid] && partyPurse(S, pid) >= 4; },
       run:function () { S.machine[pid] = clamp((S.machine[pid] || 0) - .09, -.8, 1); S.ind.corruption = c100(S.ind.corruption + 2); shiftPartyRel(S, pid, -6); mood(S, { prof:-2 }); logIt(S, 'The private polling of the ' + p.short + ' was leaked to the press.'); } });
     list.push({ id:'v9poachOrganiser', name:'Hire away their organiser', cost:7, money:6, kind:'attack',
       desc:'Their best agent, with a salary and a title in your own machine. Your organisation gains what theirs loses.',
-      can:function () { return !S.banned[pid] && S.treasury >= 6 && (S.machine[pid] || 0) > -.6; },
+      can:function () { return !S.banned[pid] && partyPurse(S, pid) >= 6 && (S.machine[pid] || 0) > -.6; },
       run:function () { var me = playParty(S); S.machine[pid] = clamp((S.machine[pid] || 0) - .07, -.8, 1); S.machine[me] = clamp((S.machine[me] || 0) + .06, -.8, 1); shiftPartyRel(S, pid, -5); logIt(S, 'The national organiser of the ' + p.short + ' crossed to the ' + PARTY[me].short + '.'); } });
   } else {
     list.push({ id:'v9retreat', name:'Hold a leadership retreat', cost:5, money:5, kind:'internal',
       desc:'Three days in the highlands with the whole caucus. Unity and every faction\u2019s loyalty rise; nothing else happens.',
-      can:function () { return S.treasury >= 5; },
+      can:function () { return partyPurse(S, pid) >= 5; },
       run:function () { S.unity = c100((S.unity || 60) + 7); (S.factions[pid] || []).forEach(function (f) { f.loyalty = c100(f.loyalty + 6); }); logIt(S, 'The ' + p.short + ' held a leadership retreat.'); } });
     list.push({ id:'v9youthWing', name:'Found a youth wing', cost:5, money:4, kind:'internal',
       desc:'Campus branches, a summer school and a seat on the executive. The young warm to the party and the machine grows slowly.',
@@ -20349,18 +20645,18 @@ partyActions = function (pid) {
       run:function () { S.v9.flags.youthWing = S.turn; mood(S, { youth:7, prof:2, seniors:-1 }); S.machine[pid] = clamp((S.machine[pid] || 0) + .04, -.8, 1); logIt(S, 'The ' + p.short + ' founded a youth wing.'); } });
     list.push({ id:'v9partyPaper', name:'Found a party newspaper', cost:6, money:9, kind:'internal',
       desc:'A daily of your own. Cheaper than buying one, slower to matter, and it never turns on you.',
-      can:function () { return S.treasury >= 9 && (S.press[pid] || 0) < .35; },
+      can:function () { return partyPurse(S, pid) >= 9 && (S.press[pid] || 0) < .35; },
       run:function () { S.press[pid] = (S.press[pid] || 0) + .06; mood(S, { prof:-1 }); logIt(S, 'The ' + p.short + ' founded a daily newspaper of its own.'); } });
     list.push({ id:'v9fightingFund', name:'Open a fighting fund', cost:4, money:8, kind:'internal',
       desc:'Donors, dinners and a target for the next ballot. The machine rises sharply and the donors expect to be remembered.',
-      can:function () { return S.treasury >= 8; },
+      can:function () { return partyPurse(S, pid) >= 8; },
       run:function () { S.machine[pid] = clamp((S.machine[pid] || 0) + .09, -.8, 1); S.ind.corruption = c100(S.ind.corruption + 2); logIt(S, 'The ' + p.short + ' opened a fighting fund for the next ballot.'); } });
     list.push({ id:'v9listen', name:'Commission a listening exercise', cost:3, money:3, kind:'internal',
       desc:'Focus groups in the bloc that likes you least. You learn what they want and they notice being asked.',
-      can:function () { return S.treasury >= 3; },
+      can:function () { return partyPurse(S, pid) >= 3; },
       run:function () { var b = v9WorstBloc(S), m = {}; m[b] = 6; mood(S, m); logIt(S, 'The ' + p.short + ' held a listening exercise among ' + BLOC[b].name.toLowerCase() + '.'); } });
   }
-  list.forEach(function (a) { if (/^v9/.test(a.id) && !a.scope) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.moneyHandled = false; } });
+  list.forEach(function (a) { if (/^v9/.test(a.id) && !a.scope) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.purse = 'party'; } });
   return list;
 };
 
@@ -27906,7 +28202,13 @@ budget = function (st) {
   var e = v11ConEffects(st);
   if (!e.rev && !e.exp) return b;
   b.rev += e.rev; b.exp += e.exp;
-  b.net = b.rev - b.exp - (b.interest || 0);
+  /* S15f: this read `b.rev - b.exp - (b.interest || 0)`. Interest is already
+     inside b.exp by the time the base returns (budget adds it there and
+     returns `interest` alongside as a reporting field), so subtracting it
+     again charged the debt twice on the balance line -- and the department
+     wrapper below did the same, so a save with both charged it three times.
+     Every other wrapper in the stack computes rev - exp. */
+  b.net = b.rev - b.exp;
   return b;
 };
 
@@ -28804,7 +29106,8 @@ budget = function (st) {
   });
   if (!extra) return b;
   b.exp += extra;
-  b.net = b.rev - b.exp - (b.interest || 0);
+  /* the same double charge as v11ConBudgetBase above */
+  b.net = b.rev - b.exp;
   return b;
 };
 
