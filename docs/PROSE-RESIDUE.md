@@ -100,3 +100,37 @@ to `tools/out/rungs/sweep-repair.json`. A fresh sweep will not reproduce these
 62 exactly: the shuffle is new and the readers are new, so the marginal ladders
 move. The stable finding is the rate, around ten per cent, and the books that
 carry it.
+
+## The punctuation residue (S15k)
+
+A second measurement, of a different thing. `node tools/rungs.js --corpora`
+holds the three registries S15 wrote into — the 60 extraordinary measures, the
+90 standing orders and the 80 constitutional articles, **548 authored pieces**
+across 230 distinct names — to the same house style the statute book is held to,
+and **fails** on a breach. It found three on the build it was written against:
+a curly apostrophe in `compartmentOrder` and an em dash apiece in
+`clemencyDocket` and `orderRegister`. All three are fixed.
+
+The same run then **reports, and never fails on**, what is left in the rest of
+the file. Rewriting somebody else's corpus on a checker's say-so is the move
+this repo does not make, and `CLAUDE.md` is explicit that the 2,910 audited
+pieces stay as they are.
+
+| class | count | is it a style question? |
+|---|---|---|
+| in a comment, on no screen | 27 lines | no |
+| a glyph standing for "none" (`'—'` in a table cell) | 6 | no, that is typography |
+| a range or a separator (`3.1–4.4`) | 9 | no |
+| **an em dash inside a sentence** | **32 lines** | **the owner's call** |
+
+**Twenty-two of the thirty-two are Question Time**, authored in S10f/g — before
+S13 carried the owner's writing skill into the repo verbatim. The rest are four
+setup-sheet lines, one order-book note, one log line with a curly apostrophe
+(`v10OrderTitle`), one chart title, one work blurb, and the S11c federation
+panel. **None of them is S15's.** Measured across all ten S15 PRs: two em dashes
+were added in total, one in a code comment and one in the Grand Works panel note,
+and the second is fixed in this PR.
+
+The list is reproduced by the tool rather than kept here by hand, so it cannot
+rot: `node tools/rungs.js --corpora` prints the count and the first six lines
+every time it runs.

@@ -19735,7 +19735,7 @@ function v8WorksPanel() {
   var n = v8WorkMax(S);
   var berths = 'The ministry has ' + n + (n === 1 ? ' berth, and what you commission past it' : ' berths, and what you commission past them') +
     ' waits in a queue. Nothing is charged to wait: the commission is paid the session a berth opens.';
-  return '<div class="panel"><h2>Grand Works <span class="muted">' + active.length + '</span></h2><p class="note">' + V8_WORKS.length + ' national projects that outlast a parliament. A work is paid for out of the budget every session until it opens, and the estimate rises when the ground disappoints. ' + berths + ' A crash programme finishes in half the time at seventy percent more a session, and the contractors know it — and once a work is under way there is more to decide than how fast to pay for it.</p>' +
+  return '<div class="panel"><h2>Grand Works <span class="muted">' + active.length + '</span></h2><p class="note">' + V8_WORKS.length + ' national projects that outlast a parliament. A work is paid for out of the budget every session until it opens, and the estimate rises when the ground disappoints. ' + berths + ' A crash programme finishes in half the time at seventy percent more a session, and the contractors know it. Once a work is under way there is more to decide than how fast to pay for it.</p>' +
     v8WorkFilterStrip() + summary + list + '</div>';
 }
 
@@ -27127,11 +27127,11 @@ v10RegisterOrders([
     cost:7, upkeep:0.5, exposure:0.7, needs:'nationalLibraries',
     ind:{ liberties:4, corruption:-3, tension:2, military:-1 }, mood:{ youth:3, prof:3, tech:2, seniors:-2, veterans:-4 }, exp:3, mods:{ delivery:-0.02, army:-0.3, polCost:{ Foreign:1.12 } }, salience:{ rights:8 } }),
   O({ id:'compartmentOrder', name:'The Compartment Order', cat:'The executive\'s own house', dept:'pres',
-    blurb:'Access to the state’s secrets is rebuilt around need-to-know: clearances re-examined on a rolling basis, readerships cut to named lists, nothing leaving its compartment without a signature in a ledger. Nothing new is classified. A great deal less is read.',
+    blurb:'Access to the secrets of the state is rebuilt around need-to-know: clearances re-examined on a rolling basis, readerships cut to named lists, nothing leaving its compartment without a signature in a ledger. Nothing new is classified. A great deal less is read.',
     cost:4, upkeep:0.75, exposure:0.15,
     ind:{ liberties:-3, corruption:2, technology:-1, military:1 }, mood:{ veterans:3, seniors:1, prof:-2, youth:-2, tech:-3 }, exp:1, mods:{ delivery:-0.06, army:0.4, polCost:{ Security:0.9 } } }),
   O({ id:'clemencyDocket', name:'The Standing Clemency Docket', cat:'The executive\'s own house', dept:'vpres',
-    blurb:'The pardon attorney is directed to bring forward, every session, every sentence in a standing class — the old drug tariffs, committals for unpaid fines, the tail of a repealed offence — and to commute on the schedule, by rule, without a list of names. The wings empty slowly. The evening papers fill rather faster.',
+    blurb:'The pardon attorney is directed to bring forward, every session, every sentence in a standing class: the old drug tariffs, committals for unpaid fines, the tail of a repealed offence. It commutes on the schedule, by rule, without a list of names. The wings empty slowly. The evening papers fill rather faster.',
     cost:6, upkeep:0.4, exposure:0.55,
     ind:{ liberties:4, safety:-2, poverty:-1 }, mood:{ youth:4, labour:2, prof:2, veterans:-2, faith:-3, seniors:-3 }, exp:-2, mods:{ unrest:-0.2 }, salience:{ safety:6 } }),
   O({ id:'rollOfPublicService', name:'The Roll of Public Service', cat:'The executive\'s own house', dept:'vchan',
@@ -27139,7 +27139,7 @@ v10RegisterOrders([
     cost:3, upkeep:0.25, exposure:0.1,
     mood:{ labour:3, prof:3, seniors:2, faith:-2, veterans:-4 }, exp:2, mods:{ polCost:{ Imperium:1.25 } } }),
   O({ id:'orderRegister', name:'The Register of Standing Orders', cat:'Orders about orders', dept:'vpres',
-    blurb:'Every direction this executive has signed and not revoked is printed in one volume — its authority, its author, what it costs the purse, the date it was made — and reprinted each session with the changes marked in the margin. The opposition buys the first copy. The bench buys the second, and an application to have a page struck out of it is filed before the third.',
+    blurb:'Every direction this executive has signed and not revoked is printed in one volume, with its authority, its author, what it costs the purse and the date it was made, and reprinted each session with the changes marked in the margin. The opposition buys the first copy. The bench buys the second, and an application to have a page struck out of it is filed before the third.',
     cost:4, upkeep:0.35, exposure:0.7,
     ind:{ corruption:-3, liberties:2 }, mood:{ prof:4, youth:3, smallbiz:2, labour:1, tech:-2, veterans:-3 }, exp:1, mods:{ delivery:-0.03, crown:0.2, polCost:{ Justice:0.9, Security:1.1 } }, salience:{ integrity:7 }, book:{ review:1.45 } }),
   O({ id:'orderExpiry', name:'Every Order Shall Expire', cat:'Orders about orders', dept:'chan',

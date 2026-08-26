@@ -81,8 +81,11 @@ you touched; a SKIP is never a PASS.
 - `tools/tiers.js` / `tools/tabs.js` — layout at each tier boundary.
 - `tools/pacing.js` — plays a length option to its end and reports the arc.
 - `tools/poison.js` — proves a body is dead before you delete it.
-- `tools/rungs.js` — the statute prose: `--brief` a book, `--apply` a shard
-  (idempotent), `--check` the whole corpus against the house style.
+- `tools/rungs.js` — the authored prose: `--brief` a book, `--apply` a shard
+  (idempotent), `--check` the 582 statute ladders against the house style, and
+  `--corpora` the three registries S15 wrote into — 60 measures, 90 orders, 80
+  articles, 548 pieces — which fails on a breach and then reports the
+  punctuation residue in the rest of the file without failing on it.
 - `tools/prose/` — the blind measurement rig: `sweep.js` emits every ladder for
   an unaided reader, `sweepscore.js` scores it. Its README carries the one rule
   these tools exist to enforce: **never re-measure the sample you repaired
