@@ -72,8 +72,8 @@ so in each case the **first surviving assignment became the declaration**
 (`var runQueue = function …`), later wrappers untouched. The dead-to-dead line
 `pv5CommandPalette = v6Menu;` went with its operands.
 
-**Live, despite replacing a body without an alias** (5 sites, the ratchet's
-floor — `checks/dead-bodies.json` carries the proof for each):
+**Live, despite replacing a body without an alias** (5 sites — `checks/dead-bodies.json`
+carries the proof for each):
 
 | site | why it is not dead |
 |---|---|
@@ -82,6 +82,19 @@ floor — `checks/dead-bodies.json` carries the proof for each):
 | v6 `renderStats` rewrite | v4 `render` calls the v4 body at boot |
 | v7 `v6mCenterTab` rewrite | the mobile body runs at the mobile chunk's boot |
 | v7 `v6mPolicyFolds` rewrite | same |
+
+**Orphaned, and wearing an alias nothing reads** (2 more, found in S14 when the
+check stopped believing a hand-written boolean). An alias that is never read is
+not a capture, so the true count is **7**, not 5:
+
+| site | the alias | why it is orphaned |
+|---|---|---|
+| `regionPartyFactor#1` | `v11RegionFactorBase` | referenced nowhere else in the file. A deliberate reassignment, for the reason S11c records: the old body collapses eight regions into one pop-weighted mean, so a wrapper has nothing left to weight per region |
+| `actBlocked#1` | `v11ActBlockedBase` | its own adjudication says **"DELIBERATELY NOT CALLED"** in capitals. The old first line, `if (a.house !== 'Senate') return false`, is the defect S11d replaced it for |
+
+Neither is a fault to fix: both bodies were meant to be replaced. The fault was
+an instrument that scored them green while counting five others for the same
+condition.
 
 Two traps found the hard way, both worth remembering:
 
