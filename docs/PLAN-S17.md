@@ -690,7 +690,7 @@ than no bar.
 
 ### Group 1 — who governs
 
-**s17b — the three chairs** (L). The mode gate everywhere. Convert
+**s17b — the three chairs** (L). **STATUS: DONE.** The mode gate everywhere. Convert
 actionOpen's `!a.scope` escape (:12256, stamp :12230) to a scope enum
 (party/gov/leading/any) — closes the eleven leaking government acts
 (confidence :11907, joinCoalition :11912, expelPartner :11922, drawseats,
@@ -706,6 +706,39 @@ Refusal prose copies the Question-Time mode-aware pattern :20361–20447.
 Tabs stay visible, re-rendered as the view OF the government from
 outside. Harness: **the mode matrix** — full instrument × standing table
 probed on fixed scenarios, the program's permanent regression net.
+
+**What landing it found.** (i) The vocabulary is `need` ∈ any|gov|leading,
+read by `modeAllows`/`modeWhy`/`actionNeed` and by nothing else. An action
+with no `need` keeps exactly its old behaviour, so this widened the
+vocabulary rather than re-gating 200 cards; only the cards lying about their
+chair carry the field (17 of them). (ii) **The gate must go on the LIVE
+function.** `pv5MinisterAction` is *reassigned* at :30830 and that
+reassignment REPLACES four of nine cases, so a gate put on the base was
+measured as absent — an opposition player went on briefing the government's
+ministers. Every gated handler was then audited for reassignment;
+`pv5InterestAction` and `regionAction` are wrapped (delegating, so the base
+gate holds) and the v11 regional layer had a *second* `inPower` rule of its
+own, now folded into the one table. (iii) **Two more of my own assertions
+were tautologies**, both caught by poison-proving: `ministerBrief` returned
+`null` with no ministry seated and `null !== true` passed with no gate at
+all (it seats a minister in a coalition-held office now), and `governorStump`
+conflated a real game refusal (no state ballot near) with a chair refusal (it
+now asserts only that the refusal is never about the chair). (iv) Measured
+before/after: registry 66/66/6 → 66/66/4, party-scoped cards aimed at rivals
+29/28/28 → 29/24/18, and every national handler now answers to its chair.
+(v) **A GAP IN THIS PLAN, FOUND AND CLOSED IN s17b.** The owner's brief says
+"as an opposition party, you should still be able to introduce bills and
+constitutional articles", and no PR in the plan carried it — worse, the first
+draft of the mode matrix asserted "the floor is the government's to open" and
+would have entrenched the refusal it was written to remove.
+`draftBillDialog` and `v11CanPropose` open from every chair now, as a private
+member's bill: one bill and one article at a time out of government, no
+government machinery behind them, worse odds because the arithmetic is worse
+rather than because a number was put on the scale. A pending article records
+`by` — it had no sponsor at all, since until now only a government could lay
+one — and s17k's AI parties will write it. A sixth poison proved that field's
+WRITER, after the first version of the probe supplied `by` itself and so
+tested only the cap's arithmetic.
 
 **s17c — whose desk it lands on** (XL). Office attribution + the AI
 government + the digest. Author `office:` on all 174 event literals

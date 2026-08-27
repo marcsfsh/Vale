@@ -4794,6 +4794,199 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `· and a pact lapses at the count it was made for` +
     (sevenOk ? '' : ' · DISAGREE: ' + JSON.stringify(seven)));
 
+  /* S17b — THE MODE MATRIX. Every instrument the game offers, probed from each
+     of the three chairs the owner named, on ONE board that supplies all three:
+     the Hung Assembly returns fp leading, sd as its junior partner and lp in
+     opposition. This is the program's regression net -- every later PR re-runs
+     it, and a gate that goes missing reddens here rather than in a playthrough.
+     Measured before S17b: the registry gated (6 open in opposition against 66
+     in government) but drew NO distinction between the head of government and
+     a junior partner -- 66 each -- and 171 party-scoped actions bypassed the
+     gate entirely. */
+  const matrix = await page.evaluate(() => {
+    var chairs = { leading:'fp', junior:'sd', opposition:'lp' };
+    var R = {};
+    function seat(pid) {
+      S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
+      S.playAs = pid; S.capital = 500; S.treasury = 8000;
+      if (S.purse) S.purse[pid] = 900;
+      return standing(S);
+    }
+    /* fires() calls the real handler and asks whether the model moved. A gate
+       that only disables a button is not a gate -- S16f2's lesson. */
+    var probes = {
+      fiscal:function () { var b = S.fiscal.stance; pv5FiscalAction('stance', 'consolidation'); return S.fiscal.stance !== b; },
+      programme:function () { var b = S.v6.programme; v6AdoptProgramme('welfareState'); return S.v6.programme !== b; },
+      interestAccess:function () { var id = Object.keys(PV5_INTEREST)[0]; var b = S.interests[id].access || 0;
+        pv5InterestAction(id, 'access'); return (S.interests[id].access || 0) !== b; },
+      interestMeet:function () { var id = Object.keys(PV5_INTEREST)[1]; var b = S.interests[id].relation;
+        pv5InterestAction(id, 'meet'); return S.interests[id].relation !== b; },
+      /* A minister is SEATED first, in an office the government of this board
+         actually holds, so the probe measures the gate rather than an empty
+         ministry. Without this it returned null in every chair and the
+         assertion passed with no gate at all -- measured. */
+      ministerBrief:function () {
+        var row = pv5PortfolioRows().filter(function (r) { return holdsDept(S, r.office); })[0];
+        if (!row) return null;
+        S.ministers = S.ministers || {};
+        S.ministers[row.key] = pv5MakeMinister(S, row.key, 0);
+        S.cabinet[row.key] = 1;
+        var b = S.ministers[row.key].competence;
+        pv5MinisterAction(row.key, 'brief');
+        return S.ministers[row.key].competence !== b;
+      },
+      regionGrant:function () { var b = S.treasury; regionAction(REGIONS[0].id, 'grant'); return S.treasury !== b; },
+      regionZone:function () { var b = S.treasury; regionAction(REGIONS[1].id, 'zone'); return S.treasury !== b; },
+      regionTownhall:function () { var b = S.capital; regionAction(REGIONS[2].id, 'townhall'); return S.capital !== b; },
+      governorMeet:function () { var r = REGIONS[0].id; var b = S.v6.governors[r].standing;
+        v6GovernorAction(r, 'meet'); return S.v6.governors[r].standing !== b; },
+      governorWorks:function () { var b = S.treasury; v6GovernorAction(REGIONS[1].id, 'works'); return S.treasury !== b; },
+      /* `stump` refuses for a real game reason in every chair -- the leader
+         goes in only when that state's ballot is this session or the next --
+         so what is asked here is narrower and exact: whatever else stops it,
+         it is never stopped because of WHICH CHAIR the player sits in. */
+      governorStump:function () { var msg = null, rf = window.flash; window.flash = function (m) { msg = m; };
+        v6GovernorAction(REGIONS[2].id, 'stump'); window.flash = rf;
+        return msg === null || msg.indexOf('That belongs to') !== 0; },
+      /* A standards case against the government's own minister is answered by
+         the government. A live case is synthesised so the probe does not wait
+         on the dice for one. */
+      scandalInquiry:function () {
+        S.scandals = S.scandals || [];
+        S.scandals.push({ id:'S17PROBE', status:'active', minister:Object.keys(S.ministers || {})[0] || null,
+          title:'A probe case', detail:'', heat:60, evidence:60, opened:S.turn });
+        var before = S.scandals.filter(function (x) { return x.id === 'S17PROBE'; })[0].heat;
+        pv5ResolveScandal('S17PROBE', 'inquiry');
+        var rec = S.scandals.filter(function (x) { return x.id === 'S17PROBE'; })[0];
+        return !!rec && rec.heat !== before;
+      },
+      coalitionCouncil:function () { var p = (S.coalition || []).filter(function (x) { return x !== S.ruling; })[0];
+        if (!p || !S.coalitionDeals[p]) return null; var b = S.coalitionDeals[p].satisfaction;
+        pv5CoalitionAction(p, 'council'); return S.coalitionDeals[p].satisfaction !== b; },
+      draftBill:function () { var f = false, rf = window.flash; window.flash = function () { f = true; };
+        draftBillDialog(Object.keys(POL).filter(function (k) { return !activeBillFor(S, k); })[0], 1);
+        window.flash = rf; try { hideSheet(); } catch (e) { } return !f; },
+      layArticle:function () { return v11CanPropose(S, V11_ART.artQuadrennial, false) === null; },
+      /* the scarcity of private members' time, asked by actually taking it */
+      secondPrivateBill:function () {
+        var free = Object.keys(POL).filter(function (k) { return !activeBillFor(S, k); });
+        sponsorBill(S, free[0], 1, 'player', 'clean', true, playParty(S), true);
+        var f = false, rf = window.flash; window.flash = function () { f = true; };
+        draftBillDialog(free[1], 1); window.flash = rf; try { hideSheet(); } catch (e) { }
+        return !f;
+      },
+      /* The first article is laid through the REAL path, not pushed in as a
+         synthetic record: a probe that supplies `by` itself proves the cap's
+         arithmetic and nothing about the field's writer, and a cap that reads
+         a field nobody writes is not a cap. */
+      secondArticle:function () {
+        S.capital = 500;
+        v11ProposeArticle('artEntrenchment', false, 'assembly');
+        if (!v11PendingOf(S, 'artEntrenchment')) return 'ERR:first article did not lay';
+        return v11CanPropose(S, V11_ART.artQuadrennial, false) === null;
+      },
+      /* the two Figures cards that rewrite the executive, asked of the gate */
+      sackMinister:function () { return actionOpen(ACTIONS.filter(function (x) { return x.id === 'sackMinister'; })[0]); },
+      promoteProtege:function () { return actionOpen(ACTIONS.filter(function (x) { return x.id === 'promoteProtege'; })[0]); },
+      /* and the opposition's own kit, which must survive the gating */
+      oppositionAttack:function () { var a = ACTIONS.filter(function (x) { return x.id === 'oppositionAttack'; })[0];
+        return !!a && actionOpen(a); },
+      campaignField:function () { var b = S.campaign.field; pv5CampaignAction('field'); return S.campaign.field !== b; },
+      partyOrganise:function () { var l = partyActions(playParty(S)) || [];
+        var a = l.filter(function (x) { return x.id === 'organise'; })[0]; return !!a && actionOpen(a); }
+    };
+    Object.keys(chairs).forEach(function (chair) {
+      var st = seat(chairs[chair]);
+      var row = { standing:st, registry:0, partyOnOthers:0 };
+      ACTIONS.forEach(function (a) { try { if (actionOpen(a)) row.registry++; } catch (e) { } });
+      PARTIES.forEach(function (p) {
+        if (p.id === playParty(S)) return;
+        (partyActions(p.id) || []).forEach(function (a) { try { if (actionOpen(a)) row.partyOnOthers++; } catch (e) { } });
+      });
+      Object.keys(probes).forEach(function (k) {
+        var v = null; try { v = probes[k](); } catch (e) { v = 'ERR'; }
+        row[k] = v; S.capital = 500; S.treasury = 8000;
+      });
+      R[chair] = row;
+    });
+    return R;
+  });
+
+  /* S17b: and the private member's bill is PLAYED, not merely permitted. A
+     gate that opens onto nothing is not the owner's requirement met. */
+  const pmb = await page.evaluate(() => {
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.capital = 300;
+    var free = Object.keys(POL).filter(function (k) { return !activeBillFor(S, k); });
+    var msg = null, rf = window.flash; window.flash = function (m) { msg = m; };
+    draftBillDialog(free[0], 1);
+    var opened = !!document.getElementById('sheet');
+    var btn = document.querySelector('[data-draft]'); if (btn) btn.click();
+    window.flash = rf;
+    var mine = S.bills.filter(function (x) { return x.sponsor === 'lp'; });
+    if (!mine.length) return { laid:false, opened:opened, flash:msg };
+    var bill = mine[0], f = billForecast(S, bill);
+    /* the same measure laid by the government, for the comparison the owner
+       asked for: "they obviously may have less chance of succeeding" */
+    var gs = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'fp'), false);
+    gs.playAs = 'fp';
+    var gb = sponsorBill(gs, bill.policy, bill.dir, 'government', 'clean', true);
+    var gf = gb ? billForecast(gs, gb) : null;
+    return { laid:true, opened:opened, owner:bill.owner, sponsor:bill.sponsor,
+      stage:bill.stage, canWork:(inPower(S) || bill.owner === 'player'),
+      lower:Math.round(f.lower), govLower:gf ? Math.round(gf.lower) : null };
+  });
+  const pmbOk = pmb.laid && pmb.opened && pmb.owner === 'player' && pmb.sponsor === 'lp' &&
+    pmb.canWork === true && pmb.govLower !== null && pmb.lower < pmb.govLower;
+  say(pmbOk, 'a private member\'s bill',
+    pmb.laid
+      ? `an opposition player lays one through the real drafting sheet and it reaches the paper as their own ` +
+        `(${pmb.owner}/${pmb.sponsor}, at ${pmb.stage}), workable by its sponsor because the bill card has always ` +
+        `allowed that -- and it is HARDER than the same measure in government hands, ${pmb.lower} against ` +
+        `${pmb.govLower} in the Assembly, because the arithmetic behind it is worse rather than because a number ` +
+        `was put on the scale`
+      : `NOT LAID (sheet opened: ${pmb.opened}, refusal: ${pmb.flash})`);
+
+  const L = matrix.leading, J = matrix.junior, O = matrix.opposition;
+  /* what each chair must be able to do, and must not */
+  const matrixWants = [
+    ['standings are the three the owner named', L.standing === 'leading' && J.standing === 'junior' && O.standing === 'opposition'],
+    ['only the head of government sets the fiscal framework', L.fiscal === true && J.fiscal === false && O.fiscal === false],
+    ['only the head adopts the programme', L.programme === true && J.programme === false && O.programme === false],
+    ['a government grants privileged access; opposition does not', L.interestAccess === true && J.interestAccess === true && O.interestAccess === false],
+    ['anybody may meet an interest', L.interestMeet === true && J.interestMeet === true && O.interestMeet === true],
+    ['a ministry is run by the government', L.ministerBrief === true && O.ministerBrief === false],
+    ['federal money in a region is the head\'s', L.regionGrant === true && J.regionGrant === false && O.regionGrant === false],
+    ['an enterprise zone is the head\'s', L.regionZone === true && J.regionZone === false && O.regionZone === false],
+    ['a town hall is open to a governing party', L.regionTownhall === true && J.regionTownhall === true && O.regionTownhall === false],
+    ['a governor is met by the government', L.governorMeet === true && J.governorMeet === true && O.governorMeet === false],
+    ['joint federal works are the head\'s', L.governorWorks === true && J.governorWorks === false && O.governorWorks === false],
+    ['the leader may stump for a challenger in any chair', L.governorStump === true && J.governorStump === true && O.governorStump === true],
+    ['the coalition agreement is the head\'s', L.coalitionCouncil === true && J.coalitionCouncil !== true && O.coalitionCouncil !== true],
+    ['a standards case is answered by the government', L.scandalInquiry === true && O.scandalInquiry === false],
+    ['the two Figures cards that rewrite the executive are the government\'s', L.sackMinister === true && O.sackMinister === false && O.promoteProtege === false],
+    ['the head and a partner are no longer the same chair', L.registry > J.registry || L.partyOnOthers > J.partyOnOthers],
+    ['opposition keeps its own kit', O.oppositionAttack === true && O.campaignField === true && O.partyOrganise === true],
+    /* THE OWNER'S REQUIREMENT, NOT THE OLD BEHAVIOUR. "As an opposition party,
+       you should still be able to introduce bills and constitutional
+       articles." The first draft of this matrix asserted the opposite and
+       would have entrenched the refusal it was written to remove. */
+    ['the floor is open from every chair', O.draftBill === true && O.layArticle === true &&
+      L.draftBill === true && L.layArticle === true && J.draftBill === true],
+    ['private members\' time is scarce, so one bill at a time', O.secondPrivateBill === false],
+    ['and one article at a time', O.secondArticle === false]
+  ];
+  const matrixBad = matrixWants.filter(w => !w[1]).map(w => w[0]);
+  say(matrixBad.length === 0, 'the three chairs',
+    `every instrument probed from all three chairs on one board -- fp leading, sd its junior partner, lp in opposition ` +
+    `-- and each answers to the chair it belongs to · the registry opens ${L.registry} cards to the head, ${J.registry} ` +
+    `to a partner and ${O.registry} in opposition, and party-scoped cards aimed at rivals ${L.partyOnOthers}/` +
+    `${J.partyOnOthers}/${O.partyOnOthers}: before S17b the head and the partner were the SAME chair (66 and 66) and ` +
+    `171 party-scoped actions bypassed the gate, among them signing confidence and supply on a government's behalf and ` +
+    `expelling a party from a cabinet the player was not in · the opposition keeps what is genuinely its own -- the ` +
+    `censure and no-confidence deck, the campaign, the party machine, meeting an interest, stumping for a challenger` +
+    (matrixBad.length ? ' · DISAGREE: ' + matrixBad.join('; ') : ''));
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

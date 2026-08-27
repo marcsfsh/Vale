@@ -1751,6 +1751,47 @@ async function run() {
   step('console-errors', errors.length === 0, `${errors.length} error(s)` + (errors.length ? ': ' + errors.slice(0, 2).join(' | ') : '') +
     (offline.length ? `; ${offline.length} expected-offline resource failure(s) (fonts — exemption dies with the external-ref allowlist)` : ''));
 
+  // -- S17b: EVERY VIEW RENDERS FROM THE OPPOSITION BENCH. The mode gate shuts
+  //    instruments across nine surfaces, and a gate that throws while drawing
+  //    the page it belongs to is worse than the leak it closed. Its own page:
+  //    a fresh console so an error here is attributable to this pass.
+  {
+    const op = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    const oppErr = [];
+    op.on('console', m => { if (m.type() === 'error') oppErr.push(m.text().slice(0, 140)); });
+    op.on('pageerror', e => oppErr.push('pageerror: ' + e.message.slice(0, 140)));
+    await op.addInitScript(() => { window.confirm = () => true; });
+    await op.goto(URL);
+    await op.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await op.click('[data-setup-begin]');
+    await op.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await op.click('[data-doctrine]');
+    await op.waitForTimeout(300);
+    const opp = await op.evaluate(() => {
+      /* the Hung Assembly board puts the Labor Party on the opposition bench */
+      S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+      S.playAs = 'lp';
+      var out = { standing: standing(S), drawn: 0, empty: [], failed: [] };
+      TABS.forEach(function (t) {
+        try {
+          UI.tab = t.id; render();
+          var n = document.querySelectorAll('.card, .panel, article').length;
+          out.drawn++;
+          if (!n) out.empty.push(t.id);
+        } catch (e) { out.failed.push(t.id + ': ' + e.message.slice(0, 70)); }
+      });
+      return out;
+    });
+    await op.waitForTimeout(200);
+    step('opposition-views', opp.standing === 'opposition' && opp.failed.length === 0 &&
+      opp.empty.length === 0 && opp.drawn === 15 && oppErr.length === 0,
+      `all ${opp.drawn} views draw from the opposition bench, none empty, ${oppErr.length} console error(s)` +
+      (opp.failed.length ? ' · THREW: ' + opp.failed.join('; ') : '') +
+      (opp.empty.length ? ' · EMPTY: ' + opp.empty.join(', ') : '') +
+      (oppErr.length ? ' · ' + oppErr.slice(0, 2).join(' | ') : ''));
+    await op.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.

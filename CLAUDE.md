@@ -68,6 +68,14 @@ before touching the file.
   there is none, the promise is decorative. This is `MAP.md`'s "a modifier
   nothing reads is a lie on the card" wearing a different hat, and S16f2 is at
   least the tenth time it has been found.
+- **A guard goes on the LIVE function, and a reassignment is not a wrapper.**
+  `pv5MinisterAction` is reassigned in the S11 chunk and that reassignment
+  *replaces* four of its nine cases, so S17b's mode gate — placed on the base —
+  was measured as absent while an opposition player briefed the government's
+  ministers. Before gating anything, grep `var xBase = fn;` / `fn = function`:
+  a wrapper that delegates carries the base's guard, a reassignment does not.
+  And ask the question of ONE surface once — the v11 regional layer had its own
+  `inPower` beside the new table, and two rules for one surface drift apart.
 - **`typeof x === 'string'` is not validation, and the UI is not the validation
   layer.** The custom start checked every id against a registry except its two
   chamber states, which took any string at all — and since an unknown string is
