@@ -4148,11 +4148,31 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const pid = PARTIES.filter(p => p.id !== playParty(S) && p.id !== 'fp')[0].id;
       PARTIES.forEach(p => { S.purse = S.purse || {}; S.purse[p.id] = 400; });
       S.turn = 8;
+      /* S17k: three of the cards need a state the others do not -- an order is
+         signed by the office that holds the department, and a line on the
+         floor needs a bill on it. Building that is part of "a state where it
+         can play", not a loosening of the claim. */
+      if (c.id === 'article') {
+        /* a party with eight per cent of the chamber does not amend the
+           constitution, so the state built for this card gives it enough of
+           one -- which is what "a state where it can play" means */
+        S.seats[pid] = Math.round(CFG.seats * .2);
+      }
+      if (c.id === 'order') {
+        S.coalition = ['fp', pid];
+        V10_ORDERS.forEach(function (o) { S.exec[o.dept] = pid; });
+      }
+      if (c.id === 'floor') {
+        sponsorBill(S, 'incomeTax', 1, 'government', 'clean', true, 'fp', true);
+      }
       const before = {
         machine:S.machine[pid] || 0, targetMachine:S.machine[S.ruling] || 0,
         blocs:JSON.stringify(S.blocs), push:JSON.stringify(S.push || {}),
         purse:partyPurse(S, pid), funding:(S.funding || {})[pid] || 0,
-        inbox:S.inbox.length, pacts:Object.keys(S.aiPacts || {}).length
+        inbox:S.inbox.length, pacts:Object.keys(S.aiPacts || {}).length,
+        pending:(v11Con(S).pending || []).length,
+        orders:Object.keys(v10Orders(S)).length,
+        lines:S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0)
       };
       if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
       const line = c.run(S, pid);
@@ -4164,6 +4184,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         : c.id === 'platform' ? JSON.stringify(S.push || {}) !== before.push
         : c.id === 'pact' ? Object.keys(S.aiPacts || {}).length > before.pacts
         : c.id === 'demand' ? S.inbox.length > before.inbox
+        : c.id === 'article' ? (v11Con(S).pending || []).length > before.pending
+        : c.id === 'order' ? Object.keys(v10Orders(S)).length > before.orders
+        : c.id === 'floor' ? S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0) > before.lines
         : false;
       const paid = partyPurse(S, pid) < before.purse;
       cardWorks[c.id] = !!(line && moved && paid);
@@ -4217,7 +4240,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   });
 
   const sixActs = Object.keys(six.acts).map(k => six.acts[k]);
-  say(six.built && six.deck === 7 && six.cardWorks === 7 && six.cardFails.length === 0 && six.actedAll &&
+  /* S17k: TEN CARDS. The deck gained the three instruments an AI party could
+     never touch -- an article, an order and a line on a bill -- and the claim
+     is unchanged: EVERY card, given a state where it can play, does what it
+     says and is paid for out of that party's own money. */
+  say(six.built && six.deck === 10 && six.cardWorks === 10 && six.cardFails.length === 0 && six.actedAll &&
       six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
       six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
       six.redLineBites && six.partnerLeaves,
@@ -6135,12 +6162,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         UI.queue = []; UI.busy = false; S.capital = 120;
         endTurn(); UI.queue = [];
         if (S.over) break;
-        trace.push({ turn:S.turn, stage:S.execRace ? S.execRace.stage : 'vote',
+        /* S17k made the constitution something an AI party can amend, so a
+           season pinned to literal turn numbers is hostage to whatever the
+           other six get adopted -- measured, this probe failed on two runs in
+           four once they could lay articles. What is invariant is the season's
+           SHAPE against its own cycle: three and two sessions out are the
+           primaries, one out is the general, and nought is the vote. */
+        var nx = v17NextExecTurn(S), away = nx === null ? null : nx - S.turn;
+        trace.push({ turn:S.turn, away:away, stage:S.execRace ? S.execRace.stage : 'vote',
           offices:S.execRace ? S.execRace.offices.join('+') : null,
           spent:S.execRace ? Object.keys(S.execRace.spent || {}).length : 0 });
       }
     } finally { runQueue = rq; }
     R.season = trace.slice(0, 8).map(function (x) { return x.turn + ':' + x.stage; }).join(' ');
+    R.shape = trace.filter(function (x) { return x.away !== null; }).map(function (x) {
+      var want = x.away >= 2 ? 'primaries' : (x.away === 1 ? 'general' : 'vote');
+      return x.stage === want;
+    });
+    R.shapeOk = R.shape.length > 6 && R.shape.every(Boolean);
     R.parallel = trace.filter(function (x) { return x.offices; })
       .every(function (x) { return x.offices.split('+').length === 2; });
     R.aiSpent = trace.some(function (x) { return x.spent > 0; });
@@ -6225,7 +6264,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     return R;
   });
   const raceOk =
-    /2:primaries 3:primaries 4:general 5:vote/.test(race.season) && race.parallel && race.aiSpent &&
+    race.shapeOk && race.parallel && race.aiSpent &&
     race.field.n === 4 && race.field.caucuses === 4 && race.field.open && race.field.parties === 7 &&
     race.noDiceOnRender &&
     race.outsider.changed && race.outsider.won && race.outsider.pushes > 0 &&
@@ -6237,7 +6276,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     race.calendarSame && race.articleReal && race.rides;
   say(raceOk, 'always running',
     `THE FOUR SESSIONS BEFORE A VOTE ARE THE RACE, and they run whether a legislative ballot falls in them or ` +
-    `not: ${race.season} · both offices of the contested pair run in parallel (${race.parallel}) · ` +
+    `not -- ${race.season}, and the shape holds against the cycle rather than against literal turn numbers ` +
+    `(${race.shape.length} sessions, all of them where the calendar says: ${race.shapeOk}), because since S17k ` +
+    `an AI party can amend the constitution under this probe's feet · both offices of the contested pair run in parallel (${race.parallel}) · ` +
     `${race.field.n} candidates in a primary from ${race.field.caucuses} distinct caucuses, across all ` +
     `${race.field.parties} parties, and NO DIE on the render path (${race.noDiceOnRender}) -- the season is ` +
     `seeded once at the cycle boundary and everything after it is arithmetic, which is the rule the executive ` +
@@ -6251,6 +6292,165 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `was the player's button · the Article of the Running Mate attaches each vice to its principal ` +
     `(${race.pairs} becomes ${race.pairsMate}) and moves no ballot (${race.calendarSame}) · and the season ` +
     `rides the save (${race.rides})`);
+
+
+  /* S17k — VERBS ARE THE BUTTONS' FUNCTIONS. An AI party could not propose an
+     article, issue an order or take a position on a bill, because every one of
+     those instruments existed only as a click handler keyed on `playParty`.
+     `bill.lines` -- the field read straight into a party's vote -- had exactly
+     one writer in three megabytes and it was the player's `pressure` button. */
+  const verbs = await page.evaluate(() => {
+    var R = {};
+    function board(pid) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', pid || 'lp'), false);
+      S.playAs = pid || 'lp'; S.capital = 400;
+      if (S.purse) PARTIES.forEach(function (x) { S.purse[x.id] = 500; });
+      return S;
+    }
+    /* (a) AN AI PARTY LAYS AN ARTICLE -- through the same Core and the same
+       gate the player's button uses, and the gate refuses it a second one for
+       the same reason it refuses the player one. */
+    board('lp');
+    var id = v17AiArticleFor(S, 'pnl');
+    R.article = { pick:id, laid:id ? v17ArticleCore(S, 'pnl', id, false, 'assembly') : 'no pick',
+      pending:v11Con(S).pending.map(function (x) { return x.id + '/' + x.by; }).join(','),
+      second:v17AiArticleFor(S, 'pnl') };
+    /* and the gate reads the same for the player: one at a time out of office */
+    S.playAs = 'pnl'; S.ruling = 'fp'; S.coalition = ['fp'];
+    R.samegate = String(v11CanPropose(S, V11_ART.artOathOfOffice, false, 'assembly') || '');
+
+    /* (b) AN ORDER IS SIGNED BY THE OFFICE THAT HOLDS THE DEPARTMENT. */
+    board('lp');
+    var o = V10_ORDERS[0], tgt = o.target ? REGIONS[0].id : null;
+    R.order = { refusedOutside:String(v10OrderOpen(S, o, tgt, 'pnl') || '') };
+    /* Inside the government is not enough. `holdsDept` asks whether the
+       GOVERNMENT holds the department -- so a coalition partner sitting in no
+       office at all satisfies it, and a gate that asks only that hands the
+       whole order book to whoever is in the room. The question is whether the
+       ACTOR sits in the department: measured, the partner is refused. */
+    S.coalition = [S.ruling, 'pnl']; S.exec[o.dept] = S.ruling;
+    R.order.refusedWrongDesk = String(v10OrderOpen(S, o, tgt, 'pnl') || '');
+    S.exec[o.dept] = 'pnl';
+    R.order.openInside = v10OrderOpen(S, o, tgt, 'pnl') === null;
+    R.order.signed = v17OrderCore(S, 'pnl', o.id, tgt) === null;
+    R.order.recorded = !!v10Orders(S)[v10OrderKey(o.id, tgt)];
+    R.order.by = (v10Orders(S)[v10OrderKey(o.id, tgt)] || {}).by;
+
+    /* (c) A PARTY TAKES A LINE ON A BILL AND IT REACHES THE VOTE. */
+    board('lp');
+    var bill = sponsorBill(S, 'incomeTax', 1, 'government', 'clean', true, S.ruling, true);
+    var before = partyBillSupport(S, 'pnl', bill);
+    R.floor = { err:String(v17FloorCore(S, 'pnl', bill, 'support') || ''),
+      line:(bill.lines || {}).pnl, before:Math.round(before),
+      after:Math.round(partyBillSupport(S, 'pnl', bill)),
+      ownBill:String(v17FloorCore(S, S.ruling, bill, 'oppose') || '') };
+    R.floor.moved = R.floor.after > R.floor.before;
+    /* AND THE PLAYER'S OWN LINE IS WORTH WHAT IT HAS ALWAYS BEEN WORTH.
+       `partyBillSupport` reads TWO fields that say the same thing --
+       `playerPosition` at 24/-28 for the player's party, `lines` at 16/-18 for
+       whoever declared it -- so routing the player's button through the same
+       Core wrote both and made a declared line worth 40. That is a
+       sixty-seven per cent buff to an S10b button delivered by a refactor
+       that was supposed to change nothing. 24 is the number the card was
+       priced against; it is pinned here, not read off the constant. */
+    board('lp');
+    /* `partyBillSupport` clamps to 3..98, so the bill has to be one the
+       player's party is genuinely undecided about or the term is measured
+       against a ceiling. */
+    var own = null;
+    Object.keys(POL).forEach(function (id) {
+      if (own) return;
+      var b2 = { policy:id, dir:1, sponsor:'fp', owner:'government', strategy:'clean',
+        whip:0, upperDeal:0, committee:0, concessions:0, confidence:false, urgent:false,
+        playerPosition:null, lines:{}, notes:[], stage:'first' };
+      var v = partyBillSupport(S, playParty(S), b2);
+      if (v >= 40 && v <= 60) own = b2;
+    });
+    var plain = partyBillSupport(S, playParty(S), own);
+    v17FloorCore(S, playParty(S), own, 'support');
+    R.floor.myBase = Math.round(plain);
+    R.floor.myLine = Math.round(partyBillSupport(S, playParty(S), own) - plain);
+    R.floor.myKeys = Object.keys(own.lines || {}).join(',');
+
+    /* (d) THE ATTACK GOES AT WHOEVER IT HOLDS SOMETHING AGAINST. It was
+       `st.ruling`, always -- so a party could carry a grudge of a hundred
+       against an opposition player and spend every attack it ever made on the
+       government instead. */
+    board('lp'); S.ruling = 'fp';
+    v16Resent(S, 'pnl', 'lp', 80);
+    var m0 = S.machine.lp || 0, mf = S.machine.fp || 0;
+    V16_AI_DECK.filter(function (c) { return c.id === 'attack'; })[0].run(S, 'pnl');
+    R.attack = { hitTheGrudge:(S.machine.lp || 0) < m0, hitTheGovernment:(S.machine.fp || 0) < mf };
+
+    /* (e) AND THE ENGINE STOPS DRAFTING THE PLAYER'S BILLS FOR THEM. It
+       stamped them owner:'opposition' with playerPosition:'support', so a bill
+       the player had never chosen appeared on the paper in their name and the
+       `pressure` lever could be aimed at it. */
+    board('lp'); S.ruling = 'fp'; S.coalition = ['fp', 'sd'];
+    var mine = 0, other = 0;
+    for (var t = 0; t < 300; t++) {
+      S.bills = []; pv5AiPrivateBill(S);
+      S.bills.forEach(function (x) { if (x.sponsor === 'lp') mine++; else other++; });
+    }
+    R.privateBills = { mine:mine, other:other };
+
+    /* (f) AND THE DECK ACTUALLY REACHES THEM, over real sessions. */
+    board('lp'); S.ruling = 'fp'; S.coalition = ['fp', 'sd']; S.rngState = 20260827;
+    var did = {}, rq = runQueue;
+    runQueue = function (done) { UI.queue = []; rq(done); };
+    var say = v16AiTurn;
+    try {
+      for (var k = 0; k < 40; k++) {
+        UI.queue = []; UI.busy = false; S.capital = 120;
+        if (S.purse) PARTIES.forEach(function (x) { S.purse[x.id] = Math.max(S.purse[x.id] || 0, 400); });
+        endTurn(); UI.queue = [];
+        if (S.over) break;
+        (S.aiLast || []).forEach(function (l) {
+          if (/laid .* before/.test(l)) did.article = (did.article || 0) + 1;
+          if (/signed /.test(l)) did.order = (did.order || 0) + 1;
+          if (/came out (for|against)|leaned on the sponsors/.test(l)) did.floor = (did.floor || 0) + 1;
+        });
+      }
+    } finally { runQueue = rq; v16AiTurn = say; }
+    R.inPlay = did;
+    R.deck = V16_AI_DECK.map(function (c) { return c.id; }).join(',');
+    return R;
+  });
+  const verbsOk =
+    verbs.article.pick && verbs.article.laid === null &&
+    /\/pnl/.test(verbs.article.pending) && !verbs.article.second &&
+    /already have one|already has an article/.test(verbs.samegate) &&
+    /Only a government/.test(verbs.order.refusedOutside) &&
+    /in other hands/.test(verbs.order.refusedWrongDesk) && verbs.order.openInside &&
+    verbs.order.signed && verbs.order.recorded && verbs.order.by === 'pnl' &&
+    !verbs.floor.err && verbs.floor.line === 'support' && verbs.floor.moved &&
+    /your own party/.test(verbs.floor.ownBill) &&
+    verbs.floor.myLine === 24 && verbs.floor.myKeys === '' &&
+    verbs.attack.hitTheGrudge && !verbs.attack.hitTheGovernment &&
+    verbs.privateBills.mine === 0 && verbs.privateBills.other > 50 &&
+    (verbs.inPlay.article > 0 || verbs.inPlay.order > 0 || verbs.inPlay.floor > 0) &&
+    /article,order,floor/.test(verbs.deck);
+  say(verbsOk, 'verbs are the buttons’ functions',
+    `AN AI PARTY LAYS AN ARTICLE through the same Core and the same gate the player's button uses: the League ` +
+    `laid ${verbs.article.pick} (${verbs.article.pending}) and is refused a second, and the identical line ` +
+    `refuses the player one out of office ("${verbs.samegate.slice(0, 46)}") · AN ORDER IS SIGNED BY THE OFFICE ` +
+    `THAT HOLDS THE DEPARTMENT: a party outside the government is refused ` +
+    `("${verbs.order.refusedOutside.slice(0, 32)}") and so is a party INSIDE it that does not sit in the ` +
+    `department ("${verbs.order.refusedWrongDesk.slice(0, 34)}") -- the old gate asked whether the GOVERNMENT ` +
+    `held it, which any partner satisfies; the party that does sit there signs, and the record ` +
+    `carries who signed it (${verbs.order.by}) · A PARTY TAKES A LINE ON A BILL and it reaches the VOTE -- ` +
+    `${verbs.floor.before} to ${verbs.floor.after} on the sponsor's own forecast -- where \`bill.lines\` had one ` +
+    `writer in three megabytes and it was the player's button; its own bill is refused ` +
+    `("${verbs.floor.ownBill.slice(0, 26)}"), and the PLAYER's own line is still worth the ` +
+    `${verbs.floor.myLine} it has been worth since S10b -- \`partyBillSupport\` reads two fields that say the ` +
+    `same thing, so writing both would have made it 40 · THE ATTACK GOES AT WHOEVER IT HOLDS SOMETHING AGAINST ` +
+    `(${verbs.attack.hitTheGrudge}) and not at the government by default (${!verbs.attack.hitTheGovernment}), ` +
+    `where the target was \`st.ruling\` and a grudge of a hundred against an opposition player reached nothing · ` +
+    `the engine stops drafting the PLAYER's private members' bills (${verbs.privateBills.mine} of ` +
+    `${verbs.privateBills.mine + verbs.privateBills.other}), which used to put a bill on the paper in their name ` +
+    `that they had never chosen · and over forty real sessions the deck reached them: ` +
+    `${verbs.inPlay.article || 0} articles, ${verbs.inPlay.order || 0} orders, ${verbs.inPlay.floor || 0} lines ` +
+    `on the floor`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
