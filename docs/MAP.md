@@ -310,6 +310,42 @@ the ones nobody would hold a press conference about.
 - Measured from the opposition bench over forty sessions on a fixed stream:
   **37 reactions offered in 12 different shapes.**
 
+## The caucuses, and who picks the candidate (S17i)
+
+**`PARTY_FACTIONS` is 7 x 4**, authored, every name and every id its own,
+every party's strengths summing to 100. It was 7 x 3, and ruling 2 — "each
+caucus puts a candidate forward in the primary" — had nothing to attach to.
+
+- **A caucus carries an `id`**, and the inbox names one with `factionId`.
+  **`v17Caucus(st, pid, it)`** asks by id and falls back to the stored array
+  index for the papers an old save is already carrying. That index is also why
+  the fourth caucus is **appended** rather than sorted into place: reordering
+  points an old resolution at somebody else's caucus.
+- **A save extends in place.** The three it carries keep their strengths, their
+  loyalties and their positions, and gain their ids; the fourth is appended
+  with the strength it was authored with. A save is not re-founded.
+- **The loyalty ladder is re-centred for four.** `factionAverage` is
+  strength-weighted loyalty, `partyTurnout` reads it, and the seed therefore
+  decides a number every party's ballot is measured against. 64/61/58 averaged
+  61.3; a fourth on the same ladder at 55 moved every party's turnout term by a
+  point in the same direction. It is 65/62/59/56 now, and the average is back.
+- **Promotion transfers a fixed five**, divided among however many others there
+  are. The `−2.5` each was tuned for two.
+- **`v17CaucusOf(st, pid, name)`** is which wing would put a person forward,
+  derived from their own name against the party's caucuses weighted by
+  strength — stable, previewable, no die, like everything else on the exec
+  bench since S15i. `execBench` tags every candidate with it and the nomination
+  card prints it.
+
+**`st.partyRules[pid].primaries`** is how a party picks (ruling 5). Seeded from
+where the party stands — a party built on discipline and central authority does
+not put its nominations out — and rendered for all seven on the Parties tab.
+**`v17CycleStage`** places the session in the executive cycle: the four
+sessions before a vote are the race, the first two the primaries and the last
+two the general, so "between cycles" is the ballot session itself.
+`v17CanSetPrimaries` refuses a change while a season runs, with the reason on
+the button, and the answer taken at the ballot governs the season after.
+
 ## The calendar (S17h)
 
 **One session is one year.** Three clocks run on it and, until S17h, two of

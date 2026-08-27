@@ -5971,6 +5971,138 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${cal.reshuffle.benched}/${cal.reshuffle.froms}), the rivals' offices were untouched ` +
     `(${cal.reshuffle.rivalsUntouched}) and no two chairs ended with the same name`);
 
+
+  /* S17i — FOUR VOICES IN EVERY HALL. There were three caucuses per party in
+     the whole game and nominations never touched them, so ruling 2's "each
+     caucus puts a candidate forward" had nothing to attach to; and whether a
+     party put its nominations to the membership at all was not a question
+     anybody could ask. */
+  const cau = await page.evaluate(() => {
+    var R = {};
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.capital = 400;
+    var names = [], ids = [];
+    PARTIES.forEach(function (x) { (S.factions[x.id] || []).forEach(function (f) { names.push(f.name); ids.push(f.id); }); });
+    R.book = { counts:PARTIES.map(function (x) { return (S.factions[x.id] || []).length; }),
+      total:names.length, uniqueNames:new Set(names).size === names.length,
+      uniqueIds:new Set(ids).size === ids.length && ids.every(Boolean),
+      sums:PARTIES.map(function (x) { return Math.round((S.factions[x.id] || []).reduce(function (n, f) { return n + f.strength; }, 0)); }),
+      authored:PARTIES.every(function (x) { return (PARTY_FACTIONS[x.id] || []).length === 4; }) };
+
+    /* (a) A SAVE FROM BEFORE THE FOURTH CAUCUS EXTENDS IN PLACE. The inbox
+       stores a caucus by ARRAY INDEX, so the fourth had to be appended rather
+       than sorted in, and the three a save carries keep their strengths, their
+       loyalties and their positions. */
+    var old = JSON.parse(JSON.stringify(S));
+    /* deliberately OUT of strength order, so a sort would reorder them and the
+       stored index in an old paper would land on somebody else */
+    var was = [40, 24, 33];
+    old.factions.lp = old.factions.lp.slice(0, 3).map(function (f, i) {
+      var c = JSON.parse(JSON.stringify(f)); delete c.id; c.strength = was[i]; c.loyalty = 71; return c;
+    });
+    old = enrichState(old, false);
+    R.extend = { n:old.factions.lp.length,
+      kept:old.factions.lp.slice(0, 3).every(function (f, i) { return f.strength === was[i] && f.loyalty === 71; }),
+      order:old.factions.lp.slice(0, 3).map(function (f) { return f.id; }).join(','),
+      gotIds:old.factions.lp.slice(0, 3).every(function (f) { return !!f.id; }),
+      fourth:old.factions.lp[3] && old.factions.lp[3].id };
+
+    /* (b) AND A PAPER FINDS ITS CAUCUS BY ID. */
+    R.byId = v17Caucus(S, 'lp', { faction:1, factionId:'lpWelfare' }).id;
+    R.byIdWins = v17Caucus(S, 'lp', { faction:3, factionId:'lpIndustrial' }).id;
+    R.byIndex = v17Caucus(S, 'lp', { faction:2 }).id;
+
+    /* (c) PROMOTION TRANSFERS A FIXED FIVE, whatever the number of caucuses.
+       The -2.5 was tuned for two others and took five out of the party; with
+       three it would take seven and a half, so a promotion inflated the party
+       a little every time it was used. */
+    var before = S.factions.lp.reduce(function (n, f) { return n + f.strength; }, 0);
+    factionAction('lp', 0, 'promote');
+    R.promote = { before:Math.round(before),
+      after:Math.round(S.factions.lp.reduce(function (n, f) { return n + f.strength; }, 0)) };
+
+    /* (d) EVERY NAME ON THE BENCH BELONGS TO A WING OF ITS PARTY, stably and
+       without a die: nominations had no line to the caucuses at all. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false); S.playAs = 'lp';
+    var bench = execBench(S, 'pres', 'lp');
+    var r0 = S.rngState;
+    var again = execBench(S, 'pres', 'lp');
+    R.bench = { n:bench.length, tagged:bench.filter(function (c) { return !!c.caucus; }).length,
+      stable:bench.every(function (c, i) { return again[i].caucus === c.caucus; }),
+      real:bench.every(function (c) { return (S.factions.lp || []).some(function (f) { return f.id === c.caucus; }); }),
+      noDice:S.rngState === r0 };
+
+    /* (e) AND HOW A PARTY PICKS IS ITS OWN RULE, seeded from where it stands
+       and changed only when no season is running. */
+    R.rules = PARTIES.map(function (x) { return x.id + ':' + (v17PrimariesOn(S, x.id) ? 'open' : 'closed'); });
+    R.split = { open:PARTIES.filter(function (x) { return v17PrimariesOn(S, x.id); }).length, of:PARTIES.length };
+    var stages = {};
+    for (var t = 1; t <= 13; t++) { S.turn = t; stages[t] = v17CycleStage(S).stage; }
+    R.stages = stages;
+    S.turn = 7; S.capital = 400;
+    var was = v17PrimariesOn(S, 'lp'), msg = null, f = flash;
+    flash = function (x) { msg = x; };
+    try { v17SetPrimaries('lp', !was); } finally { flash = f; }
+    R.mid = { moved:v17PrimariesOn(S, 'lp') !== was, why:String(msg || '') };
+    S.turn = 9; S.capital = 400; msg = null; f = flash;
+    flash = function (x) { msg = x; };
+    try { v17SetPrimaries('lp', !was); } finally { flash = f; }
+    R.atBallot = { moved:v17PrimariesOn(S, 'lp') !== was, why:String(msg || '') };
+    R.panel = v17RulesPanel();
+    /* (f) AND THE TURNOUT TERM DID NOT MOVE. `factionAverage` is
+       strength-weighted loyalty and `partyTurnout` reads it, so the loyalty
+       seed decides a number every party's ballot is measured against. The
+       ladder was 64, 61, 58 -- three caucuses averaging 61.3 -- and a fourth
+       seeded on the same ladder at 55 pulled every party's turnout term down
+       by a point in the same direction, for no reason anybody chose. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false); S.playAs = 'lp';
+    R.turnout = { avg:PARTIES.map(function (x) { return +factionAverage(S, x.id).toFixed(2); }),
+      term:PARTIES.map(function (x) { return +partyTurnout(S, x.id).toFixed(4); }),
+      wasAvg:61.3, drift:+Math.abs(factionAverage(S, 'rsf') - 61.3).toFixed(2) };
+
+    R.rides = (function () {
+      var blob = JSON.parse(JSON.stringify(S));
+      return !!(blob.partyRules && typeof blob.partyRules.lp.primaries === 'boolean');
+    })();
+    return R;
+  });
+  const cauOk =
+    cau.book.total === 28 && cau.book.counts.every(n => n === 4) && cau.book.authored &&
+    cau.book.uniqueNames && cau.book.uniqueIds && cau.book.sums.every(n => n === 100) &&
+    cau.extend.n === 4 && cau.extend.kept && cau.extend.gotIds &&
+    cau.extend.order === 'lpIndustrial,lpWelfare,lpModern' && cau.extend.fourth === 'lpPublicSector' &&
+    cau.byId === 'lpWelfare' && cau.byIdWins === 'lpIndustrial' && cau.byIndex === 'lpModern' &&
+    cau.promote.after === cau.promote.before &&
+    cau.bench.tagged === cau.bench.n && cau.bench.stable && cau.bench.real && cau.bench.noDice &&
+    cau.split.open > 0 && cau.split.open < cau.split.of &&
+    cau.stages[1] === 'between' && cau.stages[2] === 'primaries' && cau.stages[3] === 'primaries' &&
+    cau.stages[4] === 'general' && cau.stages[5] === 'ballot' &&
+    !cau.mid.moved && /halfway through/.test(cau.mid.why) &&
+    cau.atBallot.moved && !cau.atBallot.why &&
+    cau.turnout.drift <= 0.2 && cau.turnout.term.every(t => t > 1 && t < 1.2) &&
+    cau.panel.indexOf('How the Party Picks') >= 0 && cau.rides;
+  say(cauOk, 'four voices in every hall',
+    `${cau.book.total} caucuses, ${cau.book.counts[0]} to a party where there were three, every name and every ` +
+    `id its own and every party's strengths summing to ${cau.book.sums[0]} · A SAVE EXTENDS IN PLACE: the three ` +
+    `an older campaign carries keep their strengths, their loyalties and their POSITIONS ` +
+    `(${cau.extend.order}) and the fourth is appended (${cau.extend.fourth}) -- the inbox stores a caucus by ` +
+    `array index, so sorting the new one in would have pointed an old resolution at somebody else's caucus · ` +
+    `and a paper finds its caucus by id, with the index kept for the papers a save is already carrying ` +
+    `(${cau.byId} by id, ${cau.byIdWins} when the id and the index disagree, ${cau.byIndex} by index alone) · ` +
+    `PROMOTION TRANSFERS A FIXED FIVE: ${cau.promote.before} to ${cau.promote.after}, where the -2.5 was tuned ` +
+    `for two others and with three would have taken seven and a half out of a party of a hundred every time it ` +
+    `was used · EVERY NAME ON THE BENCH BELONGS TO A WING: ${cau.bench.tagged} of ${cau.bench.n}, the same wing ` +
+    `every time it is asked (${cau.bench.stable}) and no die rolled to decide it (${cau.bench.noDice}) -- ` +
+    `nominations had no line to the caucuses at all · AND HOW A PARTY PICKS IS THE PARTY'S OWN RULE: ` +
+    `${cau.split.open} of ${cau.split.of} put their nominations to the membership, seeded from where each stands ` +
+    `rather than from a table (${cau.rules.join(', ')}), and it cannot be changed mid-season -- the four ` +
+    `sessions before a vote are the race (${[1,2,3,4,5].map(t => t + ':' + cau.stages[t]).join(' ')}), a change ` +
+    `is refused while it runs and taken at the ballot, and the rule rides the save · AND THE TURNOUT TERM DID ` +
+    `NOT MOVE: the loyalty ladder was re-centred for four, so the strength-weighted average every party's ` +
+    `ballot is read against comes back to ${cau.turnout.avg[0]} against ${cau.turnout.wasAvg} ` +
+    `(${cau.turnout.drift} of drift) -- seeded on the old ladder the fourth caucus took a point off all seven ` +
+    `in the same direction, which is the kind of change that is only ever found by looking for it`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

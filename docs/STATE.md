@@ -25,11 +25,12 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17h.** Groups 0-2 are closed and Group 3 (the
-executive cycle) is open. Next is **s17i — four voices in every hall**: the
-seven parties go from three caucuses each to four, the two positional
-consumers are converted to id-keys BEFORE the append, and the primaries toggle
-lands as an in-game party rule. Its design is in `docs/PLAN-S17.md`.
+**Landed so far: s17a–s17i.** Next is **s17j — always running**: the
+executive race becomes a state machine, two sessions of primaries and two of
+general campaign for both offices of the contested pair, with the caucuses
+fielding the candidates s17i gave them and the running-mate article attaching
+the vices to their principals. It is the largest PR left. Its design is in
+`docs/PLAN-S17.md`.
 
 ### S17a — the seven defects
 
@@ -87,6 +88,68 @@ ROADS OK          163 assertions, deterministic across runs
 PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
+```
+
+### S17i — four voices in every hall
+
+> *"each party gets 4 unique caucuses (currently only 3 caucuses exist in the
+> whole game). Each caucus puts a candidate forward in the primary."*
+
+**Twenty-eight caucuses where there were twenty-one**, one more in every hall,
+each authored with its own name, its own place on the compass and its own
+demand: the Agrarian Collectives, the Public Service Alliance, the Municipal
+Bloc, the Atlantic Group, the Country Members, the Chapel Independents, the
+Veterans Bloc. Every party's strengths sum to a hundred.
+
+**A save from before the fourth extends in place.** The inbox stores a caucus
+by **array index**, so the fourth had to be appended rather than sorted in:
+sorting it by strength would point a resolution an old campaign is carrying at
+somebody else's caucus. The three a save has keep their strengths, their
+loyalties and their positions; the fourth is appended; and every caucus gains a
+stable `id` so a paper can name one rather than count to it. The index is kept
+for the papers already written.
+
+**And the loyalty ladder was re-centred for four.** This is the part that was
+only ever going to be found by looking for it. `factionAverage` is
+strength-weighted loyalty and `partyTurnout` reads it, so the seed decides a
+number **every party's ballot is measured against**. The ladder was 64, 61, 58
+— three caucuses averaging 61.3 — and a fourth seeded on the same ladder at 55
+pulled it to 60.2 and moved the turnout term for all seven parties by a point,
+in the same direction, for no reason anybody chose. At 65 the ladder is 65, 62,
+59, 56 and the average comes back to 61.2.
+
+**Promotion transfers a fixed five.** The `−2.5` to each other caucus was tuned
+for *two* others; with three it would take seven and a half out of a party of a
+hundred every time the button was used.
+
+**Every name on the bench belongs to a wing of its party.** Nominations had no
+line to the caucuses at all — which is what ruling 2 needs. The backing is
+derived from the person's own name against the party's caucuses, weighted by
+strength: stable, previewable, and no die rolled, like everything else on that
+bench since S15i. The nomination card names the caucus behind each candidate.
+
+**And how a party picks is the party's own rule** (ruling 5). `partyRules` is
+on the Parties tab: open the nominations and the membership chooses between
+four candidates, close them and the leadership chooses and answers for it. The
+dispositions are seeded from where each party stands rather than from a table —
+five of the seven open, and the two built on discipline and central authority
+keep it in the room. It **cannot be changed mid-season**: the four sessions
+before a vote are the race, a change is refused while it runs with the reason
+on the button, and it is taken at the ballot to govern the season after.
+
+S17j turns all of this into the primary itself.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          176 assertions (+1)
+PLAYTEST PASS     59 steps
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+PACING            elections won identical on all six seeds; the turnout term
+                  measured directly, 1.0678 against main's 1.0690
+POISON            10 reverts — sorting the fourth in, re-founding an old save,
+                  the id lookup, the promotion share, the bench provenance, its
+                  stability, the seeded dispositions, the mid-season bar, the
+                  loyalty ladder, and the fourth caucus itself
 ```
 
 ### S17h — the calendar tells the truth
