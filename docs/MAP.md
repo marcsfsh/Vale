@@ -177,6 +177,66 @@ the live chain — fine, but know they re-bind per sheet.
   says so on the button and the toast says it again on the way in, instead of
   handing the player an inert corpse with no explanation.
 
+## The three chairs (S17b) — which mode of play you are in
+
+The owner plays this game from one of three chairs: **an opposition party, a
+junior partner in a coalition, or the ruling party.** Those are not a new
+axis. **`standing(st)` has returned exactly `'leading' | 'junior' |
+'opposition'` since v5**, and ~20 sites consume it as string equality — the
+comment at its definition names what breaks if a fourth value is ever added.
+**Never add one.** A caretaker government (S17f) is an orthogonal flag, not a
+standing: a caretaker still *leads*.
+
+**`need` is the vocabulary, and one predicate answers it.**
+
+| `need` | who may | read by |
+|---|---|---|
+| `'any'` | every chair — party business | `modeAllows` |
+| `'gov'` | the government: head **or** junior partner | `inPower` |
+| `'leading'` | the head of government's own prerogative | `leads` |
+
+- **`modeAllows(st, need)`** decides; **`modeWhy(st, need)`** is the refusal
+  sentence, which names the chair the instrument belongs to *and* the one the
+  player is in; **`actionNeed(a)`** supplies the default for a registry card
+  that does not declare one. An action with no `need` behaves exactly as it
+  did before S17b — party-scoped and Agenda/Figures are `'any'`, the rest of
+  the registry is `'gov'` — so only the cards that were lying about their
+  chair carry the field.
+- **Two sibling questions about an OFFICE, and they are not the same
+  question.** `holdsDept(st, dept)` asks whether the *government's* coalition
+  holds it — the right test for a government's capacity (pricing, government
+  instruments). `officeMine(st, dept)` (S17a) asks whose side it is on from
+  the PLAYER's chair — the coalition test in power, the player's own party out
+  of it — and that is what every sentence addressed to the player must use.
+  `assentIsMine` is the strict-party test and governs *decision ownership*.
+- **THE GATE GOES ON THE LIVE FUNCTION.** `pv5MinisterAction` is *reassigned*
+  at the v11 chunk and that reassignment replaces four of its nine cases: a
+  gate placed on the base was measured as absent. Before gating anything,
+  grep for `var xBase = fn;` / `fn = function`. A *wrapper* that delegates
+  (`pv5InterestAction`, `regionAction`) carries the base's gate; a
+  *reassignment* does not.
+- **One table per surface, not two rules.** The v11 regional layer carried its
+  own `inPower` check beside `V17_REGION_NEED`; they are one table now. Two
+  rules for one surface drift.
+- **The floor is open from every chair.** `draftBillDialog` and
+  `v11CanPropose` refused a party out of government outright, so six of the
+  seven parties — and the player whenever out of office — could not put a
+  measure on the paper at all, while `pv5AiPrivateBill` put one there for
+  them. Out of government it is a **private member's bill**: one at a time
+  (`v17PrivateBillsOf`), one article at a time, and no government machinery
+  behind it — the whip, the committee and the Senate deal stay the
+  government's, which the bill card already enforces through `canWork`. The
+  odds are worse because the arithmetic is worse; no number was put on the
+  scale. **A pending article records `by`** — it never had a sponsor, because
+  until S17b only a government could lay one; the cap reads it, and S17k's AI
+  parties will write it. An older save's pending article has no `by` and reads
+  as the government's, which is what it was.
+- The matrix in `tools/roads.js` (`the three chairs`) probes every instrument
+  from all three chairs on the Hung Assembly board — which returns fp leading,
+  sd as its junior partner and lp in opposition — by CALLING each handler and
+  asking whether the model moved. A gate that only disables a button is not a
+  gate.
+
 ## The legislature, and what happens when there isn't one
 
 Three states per chamber, not two (S15). `lowerState(st)` returns `sitting` /

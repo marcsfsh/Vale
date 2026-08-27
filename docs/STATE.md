@@ -84,6 +84,84 @@ DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
 
+### S17b — the three chairs
+
+The owner named three ways to play. `standing()` has returned exactly those
+three strings since v5, so the modes are that function — **nothing here adds a
+fourth value to it.** What was missing is that almost nothing *asked*.
+
+**Measured on the Hung Assembly board before the change.** The ACTIONS
+registry did gate — 6 cards open in opposition against 66 in government — but
+drew **no distinction at all between the head of government and a junior
+partner: 66 each**. And 171 party-scoped actions bypassed the gate entirely,
+among them signing confidence and supply on a government's behalf, bringing a
+party into a cabinet the player is not in, and expelling one from it. Outside
+the registry, an opposition player could set the nation's fiscal framework,
+adopt its policy programme, grant a lobby privileged access to government, run
+the ministry, answer a standards case against the government's own minister,
+and spend the federal purse in any of the eight states.
+
+**`need` is the vocabulary** — `any` (party business), `gov` (the government
+acting, head or partner), `leading` (the head's own prerogative) — read by
+`modeAllows` and `modeWhy` and nowhere else decided. An action that does not
+carry it keeps exactly the behaviour it had, so this widens the vocabulary
+rather than re-gating two hundred cards: only the seventeen cards that were
+lying about which chair they belong to declare one. Refusals name the chair
+the instrument belongs to and the one the player is in, in the despatch box's
+voice, and a card shut by mode says so instead of "Not available".
+
+The Federation is **graded rather than shut**, which is what the owner asked
+for: a minister of a governing party can tour, inspect and hold a town hall;
+committing federal money to a state — a grant, a compact, an enterprise zone,
+a relief programme, a task force, and the six S11 programmes — is the head of
+government's; and the three verbs paid from the party purse (backing a
+challenger, running a campaign, sending the leader) stay open in every chair,
+because that is what an opposition party does in the states.
+
+| | head | partner | opposition |
+|---|---|---|---|
+| registry cards open | 66 → **66** | 66 → **66** | 6 → **4** |
+| party cards aimed at rivals | 29 → **29** | 28 → **24** | 28 → **18** |
+| fiscal framework / programme | yes | **no** | **no** |
+| federal money in a state | yes | **no** | **no** |
+| ministry, standards cases, access | yes | yes | **no** |
+| censure deck, campaign, machine | yes | yes | **yes** |
+| **lay a bill or an article** | yes | yes | **yes — new** |
+
+**And the floor opened.** The owner: *"as an opposition party, you should still
+be able to introduce bills and constitutional articles. They obviously may have
+less chance of succeeding."* Both paths refused outright, so six of the seven
+parties — and the player whenever out of office — had no way to put a measure
+on the paper, while the engine cheerfully put private members' bills there
+*for* them. Out of government it is a private member's bill: **one at a time,
+one article at a time**, and no government machinery behind it, because the
+whip, the committee and the Senate deal are the government's instruments and
+the bill card already withholds them. The odds are worse because the
+arithmetic is worse — nothing was put on the scale. A pending article now
+records **who laid it**; it never had a sponsor, because until now only a
+government could lay one.
+
+This was a gap in the plan, not in the brief: the first draft of the mode
+matrix asserted *"the floor is the government's to open"* and would have
+entrenched the very refusal the owner asked to remove.
+
+**Two things the PR found in itself.** The gate must go on the **live**
+function: `pv5MinisterAction` is reassigned late in the file and that
+reassignment *replaces* four of its nine cases, so a gate on the base was
+measured as absent. Every gated handler was then audited for reassignment, and
+the v11 regional layer's separate `inPower` rule was folded into the one
+table. And two more of this PR's own assertions were tautologies — a minister
+probe that returned `null` with no ministry seated, and a governor probe that
+mistook a real game refusal for a chair refusal.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          164 assertions — the mode matrix is the program's net
+PLAYTEST PASS     54 steps + the WebKit SKIP
+DETERMINISM PASS / TABS OK
+POISON            11 reverts, each reddens the matrix
+```
+
 **The order below was changed after S16c**: the owner's six explicit
 requirements come first, and the four "somebody can stop you" PRs follow. Three
 of the six are done (the amendment clock, the treaties, the World tab), one is

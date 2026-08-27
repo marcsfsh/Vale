@@ -8785,9 +8785,31 @@ function sponsorBill(st, policy, dir, owner, strategy, free, sponsorId, quiet) {
   return b;
 }
 
+/* S17b: the private members' bills a party has live. A government's bills are
+   the government's business and are not counted here. */
+function v17PrivateBillsOf(st, pid) {
+  return (st.bills || []).filter(function (b) {
+    return b.sponsor === pid && b.owner !== 'government' && b.owner !== 'coalition';
+  });
+}
 function draftBillDialog(id, dir) {
   var p = POL[id], lv = S.pol[id] || 0, next = lv + dir, cost = policyCost(id, dir);
-  if (!inPower(S)) { flash('You are in opposition. Use the political inbox and party actions to shape government bills.'); return; }
+  /* S17b: THE FLOOR IS OPEN TO EVERY CHAIR. The owner: "as an opposition
+     party, you should still be able to introduce bills and constitutional
+     articles. They obviously may have less chance of succeeding." This
+     refused outright, so six of seven parties -- and the player whenever out
+     of government -- had no way to put a measure on the paper at all, while
+     `pv5AiPrivateBill` cheerfully put one there for them.
+     Out of government it is a PRIVATE MEMBER'S BILL: private members' time is
+     scarce, so one at a time, and it carries no government machinery behind
+     it -- the whip, the committee and the Senate deal are the government's
+     instruments and the bill card already withholds them (`canWork`). Its
+     odds are worse because the arithmetic is worse, not because a number was
+     put on the scale: `billForecast` reads the seats behind it. */
+  if (!inPower(S) && v17PrivateBillsOf(S, playParty(S)).length >= 1) {
+    flash('Private members\u2019 time is short: your party already has a bill before the House.');
+    return;
+  }
   if (activeBillFor(S, id)) { flash('A bill on that measure is already before Parliament.'); return; }
   var fc = { clean:{lower:0,upper:0}, negotiated:{lower:5,upper:11}, urgent:{lower:5,upper:-6} };
   var preview = billForecast(S,{policy:id,dir:dir,sponsor:playParty(S),owner:'player',strategy:'clean',whip:0,upperDeal:0,committee:0,concessions:0,confidence:false,urgent:false,playerPosition:'support'});
@@ -9555,7 +9577,24 @@ function factionAction(pid, idx, action) {
   logIt(S, 'The leadership dealt with ' + f.name + '.'); render();
 }
 
+/* S17b: THE FEDERATION TAB, GRADED BY CHAIR. The owner: "there's tons of
+   things I can do with each region regardless of whether im the ruling party
+   ... if im not the ruling party, my options for what I can do in a region
+   should be more limited, and more reflective of the fact that i am not the
+   ruling party." Every one of these logs "the federal government acted in
+   ..." and every one spends the national exchequer, and none of them asked.
+   Graded, rather than shut: a minister of a governing party can tour and can
+   inspect; committing federal MONEY to a region -- a grant, a compact, an
+   enterprise zone, a relief programme, a task force -- is the head of
+   government's call. In opposition none of it is yours, and the party-scoped
+   verbs (a challenger, a campaign, the leader on a platform) are untouched
+   because those were always party business. */
+var V17_REGION_NEED = { visit:'gov', inspect:'gov', townhall:'gov',
+  grant:'leading', compact:'leading', taskforce:'leading', zone:'leading', relief:'leading',
+  corridor:'leading', retrain:'leading', charterTalks:'leading', equalise:'leading',
+  reTrade:'leading', assemblySeat:'leading' };
 function regionAction(id, action) {
+  var whyR = modeWhy(S, V17_REGION_NEED[action] || 'gov'); if (whyR) { flash(whyR); return; }
   var r = REGION[id], q = S.regions[id]; if (!r || !q) return;
   var key = id + ':' + action, last = S.regionCooldown[key];
   if (last !== undefined && S.turn - last < 2) { flash('That regional intervention is still working through.'); return; }
@@ -10011,6 +10050,59 @@ function inPower(st) { return standing(st) !== 'opposition'; }
    other parties' bills. Assembly only; the Senate is read where it matters. */
 function outright(st) { return seatShare(st, [playParty(st)]) > .5; }
 function leads(st) { return standing(st) === 'leading'; }
+/* ============================================================
+   S17b — THE THREE CHAIRS, ASKED AS ONE QUESTION
+   ============================================================
+   The owner names three ways to play: an opposition party, a junior partner
+   in a coalition, and the ruling party. `standing()` above has returned
+   exactly those three strings since v5 and is consumed by ~20 sites as string
+   equality, so the modes are not a new axis -- they are that function, and
+   nothing here adds a fourth value to it.
+
+   What was missing is that almost nothing ASKED. Measured on the Hung
+   Assembly board before this PR: the ACTIONS registry did gate (6 open in
+   opposition against 66 in government) but drew NO distinction between the
+   head of government and a junior partner -- 66 each -- and 171 party-scoped
+   actions bypassed the gate entirely, among them signing confidence and
+   supply on a government's behalf, bringing a party into a cabinet the player
+   is not in, and expelling one from it.
+
+   `need` is the vocabulary. It is read here and nowhere else decides:
+
+     'any'      party business -- open in every chair
+     'gov'      the government acting -- the head OR a junior partner
+     'leading'  the head of government's own prerogative
+
+   An action with no `need` keeps exactly the behaviour it had: party-scoped
+   and Agenda/Figures are 'any', everything else in the registry is 'gov'. So
+   this is a widening of the vocabulary, not a re-gating of 200 cards; only
+   the cards that were lying about which chair they belong to carry the field.
+   S17k re-roots the same question on an ACTOR, so an AI party meets the
+   refusal the player would. */
+function modeAllows(st, need) {
+  if (!need || need === 'any') return true;
+  if (need === 'gov') return inPower(st);
+  if (need === 'leading') return leads(st);
+  return true;
+}
+/* The refusal says which chair the instrument belongs to and which one the
+   player is sitting in. The despatch box has spoken to the player this way
+   since S10g; every refusal added by this PR is written to match it. */
+function modeWhy(st, need) {
+  if (modeAllows(st, need)) return null;
+  if (need === 'leading') {
+    return inPower(st)
+      ? 'That belongs to the party at the head of the government, and you are its partner rather than its head.'
+      : 'That belongs to the government, and you are in opposition.';
+  }
+  return 'That belongs to the government, and you are in opposition.';
+}
+/* What an action needs, when it does not say. */
+function actionNeed(a) {
+  if (a.need) return a.need;
+  if (a.scope) return 'any';
+  return ['Agenda', 'Figures'].indexOf(a.cat) >= 0 ? 'any' : 'gov';
+}
 var AGENDA_DIRS = [
   { id:'left',    label:'Further left',        e:-.13, a:0,    note:'redistribution, public ownership, the unions' },
   { id:'right',   label:'Further right',       e:.13,  a:0,    note:'markets, property, lower taxes' },
@@ -11746,7 +11838,7 @@ var ACTIONS = [
      no protege, because there was no bench to take one from. It is aimed now,
      and the person who arrives is somebody the player has actually built:
      a minister, a governor or the party leader. */
-  A({ id:'promoteProtege', cat:'Figures', name:'Elevate a Protege', cost:5, money:4, cool:2, purse:'party',
+  A({ id:'promoteProtege', need:'gov', cat:'Figures', name:'Elevate a Protege', cost:5, money:4, cool:2, purse:'party',
     desc:'Put one of your own people into a great office your side already holds.',
     opts: V15_EXEC_OFFICES.map(function (o) {
       return { label:'Into the ' + DEPTS[o].name + '\u2019s chair', cost:5, money:4, run:function (S) {
@@ -11778,7 +11870,7 @@ var ACTIONS = [
       S.ind.corruption += 5; mood(S, { prof:-4, youth:-3 });
       logIt(S, f.name + ' resigned the leadership of the ' + PARTY[worst].short + ' over the correspondence.');
     } }),
-  A({ id:'sackMinister', cat:'Figures', name:'Sack a Minister', cost:4, cool:1,
+  A({ id:'sackMinister', need:'gov', cat:'Figures', name:'Sack a Minister', cost:4, cool:1,
     desc:'Somebody has to answer for it, and it is not going to be you.',
     run:function (S) {
       var off = rnd(['pres','vpres','chan','vchan']);
@@ -11803,11 +11895,11 @@ function partyActions(pid) {
       desc:'Two dailies and a chain of weeklies swing behind them and stay there.',
       can:function () { return partyPurse(S, pid) >= 13 && (S.press[pid] || 0) < .3 && !S.banned[pid]; },
       run:function () { S.press[pid] = (S.press[pid] || 0) + .1; S.ind.corruption += 3; logIt(S, 'The press was turned over to the ' + p.short + '.'); } });
-    list.push({ id:'drawseats', name:'Draw them favourable seats', cost:9, kind:'boost',
+    list.push({ id:'drawseats', need:'gov', name:'Draw them favourable seats', cost:9, kind:'boost',
       desc:'A boundary commission that finds their voters conveniently concentrated. Permanent and cumulative.',
       can:function () { return lowerSits(S) && (S.gerry[pid] || 0) < .34 && !S.banned[pid]; },
       run:function () { S.gerry[pid] = (S.gerry[pid] || 0) + .09; S.ind.corruption += 4; S.ind.liberties -= 2; mood(S, { youth:-5, prof:-3 }); logIt(S, 'The boundaries were redrawn to suit the ' + p.short + '.'); } });
-    list.push({ id:'champion', name:'Champion their cause', cost:7, kind:'boost',
+    list.push({ id:'champion', need:'gov', name:'Champion their cause', cost:7, kind:'boost',
       desc:'Govern for a session in their interest, and let their people notice who did it.',
       can:function () { return !S.banned[pid]; },
       run:function () {
@@ -11910,7 +12002,7 @@ function partyActions(pid) {
         S.push = S.push || {}; var g = govPos(S), q = ppos(S, pid);
         S.push[pid] = { e:(g.e - q.e) * .18, a:(g.a - q.a) * .18 };
         logIt(S, 'The ' + p.short + ' machine was quietly staffed from the government side.'); } });
-    list.push({ id:'poach', name:'Poach their base', cost:8, kind:'boost',
+    list.push({ id:'poach', need:'gov', name:'Poach their base', cost:8, kind:'boost',
       desc:'Adopt the two policies their voters care most about and dare them to object.',
       can:function () { return !S.banned[pid]; },
       run:function () {
@@ -11923,7 +12015,7 @@ function partyActions(pid) {
         S.push[S.ruling] = { e:(q2.e - g2.e) * .12, a:(q2.a - g2.a) * .12 };
         logIt(S, 'The government adopted the ' + p.short + ' programme where it was popular.');
       } });
-    list.push({ id:'audit', name:'Audit their accounts', cost:6, money:4,
+    list.push({ id:'audit', need:'gov', name:'Audit their accounts', cost:6, money:4,
       desc:'Federal auditors through the party fund. Something is always wrong.',
       can:function () { return partyPurse(S, pid) >= 4 && !S.banned[pid]; },
       run:function () { 
@@ -11946,12 +12038,12 @@ function partyActions(pid) {
           logIt(S, 'The debate with the ' + p.short + ' leader went badly.');
         }
       } });
-list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind:'deal',
+list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:9, money:8, kind:'deal',
       desc:'They stay out of the cabinet and vote with you on confidence and supply. Their seats count toward your majority and cost you capital every year.',
       can:function () { return !S.banned[pid] && S.confidence !== pid && (S.coalition || []).indexOf(pid) < 0; },
       run:function () { S.confidence = pid; S.unity = clamp((S.unity || 60) - 4, 5, 100);
         logIt(S, 'A confidence and supply agreement was signed with the ' + p.short + '.'); } });
-    list.push({ id:'joinCoalition', name:'Bring them into the cabinet', cost:12, kind:'deal',
+    list.push({ id:'joinCoalition', need:'leading', name:'Bring them into the cabinet', cost:12, kind:'deal',
       desc:'A full coalition. Their seats are yours and so are their demands.',
       can:function () { return !S.banned[pid] && (S.coalition || []).indexOf(pid) < 0 && !S.cordon[pid]; },
       run:function () {
@@ -11961,7 +12053,7 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
         var mm = {}; BLOCS.forEach(function (b) { mm[b.id] = affOf(S, pid, b.id) * 4; }); mood(S, mm);
         logIt(S, 'The ' + p.short + ' entered the cabinet.');
       } });
-    list.push({ id:'expelPartner', name:'Expel them from the cabinet', cost:8, kind:'deal',
+    list.push({ id:'expelPartner', need:'leading', name:'Expel them from the cabinet', cost:8, kind:'deal',
       desc:'Break the coalition and govern without them. They will vote against everything for a decade.',
       can:function () { return (S.coalition || []).indexOf(pid) >= 0 && pid !== S.ruling; },
       run:function () {
@@ -12025,7 +12117,7 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
           logIt(S, 'The challenge inside the ' + p.short + ' failed and the leadership is stronger for it.');
         }
       } });
-    list.push({ id:'tradeMinistry', name:'Trade a department for their votes', cost:6, kind:'deal',
+    list.push({ id:'tradeMinistry', need:'leading', name:'Trade a department for their votes', cost:6, kind:'deal',
       desc:'Hand them one of the four great offices and buy a session of cooperation.',
       can:function () { return !S.banned[pid] && execHeld(S) > 1; },
       run:function () {
@@ -12038,7 +12130,7 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
         S.capital += 10;
         logIt(S, DEPTS[off].name + ' was handed to the ' + p.short + ' in exchange for their votes.');
       } });
-    list.push({ id:'prosecute', name:'Prosecute the party', cost:11, kind:'attack',
+    list.push({ id:'prosecute', need:'gov', name:'Prosecute the party', cost:11, kind:'attack',
       desc:'Charges against the organisation itself, not its members. The courts may not wear it.',
       can:function () { return !S.banned[pid] && pid !== S.ruling; },
       run:function () {
@@ -12053,14 +12145,14 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
           logIt(S, 'The prosecution of the ' + p.short + ' was thrown out, and they have made the most of it.');
         }
       } });
-    list.push({ id:'cutFunding', name:'Cut off their money', cost:8, kind:'attack',
+    list.push({ id:'cutFunding', need:'gov', name:'Cut off their money', cost:8, kind:'attack',
       desc:'Audit their donors, revoke the charitable status of their foundations and freeze the trust.',
       can:function () { return !S.banned[pid] && pid !== S.ruling; },
       run:function () { S.machine[pid] = clamp((S.machine[pid] || 0) - .14, -.8, 1);
         S.press[pid] = Math.max(0, (S.press[pid] || 0) - .06);
         S.ind.corruption += 4; mood(S, { prof:-4, tech:-3 });
         logIt(S, 'The ' + p.short + ' funding network was frozen.'); } });
-    list.push({ id:'byElection', name:'Force a by-election in their seat', cost:6, money:5, kind:'attack',
+    list.push({ id:'byElection', need:'leading', name:'Force a by-election in their seat', cost:6, money:5, kind:'attack',
       desc:'A vacancy, a short campaign, and a national verdict on one constituency.',
       can:function () { return lowerSits(S) && !S.banned[pid] && (S.seats[pid] || 0) > 20; },
       run:function () {
@@ -12072,7 +12164,7 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
           S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) - .04, -.8, 1);
           logIt(S, 'The by-election was lost to the ' + p.short + '.'); }
       } });
-    list.push({ id:'coopt', name:'Co-opt the leader', cost:9, money:6,
+    list.push({ id:'coopt', need:'leading', name:'Co-opt the leader', cost:9, money:6,
       desc:'A ministry, a peerage, or a colonial governorship.',
       can:function () { return partyPurse(S, pid) >= 6 && !S.coopted[pid] && !S.banned[pid]; },
       run:function () { S.coopted[pid] = true; S.machine[pid] = clamp((S.machine[pid] || 0) - .05, -.8, 1); S.ind.corruption += 3; logIt(S, 'The ' + p.short + ' leader accepted office.'); } });
@@ -12104,7 +12196,7 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
         if (S.partner === pid) S.partner = null;
         logIt(S, 'The ' + p.short + ' were absorbed into the government party.');
       } });
-    list.push({ id:'ban', name:'Ban the party', cost:16,
+    list.push({ id:'ban', need:'leading', name:'Ban the party', cost:16,
       desc:'Dissolution by decree. Only where no elected house sits, or under an autocratic constitution.',
       can:function () { return (FORMS[S.form].terminal || !lowerSits(S)) && !S.banned[pid]; },
       run:function () {
@@ -12128,11 +12220,11 @@ list.push({ id:'confidence', name:'Confidence and supply', cost:9, money:8, kind
       desc:'Two dailies and a chain of provincial weeklies, bought through a friendly company.',
       can:function () { return partyPurse(S, pid) >= 13 && (S.press[pid] || 0) < .3; },
       run:function () { S.press[pid] = (S.press[pid] || 0) + .1; S.ind.corruption += 3; mood(S, { youth:-4, prof:-2 }); logIt(S, 'The party acquired a chain of newspapers.'); } });
-    list.push({ id:'gerry', name:'Redraw the constituencies', cost:9, kind:'boost',
+    list.push({ id:'gerry', need:'gov', name:'Redraw the constituencies', cost:9, kind:'boost',
       desc:'A boundary commission of reliable men. Permanent, and cumulative.',
       can:function () { return lowerSits(S) && (S.gerry[pid] || 0) < .34; },
       run:function () { S.gerry[pid] = (S.gerry[pid] || 0) + .09; S.ind.corruption += 4; S.ind.liberties -= 2; mood(S, { youth:-6, prof:-4 }); logIt(S, 'The constituency boundaries were redrawn.'); } });
-    list.push({ id:'register', name:'Work the register', cost:6, money:5, kind:'boost',
+    list.push({ id:'register', need:'gov', name:'Work the register', cost:6, money:5, kind:'boost',
       desc:'Objections to hostile voters, and every friendly lodger entered twice over.',
       can:function () { return lowerSits(S) && partyPurse(S, pid) >= 5; },
       run:function () { S.machine[pid] = clamp((S.machine[pid] || 0) + .08, -.8, 1); S.ind.corruption += 3; logIt(S, 'The electoral register was worked over by the agents.'); } });
@@ -12296,7 +12388,10 @@ function actionMoney(a, opt) {
   return Math.round(m);
 }
 function actionOpen(a) {
-  if (!inPower(S) && !a.scope && ['Agenda','Figures'].indexOf(a.cat) < 0) return false;
+  /* S17b: one question, asked of every card. The old line was this same test
+     with 'gov' hard-coded and no way for a card to say it belonged to the
+     head of government, or that a party-scoped card was really a state act. */
+  if (!modeAllows(S, actionNeed(a))) return false;
   if (a.cat === 'Legislative' && a.house && !upperOn(S)) return false;
   if (a.forms && a.forms.indexOf(S.form) < 0) return false;
   if (a.notForms && a.notForms.indexOf(S.form) >= 0) return false;
@@ -13245,7 +13340,17 @@ function actionCard(a) {
   if (!ready) tags.push('<span class="tag down">Again in ' + actionWait(a) + '</span>');
   else if (a.cool) tags.push('<span class="tag">Once every ' + a.cool + ' years</span>');
   if (a.esc && (S.uses[actionKey(a)] || 0)) tags.push('<span class="tag down">Used ' + S.uses[actionKey(a)] + ' times, dearer each time</span>');
-  if (!open) tags.push('<span class="tag down">Not available</span>');
+  /* S17b: a card shut because of WHICH CHAIR the player sits in says so. Every
+     other reason a card is shut is already legible on it -- a cooldown counts
+     down, a form is named, a `can` shows its own price -- and "Not available"
+     was the one refusal that told the player nothing at all. */
+  if (!open) {
+    tags.push(modeAllows(S, actionNeed(a))
+      ? '<span class="tag down">Not available</span>'
+      : '<span class="tag down">' + (actionNeed(a) === 'leading'
+          ? (inPower(S) ? 'The head of government’s' : 'The government’s')
+          : 'The government’s') + '</span>');
+  }
   var opts = a.opts || [{ label: a.verb || 'Do it' }];
   var btns = opts.map(function (o, i) {
     var c = actionCost(a, o), m = actionMoney(a, o);
@@ -15045,8 +15150,15 @@ function pv5OpenAppointment(key){
     });});
   });
 }
+/* S17b: a ministry is run by the government that appointed it. This had no
+   gate of any kind -- brief, empower, dismiss, launch, shield, sacrifice,
+   train, promote and sideline were all open to a party in opposition, over
+   ministers sitting in offices held by other parties. The government's own
+   department is the second test, the one `pv5OpenAppointment` already makes. */
 function pv5MinisterAction(key,action){
+  var whyM=modeWhy(S,'gov');if(whyM){flash(whyM);return;}
   var m=S.ministers[key],row=pv5PortfolioRows().filter(function(x){return x.key===key;})[0];if(!m||!row)return;
+  if(!holdsDept(S,row.office)){flash('That executive office is controlled outside your governing parties.');return;}
   if(action==='brief'){
     if(!pv5Spend(2,0,'Brief '+m.name))return;m.competence=clamp(m.competence+5,0,100);m.loyalty=clamp(m.loyalty+4,0,100);m.briefings++;logIt(S,m.name+' received the leadership\'s full brief.');
   }else if(action==='empower'){
@@ -15101,7 +15213,14 @@ function pv5MinisterAction(key,action){
   }
   render();
 }
+/* S17b: a standards case against the GOVERNMENT's minister is answered by the
+   government. Ordering an inquiry, demanding a resignation, denying it or
+   disclosing everything were all open to a party in opposition, which is the
+   government answering itself through the wrong mouth. (An opposition party
+   already has the instruments that belong to it here: Question Time, the
+   press office and the censure motion.) */
 function pv5ResolveScandal(id,action){
+  var whyS=modeWhy(S,'gov');if(whyS){flash(whyS);return;}
   var sc=S.scandals.filter(function(x){return x.id===id;})[0];if(!sc||sc.status!=='active')return;var m=S.ministers[sc.minister];
   var costs={inquiry:[3,4],dismiss:[2,0],deny:[1,0],cooperate:[4,0]},z=costs[action];if(!pv5Spend(z[0],z[1],'Manage '+sc.title))return;
   if(action==='inquiry'){sc.evidence=clamp(sc.evidence+(rand()-.42)*35,0,100);sc.heat-=12;S.ind.corruption=c100(S.ind.corruption-2);if(sc.evidence<45)sc.status='cleared';}
@@ -15171,8 +15290,16 @@ function pv5CommitteeAction(cid,action,billId){
   }
   render();
 }
+/* S17b: an opposition leader can meet a trade body and can seek its
+   endorsement -- that is party business, and the panel keeps it. Granting a
+   group privileged ACCESS to government, or closing it, is an act of state:
+   the log line says so ("the government closed privileged access for ..."),
+   and it was open to a party that was not the government. */
 function pv5InterestAction(id,action){
   var g=PV5_INTEREST[id],q=S.interests[id];if(!g||!q)return;
+  if(action==='access'||action==='distance'){
+    var whyI=modeWhy(S,'gov');if(whyI){flash(whyI);return;}
+  }
   if(action==='meet'){
     if(!pv5Spend(2,0,'Meet '+g.name))return;q.relation=c100(q.relation+9);q.lastMet=S.turn;logIt(S,'The leadership met the '+g.name+'.');
   }else if(action==='access'){
@@ -15232,7 +15359,14 @@ function pv5CampaignAction(action,id){
   }
   c.lastAction=S.turn;render();
 }
+/* S17b: THE OWNER NAMED THIS ONE. "There's several things you should NOT be
+   able to do as a non-ruling party - such as being able to set the spending
+   stance, revenue posture, and investment priority of the nation." Measured
+   before this PR: an opposition player reset the nation's fiscal framework
+   with no gate of any kind, and `pv5FiscalTick` then applied it to growth,
+   inflation, the balance and the rating. It is the head of government's. */
 function pv5FiscalAction(kind,id){
+  var why=modeWhy(S,'leading');if(why){flash(why);return;}
   if(!PV5_FISCAL[kind]||!PV5_FISCAL[kind][id])return;if(!pv5Spend(3,0,'Set fiscal framework'))return;
   S.fiscal[kind]=id;S.fiscal.changed=S.turn;var name=PV5_FISCAL[kind][id].name;logIt(S,'The fiscal framework was reset: '+name+'.');render();
 }
@@ -16070,7 +16204,18 @@ function v6GovernorElections(st, early) {
   }
   return changed;
 }
+/* S17b: the split this function needed was already computed one screen away
+   -- the button helper knows which three verbs are paid from the party purse
+   (`fromParty`) and which come out of the treasury. Those three stay open in
+   every chair, because backing a challenger, running a campaign and sending
+   the leader are what an opposition party DOES in the states. The rest are
+   the federal government at a governor's door: meeting one as the government
+   is a minister's business, joint federal works and reintegration talks are
+   the head of government's, and an override was already the government's. */
+var V17_GOV_NEED = { challenge:'any', campaign:'any', stump:'any',
+  meet:'gov', works:'leading', autonomyTalks:'leading', override:'leading' };
 function v6GovernorAction(id, action) {
+  var whyG = modeWhy(S, V17_GOV_NEED[action] || 'gov'); if (whyG) { flash(whyG); return; }
   var r = REGION[id], g = S.v6.governors[id], q = S.regions[id]; if (!r || !g || !q) return;
   var me = playParty(S);
   /* S11c: `meet` and `works` went through pv5Spend, which checks only money —
@@ -16676,7 +16821,11 @@ function v6ProgrammesTick(st) {
     v.programme = null;
   }
 }
+/* S17b: a government's programme is the government's, and the head of it
+   sets it. The button was disabled in the UI and open in the model, which is
+   the S16f2 lesson wearing different clothes: the UI is not the gate. */
 function v6AdoptProgramme(id) {
+  var whyP = modeWhy(S, 'leading'); if (whyP) { flash(whyP); return; }
   var pr = V6_PROGRAMME[id]; if (!pr) return;
   if (S.v6.programme === id) { if (!pv5Spend(1, 0, 'Drop programme')) return; S.v6.programme = null; logIt(S, 'The ' + pr.name + ' was set aside.'); render(); return; }
   if (!pv5Spend(4, 0, 'Adopt ' + pr.name)) return;
@@ -22052,6 +22201,9 @@ var v9RegionActionBase = regionAction;
 regionAction = function (id, action) {
   var spec = V9_REGION_ACTS[action];
   if (!spec) return v9RegionActionBase(id, action);
+  /* S17b: the four S9 acts never reach the base function, so the gate is
+     asked here as well -- one table, both doors. */
+  var whyV = modeWhy(S, V17_REGION_NEED[action] || 'gov'); if (whyV) { flash(whyV); return; }
   var r = REGION[id], q = S.regions[id]; if (!r || !q) return;
   var key = id + ':' + action, last = S.regionCooldown[key];
   if (last !== undefined && S.turn - last < 2) { flash('That regional intervention is still working through.'); return; }
@@ -29031,7 +29183,11 @@ regionAction = function (id, action) {
   S.regionCooldown = S.regionCooldown || {};
   var key = id + ':' + action, last = S.regionCooldown[key];
   if (last !== undefined && S.turn - last < 2) { flash('That regional intervention is still working through.'); return; }
-  if (!inPower(S)) { flash('Only a government commands the federal purse.'); return; }
+  /* S17b: these six spend the federal purse on a region exactly as a grant or
+     an enterprise zone does, so they answer to the same table rather than to a
+     second rule of their own. They were `inPower`; they are the head of
+     government's, like every other federal programme in a state. */
+  var whyX = modeWhy(S, V17_REGION_NEED[action] || 'leading'); if (whyX) { flash(whyX); return; }
   if (!pv5Spend(spec.cost, spec.money, spec.label + ' in ' + r.name)) return;
   S.regionCooldown[key] = S.turn;
   var me = playParty(S);
@@ -29440,7 +29596,15 @@ function v11CanPropose(st, a, repeal, route) {
       (v11ConventionSits(st) ? 'a convention' : 'a parliament') + ' will carry at once.';
   }
   if (v11PendingOf(st, a.id)) return 'That article is already before the country.';
-  if (!inPower(st)) return 'Only a party in government may lay an article.';
+  /* S17b: an article may be laid from any chair -- the owner's requirement --
+     but out of government one at a time, for the same reason a private
+     member's bill is one at a time. Carrying it is another matter: the
+     chamber test is unchanged, and an opposition article has to find its
+     majority the hard way. */
+  if (!inPower(st)) {
+    var mine = c.pending.filter(function (p) { return (p.by || st.ruling) === playParty(st); });
+    if (mine.length >= 1) return 'Your party already has an article before the country.';
+  }
   if (repeal && !v11Adopted(st, a.id)) return 'That article is not in the document.';
   if (!repeal && v11Adopted(st, a.id)) return 'That article is already in the document.';
   if ((c.failed[a.id] || -99) + 6 > st.turn) return 'Rejected too recently to be laid again.';
@@ -29467,8 +29631,14 @@ function v11ProposeArticle(id, repeal, route) {
      again, which is what "in one session if there is enough support" means. */
   var conv = v11ConventionSits(S);
   var span = route === 'plebiscite' ? 1 : (conv ? 1 : 2);
+  /* S17b: WHO LAID IT. The record carried no sponsor, because until now only a
+     government could lay an article and the answer was never in doubt. The
+     out-of-government cap below reads this field, and S17k's AI parties will
+     lay articles of their own -- a cap that reads a field nobody writes is not
+     a cap at all. An older save's pending article has no `by` and is read as
+     the government's, which is what it was. */
   c.pending.push({ id:id, repeal:!!repeal, laid:S.turn, due:S.turn + span, campaign:0,
-    route:route, fast:route === 'assembly' && conv });
+    by:playParty(S), route:route, fast:route === 'assembly' && conv });
   S.salience.federal = c100((S.salience.federal || 50) + 7);
   if (route === 'plebiscite') {
     /* Government by plebiscite is a real instrument and it has a real price:
@@ -30700,6 +30870,14 @@ function v11SetFunding(key, n) {
    does not is delegated back to it unchanged. */
 var v11MinisterActionBase = pv5MinisterAction;
 pv5MinisterAction = function (key, action) {
+  /* S17b: THE GATE GOES ON THE LIVE FUNCTION, NOT THE ONE THAT WAS THERE
+     FIRST. The mode gate was put on the base and measured as absent: this
+     reassignment REPLACES four of the nine cases outright, so `brief`,
+     `train`, `sideline` and `launch` never reached it and an opposition
+     player went on briefing the government's ministers. `CLAUDE.md` names
+     this hazard -- a later chunk reassigns a top-level name -- and it is
+     exactly why the matrix probe calls handlers rather than reading source. */
+  var whyMW = modeWhy(S, 'gov'); if (whyMW) { flash(whyMW); return; }
   if (['brief', 'train', 'sideline', 'launch'].indexOf(action) < 0) return v11MinisterActionBase(key, action);
   var row = pv5PortfolioRows().filter(function (x) { return x.key === key; })[0];
   var m = S.ministers && S.ministers[key];
