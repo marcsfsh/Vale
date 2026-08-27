@@ -23,8 +23,13 @@ have agency in a Paradox Plaza or Total War game"; and cards across the
 statute book, the constitution and the order book whose implementations are not
 "respected and reflected everywhere they should be."
 
-**S16a–S16f are merged and all six of the owner's S16 requirements are done.**
-S16f2 (the custom start, refined) is on its branch. S17 starts from there.
+**S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
+
+**Landed so far: s17a, s17b, s17c, s17d, s17e.** Next is **s17f — nobody
+rules until the house says so**: formation, the caretaker, and investiture,
+the largest single PR in the program. Its design is in `docs/PLAN-S17.md`;
+the multi-office exclusion that s17h was to carry came forward into s17e and
+that plan entry is marked accordingly.
 
 ### S17a — the seven defects
 
@@ -82,6 +87,58 @@ ROADS OK          163 assertions, deterministic across runs
 PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
+```
+
+### S17e — the coalition in writing
+
+> *"a coalition is not 'negotiate it and forget it'. its 'negotiate it, and
+> then live up to it, alter it, betray it, or some combination thereof.'"*
+
+The agreement existed and only one chair could read it. `coalitionDeals` was
+seeded for every coalition member **except the party that leads it**, and the
+panel was written in the head of government's voice, so the owner's own bug
+report follows directly: play the Hung Assembly as a junior partner and you
+read about your colleagues' councils and portfolios and never once about your
+own terms.
+
+**Every member has an entry now, the head of government included**, and each
+entry carries `terms` — the offices it holds, its portfolio count, the
+concessions it was given, its red lines, and whether its confidence rests on
+leading the government or on sitting in the cabinet — plus a `ledger` that
+S17g will write breaches and credits into. The junior partner reads **their
+own terms, first-person**, with none of the head's four administration
+buttons; an opposition player reads an agreement that is plainly not theirs
+and is offered nothing at all.
+
+**The legacy scalar still mirrors the list.** `redLine` is one string and
+S16e's walkout machinery watches it; `redLines` is the list the negotiation
+will grow. Until S17g teaches the walkout to read the list, the ensure copies
+the list's first entry back into the scalar — and the assertion proves the
+copy by *changing the list and re-running the ensure*, because comparing them
+as seeded proves nothing when the list is built from the scalar.
+
+**And one person can no longer hold three great offices.** This was
+scheduled for S17h and came forward because it was firing constantly:
+measured, **136 of 150 executive elections seated somebody who already held
+another office**, which is not an edge case but the norm. The party leader
+sits on every office's bench with a bonus and a loyalty of 100; the bench
+deduped within one office and never asked about the other three; and the pair
+contested each cycle resolved in one pass with no taken-set. `v17OtherOffice`
+now answers that question at both the bench and the seating point — the
+belt-and-braces pair is proved by removing **both** — and the same ten
+campaigns now seat **none**. A leader may still hold one office, per the
+owner's ruling.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          170 assertions (+2: the agreement, the exclusion)
+PLAYTEST PASS     56 steps
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+PACING            six seeds A/B — elections won identical on all six
+                  (3 / 2 / 3 / 3 / 6 / 3); years governing and achievements
+                  move in both directions, mean unchanged
+POISON            7 reverts — head, terms, noterms, mine, buttons, mirror,
+                  and the exclusion pair; each reddens its own assertion
 ```
 
 ### S17d — the reaction
