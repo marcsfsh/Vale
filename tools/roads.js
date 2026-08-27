@@ -5601,7 +5601,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     !/caretaker/i.test(care.emergencyOpen) &&
     care.panel.indexOf('Caretaker') >= 0 &&
     care.resolvedInPlay.was && !care.resolvedInPlay.now && !care.resolvedInPlay.ballotMoved &&
-    care.resolvedInPlay.moved && care.resolvedInPlay.how === 'minority' &&
+    /* WHICH government it produced is not the claim -- a caretaker becoming a
+       government between one session and the next, with no ballot, is. Pinning
+       it to `minority` made this assertion a hostage to every later slice that
+       moves a grudge or a relationship by a point. */
+    care.resolvedInPlay.moved && !!care.resolvedInPlay.how &&
+    care.resolvedInPlay.how !== 'caretaker' &&
     /* The bound is PINNED at three, not read off the constant it is checking:
        parameterising the count by V17_CARETAKER_MAX makes the assertion agree
        with any value the constant happens to hold, which is no assertion at
@@ -5673,6 +5678,142 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `cohesion at 8, and S16e's number finally decides something · and a government that falls does not go ` +
     `straight to the country: the same Assembly was asked again in the same session (${noconf.refound.sameTurn}) ` +
     `and answered ${noconf.refound.ok ? 'with a government' + (noconf.refound.changed ? ' under somebody else' : ' of the same party') : 'with a caretaker'}`);
+
+
+  /* S17g — HONOUR, ALTER, BETRAY. S17e wrote the agreement down and S17f
+     negotiated it; neither made keeping it mean anything. `concessions` was a
+     list nothing consulted and `ledger` was an empty array with a named PR to
+     come, which is the only reason a field nothing reads was allowed to land.
+     Six things are asserted, and every one of them was inert before. */
+  const deal17g = await page.evaluate(() => {
+    var R = {};
+    try { return probe17g(R); } catch (e) { R.threw = e.message + ' | ' + (e.stack || '').split('\n')[1]; return R; }
+    function probe17g(R) {
+    function board() {
+      S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'fp'), false);
+      S.playAs = 'fp'; S.capital = 400; S.treasury = 8000; S.caretaker = null;
+      S.ruling = 'fp'; S.coalition = ['fp', 'sd'];
+      S = enrichState(S, false);
+      return S.coalitionDeals.sd;
+    }
+    var d = board();
+    if (!d || !d.terms) { R.noDeal = { has:!!d, keys:Object.keys(S.coalitionDeals || {}), co:(S.coalition||[]).join('+') }; return R; }
+    R.terms = { kinds:(d.terms.concessions || []).map(function (c) { return c.kind; }),
+      redLines:(d.terms.redLines || []).length };
+
+    /* (a) A PROMISE TO LEAVE SOMETHING ALONE, BROKEN BY LAYING IT. Laying is
+       the breach: a partner does not wait for assent to notice. */
+    var refr = (d.terms.concessions || []).filter(function (c) { return c.kind === 'refrain'; })[0];
+    var coh0 = d.satisfaction;
+    sponsorBill(S, refr.ref, 1, 'government', 'clean', true, 'fp', true);
+    R.breach = { ref:refr.ref, before:Math.round(coh0), after:Math.round(S.coalitionDeals.sd.satisfaction),
+      ledger:(S.coalitionDeals.sd.ledger || []).map(function (e) { return e.kind; }),
+      broken:v17Broken(S, 'sd'), floorNow:v17WalkFloor(S, 'sd'), floorWas:12 };
+
+    /* (b) AND KEPT, WHEN THE BOOK REACHES WHAT WAS PROMISED -- through a REAL
+       bill and a real assent. Calling the emitter by hand proves the emitter
+       and nothing about the game: with the call site taken out of `enactBill`
+       the first version of this still passed. And the promise is MARKED, so a
+       statute that keeps moving cannot be paid for twice. */
+    d = board();
+    var ad = (d.terms.concessions || []).filter(function (c) {
+      return c.kind === 'adopt' && ((PARTY.sd.wants || {})[c.ref] || 0) >= 1; })[0];
+    var want = (PARTY.sd.wants || {})[ad.ref], coh1 = d.satisfaction;
+    S.pol[ad.ref] = want - 1;
+    var bill = sponsorBill(S, ad.ref, 1, 'government', 'clean', true, 'fp', true);
+    enactBill(S, bill);
+    var afterOnce = S.coalitionDeals.sd.satisfaction, onceKept = v17Kept(S, 'sd');
+    v17DealEvent(S, 'move', ad.ref, 'fp', 'again');
+    R.kept = { ref:ad.ref, before:Math.round(coh1), after:Math.round(afterOnce),
+      count:onceKept, twice:v17Kept(S, 'sd'),
+      marked:(S.coalitionDeals.sd.terms.concessions || []).filter(function (c) { return c.ref === ad.ref; })[0].met,
+      ledger:(S.coalitionDeals.sd.ledger || []).map(function (e) { return e.kind; }) };
+
+    /* (c) ONLY THE GOVERNMENT CAN BREACH THE GOVERNMENT'S AGREEMENT. An
+       opposition bill on a partner's red line is a fact about the opposition. */
+    d = board();
+    var refr2 = (d.terms.concessions || []).filter(function (c) { return c.kind === 'refrain'; })[0];
+    var coh2 = d.satisfaction;
+    sponsorBill(S, refr2.ref, 1, 'opposition', 'clean', true, 'pnl', true);
+    R.notMine = { before:Math.round(coh2), after:Math.round(S.coalitionDeals.sd.satisfaction),
+      entries:(S.coalitionDeals.sd.ledger || []).length };
+
+    /* (d) THE WALKOUT IS THE TERMINAL, AND ITS FLOOR READS THE RECORD. Driven
+       breaches of a red line, through the session sweep -- and the agreement
+       is KEPT afterwards as the account of what was broken. S16e deleted it,
+       and an agreement nobody can read afterwards cannot be argued about. */
+    d = board();
+    S.coalitionDeals.sd.satisfaction = 40;
+    var n = 0;
+    for (var i = 0; i < 12 && (S.coalition || []).indexOf('sd') >= 0; i++) {
+      var dd = S.coalitionDeals.sd, line = (dd.terms.redLines || [])[0];
+      if (line) { dd.redLineOff = dd.redLineOff || {}; dd.redLineOff[line] = 0; S.pol[line] = (S.pol[line] || 0) + 1; }
+      v16RedLineTick(S); n++;
+    }
+    R.walk = { sessions:n, gone:(S.coalition || []).indexOf('sd') < 0,
+      recordKept:!!(S.coalitionDeals || {}).sd,
+      former:!!(((S.coalitionDeals || {}).sd) || {}).former,
+      ledger:((((S.coalitionDeals || {}).sd) || {}).ledger || []).map(function (e) { return e.kind; }) };
+
+    /* (e) ALTERING IS NOT BREAKING. */
+    d = board();
+    var before = (d.terms.concessions || []).map(function (c) { return c.ref; }).join(',');
+    var cohBefore = d.satisfaction;
+    var okAlter = v17Renegotiate(S, 'sd');
+    var after = (S.coalitionDeals.sd.terms.concessions || []).map(function (c) { return c.ref; }).join(',');
+    R.alter = { ok:okAlter, changed:before !== after, before:before, after:after,
+      ledger:(S.coalitionDeals.sd.ledger || []).map(function (e) { return e.kind; }),
+      broken:v17Broken(S, 'sd'), cohUp:S.coalitionDeals.sd.satisfaction > cohBefore,
+      redLineSafe:(S.coalitionDeals.sd.terms.concessions || []).every(function (c) {
+        return (S.coalitionDeals.sd.terms.redLines || []).indexOf(c.ref) < 0; }) };
+
+    /* and refused once the agreement carries V17_PATIENCE broken promises */
+    d = board();
+    for (var k = 0; k < V17_PATIENCE; k++) v17Ledger(S, 'sd', { kind:'broken', ref:'x', why:'probe', cost:0 });
+    R.alterRefused = String(v17CanRenegotiate(S, 'sd') || '');
+
+    /* (f) AND COLLAPSING THE COALITION BREAKS EVERY PROMISE STILL IN IT. */
+    d = board();
+    var outstanding = (d.terms.concessions || []).filter(function (c) { return !c.met; }).length;
+    v17DealEvent(S, 'quit', null, 'sd', 'probe');
+    R.betray = { outstanding:outstanding, broken:v17Broken(S, 'sd') };
+
+    R.card = v17LedgerCard(S, 'sd').indexOf('The record') >= 0;
+    return R;
+    }
+  });
+  const g = deal17g;
+  const gMissing = g.threw ? 'threw: ' + g.threw
+    : ['terms', 'breach', 'kept', 'notMine', 'walk', 'alter', 'betray'].filter(k => !g[k]).join(', ');
+  const dealGOk = !gMissing &&
+    g.terms.kinds.indexOf('refrain') >= 0 && g.terms.redLines > 0 &&
+    g.breach.after < g.breach.before && g.breach.ledger.indexOf('broken') >= 0 &&
+    g.breach.floorNow > g.breach.floorWas &&
+    g.kept.after > g.kept.before && g.kept.count === 1 && g.kept.twice === 1 && g.kept.marked === true &&
+    g.kept.ledger.indexOf('kept') >= 0 &&
+    g.notMine.after === g.notMine.before && g.notMine.entries === 0 &&
+    g.walk.gone && g.walk.recordKept && g.walk.former && g.walk.ledger.length > 0 &&
+    g.alter.ok && g.alter.changed && g.alter.ledger.join() === 'altered' && g.alter.broken === 0 &&
+    g.alter.cohUp && g.alter.redLineSafe && /broken promises/.test(g.alterRefused) &&
+    g.betray.outstanding > 0 && g.betray.broken === g.betray.outstanding &&
+    g.card;
+  say(dealGOk, 'live up to it, alter it, betray it', gMissing ? 'the probe could not finish -- ' + gMissing :
+    `an agreement now says two things the government will DO and one it will NOT ` +
+    `(${g.terms.kinds.join(', ')}) beside the red line it exists to defend · BREAKING it: laying a bill on the ` +
+    `promise to leave it alone takes cohesion from ${g.breach.before} to ${g.breach.after} the moment it is ` +
+    `introduced, writes it in the ledger, and raises the walkout floor from ${g.breach.floorWas} to ` +
+    `${g.breach.floorNow} -- a partner's patience is shorter the more often it has been broken · KEEPING it: ` +
+    `a real bill on the promised statute, carried to assent, takes cohesion from ${g.kept.before} to ` +
+    `${g.kept.after} and records a credit -- once and not twice, because the promise is marked kept ` +
+    `(${g.kept.marked}) · only the GOVERNMENT can breach the government's agreement, so an opposition bill on the same ` +
+    `statute moves nothing (${g.notMine.before} to ${g.notMine.after}, ${g.notMine.entries} entries) · driven ` +
+    `breaches walk the partner out in ${g.walk.sessions} sessions and the agreement is KEPT afterwards as the ` +
+    `record of what was broken (${g.walk.recordKept}), where S16e deleted it and left nothing to argue about · ` +
+    `ALTERING is not breaking: reopening swaps an outstanding promise for one they still want ` +
+    `(${g.alter.after}), records "altered" rather than "broken" (${g.alter.broken} broken), gains cohesion, ` +
+    `never touches the red line (${g.alter.redLineSafe}), and is refused outright once the agreement carries ` +
+    `three broken promises · and BETRAYING it -- collapsing the coalition -- breaks all ` +
+    `${g.betray.outstanding} promises still outstanding at once`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

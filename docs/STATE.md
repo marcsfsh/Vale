@@ -25,12 +25,14 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a, s17b, s17c, s17d, s17e, s17f.** Next is **s17g —
-honour, alter, betray**: the coalition agreement s17e wrote down becomes a
-thing you can keep, change or break, with the ledger recording which. Its
-design is in `docs/PLAN-S17.md`; the multi-office exclusion that s17h was to
-carry came forward into s17e, and the formation sheet s17e was to grow moved
-into s17f, where formation itself lives. Both plan entries are marked.
+**Landed so far: s17a–s17g.** Group 2 (the coalition) is closed. Next is
+**s17h — the calendar tells the truth**: the term article anchored to the last
+election instead of re-phasing the calendar, the executive contest decoupled
+from the legislative ballot, the five hardcoded "biennial" prose sites, and
+`artFixedTerm` given teeth. Its design is in `docs/PLAN-S17.md`; the
+multi-office exclusion that entry was to carry came forward into s17e, and the
+formation sheet s17e was to grow moved into s17f. All three plan entries are
+marked.
 
 ### S17a — the seven defects
 
@@ -88,6 +90,101 @@ ROADS OK          163 assertions, deterministic across runs
 PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
+```
+
+### S17g — honour, alter, betray
+
+> *"a coalition is not 'negotiate it and forget it'. its 'negotiate it, and
+> then live up to it, alter it, betray it, or some combination thereof.'"*
+
+S17e wrote the agreement down and S17f negotiated it. Neither made keeping it
+mean anything: `terms.concessions` was a list nothing consulted, and `ledger`
+was an empty array — allowed to land only because the PR that would read it
+was named. This is that PR.
+
+**One emitter, one scanner.** Every instrument that can honour or breach an
+agreement calls `v17DealEvent`; one function decides what it meant. The
+alternative — each instrument knowing what a concession is — is how the file
+ended up with four unshared enforcement points for `needs:`.
+
+**An agreement now says two things the government will do and one it will
+not.** A promise to leave a statute alone is the cheapest thing to give and
+the easiest to break, which is exactly what makes it worth writing down. And
+it is drawn from **friction**: the statutes where the partner and the
+formateur actually disagree. The first version drew it from the partner's own
+third-favourite policy, and measured over 180 sessions of live play the
+government never once went near one. **A red line is a point of friction or it
+is decoration.**
+
+- **Breaking it**: laying a bill on the promise takes cohesion the moment it is
+  introduced — a partner does not wait for assent to notice — writes it in the
+  ledger, and **raises the walkout floor from 12 to 18**. A partner's patience
+  is shorter the more often it has been broken. S16e's floor was a flat 12 that
+  read nothing.
+- **Keeping it**: a real bill carried to assent on a promised statute gains
+  cohesion and records a credit — once, because the promise is marked kept.
+- **Only the government can breach the government's agreement.** An opposition
+  bill on the same statute is a fact about the opposition.
+- **Altering is not breaking.** Reopening the agreement swaps an outstanding
+  promise for one they still want, costs capital and their consent, records
+  `altered` rather than `broken`, never touches the red line, and is refused
+  outright once the agreement already carries three broken promises — there is
+  nothing left to renegotiate with.
+- **Betraying it** — collapsing the coalition — breaks every promise still
+  outstanding at once, and the agreement is **kept afterwards as the record**.
+  S16e deleted it, and an agreement nobody can read afterwards cannot be
+  argued about.
+
+**And the record is on the card**, on the head of government's and on the
+junior partner's alike, with the walkout floor stated.
+
+#### Two defects this PR made and found
+
+1. **A party that came back inherited the cohesion it stormed out with.**
+   Keeping the deal as a record — the point of the ledger — meant a returning
+   partner resumed on its old satisfaction and walked out again next session.
+   Measured: mean coalition lifespan fell from 6.6 sessions to 2.1. A party
+   that returns signs a **new agreement**; the record persists, the terms and
+   the cohesion do not.
+2. **One baseline for a list of red lines.** S16e kept a single `redLineWas`
+   because it watched a single red line. Reading that scalar for whichever
+   statute happened to be passing made ordinary bills look like breaches. The
+   baseline is **per statute** now.
+
+And one measurement error worth the same space: the first lifespan probe
+tallied the ledger **every session**, turning three entries into three hundred
+and making a working mechanism look like a runaway one. A running record is
+counted once.
+
+```
+Live play, three seeds × 60 sessions       main         s17g
+breaches recorded                          n/a          7–18
+promises kept                              n/a          0–6
+walkouts                                   16–21        15–22
+mean coalition lifespan (sessions)         2.5–8.4      2.4–6.3
+mean partner cohesion                      44–46        41–45
+
+Six-seed pacing                            s17f         s17g
+elections won                              14           12
+years governing                            46           60
+crises                                     37           40
+achievements                               60           60
+```
+
+The mechanism fires a handful of times a campaign and does not dominate.
+Cohesion sits a little lower, which is what a breach costing something looks
+like.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          174 assertions (+1: the agreement kept, altered and broken)
+PLAYTEST PASS     59 steps (+1: the record on the card)
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+POISON            11 reverts — the refrain, the lay emitter, the move emitter,
+                  the kept mark, the actor test, the walkout floor, the record
+                  kept on a walkout, the patience bar, the red line's safety in
+                  a renegotiation, the betrayal, and the card; each reddens its
+                  own assertion (the last two in the playtest)
 ```
 
 ### S17f — nobody rules until the house says so

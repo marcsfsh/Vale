@@ -90,7 +90,10 @@ before touching the file.
   three-session clock read `V17_CARETAKER_MAX` and passed at 99); and **a
   probe that drives far enough for something else to do the job** proves the
   something else (two sessions reached a ballot, and the ballot formed the
-  government the clock was supposed to).
+  government the clock was supposed to). And when what you are measuring is a
+  RUNNING RECORD, **tally it once, not every session**: S17g's first lifespan
+  probe summed a three-entry ledger across sixty sessions, read 527, and sent
+  me hunting a runaway mechanism that was working correctly.
 - **`typeof x === 'string'` is not validation, and the UI is not the validation
   layer.** The custom start checked every id against a registry except its two
   chamber states, which took any string at all — and since an unknown string is
@@ -122,7 +125,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **173 content assertions**, the largest harness here: the
+- `tools/roads.js` — **174 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
