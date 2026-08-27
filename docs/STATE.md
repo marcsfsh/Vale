@@ -25,14 +25,11 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17g.** Group 2 (the coalition) is closed. Next is
-**s17h — the calendar tells the truth**: the term article anchored to the last
-election instead of re-phasing the calendar, the executive contest decoupled
-from the legislative ballot, the five hardcoded "biennial" prose sites, and
-`artFixedTerm` given teeth. Its design is in `docs/PLAN-S17.md`; the
-multi-office exclusion that entry was to carry came forward into s17e, and the
-formation sheet s17e was to grow moved into s17f. All three plan entries are
-marked.
+**Landed so far: s17a–s17h.** Groups 0-2 are closed and Group 3 (the
+executive cycle) is open. Next is **s17i — four voices in every hall**: the
+seven parties go from three caucuses each to four, the two positional
+consumers are converted to id-keys BEFORE the append, and the primaries toggle
+lands as an in-game party rule. Its design is in `docs/PLAN-S17.md`.
 
 ### S17a — the seven defects
 
@@ -90,6 +87,72 @@ ROADS OK          163 assertions, deterministic across runs
 PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
+```
+
+### S17h — the calendar tells the truth
+
+> *"if i pass a quadrennial article for quadrennial elections, i still get
+> elections biannually."*
+
+The owner's example was exact, and the cause was one character of arithmetic.
+
+**A term is counted from the last election and not before.** `isBallotTurn`
+read `(t - 1) % term === 0` — anchored to session one — so changing the term
+**re-phased the whole campaign** instead of lengthening the term being served.
+Measured: a ballot at 3, the Quadrennial Article adopted at 4, **the next
+ballot at 5** — two years later, under an article whose card says four, and
+then 9, 13, 17 correctly. Half of every adoption window hit it and laying the
+article the session after a ballot hit it every time. It is counted from
+`st.lastElection` now: the same case gives **7, 11, 15**. Shortening works the
+same way round, and an unamended constitution is untouched at every turn of a
+four-hundred-session epic.
+
+**And the executive's calendar is not the legislature's.** The contest lived
+inside `runElection`, so it only ran on turns a legislative ballot happened to
+fall on — and adopting *both* timing articles makes the term three, moving the
+ballots to 4, 7, 10, 13 and **silently skipping the executive turns 5, 9, 13,
+17 for the rest of the campaign**. Two of the four great offices were simply
+never contested again, and nothing anywhere said so. `execContest` is lifted
+out and asked on its own eight-year rotation; `runElection` answers it when the
+two coincide, `endTurn` when they do not. Measured over twenty-six real
+sessions on a term of three: the offices return at 5, 9, 13, 17, 21, 25, the
+same rotation as an unamended constitution.
+
+**The Article of the Fixed Term has teeth.** Its card says *"The Assembly shall
+run its term, and shall not be dissolved at the convenience of the
+government"*, and it moved capital income and nothing else — a government could
+adopt it and go to the country the same session. The dissolution is refused
+now, in the article's own words. (So is a caretaker's: it has not been invested
+by the house it would dissolve.)
+
+**The pages say the term the country voted for.** Five sites printed
+"biennial" as a constant — the Senate's renewal, the court's returned seats,
+the quiet-election log and the vacancy card — so a republic that had voted
+itself a four-year term read about a two-year one on four screens.
+
+**And a reshuffle stays at home.** Three sites replaced the holder of a
+**randomly chosen** great office with a minted stranger: a government could
+sack the opposition's President, and whoever arrived came from nowhere, with
+none of the competence, ambition or provenance the bench has carried since
+S15i and none of S17e's multi-office exclusion. `v17Reshuffle` picks an office
+the party actually holds — the one whose holder it can most afford to lose —
+and seats the best free person off that party's own bench through `execSeat`,
+like everything else. This is the rest of s17h's item 5; S17e took the
+elective half.
+
+**Pacing is unmoved on all six seeds** (12 / 60 / 40 / 60, identical to s17g):
+the harness never adopts a timing article, so a fix to what happens when it
+does changes nothing it plays.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          175 assertions (+1, and S11d's calendar assertion rewritten:
+                  it asserted the phase this PR proves is wrong)
+PLAYTEST PASS     59 steps
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+POISON            6 reverts — the anchor, the endTurn seam, the article's
+                  teeth, the office filter, the bench draw and the prose;
+                  each reddens its own assertion
 ```
 
 ### S17g — honour, alter, betray

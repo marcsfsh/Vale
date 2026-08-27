@@ -928,7 +928,7 @@ per verb will reach it.
 
 ### Group 3 — the executive cycle
 
-**s17h — the calendar tells the truth** (L). (1) Term article anchored to
+**s17h — the calendar tells the truth** (L). **STATUS: DONE.** (1) Term article anchored to
 st.lastElection ("and not before") — kills the re-phase defect (B2's
 measured case becomes the reddening assertion). (2) Exec contest
 decoupled from the legislative ballot (checked in endTurn's done branch —
@@ -944,6 +944,22 @@ holderOf's repair arm :6867, ageSucceed :7121, promoteProtege :11713,
 sackMinister :11741 (which mints a stranger into a random office rather
 than drawing from the bench), the two events :8143/:8187 and the
 consulate. A leader may hold exactly one office; that already holds.
+
+*What landing it found.* All five items landed. Three notes:
+
+1. **`>= term` is not `% term`.** The first anchor read "the term has
+   elapsed", which makes every session after it a ballot turn -- and
+   `nextBallot` and the sessions-to-the-ballot readout walk forward asking
+   exactly that question. It is the beat, counted from the last election.
+2. **S11d's own calendar assertion had to be rewritten**, because it asserted
+   the phase this PR proves is wrong (5, 9, 13 from an article adopted at 61).
+   An assertion that encodes a defect is not a regression net, and changing it
+   is part of the fix rather than a way around it.
+3. **`holderOf`'s repair arm, `ageSucceed`, `promoteProtege` and the
+   consulate needed nothing**: all four already seat through `execSeat`, which
+   has carried the exclusion since S17e. What actually needed the work was the
+   three sites that bypassed `execSeat` entirely and minted a stranger into a
+   random office.
 
 **s17i — four voices in every hall** (L). PARTY_FACTIONS 7×3 → 7×4
 (authored, unique). FIRST convert the two positional consumers
