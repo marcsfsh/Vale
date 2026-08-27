@@ -25,11 +25,12 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a, s17b, s17c, s17d, s17e.** Next is **s17f — nobody
-rules until the house says so**: formation, the caretaker, and investiture,
-the largest single PR in the program. Its design is in `docs/PLAN-S17.md`;
-the multi-office exclusion that s17h was to carry came forward into s17e and
-that plan entry is marked accordingly.
+**Landed so far: s17a, s17b, s17c, s17d, s17e, s17f.** Next is **s17g —
+honour, alter, betray**: the coalition agreement s17e wrote down becomes a
+thing you can keep, change or break, with the ledger recording which. Its
+design is in `docs/PLAN-S17.md`; the multi-office exclusion that s17h was to
+carry came forward into s17e, and the formation sheet s17e was to grow moved
+into s17f, where formation itself lives. Both plan entries are marked.
 
 ### S17a — the seven defects
 
@@ -87,6 +88,126 @@ ROADS OK          163 assertions, deterministic across runs
 PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
+```
+
+### S17f — nobody rules until the house says so
+
+> *"Influence in formation is proportional to TOTAL seats held across the
+> elected bodies after the partial renewal … A plurality does not guarantee
+> forming the government: any other combination of parties that reaches a
+> majority can coalesce and freeze the largest party out."*
+
+A government was the largest party. `runElection` set `st.ruling` to whoever
+won most seats and `formCoalition` walked the rest in order of ideological
+distance, adding any within .95 until the total crossed half. **Nobody was
+asked and nobody could refuse.** There was no hung parliament, no caretaker
+and no investiture: the Hung Assembly opening printed *"No party can command
+the Assembly"* and *"carries on as a caretaker"* over a model that had
+installed an ordinary federal government at a seat share of .308 and never
+read a word of it again.
+
+**The rotation.** Every eligible party is asked, in the order the count put
+them in, to try. It invites the parties it can live with, offers each one
+offices, portfolios and concessions off that party's own list of wants, and
+each of them **answers**: a party joins when what it is being given is worth
+more than sitting the term out, and what sitting it out is worth rises with
+the party's own size. So the big parties are the expensive ones and a
+plurality can be frozen out by three smaller parties who are all cheap and all
+willing. Measured on a scripted chamber: the League holds 500 of 1,305 and
+does not govern it.
+
+If nobody carries a majority the country tries **minority government** — a
+party outside the cabinet agreeing not to bring it down, which is a much
+cheaper thing to ask — and then one **grand coalition** round among the
+largest parties, which is the round most likely to fail because the largest
+parties are usually the ones furthest apart. And if that fails there is **no
+government**, which is a caretaker and not a defect.
+
+**An abstention is not opposition.** The house votes, and a government takes
+office when more members vote for it than against it. That single line is why
+a minority government can exist at all, and it is what confidence and supply
+buys.
+
+**Some parties will not sit together at any price.** Measured: the most
+distant pair on the compass refuses the whole coalition's weight, an office
+and every concession on its own list. A model where every coalition can be
+bought has no politics in it.
+
+**Not one die is rolled in any of it**, and that is deliberate twice over.
+Formation is arithmetic and appetite, not luck. And because it is pure, the
+whole rotation can be **re-run with the player's own answer pinned** — which
+is how one player sits inside a seven-party negotiation without the model
+having to be paused halfway through.
+
+**The caretaker holds office and does not govern.** No statute, no fiscal
+framework, no treaty, no programme, and no order but those the emergency
+itself requires. The Hung Assembly opens as one. A deadlock here is *soft* —
+positions, grudges and relations all move every session and a grudge cools by
+.6 a turn — so the parties usually find an answer at the next attempt; the
+three-session clock is the guarantee for the country where they do not.
+
+**And the house removes a government, not the opinion polls.** The vote of no
+confidence read `approval(S) < 42`: a national mood number consulted instead
+of the chamber, so a government holding 71% of the seats fell on a bad quarter
+and a government of one seat survived a good one. It counts the members now,
+and **a coalition partner whose cohesion has collapsed votes with the
+opposition** — which is what finally makes S16e's cohesion a number worth
+watching. A government that falls does not go straight to the country either:
+the same Assembly is asked whether it can produce another one, and sometimes
+it can.
+
+#### The balance movement, which is the largest in this program
+
+```
+                        main        s17f
+elections won (6 seeds) 20          14
+years governing         111         46
+crises                  38          37
+achievements            56          60
+```
+
+Live play, three seeds × 60 sessions: the harness's party held the leadership
+**19–23 sessions on main and 5–9 on this branch**, and spends the difference
+in opposition. Two causes, both of them the mechanism working:
+
+1. **Formateur order is total seats across both ELECTED chambers**, per the
+   ruling. The Senate renews a sixth a cycle, so it lags — and a party strong
+   there gets first refusal on the government even when it did not win the
+   night. This is the first thing in three megabytes that has ever cared
+   whether `upper.elected` is true.
+2. **Coalitions are trimmed to minimal winning.** `formCoalition` carried
+   everyone within .95 whether they were needed or not; a coalition now carries
+   nobody it does not need, because every extra partner is another veto for
+   nothing. The player is in fewer of them.
+
+Freeze-outs themselves are rare — 6 in 240 scripted formations, 3–4 in 90 of
+live play — and caretakers rarer still: **none at all in 180 sessions of live
+play** outside the Hung Assembly, which starts as one by design.
+
+**This is balance, and balance is the owner's** (`docs/AGREEMENT.md`). The
+single lever is `v17Weight`: drop its Senate term and the formateur order
+becomes the lower house alone. Measured with that term removed, the
+concentration barely moves (one party still governed 66–86 of 90), so the
+Senate is *not* what is driving it — but the lever is one line and it is named
+here so it can be pulled.
+
+A **mandate term** was built and taken out again: the formateur's lead over the
+invitee making it easier to join a clear winner. It was added to stop the
+largest party being frozen out too often, and measuring found that was not
+happening. What it did do was make a deadlock nearly unreachable and leave the
+caretaker's clock with nothing to run on. A term that fixes nothing measurable
+and costs a capability is a mechanic looking for a job.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          173 assertions (+3: the rotation, the caretaker, the house)
+PLAYTEST PASS     58 steps (+1: the formation sheet, clicked)
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+POISON            11 reverts — the rotation, the Senate term, the abstention,
+                  the unbridgeable bar, the Hung Assembly's caretaker, the
+                  caretaker's bars, the clock's call site, the emergency
+                  exception, the approval test, the cohesion defection and the
+                  clock's own constant; each reddens its own assertion
 ```
 
 ### S17e — the coalition in writing

@@ -11152,17 +11152,28 @@ function runElection(st, early) {
 
   driftParties(st, res, lead);
   var oldRuling = st.ruling;
-  if (lead !== oldRuling && playParty(st) === lead) carryOver(st, oldRuling, lead);
-  st.ruling = lead;
+  /* S17f: THE LARGEST PARTY IS NOT THE GOVERNMENT. `lead` is who won the
+     night; who governs is what the rotation makes of it, and it can be
+     somebody else entirely. The old two lines -- ruling = largest, then a
+     greedy walk down the ideological distance -- are the fallback for a build
+     without the S17f chunk, and nothing else. */
+  var formed = (typeof v17Form === 'function') ? v17Form(st, lead) : null;
+  if (!formed) { st.ruling = lead; formCoalition(st, lead); }
+  /* and the inheritance follows the KEYS OF THE OFFICE, not the size of the
+     vote: the newspapers, half the boundaries and the machine pass to whoever
+     took the government, which since this slice is not always whoever won. */
+  if (st.ruling !== oldRuling && playParty(st) === st.ruling) carryOver(st, oldRuling, st.ruling);
   /* acts.consulate: every executive office is the ruling party's, whoever the
      returns favoured — the one-shot apply() is now a standing fact. */
-  if (st.acts.consulate) { st.exec.pres = lead; st.exec.vpres = lead; st.exec.chan = lead; st.exec.vchan = lead; }
-  formCoalition(st, lead);
+  if (st.acts.consulate) { st.exec.pres = st.ruling; st.exec.vpres = st.ruling; st.exec.chan = st.ruling; st.exec.vchan = st.ruling; }
   st.lastElection = st.turn;
   st.capital = clamp(st.capital + 4, -5, capCap(st));
-  if (playParty(st) === lead && st.oppYears > 0) {
-    logIt(st, 'After ' + st.oppYears + ' years out, the ' + PARTY[lead].short + ' are back in office.');
-    chronicle(st, 'The ' + PARTY[lead].short + ' returned to government after ' + st.oppYears + ' years.');
+  /* S17f: years out of office end when you take office, not when you come
+     first. A party frozen out of a government it is the largest party in is
+     still out, and its doctrine bonus and its advisers should still say so. */
+  if (playParty(st) === st.ruling && st.oppYears > 0) {
+    logIt(st, 'After ' + st.oppYears + ' years out, the ' + PARTY[st.ruling].short + ' are back in office.');
+    chronicle(st, 'The ' + PARTY[st.ruling].short + ' returned to government after ' + st.oppYears + ' years.');
     st.oppYears = 0;
   }
   if (st.pact && st.pact === st.ruling) st.pact = null;
@@ -11218,7 +11229,14 @@ function runElection(st, early) {
   if ((st.coalition || []).length > 1) st.legacy.coalitionsBuilt++;
   addNews(st, early ? 'Snap Election' : 'Federal Ballot', 'The ' + PARTY[lead].short + ' emerge as the largest party',
     'The chamber moved ' + Math.round(swing / 2) + ' seats in aggregate and a new coalition arithmetic now applies.', lead === playParty(st) ? 'good' : 'watch');
-  return { res: res, seats: seats, lead: lead, changed: oldRuling !== lead, old: oldRuling, delta: delta, swing: swing / 2,
+  /* S17f: `lead` is who won the night and `gov` is who ended up governing.
+     They are the same in most counts and the difference is the whole point of
+     a formation, so `changed` asks about the GOVERNMENT -- a night that
+     replaces one government with another is a change whether or not the
+     largest party moved. */
+  return { res: res, seats: seats, lead: lead, gov: st.ruling, changed: oldRuling !== st.ruling,
+           frozenOut: lead !== st.ruling ? lead : null, formation: formed || null,
+           old: oldRuling, delta: delta, swing: swing / 2,
            early: !!early, senate: senateChanged, exec: execRes, court: courtSeats };
 }
 
@@ -11353,6 +11371,8 @@ function changePolicy(id, dir) {
   if (S.changed[id]) { flash('That measure has already been before Parliament this session.'); return; }
   if (!policyOpen(S, p)) { flash(policyWhy(S, p) || 'That measure has no place under this constitution.'); return; }
   if (!inPower(S)) { flash('You are in opposition. You cannot introduce government legislation.'); return; }
+  var care = (typeof v17CareBar === 'function') ? v17CareBar(S, 'policy') : null;
+  if (care) { flash(care); return; }
   var cost = policyCost(id, dir);
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
   draftBillDialog(id, dir);
@@ -11862,15 +11882,35 @@ var ACTIONS = [
           S.machine[me] = clamp((S.machine[me] || 0) + .1, -.8, 1);
           var m = {}; BLOCS.forEach(function (b) { if (affOf(S, me, b.id) > .35) m[b.id] = 6; }); mood(S, m);
           logIt(S, 'A national campaign was run against the government.'); } },
+      /* S17f: THE HOUSE REMOVES A GOVERNMENT, NOT THE OPINION POLLS. This
+         read `approval(S) < 42` -- a national mood number, consulted instead
+         of the chamber -- so a government holding 71% of the seats fell on a
+         bad quarter and a government of one seat survived a good one. It
+         counts the members now, and a coalition partner whose cohesion has
+         collapsed votes with the opposition, which is what finally makes
+         S16e's cohesion a number worth watching. A government that falls does
+         not go straight to the country either: the same Assembly is asked
+         whether it can produce another one, and sometimes it can. */
       { label:'Force a vote of no confidence', cost:11,
         run:function (S) {
-          if (approval(S) < 42 && lowerSits(S)) {
-            var r = runElection(S, true); showElection(r);
-            logIt(S, 'The government fell on a vote of confidence.');
+          if (!lowerSits(S)) { flash('There is no Assembly sitting to put the question to.'); return; }
+          var v = (typeof v17ConfidenceVote === 'function') ? v17ConfidenceVote(S) : null;
+          if (!v) return;
+          logIt(S, 'The question was put: ' + v.nay + ' against the government, ' + v.aye + ' for' +
+            (v.abstain ? ', ' + v.abstain + ' abstaining' : '') + '.' +
+            (v.defectors.length ? ' The ' + v.defectors.map(function (x) { return PARTY[x].short; }).join(' and ') +
+              ' voted against a government they sit in.' : ''));
+          if (v.carried) {
             chronicle(S, 'A government fell on a vote of confidence.');
-          } else { S.capital = clamp(S.capital - 4, -5, capCap(S));
+            var out = v17Refound(S);
+            S = enrichState(S, false);
+            if (!out.ok) toast('The government fell. Nobody can replace it.');
+            else toast('The government fell.');
+          } else {
+            S.capital = clamp(S.capital - 4, -5, capCap(S));
             S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) + .05, -.8, 1);
-            logIt(S, 'The confidence motion failed and the government is stronger for it.'); }
+            logIt(S, 'The confidence motion failed and the government is stronger for it.');
+          }
         } }
     ] }),
   A({ id:'courtLeader', cat:'Figures', name:'Court a Rival Leader', cost:6, money:6, cool:1,
@@ -12597,6 +12637,11 @@ function endTurn() {
     if (checkCollapse()) return;
     if (!electionsOn(S) && isBallotTurn(S.turn)) regimeCycle(S);
     var electionDue = electionsOn(S) && isBallotTurn(S.turn);
+    /* S17f: the caretaker's clock. Every session the parties are asked again
+       whether they can make a government out of the seats they have; when they
+       still cannot after three, the country goes back to the polls whether a
+       ballot was due or not. */
+    if (typeof v17CaretakerTick === 'function' && electionsOn(S) && v17CaretakerTick(S)) electionDue = true;
     var electionResult = null;
     if (electionDue) {
       electionResult = runElection(S, false);
@@ -13062,11 +13107,22 @@ function showElection(r) {
       '<td class="num">' + (r.res[p.id] * 100).toFixed(1) + '%</td>' +
       '<td class="num">' + r.seats[p.id] + '</td></tr>';
   }).join('');
-  var lead = PARTY[r.lead];
-  var head = r.changed
-    ? 'The government passes to the ' + lead.short + '. ' + (playParty(S) === r.lead ? 'Your party takes office.' : 'You continue to lead the ' + PARTY[playParty(S)].short + ' from ' + (inPower(S) ? 'inside the new coalition.' : 'opposition.'))
-    : 'The ' + lead.short + ' remain the largest party and keep the government.';
-  var partnerLine = S.partner ? ' No party commands the Assembly alone, so a coalition has been formed with the ' + PARTY[S.partner].short + '.' : ' They hold the Assembly outright.';
+  /* S17f: two facts where there used to be one -- who won the night, and who
+     took the government. When they differ the card has to say so, or the
+     largest party is left reading a headline about itself. */
+  var lead = PARTY[r.lead], gov = PARTY[r.gov || S.ruling];
+  var head = r.frozenOut
+    ? 'The ' + PARTY[r.frozenOut].short + ' are the largest party and will not govern: the ' + gov.short +
+      ' assembled a majority and the ' + PARTY[r.frozenOut].short + ' could not. ' +
+      (playParty(S) === r.frozenOut ? 'You go to the opposition benches with more seats than anybody.'
+        : (inPower(S) ? 'You are in the government that took it.' : 'You watch it from where you were.'))
+    : (r.changed
+      ? 'The government passes to the ' + gov.short + '. ' + (playParty(S) === r.gov ? 'Your party takes office.' : 'You continue to lead the ' + PARTY[playParty(S)].short + ' from ' + (inPower(S) ? 'inside the new coalition.' : 'opposition.'))
+      : 'The ' + lead.short + ' remain the largest party and keep the government.');
+  var partnerLine = S.caretaker
+    ? ' No combination of parties could command the Assembly, so a caretaker holds office and can do very little with it.'
+    : (S.confidence ? ' It is a minority government: the ' + PARTY[S.confidence].short + ' supply confidence and supply, and can withdraw them.'
+    : (S.partner ? ' No party commands the Assembly alone, so a coalition has been formed with the ' + PARTY[S.partner].short + '.' : ' They hold the Assembly outright.'));
   if (r.senate) partnerLine += ' Fifty Senate seats were renewed at the same ballot, one from each state.';
   if (!r.early) partnerLine += ' A third of the Assembly was up, so the rest of the chamber carries over.';
   if (r.court && r.court.length) {
@@ -15059,6 +15115,11 @@ function pv5EnsureState(st, fresh) {
   st.campaign=st.campaign||{field:12,media:8,data:6,debate:0,message:'jobs',targets:{},lastAction:-99,history:[]};
   st.campaign.targets=st.campaign.targets||{};
   REGIONS.forEach(function(r){if(st.campaign.targets[r.id]===undefined)st.campaign.targets[r.id]=0;});
+  /* S17f: a government that has not been invested, and the record of how the
+     last one was. Both default to nothing at all -- a save written before this
+     slice carries an ordinary invested government, which is what null says. */
+  if(st.caretaker===undefined)st.caretaker=null;
+  if(st.formation===undefined)st.formation=null;
   st.fiscal=st.fiscal||{stance:'balanced',priority:'productivity',revenue:'broad',changed:-99,credibility:58};
   st.scandals=st.scandals||[]; st.scandalSeq=st.scandalSeq||1;
   st.v5History=st.v5History||[];
@@ -15693,6 +15754,7 @@ function pv5CampaignAction(action,id){
    inflation, the balance and the rating. It is the head of government's. */
 function pv5FiscalAction(kind,id){
   var why=modeWhy(S,'leading');if(why){flash(why);return;}
+  var care=(typeof v17CareBar==='function')?v17CareBar(S,'fiscal'):null;if(care){flash(care);return;}
   if(!PV5_FISCAL[kind]||!PV5_FISCAL[kind][id])return;if(!pv5Spend(3,0,'Set fiscal framework'))return;
   S.fiscal[kind]=id;S.fiscal.changed=S.turn;var name=PV5_FISCAL[kind][id].name;logIt(S,'The fiscal framework was reset: '+name+'.');render();
 }
@@ -15752,7 +15814,8 @@ function pv5CoalitionPanel(){
   var voice = leads(S) ? 'Coalition partners carry explicit priorities, red lines, portfolios and cohesion. Their cohesion feeds the working relationship already used in legislation and confidence.'
     : (inPower(S) ? 'You are a partner in this government. Your own terms are below, beside the partners you sit with.'
                   : 'This is somebody else\u2019s agreement. You can read it, which is worth more than it sounds.');
-  return '<div class="panel"><h2>Coalition Agreement</h2><p class="note">' + esc(voice) + '</p><div class="cards">'+(mineCard+cards||'<div class="empty-state">'+(inPower(S)?'This is a single-party government. It has no coalition agreement to administer.':'There is no coalition agreement in force.')+'</div>')+'</div></div>';
+  return (typeof v17FormationPanel === 'function' ? v17FormationPanel() : '') +
+    '<div class="panel"><h2>Coalition Agreement</h2><p class="note">' + esc(voice) + '</p><div class="cards">'+(mineCard+cards||'<div class="empty-state">'+(inPower(S)?'This is a single-party government. It has no coalition agreement to administer.':'There is no coalition agreement in force.')+'</div>')+'</div></div>';
 }
 function pv5MinisterCard(row){
   var m=S.ministers[row.key],q=cabQuality(S,row.key),controlled=holdsDept(S,row.office),sc=S.scandals.some(function(x){return x.status==='active'&&x.minister===row.key;});
@@ -16173,6 +16236,12 @@ S=enrichState(S,false);
 .coal-total div{border:1px solid rgba(191,161,78,.2);padding:7px;text-align:center}
 .coal-total b{display:block;font:500 9.5px var(--font-u);letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
 .coal-total strong{font:600 18px var(--font-u)}
+/* S17f: the rounds the country went through before it had a government. */
+.coal-rounds{list-style:none;margin:6px 0 10px;padding:0}
+.coal-rounds li{border-left:2px solid rgba(191,161,78,.22);padding:6px 0 6px 10px;margin-bottom:6px;font-size:12.5px;color:var(--ivory-dim)}
+.coal-rounds li b{font-family:var(--font-u);font-size:12px;color:var(--ivory)}
+.coal-rounds li.good{border-left-color:var(--ok)}
+.coal-rounds li.bad{border-left-color:var(--bad)}
 
 /* ---------- misc ---------- */
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-family:var(--font-u);font-size:12.5px;margin:6px 0}
@@ -16313,6 +16382,12 @@ var V6_SCENARIOS = [
     standing:function (id) { return id === 'fp' ? 'You lead a caretaker government.' : (id === 'sd' ? 'You are the caretaker\'s only partner.' : 'You begin in opposition.'); },
     apply:function (st) {
       st.ruling = 'fp'; st.coalition = ['fp', 'sd']; st.partner = 'sd';
+      /* S17f: the scenario's own words are "No party can command the Assembly"
+         and "carries on as a caretaker", over a model that installed an
+         ordinary federal government at a seat share of .308 and read nothing
+         about it ever again. It starts as what it says it is: 396 of 1,305,
+         a caretaker, and a clock. */
+      st.caretaker = { since:1, lead:'fp' };
       v6SetSeats(st, { rsf:118, lp:212, sd:164, fp:238, cup:184, tvc:160, pnl:229 }, { rsf:22, lp:50, sd:36, fp:56, cup:44, tvc:36, pnl:56 });
       st.exec = { pres:'pnl', vpres:'fp', chan:'cup', vchan:'lp' };
       st.ind.economy = 50; st.ind.corruption = 58; st.ind.safety = 44; st.ind.liberties = 58; st.ind.poverty = 54;
@@ -16831,6 +16906,7 @@ function v6TreatyWhy(st, pid, kind) {
      spent governing. S16f is where being out of power gets its own things to
      do; this is only the door that should never have been open. */
   if (!inPower(st)) return 'The Foreign Office answers to the government, and you are not it.';
+  if (typeof v17CareBar === 'function' && v17CareBar(st, 'treaty')) return v17CareBar(st, 'treaty');
   if (st.war && st.war.power === pid) return 'The two countries are at war.';
   if (v6TreatyExcluded(st, pid, kind)) return 'They are in the Alliance. Neither may open a war on the other already.';
   if (v6HasTreaty(st, pid, kind)) return 'Already in force.';
@@ -17183,6 +17259,8 @@ function v6ProgrammesTick(st) {
    the S16f2 lesson wearing different clothes: the UI is not the gate. */
 function v6AdoptProgramme(id) {
   var whyP = modeWhy(S, 'leading'); if (whyP) { flash(whyP); return; }
+  var careP = (typeof v17CareBar === 'function') ? v17CareBar(S, 'programme') : null;
+  if (careP) { flash(careP); return; }
   var pr = V6_PROGRAMME[id]; if (!pr) return;
   if (S.v6.programme === id) { if (!pv5Spend(1, 0, 'Drop programme')) return; S.v6.programme = null; logIt(S, 'The ' + pr.name + ' was set aside.'); render(); return; }
   if (!pv5Spend(4, 0, 'Adopt ' + pr.name)) return;
@@ -18130,7 +18208,20 @@ runElection = function (st, early) {
   var v = st.v6 || v6EnsureState(st).v6;
   v.flags = v.flags || {};
   if (r.lead === me && wasOpp >= v6Scale(st, 6)) v.flags.comeback = true;
-  if (r.lead === me && (st.seats[me] || 0) <= CFG.seats / 2 && electionsOn(st)) v.needCoalition = { early:!!r.early, year:yearOf(st.turn) };
+  /* S17f: the sheet opened for one chair -- the player already at the head of
+     a government and short of a majority. There are seven parties at the table
+     and the player is one of them, so it opens whenever what happened is
+     theirs to see: they are forming it, they were asked to join it, they were
+     asked and their party said no, they are the largest party and somebody
+     else took the government anyway, or nobody could form one at all. */
+  if (electionsOn(st) && typeof v17MyPart === 'function' && st.formation) {
+    var part = v17MyPart(st);
+    var mineShort = part.role === 'formateur' && (st.seats[me] || 0) <= CFG.seats / 2;
+    if (!st.formation.ok || mineShort || part.role === 'invited' || part.role === 'supply' ||
+        part.role === 'asked' || (r.frozenOut === me)) {
+      v.needCoalition = { early:!!r.early, year:yearOf(st.turn) };
+    }
+  }
   v6GovernorElections(st, false);
   return r;
 };
@@ -18262,35 +18353,162 @@ function v6ShowReport(rep) {
 }
 
 /* ---------- coalition negotiation ---------- */
+/* S17f: THE FORMATION SHEET. This asked one question of one chair -- it
+   refused to open unless the player was already the head of a government
+   short of a majority -- and the question it asked was "who will you buy",
+   priced on a trust number and a distance with no answer from the other side
+   at all. There are seven parties at the table now and the player is one of
+   them: they see every round the country went through, they see what each
+   party was offered and what it said, and where their OWN party has a say
+   they take it and the rotation is run again with their answer in place of
+   the one the model gave. */
 function v6CoalitionCandidates(st) {
   var me = playParty(st), lp = ppos(st, me);
   return PARTIES.filter(function (p) { return p.id !== me && !st.banned[p.id] && (st.seats[p.id] || 0) > 0; }).map(function (p) {
     var d = dist2(ppos(st, p.id), lp), rel = st.partyRel[p.id] || 50, cordon = !!(st.cordon && st.cordon[p.id]);
-    var willing = !cordon && ((st.coopted && st.coopted[p.id]) || (d <= 1.3 && rel >= 30));
-    var price = cst(Math.round(2 + d * 2.5 + Math.max(0, 50 - rel) * .08));
-    var reason = cordon ? 'Under your cordon' : (d > 1.3 ? 'Too far from your position' : (rel < 30 ? 'Trust is too low' : ''));
-    return { id:p.id, seats:st.seats[p.id] || 0, d:d, rel:rel, willing:willing, price:price, reason:reason };
+    var ans = v17Accept(st, p.id, me, v17Offer(st, me, p.id, [me, p.id]), 0, null);
+    var willing = !cordon && ans.yes;
+    var reason = cordon ? 'Under your cordon'
+      : (ans.far ? 'They will not sit with you at any price'
+      : (ans.yes ? '' : 'They want ' + ans.reservation + ' and this is worth ' + ans.value + ' to them'));
+    return { id:p.id, seats:st.seats[p.id] || 0, d:d, rel:rel, willing:willing,
+      value:ans.value, reservation:ans.reservation, far:ans.far, reason:reason };
   }).sort(function (a, b) { return a.d - b.d; });
 }
+/* One row of the rotation, in the country's own words. */
+function v17RoundLine(st, r) {
+  var names = r.co.map(function (x) { return PARTY[x].short; }).join(' and ');
+  var short = Math.max(0, r.majority - r.seats);
+  if (r.kind === 'minority') {
+    return '<li' + (r.vote && r.vote.invested ? ' class="good"' : '') + '><b>' + esc(PARTY[r.formateur].short) +
+      ', as a minority</b><br>' + esc(names) + ', ' + r.seats + ' of ' + r.majority + ', with the ' +
+      esc(PARTY[r.supply].short) + ' abstaining. ' +
+      (r.vote ? r.vote.aye + ' for, ' + r.vote.nay + ' against, ' + r.vote.abstain + ' abstained &mdash; ' +
+        (r.vote.invested ? 'invested.' : 'defeated.') : '') + '</li>';
+  }
+  if (r.kind === 'grand') {
+    return '<li' + (r.vote && r.vote.invested ? ' class="good"' : ' class="bad"') + '><b>A grand coalition</b><br>' +
+      esc(names) + ', ' + r.seats + ' of ' + r.majority + '. ' +
+      (short ? 'Still ' + short + ' short.' : (r.vote && r.vote.invested ? 'Invested.' : 'Defeated on the floor.')) + '</li>';
+  }
+  return '<li' + (r.vote && r.vote.invested ? ' class="good"' : '') + '><b>' + esc(PARTY[r.formateur].short) +
+    ' tried</b><br>' + esc(names) + ', ' + r.seats + ' of ' + r.majority + '. ' +
+    (short ? short + ' short, and the rotation passed on.' : 'A majority, and invested.') + '</li>';
+}
+/* Where the player's own party stands in what just happened. */
+function v17MyPart(st) {
+  var me = playParty(st), f = st.formation;
+  if (!f) return null;
+  if (f.lead === me) return { role:'formateur' };
+  if (f.co.indexOf(me) >= 0) return { role:'invited' };
+  if (f.confidence === me) return { role:'supply' };
+  var asked = null;
+  (f.rounds || []).forEach(function (r) {
+    (r.answers || []).forEach(function (a) { if (a.id === me) asked = a; });
+  });
+  if (asked) return { role:'asked', answer:asked };
+  return { role:'bystander' };
+}
+/* Re-run the whole rotation with the player's answer pinned in place of the
+   one the model gave their party, and install what comes out. The rotation
+   spends no dice, which is the only reason this is allowed to happen twice. */
+function v17Reanswer(st, verdict) {
+  var out = v17Rotation(st, (function () { var pin = {}; pin[playParty(st)] = verdict; return pin; })());
+  v17Install(st, out);
+  v17FormNews(st, out, null);
+  return out;
+}
 function v6CoalitionDialog(nc) {
-  var me = playParty(S); if (S.ruling !== me || S.over) return;
-  var maj = Math.floor(CFG.seats / 2) + 1, mine = S.seats[me] || 0;
-  var cands = v6CoalitionCandidates(S);
-  UI.coalPick = (S.coalition || []).filter(function (id) { return id !== me && cands.some(function (c) { return c.id === id && c.willing; }); });
-  function total() { var t = mine; UI.coalPick.forEach(function (id) { t += S.seats[id] || 0; }); return t; }
-  function price() { var t = 0; cands.forEach(function (c) { if (UI.coalPick.indexOf(c.id) >= 0) t += c.price; }); return t; }
+  if (S.over) return;
+  var me = playParty(S), f = S.formation;
+  if (!f) return;
+  var maj = v17Majority(S), mine = S.seats[me] || 0;
+  var part = v17MyPart(S);
   function draw() {
-    var t = total(), pr = price();
-    var rows = cands.map(function (c) {
-      var on = UI.coalPick.indexOf(c.id) >= 0, p = PARTY[c.id];
-      return '<button class="coal-row" data-coal="' + c.id + '" aria-pressed="' + on + '"' + (c.willing ? '' : ' disabled') + '><span class="dot" style="background:' + p.color + ';width:14px;height:14px"></span><span><b>' + esc(p.name) + '</b><small>' + esc(c.willing ? 'Trust ' + Math.round(c.rel) + ', distance ' + c.d.toFixed(2) + '. Price ' + c.price + ' capital.' : c.reason + '.') + '</small></span><span class="seats">' + c.seats + '</span></button>';
-    }).join('');
-    var html = '<div class="kicker">' + (nc && nc.year ? 'After the ballot of ' + nc.year : 'Forming a government') + '</div><h2 id="sheetTitle">Who Sits Beside You?</h2>' +
-      '<p>The ' + esc(PARTY[me].short) + ' hold ' + mine + ' of ' + CFG.seats + ' seats, ' + Math.max(0, maj - mine) + ' short of a majority. Every partner brings seats and a written programme of its own, and every partner can bring the government down. A minority government is cheaper and lives on the sufferance of the centre.</p>' +
-      '<div class="coal-total"><div><b>Coalition seats</b><strong class="' + (t >= maj ? 'pos' : 'neg') + '">' + t + '</strong></div><div><b>Majority at</b><strong>' + maj + '</strong></div><div><b>Capital to form</b><strong class="' + (pr > S.capital ? 'neg' : '') + '">' + pr + ' of ' + Math.round(S.capital) + '</strong></div></div>' +
-      '<div class="coal-list">' + rows + '</div>' +
-      '<div class="choices"><button class="choice" data-coal-form="1"' + (pr > S.capital ? ' disabled' : '') + '>' + (UI.coalPick.length ? 'Form the coalition' : 'Govern alone as a minority') + ' <span class="c">' + pr + ' cap</span><small>' + (UI.coalPick.length ? (t >= maj ? 'A majority government. Partners gain trust and a seat at the table.' : 'Still short of a majority, but with more votes in hand.') : 'Unity +4 and capital +2, with every vote to be found on the floor.') + '</small></button>' +
-      '<button class="choice" data-coal-auto="1">Let the arithmetic decide<small>The whips assemble the nearest parties until a majority is reached, at no cost.</small></button></div>';
+    f = S.formation; part = v17MyPart(S);
+    var rounds = (f.rounds || []).map(function (r) { return v17RoundLine(S, r); }).join('');
+    var head, lede, tail = '';
+    var govNames = f.co.map(function (x) { return 'the ' + PARTY[x].short; }).join(' and ');
+    if (!f.ok) {
+      head = 'Nobody Can Form a Government';
+      lede = 'Every party was asked in the order the count put them in, and none of them could carry the Assembly. ' +
+        'The ' + PARTY[f.lead].short + ' hold office as a caretaker, which is to say they hold it and can do almost nothing with it. ' +
+        'There are ' + V17_CARETAKER_MAX + ' sessions before the country is returned to the polls whether it wants to be or not.';
+    } else if (part.role === 'formateur') {
+      head = 'Who Sits Beside You?';
+      lede = 'The ' + PARTY[me].short + ' hold ' + mine + ' of ' + CFG.seats + ' seats, ' +
+        Math.max(0, maj - mine) + ' short of a majority. Every party below has been shown what it would be given and has answered. ' +
+        'You may ask again, and you may ask others; what you cannot do is make a party sit where it will not.';
+    } else if (part.role === 'invited') {
+      head = 'You Are Asked to Join';
+      lede = 'A government of ' + govNames + ' has been assembled and your party is in it. ' +
+        'You may take the offer or refuse it, and if you refuse the country will start again without you.';
+    } else if (part.role === 'supply') {
+      head = 'You Are Asked for Confidence';
+      lede = 'The ' + PARTY[f.lead].short + ' cannot carry the Assembly and are asking you not to bring them down. ' +
+        'No offices, no cabinet: your price is paid in policy and you sit on the opposition benches to collect it.';
+    } else if (part.role === 'asked') {
+      head = 'You Were Asked, and Refused';
+      lede = 'Your party was offered a place and the answer it gave was no &mdash; it wanted ' +
+        part.answer.reservation + ' and what was on the table was worth ' + part.answer.value + ' to it. ' +
+        'A government of ' + govNames + ' was formed without you. You may overrule your own party and take the offer.';
+    } else {
+      head = 'A Government Is Formed';
+      lede = 'The Assembly produced a government of ' + govNames +
+        (f.confidence ? ', with the ' + PARTY[f.confidence].short + ' supplying confidence and supply' : '') +
+        '. Nobody asked you, and on these numbers nobody had to.';
+    }
+    /* the picker, for the chair that is doing the asking */
+    var pick = '';
+    if (f.ok && part.role === 'formateur') {
+      var cands = v6CoalitionCandidates(S);
+      UI.coalPick = (UI.coalPick || []).filter(function (id) {
+        return cands.some(function (c) { return c.id === id && c.willing; });
+      });
+      var t = mine; UI.coalPick.forEach(function (id) { t += S.seats[id] || 0; });
+      pick = '<div class="coal-total"><div><b>Coalition seats</b><strong class="' + (t >= maj ? 'pos' : 'neg') + '">' + t +
+        '</strong></div><div><b>Majority at</b><strong>' + maj + '</strong></div><div><b>Your own</b><strong>' + mine + '</strong></div></div>' +
+        '<div class="coal-list">' + cands.map(function (c) {
+          var on = UI.coalPick.indexOf(c.id) >= 0, p = PARTY[c.id];
+          return '<button class="coal-row" data-coal="' + c.id + '" aria-pressed="' + on + '"' + (c.willing ? '' : ' disabled') +
+            '><span class="dot" style="background:' + p.color + ';width:14px;height:14px"></span><span><b>' + esc(p.name) +
+            '</b><small>' + esc(c.willing ? 'They will sit with you. Worth ' + c.value + ' to them against a price of ' + c.reservation + '.' : c.reason + '.') +
+            '</small></span><span class="seats">' + c.seats + '</span></button>';
+        }).join('') + '</div>';
+    }
+    var choices = [];
+    if (f.ok && part.role === 'formateur') {
+      /* The house's answer is worked out BEFORE the button is offered, and a
+         government it would vote down is offered disabled with the tally on
+         it. A control that refuses after the click is the thing this file
+         keeps promising not to ship. */
+      var tt = mine, myPick = [me].concat(UI.coalPick);
+      UI.coalPick.forEach(function (id) { tt += S.seats[id] || 0; });
+      var mySup = tt >= maj ? null : v17Supply(S, me, myPick, 0, null);
+      var myVote = v17Invest(S, myPick, mySup ? mySup.id : null);
+      choices.push('<button class="choice" data-form-auto="1"><b>Accept the arithmetic</b><small>Keep the government the rotation produced: ' +
+        esc(govNames) + '.</small></button>');
+      choices.push('<button class="choice" data-form-take="1"' + (myVote.invested ? '' : ' disabled') + '><b>' +
+        (UI.coalPick.length ? 'Form this government instead' : 'Govern alone instead') + '</b><small>' +
+        (tt >= maj ? 'A majority of ' + tt + ', and the house cannot refuse it.'
+          : tt + ' of ' + maj + '. ' + (mySup ? 'Short of a majority, and living on the ' + PARTY[mySup.id].short + '’s abstention.'
+            : 'Short of a majority, and nobody will stand aside for it.')) +
+        (myVote.invested ? '' : ' The house would vote it down, ' + myVote.nay + ' to ' + myVote.aye + '.') +
+        '</small></button>');
+    } else if (part.role === 'invited' || part.role === 'supply') {
+      choices.push('<button class="choice" data-form-auto="1"><b>Take it</b><small>Your party sits where the negotiation put it.</small></button>');
+      choices.push('<button class="choice" data-form-pin="refuse"><b>Refuse, and let them try again</b><small>The country starts the rotation over without you in it. It may find somebody else; it may find nobody.</small></button>');
+    } else if (part.role === 'asked') {
+      choices.push('<button class="choice" data-form-pin="accept"><b>Overrule them and take the offer</b><small>Your party swallows its objection and sits.</small></button>');
+      choices.push('<button class="choice" data-form-auto="1"><b>Stand by their answer</b><small>You stay out, and so does the offer.</small></button>');
+    } else {
+      choices.push('<button class="choice" data-form-auto="1"><b>Very well</b><small>Read the arithmetic and go back to work.</small></button>');
+    }
+    var html = '<div class="kicker">' + (nc && nc.year ? 'After the ballot of ' + nc.year : 'The formation') + '</div>' +
+      '<h2 id="sheetTitle">' + head + '</h2><p>' + lede + '</p>' + pick +
+      '<details class="fold" open><summary>How the country got here (' + (f.rounds || []).length + ' round' + ((f.rounds || []).length === 1 ? '' : 's') + ')</summary>' +
+      '<ul class="coal-rounds">' + rounds + '</ul></details>' + tail +
+      '<div class="choices">' + choices.join('') + '</div>';
     showSheet(html, function (node) {
       node.querySelectorAll('[data-coal]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -18299,28 +18517,36 @@ function v6CoalitionDialog(nc) {
           draw();
         });
       });
-      node.querySelector('[data-coal-form]').addEventListener('click', function () {
-        var pr = price(); if (S.capital < pr) { flash('Not enough political capital.'); return; }
-        S.capital -= pr;
-        S.coalition = [me].concat(UI.coalPick); S.partner = UI.coalPick[0] || null;
-        if (UI.coalPick.length) {
-          UI.coalPick.forEach(function (id) { shiftPartyRel(S, id, 8); });
-          S = enrichState(S, false);
-          UI.coalPick.forEach(function (id) { var dd = S.coalitionDeals[id]; if (dd) { dd.satisfaction = Math.max(dd.satisfaction || 0, 58); dd.former = false; } });
-          S.legacy.coalitionsBuilt++;
-          logIt(S, 'The ' + PARTY[me].short + ' formed a government with ' + UI.coalPick.map(function (id) { return 'the ' + PARTY[id].short; }).join(' and ') + ', ' + total() + ' seats.');
-        } else {
-          S.unity = c100((S.unity || 60) + 4); S.capital = clamp(S.capital + 2, -5, capCap(S));
-          logIt(S, 'The ' + PARTY[me].short + ' chose to govern alone as a minority, ' + mine + ' of ' + CFG.seats + '.');
+      var take = node.querySelector('[data-form-take]');
+      if (take) take.addEventListener('click', function () {
+        var co = [me].concat(UI.coalPick), tot = 0;
+        co.forEach(function (x) { tot += S.seats[x] || 0; });
+        var sup = tot >= maj ? null : v17Supply(S, me, co, 0, null);
+        var vote = v17Invest(S, co, sup ? sup.id : null);
+        if (!vote.invested) {
+          flash('The house would vote it down: ' + vote.nay + ' against, ' + vote.aye + ' for.');
+          return;
         }
+        v17Install(S, { ok:true, how:tot >= maj ? 'majority' : 'minority', lead:me, co:co,
+          confidence:sup ? sup.id : null, offers:{}, rounds:(S.formation.rounds || []) });
+        UI.coalPick.forEach(function (id) { shiftPartyRel(S, id, 8); });
+        S = enrichState(S, false);
         S.v6.stats.coalitionsNegotiated++;
+        logIt(S, 'The ' + PARTY[me].short + ' formed a government of ' + co.map(function (x) { return 'the ' + PARTY[x].short; }).join(' and ') +
+          ', ' + tot + ' of ' + CFG.seats + (sup ? ', with the ' + PARTY[sup.id].short + ' supplying confidence.' : '.'));
         hideSheet(); render(); toast('The government is formed.');
       });
-      node.querySelector('[data-coal-auto]').addEventListener('click', function () {
-        formCoalition(S, me); S = enrichState(S, false);
-        logIt(S, 'The whips assembled a coalition of ' + (S.coalition || []).map(function (id) { return PARTY[id].short; }).join(', ') + '.');
-        hideSheet(); render();
+      node.querySelectorAll('[data-form-pin]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          v17Reanswer(S, b.getAttribute('data-form-pin'));
+          S = enrichState(S, false);
+          S.v6.stats.coalitionsNegotiated++;
+          hideSheet(); render();
+          toast(S.caretaker ? 'Nobody can form a government.' : 'The government is formed.');
+        });
       });
+      var auto = node.querySelector('[data-form-auto]');
+      if (auto) auto.addEventListener('click', function () { hideSheet(); render(); });
     });
   }
   draw();
@@ -27237,6 +27463,13 @@ policyCost = function (id, dir) {
 /* ---- issuing, revoking, lapsing ---- */
 function v10OrderOpen(st, o, target) {
   if (!inPower(st)) return 'Only a government issues orders.';
+  /* S17f: a caretaker signs what the emergency itself requires and nothing
+     else. The exception is the whole point -- a country between governments
+     still has floods and frontiers -- so it is the one category that stays
+     open rather than a blanket refusal that would leave nobody able to act. */
+  if (typeof v17CareBar === 'function' && st.caretaker && o.cat !== 'Emergency and territory') {
+    return v17CareBar(st, 'order');
+  }
   if (!holdsDept(st, o.dept)) return DEPTS[o.dept].name + ' is in other hands.';
   /* S15: "In the session before a general ballot this executive signs nothing
      new." It now signs nothing new. */
@@ -33819,6 +34052,468 @@ v6NewGame = function (diff, scenarioId, lengthId, playAs) {
   if (UI.setup && UI.setup.custom && v16CustomCount(UI.setup.custom)) v16CustomApply(st, UI.setup.custom);
   return st;
 };
+
+/* ============================================================
+   S17f — NOBODY RULES UNTIL THE HOUSE SAYS SO
+   ============================================================
+   Until this slice, a government was the largest party. `runElection` set
+   `st.ruling` to whoever won most seats and `formCoalition` walked the other
+   parties in order of ideological distance, adding any within .95 until the
+   total crossed half the Assembly. Nobody was asked. Nobody could refuse.
+   There was no hung parliament, no caretaker and no investiture: the Hung
+   Assembly opening printed "No party can command the Assembly" and "carries
+   on as a caretaker" over a model that had installed an ordinary federal
+   government at a seat share of .308 and read nothing about it afterwards.
+
+   The owner's ruling, which this is built to:
+
+     "Influence in formation is proportional to TOTAL seats held across the
+      elected bodies after the partial renewal ... A plurality does not
+      guarantee forming the government: any other combination of parties that
+      reaches a majority can coalesce and freeze the largest party out.
+      Formation is therefore a genuine multi-party negotiation among ALL
+      parties (AI parties negotiate with each other, not only with the
+      player)."
+
+   NOT ONE DIE IS ROLLED IN THIS MODEL, and that is deliberate twice over.
+   Formation is arithmetic and appetite, not luck: the same chamber must
+   always produce the same government or the sheet that shows the player the
+   rounds is lying about how it got there. And because it is pure, the whole
+   rotation can be RE-RUN with the player's own answer pinned in place of the
+   one the model gave their party -- which is how a single player sits inside
+   a seven-party negotiation without the model having to be paused and
+   resumed halfway through. Ties break on `v15Hash`, the same stable,
+   previewable, free source the executive bench has used since S15i.
+
+   `standing()` is untouched and still returns exactly three strings. A
+   caretaker is not a fourth chair -- it is an orthogonal flag on a government
+   that already has one -- and the twenty sites that compare standing() by
+   string equality are none of this slice's business. */
+
+var V17_FORM_MAX = 7;        /* formateurs the rotation will try */
+var V17_CARETAKER_MAX = 3;   /* sessions a caretaker may hold office */
+/* Some parties do not sit together at any price, and a model in which every
+   coalition can be bought has no politics in it. Two parties this far apart on
+   the compass refuse each other whatever is offered -- which is what makes a
+   grand coalition of the largest parties the round most likely to fail, since
+   the largest parties are usually the ones furthest apart. */
+var V17_UNBRIDGEABLE = 1.15;
+var V17_SUPPLY_RELIEF = 22;  /* not joining is a much smaller thing to ask */
+
+/* Ruling 8, in one function: a party's weight in a formation is what it holds
+   across the ELECTED bodies after the renewal. An appointed Senate is not an
+   elected body and does not count -- which is the first thing in three
+   megabytes that has ever cared whether `upper.elected` is true. */
+function v17Weight(st, pid) {
+  var n = st.seats[pid] || 0;
+  if (upperOn(st) && st.upper.elected && st.upper.seats) n += (st.upper.seats[pid] || 0);
+  return n;
+}
+function v17House(st) {
+  return CFG.seats + ((upperOn(st) && st.upper.elected) ? CFG.senate : 0);
+}
+function v17Share(st, pid) { return v17Weight(st, pid) / Math.max(1, v17House(st)); }
+/* Governments are made in the lower house, whatever the weight says. */
+function v17Majority(st) { return Math.floor(CFG.seats / 2) + 1; }
+
+function v17Eligible(st) {
+  return PARTIES.filter(function (p) {
+    return !st.banned[p.id] && !(st.cordon && st.cordon[p.id]) && (st.seats[p.id] || 0) > 0;
+  }).map(function (p) { return p.id; });
+}
+/* The rotation's order: the country asks the parties in the order the count
+   put them in, and asks each once. */
+function v17ByWeight(st) {
+  return v17Eligible(st).sort(function (a, b) {
+    return (v17Weight(st, b) - v17Weight(st, a)) || (v15Hash(a) - v15Hash(b));
+  });
+}
+function v17GrudgeOf(st, pid, against) {
+  return (typeof v16Grudge === 'function') ? v16Grudge(st, pid, against) : 0;
+}
+function v17PostureOf(st, pid) {
+  return (typeof v16Posture === 'function') ? v16Posture(st, pid) : 'hold';
+}
+
+/* WHAT ONE PARTY OFFERS ANOTHER. Offices and portfolios in proportion to what
+   the invitee brings, and two concessions off its own list of wants -- the
+   same shape S17e writes into `coalitionDeals.terms`, so what is agreed at
+   the table is what the agreement afterwards says. */
+function v17Offer(st, lead, pid, co) {
+  var tot = 0;
+  co.forEach(function (x) { tot += v17Weight(st, x); });
+  var share = tot ? v17Weight(st, pid) / tot : 0;
+  var wants = pv5TopWants(pid, st, 3);
+  return { to:pid, from:lead, share:share,
+    portfolios:Math.max(1, Math.round(share * 6)),
+    offices:share >= .22 ? 1 : 0,
+    concessions:wants.slice(0, 2).map(function (w) {
+      return { kind:'adopt', ref:w.id, due:null, met:false };
+    }),
+    redLines:wants[2] ? [wants[2].id] : [] };
+}
+/* WHETHER IT ACCEPTS. A party joins a government when what it is being given
+   is worth more to it than sitting the term out -- and what sitting it out is
+   worth rises with the party's own size, which is why the big parties are the
+   hard ones to buy and why a plurality can be frozen out by three smaller
+   parties who are all cheap. `pin` lets one party's answer be supplied from
+   outside: that is the player's, and only the player's. */
+function v17Accept(st, pid, lead, offer, relax, pin) {
+  var d = dist2(ppos(st, pid), ppos(st, lead));
+  var grudge = v17GrudgeOf(st, pid, lead);
+  var post = v17PostureOf(st, pid);
+  var value = 38 - d * 38 - grudge * .32
+    + (offer.share || 0) * 46
+    + ((offer.concessions || []).length) * 5
+    + (offer.offices ? 9 : 0);
+  /* A "mandate" term -- the formateur's lead over the invitee making it easier
+     to join a clear winner -- was built here and taken out again. It was added
+     to stop the largest party being frozen out too often, and measuring found
+     that was not happening: 6 freeze-outs in 240 formations, and none at all
+     over 180 sessions of live play. What it did do was make a deadlock nearly
+     unreachable, turning the chamber nobody can govern into a minority
+     government and leaving the caretaker's clock with nothing to run on. A
+     term that fixes nothing measurable and costs a capability is not a tuning
+     choice, it is a mechanic looking for a job. */
+  /* The one relationship number the file keeps is the player's, so it is read
+     from whichever side of the table the player is sitting on and from
+     neither when they are sitting on neither. */
+  var me = playParty(st);
+  if (pid === me || lead === me) {
+    var other = pid === me ? lead : pid;
+    value += (((st.partyRel && st.partyRel[other] !== undefined) ? st.partyRel[other] : 50) - 50) * .18;
+  }
+  /* What sitting the term out is worth: it rises with the party's own size,
+     which is why the big parties are the expensive ones to buy -- and a party
+     larger than the one asking will not serve under it at any ordinary price,
+     which is where a plurality gets frozen out by three smaller parties who
+     are all cheap and all willing. */
+  var res = 30 + v17Share(st, pid) * 70 + (post === 'attack' ? 16 : 0)
+    + (v17Weight(st, pid) > v17Weight(st, lead) ? 22 : 0) - (relax || 0);
+  var far = d > V17_UNBRIDGEABLE;
+  var yes = !far && value >= res;
+  var pinned = false;
+  /* The player answers for their own party, and for nobody else's. A pin
+     cannot bridge the unbridgeable either: a player who says yes to a party
+     their own would never sit with is told so, rather than obeyed. */
+  if (pin && pin[pid] && !far) { yes = pin[pid] === 'accept'; pinned = true; }
+  return { id:pid, value:Math.round(value), reservation:Math.round(res),
+    yes:yes, pinned:pinned, far:far, distance:d, grudge:grudge, posture:post, offer:offer };
+}
+
+/* ONE FORMATEUR'S ATTEMPT. It invites the parties it can most easily live
+   with -- distance first, its own grudges second -- until the Assembly
+   majority is reached, and then TRIMS: a coalition carries nobody it does not
+   need, because every extra partner is another veto for nothing. */
+function v17Build(st, lead, relax, pin) {
+  var maj = v17Majority(st), have = st.seats[lead] || 0;
+  var co = [lead], offers = {}, answers = [];
+  var pool = v17Eligible(st).filter(function (x) { return x !== lead; }).sort(function (a, b) {
+    var ka = dist2(ppos(st, a), ppos(st, lead)) + v17GrudgeOf(st, lead, a) / 220;
+    var kb = dist2(ppos(st, b), ppos(st, lead)) + v17GrudgeOf(st, lead, b) / 220;
+    return (ka - kb) || (v15Hash(a) - v15Hash(b));
+  });
+  for (var i = 0; i < pool.length && have < maj; i++) {
+    var offer = v17Offer(st, lead, pool[i], co.concat([pool[i]]));
+    var ans = v17Accept(st, pool[i], lead, offer, relax, pin);
+    answers.push(ans);
+    if (ans.yes) { co.push(pool[i]); offers[pool[i]] = offer; have += st.seats[pool[i]] || 0; }
+  }
+  if (have >= maj) {
+    for (var j = co.length - 1; j >= 1; j--) {
+      if (have - (st.seats[co[j]] || 0) >= maj) {
+        have -= (st.seats[co[j]] || 0); delete offers[co[j]]; co.splice(j, 1);
+      }
+    }
+  }
+  return { lead:lead, co:co, have:have, offers:offers, answers:answers, majority:maj };
+}
+
+/* CONFIDENCE AND SUPPLY. A party that will not join a government may still
+   agree not to bring it down, and it is a cheaper thing to ask for: no
+   offices, no portfolios, concessions only, and a bar lowered by fourteen
+   because nobody is being asked to sit in a cabinet they dislike. */
+function v17Supply(st, lead, exclude, relax, pin) {
+  var best = null;
+  v17Eligible(st).forEach(function (pid) {
+    if (pid === lead || exclude.indexOf(pid) >= 0) return;
+    var offer = { to:pid, from:lead, share:0, portfolios:0, offices:0,
+      concessions:pv5TopWants(pid, st, 3).map(function (w) {
+        return { kind:'adopt', ref:w.id, due:null, met:false };
+      }), redLines:[] };
+    var ans = v17Accept(st, pid, lead, offer, (relax || 0) + V17_SUPPLY_RELIEF, pin);
+    if (ans.yes && (!best || ans.value > best.value)) best = ans;
+  });
+  return best;
+}
+
+/* THE GRAND COALITION. Not "the same greedy walk with the prices cut" -- the
+   LARGEST parties, asked to govern together across whatever divides them,
+   which is what the phrase means and is why it is the round most likely to
+   fail: the two biggest parties in a fragmented chamber are usually the two
+   furthest apart, and the unbridgeable bar does not move for a crisis. */
+function v17Grand(st, order, pin) {
+  var lead = order[0], maj = v17Majority(st), have = st.seats[lead] || 0;
+  var co = [lead], offers = {}, answers = [];
+  for (var i = 1; i < order.length && i < 3 && have < maj; i++) {
+    var offer = v17Offer(st, lead, order[i], co.concat([order[i]]));
+    var ans = v17Accept(st, order[i], lead, offer, 20, pin);
+    answers.push(ans);
+    if (ans.yes) { co.push(order[i]); offers[order[i]] = offer; have += st.seats[order[i]] || 0; }
+  }
+  return { lead:lead, co:co, have:have, offers:offers, answers:answers, majority:maj };
+}
+
+/* THE INVESTITURE. The house votes, and a government takes office when more
+   members vote for it than against it. AN ABSTENTION IS NOT OPPOSITION --
+   that single line is the whole reason a minority government can exist, and
+   it is what confidence and supply buys. */
+function v17Invest(st, co, supply) {
+  var aye = 0, nay = 0, abstain = 0, lead = co[0];
+  PARTIES.forEach(function (p) {
+    var n = st.seats[p.id] || 0; if (!n) return;
+    if (co.indexOf(p.id) >= 0) { aye += n; return; }
+    if (supply === p.id) { abstain += n; return; }
+    var d = dist2(ppos(st, p.id), ppos(st, lead)), g = v17GrudgeOf(st, p.id, lead);
+    if (d > .62 || g >= 30) nay += n; else abstain += n;
+  });
+  return { aye:aye, nay:nay, abstain:abstain, invested:aye > nay };
+}
+
+/* THE ROTATION. Every eligible party is asked, in the order the count put
+   them in, to try. If none can carry a majority the country tries the three
+   largest as minority governments with somebody supplying confidence; if that
+   fails, one grand-coalition round at reservations relaxed by twenty; and if
+   THAT fails there is no government, which is a caretaker and not a defect.
+   Bounded, terminal, and pure. */
+function v17Rotation(st, pin) {
+  var order = v17ByWeight(st), rounds = [], maj = v17Majority(st), i, r, v;
+  if (!order.length) return { ok:false, how:'caretaker', lead:st.ruling, co:[st.ruling], confidence:null, rounds:rounds };
+  for (i = 0; i < order.length && i < V17_FORM_MAX; i++) {
+    r = v17Build(st, order[i], 0, pin);
+    v = r.have >= maj ? v17Invest(st, r.co, null) : null;
+    rounds.push({ kind:'majority', formateur:order[i], co:r.co.slice(), seats:r.have,
+      majority:maj, answers:r.answers, vote:v });
+    if (v && v.invested) {
+      return { ok:true, how:'majority', lead:order[i], co:r.co, confidence:null,
+        offers:r.offers, rounds:rounds };
+    }
+  }
+  for (i = 0; i < order.length && i < 3; i++) {
+    r = v17Build(st, order[i], 0, pin);
+    var sup = v17Supply(st, order[i], r.co, 0, pin);
+    if (!sup) continue;
+    v = v17Invest(st, r.co, sup.id);
+    rounds.push({ kind:'minority', formateur:order[i], co:r.co.slice(), seats:r.have,
+      majority:maj, supply:sup.id, vote:v });
+    if (v.invested) {
+      return { ok:true, how:'minority', lead:order[i], co:r.co, confidence:sup.id,
+        offers:r.offers, rounds:rounds };
+    }
+  }
+  var g = v17Grand(st, order, pin);
+  v = g.have >= maj ? v17Invest(st, g.co, null) : null;
+  rounds.push({ kind:'grand', formateur:order[0], co:g.co.slice(), seats:g.have,
+    majority:maj, answers:g.answers, vote:v });
+  if (v && v.invested) {
+    return { ok:true, how:'grand', lead:order[0], co:g.co, confidence:null,
+      offers:g.offers, rounds:rounds };
+  }
+  return { ok:false, how:'caretaker', lead:order[0], co:[order[0]], confidence:null,
+    offers:{}, rounds:rounds };
+}
+
+/* INSTALLING WHAT THE ROTATION FOUND. `st.partner` is still written, exactly
+   as formCoalition wrote it: twenty sites read it and retiring it is its own
+   change, not a rider on this one. */
+function v17Install(st, out) {
+  st.ruling = out.lead;
+  st.coalition = out.co.slice();
+  st.partner = out.co.length > 1 ? out.co[1] : null;
+  st.confidence = out.confidence || null;
+  if (out.ok) st.caretaker = null;
+  else if (!st.caretaker) st.caretaker = { since:st.turn, lead:out.lead };
+  st.formation = { turn:st.turn, how:out.how, lead:out.lead, co:out.co.slice(),
+    confidence:out.confidence || null, ok:!!out.ok,
+    rounds:out.rounds.map(function (r) {
+      return { kind:r.kind, formateur:r.formateur, co:r.co.slice(), seats:r.seats,
+        majority:r.majority, supply:r.supply || null,
+        vote:r.vote ? { aye:r.vote.aye, nay:r.vote.nay, abstain:r.vote.abstain, invested:r.vote.invested } : null,
+        answers:(r.answers || []).map(function (a) {
+          return { id:a.id, yes:a.yes, value:a.value, reservation:a.reservation };
+        }) };
+    }) };
+  /* the agreement is written from the terms that were actually offered */
+  if (out.offers) {
+    st.coalitionDeals = st.coalitionDeals || {};
+    Object.keys(out.offers).forEach(function (pid) {
+      var o = out.offers[pid], d = st.coalitionDeals[pid];
+      if (!d) return;
+      d.terms = d.terms || {};
+      d.terms.portfolios = o.portfolios;
+      d.terms.concessions = o.concessions;
+      if (o.redLines && o.redLines.length) d.terms.redLines = o.redLines.slice();
+      d.terms.confidence = 'cabinet';
+      d.former = false;
+    });
+  }
+  return st.formation;
+}
+
+/* WHAT THE COUNTRY IS TOLD. A freeze-out is the one outcome nobody would
+   otherwise notice, so it is said in as many words. */
+function v17FormNews(st, out, largest) {
+  var lead = out.lead, names = out.co.map(function (x) { return 'the ' + PARTY[x].short; });
+  if (!out.ok) {
+    logIt(st, 'No combination of parties could command the Assembly. The ' + PARTY[lead].short +
+      ' remain in office as a caretaker until one can.');
+    addNews(st, 'No Government', 'The Assembly cannot produce one',
+      'Every combination was tried and none of them carried the house. A caretaker holds office and can do very little with it.', 'bad');
+    return;
+  }
+  if (out.how === 'minority') {
+    logIt(st, 'The ' + PARTY[lead].short + ' formed a minority government, with the ' +
+      PARTY[out.confidence].short + ' supplying confidence and supply.');
+  } else if (largest && lead !== largest) {
+    logIt(st, 'The ' + PARTY[largest].short + ', though the largest party in the Assembly, could not ' +
+      'assemble a majority. A government was formed instead by ' + names.join(' and ') + '.');
+    addNews(st, 'Shut Out', 'The largest party will not govern',
+      'The arithmetic was there for somebody else and somebody else took it. The ' + PARTY[largest].short +
+      ' go to the opposition benches with more seats than anybody.', largest === playParty(st) ? 'bad' : 'watch');
+  } else if (out.co.length > 1) {
+    logIt(st, 'A government was formed by ' + names.join(' and ') + '.');
+  } else {
+    logIt(st, 'The ' + PARTY[lead].short + ' formed a government alone.');
+  }
+}
+
+/* The seam runElection calls. It replaces `st.ruling = lead; formCoalition()`
+   and returns the formation record. */
+function v17Form(st, largest, pin) {
+  var out = v17Rotation(st, pin);
+  v17Install(st, out);
+  v17FormNews(st, out, largest);
+  return out;
+}
+
+/* THE CARETAKER'S CLOCK. Every session the parties try again on the seats
+   they have; when they still cannot, and three sessions have passed, the
+   country goes back to the polls. Returns true when it must. Called from
+   endTurn AFTER `S.turn += 1`, so `st.turn` here is the session the caretaker
+   is living through, not the one it is leaving. */
+function v17CaretakerTick(st) {
+  if (!st.caretaker) return false;
+  var out = v17Rotation(st, null);
+  if (out.ok) {
+    v17Install(st, out);
+    logIt(st, 'A government was formed at last: ' + out.co.map(function (x) { return 'the ' + PARTY[x].short; }).join(' and ') +
+      ', and the caretaker gave way to it.');
+    return false;
+  }
+  var held = st.turn - (st.caretaker.since || st.turn);
+  if (held >= V17_CARETAKER_MAX) {
+    logIt(st, 'After ' + V17_CARETAKER_MAX + ' sessions no government could be formed, and the country was returned to the polls.');
+    st.caretaker = null;
+    return true;
+  }
+  logIt(st, 'The caretaker carries on. ' + (V17_CARETAKER_MAX - held) +
+    ' session' + (V17_CARETAKER_MAX - held === 1 ? '' : 's') + ' remain before a fresh ballot is unavoidable.');
+  return false;
+}
+
+/* WHAT A CARETAKER MAY NOT DO. Not a fourth standing and not a new gate
+   layer: one predicate, read at the five instruments a government without a
+   mandate has no business using. */
+var V17_CARE_BARS = {
+  policy:'A caretaker government does not legislate. There is no majority in the Assembly to carry it and no minister with a mandate to lay it.',
+  fiscal:'The framework a caretaker inherits is the framework it keeps. Setting a new one is for a government the house has invested.',
+  treaty:'A caretaker signs nothing in the country’s name that will outlast it.',
+  programme:'A programme is a mandate written down, and a caretaker has none.',
+  order:'A caretaker issues no orders but those the emergency itself requires.'
+};
+function v17CareBar(st, what) {
+  if (!st || !st.caretaker) return null;
+  return V17_CARE_BARS[what] || V17_CARE_BARS.policy;
+}
+
+/* THE NO-CONFIDENCE VOTE, ON ARITHMETIC. It used to be `approval < 42`: a
+   national mood number, consulted instead of the chamber, which meant a
+   government with 71% of the seats fell to a bad quarter and a government of
+   one seat survived a good one. It is the house that removes a government, so
+   it is the house that is counted -- and a coalition partner whose cohesion
+   has collapsed votes with the opposition, which is what makes S16e's
+   cohesion worth watching. */
+function v17ConfidenceVote(st) {
+  var co = st.coalition || [st.ruling], deals = st.coalitionDeals || {};
+  var aye = 0, nay = 0, abstain = 0, defectors = [];
+  PARTIES.forEach(function (p) {
+    var n = st.seats[p.id] || 0; if (!n) return;
+    if (co.indexOf(p.id) >= 0) {
+      var d = deals[p.id];
+      var coh = (p.id === st.ruling || !d) ? 100 : (d.satisfaction === undefined ? 60 : d.satisfaction);
+      if (coh < 30) { nay += n; defectors.push(p.id); } else aye += n;
+      return;
+    }
+    if (st.confidence === p.id) { abstain += n; return; }
+    nay += n;
+  });
+  return { aye:aye, nay:nay, abstain:abstain, defectors:defectors, carried:nay > aye };
+}
+
+/* HOW THIS GOVERNMENT CAME TO BE, ON THE PAGE THAT SHOWS THE GOVERNMENT.
+   A caretaker in particular has to be visible: it is a state the player can be
+   in for three sessions while half their instruments answer with a refusal,
+   and a refusal whose reason is not already on the screen reads as a bug. */
+function v17FormationPanel() {
+  var f = S.formation;
+  if (!f && !S.caretaker) return '';
+  var names = ((f && f.co) || S.coalition || [S.ruling]).map(function (x) { return PARTY[x].short; }).join(' and ');
+  var maj = v17Majority(S), have = 0;
+  ((f && f.co) || S.coalition || [S.ruling]).forEach(function (x) { have += S.seats[x] || 0; });
+  var how = !f ? 'inherited' : f.how;
+  var HOW = {
+    majority:'a majority coalition, which the house cannot refuse',
+    minority:'a minority government, living on an abstention it had to buy',
+    grand:'a grand coalition of the largest parties, which is what is left when nothing else adds up',
+    caretaker:'nothing at all, which is why a caretaker holds office',
+    inherited:'the government this campaign began with'
+  };
+  var bars = S.caretaker ? '<div class="redline"><b>What a caretaker may not do:</b> lay a statute, set the fiscal framework, ' +
+    'sign a treaty, adopt a programme, or issue any order but those the emergency itself requires. It holds office. It does not govern.</div>' : '';
+  var clock = S.caretaker ? (function () {
+    var held = S.turn - (S.caretaker.since || S.turn), left = Math.max(0, V17_CARETAKER_MAX - held);
+    return '<p class="note">The parties are asked again every session. ' + (left
+      ? left + ' session' + (left === 1 ? '' : 's') + ' remain before the country is returned to the polls whether it wants to be or not.'
+      : 'The next session is the last: a ballot follows it either way.') + '</p>';
+  })() : '';
+  var rounds = f && f.rounds && f.rounds.length
+    ? '<details class="fold"><summary>How the country got here (' + f.rounds.length + ' round' + (f.rounds.length === 1 ? '' : 's') + ')</summary>' +
+      '<ul class="coal-rounds">' + f.rounds.map(function (r) { return v17RoundLine(S, r); }).join('') + '</ul></details>'
+    : '';
+  return '<div class="panel"><h2>' + (S.caretaker ? 'A Caretaker Government' : 'How This Government Was Formed') + '</h2>' +
+    '<p class="note">' + esc(names) + ', ' + have + ' of ' + CFG.seats + ' with a majority at ' + maj + ' &mdash; ' + HOW[how] +
+    (f && f.confidence ? ', with the ' + esc(PARTY[f.confidence].short) + ' supplying confidence and supply' : '') + '.</p>' +
+    clock + bars + rounds + '</div>';
+}
+
+/* A government brought down does not go straight to an election. The house
+   that removed it is asked whether it can produce another one out of the same
+   seats -- which it sometimes can, and that is a change of government without
+   a vote of the people, exactly as it works. */
+function v17Refound(st) {
+  var out = v17Rotation(st, null);
+  var was = st.ruling;
+  v17Install(st, out);
+  if (out.ok && out.lead !== was) {
+    logIt(st, 'The ' + PARTY[was].short + ' fell, and the ' + PARTY[out.lead].short +
+      ' formed a government out of the same Assembly without a vote of the people.');
+  } else if (out.ok) {
+    logIt(st, 'The ' + PARTY[was].short + ' fell and were returned to office by the same arithmetic that removed them.');
+  } else {
+    logIt(st, 'The government fell and nothing could replace it. A caretaker holds office.');
+  }
+  return out;
+}
 
 /* ---------- boot ---------- */
 (function () {

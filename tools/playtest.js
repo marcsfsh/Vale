@@ -1852,6 +1852,78 @@ async function run() {
     await gz.close();
   }
 
+  // -- S17f: THE FORMATION SHEET, CLICKED. The rotation is asserted in roads;
+  //    what this proves is the page: that the sheet opens for a chair that is
+  //    NOT the head of government (it refused to open for any other before
+  //    this slice), that it prints the rounds the country went through, that a
+  //    government the house would vote down is offered DISABLED rather than
+  //    refusing after the click, and that answering it closes it.
+  {
+    const fm = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    await fm.addInitScript(() => { window.confirm = () => true; });
+    await fm.goto(URL);
+    await fm.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await fm.click('[data-setup-begin]');
+    await fm.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await fm.click('[data-doctrine]');
+    await fm.waitForTimeout(300);
+    const form = await fm.evaluate(() => {
+      var out = {};
+      /* a chamber the largest party cannot govern, so the sheet has rounds to
+         show and the player is not the one forming it */
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'pnl'), false);
+      S.playAs = 'pnl'; S.capital = 300;
+      v6SetSeats(S, { pnl:500, lp:250, sd:220, rsf:200, cup:60, tvc:50, fp:25 }, null);
+      S.turn = 3; S.rngState = 20260827;
+      var r = runElection(S, false);
+      out.frozenOut = r.frozenOut === 'pnl';
+      out.standing = standing(S);
+      v6CoalitionDialog({ year:yearOf(S.turn) });
+      var sh = document.getElementById('sheet');
+      out.opens = !!sh && !document.getElementById('modal').hidden;
+      var html = sh ? sh.innerHTML : '';
+      out.rounds = (html.match(/coal-rounds/g) || []).length > 0;
+      out.roundRows = (html.match(/<li[^>]*>/g) || []).length;
+      out.saysShutOut = /largest party/i.test(html) || /Shut Out/i.test(html) || /without you/i.test(html);
+      out.panel = /Caretaker|How This Government Was Formed/.test(v17FormationPanel());
+      /* answering it closes it */
+      var b = sh && sh.querySelector('.choices button:not([disabled])');
+      out.answerable = !!b;
+      if (b) b.click();
+      out.closed = document.getElementById('modal').hidden;
+      /* and the head of government's own sheet offers a government the house
+         would refuse only as a DISABLED control */
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.capital = 300;
+      v6SetSeats(S, { lp:300, pnl:280, sd:220, rsf:200, cup:160, tvc:120, fp:25 }, null);
+      S.turn = 3; S.rngState = 20260827; runElection(S, false);
+      S.ruling = 'lp'; S.coalition = ['lp']; S.playAs = 'lp';
+      S.formation = { turn:S.turn, how:'majority', lead:'lp', co:['lp'], confidence:null, ok:true, rounds:[] };
+      UI.coalPick = [];
+      v6CoalitionDialog(null);
+      var sh2 = document.getElementById('sheet');
+      var take = sh2 && sh2.querySelector('[data-form-take]');
+      out.takeShown = !!take;
+      out.takeGuarded = !!take && (take.disabled ? /vote it down/.test(take.textContent) : true);
+      out.firstChoiceLive = !!(sh2 && sh2.querySelector('.choices button') &&
+        !sh2.querySelector('.choices button').disabled);
+      hideSheet();
+      return out;
+    });
+    step('formation-sheet',
+      form.frozenOut && form.opens && form.rounds && form.roundRows >= 2 && form.saysShutOut &&
+      form.panel && form.answerable && form.closed && form.takeShown && form.takeGuarded &&
+      form.firstChoiceLive,
+      `the largest party is frozen out of the government (${form.frozenOut}) and the sheet opens for them ` +
+      `from ${form.standing} — it refused to open for any chair but the head of government before this ` +
+      `slice — printing the ${form.roundRows} rounds the country went through (${form.rounds}) and saying ` +
+      `in words that the government was formed without them (${form.saysShutOut}); the government page ` +
+      `carries how it was formed (${form.panel}); answering closes it (${form.closed}); and the head of ` +
+      `government's own sheet offers a government the house would refuse as a disabled control with the ` +
+      `tally on it (${form.takeGuarded}), with a live first choice beside it (${form.firstChoiceLive})`);
+    await fm.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.

@@ -310,6 +310,98 @@ the ones nobody would hold a press conference about.
 - Measured from the opposition bench over forty sessions on a fixed stream:
   **37 reactions offered in 12 different shapes.**
 
+## Forming a government (S17f)
+
+Until S17f a government was the largest party: `runElection` set `st.ruling`
+to whoever won most seats and `formCoalition` walked the rest in order of
+ideological distance, adding any within .95 until the total crossed half.
+Nobody was asked and nobody could refuse.
+
+**`v17Rotation(st, pin)`** is the whole model, and it is **pure and
+dice-free**. Ties break on `v15Hash`, the same stable source the executive
+bench has used since S15i. That matters twice: formation is arithmetic and
+appetite rather than luck, so the same chamber always produces the same
+government and the sheet that shows the player the rounds is telling the
+truth; and because it is pure it can be **re-run with the player's answer
+pinned** in place of the one the model gave their party, which is how one
+player sits inside a seven-party negotiation without the model being paused
+and resumed halfway through.
+
+- **`v17Weight(st, pid)`** — the owner's ruling in one function: a party's
+  weight is what it holds across the **elected** bodies after the renewal. An
+  appointed Senate is not an elected body and does not count, which is the
+  first thing in three megabytes that has ever cared whether `upper.elected`
+  is true. `v17ByWeight` puts the parties in the order the country asks them.
+- **`v17Build(st, lead, relax, pin)`** — one formateur's attempt. It invites
+  by distance first and its own grudges second, and **trims**: a coalition
+  carries nobody it does not need, because every extra partner is another veto
+  for nothing.
+- **`v17Offer`** builds what is on the table in the **same shape S17e writes
+  into `coalitionDeals.terms`**, so what is agreed at the table is what the
+  agreement afterwards says. **`v17Accept`** answers: value against a
+  reservation that rises with the party's own size, so the big parties are the
+  expensive ones — and a party larger than the one asking will not serve under
+  it at any ordinary price, which is where a plurality gets frozen out.
+- **`V17_UNBRIDGEABLE`** (1.15) is the one thing no price beats. Some parties
+  do not sit together, and a model in which every coalition can be bought has
+  no politics in it. It is also why the **grand coalition** round is the one
+  most likely to fail: the largest parties are usually the furthest apart.
+- **`v17Invest(st, co, supply)`** — the house votes, and a government takes
+  office when more members vote for it than against it. **An abstention is not
+  opposition**: that single line is the whole reason a minority government can
+  exist, and it is what confidence and supply buys. A majority coalition is
+  invested by definition; the vote only bites for a minority.
+- The rotation's order is: every eligible party as a **majority** formateur →
+  the three largest as **minority** governments with somebody supplying
+  confidence (`v17Supply`, at a bar lowered by `V17_SUPPLY_RELIEF` because
+  nobody is being asked to sit in a cabinet they dislike) → one **grand**
+  round → **caretaker**. Bounded and terminal.
+- **`v17Install`** writes `st.ruling`, `st.coalition`, `st.partner` (still, as
+  `formCoalition` wrote it — twenty sites read it and retiring it is its own
+  change), `st.confidence`, `st.caretaker` and `st.formation`, and copies the
+  offered terms into the agreement.
+
+`runElection` calls **`v17Form`** where it used to write `st.ruling = lead`.
+`lead` is now who won the night and `st.ruling` is who governs; the returned
+record carries both, plus `frozenOut`. `carryOver` and the `oppYears` reset
+follow the **government**, not the winner: years out of office end when you
+take office, not when you come first.
+
+**The caretaker.** `st.caretaker` is a flag on a government that already has a
+standing — never a fourth value of `standing()`. `v17CareBar(st, what)` is
+read at five instruments: no statute, no fiscal framework, no treaty, no
+programme, and no order but those in the `Emergency and territory` category,
+because a country between governments still has floods and frontiers.
+`v17CaretakerTick`, called from `endTurn` after `S.turn += 1`, asks the
+parties again every session and, after `V17_CARETAKER_MAX` (3), returns the
+country to the polls.
+
+**A deadlock here is soft.** Positions, grudges and relations all move every
+session and a grudge cools by .6 a turn, so the parties usually find an answer
+at the next attempt — measured, none of 180 sessions of live play produced a
+caretaker outside the Hung Assembly, which opens as one because its own log
+has always said it was one. The clock is the guarantee for the country where
+they do not move.
+
+**No confidence, on arithmetic.** `v17ConfidenceVote` counts the members: the
+motion carries when more vote against the government than for it, and **a
+coalition partner whose cohesion is below 30 votes with the opposition**,
+which is what finally makes S16e's cohesion decide something. It read
+`approval(S) < 42` before — a national mood number consulted instead of the
+chamber. `v17Refound` then asks the same Assembly whether it can produce
+another government out of the same seats, which is a change of government
+without a vote of the people.
+
+**The sheet.** `v6CoalitionDialog` refused to open unless the player was
+already the head of a government short of a majority. It opens from every
+chair now and shows the rounds the country went through: the formateur picks
+partners and sees each party's answer with the numbers, an invitee takes or
+refuses the offer (and refusing re-runs the rotation without them), a party
+that was asked and said no can overrule itself, and a bystander reads how the
+government was formed without them. `v17FormationPanel` puts the same on the
+government page, with the caretaker's clock and the list of what it may not
+do.
+
 ## The coalition agreement (S17e)
 
 `st.coalitionDeals` is the coalition **in writing**, and since S17e it has an
