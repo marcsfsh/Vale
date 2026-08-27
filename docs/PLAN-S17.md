@@ -146,6 +146,23 @@ as `docs/PLAN-S17.md`.
     after the new systems land, re-promising a card is allowed — each
     rewording listed for the owner's explicit approval.
 
+### STANDING AUTHORIZATION (owner, 2026-08-27) — applies to the whole program
+
+> "each letter - e.g. s17a - gets a PR opened and merged when complete. you
+> have complete authrity to proceed with the entire plan, and I defer to your
+> judgment for all decisions and blockers unless its exceptionally critical.
+> you have my approval to run any and aall tools necessary to complete this."
+
+- **Every letter: branch → build → full verification bar → commit → push →
+  OPEN a PR → MERGE it.** This supersedes the repo's usual "no PR unless
+  asked". Merge into `main`.
+- Decisions and blockers are mine to resolve; escalate only something
+  exceptionally critical.
+- Permission mode is accept-edits; any tool needed is approved.
+- The owner is away and will review late in the day. **Do not rush or skip
+  work to hit that time** — the bar stands: every mechanic ships with the
+  assertion that reddens without it, poison-proved.
+
 ### Standing meta-instructions from the owner
 
 - Highly in-depth research first; use it for a **durable** plan that does
