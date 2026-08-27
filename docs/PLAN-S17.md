@@ -829,7 +829,7 @@ only item (5). The remaining off-model writers of `st.exec` named there —
 sackMinister, ageSucceed, promoteProtege, the two events, the consulate —
 still need their own pass, and s17h keeps them.
 
-**s17f — nobody rules until the house says so** (XL). Formation,
+**s17f — nobody rules until the house says so** (XL). **STATUS: DONE.** Formation,
 caretaker, investiture. Replace largest-party-rules + greedy
 formCoalition :10785: formateur rotation by TOTAL post-renewal seats
 across BOTH chambers (ruling 8); offers in the s17e terms shape;
@@ -848,6 +848,44 @@ partner cohesion; success → caretaker + formation window. SHAPE:
 st.caretaker + st.formation, ensure defaults null. Harness: no-majority →
 caretaker; scripted freeze-out on a fixed seed; no-confidence arithmetic
 both ways; pacing soak — no save stuck in caretaker beyond the bound.
+
+*What landing it found.* Everything on the list landed, plus the **formation
+sheet moved here from s17e** — a sheet for a negotiation belongs with the
+negotiation, and s17e had nothing yet to show on it. Four things the design
+did not anticipate:
+
+1. **The rotation is DICE-FREE**, and that turned out to be the load-bearing
+   decision of the whole PR. It makes formation arithmetic rather than luck,
+   and — because it is pure — it lets the whole rotation be re-run with the
+   player's own answer pinned, which is how a single player takes part in a
+   seven-party negotiation without the model having to be paused and resumed
+   mid-flight. Ties break on `v15Hash`, the S15i pattern.
+2. **`V17_UNBRIDGEABLE`.** The acceptance utility alone made every coalition
+   purchasable, which has no politics in it and made the grand-coalition round
+   a formality. A hard distance bar no price beats is what makes a grand
+   coalition of the largest parties the round most likely to FAIL, which is
+   what the phrase means.
+3. **An abstention is not opposition.** The investiture is what makes minority
+   government real, and it is one line: a government takes office when more
+   members vote for it than against it. Confidence and supply buys silence,
+   not votes.
+4. **The deadlock is soft.** Positions, grudges and relations all move every
+   session and a grudge cools by .6 a turn, so the parties nearly always find
+   an answer at the next attempt: none of 180 sessions of live play produced a
+   caretaker outside the Hung Assembly. The three-session clock is a
+   guarantee, not a common event — and the harness had to say so rather than
+   pretend otherwise.
+
+**`st.partner` is NOT retired** — twenty sites read it and it is written
+exactly as `formCoalition` wrote it. Retiring it is its own change and does
+not belong as a rider on this one.
+
+**The balance movement is the largest in the program** and is recorded in
+`docs/STATE.md` with its two causes (formateur order by combined weight, and
+coalitions trimmed to minimal winning), the live-play measurement, and the
+one-line lever (`v17Weight`'s Senate term) named for the owner to rule on.
+A "mandate" term was built and removed: it fixed nothing measurable and made
+the caretaker unreachable.
 
 **s17g — honour, alter, betray** (L). Instrument sites emit
 `dealEvent(actor, kind, ref)` (sponsorBill :8750, bill resolution, floor

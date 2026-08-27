@@ -318,6 +318,22 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       Object.keys(S.ministers || {}).forEach(k => a.push(['minister:' + k, S.ministers[k].name]));
       return a;
     };
+    /* S17f: A PARTY LEADER MAY HOLD EXACTLY ONE GREAT OFFICE, by the owner's
+       ruling, and `execBench` puts the leader on every bench deliberately. So
+       the same name in `leader:x` and in ONE `exec:*` is the rule working,
+       not a collision -- what is counted is a name in two slots that are not
+       that pair. Two exec chairs, two leaderships, a governor doubling as a
+       minister: all still duplicates. */
+    const dupeSlots = () => {
+      const by = {};
+      liveSlots().forEach(x => { (by[x[1]] = by[x[1]] || []).push(x[0]); });
+      return Object.keys(by).filter(n => {
+        const s = by[n]; if (s.length < 2) return false;
+        if (s.length === 2 && s.filter(k => k.indexOf('leader:') === 0).length === 1 &&
+            s.filter(k => k.indexOf('exec:') === 0).length === 1) return false;
+        return true;
+      }).map(n => ({ name:n, slots:by[n] }));
+    };
     const liveList = () => liveSlots().map(x => x[1]);
     out.castSize = liveList().length;
     /* S17a: MEASURED ON FIXED STREAMS, NOT ON WHATEVER STREAM THIS RUN LANDED
@@ -338,14 +354,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         S.figures.leaders[pid] = makeFigure(S, pid, 44);
         const r = REGIONS[i % REGIONS.length];
         S.v6.governors[r.id] = v6MakeGovernor(S, r, pid);
-        const a = liveList();
-        const d = a.length - new Set(a).size;
-        if (d > worst) {
-          worst = d;
-          const sl = liveSlots(), cnt = {};
-          sl.forEach(x => { cnt[x[1]] = (cnt[x[1]] || 0) + 1; });
-          const dn = Object.keys(cnt).filter(n => cnt[n] > 1)[0];
-          out.castWhere = sl.filter(x => x[1] === dn).map(x => x[0]).join(' + ') + ' (' + dn + ')';
+        const dup = dupeSlots();
+        if (dup.length > worst) {
+          worst = dup.length;
+          out.castWhere = dup[0].slots.join(' + ') + ' (' + dup[0].name + ')';
         }
       }
     }
@@ -4823,6 +4835,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
       S.playAs = pid; S.capital = 500; S.treasury = 8000;
       if (S.purse) S.purse[pid] = 900;
+      /* S17f: this board opens as a caretaker now, because that is what its
+         own log has always said it was. THIS probe is about the three CHAIRS
+         and a caretaker is orthogonal to them -- leaving the flag on would
+         make the head of government fail the fiscal and programme probes for
+         a reason that has nothing to do with standing. The caretaker's own
+         refusals are asserted in `a caretaker holds office and does not
+         govern`, on a board that keeps the flag. */
+      S.caretaker = null;
       return standing(S);
     }
     /* fires() calls the real handler and asks whether the model moved. A gate
@@ -5356,6 +5376,303 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         `but the norm: the party leader sits on every office's bench with a bonus, and the bench deduped within ` +
         `one office and never asked about the other three`
       : `${twoHats.doubles} of ${twoHats.elections} elections seated a double — ${twoHats.sample}`);
+
+
+  /* S17f — NOBODY RULES UNTIL THE HOUSE SAYS SO. A government was the largest
+     party and a coalition was a greedy walk down the ideological distance:
+     nobody was asked and nobody could refuse. Four things are asserted here,
+     and each of them was false before this slice. */
+  const form = await page.evaluate(() => {
+    var R = {};
+    function board(lower, upper) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp';
+      if (upper) { S.upper.exists = true; S.upper.elected = true; }
+      v6SetSeats(S, lower, upper || null);
+      var largest = null;
+      PARTIES.forEach(function (p) { if (!largest || (S.seats[p.id] || 0) > (S.seats[largest] || 0)) largest = p.id; });
+      return largest;
+    }
+    /* (a) A PLURALITY IS NOT A GOVERNMENT. The League is the largest party in
+       this chamber by two hundred and fifty seats and cannot reach a majority
+       with anybody who will sit with it; three smaller parties can and do. */
+    var big = board({ pnl:500, lp:250, sd:220, rsf:200, cup:60, tvc:50, fp:25 });
+    var froze = v17Rotation(S, null);
+    R.freeze = { largest:big, lead:froze.lead, co:froze.co.slice(), ok:froze.ok,
+      how:froze.how, rounds:froze.rounds.length,
+      seatsLargest:S.seats[big], seatsGov:froze.co.reduce(function (n, x) { return n + (S.seats[x] || 0); }, 0),
+      majority:v17Majority(S) };
+    /* AND IT HAPPENS IN PLAY, not only when the rotation is called by hand:
+       the same chamber, driven through a real ballot. */
+    S.turn = 3; S.rngState = 20260827;
+    var r = runElection(S, false);
+    R.playFroze = { lead:r.lead, gov:r.gov, frozenOut:r.frozenOut, changed:r.changed,
+      formationOnState:!!S.formation, howOnState:S.formation && S.formation.how };
+
+    /* (b) WEIGHT IS BOTH CHAMBERS, per the owner's ruling: influence is
+       proportional to total seats across the ELECTED bodies after the renewal.
+       Only the Senate changes between these two boards and the order the
+       country asks the parties in has to change with it. */
+    board({ fp:250, lp:260, sd:220, cup:200, pnl:180, tvc:150, rsf:45 },
+          { fp:20, lp:120, sd:40, cup:30, pnl:30, tvc:20, rsf:20 });
+    var orderA = v17ByWeight(S).slice(0, 2).join(',');
+    board({ fp:250, lp:260, sd:220, cup:200, pnl:180, tvc:150, rsf:45 },
+          { fp:120, lp:20, sd:40, cup:30, pnl:30, tvc:20, rsf:20 });
+    var orderB = v17ByWeight(S).slice(0, 2).join(',');
+    R.weight = { a:orderA, b:orderB, moved:orderA !== orderB,
+      appointedIgnored:(function () {
+        S.upper.elected = false; var c = v17ByWeight(S).slice(0, 2).join(',');
+        S.upper.elected = true; return c !== orderB;
+      })() };
+
+    /* (c) AN ABSTENTION IS NOT OPPOSITION. The same coalition, short of a
+       majority, is invested when a party outside it stands aside and defeated
+       when that party votes. This is the whole of what confidence and supply
+       buys, and there was no investiture at all before this slice. */
+    board({ pnl:430, rsf:400, tvc:200, lp:120, sd:80, cup:50, fp:25 });
+    var rot = v17Rotation(S, null);
+    var minRound = rot.rounds.filter(function (x) { return x.kind === 'minority'; })[0];
+    R.minority = { how:rot.how, supply:rot.confidence, co:rot.co.slice(),
+      seats:rot.co.reduce(function (n, x) { return n + (S.seats[x] || 0); }, 0),
+      majority:v17Majority(S),
+      withAbstention:minRound ? minRound.vote.invested : null,
+      withoutAbstention:minRound ? v17Invest(S, minRound.co, null).invested : null,
+      tally:minRound ? [minRound.vote.aye, minRound.vote.nay, minRound.vote.abstain] : null };
+
+    /* (d) AND SOMETIMES THERE IS NO GOVERNMENT. Two blocs that will not sit
+       together, neither of them near a majority, nobody willing even to
+       abstain: a caretaker, which is not a defect but the answer. */
+    board({ pnl:400, rsf:390, tvc:250, cup:200, lp:35, sd:20, fp:10 });
+    var dead = v17Rotation(S, null);
+    R.dead = { ok:dead.ok, how:dead.how, rounds:dead.rounds.length, lead:dead.lead };
+
+    /* (e) AND SOME PARTIES WILL NOT SIT TOGETHER AT ANY PRICE. The most
+       distant pair on the compass is offered EVERYTHING -- the whole
+       coalition's weight, an office, every concession its own list carries --
+       and still refuses, while a near party on the identical offer accepts.
+       A model in which every coalition can be bought has no politics in it. */
+    board({ pnl:400, rsf:390, tvc:250, cup:200, lp:35, sd:20, fp:10 });
+    var pairs = [];
+    PARTIES.forEach(function (a) { PARTIES.forEach(function (b) {
+      if (a.id < b.id) pairs.push([a.id, b.id, dist2(ppos(S, a.id), ppos(S, b.id))]);
+    }); });
+    pairs.sort(function (x, y) { return y[2] - x[2]; });
+    var far = pairs[0], near = pairs[pairs.length - 1];
+    function everything(pid, lead) {
+      return v17Accept(S, pid, lead, { to:pid, from:lead, share:1, portfolios:8, offices:1,
+        concessions:pv5TopWants(pid, S, 3).map(function (w) { return { kind:'adopt', ref:w.id, due:null, met:false }; }),
+        redLines:[] }, 40, null);
+    }
+    var farAns = everything(far[0], far[1]), nearAns = everything(near[0], near[1]);
+    R.unbridgeable = { far:far[0] + '/' + far[1], farD:+far[2].toFixed(2), farYes:farAns.yes, farFlag:farAns.far,
+      near:near[0] + '/' + near[1], nearD:+near[2].toFixed(2), nearYes:nearAns.yes, bar:V17_UNBRIDGEABLE };
+
+    /* (f) THE ROTATION SPENDS NO DICE AND ALWAYS SAYS THE SAME THING. It is
+       run twice on one screen and again after the player's answer is pinned,
+       so a die rolled inside it would make the formation depend on how many
+       times somebody looked at the sheet. */
+    var before = S.rngState;
+    var once = JSON.stringify(v17Rotation(S, null).co);
+    var twice = JSON.stringify(v17Rotation(S, null).co);
+    R.pure = { same:once === twice, noDice:S.rngState === before };
+    return R;
+  });
+  const formOk = form.freeze.ok && form.freeze.lead !== form.freeze.largest &&
+    form.freeze.seatsLargest > 400 && form.freeze.seatsGov >= form.freeze.majority &&
+    form.playFroze.frozenOut === form.freeze.largest && form.playFroze.gov !== form.playFroze.lead &&
+    form.playFroze.formationOnState &&
+    form.weight.moved && form.weight.appointedIgnored &&
+    form.minority.how === 'minority' && form.minority.withAbstention === true &&
+    form.minority.withoutAbstention === false &&
+    form.dead.ok === false && form.dead.how === 'caretaker' &&
+    form.unbridgeable.farYes === false && form.unbridgeable.farFlag === true &&
+    form.unbridgeable.nearYes === true &&
+    form.pure.same && form.pure.noDice;
+  say(formOk, 'a plurality is not a government',
+    `the League holds ${form.freeze.seatsLargest} of ${1305} in this chamber and does not govern it: no combination ` +
+    `it can assemble reaches ${form.freeze.majority}, and the ${form.freeze.co.length} parties that can took ` +
+    `the government instead (${form.freeze.co.join('+')}, ${form.freeze.seatsGov} seats) after ` +
+    `${form.freeze.rounds} rounds of the rotation -- and it happens through a real ballot, not only when the ` +
+    `rotation is called by hand (largest ${form.playFroze.lead}, governing ${form.playFroze.gov}) · influence is ` +
+    `TOTAL seats across the ELECTED chambers, so changing only the Senate moves who is asked first ` +
+    `(${form.weight.a} then ${form.weight.b}) and an appointed Senate is not counted at all ` +
+    `(${form.weight.appointedIgnored}) · an abstention is not opposition: ${form.minority.co.join('+')} at ` +
+    `${form.minority.seats} of ${form.minority.majority} is invested ${form.minority.tally ? form.minority.tally[0] + ' to ' + form.minority.tally[1] + ' with ' + form.minority.tally[2] + ' abstaining' : ''} ` +
+    `because the ${form.minority.supply ? form.minority.supply.toUpperCase() : '--'} stand aside, and defeated the moment they do not ` +
+    `(${form.minority.withoutAbstention}) · and sometimes nobody can: ${form.dead.rounds} rounds and a caretaker ` +
+    `(${form.dead.how}) · some parties will not sit together at any price: ${form.unbridgeable.far} at ` +
+    `${form.unbridgeable.farD} on the compass refuse the whole coalition's weight, an office and every concession ` +
+    `on their own list (${form.unbridgeable.farYes}) against a bar of ${form.unbridgeable.bar}, while ` +
+    `${form.unbridgeable.near} at ${form.unbridgeable.nearD} accept the identical offer ` +
+    `(${form.unbridgeable.nearYes}) -- a model where every coalition can be bought has no politics in it · ` +
+    `the whole rotation spends no dice and answers the same twice ` +
+    `(${form.pure.same}/${form.pure.noDice}), which is what lets the player's own answer be pinned and the ` +
+    `country asked again`);
+
+  /* S17f — A CARETAKER HOLDS OFFICE AND DOES NOT GOVERN. The Hung Assembly's
+     own words were "No party can command the Assembly" and "carries on as a
+     caretaker" over a model that had installed an ordinary federal government
+     at a seat share of .308 and never read it again. */
+  const care = await page.evaluate(() => {
+    var R = {};
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'fp'), false);
+    S.playAs = 'fp'; S.capital = 300; S.treasury = 6000;
+    R.opens = { caretaker:!!S.caretaker, standing:standing(S), ruling:S.ruling,
+      govSeats:(S.coalition || []).reduce(function (n, x) { return n + (S.seats[x] || 0); }, 0),
+      majority:v17Majority(S) };
+    /* the five instruments, each asked from the caretaker's own chair */
+    function refuse(fn) { var m = null, f = flash; flash = function (x) { m = x; }; try { fn(); } finally { flash = f; } return m; }
+    R.bars = {
+      policy:refuse(function () { changePolicy('incomeTax', 1); }),
+      fiscal:refuse(function () { pv5FiscalAction('stance', 'expansionary'); }),
+      programme:refuse(function () { v6AdoptProgramme(Object.keys(V6_PROGRAMME)[0]); }),
+      treaty:v6TreatyWhy(S, 'moya', 'trade'),
+      order:v10OrderOpen(S, V10_ORDER['maritimeExclusion'], null)
+    };
+    /* and the exception: the emergency does not stop for a formation */
+    var em = V10_ORDERS.filter(function (o) { return o.cat === 'Emergency and territory'; })[0];
+    R.emergencyOpen = em ? String(v10OrderOpen(S, em, em.target ? 'tenebris' : null) || '') : 'NO EMERGENCY ORDER';
+    R.panel = v17FormationPanel();
+    /* THE CARETAKER IS ENTERED AND LEFT THROUGH REAL SESSIONS, not by calling
+       the tick: with the call site out of endTurn a hand-driven clock still
+       passes. Closing a session on the Hung Assembly has to resolve it. */
+    /* The session has to be CLOSED, not stepped: `runQueue` waits on the
+       player's questions and everything after it -- the caretaker's clock
+       among them -- runs in its callback. Catching the queue on its way in and
+       emptying it is how the rest of this harness closes a session. */
+    var rq = runQueue;
+    function close() {
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try { UI.queue = []; UI.busy = false; endTurn(); } finally { runQueue = rq; }
+      UI.queue = [];
+    }
+    /* ONE session, on a turn that is NOT a ballot turn, from a chair that is
+       not the caretaker's own. Driving it to a ballot would prove nothing: an
+       election forms a government anyway, and with the clock's call site taken
+       out of endTurn the whole probe still passed until it was pinned down
+       like this. So what is measured is a caretaker replaced by a government
+       between one session and the next with the ballot never moving. */
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.capital = 300; S.rngState = 20260827;
+    var was = !!S.caretaker, gov0 = (S.coalition || []).join('+'), le = S.lastElection;
+    close();
+    R.resolvedInPlay = { was:was, now:!!S.caretaker, sessions:1, ballotMoved:S.lastElection !== le,
+      how:S.formation && S.formation.how, confidence:S.confidence,
+      was0:gov0, gov:(S.coalition || []).join('+'), moved:gov0 !== (S.coalition || []).join('+') };
+    /* AND THE CLOCK IS BOUNDED. A chamber nobody can govern, driven through
+       real sessions: the caretaker cannot outlast V17_CARETAKER_MAX. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.capital = 300; S.rngState = 20260827;
+    v6SetSeats(S, { pnl:400, rsf:390, tvc:250, cup:200, lp:35, sd:20, fp:10 }, null);
+    v17Install(S, v17Rotation(S, null));
+    R.stuck = !!S.caretaker;
+    /* A forced ballot on a chamber nobody can govern often produces another
+       chamber nobody can govern, so what is bounded is not "the country stops
+       having caretakers" -- it is that NO SINGLE ONE outlives the clock. The
+       longest one seen over ten sessions is measured, and so is the fact that
+       at least one of them ended at the polls. */
+    /* AND THE CLOCK. A deadlock in this republic is SOFT, and measuring it is
+       how that was learned: the rotation reads where the parties stand, what
+       they hold against each other and how they feel about the player, all
+       three of which move every session, and a grudge cools by .6 a turn -- so
+       a caretaker installed on a chamber nobody could govern is almost always
+       replaced by the next session's attempt, which is the behaviour above and
+       is right. The clock is the GUARANTEE for the country where they do not
+       move, and a guarantee still has to be wired and still has to count. The
+       wiring is proved above, by a caretaker that a closed session resolved
+       without anybody calling the clock; what is proved here is the count, on
+       a picture deliberately frozen so the rotation cannot succeed. */
+    var ticks = [], since = S.caretaker ? S.caretaker.since : S.turn;
+    for (var t = 0; t < V17_CARETAKER_MAX + 1 && S.caretaker; t++) {
+      S.turn += 1;
+      ticks.push([S.turn - since, v17CaretakerTick(S), !!S.caretaker]);
+    }
+    R.bound = { steps:ticks, cleared:!S.caretaker, forced:ticks.filter(function (x) { return x[1]; }).length,
+      sessions:ticks.length, max:V17_CARETAKER_MAX,
+      carriedOn:ticks.filter(function (x) { return !x[1] && x[2]; }).length };
+    R.max = V17_CARETAKER_MAX;
+    return R;
+  });
+  const V17_MAX = care.max;
+  const careOk = care.opens.caretaker && care.opens.govSeats < care.opens.majority &&
+    /caretaker/i.test(care.bars.policy || '') && /caretaker/i.test(care.bars.fiscal || '') &&
+    /caretaker/i.test(care.bars.programme || '') && /caretaker/i.test(care.bars.treaty || '') &&
+    /caretaker/i.test(care.bars.order || '') &&
+    !/caretaker/i.test(care.emergencyOpen) &&
+    care.panel.indexOf('Caretaker') >= 0 &&
+    care.resolvedInPlay.was && !care.resolvedInPlay.now && !care.resolvedInPlay.ballotMoved &&
+    care.resolvedInPlay.moved && care.resolvedInPlay.how === 'minority' &&
+    /* The bound is PINNED at three, not read off the constant it is checking:
+       parameterising the count by V17_CARETAKER_MAX makes the assertion agree
+       with any value the constant happens to hold, which is no assertion at
+       all. Three is what the card prints and three is what the clock charges. */
+    care.stuck && care.bound.cleared && care.bound.max === 3 && care.bound.forced === 1 &&
+    care.bound.sessions === 3 && care.bound.carriedOn === 2;
+  say(careOk, 'a caretaker holds office and does not govern',
+    `the Hung Assembly opens as what its own log says it is -- a caretaker on ${care.opens.govSeats} of ` +
+    `${care.opens.majority} needed, where the model used to install an ordinary federal government and read ` +
+    `nothing about it ever again · five instruments refuse it in its own words (statute, fiscal framework, ` +
+    `programme, treaty, order) and the emergency is the one thing that does not stop for a formation ` +
+    `("${care.emergencyOpen.slice(0, 46)}" is a different refusal, not the caretaker's) · the state is on the ` +
+    `government page rather than only in the refusals · and it is entered and left through PLAY, not by calling ` +
+    `the clock: ONE closed session on a turn no ballot was due (${!care.resolvedInPlay.ballotMoved}) took it from ` +
+    `${care.resolvedInPlay.was0} to ${care.resolvedInPlay.gov} as ${String(care.resolvedInPlay.how)}` +
+    `${care.resolvedInPlay.confidence ? ' with the ' + String(care.resolvedInPlay.confidence).toUpperCase() + ' supplying confidence' : ''} ` +
+    `· a deadlock in this republic is SOFT -- positions, grudges and relations all move every session and a grudge ` +
+    `cools by .6 a turn, so the parties usually find an answer at the next attempt, which is the two sessions ` +
+    `above · the clock is the guarantee for the country where they do not, and on a frozen picture it counts ` +
+    `exactly: ${care.bound.carriedOn} sessions of "the caretaker carries on" and then, at ` +
+    `${care.bound.sessions} of ${care.bound.max}, the ballot nobody asked for (${care.bound.forced})`);
+
+  /* S17f — THE HOUSE REMOVES A GOVERNMENT, NOT THE OPINION POLLS. The vote of
+     no confidence read `approval(S) < 42`: a national mood number consulted
+     instead of the chamber. Both directions of the defect are measured, and
+     both of them are the OPPOSITE of what the old line did. */
+  const noconf = await page.evaluate(() => {
+    function board(lower, ruling, co, opts) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.capital = 300;
+      v6SetSeats(S, lower, null);
+      S.ruling = ruling; S.coalition = co.slice(); S.partner = co[1] || null;
+      S.confidence = (opts && opts.confidence) || null;
+      S = enrichState(S, false);
+      if (opts && opts.cohesion !== undefined) {
+        co.slice(1).forEach(function (pid) { if (S.coalitionDeals[pid]) S.coalitionDeals[pid].satisfaction = opts.cohesion; });
+      }
+      if (opts && opts.approval !== undefined) {
+        BLOCS.forEach(function (b) { S.blocs[b.id] = opts.approval; });
+      }
+      return v17ConfidenceVote(S);
+    }
+    /* A government with a real majority and a country that hates it: the old
+       line brought it down on approval alone. */
+    var safe = board({ lp:700, sd:200, fp:150, cup:100, pnl:100, tvc:35, rsf:20 }, 'lp', ['lp'], { approval:8 });
+    var safeApproval = Math.round(approval(S));
+    /* A minority government, adored, whose only partner has stopped speaking
+       to it: the old line saved it on approval alone. */
+    var doomed = board({ lp:300, sd:220, fp:250, cup:200, pnl:200, tvc:100, rsf:35 }, 'lp', ['lp', 'sd'],
+      { cohesion:8, approval:96 });
+    var doomedApproval = Math.round(approval(S));
+    /* and a government that falls is not an election: the same Assembly is
+       asked whether it can produce another one out of the same seats. */
+    var was = S.ruling, before = S.turn;
+    var out = v17Refound(S);
+    return { safe:safe, safeApproval:safeApproval, doomed:doomed, doomedApproval:doomedApproval,
+      refound:{ ok:out.ok, was:was, now:S.ruling, how:out.how, sameTurn:S.turn === before,
+        changed:out.ok && out.lead !== was } };
+  });
+  const ncOk = !noconf.safe.carried && noconf.safeApproval < 42 &&
+    noconf.doomed.carried && noconf.doomedApproval >= 42 &&
+    noconf.doomed.defectors.length > 0 && noconf.refound.sameTurn;
+  say(ncOk, 'the house removes a government',
+    `the confidence motion counted the country's mood and not the chamber, and both directions of that are ` +
+    `measured here · a single-party government on 700 of 1,305 survives at an approval of ${noconf.safeApproval} ` +
+    `(${noconf.safe.aye} for, ${noconf.safe.nay} against), where the old line brought it down for being ` +
+    `unpopular · a minority government at an approval of ${noconf.doomedApproval} FALLS ` +
+    `(${noconf.doomed.nay} against, ${noconf.doomed.aye} for) because its own partner voted against it -- ` +
+    `cohesion at 8, and S16e's number finally decides something · and a government that falls does not go ` +
+    `straight to the country: the same Assembly was asked again in the same session (${noconf.refound.sameTurn}) ` +
+    `and answered ${noconf.refound.ok ? 'with a government' + (noconf.refound.changed ? ' under somebody else' : ' of the same party') : 'with a caretaker'}`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
