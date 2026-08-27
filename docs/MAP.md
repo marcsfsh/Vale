@@ -310,6 +310,60 @@ the ones nobody would hold a press conference about.
 - Measured from the opposition bench over forty sessions on a fixed stream:
   **37 reactions offered in 12 different shapes.**
 
+## Keeping an agreement, or not (S17g)
+
+S17e wrote the agreement down and S17f negotiated it; neither made keeping it
+mean anything. `terms.concessions` was a list nothing consulted and `ledger`
+was an empty array with a named PR to come.
+
+**One emitter, one scanner.** `v17DealEvent(st, kind, ref, actor, note)` is
+called at the instrument sites — `sponsorBill` (`'lay'`), `enactBill`
+(`'move'`), `leaveCoalition` and the walkout (`'quit'`) — and
+`v17DealScan` is the only thing that knows what a concession is. The
+alternative, each instrument knowing the terms, is how the file ended up with
+four unshared enforcement points for `needs:`.
+
+- **`{kind:'adopt', ref}`** — the government will move `ref` to what the
+  partner wants. Met → a credit, cohesion up, and the concession is **marked**
+  so a statute that keeps moving cannot be paid for twice.
+- **`{kind:'refrain', ref}`** — the government will leave `ref` alone. Laying
+  a bill on it is already the breach; a partner does not wait for assent.
+  Drawn from **`v17Friction`**: the statutes where the partner and the
+  formateur actually disagree. The first version drew it from the partner's own
+  third-favourite policy, and over 180 sessions of live play the government
+  never went near one. A red line is a point of friction or it is decoration.
+- **`terms.redLines[]`** — the hard breach, and the one S16e already watched.
+  Its baseline is now kept **per statute** in `d.redLineOff`: S16e's single
+  `redLineWas` was right for one red line and wrong for a list, and reading it
+  for whichever statute was passing made ordinary bills look like breaches.
+- **Only the government can breach the government's agreement.** An opposition
+  bill on a partner's red line is a fact about the opposition.
+
+**The ledger is read in three places**, which is what makes it worth keeping:
+the deal card prints it (both chairs), **`v17WalkFloor`** raises the walkout
+threshold from 12 by 6 for every broken promise, and `v17CanRenegotiate`
+refuses to reopen an agreement that already carries `V17_PATIENCE` (3) of them.
+
+**`v16RedLineTick`** is the session sweep, same name and same call site in the
+tickTurn wrapper. It normalises a legacy deal into the terms shape where it
+finds one — this is a tick and may write; the scanner is a read and may not —
+asks the scanner about each red line and each unmet `adopt`, and calls
+**`v17Walkout`** when cohesion reaches the floor. The walkout **keeps** the
+agreement, marked `former` with `walkedOut` set: S16e deleted it, and an
+agreement nobody can read afterwards cannot be argued about.
+
+**A party that comes back signs a new agreement.** Keeping the deal meant a
+returning partner resumed on the cohesion it stormed out with and left again
+the next session — measured, mean coalition lifespan fell from 6.6 sessions to
+2.1. `pv5EnsureState` clears the terms and re-seeds the cohesion of any
+returning member and records the fact in the ledger; the record survives, the
+terms and the cohesion do not.
+
+**Altering is not breaking.** `v17Renegotiate` swaps an outstanding promise
+for one the partner still wants, at a capital price, records `altered`, gains
+a little cohesion, and **never trades the red line into the concessions
+column** — a thing a party exists to defend is not a bargaining chip.
+
 ## Forming a government (S17f)
 
 Until S17f a government was the largest party: `runElection` set `st.ruling`

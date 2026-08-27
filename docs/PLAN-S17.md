@@ -887,7 +887,7 @@ one-line lever (`v17Weight`'s Senate term) named for the owner to rule on.
 A "mandate" term was built and removed: it fixed nothing measurable and made
 the caretaker unreachable.
 
-**s17g — honour, alter, betray** (L). Instrument sites emit
+**s17g — honour, alter, betray** (L). **STATUS: DONE.** Instrument sites emit
 `dealEvent(actor, kind, ref)` (sponsorBill :8750, bill resolution, floor
 verbs :9205–9263, campaign actions :15120, orders/articles, coalition
 actions); one scanner in the dispatcher matches events against every
@@ -899,6 +899,32 @@ record. v16RedLineTick taught redLines[] and retired into the scanner
 (capture+call, adjudicated). Harness: promised-refrain bill → breach +
 cohesion drop; honoured → credit; driven chain → walkout; alteration
 without breach; pacing A/B on coalition lifespans.
+
+*What landing it found.* The design's shape held -- one emitter, one scanner,
+the ledger, the walkout as terminal, alteration as its own thing. Four things
+it did not anticipate:
+
+1. **A red line has to be a point of FRICTION.** Concessions drawn from the
+   partner's own top wants are statutes the government was never going to
+   touch: measured over 180 sessions of live play the ledger stayed empty.
+   `v17Friction` draws the refrain from where the partner and the formateur
+   actually disagree, and it fires 7-18 times a campaign.
+2. **A party that comes back signs a NEW agreement.** Keeping the deal as the
+   record -- the whole point of the ledger -- meant a returning partner resumed
+   on the cohesion it stormed out with. Mean coalition lifespan fell from 6.6
+   sessions to 2.1 before this was found.
+3. **One baseline per red line, not one per deal.** S16e's single `redLineWas`
+   was correct for one red line and wrong for a list.
+4. `v16RedLineTick` was **not** rebound with a capture. It is not reassigned
+   anywhere, so its body was grown in place under its own name and its call
+   site in the tickTurn wrapper is untouched -- less ratchet churn than a
+   rebind and the same result. The plan's "capture+call, adjudicated" was
+   written for a function that turned out not to need it.
+
+**Deferred to s17k, deliberately.** The floor verbs (support/oppose/pressure)
+do not emit yet: they are click-only instruments, and s17k is the PR that
+extracts them so an actor can be passed. The emitter is in place and one line
+per verb will reach it.
 
 ### Group 3 — the executive cycle
 

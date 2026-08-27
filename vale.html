@@ -8828,6 +8828,9 @@ function sponsorBill(st, policy, dir, owner, strategy, free, sponsorId, quiet) {
   if (b.urgent) b.notes.push('Urgent procedure');
   st.bills.push(b);
   st.changed[policy] = true;
+  /* S17g: laying it is already the breach where the agreement promised to
+     leave it alone. A partner does not wait for assent to notice. */
+  if (typeof v17DealEvent === 'function') v17DealEvent(st, 'lay', policy, sponsor, b.title);
   if (!quiet) {
     logIt(st, PARTY[sponsor].short + ' introduced the ' + b.title + '.');
     addNews(st, 'Order Paper', b.title + ' is introduced', 'The bill begins in committee with the numbers still unsettled.', 'watch');
@@ -8913,6 +8916,10 @@ function enactBill(st, bill) {
     return;
   }
   st.pol[bill.policy] = clamp(before + bill.dir, 0, p.max);
+  /* S17g: the book actually moved, which is the moment a coalition agreement
+     is kept or broken. The emitter decides what it meant; nothing here knows
+     what a concession is. */
+  if (typeof v17DealEvent === 'function') v17DealEvent(st, 'move', bill.policy, bill.sponsor, bill.title);
   if (bill.policy === 'suffrageMale' && st.pol[bill.policy] === 0) st.pol.womensSuffrage = 0;
   if (p.mood) mood(st, polMoodDelta(p, before, st.pol[bill.policy],
     .5 * Math.max(.55, 1 - bill.concessions * .12) * (bill.staged ? .5 : 1)));
@@ -12430,11 +12437,20 @@ list.push({ id:'reselect', name:'Change your own leader', cost:9, kind:'internal
       desc:'Govern alone as a minority and dare the chamber to bring you down.',
       can:function () { return (S.coalition || []).indexOf(pid) >= 0 && (S.coalition || []).length > 1; },
       run:function () {
+        /* S17g: THIS IS THE BETRAYAL ENDPOINT, and it goes in the record.
+           Collapsing a coalition breaks every promise still outstanding in it,
+           and the agreement is kept afterwards as the account of what was
+           broken rather than deleted as though it had never been signed. */
         if (pid === S.ruling) {
           var gone = (S.coalition || []).filter(function (x) { return x !== S.ruling; });
-          gone.forEach(function (x) { S.machine[x] = clamp((S.machine[x] || 0) + .04, -.8, 1); });
+          gone.forEach(function (x) {
+            S.machine[x] = clamp((S.machine[x] || 0) + .04, -.8, 1);
+            if (typeof v17DealEvent === 'function') v17DealEvent(S, 'quit', null, x, 'the government walked away');
+            if (typeof v16Resent === 'function') v16Resent(S, x, S.ruling, 22);
+          });
           S.coalition = [S.ruling]; S.partner = null;
         } else {
+          if (typeof v17DealEvent === 'function') v17DealEvent(S, 'quit', null, pid, 'the partner walked away');
           S.coalition = (S.coalition || []).filter(function (x) { return x !== pid; });
           if (S.partner === pid) S.partner = S.coalition[1] || null;
           S.machine[pid] = clamp((S.machine[pid] || 0) + .05, -.8, 1);
@@ -14893,6 +14909,16 @@ logIt(S, 'A Labor government takes office at the head of the Popular Front, faci
   .committee-seatbar{display:flex;height:9px;margin:8px 0;border:1px solid rgba(191,161,78,.18);overflow:hidden}
   .committee-seatbar span{height:100%;display:block}
   .deal-card{border-left:3px solid var(--party)}
+  /* S17g: what the agreement has been, beneath what it says. */
+  .deal-ledger{margin-top:9px;border-top:1px dotted rgba(191,161,78,.22);padding-top:7px}
+  .deal-ledger>b{display:block;font:500 9.5px var(--font-u);letter-spacing:.13em;text-transform:uppercase;color:var(--slate);margin-bottom:5px}
+  .deal-ledger ul{list-style:none;margin:0 0 5px;padding:0}
+  .deal-ledger li{font-size:12px;color:var(--ivory-dim);padding:3px 0 3px 8px;border-left:2px solid rgba(191,161,78,.2)}
+  .deal-ledger li b{font-family:var(--font-u);font-size:11px;color:var(--ivory)}
+  .deal-ledger li.good{border-left-color:var(--ok)}
+  .deal-ledger li.bad{border-left-color:var(--bad)}
+  .deal-ledger li small{display:block;font-size:11px;color:var(--slate)}
+  .deal-ledger>small{font-size:11px;color:var(--slate)}
   .redline{padding:7px 8px;border:1px solid rgba(199,123,98,.35);background:rgba(122,64,56,.12);font-size:12px;color:var(--ivory-dim);margin:7px 0}
   .influence-ring{width:46px;height:46px;border-radius:50%;float:right;margin-left:8px;display:grid;place-items:center;
     background:conic-gradient(var(--party) calc(var(--value)*1%),rgba(255,255,255,.08) 0);position:relative;font:600 12px var(--font-u)}
@@ -15080,8 +15106,21 @@ function pv5EnsureState(st, fresh) {
      every S16e reader keeps working, with `redLine` mirrored from
      `redLines[0]` until S17g teaches the walkout to read the list. */
   st.coalitionDeals=st.coalitionDeals||{};
+  /* S17g: A PARTY THAT COMES BACK SIGNS A NEW AGREEMENT. S16e deleted the deal
+     on a walkout, so rejoining minted a fresh one; keeping the deal as the
+     record -- which is the point of the ledger -- meant a partner returned on
+     the cohesion it stormed out with and stormed out again the next session.
+     Measured: mean coalition lifespan fell from 6.6 sessions to 2.1. The
+     record persists, the terms and the cohesion do not. */
   (st.coalition||[]).forEach(function(pid){
-    var wants=pv5TopWants(pid,st,3);
+    var d=st.coalitionDeals[pid];
+    if(!d||!d.walkedOut)return;
+    d.former=false; d.walkedOut=null; d.terms=null; d.redLineOff={};
+    d.satisfaction=clamp(st.partyRel[pid]||55,20,85);
+    if(d.ledger)d.ledger.push({turn:st.turn,kind:'altered',ref:null,why:'they came back, and a new agreement was signed',cost:0});
+  });
+  (st.coalition||[]).forEach(function(pid){
+    var wants=pv5TopWants(pid,st,4);
     if(!st.coalitionDeals[pid]){
       st.coalitionDeals[pid]={satisfaction:clamp(st.partyRel[pid]||55,20,85),councils:0,portfolios:0,
         priorities:wants.slice(0,2).map(function(x){return x.id;}),redLine:wants[2]?wants[2].id:null,lastCouncil:-99};
@@ -15093,9 +15132,13 @@ function pv5EnsureState(st, fresh) {
       d.terms={
         offices:['pres','vpres','chan','vchan'].filter(function(o){return st.exec[o]===pid;}),
         portfolios:d.portfolios||0,
+        /* S17g: two things the government will do and one it will not */
         concessions:wants.slice(0,2).map(function(x){
           return {kind:'adopt',ref:x.id,due:null,met:false};
-        }),
+        }).concat((function(){
+          var rub=(typeof v17Friction==='function'?v17Friction(st,pid,st.ruling):[]).filter(function(r){
+            return wants.slice(0,2).every(function(w){return w.id!==r.id;});})[0]||wants[3];
+          return rub?[{kind:'refrain',ref:rub.id,due:null,met:false,broken:false}]:[];})()),
         redLines:d.redLine?[d.redLine]:[],
         confidence:pid===st.ruling?'leads':'cabinet'
       };
@@ -15715,6 +15758,13 @@ function pv5CoalitionAction(pid,action){
     if(!pv5Spend(4,0,'Offer a portfolio to '+PARTY[pid].short))return;var offices=['pres','vpres','chan','vchan'],off=offices.filter(function(o){return(S.coalition||[]).indexOf(S.exec[o])>=0&&S.exec[o]!==pid;})[0];if(off){S.exec[off]=pid;d.portfolios++;d.satisfaction=c100(d.satisfaction+16);shiftPartyRel(S,pid,10);logIt(S,DEPTS[off].name+' was assigned to the '+PARTY[pid].short+'.');}
   }else if(action==='programme'){
     if(!pv5Spend(5,3,'Renegotiate coalition programme'))return;d.priorities=pv5TopWants(pid,S,2).map(function(x){return x.id;});d.redLine=(pv5TopWants(pid,S,3)[2]||{}).id||null;d.satisfaction=c100(d.satisfaction+9);S.coalitionProcedure=true;S.unity=c100(S.unity-2);logIt(S,'The coalition programme was renegotiated with the '+PARTY[pid].short+'.');
+  }else if(action==='renegotiate'){
+    /* S17g: altering an agreement is not breaking one. It costs capital and
+       their consent, records `altered`, and is refused outright once the
+       agreement already carries V17_PATIENCE broken promises. */
+    if(v17CanRenegotiate(S,pid)){flash(v17CanRenegotiate(S,pid));return;}
+    if(!pv5Spend(4,2,'Reopen the agreement with '+PARTY[pid].short))return;
+    v17Renegotiate(S,pid);
   }else if(action==='discipline'){
     if(!pv5Spend(2,0,'Discipline '+PARTY[pid].short))return;d.satisfaction=c100(d.satisfaction-14);S.unity=c100(S.unity+4);S.capital=clamp(S.capital+2,-5,capCap(S));logIt(S,'The '+PARTY[pid].short+' were told that collective responsibility was not optional.');
   }
@@ -15792,8 +15842,13 @@ function v17MyDealCard(){
   if(!d||!inPower(S)||leads(S))return '';
   var offices=(d.terms&&d.terms.offices||[]).map(function(o){return DEPTS[o]?DEPTS[o].name:o;});
   var owed=(d.terms&&d.terms.concessions||[]).map(function(c){
-    return '<li>'+(POL[c.ref]?esc(POL[c.ref].name):esc(c.ref))+
-      ' <span class="tag '+(c.met?'up':'')+'">'+(c.met?'kept':'outstanding')+'</span></li>';}).join('');
+    /* S17g: a promise to leave something alone reads differently from a
+       promise to do something, and it can be BROKEN rather than merely
+       outstanding. */
+    var state=c.kind==='refrain'?(c.broken?'broken':'held'):(c.met?'kept':'outstanding');
+    return '<li>'+(c.kind==='refrain'?'No bill on ':'')+(POL[c.ref]?esc(POL[c.ref].name):esc(c.ref))+
+      ' <span class="tag '+(state==='kept'||state==='held'?'up':(state==='broken'?'down':''))+'">'+
+      state+'</span></li>';}).join('');
   var lines=(d.terms&&d.terms.redLines||[]).map(function(id){
     return POL[id]?esc(POL[id].name):esc(id);}).join(', ');
   return '<article class="card deal-card"><div class="bill-title"><h3><span class="dot" style="background:'+
@@ -15805,11 +15860,12 @@ function v17MyDealCard(){
     '<span class="tag">'+(d.councils||0)+' council'+((d.councils||0)===1?'':'s')+'</span></div>'+
     (owed?'<div class="subhead">What you were promised</div><ul class="tight">'+owed+'</ul>':'')+
     (lines?'<div class="redline"><b>Your red line:</b> '+lines+'</div>':'')+
+    (typeof v17LedgerCard==='function'?v17LedgerCard(S,me):'')+
     '</article>';
 }
 function pv5CoalitionPanel(){
   var partners=(S.coalition||[]).filter(function(pid){return pid!==S.ruling;});
-  var cards=partners.map(function(pid){var d=S.coalitionDeals[pid]||{},prior=(d.priorities||[]).map(function(id){return POL[id]?POL[id].name:id;});return '<article class="card deal-card"><div class="bill-title"><h3><span class="dot" style="background:'+PARTY[pid].color+'"></span> '+esc(PARTY[pid].name)+'</h3><span class="bill-no">'+Math.round(d.satisfaction||0)+' cohesion</span></div><p class="desc">'+(d.councils||0)+' formal council'+((d.councils||0)===1?'':'s')+' · '+(d.portfolios||0)+' traded executive office'+((d.portfolios||0)===1?'':'s')+'.</p><div class="meter '+((d.satisfaction||0)<35?'bad':'')+'"><i style="width:'+Math.round(d.satisfaction||0)+'%"></i></div><div class="tagline">'+prior.map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('')+'</div>'+(d.redLine&&POL[d.redLine]?'<div class="redline"><b>Red line:</b> '+esc(POL[d.redLine].name)+'</div>':'')+''+(leads(S)?'<div class="btnrow"><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="council">Coalition council <span class="c">'+cst(3)+', '+fmc(2)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="portfolio">Trade an office <span class="c">'+cst(4)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="programme">Rewrite programme <span class="c">'+cst(5)+', '+fmc(3)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="discipline">Demand discipline <span class="c">'+cst(2)+'</span></button></div>':'')+'</article>';}).join('');
+  var cards=partners.map(function(pid){var d=S.coalitionDeals[pid]||{},prior=(d.priorities||[]).map(function(id){return POL[id]?POL[id].name:id;});return '<article class="card deal-card"><div class="bill-title"><h3><span class="dot" style="background:'+PARTY[pid].color+'"></span> '+esc(PARTY[pid].name)+'</h3><span class="bill-no">'+Math.round(d.satisfaction||0)+' cohesion</span></div><p class="desc">'+(d.councils||0)+' formal council'+((d.councils||0)===1?'':'s')+' · '+(d.portfolios||0)+' traded executive office'+((d.portfolios||0)===1?'':'s')+'.</p><div class="meter '+((d.satisfaction||0)<35?'bad':'')+'"><i style="width:'+Math.round(d.satisfaction||0)+'%"></i></div><div class="tagline">'+prior.map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('')+'</div>'+(d.redLine&&POL[d.redLine]?'<div class="redline"><b>Red line:</b> '+esc(POL[d.redLine].name)+'</div>':'')+(typeof v17LedgerCard==='function'?v17LedgerCard(S,pid):'')+(leads(S)?'<div class="btnrow"><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="council">Coalition council <span class="c">'+cst(3)+', '+fmc(2)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="portfolio">Trade an office <span class="c">'+cst(4)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="renegotiate"'+(v17CanRenegotiate(S,pid)?' disabled title="'+esc(v17CanRenegotiate(S,pid))+'"':'')+'>Reopen the agreement <span class="c">'+cst(4)+', '+fmc(2)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="programme">Rewrite programme <span class="c">'+cst(5)+', '+fmc(3)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="discipline">Demand discipline <span class="c">'+cst(2)+'</span></button></div>':'')+'</article>';}).join('');
   var mineCard = v17MyDealCard();
   var voice = leads(S) ? 'Coalition partners carry explicit priorities, red lines, portfolios and cohesion. Their cohesion feeds the working relationship already used in legislation and confidence.'
     : (inPower(S) ? 'You are a partner in this government. Your own terms are below, beside the partners you sit with.'
@@ -32873,40 +32929,298 @@ ballot = function (st) {
    partner exists to prevent, session after session, and the only consequence
    was the slow satisfaction drift every priority produces. Crossing it now
    costs real cohesion, and a partner whose cohesion is gone walks out. */
-function v16RedLineTick(st) {
-  if (!st.coalitionDeals) return;
-  (st.coalition || []).forEach(function (pid) {
-    if (pid === st.ruling) return;
-    var d = st.coalitionDeals[pid]; if (!d || !d.redLine || !POL[d.redLine]) return;
-    var want = (PARTY[pid].wants || {})[d.redLine];
-    if (want === undefined) return;
-    var lv = st.pol[d.redLine] || 0;
-    var off = Math.abs(lv - want);
-    if (d.redLineWas === undefined) { d.redLineWas = off; return; }
-    if (off > d.redLineWas + .001) {
-      /* it moved AWAY from what they exist to defend, this session */
-      d.satisfaction = c100((d.satisfaction || 50) - 11);
-      st.partyRel[pid] = c100((st.partyRel[pid] || 50) - 6);
-      v16Resent(st, pid, st.ruling, 12);
-      logIt(st, 'The ' + PARTY[pid].short + ' called ' + POL[d.redLine].name +
-        ' a breach of the coalition agreement. It was their red line and it was written down.');
-      addNews(st, 'The Coalition', PARTY[pid].short + ' warn on ' + POL[d.redLine].name,
-        'The partner has said in public what it said in the room. Cohesion is at ' + Math.round(d.satisfaction) + '.', 'bad');
-    }
-    d.redLineWas = off;
-    if ((d.satisfaction || 50) <= 12) {
-      st.coalition = (st.coalition || []).filter(function (x) { return x !== pid; });
-      if (st.partner === pid) st.partner = null;
-      delete st.coalitionDeals[pid];
-      st.partyRel[pid] = c100((st.partyRel[pid] || 50) - 10);
-      v16Resent(st, pid, st.ruling, 25);
-      logIt(st, 'The ' + PARTY[pid].short + ' left the government. The red line was ' + POL[d.redLine].name + '.');
-      addNews(st, 'The Coalition', PARTY[pid].short + ' leave the government',
-        'The partner has withdrawn. The arithmetic on the order paper changed this morning.', 'bad');
-      chronicle(st, 'The ' + PARTY[pid].short + ' left the government over ' + POL[d.redLine].name + '.');
-    }
+/* ============================================================
+   S17g — HONOUR, ALTER, BETRAY
+   ============================================================
+   The owner, on what a coalition is:
+
+     "a coalition is not 'negotiate it and forget it'. its 'negotiate it, and
+      then live up to it, alter it, betray it, or some combination thereof.'"
+
+   S17e wrote the agreement down and S17f negotiated it. Neither made keeping
+   it mean anything: `terms.concessions` was a list nothing consulted and
+   `ledger` was an empty array with a named PR to come, which is the only
+   reason a field nothing reads was allowed to land. This is that PR.
+
+   ONE EMITTER, ONE SCANNER. Every instrument that can honour or breach an
+   agreement calls `v17DealEvent`, and one function decides what it meant. The
+   alternative -- each instrument knowing about coalition terms -- is how the
+   file ended up with four unshared enforcement points for `needs:`, and that
+   is on the list of things this file's history punishes.
+
+   WHAT AN AGREEMENT CAN SAY:
+     concession {kind:'adopt',   ref} the government will move ref toward what
+                                      the partner wants. Met -> a credit.
+     concession {kind:'refrain', ref} the government will leave ref alone.
+                                      Laid or moved -> a breach.
+     redLines[ref]                    the thing the partner exists to defend.
+                                      Moved away from -> the hard breach, and
+                                      the one S16e's walkout already watched.
+
+   The ledger is written by the scanner and READ in three places: the deal
+   card prints it, the walkout counts broken promises against a partner's
+   patience, and the renegotiation refuses to reopen an agreement that has
+   already been broken twice. */
+
+var V17_BREACH = { refrain:8, redline:11 };   /* cohesion, per breach */
+var V17_KEPT = 7;                             /* cohesion, per promise met */
+var V17_PATIENCE = 3;                         /* broken promises before the floor drops */
+
+function v17Ledger(st, pid, entry) {
+  var d = (st.coalitionDeals || {})[pid]; if (!d) return null;
+  if (!d.ledger) d.ledger = [];
+  entry.turn = st.turn;
+  d.ledger.push(entry);
+  if (d.ledger.length > 40) d.ledger.shift();
+  return entry;
+}
+function v17Broken(st, pid) {
+  var d = (st.coalitionDeals || {})[pid]; if (!d || !d.ledger) return 0;
+  return d.ledger.filter(function (e) { return e.kind === 'broken'; }).length;
+}
+function v17Kept(st, pid) {
+  var d = (st.coalitionDeals || {})[pid]; if (!d || !d.ledger) return 0;
+  return d.ledger.filter(function (e) { return e.kind === 'kept'; }).length;
+}
+/* A partner's patience runs out sooner the more often it has been broken.
+   S16e's walkout floor was a flat 12 and read nothing; it reads the record
+   now, which is what makes the record worth keeping. */
+function v17WalkFloor(st, pid) {
+  return 12 + Math.min(3, v17Broken(st, pid)) * 6;
+}
+
+/* WHERE THE TWO SIDES DISAGREE. A promise to leave a statute alone is only
+   worth writing down where the other side WANTED to move it: the first version
+   of this drew the refrain from the partner's own third-favourite policy, and
+   measured over 180 sessions of live play the government never once went near
+   one, so nothing was ever kept or broken. A red line is a point of friction
+   or it is decoration. */
+function v17Friction(st, a, b) {
+  var wa = (PARTY[a] || {}).wants || {}, wb = (PARTY[b] || {}).wants || {}, rows = [];
+  Object.keys(wa).forEach(function (id) {
+    if (!POL[id] || wb[id] === undefined) return;
+    var gap = Math.abs(wa[id] - wb[id]);
+    if (gap > 0) rows.push({ id:id, gap:gap });
+  });
+  rows.sort(function (x, y) { return y.gap - x.gap || v15Hash(x.id) - v15Hash(y.id); });
+  return rows;
+}
+
+/* WHAT THE PARTNER WANTS OF A STATUTE, and how far the book is from it. */
+function v17Want(st, pid, ref) {
+  var w = (PARTY[pid] || {}).wants || {};
+  return w[ref];
+}
+function v17Off(st, pid, ref) {
+  var want = v17Want(st, pid, ref);
+  if (want === undefined) return null;
+  return Math.abs((st.pol[ref] || 0) - want);
+}
+
+/* THE EMITTER. Every instrument that can keep or break an agreement calls
+   this; nothing else knows what a concession is.
+     kind  'lay'  a bill was introduced on ref
+           'move' ref actually changed in the book
+           'quit' a party walked out of the government
+     actor the party that did it. Only the GOVERNMENT can breach the
+           government's agreement, so an opposition bill on a partner's red
+           line is a fact about the opposition and not a betrayal. */
+function v17DealEvent(st, kind, ref, actor, note) {
+  if (!st || !st.coalitionDeals) return;
+  var co = st.coalition || [];
+  if (kind !== 'quit' && co.indexOf(actor) < 0) return;
+  co.forEach(function (pid) {
+    if (pid === actor && kind !== 'quit') return;   /* nobody breaches with themselves */
+    var d = st.coalitionDeals[pid];
+    if (!d || !d.terms) return;
+    v17DealScan(st, pid, d, kind, ref, actor, note);
   });
 }
+
+/* THE SCANNER. One party's agreement, one thing that happened. */
+function v17DealScan(st, pid, d, kind, ref, actor, note) {
+  /* An agreement with no terms is one the ensure has not backfilled yet -- a
+     deal minted mid-session by the coalition actions, or a save from before
+     S17e. There is nothing to breach, and reading through it is how the
+     session sweep threw on its first contact with a legacy shape. */
+  var t = d && d.terms; if (!t) return;
+  var hit = null;
+  if (kind === 'quit') {
+    (t.concessions || []).forEach(function (c) {
+      if (!c.met) v17Ledger(st, pid, { kind:'broken', ref:c.ref, why:'the government left the field', cost:0 });
+    });
+    return;
+  }
+  /* A RED LINE MOVED AWAY FROM WHAT THEY EXIST TO DEFEND. The baseline is PER
+     STATUTE. S16e kept one `redLineWas` because it watched one red line; a
+     list needs one apiece, and reading the single scalar for whichever
+     statute happened to be passing made every enacted bill look like a breach
+     of somebody's red line -- measured, 124 of them over 180 sessions where
+     the mechanism should have fired a handful of times. */
+  if ((t.redLines || []).indexOf(ref) >= 0 && kind === 'move') {
+    var off = v17Off(st, pid, ref);
+    d.redLineOff = d.redLineOff || {};
+    var was = d.redLineOff[ref];
+    if (was === undefined && ref === (t.redLines || [])[0] && d.redLineWas !== undefined) was = d.redLineWas;
+    if (off !== null && was !== undefined && off > was + .001) {
+      hit = { kind:'broken', ref:ref, why:'their red line', cost:V17_BREACH.redline };
+    }
+    if (off !== null) {
+      d.redLineOff[ref] = off;
+      if (ref === (t.redLines || [])[0]) d.redLineWas = off;
+    }
+  }
+  /* a promise to leave something alone, laid or moved */
+  (t.concessions || []).forEach(function (c) {
+    if (c.ref !== ref) return;
+    if (c.kind === 'refrain' && !c.broken) {
+      c.broken = true;
+      hit = hit || { kind:'broken', ref:ref, why:'a promise to leave it alone', cost:V17_BREACH.refrain };
+    }
+    if (c.kind === 'adopt' && !c.met && kind === 'move') {
+      var off2 = v17Off(st, pid, ref);
+      if (off2 !== null && off2 <= 0.001) {
+        c.met = true;
+        v17Ledger(st, pid, { kind:'kept', ref:ref, why:'the concession they were promised', cost:V17_KEPT });
+        d.satisfaction = c100((d.satisfaction || 50) + V17_KEPT);
+        st.partyRel[pid] = c100((st.partyRel[pid] || 50) + 4);
+        logIt(st, 'The ' + PARTY[pid].short + ' got what the coalition agreement promised them on ' +
+          (POL[ref] ? POL[ref].name : ref) + '.');
+      }
+    }
+  });
+  if (!hit) return;
+  v17Ledger(st, pid, hit);
+  d.satisfaction = c100((d.satisfaction || 50) - hit.cost);
+  st.partyRel[pid] = c100((st.partyRel[pid] || 50) - Math.round(hit.cost * .55));
+  if (typeof v16Resent === 'function') v16Resent(st, pid, actor || st.ruling, hit.cost + 1);
+  logIt(st, 'The ' + PARTY[pid].short + ' called ' + (POL[ref] ? POL[ref].name : ref) +
+    ' a breach of the coalition agreement. It was ' + hit.why + ' and it was written down.');
+  addNews(st, 'The Coalition', PARTY[pid].short + ' warn on ' + (POL[ref] ? POL[ref].name : ref),
+    'The partner has said in public what it said in the room. Cohesion is at ' +
+    Math.round(d.satisfaction) + ', and the agreement now records ' +
+    v8Plural(v17Broken(st, pid), 'broken promise') + '.', 'bad');
+}
+
+/* THE SESSION SWEEP. What no event described: a statute that drifted for some
+   other reason, a partner whose patience has run out. This is `v16RedLineTick`
+   grown up -- same name, same call site in the tickTurn wrapper, reading the
+   LIST S17e wrote instead of the one scalar mirrored out of it, and writing
+   the ledger the walkout now consults. */
+function v16RedLineTick(st) {
+  if (!st.coalitionDeals) return;
+  (st.coalition || []).slice().forEach(function (pid) {
+    if (pid === st.ruling) return;
+    var d = st.coalitionDeals[pid]; if (!d) return;
+    /* ONE SHAPE, NORMALISED WHERE IT IS WRITTEN. A deal minted mid-session by
+       the coalition actions, or carried in a save from before S17e, has a
+       legacy `redLine` scalar and no terms at all -- and the scanner reads
+       terms. Rather than teach the scanner two shapes, the sweep gives the
+       older one the shape it is missing, out of what it already carries.
+       This is a tick and may write; the scanner is a read and may not. */
+    if (!d.terms && d.redLine) {
+      d.terms = { offices:[], portfolios:d.portfolios || 0, concessions:[],
+        redLines:[d.redLine], confidence:pid === st.ruling ? 'leads' : 'cabinet' };
+    }
+    var lines = (d.terms && d.terms.redLines && d.terms.redLines.length)
+      ? d.terms.redLines : (d.redLine ? [d.redLine] : []);
+    d.redLineOff = d.redLineOff || {};
+    /* the scanner owns the per-statute baselines; the sweep only asks */
+    lines.forEach(function (ref) {
+      if (POL[ref]) v17DealScan(st, pid, d, 'move', ref, st.ruling, 'drift');
+    });
+    /* an adopt concession can be satisfied by any route, not only a bill */
+    ((d.terms && d.terms.concessions) || []).forEach(function (c) {
+      if (c.kind !== 'adopt' || c.met) return;
+      var off = v17Off(st, pid, c.ref);
+      if (off !== null && off <= .001) v17DealScan(st, pid, d, 'move', c.ref, st.ruling, 'sweep');
+    });
+    if ((d.satisfaction || 50) <= v17WalkFloor(st, pid)) v17Walkout(st, pid, d);
+  });
+}
+
+/* THE TERMINAL. S16e's walkout, with the record read into it. */
+function v17Walkout(st, pid, d) {
+  var lines = (d.terms && d.terms.redLines && d.terms.redLines.length) ? d.terms.redLines : (d.redLine ? [d.redLine] : []);
+  var over = lines.filter(function (r) { return POL[r]; })[0];
+  var broke = v17Broken(st, pid), kept = v17Kept(st, pid);
+  st.coalition = (st.coalition || []).filter(function (x) { return x !== pid; });
+  if (st.partner === pid) st.partner = st.coalition[1] || null;
+  d.former = true; d.walkedOut = st.turn;
+  st.partyRel[pid] = c100((st.partyRel[pid] || 50) - 10);
+  if (typeof v16Resent === 'function') v16Resent(st, pid, st.ruling, 25);
+  logIt(st, 'The ' + PARTY[pid].short + ' left the government' +
+    (over ? '. The red line was ' + POL[over].name + '.' : '.') +
+    ' The agreement records ' + v8Plural(broke, 'broken promise') + ' against ' + kept + ' kept.');
+  addNews(st, 'The Coalition', PARTY[pid].short + ' leave the government',
+    'The partner has withdrawn. The arithmetic on the order paper changed this morning.', 'bad');
+  chronicle(st, 'The ' + PARTY[pid].short + ' left the government' + (over ? ' over ' + POL[over].name : '') + '.');
+  /* the deal is kept as a record rather than deleted -- S16e deleted it, and
+     an agreement nobody can read afterwards cannot be argued about */
+  v17DealEvent(st, 'quit', null, pid, 'walkout');
+}
+
+/* ALTERATION. Changing an agreement is not breaking one, and the difference
+   is the whole of the owner's sentence: you may live up to it, alter it or
+   betray it. Reopening costs capital and the partner's consent, records
+   `altered` rather than `broken`, and is refused outright to a government
+   that has already broken this partner's agreement V17_PATIENCE times --
+   there is nothing left to renegotiate with. */
+function v17CanRenegotiate(st, pid) {
+  var d = (st.coalitionDeals || {})[pid];
+  if (!d || !d.terms) return 'There is no agreement with them to reopen.';
+  if (!leads(st)) return 'The coalition agreement is the head of government’s to keep.';
+  if (v17Broken(st, pid) >= V17_PATIENCE) {
+    return 'They will not reopen it. The agreement already records ' +
+      v8Plural(v17Broken(st, pid), 'broken promise') + ', and a fourth conversation is not what they want.';
+  }
+  if (d.altered === st.turn) return 'It was reopened this session already.';
+  return null;
+}
+function v17Renegotiate(st, pid) {
+  var why = v17CanRenegotiate(st, pid);
+  if (why) { flash(why); return false; }
+  var d = st.coalitionDeals[pid], t = d.terms;
+  var wants = pv5TopWants(pid, st, 7);
+  /* not a statute already promised, and NOT their red line: a thing a party
+     exists to defend is not a bargaining chip, and trading one into the
+     concessions column would quietly disarm the agreement's only hard term. */
+  var fresh = wants.filter(function (w) {
+    return (t.redLines || []).indexOf(w.id) < 0 &&
+      !(t.concessions || []).some(function (c) { return c.ref === w.id; });
+  })[0];
+  /* the outstanding promise nobody is going to keep is traded for one they
+     still want, and the swap is recorded as what it is */
+  var stale = (t.concessions || []).filter(function (c) { return !c.met; })[0];
+  if (!fresh || !stale) { flash('There is nothing outstanding to trade. The agreement stands as written.'); return false; }
+  stale.ref = fresh.id; stale.kind = 'adopt'; stale.met = false; stale.broken = false;
+  d.altered = st.turn;
+  d.satisfaction = c100((d.satisfaction || 50) + 5);
+  st.partyRel[pid] = c100((st.partyRel[pid] || 50) + 3);
+  v17Ledger(st, pid, { kind:'altered', ref:fresh.id, why:'the agreement was reopened and rewritten', cost:0 });
+  logIt(st, 'The coalition agreement with the ' + PARTY[pid].short + ' was reopened and ' +
+    POL[fresh.id].name + ' was written into it in place of a promise neither side was going to keep.');
+  return true;
+}
+
+/* WHAT THE AGREEMENT NOW SAYS IT HAS BEEN. Printed on the deal card, from
+   whichever chair reads it. */
+function v17LedgerCard(st, pid) {
+  var d = (st.coalitionDeals || {})[pid];
+  if (!d || !d.ledger || !d.ledger.length) {
+    return '<div class="deal-ledger"><b>The record</b><small>Nothing has been kept or broken yet. The agreement is as it was written.</small></div>';
+  }
+  var rows = d.ledger.slice(-5).reverse().map(function (e) {
+    var name = POL[e.ref] ? POL[e.ref].name : (e.ref || 'the agreement');
+    return '<li class="' + (e.kind === 'kept' ? 'good' : (e.kind === 'broken' ? 'bad' : '')) + '"><b>' +
+      (e.kind === 'kept' ? 'Kept' : (e.kind === 'broken' ? 'Broken' : 'Altered')) + '</b> ' +
+      esc(name) + ' &middot; ' + esc(dateLabel(e.turn)) + '<small>' + esc(e.why || '') + '</small></li>';
+  }).join('');
+  return '<div class="deal-ledger"><b>The record &middot; ' + v17Kept(st, pid) + ' kept, ' +
+    v17Broken(st, pid) + ' broken</b><ul>' + rows + '</ul>' +
+    '<small>They walk at a cohesion of ' + v17WalkFloor(st, pid) + ', which rises with every promise broken.</small></div>';
+}
+
 var v16AiTickBase = tickTurn;
 tickTurn = function (st) {
   v16AiTickBase(st);
@@ -34143,13 +34457,19 @@ function v17Offer(st, lead, pid, co) {
   var tot = 0;
   co.forEach(function (x) { tot += v17Weight(st, x); });
   var share = tot ? v17Weight(st, pid) / tot : 0;
-  var wants = pv5TopWants(pid, st, 3);
+  var wants = pv5TopWants(pid, st, 4);
+  /* S17g: two things the government will DO and one it will NOT. A promise to
+     leave a statute alone is the cheapest thing to give and the easiest to
+     break, which is what makes it worth writing down. */
+  var cs = wants.slice(0, 2).map(function (w) { return { kind:'adopt', ref:w.id, due:null, met:false }; });
+  var rub = (typeof v17Friction === 'function' ? v17Friction(st, pid, lead) : []).filter(function (r) {
+    return !cs.some(function (c) { return c.ref === r.id; });
+  })[0] || wants[3];
+  if (rub) cs.push({ kind:'refrain', ref:rub.id, due:null, met:false, broken:false });
   return { to:pid, from:lead, share:share,
     portfolios:Math.max(1, Math.round(share * 6)),
     offices:share >= .22 ? 1 : 0,
-    concessions:wants.slice(0, 2).map(function (w) {
-      return { kind:'adopt', ref:w.id, due:null, met:false };
-    }),
+    concessions:cs,
     redLines:wants[2] ? [wants[2].id] : [] };
 }
 /* WHETHER IT ACCEPTS. A party joins a government when what it is being given

@@ -1924,6 +1924,72 @@ async function run() {
     await fm.close();
   }
 
+  // -- S17g: THE RECORD IS ON THE CARD, AND THE BUTTON REFUSES BEFORE THE
+  //    CLICK. `ledger` landed in S17e as an empty array nothing read, which is
+  //    only allowed because the PR that reads it was named. The unit assertions
+  //    live in roads; this proves the page: the agreement's record is rendered
+  //    on both the head's card and the junior partner's, and a government that
+  //    has broken the agreement three times finds the reopen button disabled
+  //    with the reason on it rather than refusing after the click.
+  {
+    const lg = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    await lg.addInitScript(() => { window.confirm = () => true; });
+    await lg.goto(URL);
+    await lg.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await lg.click('[data-setup-begin]');
+    await lg.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await lg.click('[data-doctrine]');
+    await lg.waitForTimeout(250);
+    const led = await lg.evaluate(() => {
+      var out = {};
+      function board(pid) {
+        S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
+        S.playAs = pid; S.capital = 400; S.treasury = 8000; S.caretaker = null;
+        S.ruling = 'fp'; S.coalition = ['fp', 'sd'];
+        S = enrichState(S, false);
+        return S.coalitionDeals.sd;
+      }
+      /* the head of government, having broken and kept one each */
+      var d = board('fp');
+      var refr = (d.terms.concessions || []).filter(function (c) { return c.kind === 'refrain'; })[0];
+      sponsorBill(S, refr.ref, 1, 'government', 'clean', true, 'fp', true);
+      var ad = (d.terms.concessions || []).filter(function (c) { return c.kind === 'adopt'; })[0];
+      S.pol[ad.ref] = (PARTY.sd.wants || {})[ad.ref];
+      v17DealEvent(S, 'move', ad.ref, 'fp', 'probe');
+      var html = pv5CoalitionPanel();
+      out.head = { record:html.indexOf('The record') >= 0,
+        broken:/Broken/.test(html), kept:/Kept/.test(html),
+        reopen:html.indexOf('data-coalition-action="renegotiate"') >= 0,
+        reopenLive:/data-coalition-action="renegotiate"(?![^>]*disabled)/.test(html) };
+      /* and once it has been broken three times the button is shut, with why */
+      for (var k = 0; k < V17_PATIENCE; k++) v17Ledger(S, 'sd', { kind:'broken', ref:'x', why:'probe', cost:0 });
+      var html2 = pv5CoalitionPanel();
+      out.shut = { disabled:/data-coalition-action="renegotiate"[^>]*disabled/.test(html2),
+        reason:/broken promises/.test(html2) };
+      /* the junior partner reads the same record from their own side */
+      board('sd');
+      var d2 = S.coalitionDeals.sd;
+      var r2 = (d2.terms.concessions || []).filter(function (c) { return c.kind === 'refrain'; })[0];
+      sponsorBill(S, r2.ref, 1, 'government', 'clean', true, 'fp', true);
+      var mine = v17MyDealCard();
+      out.junior = { standing:standing(S), card:mine.indexOf('The record') >= 0,
+        refrainNamed:/No bill on /.test(mine), broken:/Broken/.test(mine) };
+      return out;
+    });
+    step('deal-ledger',
+      led.head.record && led.head.broken && led.head.kept && led.head.reopen && led.head.reopenLive &&
+      led.shut.disabled && led.shut.reason &&
+      led.junior.standing === 'junior' && led.junior.card && led.junior.refrainNamed && led.junior.broken,
+      `the coalition card carries what the agreement HAS BEEN as well as what it says — a broken promise ` +
+      `(${led.head.broken}) and a kept one (${led.head.kept}) on the head of government's card, with the ` +
+      `reopen control live (${led.head.reopenLive}); after three broken promises the same control is disabled ` +
+      `with the reason on it (${led.shut.disabled}/${led.shut.reason}) rather than refusing after the click; ` +
+      `and the junior partner reads the same record first-person (${led.junior.card}), with the promise to ` +
+      `leave a statute alone named as one ("No bill on …": ${led.junior.refrainNamed}) rather than filed ` +
+      `under things they were promised`);
+    await lg.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.
