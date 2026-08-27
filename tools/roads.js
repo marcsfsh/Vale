@@ -2972,11 +2972,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
   const C = consti;
   const books = Object.keys(C.byBook).map((k) => C.byBook[k]);
-  say(C.total === 80 && books.length === 8 && books.every((n) => n === 10) &&
+  /* S17j: eighty-ONE, and the offices book carries eleven. Ruling 3 asked for
+     an article that attaches each vice to its principal, and there was no
+     eighty-first slot to put it in without taking one away from somewhere it
+     belongs. The symmetry the S11d assertion was written around is now seven
+     books of ten and one of eleven, and it says so rather than being loosened
+     to "at least ten" -- a bound nothing can ever breach is not a bound. */
+  say(C.total === 81 && books.length === 8 && books.filter((n) => n === 10).length === 7 &&
+      books.filter((n) => n === 11).length === 1 && C.byBook.offices === 11 &&
       C.noMoves === 0 && C.noText === 0 && C.noEffect.length === 0 &&
       C.dupNames.length === 0 && C.dupIds.length === 0,
-    'eighty articles, ten to a book',
-    `${C.total} articles across ${books.length} books [${books.join(' ')}] · every one carries its own text and a ` +
+    'eighty-one articles, and the offices book carries eleven',
+    `${C.total} articles across ${books.length} books [${books.join(' ')}] -- seven of ten and the offices book ` +
+    `of eleven, which is where S17j's Article of the Running Mate went · every one carries its own text and a ` +
     `moves line, and every one either aggregates into v11ConEffects or defines an apply() that touches state ` +
     `something else reads (${C.noEffect.length} that do neither) · no two share a name or an id`);
 
@@ -6102,6 +6110,147 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `ballot is read against comes back to ${cau.turnout.avg[0]} against ${cau.turnout.wasAvg} ` +
     `(${cau.turnout.drift} of drift) -- seeded on the old ladder the fourth caucus took a point off all seven ` +
     `in the same direction, which is the kind of change that is only ever found by looking for it`);
+
+
+  /* S17j — ALWAYS RUNNING. There was no season at all: `execNominate` picked a
+     name off the bench on the render path, `execPush` was one button and the
+     only writer of `st.execPush` in three megabytes, and the contest happened
+     inside a single line of `runElection`. A player could not see a campaign,
+     could not lose a nomination, and no AI party ever spent a penny on an
+     office. */
+  const race = await page.evaluate(() => {
+    var R = {};
+    function con(st) {
+      if (!st.v11) st.v11 = {};
+      if (!st.v11.con) st.v11.con = { arts:{}, order:[], pending:[], failed:{}, conv:0, convUsed:0, plebiscites:0 };
+      return st.v11.con;
+    }
+    /* (a) THE SEASON RUNS, through real sessions. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.rngState = 20260827;
+    var trace = [], rq = runQueue;
+    runQueue = function (done) { UI.queue = []; rq(done); };
+    try {
+      for (var t = 0; t < 12; t++) {
+        UI.queue = []; UI.busy = false; S.capital = 120;
+        endTurn(); UI.queue = [];
+        if (S.over) break;
+        trace.push({ turn:S.turn, stage:S.execRace ? S.execRace.stage : 'vote',
+          offices:S.execRace ? S.execRace.offices.join('+') : null,
+          spent:S.execRace ? Object.keys(S.execRace.spent || {}).length : 0 });
+      }
+    } finally { runQueue = rq; }
+    R.season = trace.slice(0, 8).map(function (x) { return x.turn + ':' + x.stage; }).join(' ');
+    R.parallel = trace.filter(function (x) { return x.offices; })
+      .every(function (x) { return x.offices.split('+').length === 2; });
+    R.aiSpent = trace.some(function (x) { return x.spent > 0; });
+
+    /* (b) FOUR CANDIDATES, FOUR CAUCUSES, and no die on the render path. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.turn = 7; S.capital = 400;
+    v17RaceTick(S);
+    var o1 = S.execRace.offices[0], me = 'lp';
+    var mine = S.execRace.field[o1][me];
+    R.field = { n:mine.runners.length,
+      caucuses:new Set(mine.runners.map(function (c) { return c.caucus; })).size,
+      parties:Object.keys(S.execRace.field[o1]).length,
+      open:mine.open };
+    var r0 = S.rngState;
+    v17RacePanel(); v17RacePolls(S, o1); v17RacePanel();
+    R.noDiceOnRender = S.rngState === r0;
+
+    /* (c) AND AN OUTSIDER CAN BE BOUGHT INTO A PRIMARY. This is ruling 2's
+       second lever: `execPush` only ever moved a whole party's ticket, and a
+       candidate is not a party. */
+    var sorted = mine.runners.slice().sort(function (a, b) {
+      return v17PrimaryScore(S, o1, me, b) - v17PrimaryScore(S, o1, me, a);
+    });
+    var favourite = sorted[0].name, under = sorted[sorted.length - 1];
+    var pushes = 0;
+    while (pushes < 12) {
+      var now = mine.runners.slice().sort(function (a, b) {
+        return v17PrimaryScore(S, o1, me, b) - v17PrimaryScore(S, o1, me, a);
+      });
+      if (now[0].name === under.name) break;
+      S.capital = 400; if (S.purse) S.purse[me] = 400;
+      v17BackCandidate(o1, under.name);
+      pushes++;
+    }
+    var after = mine.runners.slice().sort(function (a, b) {
+      return v17PrimaryScore(S, o1, me, b) - v17PrimaryScore(S, o1, me, a);
+    });
+    R.outsider = { favourite:favourite, backed:under.name, pushes:pushes,
+      won:after[0].name === under.name, changed:favourite !== under.name };
+
+    /* (d) THE PRIMARIES CLOSE AND EVERY PARTY HAS A CANDIDATE -- the ones the
+       membership chose and the ones the leadership named. */
+    S.turn = S.execRace.cycle - 1;
+    v17ResolvePrimaries(S);
+    var f = S.execRace.field[o1];
+    R.closed = { stage:S.execRace.stage,
+      all:Object.keys(f).every(function (k) { return !!f[k].winner; }),
+      byMembership:Object.keys(f).filter(function (k) { return f[k].by === 'the membership'; }).length,
+      byLeadership:Object.keys(f).filter(function (k) { return f[k].by === 'the leadership'; }).length,
+      mineWon:f[me].winner };
+
+    /* (e) AND THE CONTEST SEATS THE PRIMARY WINNER. Driven through a REAL
+       ballot: reading `v17RaceWinner` proves the function and not the game. */
+    S.turn = S.execRace.cycle;
+    var want = {};
+    S.execRace.offices.forEach(function (o) {
+      Object.keys(S.execRace.field[o]).forEach(function (k) { want[o + ':' + k] = S.execRace.field[o][k].winner; });
+    });
+    var res = execContest(S, null);
+    R.seasonClosed = !S.execRace;          /* the vote closes the season with it */
+    R.winnerSeated = Object.keys(res).every(function (o) {
+      return S.figures.exec[o].name === want[o + ':' + res[o]];
+    });
+    R.seatedNames = Object.keys(res).map(function (o) { return o + '=' + S.figures.exec[o].name; }).join(', ');
+
+    /* (f) THE RUNNING MATE ARTICLE changes which two offices are contested and
+       nothing else about the calendar. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false); S.playAs = 'lp';
+    R.pairs = [5, 9, 13, 17].map(function (t) { return execPair(t).join('+'); }).join(' ');
+    var turnsBefore = [5, 9, 13, 17].every(function (t) { return isExecTurn(t); });
+    con(S).arts.artRunningMate = { year:2025, margin:null, turn:1, entrenched:false };
+    R.pairsMate = [5, 9, 13, 17].map(function (t) { return execPair(t).join('+'); }).join(' ');
+    R.calendarSame = turnsBefore && [5, 9, 13, 17].every(function (t) { return isExecTurn(t); });
+    R.articleReal = !!V11_ART.artRunningMate;
+
+    /* (g) and the season rides the save. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.turn = 7; v17RaceTick(S);
+    var blob = JSON.parse(JSON.stringify(S));
+    R.rides = !!(blob.execRace && blob.execRace.field && blob.execRace.stage);
+    return R;
+  });
+  const raceOk =
+    /2:primaries 3:primaries 4:general 5:vote/.test(race.season) && race.parallel && race.aiSpent &&
+    race.field.n === 4 && race.field.caucuses === 4 && race.field.open && race.field.parties === 7 &&
+    race.noDiceOnRender &&
+    race.outsider.changed && race.outsider.won && race.outsider.pushes > 0 &&
+    race.closed.stage === 'general' && race.closed.all &&
+    race.closed.byMembership > 0 && race.closed.byLeadership > 0 &&
+    race.winnerSeated && race.seasonClosed &&
+    race.pairs === 'pres+vchan chan+vpres pres+vchan chan+vpres' &&
+    race.pairsMate === 'pres+vpres chan+vchan pres+vpres chan+vchan' &&
+    race.calendarSame && race.articleReal && race.rides;
+  say(raceOk, 'always running',
+    `THE FOUR SESSIONS BEFORE A VOTE ARE THE RACE, and they run whether a legislative ballot falls in them or ` +
+    `not: ${race.season} · both offices of the contested pair run in parallel (${race.parallel}) · ` +
+    `${race.field.n} candidates in a primary from ${race.field.caucuses} distinct caucuses, across all ` +
+    `${race.field.parties} parties, and NO DIE on the render path (${race.noDiceOnRender}) -- the season is ` +
+    `seeded once at the cycle boundary and everything after it is arithmetic, which is the rule the executive ` +
+    `bench has kept since S15i · AN OUTSIDER CAN BE BOUGHT IN: ${race.outsider.pushes} pushes took ` +
+    `${race.outsider.backed} past ${race.outsider.favourite}, where \`execPush\` only ever moved a whole ` +
+    `party's ticket and a candidate is not a party · the primaries close with a candidate for every party, ` +
+    `${race.closed.byMembership} chosen by the membership and ${race.closed.byLeadership} named by the ` +
+    `leadership under their own party's rule · and the CONTEST seats them (${race.seatedNames}), driven ` +
+    `through the real vote rather than read off the function · AND THE OTHER SIX SPEND: an AI party put money ` +
+    `into a ticket (${race.aiSpent}), where \`st.execPush\` had exactly one writer in three megabytes and it ` +
+    `was the player's button · the Article of the Running Mate attaches each vice to its principal ` +
+    `(${race.pairs} becomes ${race.pairsMate}) and moves no ballot (${race.calendarSame}) · and the season ` +
+    `rides the save (${race.rides})`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

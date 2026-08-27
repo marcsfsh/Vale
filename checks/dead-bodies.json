@@ -648,11 +648,11 @@
     },
     "v7DefaultCollapsed#1": {
       "aliasCaptured": true,
-      "reason": "S11a: alias var v11DefaultCollapsedBase captured above. The record deck adds twenty panels and every one of them must default COLLAPSED \u2014 v7DefaultCollapsed returns false for anything it does not name, so without this the whole deck draws on arrival and the build-on-open design never engages."
+      "reason": "S11a: alias var v11DefaultCollapsedBase captured above. The record deck adds twenty panels and every one of them must default COLLAPSED — v7DefaultCollapsed returns false for anything it does not name, so without this the whole deck draws on arrival and the build-on-open design never engages."
     },
     "viewRecord#3": {
       "aliasCaptured": true,
-      "reason": "S11a: alias var v11ViewRecordBase captured above. Splices the chart deck in after the Long Record panel, located by the first '</div><div class=\"panel\">' following its heading rather than by counting divs \u2014 and deliberately NOT on the two literals the v8 and v9 wrappers splice on, so their inserts stay where they put them."
+      "reason": "S11a: alias var v11ViewRecordBase captured above. Splices the chart deck in after the Long Record panel, located by the first '</div><div class=\"panel\">' following its heading rather than by counting divs — and deliberately NOT on the two literals the v8 and v9 wrappers splice on, so their inserts stay where they put them."
     },
     "regionPartyFactor#1": {
       "aliasCaptured": false,
@@ -665,11 +665,11 @@
     },
     "regionAction#2": {
       "aliasCaptured": true,
-      "reason": "S11c: alias var v11RegionActionBase captured above. Six more levers on V9_REGION_ACTS, which is a registry with one generic handler and therefore the cleanest extension point on the page. These reach the economy, the disparity and the autonomy ladder \u2014 the things the existing eleven did not; nine of those moved prosperity, services and order, whose entire downstream reach was one governor approval score."
+      "reason": "S11c: alias var v11RegionActionBase captured above. Six more levers on V9_REGION_ACTS, which is a registry with one generic handler and therefore the cleanest extension point on the page. These reach the economy, the disparity and the autonomy ladder — the things the existing eleven did not; nine of those moved prosperity, services and order, whose entire downstream reach was one governor approval score."
     },
     "viewFederation#3": {
       "aliasCaptured": true,
-      "reason": "S11c: alias var v11ViewFederationBase captured above. Runs AFTER the v6 wrapper (which splits on a region-card literal and maps parts POSITIONALLY to REGIONS) and the v9 wrapper (which locates a data-region inspect marker) \u2014 so both have finished by the time this sees the HTML and neither can be mis-assigned by what it adds. Replaces the right column's Strategic Risks panel, which carried five generic national risk lines and nothing regional across half the width of the tab about the states."
+      "reason": "S11c: alias var v11ViewFederationBase captured above. Runs AFTER the v6 wrapper (which splits on a region-card literal and maps parts POSITIONALLY to REGIONS) and the v9 wrapper (which locates a data-region inspect marker) — so both have finished by the time this sees the HTML and neither can be mis-assigned by what it adds. Replaces the right column's Strategic Risks panel, which carried five generic national risk lines and nothing regional across half the width of the tab about the states."
     },
     "isBallotTurn#1": {
       "aliasCaptured": true,
@@ -839,6 +839,14 @@
     "v6NewGame#2": {
       "aliasCaptured": true,
       "reason": "alias var v16NewGameBase captured above and called; S16f applies a custom start between the state literal and the ensure chain, which is the only place it belongs -- every ensure runs over the edited state exactly as it runs over a scenario's"
+    },
+    "viewExec#2": {
+      "aliasCaptured": true,
+      "reason": "alias var v17ViewExecRace captured above and called; S17j puts the executive season -- the primaries, the general and the polls for both offices of the contested pair -- above everything the earlier chunks put on this view, which is why it is the LAST wrapper on it rather than the first"
+    },
+    "execPair#1": {
+      "aliasCaptured": true,
+      "reason": "alias var v17ExecPairBase captured above and called; S17j's Article of the Running Mate attaches each vice to its principal, so both principals are contested at every executive ballot instead of the staggered pair -- the base is what an unamended constitution still returns"
     }
   },
   "_maxDeadComment": "S14 PR D takes this 7 -> 2. The five that S2 called the ratchet's true floor were live only through three redundant boot statements -- the v4 boot render, the render half of the v5 boot line, and two calls on the mobile chunk's boot line -- all three painting screens a later chunk replaced before anyone saw them. With those gone every one of the five poison-proved unreachable ON ITS OWN (never in a set: a throw aborts its block and hides the calls after it, which is how S2 lost a day), against the full playtest and all 92 roads assertions, and the same five poisons reddened the build from before the removal. The bodies are deleted and the first surviving assignment of each name is now its declaration. The 2 that remain are regionPartyFactor#1 and actBlocked#1: both bodies were MEANT to be replaced, for reasons S11c and S11d record and S14 PR C did not disturb, so the honest end state for them is a recorded verdict rather than a deletion. PRIOR: S1 set it at 10, S2 -> 5, S14 PR C -> 7 when the check stopped believing a hand-written boolean.",

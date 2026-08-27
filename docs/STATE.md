@@ -25,12 +25,10 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17i.** Next is **s17j — always running**: the
-executive race becomes a state machine, two sessions of primaries and two of
-general campaign for both offices of the contested pair, with the caucuses
-fielding the candidates s17i gave them and the running-mate article attaching
-the vices to their principals. It is the largest PR left. Its design is in
-`docs/PLAN-S17.md`.
+**Landed so far: s17a–s17j.** Group 3 (the executive cycle) is closed and
+Group 4 is next: **s17k — verbs are the buttons' functions**, which extracts
+the six click-only instruments so an AI party can use the same ones the player
+does, under the same gates. Its design is in `docs/PLAN-S17.md`.
 
 ### S17a — the seven defects
 
@@ -88,6 +86,72 @@ ROADS OK          163 assertions, deterministic across runs
 PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
+```
+
+### S17j — always running
+
+> *"the cycle gives 2 turns of primaries then 2 turns of general campaign …
+> Each caucus puts a candidate forward in the primary. The player can influence
+> a caucus's strength, which moves its candidate's primary strength, and
+> influence a primary candidate directly — so outsiders can genuinely win."*
+
+**There was no season at all.** `execNominate` picked a name off the bench on
+the render path, `execPush` was one button and **the only writer of
+`st.execPush` in three megabytes**, and the contest itself happened inside a
+single line of `runElection`. A player could not see a campaign, could not lose
+a nomination, and no AI party ever spent a penny on an office.
+
+**The four sessions before an executive ballot are the race**, and they run
+whether a legislative ballot falls in them or not: primaries, primaries,
+general, the vote. **Both offices of the contested pair run in parallel.**
+
+- **Four candidates, four caucuses.** Every wing of a party that puts its
+  nominations to the membership fields the best person on the bench who belongs
+  to it — and a wing with nobody there finds somebody, because a caucus that
+  cannot field a candidate has no voice in its own party.
+- **Two levers, and an outsider can win.** Move a caucus's strength (the
+  Promote button S17i retuned) and you move its candidate. Or back a candidate
+  **directly** — which `execPush` could never do, because it moved a whole
+  party's ticket and a candidate is not a party. Measured: enough pushes take
+  the last-placed candidate past the favourite.
+- **A party with its nominations closed is named by the leadership**, through
+  the same `execNominate` that always did it.
+- **And the contest seats the primary winner**, driven through the real vote.
+- **The other six spend too.** An AI party puts money into a ticket out of the
+  purse S15f gave it, when the office is one it can win or already holds.
+  `st.execPush` has more than one writer for the first time.
+
+**Where the dice are.** The race is seeded **once**, at the cycle boundary —
+the field, the draw for a wing with nobody on the bench, each candidate's own
+standing with the membership — and everything afterwards is arithmetic over
+what was seeded. A die on the render path would make the season depend on how
+often the player opened the page, which is the rule the executive bench has
+kept since S15i.
+
+**The Article of the Running Mate** (ruling 3's other half) attaches each vice
+to its principal: President and Vice-President contested together, Chancellor
+and Vice-Chancellor together, both principals at every executive ballot instead
+of the staggered eight-year pair. It moves no ballot — only which two offices
+are on them.
+
+**The constitution is eighty-one articles now**, and the offices book carries
+eleven. There was no eighty-first slot to put it in without taking one away
+from somewhere it belonged, and S11d's assertion says the new shape rather than
+being loosened to "at least ten" — a bound nothing can breach is not a bound.
+
+```
+ALL CHECKS PASS   11/11 (two new wrappers adjudicated: the season's view and
+                  the running mate's execPair)
+ROADS OK          177 assertions (+1, and S11d's article count rewritten)
+PLAYTEST PASS     60 steps (+1: the season screen, clicked)
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+PACING            elections won identical on all six seeds; years governing
+                  80 to 67 and achievements 59 to 54, which is what an AI that
+                  now spends on executive offices looks like
+POISON            9 reverts — the season's clock, the contest reading the
+                  primary, the direct push, the caucus that fields nobody, the
+                  AI spend, the party's own rule, the running mate, a die on
+                  the render path, and the second office of the pair
 ```
 
 ### S17i — four voices in every hall
