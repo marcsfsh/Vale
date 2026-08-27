@@ -772,13 +772,29 @@ made four different governments answer identically. (v) **`makeName` never
 guaranteed a unique name** — ten random tries then whatever it had — which is
 why `no two officials share a name` cried wolf in two consecutive slices. It
 walks the pool now; measured, the old code returned an already-held name 89
-times in 300 under a forced pool, the new code none.**s17d — the reaction** (M). National-tier events offer the opposition/
+times in 300 under a forced pool, the new code none.
+
+**s17d — the reaction** (M). **STATUS: DONE.** National-tier events offer the opposition/
 junior a reaction — per-event authored `react:` verb sets (ruling 7:
 VARIETY, never a fixed triple), moving standing/blocs/press via the
 :20278-shaped asymmetric machinery, never the outcome. Digest links each
 government act to the reaction given. Harness: verb-set variety asserted
 (≥N distinct multisets); a reaction moves blocs and does not alter the
 applied outcome; rungs --check on new prose.
+
+**What landing it found.** Reactions are authored by FAMILY — not per event and
+not as one triple: twelve families (disaster, security, foreign, economy,
+labour, scandal, constitution, repression, services, party, election,
+institution), **38 verbs, 38 distinct labels, no two families sharing one**,
+and 132 of 174 events naming a family. The "never the outcome" guarantee is
+structural rather than promised: every verb's effect is drawn from a CLOSED
+vocabulary applied by one function, and the event's own `f` is never run again.
+**A reaction is a VOICE, NOT A DECISION**, and s17c's assertion had to be
+taught the difference — reactions are queued at the player precisely because
+the question was not theirs, so counting them as decisions said the opposite of
+what they mean. The same change broke the playtest's Gazette step for a real
+reason: an opposition player's session no longer ends with an empty queue, so
+the probe now answers its sheets the way a player does.
 
 ### Group 2 — the coalition
 

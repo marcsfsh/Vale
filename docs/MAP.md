@@ -276,6 +276,40 @@ twice (it reported 299 for 174).
   the queue on its way into `runQueue`, comparing the two chairs over one fixed
   stream — unwired, the two numbers are equal.
 
+## The reaction (S17d)
+
+The owner, on being out of government: *"the biggest national events also offer
+YOU a reaction choice — exploit it, back the government, stay silent … but it
+should not be that flat/stagnant. add variety."*
+
+**A reaction is never the same three buttons.** Events belong to **twelve
+families** — `V17_REACT`: disaster, security, foreign, economy, labour,
+scandal, constitution, repression, services, party, election, institution —
+and each family carries its own verbs, written for what actually happened. A
+flood is not a scandal is not a purge. **38 verbs, 38 distinct labels, no two
+families sharing one**; 132 of the 174 events name a family, and the rest are
+the ones nobody would hold a press conference about.
+
+- **`v17ReactionEvent`** builds a sheet shaped like any other queued event, so
+  `runQueue` renders it unchanged. It is queued only for a decision the player
+  did NOT take — the government has already answered, and this is what you say
+  about it.
+- **A reaction cannot reach the outcome, and the vocabulary is what stops it.**
+  Every verb's effect is an object drawn from a closed set — `mach`, `mood`,
+  `rel`, `relOthers`, `sal`, `cap`, `money`, `unrest` — applied by
+  `v17ApplyReaction` and by nothing else. The event's own `f` is never run
+  again, so the indicators and the treasury it moved are untouched; asserted.
+- **The pair is printed together.** `v17ApplyReaction` writes the verb back
+  against the `govRecord` entry it answers, so the Gazette prints what the
+  government did *and* what you said about it, rather than two lists that never
+  meet.
+- **A reaction is a VOICE, NOT A DECISION**, and the S17c assertion had to be
+  taught the difference: reactions are queued at the player precisely because
+  the question was not theirs, so counting them as decisions says the opposite
+  of what they mean.
+- Measured from the opposition bench over forty sessions on a fixed stream:
+  **37 reactions offered in 12 different shapes.**
+
 ## The legislature, and what happens when there isn't one
 
 Three states per chamber, not two (S15). `lowerState(st)` returns `sitting` /
