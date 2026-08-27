@@ -635,7 +635,9 @@ across the program.
 
 ### Group 0 — ground truth
 
-**s17a — the seven defects** (M). No features. (1) custom-start articles:
+**s17a — the seven defects** (M). **STATUS: DONE.** All seven fixed and
+poison-proved; one extra found and fixed in the harness itself (below).
+No features. (1) custom-start articles:
 :32244 stores truthy adoption so v11Adopted/v11ConEffects see them and
 they can't be laid again. (2) viewExec labels + deptFactor :10112 keyed to
 the player's side/relationship. (3) pv5OpenAppointment :14975 un-inverted.
@@ -647,6 +649,27 @@ comment; pv5Spend stops defaulting to S.treasury — the actor's purse pays.
 (7) st.aiPacts get an expiry (delete after the ballot they were formed
 for). Harness: roads :3878 strengthened to v11Adopted + a real effect;
 five new assertions (see Agent findings). No shape change.
+
+**What landing it actually found — recorded because the program meets these
+again.** (i) The exec fix needed a shared predicate, not a patch:
+`officeMine(st, dept)` answers "is this office on the PLAYER's side" —
+coalition test in power, strict-party out of it — and `viewExec` and
+`deptFactor` both read it. The printed discount is DERIVED from `deptFactor`,
+so a retune cannot leave the card claiming a number the model does not give.
+(ii) A founding article was never carried at a margin, so its record carries
+`founding:true` and the two cards that print the record read that field
+instead of printing "carried at 0%" — a new field with a reader, not a
+decoration. (iii) **Two of my own first assertions were tautologies**, both
+caught by poison-proving: the exec check searched the whole page for a string
+when the defect was a true sentence on the WRONG office (now read per card),
+and the cohesion check read the final value, which a later clamped write
+re-clamped (now read after each write). (iv) **`no two officials share a
+name` was a coin toss** — the harness leaves the seed blank, so every run is
+a different campaign; it reddened once here and greened on the next run with
+no code change. It now churns 8 FIXED dice streams (1,600 replacements, up
+from 200 on one random stream) and restores the live stream afterwards:
+strictly more coverage, same answer every run. A bar that cries wolf is worse
+than no bar.
 
 ### Group 1 — who governs
 

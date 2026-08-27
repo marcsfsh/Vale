@@ -26,6 +26,64 @@ statute book, the constitution and the order book whose implementations are not
 **S16a–S16f are merged and all six of the owner's S16 requirements are done.**
 S16f2 (the custom start, refined) is on its branch. S17 starts from there.
 
+### S17a — the seven defects
+
+The program's first PR fixes what the research found already broken, so that
+nothing later is built over a lie. All seven were measured on the page before
+the fix and each ships the assertion that reddens without it:
+
+1. **A start's articles were decoration.** `v16CustomApply` stored
+   `c.arts[id] = 0`; `v11Adopted` is `!!c.arts[id]` and `v11ConEffects` skips
+   a falsy record, so every article a player chose at setup contributed
+   nothing but its one-shot `apply` — no term, no ratify bar, no liberties
+   floor — and could be laid a second time. It stores the record's real shape
+   now, marked `founding`, and a start that adopts the Quadrennial Article
+   reads **four years** where it read two.
+2. **The executive cards spoke about the government, to the player.** `ours`
+   asked whether the office-holder's party sat in the GOVERNMENT's coalition,
+   in the second person: in opposition a rival's office read "In the coalition
+   · Measures 22% cheaper" while the player's own party's office read "Held
+   against you · 55% dearer", and the discount was quoted on an instrument
+   opposition cannot use. `officeMine(st, dept)` now asks whose side an office
+   is on from the player's chair — the coalition test in power, the player's
+   own party out of it — and `deptFactor` reads the same predicate. Out of
+   power the card says the true thing instead: its bills come to you at assent.
+3. **The ministry was open to the opposition.** `pv5OpenAppointment`'s guard
+   read `!holdsDept && inPower`, and the `&& inPower` inverted it.
+4. **The government's coalition was administered by the opposition** —
+   including `portfolio`, which moves a great office between two other
+   parties. Gated to the head of government; the two unclamped cohesion
+   writes (`+= 16`, `+= 9`, measured at 103) are clamped.
+5. **A private member's bill was recorded as the player's.** `sponsorBill`
+   knew three owners and fell through to `playParty` for `'opposition'`, then
+   logged that wrong line before the private-members path printed the right
+   one. The sponsor goes in; the generic line stays quiet.
+6. **The committee room bought lifts on the government's bill out of the
+   national exchequer** — flagged by the file's own comment since S10b and
+   never fixed. A bill is worked by the government or by its sponsor, and who
+   pays follows who acts.
+7. **A pact never lapsed.** Written in one place, read in two, deleted
+   nowhere, so one pact pooled six per cent of the vote for the rest of the
+   campaign and locked both parties out of ever making another.
+
+**And one the PR found in the harness.** `no two officials share a name` was a
+coin toss: the harness leaves the seed blank, so every run is a different
+campaign. It reddened once here and greened on the next run with no code
+change. It now churns **8 fixed dice streams — 1,600 replacements against 200
+on one random stream** — and restores the live stream, so it covers more and
+says the same thing every run. Two of this PR's own first assertions were
+tautologies (a string searched page-wide when the defect was a true sentence
+on the wrong card; a clamp read only at the end, after a later clamped write
+had re-clamped it) and were caught by poison-proving and rewritten.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          163 assertions, deterministic across runs
+PLAYTEST PASS     54 steps + the WebKit SKIP
+DETERMINISM PASS / RUNGS OK / TIERS / TABS
+POISON            10 reverts, each reddens its own assertion
+```
+
 **The order below was changed after S16c**: the owner's six explicit
 requirements come first, and the four "somebody can stop you" PRs follow. Three
 of the six are done (the amendment clock, the treaties, the World tab), one is

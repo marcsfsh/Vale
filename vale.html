@@ -8747,13 +8747,26 @@ function billForecast(st, bill) {
     committee:clamp(lower * .72 + (st.salience[issue.id] || 50) * .28 + (bill.committee || 0), 0, 100) };
 }
 
-function sponsorBill(st, policy, dir, owner, strategy, free) {
+/* S17a: `sponsorId` and `quiet`. The derivation below knew three owners and
+   fell through to `playParty` for the fourth, so every private member's bill
+   was RECORDED as sponsored by the player's own party -- and logged that way
+   too, a line the private-members path then contradicted with a second,
+   correct one. A caller that knows the sponsor says so; a caller that writes
+   its own richer line asks for silence instead of letting a wrong one print
+   first. */
+function sponsorBill(st, policy, dir, owner, strategy, free, sponsorId, quiet) {
   var p = POL[policy], lv = st.pol[policy] || 0, next = lv + dir;
   if (!p || next < 0 || next > p.max || activeBillFor(st, policy)) return null;
   var cost = policyCost(policy, dir);
   if (!free && st.capital < cost) return null;
   if (!free) st.capital -= cost;
-  var sponsor = owner === 'government' ? st.ruling : (owner === 'coalition' ? (st.partner || st.ruling) : playParty(st));
+  var sponsor = (sponsorId && PARTY[sponsorId]) ? sponsorId
+    : owner === 'government' ? st.ruling
+    : owner === 'coalition' ? (st.partner || st.ruling)
+    : owner === 'opposition' ? (PARTIES.filter(function (q) {
+        return (st.coalition || [st.ruling]).indexOf(q.id) < 0 && !st.banned[q.id];
+      }).sort(function (x, y) { return (st.seats[y.id] || 0) - (st.seats[x.id] || 0); })[0] || { id:playParty(st) }).id
+    : playParty(st);
   var b = {
     id:'B' + String(st.billSeq++).padStart(3, '0'), policy:policy, dir:dir, owner:owner || 'player', sponsor:sponsor,
     title:billTitle(policy, dir), introduced:st.turn, stage:billOpeningStage(st), strategy:strategy || 'clean',
@@ -8765,8 +8778,10 @@ function sponsorBill(st, policy, dir, owner, strategy, free) {
   if (b.urgent) b.notes.push('Urgent procedure');
   st.bills.push(b);
   st.changed[policy] = true;
-  logIt(st, PARTY[sponsor].short + ' introduced the ' + b.title + '.');
-  addNews(st, 'Order Paper', b.title + ' is introduced', 'The bill begins in committee with the numbers still unsettled.', 'watch');
+  if (!quiet) {
+    logIt(st, PARTY[sponsor].short + ' introduced the ' + b.title + '.');
+    addNews(st, 'Order Paper', b.title + ' is introduced', 'The bill begins in committee with the numbers still unsettled.', 'watch');
+  }
   return b;
 }
 
@@ -10109,9 +10124,23 @@ function upperResist(st, lean, dir, auth) {
   }
   return clamp(r * vf * dOf(st).resist, 0, 2);
 }
+/* S17a: WHOSE SIDE AN OFFICE IS ON, ASKED FROM THE PLAYER'S CHAIR.
+   `holdsDept` asks whether the GOVERNMENT's coalition holds a department. That
+   is the right question for a government's capacity and the wrong one for
+   every sentence addressed to the player: in opposition it called a rival's
+   office "In the coalition" and the player's own party's office "Held against
+   you", and priced a discount on an instrument opposition cannot use. In power
+   the two questions agree. Out of power only the player's own party counts,
+   because nobody else's office is theirs -- and their own party's office is
+   worth something real, since `assentIsMine` sends its bills to the player to
+   sign whether or not they are in government. */
+function officeMine(st, dept) {
+  if (!dept) return false;
+  return inPower(st) ? holdsDept(st, dept) : st.exec[dept] === playParty(st);
+}
 function deptFactor(st, p) {
   if (!p.dept) return 1;
-  var f = holdsDept(st, p.dept) ? .78 : 1.55;
+  var f = officeMine(st, p.dept) ? .78 : 1.55;
   if (st.acts.purgeService) f *= .92;
   return f;
 }
@@ -10992,6 +11021,19 @@ function runElection(st, early) {
     st.oppYears = 0;
   }
   if (st.pact && st.pact === st.ruling) st.pact = null;
+  /* S17a: A PACT IS FOR AN ELECTION, AND THE ELECTION HAS HAPPENED. `aiPacts`
+     was written when two parties stood down for each other and read in two
+     places -- the ballot pool, and the filter that refuses a party already
+     pacted -- and DELETED NOWHERE in three megabytes. One pact therefore
+     survived every count for the rest of the campaign, pooling six per cent
+     of the vote forever, and locked both parties out of ever making another.
+     It lapses at the count it was made for; S17l gives the two sides a way to
+     renew it deliberately. */
+  if (st.aiPacts) {
+    for (var pactId in st.aiPacts) {
+      if ((st.aiPacts[pactId].since || 0) < st.turn) delete st.aiPacts[pactId];
+    }
+  }
 
   var execRes = null;
   if (isExecTurn(st.turn)) {
@@ -13726,7 +13768,21 @@ function viewExec() {
   var order = ['pres', 'vpres', 'chan', 'vchan'];
   var co = S.coalition || [S.ruling];
   var cards = order.map(function (k) {
-    var pid = S.exec[k], p = PARTY[pid], ours = co.indexOf(pid) >= 0;
+    var pid = S.exec[k], p = PARTY[pid], ours = officeMine(S, k), inGov = co.indexOf(pid) >= 0;
+    /* S17a: the tags speak to the player, and say a true thing in each of the
+       three chairs. The pricing figure is DERIVED from `deptFactor` rather
+       than printed as a literal 22/55, so a retune cannot leave the card
+       claiming a discount the model does not give. Out of power there is no
+       measure to price -- what an office is worth there is that its bills come
+       to you for assent, which is what the card says instead. */
+    var fac = deptFactor(S, { dept:k });
+    var pct = Math.round(Math.abs(1 - fac) * 100);
+    var holdTag = inPower(S)
+      ? (ours ? 'In the government' : 'Held against you')
+      : (ours ? 'Your party holds it' : (inGov ? 'The government holds it' : 'Held by ' + esc(p.short)));
+    var worthTag = inPower(S)
+      ? 'Measures ' + pct + '% ' + (fac < 1 ? 'cheaper' : 'dearer')
+      : (ours ? 'Its bills come to you' : 'No call on it');
     var posts = CABINET[k].map(function (r) {
       var filled = cabQuality(S, r[0]);
       return '<span class="tag ' + (filled ? 'up' : '') + '">' + esc(r[1].replace(/^(Secretary of |Minister of )/, '')) +
@@ -13737,8 +13793,8 @@ function viewExec() {
       '<div class="tagline"><span class="tag">' + esc(holderOf(S, k).name) + ', aged ' + holderOf(S, k).age + '</span>' +
       '<span class="tag">' + esc(TRAIT[holderOf(S, k).trait].name) + '</span>' +
       '<span class="tag">' + esc(p.short) + '</span>' +
-      '<span class="tag ' + (ours ? 'up' : 'down') + '">' + (ours ? 'In the coalition' : 'Held against you') + '</span>' +
-      '<span class="tag ' + (ours ? 'up' : 'down') + '">Measures ' + (ours ? '22% cheaper' : '55% dearer') + '</span></div>' +
+      '<span class="tag ' + (ours ? 'up' : 'down') + '">' + holdTag + '</span>' +
+      '<span class="tag ' + (ours ? 'up' : 'down') + '">' + worthTag + '</span></div>' +
       '<div class="subhead">Cabinet</div><div class="tagline">' + posts + '</div></div>';
   }).join('');
 
@@ -14660,8 +14716,8 @@ billForecast=function(st,bill){
   return f;
 };
 var pv5SponsorBillV4=sponsorBill;
-sponsorBill=function(st,policy,dir,owner,strategy,free){
-  var b=pv5SponsorBillV4(st,policy,dir,owner,strategy,free);
+sponsorBill=function(st,policy,dir,owner,strategy,free,sponsorId,quiet){
+  var b=pv5SponsorBillV4(st,policy,dir,owner,strategy,free,sponsorId,quiet);
   if(b){b.committeeId=pv5CommitteeForPolicy(POL[policy]).id;b.committeeWork=0;b.floorWork=0;b.amendments=[];}
   return b;
 };
@@ -14678,8 +14734,11 @@ function pv5AiPrivateBill(st){
   for(i=0;i<cands.length;i++){roll-=(st.seats[cands[i].id]||0);if(roll<=0){opp=cands[i];break;}}
   if(!opp)return;
   var pick=partyDemandPolicy(st,opp.id);if(!pick)return;
-  var b=pv5SponsorBillV4(st,pick.policy,pick.dir,'opposition','clean',true);if(!b)return;
-  b.sponsor=opp.id;b.owner='opposition';b.playerPosition=opp.id===playParty(st)?'support':null;
+  /* S17a: the sponsor goes IN, and the generic line stays quiet -- this path
+     writes its own, and the two together printed the bill's introduction
+     twice, the first naming the wrong party. */
+  var b=pv5SponsorBillV4(st,pick.policy,pick.dir,'opposition','clean',true,opp.id,true);if(!b)return;
+  b.playerPosition=opp.id===playParty(st)?'support':null;
   b.committeeId=pv5CommitteeForPolicy(POL[pick.policy]).id;b.committeeWork=0;b.floorWork=0;b.amendments=[];
   logIt(st,'The '+PARTY[opp.id].short+' used private members\' time to introduce the '+b.title+'.');
   addNews(st,'Back Benches',PARTY[opp.id].short+' force a vote on '+POL[pick.policy].name,'The government must now decide whether to bury, amend or meet the measure.','watch');
@@ -14972,7 +15031,12 @@ function pv5Spend(cap,money,label,purse){
 function myPurse() { return playParty(S); }
 function pv5OpenAppointment(key){
   var row=pv5PortfolioRows().filter(function(x){return x.key===key;})[0];if(!row)return;
-  if(!holdsDept(S,row.office)&&inPower(S)){flash('That executive office is controlled outside your governing parties.');return;}
+  /* S17a: the guard was `!holdsDept && inPower`, and the `&& inPower` INVERTED
+     it: out of power the condition can never be true, so an opposition player
+     staffed any of the sixteen posts in any office, including offices held by
+     parties outside the government. A ministry is the government's to make. */
+  if(!inPower(S)){flash('The ministry is appointed by the government, and you are not it.');return;}
+  if(!holdsDept(S,row.office)){flash('That executive office is controlled outside your governing parties.');return;}
   var candidates=[pv5MakeMinister(S,key,5),pv5MakeMinister(S,key,0),pv5MakeMinister(S,key,-3)];
   showSheet('<div class="kicker">Cabinet Appointments Office</div><h2 id="sheetTitle">'+esc(row.title)+'</h2><p>Choose a minister. Administrative competence improves delivery; loyalty protects the government; ambition can produce both drive and danger.</p><div class="choices">'+candidates.map(function(m,i){return '<button class="choice" data-candidate="'+i+'"><b>'+esc(m.name)+'</b><small>'+esc(PARTY[m.party].short+' · '+PV5_MINISTER_TRAITS[m.trait].name+' · competence '+Math.round(m.competence)+' · loyalty '+Math.round(m.loyalty)+' · ambition '+Math.round(m.ambition))+'</small></button>';}).join('')+'<button class="choice" data-close="1">Leave the office vacant</button></div>',function(node){
     node.querySelectorAll('[data-candidate]').forEach(function(btn){btn.addEventListener('click',function(){
@@ -15078,12 +15142,28 @@ function pv5AssignChair(cid, pid) {
   logIt(S, 'The chair of ' + c.name + ' went to ' + cm.chairName + ' of the ' + PARTY[pid].short + '.');
   render();
 }
+/* S17a: THE CAUTIONARY TALE, FIXED. The comment at the head of `billAction`
+   has named these four since S10b: they render for every bill and their
+   handler checks nothing, so an opposition player bought a committee lift on
+   the GOVERNMENT's bill -- measured, +12 committee and +5 floor -- and bought
+   it out of the national exchequer, because `pv5Spend` charges the treasury
+   unless a purse is named. Two rules, both already the file's own: a bill is
+   worked by the government or by its sponsor (`canWork`, the floor kit's test
+   at the bill card), and the committee's own affairs are the government's. Who
+   pays follows who acts -- an opposition sponsor works their own bill out of
+   their party's funds, not the state's. */
 function pv5CommitteeAction(cid,action,billId){
   var c=S.committees[cid],b=billId&&billById(S,billId);if(!c)return;
+  var onBill=action==='hearing'||action==='draft';
+  if(onBill?!(inPower(S)||(b&&b.owner==='player')):!inPower(S)){
+    flash(onBill?'A committee works a bill for the government or for the member who laid it, and this is neither.'
+                :'The committee’s own affairs are funded by the government of the day.');return;
+  }
+  var purse=inPower(S)?null:myPurse();
   if(action==='hearing'){
-    if(!b||!pv5Spend(2,2,'Hold committee hearings'))return;b.committeeWork=(b.committeeWork||0)+8;b.amendments.push('Public evidence session');c.expertise=clamp(c.expertise+2,0,100);c.hearings=2;S.v5Stats.committeeHearings++;logIt(S,'The '+PV5_COMMITTEE[cid].name+' Committee took evidence on '+b.title+'.');
+    if(!b||!pv5Spend(2,2,'Hold committee hearings',purse))return;b.committeeWork=(b.committeeWork||0)+8;b.amendments.push('Public evidence session');c.expertise=clamp(c.expertise+2,0,100);c.hearings=2;S.v5Stats.committeeHearings++;logIt(S,'The '+PV5_COMMITTEE[cid].name+' Committee took evidence on '+b.title+'.');
   }else if(action==='draft'){
-    if(!b||!pv5Spend(3,0,'Prepare committee text'))return;b.committeeWork=(b.committeeWork||0)+4;b.floorWork=(b.floorWork||0)+5;b.concessions++;b.amendments.push('Committee substitute');logIt(S,'A committee substitute was prepared for '+b.title+'.');
+    if(!b||!pv5Spend(3,0,'Prepare committee text',purse))return;b.committeeWork=(b.committeeWork||0)+4;b.floorWork=(b.floorWork||0)+5;b.concessions++;b.amendments.push('Committee substitute');logIt(S,'A committee substitute was prepared for '+b.title+'.');
   }else if(action==='staff'){
     if(!pv5Spend(2,5,'Fund committee staff'))return;c.expertise=clamp(c.expertise+8,0,100);c.backlog=Math.max(0,c.backlog-2);logIt(S,'Professional staff were added to the '+PV5_COMMITTEE[cid].name+' Committee.');
   }else if(action==='court'){
@@ -15104,14 +15184,23 @@ function pv5InterestAction(id,action){
   }
   render();
 }
+/* S17a: the four buttons had no gate of any kind, so an opposition player
+   administered the GOVERNMENT's coalition -- councils with its partners, and
+   `portfolio`, which reassigns a great office between two other parties. The
+   agreement belongs to the party at the head of it. (S17e gives a junior
+   partner its own first-person view of the same document.)
+   The two unclamped writes above are clamped too: `+= 16` and `+= 9` drove
+   cohesion past 100 -- measured 103 in three clicks -- which then put the
+   walkout threshold further away than the card's meter could show. */
 function pv5CoalitionAction(pid,action){
+  if(!leads(S)){flash('The coalition agreement is the head of government’s to keep.');return;}
   var d=S.coalitionDeals[pid];if(!d)return;
   if(action==='council'){
     if(!pv5Spend(3,2,'Coalition council with '+PARTY[pid].short))return;d.satisfaction=c100(d.satisfaction+12);d.councils++;d.lastCouncil=S.turn;shiftPartyRel(S,pid,7);S.v5Stats.coalitionCouncils++;logIt(S,'A coalition council was held with the '+PARTY[pid].short+'.');
   }else if(action==='portfolio'){
-    if(!pv5Spend(4,0,'Offer a portfolio to '+PARTY[pid].short))return;var offices=['pres','vpres','chan','vchan'],off=offices.filter(function(o){return(S.coalition||[]).indexOf(S.exec[o])>=0&&S.exec[o]!==pid;})[0];if(off){S.exec[off]=pid;d.portfolios++;d.satisfaction+=16;shiftPartyRel(S,pid,10);logIt(S,DEPTS[off].name+' was assigned to the '+PARTY[pid].short+'.');}
+    if(!pv5Spend(4,0,'Offer a portfolio to '+PARTY[pid].short))return;var offices=['pres','vpres','chan','vchan'],off=offices.filter(function(o){return(S.coalition||[]).indexOf(S.exec[o])>=0&&S.exec[o]!==pid;})[0];if(off){S.exec[off]=pid;d.portfolios++;d.satisfaction=c100(d.satisfaction+16);shiftPartyRel(S,pid,10);logIt(S,DEPTS[off].name+' was assigned to the '+PARTY[pid].short+'.');}
   }else if(action==='programme'){
-    if(!pv5Spend(5,3,'Renegotiate coalition programme'))return;d.priorities=pv5TopWants(pid,S,2).map(function(x){return x.id;});d.redLine=(pv5TopWants(pid,S,3)[2]||{}).id||null;d.satisfaction+=9;S.coalitionProcedure=true;S.unity=c100(S.unity-2);logIt(S,'The coalition programme was renegotiated with the '+PARTY[pid].short+'.');
+    if(!pv5Spend(5,3,'Renegotiate coalition programme'))return;d.priorities=pv5TopWants(pid,S,2).map(function(x){return x.id;});d.redLine=(pv5TopWants(pid,S,3)[2]||{}).id||null;d.satisfaction=c100(d.satisfaction+9);S.coalitionProcedure=true;S.unity=c100(S.unity-2);logIt(S,'The coalition programme was renegotiated with the '+PARTY[pid].short+'.');
   }else if(action==='discipline'){
     if(!pv5Spend(2,0,'Discipline '+PARTY[pid].short))return;d.satisfaction=c100(d.satisfaction-14);S.unity=c100(S.unity+4);S.capital=clamp(S.capital+2,-5,capCap(S));logIt(S,'The '+PARTY[pid].short+' were told that collective responsibility was not optional.');
   }
@@ -30209,7 +30298,9 @@ function v11ArtCard(a) {
   var tags = '<span class="tag">' + esc(V11_BOOK[a.book].name) + '</span>' +
     (a.entrenched ? '<span class="tag up">Entrenched</span>' : '') +
     (a.referendum ? '<span class="tag">Goes to the country</span>' : '') +
-    (adopted && rec ? '<span class="tag up">In force since ' + rec.year + ', carried at ' + rec.margin + '%</span>' : '');
+    (adopted && rec ? '<span class="tag up">' + (rec.founding
+      ? 'In force from the founding'
+      : 'In force since ' + rec.year + ', carried at ' + rec.margin + '%') + '</span>' : '');
   var read = '<p class="desc">' + esc(a.text) + '</p>' +
     (a.moves ? '<p class="note">It moves: ' + esc(a.moves) + '</p>' : '');
   /* S15e: the card said "Assembly" and "Lay it before the Assembly" whatever
@@ -30262,7 +30353,8 @@ function v11DocumentPanel() {
        the margin an article carried by is the most interesting thing about it. */
     return '<tr><td class="num">' + (i + 1) + '</td><td><b>' + esc(a.name) + '</b><br>' +
       '<small class="muted">' + esc(V11_BOOK[a.book].name) +
-      (rec.entrenched ? ' &middot; entrenched' : '') + ' &middot; carried at ' + rec.margin + '%</small></td>' +
+      (rec.entrenched ? ' &middot; entrenched' : '') +
+      (rec.founding ? ' &middot; written at the founding' : ' &middot; carried at ' + rec.margin + '%') + '</small></td>' +
       '<td class="num">' + rec.year + '</td></tr>';
   }).join('');
   var effRows = [];
@@ -32241,8 +32333,22 @@ function v16CustomApply(st, blob) {
   b.articles.forEach(function (id) {
     var c = st.v11 && st.v11.con;
     if (!c) { st.v11 = st.v11 || {}; st.v11.con = { arts:{}, order:[], pending:[], failed:{}, conv:0, convUsed:0, plebiscites:0 }; c = st.v11.con; }
-    if (!c.arts[id]) { c.arts[id] = 0; c.order.push(id); }
     var a = V11_ART[id];
+    /* S17a: THE RECORD'S SHAPE, NOT A ZERO. This stored `0`, and `v11Adopted`
+       is `!!c.arts[id]` while `v11ConEffects` skips a falsy record -- so every
+       article a player chose at the start was in the document and out of the
+       model. No term, no ratify bar, no liberties floor, no franchise, no
+       autonomy; only the one-shot `apply` below ran, which is why the bench
+       count looked right and nothing else did. The article could also be laid
+       a second time, because `v11CanPropose` asks the same question.
+       A founding article was never carried at a margin, so it says so, and
+       the two cards that print the record read `founding` rather than
+       printing "carried at 0%". */
+    if (!c.arts[id]) {
+      c.arts[id] = { year:yearOf(st.turn), margin:null, founding:true,
+        entrenched:!!(a && a.entrenched), turn:st.turn };
+      c.order.push(id);
+    }
     if (a && a.apply) { try { a.apply(st); } catch (e) { } }
   });
   for (var p in b.pol) st.pol[p] = b.pol[p];
