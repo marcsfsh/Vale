@@ -6949,9 +6949,34 @@ function v15Cand(o) {
 
 /* WHO A PARTY CAN PUT UP: the sitting holder if it is theirs, the party leader,
    any minister of theirs whose ambition is up, and any governor of theirs. */
+/* S17e (pulled forward from s17h): NOBODY HOLDS TWO GREAT OFFICES.
+   `execBench` deduped by name WITHIN one office's bench and nothing anywhere
+   asked whether a candidate already held a different one -- and the party
+   leader is added to EVERY office's bench with a bonus, so a party that wins
+   both offices of a pair installed the same person twice. Measured before the
+   fix: 136 of 150 executive elections left one person holding two offices,
+   which is not an edge case, it is the norm. It also made `no two officials
+   share a name` redden at random for three slices, because a person in two
+   chairs IS a duplicate name -- the assertion was right and the diagnosis of
+   flakiness was incomplete.
+   The owner's ruling: forbid doubles; a party leader MAY hold one office. */
+function v17OtherOffice(st, name, office) {
+  if (!name || !st.figures || !st.figures.exec) return null;
+  var offs = ['pres', 'vpres', 'chan', 'vchan'];
+  for (var i = 0; i < offs.length; i++) {
+    if (offs[i] === office) continue;
+    var f = st.figures.exec[offs[i]];
+    if (f && f.name === name) return offs[i];
+  }
+  return null;
+}
 function execBench(st, office, pid) {
   var out = [], seen = {};
-  var add = function (c) { if (!c.name || seen[c.name]) return; seen[c.name] = 1; out.push(v15Cand(c)); };
+  var add = function (c) {
+    if (!c.name || seen[c.name]) return;
+    if (v17OtherOffice(st, c.name, office)) return;   /* already sits elsewhere */
+    seen[c.name] = 1; out.push(v15Cand(c));
+  };
   var sit = st.figures && st.figures.exec && st.figures.exec[office];
   if (sit && sit.party === pid) {
     v15Person(st, sit);
@@ -7058,6 +7083,14 @@ function execSeat(st, office, pid, cand) {
   if (!st.figures) seedFigures(st);
   var prev = st.figures.exec[office];
   var c = cand || execNominate(st, office, pid).winner;
+  /* Every path that seats anybody comes through here -- the contest, the
+     `holderOf` repair, a succession, a promotion, a sacking -- so the rule is
+     enforced here as well as at the bench. If the person named already sits in
+     another great office, the party sends somebody else. */
+  if (c && v17OtherOffice(st, c.name, office)) {
+    var free = execBench(st, office, pid).filter(function (x) { return !v17OtherOffice(st, x.name, office); });
+    c = free.length ? free[0] : v15Cand(makeFigure(st, pid, 46));
+  }
   var same = !!prev && prev.name === c.name && prev.party === pid;
   var f = same ? v15Person(st, prev) : {
     name:c.name, party:pid, age:44 + (v15Hash(c.name + 'g') % 21), trait:c.trait,
@@ -14980,14 +15013,41 @@ function pv5EnsureState(st, fresh) {
   PV5_INTERESTS.forEach(function(g){
     if(!st.interests[g.id]) st.interests[g.id]={relation:clamp((st.blocs[g.bloc]||50)+affOf(st,playParty(st),g.bloc)*12,18,82),influence:g.base,access:0,endorsement:false,lastMet:-99,demand:null};
   });
+  /* S17e: THE AGREEMENT IS A DOCUMENT, AND EVERY SIGNATORY IS IN IT.
+     The seed returned early for the ruling party, so the head of government
+     was the only member of its own coalition with no entry -- which is why a
+     junior-partner player had nothing to read: the panel rendered the OTHER
+     partners' cards and never their own terms. Every member has an entry now,
+     the head included, and the panel is a renderer over the same objects.
+     The shape grows rather than moves: `satisfaction`, `councils`,
+     `portfolios`, `priorities`, `redLine` and `lastCouncil` are untouched and
+     every S16e reader keeps working, with `redLine` mirrored from
+     `redLines[0]` until S17g teaches the walkout to read the list. */
   st.coalitionDeals=st.coalitionDeals||{};
   (st.coalition||[]).forEach(function(pid){
-    if(pid===st.ruling)return;
+    var wants=pv5TopWants(pid,st,3);
     if(!st.coalitionDeals[pid]){
-      var wants=pv5TopWants(pid,st,3);
       st.coalitionDeals[pid]={satisfaction:clamp(st.partyRel[pid]||55,20,85),councils:0,portfolios:0,
         priorities:wants.slice(0,2).map(function(x){return x.id;}),redLine:wants[2]?wants[2].id:null,lastCouncil:-99};
     }
+    var d=st.coalitionDeals[pid];
+    /* backfilled idempotently: an older save gains the terms it was governed
+       under, derived from what it already carries */
+    if(!d.terms){
+      d.terms={
+        offices:['pres','vpres','chan','vchan'].filter(function(o){return st.exec[o]===pid;}),
+        portfolios:d.portfolios||0,
+        concessions:wants.slice(0,2).map(function(x){
+          return {kind:'adopt',ref:x.id,due:null,met:false};
+        }),
+        redLines:d.redLine?[d.redLine]:[],
+        confidence:pid===st.ruling?'leads':'cabinet'
+      };
+    }
+    if(!d.ledger)d.ledger=[];
+    d.head=pid===st.ruling;
+    /* the legacy scalar mirrors the list, so v16RedLineTick is unchanged */
+    if(d.terms.redLines&&d.terms.redLines.length)d.redLine=d.terms.redLines[0];
   });
   Object.keys(st.coalitionDeals).forEach(function(pid){if((st.coalition||[]).indexOf(pid)<0)st.coalitionDeals[pid].former=true;});
   /* S15f: warChest is gone. It was a party purse with one earner, one
@@ -15658,10 +15718,41 @@ function pv5ObjectivesPanel(){
 }
 
 /* ---------- expanded views ---------- */
+/* S17e: THE SAME DOCUMENT, READ FROM WHICHEVER CHAIR THE PLAYER SITS IN.
+   The panel used to render the OTHER partners' cards whoever was looking, so
+   a junior-partner player read about their colleagues and never about their
+   own terms, and an opposition player was offered four buttons over a
+   government they are not in. One renderer, three readings: the head manages
+   its partners, a partner reads what it is owed and what it owes, and anybody
+   else reads an agreement that is not theirs. */
+function v17MyDealCard(){
+  var me=playParty(S),d=(S.coalitionDeals||{})[me];
+  if(!d||!inPower(S)||leads(S))return '';
+  var offices=(d.terms&&d.terms.offices||[]).map(function(o){return DEPTS[o]?DEPTS[o].name:o;});
+  var owed=(d.terms&&d.terms.concessions||[]).map(function(c){
+    return '<li>'+(POL[c.ref]?esc(POL[c.ref].name):esc(c.ref))+
+      ' <span class="tag '+(c.met?'up':'')+'">'+(c.met?'kept':'outstanding')+'</span></li>';}).join('');
+  var lines=(d.terms&&d.terms.redLines||[]).map(function(id){
+    return POL[id]?esc(POL[id].name):esc(id);}).join(', ');
+  return '<article class="card deal-card"><div class="bill-title"><h3><span class="dot" style="background:'+
+    PARTY[me].color+'"></span> Your terms</h3><span class="bill-no">'+Math.round(d.satisfaction||0)+' cohesion</span></div>'+
+    '<p class="desc">You sit in this government as a partner, not at the head of it. This is what was agreed.</p>'+
+    '<div class="meter '+((d.satisfaction||0)<35?'bad':'')+'"><i style="width:'+Math.round(d.satisfaction||0)+'%"></i></div>'+
+    '<div class="tagline"><span class="tag">'+(offices.length?esc(offices.join(', ')):'No great office')+'</span>'+
+    '<span class="tag">'+(d.portfolios||0)+' office'+((d.portfolios||0)===1?'':'s')+' traded to you</span>'+
+    '<span class="tag">'+(d.councils||0)+' council'+((d.councils||0)===1?'':'s')+'</span></div>'+
+    (owed?'<div class="subhead">What you were promised</div><ul class="tight">'+owed+'</ul>':'')+
+    (lines?'<div class="redline"><b>Your red line:</b> '+lines+'</div>':'')+
+    '</article>';
+}
 function pv5CoalitionPanel(){
   var partners=(S.coalition||[]).filter(function(pid){return pid!==S.ruling;});
-  var cards=partners.map(function(pid){var d=S.coalitionDeals[pid]||{},prior=(d.priorities||[]).map(function(id){return POL[id]?POL[id].name:id;});return '<article class="card deal-card"><div class="bill-title"><h3><span class="dot" style="background:'+PARTY[pid].color+'"></span> '+esc(PARTY[pid].name)+'</h3><span class="bill-no">'+Math.round(d.satisfaction||0)+' cohesion</span></div><p class="desc">'+(d.councils||0)+' formal council'+((d.councils||0)===1?'':'s')+' · '+(d.portfolios||0)+' traded executive office'+((d.portfolios||0)===1?'':'s')+'.</p><div class="meter '+((d.satisfaction||0)<35?'bad':'')+'"><i style="width:'+Math.round(d.satisfaction||0)+'%"></i></div><div class="tagline">'+prior.map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('')+'</div>'+(d.redLine&&POL[d.redLine]?'<div class="redline"><b>Red line:</b> '+esc(POL[d.redLine].name)+'</div>':'')+'<div class="btnrow"><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="council">Coalition council <span class="c">'+cst(3)+', '+fmc(2)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="portfolio">Trade an office <span class="c">'+cst(4)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="programme">Rewrite programme <span class="c">'+cst(5)+', '+fmc(3)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="discipline">Demand discipline <span class="c">'+cst(2)+'</span></button></div></article>';}).join('');
-  return '<div class="panel"><h2>Coalition Agreement</h2><p class="note">Coalition partners now carry explicit priorities, red lines, portfolios and satisfaction. Their cohesion feeds the working relationship already used in legislation and confidence.</p><div class="cards">'+(cards||'<div class="empty-state">This is a single-party government. It has no coalition agreement to administer.</div>')+'</div></div>';
+  var cards=partners.map(function(pid){var d=S.coalitionDeals[pid]||{},prior=(d.priorities||[]).map(function(id){return POL[id]?POL[id].name:id;});return '<article class="card deal-card"><div class="bill-title"><h3><span class="dot" style="background:'+PARTY[pid].color+'"></span> '+esc(PARTY[pid].name)+'</h3><span class="bill-no">'+Math.round(d.satisfaction||0)+' cohesion</span></div><p class="desc">'+(d.councils||0)+' formal council'+((d.councils||0)===1?'':'s')+' · '+(d.portfolios||0)+' traded executive office'+((d.portfolios||0)===1?'':'s')+'.</p><div class="meter '+((d.satisfaction||0)<35?'bad':'')+'"><i style="width:'+Math.round(d.satisfaction||0)+'%"></i></div><div class="tagline">'+prior.map(function(x){return '<span class="tag">'+esc(x)+'</span>';}).join('')+'</div>'+(d.redLine&&POL[d.redLine]?'<div class="redline"><b>Red line:</b> '+esc(POL[d.redLine].name)+'</div>':'')+''+(leads(S)?'<div class="btnrow"><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="council">Coalition council <span class="c">'+cst(3)+', '+fmc(2)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="portfolio">Trade an office <span class="c">'+cst(4)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="programme">Rewrite programme <span class="c">'+cst(5)+', '+fmc(3)+'</span></button><button class="btn ghost" data-coalition="'+pid+'" data-coalition-action="discipline">Demand discipline <span class="c">'+cst(2)+'</span></button></div>':'')+'</article>';}).join('');
+  var mineCard = v17MyDealCard();
+  var voice = leads(S) ? 'Coalition partners carry explicit priorities, red lines, portfolios and cohesion. Their cohesion feeds the working relationship already used in legislation and confidence.'
+    : (inPower(S) ? 'You are a partner in this government. Your own terms are below, beside the partners you sit with.'
+                  : 'This is somebody else\u2019s agreement. You can read it, which is worth more than it sounds.');
+  return '<div class="panel"><h2>Coalition Agreement</h2><p class="note">' + esc(voice) + '</p><div class="cards">'+(mineCard+cards||'<div class="empty-state">'+(inPower(S)?'This is a single-party government. It has no coalition agreement to administer.':'There is no coalition agreement in force.')+'</div>')+'</div></div>';
 }
 function pv5MinisterCard(row){
   var m=S.ministers[row.key],q=cabQuality(S,row.key),controlled=holdsDept(S,row.office),sc=S.scandals.some(function(x){return x.status==='active'&&x.minister===row.key;});
@@ -26786,10 +26877,21 @@ function v10LiveNames(st) {
 function v10UniqueName(st, pool) {
   var used = v10LiveNames(st), n = '';
   for (var i = 0; i < 6; i++) {
-    n = (pool && pool.length && rand() < .6) ? (rnd(GIVEN) + ' ' + rnd(pool)) : makeName();
+    n = (pool && pool.length && rand() < .6) ? (rnd(GIVEN) + ' ' + rnd(pool)) : makeName(st);
     if (!used[n]) return n;
   }
-  return n;
+  /* S17e: AND THE SEVENTH IS NOT A COLLISION. This is the live minting path --
+     `makeFigure` is reassigned just below and overwrites the name this
+     returns -- so "six attempts, then take what we have" threw away the
+     guarantee S17c had just put into `makeName` and the duplicate came back.
+     Twice now the fix has gone on the function that was there first rather
+     than the one that runs; the rule is in CLAUDE.md and it was written after
+     the first time. `makeName(st)` walks the pool and cannot collide, so the
+     regional pool gets its six tries and the fallback is a certainty.
+     `makeName()` was also called with no state, which is the S16e defect
+     exactly: during `S = enrichState(v6NewGame(...))` the global still points
+     at the previous campaign. */
+  return makeName(st);
 }
 
 var v10MakeFigureBase = makeFigure;

@@ -305,14 +305,20 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        and not just at the opening, where 39,400 pairs make a chance collision
        rare. Churn the whole cast the way a century of play does and take the
        worst moment. */
-    const liveList = () => {
+    /* S17e: the list carries WHICH SLOT each name sits in, so a duplicate
+       names the two chairs that hold it instead of only being counted. Three
+       slices in a row diagnosed this assertion as flaky when it was pointing
+       at a real defect -- one person in two great offices -- and a count with
+       no slots is what made that easy to believe. */
+    const liveSlots = () => {
       const a = [];
-      PARTIES.forEach(p => a.push(S.figures.leaders[p.id].name));
-      ['pres', 'vpres', 'chan', 'vchan'].forEach(o => a.push(S.figures.exec[o].name));
-      REGIONS.forEach(r => a.push(S.v6.governors[r.id].name));
-      Object.keys(S.ministers || {}).forEach(k => a.push(S.ministers[k].name));
+      PARTIES.forEach(p => a.push(['leader:' + p.id, S.figures.leaders[p.id].name]));
+      ['pres', 'vpres', 'chan', 'vchan'].forEach(o => a.push(['exec:' + o, S.figures.exec[o].name]));
+      REGIONS.forEach(r => a.push(['governor:' + r.id, S.v6.governors[r.id].name]));
+      Object.keys(S.ministers || {}).forEach(k => a.push(['minister:' + k, S.ministers[k].name]));
       return a;
     };
+    const liveList = () => liveSlots().map(x => x[1]);
     out.castSize = liveList().length;
     /* S17a: MEASURED ON FIXED STREAMS, NOT ON WHATEVER STREAM THIS RUN LANDED
        IN. The harness leaves the seed blank, so every run is a different
@@ -334,7 +340,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         S.v6.governors[r.id] = v6MakeGovernor(S, r, pid);
         const a = liveList();
         const d = a.length - new Set(a).size;
-        if (d > worst) worst = d;
+        if (d > worst) {
+          worst = d;
+          const sl = liveSlots(), cnt = {};
+          sl.forEach(x => { cnt[x[1]] = (cnt[x[1]] || 0) + 1; });
+          const dn = Object.keys(cnt).filter(n => cnt[n] > 1)[0];
+          out.castWhere = sl.filter(x => x[1] === dn).map(x => x[0]).join(' + ') + ' (' + dn + ')';
+        }
       }
     }
     S.rngState = keepRng;
@@ -378,7 +390,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(republic.dupWorkNames.length === 0, 'no two works share a name',
     republic.dupWorkNames.length ? republic.dupWorkNames.join('; ') : republic.workCount + ' grand works, every name its own');
   say(republic.castDupes === 0, 'no two officials share a name',
-    republic.castDupes ? republic.castDupes + ' duplicate(s) among ' + republic.castSize
+    republic.castDupes ? republic.castDupes + ' duplicate(s) among ' + republic.castSize +
+      (republic.castWhere ? ' — ' + republic.castWhere : '')
       : republic.castSize + ' in public life, no name twice, through ' + republic.castChurn +
         ' replacements across ' + republic.castStreams + ' fixed dice streams (the same answer every run)');
   say(republic.easyCap === '250/5.4/26/750' && republic.easyFloor === 150 && republic.othersUnmoved,
@@ -5151,7 +5164,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         S.figures.exec = { pres:{ name:taken[7], party:'lp' }, vpres:{ name:taken[0], party:'lp' },
           chan:{ name:taken[1], party:'lp' }, vchan:{ name:taken[2], party:'lp' } };
         REGIONS.forEach(function (r) { S.v6.governors[r.id] = { name:taken[3], party:'lp' }; });
-        if (v16NameHeld(makeName(S), S)) out.bad++;
+        /* THE LIVE PATH. `makeFigure` is reassigned late in the file and
+           overwrites `makeName`'s result with `v10UniqueName`'s, so probing
+           `makeName` alone proved a function the game does not call: measured
+           on the build before S17e, the live path returned an already-held
+           name 131 times in 300 while `makeName` returned none. */
+        if (v16NameHeld(makeFigure(S, 'lp', 44).name, S)) out.bad++;
       }
     } catch (e) { out.err = e.message.slice(0, 80); }
     finally {
@@ -5164,8 +5182,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   });
   say(nameProp.bad === 0 && !nameProp.err, 'a free name is always found',
     nameProp.err ? 'probe threw: ' + nameProp.err
-      : `${nameProp.tries} names minted into a nine-pair pool with eight pairs already held, and not one came back ` +
-        `already in use — where ten random tries and then whatever came out returned a collision 89 times in 300`);
+      : `${nameProp.tries} figures minted through the LIVE path into a nine-pair pool with eight pairs already held, ` +
+        `and not one name came back already in use — where the bounded retries it replaced returned a collision 131 ` +
+        `times in 300. Both layers had the same defect: ten tries in \`makeName\` and six in \`v10UniqueName\`, each ` +
+        `followed by "take what we have", and the second overwrites the first`);
 
   /* S17d — THE REACTION. The owner, on being out of government: "the biggest
      national events also offer YOU a reaction choice ... but it should not be
@@ -5244,6 +5264,98 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${react.outcome.linkedToDigest})` +
     (react.outOfVocabulary.length ? ' · OUT OF VOCABULARY: ' + react.outOfVocabulary.join(', ') : '') +
     (react.familiesUnknown.length ? ' · UNKNOWN FAMILY: ' + react.familiesUnknown.join(', ') : ''));
+
+  /* S17e — THE COALITION IN WRITING. The agreement was single-perspective: the
+     seed returned early for the ruling party, so the head of government was
+     the only member of its own coalition with no entry, and a junior-partner
+     player read about their colleagues and never about their own terms. */
+  const deal = await page.evaluate(() => {
+    var R = {};
+    function seat(pid) { S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false); S.playAs = pid; }
+    ['fp', 'sd', 'lp'].forEach(function (pid) {
+      seat(pid);
+      var deals = S.coalitionDeals || {}, html = pv5CoalitionPanel();
+      R[pid] = { standing:standing(S),
+        headHasEntry:!!deals[S.ruling],
+        everyMemberHasTerms:(S.coalition || []).every(function (x) { return deals[x] && deals[x].terms; }),
+        everyMemberHasLedger:(S.coalition || []).every(function (x) { return deals[x] && deals[x].ledger; }),
+        myEntry:!!deals[pid],
+        myTerms:deals[pid] && deals[pid].terms ? {
+          offices:(deals[pid].terms.offices || []).length,
+          concessions:(deals[pid].terms.concessions || []).length,
+          redLines:(deals[pid].terms.redLines || []).length,
+          confidence:deals[pid].terms.confidence } : null,
+        showsOwnTerms:html.indexOf('Your terms') >= 0,
+        showsButtons:html.indexOf('data-coalition-action') >= 0,
+        /* The legacy scalar must FOLLOW the list, or S16e's walkout goes on
+           watching a red line the document no longer has. Comparing them as
+           seeded proves nothing -- the list is built FROM the scalar -- so the
+           list is changed and the ensure re-run, and the scalar has to move. */
+        mirrored:(function () {
+          var partner = (S.coalition || []).filter(function (x) { return x !== S.ruling; })[0];
+          var d = partner && deals[partner];
+          if (!d || !d.terms) return true;
+          var other = Object.keys(POL).filter(function (k) { return k !== d.redLine; })[0];
+          d.terms.redLines = [other];
+          pv5EnsureState(S, false);
+          return S.coalitionDeals[partner].redLine === other;
+        })() };
+    });
+    return R;
+  });
+  const dealOk = deal.fp.headHasEntry && deal.fp.everyMemberHasTerms && deal.fp.everyMemberHasLedger &&
+    deal.fp.showsButtons && !deal.fp.showsOwnTerms &&
+    deal.sd.standing === 'junior' && deal.sd.myEntry && deal.sd.myTerms &&
+    deal.sd.myTerms.concessions > 0 && deal.sd.myTerms.confidence === 'cabinet' &&
+    deal.sd.showsOwnTerms && !deal.sd.showsButtons &&
+    deal.lp.standing === 'opposition' && !deal.lp.myEntry && !deal.lp.showsButtons &&
+    deal.fp.mirrored && deal.sd.mirrored && deal.lp.mirrored;
+  say(dealOk, 'the coalition in writing',
+    `every member of a coalition has an entry in its own agreement, the head of government included ` +
+    `(${deal.fp.headHasEntry}) -- the seed returned early for the ruling party, which is why a junior partner had ` +
+    `nothing of their own to read · each entry carries terms and a ledger, and a junior-partner player reads THEIR ` +
+    `terms first-person (${deal.sd.myTerms ? deal.sd.myTerms.concessions + ' concessions, ' + deal.sd.myTerms.redLines + ' red line, confidence as ' + deal.sd.myTerms.confidence : 'none'}) ` +
+    `with none of the head's four buttons, while an opposition player reads an agreement that is not theirs and ` +
+    `is offered no buttons at all · the legacy scalar still mirrors the list (${deal.fp.mirrored}), so S16e's ` +
+    `walkout is untouched until S17g teaches it to read the list`);
+
+  /* S17e (pulled forward from s17h): NOBODY HOLDS TWO GREAT OFFICES. The bench
+     deduped within one office and nothing asked about the other three, and the
+     party leader sits on every bench with a bonus -- so a party winning both
+     offices of a pair installed the same person twice. This is also why `no
+     two officials share a name` reddened at random for three slices: a person
+     in two chairs IS a duplicate name, and the assertion was right. */
+  const twoHats = await page.evaluate(() => {
+    var elections = 0, doubles = 0, sample = null;
+    for (var k = 0; k < 10; k++) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.rngState = (k + 1) * 104729;
+      for (var t = 0; t < 60; t++) {
+        S.turn += 1;
+        if (!isExecTurn(S.turn)) continue;
+        elections++; runElection(S, false);
+        var names = ['pres', 'vpres', 'chan', 'vchan'].map(function (o) { return S.figures.exec[o].name; });
+        if (names.length !== new Set(names).size) {
+          doubles++;
+          if (!sample) {
+            var c = {}; names.forEach(function (n) { c[n] = (c[n] || 0) + 1; });
+            var dn = Object.keys(c).filter(function (n) { return c[n] > 1; })[0];
+            sample = dn + ' holds ' + ['pres', 'vpres', 'chan', 'vchan']
+              .filter(function (o) { return S.figures.exec[o].name === dn; })
+              .map(function (o) { return DEPTS[o].name; }).join(' and ');
+          }
+        }
+      }
+    }
+    return { elections:elections, doubles:doubles, sample:sample };
+  });
+  say(twoHats.doubles === 0 && twoHats.elections > 100, 'nobody holds two great offices',
+    twoHats.doubles === 0
+      ? `${twoHats.elections} executive elections over ten campaigns and not one of them seated a person who ` +
+        `already held another great office — where before the exclusion 136 of 150 did, which is not an edge case ` +
+        `but the norm: the party leader sits on every office's bench with a bonus, and the bench deduped within ` +
+        `one office and never asked about the other three`
+      : `${twoHats.doubles} of ${twoHats.elections} elections seated a double — ${twoHats.sample}`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

@@ -310,6 +310,68 @@ the ones nobody would hold a press conference about.
 - Measured from the opposition bench over forty sessions on a fixed stream:
   **37 reactions offered in 12 different shapes.**
 
+## The coalition agreement (S17e)
+
+`st.coalitionDeals` is the coalition **in writing**, and since S17e it has an
+entry for **every** member of `st.coalition` — the party that leads it
+included. Before, the seed returned early for the ruling party, so the head of
+government was the only member of its own coalition with no entry, and a
+junior-partner player read about their colleagues and never about their own
+terms. That single omission is the owner's Hung Assembly bug report.
+
+Each entry carries, beside S16e's `satisfaction` / `councils` / `portfolios` /
+`priorities` / `redLine`:
+
+- **`terms`** — `{offices, portfolios, concessions[], redLines[], confidence}`.
+  `offices` is what this party actually holds in `st.exec`; `concessions` are
+  `{kind, ref, due, met}` records drawn from the party's own top wants;
+  `confidence` is `'leads'` for the head of government and `'cabinet'` for
+  everyone else.
+- **`ledger`** — empty here. **S17g writes into it**: a breach, a credit, an
+  alteration. Nothing reads it yet, and that is deliberate and dated — see the
+  rule about fields nothing reads, which this one is exempt from only because
+  the PR that reads it is named.
+- **`head`** — whether this entry is the party leading the coalition.
+
+**The legacy scalar follows the list.** `redLine` is a single string and
+`v16RedLineTick`, S16e's walkout, watches it; `redLines` is the list the
+negotiation will grow. The ensure copies `redLines[0]` back into `redLine`
+every pass, so the walkout is untouched until S17g teaches it to read the
+list. The assertion proves the copy by **changing the list and re-running the
+ensure** — comparing them as seeded proves nothing, because the list is built
+from the scalar.
+
+**Who reads which panel.** `pv5CoalitionPanel` renders the same objects from
+whichever chair the player sits in: the head of government gets the four
+administration buttons; a junior partner gets `v17MyDealCard` — *your* terms,
+first-person — and no buttons; an opposition player gets an agreement that is
+plainly not theirs and is offered nothing.
+
+## Nobody holds two great offices (S17e, pulled forward from S17h)
+
+The owner: *"i've often had situations where i end up with the same person
+holding multiple offices."* Measured before the fix: **136 of 150 executive
+elections seated somebody who already held another great office.** Three
+things combined — the party leader is added to *every* office's bench with a
++7 score bonus and a loyalty of 100; `execBench` deduped by name **within one
+office** and never asked about the other three; and the pair contested each
+cycle resolves in one `forEach` with no taken-set.
+
+**`v17OtherOffice(st, name, office)`** answers "does this person already sit
+in one of the other three?" and is asked twice:
+
+- in **`execBench`**, which drops such a person from the bench entirely, and
+- in **`execSeat`**, which — if it is handed one anyway, by succession, by a
+  repair, by an event — takes the best free candidate off the bench instead,
+  and mints a figure only if the bench is empty.
+
+The two are belt and braces: removing either alone changes nothing measurable,
+which is why the poison proof removes **both**. The same ten campaigns now
+seat none. A party leader may still hold exactly one office, per the owner's
+ruling. The **off-model** writers of `st.exec` — `sackMinister`,
+`ageSucceed`, `promoteProtege`, the two events and the consulate — are S17h's,
+and until then they are covered only by `execSeat`'s arm.
+
 ## The legislature, and what happens when there isn't one
 
 Three states per chamber, not two (S15). `lowerState(st)` returns `sitting` /
@@ -874,6 +936,9 @@ player does not lead one initiative every `V16_AI_CADENCE` sessions.**
   written and rendered on the coalition card since v5 and was read by nothing.
   Moving the statute away from what the partner exists to defend costs 11 of
   cohesion; cohesion at 12 or below and the partner **leaves the government**.
+  S17e added `terms.redLines[]` beside the scalar and made the ensure mirror the
+  list's first entry back into it, so this function is unchanged until S17g
+  teaches it to read the list.
 - **`v16AiPanel`** puts all of it on the Parties page.
 
 **The dial is `V16_AI_CADENCE`, and it was found by sweeping.** No single card
@@ -1106,12 +1171,17 @@ since v4. **None of them could stand for anything.**
 - **`execBench(st, office, pid)`** — the sitting holder if the office is theirs,
   the party leader, any minister of theirs with `ambition >= 55`, any governor of
   theirs. Each candidate carries where they came from, which the page prints.
+  **Since S17e it drops anybody who already sits in one of the other three great
+  offices** (`v17OtherOffice`) — see *Nobody holds two great offices*.
 - **`execNominate`** scores on ambition, competence, loyalty and exposure, with a
   bonus for the sitting holder and the leader. The player's party honours
   `st.execNominee[office]` if it has been named and the person is still eligible.
 - **`execSeat`** installs the winner and increments `terms` when it is the same
   person. **An ambitious minister who wins a great office leaves the cabinet** —
-  the first consequence ambition has ever had outside its own portfolio.
+  the first consequence ambition has ever had outside its own portfolio. It also
+  carries the second half of the multi-office exclusion: handed somebody who
+  already holds another office — by succession, by a repair, by an event — it
+  takes the best free candidate off the bench instead.
 - **`execRemember`** takes loyalty off, and puts ambition on, every minister who
   wanted it and did not get it.
 - **`execPersonFactor`** replaces the flat party `1.18`: the sitting *person*

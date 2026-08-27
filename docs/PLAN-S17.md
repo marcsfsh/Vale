@@ -798,7 +798,7 @@ the probe now answers its sheets the way a player does.
 
 ### Group 2 — the coalition
 
-**s17e — the coalition in writing** (L). Grow `coalitionDeals` in place
+**s17e — the coalition in writing** (L). **STATUS: DONE.** Grow `coalitionDeals` in place
 (NO parallel structure): full `terms:{offices, portfolios, concessions:
 [{kind:support|oppose|adopt|refrain, ref, due}], redLines[], confidence}`
 + `ledger[]` per entry; **an entry for the ruling party** (kills the
@@ -809,6 +809,25 @@ until s17g. Formation sheet grows out of v6CoalitionDialog :17657
 panel (same objects, renderer keyed to playParty). Begin retiring
 st.partner. SHAPE CHANGE (first in group): backfilled idempotently in
 pv5EnsureState :14556.
+
+*What landing it found.* The formation sheet did NOT grow here — it belongs
+with formation itself and moved into s17f, which is where a deal is
+negotiated rather than seeded. What landed is the document: terms, ledger,
+head flag, an entry for the ruling party, the first-person junior card, and
+the legacy-scalar mirror. `st.partner` is untouched; retiring it needs the
+formation path that writes it, so it retires in s17f.
+
+**The multi-office exclusion came forward from s17h into this PR.** It was
+not a plan change made for convenience: `no two officials share a name` went
+red twice and the dominant cause was not name minting at all but **136 of 150
+executive elections seating a person who already held another great office**.
+Nothing in this group could be measured over a campaign while that was true.
+`v17OtherOffice(st, name, office)` is now asked at `execBench` and again at
+`execSeat`; the s17h entry keeps the rest of its list (the calendar, the
+term-article anchor, the biennial prose, artFixedTerm's teeth) and loses
+only item (5). The remaining off-model writers of `st.exec` named there —
+sackMinister, ageSucceed, promoteProtege, the two events, the consulate —
+still need their own pass, and s17h keeps them.
 
 **s17f — nobody rules until the house says so** (XL). Formation,
 caretaker, investiture. Replace largest-party-rules + greedy
@@ -851,13 +870,16 @@ measured case becomes the reddening assertion). (2) Exec contest
 decoupled from the legislative ballot (checked in endTurn's done branch —
 term-3 no longer skips it). (3) Five "biennial" prose sites term-aware.
 (4) artFixedTerm gets teeth (dissolve :12346 + snap :12350 gated).
-(5) MULTI-OFFICE EXCLUSION (ruling 9): cross-office taken-set through
-execBench :6935 (leader no longer on every bench), execSeat :7040, the
-pair forEach :10999, holderOf repair :6867, ageSucceed :7121,
-promoteProtege :11713, sackMinister :11741 (stops minting strangers into
-random offices — draws from the bench), events :8143/:8187; a leader may
-hold exactly one office. Harness: 40-session soak — no name holds two
-offices, ever.
+(5) MULTI-OFFICE EXCLUSION (ruling 9) — **the elective half of this item
+shipped early, in s17e**, because it fired in 136 of 150 executive
+elections and no coalition measurement over a campaign was possible while
+it did: `v17OtherOffice` is asked at execBench :6935 and again at execSeat
+:7040, and the ten-campaign soak reddens without either pair member.
+**What s17h still owes**: the off-model writers of `st.exec` —
+holderOf's repair arm :6867, ageSucceed :7121, promoteProtege :11713,
+sackMinister :11741 (which mints a stranger into a random office rather
+than drawing from the bench), the two events :8143/:8187 and the
+consulate. A leader may hold exactly one office; that already holds.
 
 **s17i — four voices in every hall** (L). PARTY_FACTIONS 7×3 → 7×4
 (authored, unique). FIRST convert the two positional consumers

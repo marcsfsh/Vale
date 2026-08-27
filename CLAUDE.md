@@ -76,6 +76,15 @@ before touching the file.
   a wrapper that delegates carries the base's guard, a reassignment does not.
   And ask the question of ONE surface once — the v11 regional layer had its own
   `inPower` beside the new table, and two rules for one surface drift apart.
+- **An assertion that compares two things, one of which is derived from the
+  other, proves nothing.** S17e's mirror check compared `redLine` with
+  `terms.redLines[0]` as seeded — but the list is *built from* the scalar, so
+  it passed with the mirroring code deleted. It has to CHANGE the derived side
+  and re-run the producer. Six tautologies of exactly this family were caught
+  by poison-proofing in S17 alone; two more read a value only where a later
+  write re-establishes it. Poison every assertion, and when two guards are
+  belt and braces, poison them TOGETHER — removing either alone changes
+  nothing, which reads as a dead guard and is not one.
 - **`typeof x === 'string'` is not validation, and the UI is not the validation
   layer.** The custom start checked every id against a registry except its two
   chamber states, which took any string at all — and since an unknown string is
@@ -107,7 +116,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **162 content assertions**, the largest harness here: the
+- `tools/roads.js` — **170 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
