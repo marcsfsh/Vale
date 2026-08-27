@@ -5020,7 +5020,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       var asked = 0, offices = {};
       for (var t = 0; t < turns; t++) {
         S.capital = 200; S.treasury = 3000;
-        var mine = v17Route(S, pickEvents());
+        /* S17d: a reaction is a VOICE, not a decision. It is queued at the
+           player precisely because the question was not theirs to answer, so
+           counting it here would say the opposite of what it means. */
+        var mine = v17Route(S, pickEvents()).filter(function (e) { return e.kind !== 'reaction'; });
         asked += mine.length;
         mine.forEach(function (e) { offices[e.office] = 1; });
         S.turn += 1;
@@ -5068,7 +5071,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       var got = [], rq = runQueue;
       runQueue = function (done) {
         (UI.queue || []).forEach(function (e) {
-          if (!e) return;
+          if (!e || e.kind === 'reaction') return;   /* a voice, not a decision */
           got.push({ id:e.id, office:e.office || 'national',
             holder:e.office && e.office !== 'national' ? S.exec[e.office] : null, me:playParty(S) });
         });
@@ -5163,6 +5166,84 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     nameProp.err ? 'probe threw: ' + nameProp.err
       : `${nameProp.tries} names minted into a nine-pair pool with eight pairs already held, and not one came back ` +
         `already in use — where ten random tries and then whatever came out returned a collision 89 times in 300`);
+
+  /* S17d — THE REACTION. The owner, on being out of government: "the biggest
+     national events also offer YOU a reaction choice ... but it should not be
+     that flat/stagnant. add variety." So the assertion is about VARIETY as
+     much as about the mechanism: one exploit/back/silent triple repeated over
+     a campaign would satisfy a naive test and fail the requirement. */
+  const react = await page.evaluate(() => {
+    var R = {}, ALLOWED = ['mach', 'mood', 'rel', 'relOthers', 'sal', 'cap', 'money', 'unrest'];
+    var fams = Object.keys(V17_REACT), verbs = 0, labels = {}, bad = [], shapes = {};
+    fams.forEach(function (f) {
+      var sig = [];
+      V17_REACT[f].verbs.forEach(function (v) {
+        verbs++; labels[v.l] = 1; sig.push(v.l);
+        Object.keys(v.e || {}).forEach(function (k) { if (ALLOWED.indexOf(k) < 0) bad.push(f + '.' + k); });
+      });
+      shapes[sig.join('|')] = 1;
+    });
+    R.families = fams.length; R.verbs = verbs;
+    R.distinctLabels = Object.keys(labels).length; R.distinctSets = Object.keys(shapes).length;
+    R.outOfVocabulary = bad;
+
+    var seen = [], withReact = 0;
+    [EVENTS, V6_EVENTS, V8_EVENTS, V9_EVENTS, V10_EVENTS, V10_ROAD_EVENTS].forEach(function (pool) {
+      (pool || []).forEach(function (e) { if (seen.indexOf(e) >= 0) return; seen.push(e); if (e.react) withReact++; });
+    });
+    R.events = seen.length; R.withReaction = withReact;
+    R.familiesUnknown = seen.filter(function (e) { return e.react && !V17_REACT[e.react]; })
+      .map(function (e) { return e.id + ':' + e.react; });
+
+    /* live, from the opposition bench, on a fixed stream */
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.rngState = 20260827;
+    var offered = 0, setsSeen = {};
+    for (var t = 0; t < 40; t++) {
+      S.capital = 250; S.treasury = 3000;
+      v17Route(S, pickEvents()).forEach(function (e) {
+        if (e.kind !== 'reaction') return;
+        offered++; setsSeen[e.ch.map(function (c) { return c.l; }).join('|')] = 1;
+      });
+      S.turn += 1;
+    }
+    R.live = { offered:offered, distinctSetsSeen:Object.keys(setsSeen).length };
+
+    /* AND IT NEVER TOUCHES THE OUTCOME. The government has already decided;
+       answering back moves the player's own standing and nothing the event
+       itself moved. */
+    var src = EVENTS.filter(function (x) { return x.react === 'labour'; })[0];
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.capital = 250;
+    var pick = v17AiDecide(S, src);
+    var before = JSON.stringify({ e:S.ind.economy, s:S.ind.safety, u:S.unrest, p:S.ind.poverty, t:S.treasury });
+    var re = v17ReactionEvent(S, src, pick), m0 = S.machine.lp;
+    re.ch[0].f(S);
+    R.outcome = { built:!!re, choices:re.ch.length,
+      untouched:JSON.stringify({ e:S.ind.economy, s:S.ind.safety, u:S.unrest, p:S.ind.poverty, t:S.treasury }) === before,
+      standingMoved:S.machine.lp !== m0,
+      linkedToDigest:((S.govRecord || [])[0] || {}).reaction === re.ch[0].l };
+    return R;
+  });
+  const reactOk = react.families >= 10 && react.verbs >= 30 && react.distinctLabels === react.verbs &&
+    react.distinctSets === react.families && react.outOfVocabulary.length === 0 &&
+    react.familiesUnknown.length === 0 && react.withReaction > 100 &&
+    react.live.offered > 10 && react.live.distinctSetsSeen >= 6 &&
+    react.outcome.built && react.outcome.untouched && react.outcome.standingMoved &&
+    react.outcome.linkedToDigest;
+  say(reactOk, 'a voice out of office',
+    `${react.families} families of reaction, ${react.verbs} verbs and ${react.distinctLabels} distinct labels -- a ` +
+    `flood is not a scandal is not a purge, and no two families share a verb · ${react.withReaction} of ` +
+    `${react.events} events carry one, and forty sessions from the opposition bench offered ` +
+    `${react.live.offered} of them in ${react.live.distinctSetsSeen} different shapes, which is the answer to ` +
+    `"it should not be that flat/stagnant" · every verb's effect is drawn from a CLOSED vocabulary ` +
+    `(machine, mood, relations, salience, capital, party money, unrest), so a reaction moves the player's machine, standing, relations, salience and press and ` +
+    `CANNOT reach the outcome the government already decided: measured, the event's own indicators and the ` +
+    `treasury are untouched (${react.outcome.untouched}) while the machine moves (${react.outcome.standingMoved}) ` +
+    `· and the Gazette prints the pair, what the government did and what you said about it ` +
+    `(${react.outcome.linkedToDigest})` +
+    (react.outOfVocabulary.length ? ' · OUT OF VOCABULARY: ' + react.outOfVocabulary.join(', ') : '') +
+    (react.familiesUnknown.length ? ' · UNKNOWN FAMILY: ' + react.familiesUnknown.join(', ') : ''));
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

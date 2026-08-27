@@ -1806,11 +1806,31 @@ async function run() {
     await gz.waitForSelector('[data-doctrine]', { timeout: 10000 });
     await gz.click('[data-doctrine]');
     await gz.waitForTimeout(300);
-    const dig = await gz.evaluate(() => {
+    await gz.evaluate(() => {
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
       S.playAs = 'lp'; S.capital = 300; S.treasury = 4000; S.rngState = 20260827;
       S.uiPrefs = S.uiPrefs || {}; S.uiPrefs.report = true;
-      for (var t = 0; t < 10 && !(S.govRecord || []).length; t++) { S.capital = 300; endTurn(); }
+    });
+    // S17d: an opposition player's session no longer ends with an empty queue
+    // -- the reactions are queued at them -- so the probe has to answer the
+    // sheets the way a player does before the Gazette can arrive.
+    for (let t = 0; t < 10; t++) {
+      const done = await gz.evaluate(() => {
+        S.capital = 300; endTurn();
+        return (S.govRecord || []).length > 0;
+      });
+      for (let c = 0; c < 12; c++) {
+        const clicked = await gz.evaluate(() => {
+          const b = document.querySelector('#sheet .choices button:not([data-close])') ||
+                    document.querySelector('#sheet .choices button');
+          if (!b) return false;
+          b.click(); return true;
+        });
+        if (!clicked) break;
+      }
+      if (done) break;
+    }
+    const dig = await gz.evaluate(() => {
       var rec = S.govRecord || [];
       if (!rec.length) return { governed: 0 };
       rec[0].turn = S.turn - 1;

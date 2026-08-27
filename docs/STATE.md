@@ -84,6 +84,57 @@ DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
 
+### S17d — the reaction
+
+> *"the biggest national events also offer YOU a reaction choice — exploit it,
+> back the government, stay silent (but it should not be that flat/stagnant.
+> add variety) — moving standing/blocs/press, never the outcome."*
+
+S17c made the opposition turn honest and, in doing so, made it quiet: the
+government decides, and you read about it. This gives the reading a voice.
+
+**A reaction is never the same three buttons.** Events belong to **twelve
+families** — disaster, security, foreign, economy, labour, scandal,
+constitution, repression, services, party, election, institution — and each
+carries verbs written for what actually happened. A flood is not a scandal is
+not a purge. **38 verbs, 38 distinct labels, no two families sharing one**; 132
+of the 174 events name a family, and the rest are the ones nobody would hold a
+press conference about. Measured from the opposition bench over forty sessions:
+**37 reactions offered in 12 different shapes.**
+
+You stand on the picket line, or offer to mediate it yourself, or say the
+country cannot afford them. You go and be seen in the wreckage, or ask what the
+warnings said, or send your own people and not your cameras. You read the names
+into the record, or go to the families, or say it went too far and stop there.
+
+**It cannot reach the outcome, and the vocabulary is what stops it.** Every
+verb's effect is drawn from a closed set — machine, mood, relations, salience,
+capital, party money, unrest — applied by one function, and the event's own
+effect is never run again. Measured: the indicators and the treasury the
+government's decision moved are untouched while the player's machine moves.
+
+**And the Gazette prints the pair** — what the government did, and what you
+said about it — rather than two lists that never meet.
+
+A reaction is a **voice, not a decision**, and S17c's assertion had to be
+taught the difference: they are queued at the player precisely because the
+question was not theirs to answer.
+
+**Pacing** moved again, for the same reason as S17c and with the same spine
+holding: the harness answers its reaction sheets first-choice-always, so its
+own machine and standing move where they did not before. **Elections won is
+identical on all six seeds** (3 / 2 / 3 / 3 / 6 / 3); years governing and
+achievements move in both directions.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          169 assertions
+PLAYTEST PASS     56 steps
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+PACING            six seeds A/B — elections won identical, the rest moved
+POISON            4 reverts, each reddens the reaction assertion
+```
+
 ### S17c — whose desk it lands on
 
 > *"If you are an opposition party, you should not be reacting / deciding on

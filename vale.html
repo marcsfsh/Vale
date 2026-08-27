@@ -7653,7 +7653,7 @@ function extraEvent(id) {
 /* ---------------- events ---------------- */
 function ev(o) { return o; }
 var EVENTS = [
-  ev({ id:'strike', office:'vchan', w:10, title:'National Rail and Port Strike',
+  ev({ id:'strike', react:'labour', office:'vchan', w:10, title:'National Rail and Port Strike',
     cond:function (S) { return S.blocs.labour < 55; },
     text:'Four unions have walked out across the freight network. The container terminals on both coasts are closed and the grain from the plains is sitting in silos.',
     ch:[
@@ -7664,7 +7664,7 @@ var EVENTS = [
       { l:'Stay out of it', s:'The economy takes the hit.',
         f:function (S) { S.ind.economy -= 4; S.ind.infrastructure -= 2; mood(S, { labour:-3, tech:-4, smallbiz:-4 }); } }
     ] }),
-  ev({ id:'tornado', office:'pres', w:8, title:'Tornado Outbreak Across the Plains',
+  ev({ id:'tornado', react:'disaster', office:'pres', w:8, title:'Tornado Outbreak Across the Plains',
     text:'Ninety confirmed touchdowns in three days. Two county seats are gone and the agency is asking for a supplemental before the weekend.',
     ch:[
       { l:'Full federal response and rebuilding', s:'Costs a great deal.',
@@ -7674,7 +7674,7 @@ var EVENTS = [
       { l:'Leave it to the states', s:'Poverty and unrest rise.',
         f:function (S) { S.ind.poverty += 4; S.unrest += 8; mood(S, { smallbiz:-10, faith:-6, seniors:-5 }); S.crown -= 10; } }
     ] }),
-  ev({ id:'cyber', office:'pres', w:8, title:'Attack on the Eastern Grid',
+  ev({ id:'cyber', react:'security', office:'pres', w:8, title:'Attack on the Eastern Grid',
     text:'Eleven million households lost power for nineteen hours. The attribution points to a Moya successor state, and the intelligence is good but not public.',
     ch:[
       { l:'Public attribution and sanctions', s:'Tension rises.',
@@ -7684,7 +7684,7 @@ var EVENTS = [
       { l:'Mandatory grid security standards', s:'Costs money, angers the utilities.',
         f:function (S) { S.treasury -= 8; S.ind.energy += 4; S.ind.infrastructure += 3; mood(S, { prof:5, tech:-4, smallbiz:-4 }); } }
     ] }),
-  ev({ id:'techbubble', office:'chan', not:['dpr'], w:7, title:'The Thaxia Correction',
+  ev({ id:'techbubble', react:'economy', office:'chan', not:['dpr'], w:7, title:'The Thaxia Correction',
     text:'The technology index has given up a third of its value in six weeks. Two of the larger firms have announced layoffs in the tens of thousands.',
     ch:[
       { l:'Liquidity support for the exchanges', s:'Costs money, saves the sector.',
@@ -7694,7 +7694,7 @@ var EVENTS = [
       { l:'Extend benefits to the laid off', s:'Costs money, wins labour.',
         f:function (S) { S.treasury -= 7; S.ind.poverty -= 2; mood(S, { labour:7, youth:6, tech:-3 }); } }
     ] }),
-  ev({ id:'court', office:'vpres', elective:true, w:7, title:'A Justice Dies in Office',
+  ev({ id:'court', react:'institution', office:'vpres', elective:true, w:7, title:'A Justice Dies in Office',
     text:'A seat on the Supreme Court has opened outside the normal cycle. Under the constitution the vacancy runs to the next biennial ballot, and the campaign has already started.',
     ch:[
       { l:'Spend everything on the seat', s:'Costs capital. Moves the court your way.',
@@ -7708,7 +7708,7 @@ var EVENTS = [
       { l:'Stay out of the campaign', s:'The country decides.',
         f:function (S) { mood(S, { prof:5, youth:3 }); } }
     ] }),
-  ev({ id:'shooting', office:'vpres', w:6, title:'Mass Shooting in a Metro School',
+  ev({ id:'shooting', react:'security', office:'vpres', w:6, title:'Mass Shooting in a Metro School',
     cond:function (S) { return S.ind.safety < 62; },
     text:'Nineteen dead, most of them children. The vigils began the same evening and the Assembly gallery has been full since.',
     ch:[
@@ -7719,7 +7719,7 @@ var EVENTS = [
       { l:'Offer condolences and nothing else', s:'It will be remembered.',
         f:function (S) { S.unrest += 7; mood(S, { youth:-10, prof:-8, labour:-4, smallbiz:3, veterans:3 }); } }
     ] }),
-  ev({ id:'moya', office:'pres', w:7, title:'Crisis in the Moya Successor States',
+  ev({ id:'moya', react:'foreign', office:'pres', w:7, title:'Crisis in the Moya Successor States',
     text:'Two of the fifteen have mobilised along a disputed corridor. Both were part of the Confederation, both have our weapons, and one has our guarantee.',
     ch:[
       { l:'Deploy a carrier group and two brigades', s:'Costs money. Tension and standing rise.',
@@ -7729,7 +7729,7 @@ var EVENTS = [
       { l:'Arm one side and stay out', s:'Revenue now, trouble later.',
         f:function (S) { S.treasury += 9; S.ind.tension += 5; mood(S, { tech:5, veterans:3, youth:-6, faith:-5 }); } }
     ] }),
-  ev({ id:'hurricane', office:'pres', w:7, title:'Hurricane on the Eastern Seaboard',
+  ev({ id:'hurricane', react:'disaster', office:'pres', w:7, title:'Hurricane on the Eastern Seaboard',
     text:'A category four came ashore south of Rigel. The surge took out the coastal rail and four hundred thousand are without power.',
     ch:[
       { l:'Federal response and coastal hardening', s:'Costs a great deal, buys resilience.',
@@ -7739,7 +7739,7 @@ var EVENTS = [
       { l:'Relief conditional on state cost sharing', s:'The governors will say so publicly.',
         f:function (S) { S.treasury -= 3; S.crown -= 12; mood(S, { smallbiz:-6, prof:-3, tech:2 }); } }
     ] }),
-  ev({ id:'shutdown', office:'national', elective:true, w:7, title:'The Senate Refuses Supply',
+  ev({ id:'shutdown', react:'constitution', office:'national', elective:true, w:7, title:'The Senate Refuses Supply',
     cond:function (S) { return upperOn(S) && S.upper.veto > 0; },
     text:'The upper house has not moved the appropriations and the departments run out of authority at midnight on Friday.',
     ch:[
@@ -7750,7 +7750,7 @@ var EVENTS = [
       { l:'Blame them publicly and hold', s:'A gamble on the coverage.',
         f:function (S) { S.ind.economy -= 2; S.unrest += 4; mood(S, { labour:3, youth:4, prof:-2, smallbiz:-4 }); } }
     ] }),
-  ev({ id:'pandemic', office:'chan', w:5, once:true, title:'A Novel Respiratory Virus',
+  ev({ id:'pandemic', react:'services', office:'chan', w:5, once:true, title:'A Novel Respiratory Virus',
     text:'Sixty confirmed cases across four states, and the sequencing says it moves faster than anything since the last one.',
     ch:[
       { l:'Federal emergency measures at once', s:'Costs money, saves lives, angers business.',
@@ -7760,7 +7760,7 @@ var EVENTS = [
       { l:'Fund vaccines and nothing else', s:'A bet on the laboratories.',
         f:function (S) { S.treasury -= 9; S.ind.technology += 3; S.ind.healthcare += 2; mood(S, { tech:6, seniors:2, labour:-3 }); } }
     ] }),
-  ev({ id:'scandal', office:'pres', w:6, title:'Procurement Scandal at Defence',
+  ev({ id:'scandal', react:'scandal', office:'pres', w:6, title:'Procurement Scandal at Defence',
     text:'A programme office has been steering awards for eleven years. Two members of the Assembly are named in the indictment.',
     ch:[
       { l:'Full independent investigation', s:'Corruption falls, allies suffer.',
@@ -7770,7 +7770,7 @@ var EVENTS = [
       { l:'Blame the contractor and move on', s:'Cheap, and thin.',
         f:function (S) { S.ind.corruption += 2; S.ind.military -= 2; mood(S, { tech:-4, veterans:-2 }); } }
     ] }),
-  ev({ id:'immigration', office:'pres', not:['dpr'], w:6, title:'Surge at the Northern Border',
+  ev({ id:'immigration', react:'services', office:'pres', not:['dpr'], w:6, title:'Surge at the Northern Border',
     text:'Forty thousand crossings in a month along the four and a half thousand mile northern frontier. The processing centres are past capacity.',
     ch:[
       { l:'Emergency enforcement deployment', s:'Costs money. Splits the country.',
@@ -7780,7 +7780,7 @@ var EVENTS = [
       { l:'Negotiate with the northern government', s:'Costs capital, lowers the temperature.',
         f:function (S) { S.capital -= 4; S.ind.tension -= 4; mood(S, { prof:4, smallbiz:-2 }); } }
     ] }),
-  ev({ id:'automation', office:'vchan', not:['dpr'], w:6, title:'Automation in the Freight Sector',
+  ev({ id:'automation', react:'economy', office:'vchan', not:['dpr'], w:6, title:'Automation in the Freight Sector',
     text:'The carriers have filed to run driverless on the interstate network. Eight hundred thousand jobs sit behind the decision.',
     ch:[
       { l:'Approve with a retraining levy', s:'A compromise both sides dislike.',
@@ -7790,7 +7790,7 @@ var EVENTS = [
       { l:'Approve without conditions', s:'Growth now, anger later.',
         f:function (S) { S.ind.technology += 6; S.ind.economy += 4; S.ind.poverty += 3; mood(S, { tech:9, labour:-11, youth:-4 }); } }
     ] }),
-  ev({ id:'oilshock', office:'chan', w:6, title:'Oil Shock',
+  ev({ id:'oilshock', react:'economy', office:'chan', w:6, title:'Oil Shock',
     text:'A closure in a strait a long way from here has put forty percent on the price of crude inside a fortnight.',
     ch:[
       { l:'Release the strategic reserve', s:'Buys a few months.',
@@ -7800,7 +7800,7 @@ var EVENTS = [
       { l:'Accelerate the transition instead', s:'Costs money, wins the young.',
         f:function (S) { S.treasury -= 10; S.ind.environment += 4; S.ind.energy += 2; mood(S, { youth:9, prof:6, tech:4, smallbiz:-6 }); } }
     ] }),
-  ev({ id:'wildfire', office:'pres', w:5, title:'Wildfire Season in the Western Range',
+  ev({ id:'wildfire', react:'disaster', office:'pres', w:5, title:'Wildfire Season in the Western Range',
     text:'Two million acres and eleven thousand structures. The smoke has reached Somnium and the air quality index has not been under two hundred for a week.',
     ch:[
       { l:'Federal firefighting surge and forest management', s:'Costs money.',
@@ -7810,7 +7810,7 @@ var EVENTS = [
       { l:'Blame the state forestry agencies', s:'Free, and the governors respond.',
         f:function (S) { S.crown -= 12; S.ind.environment -= 2; mood(S, { prof:-4, youth:-4, smallbiz:-3 }); } }
     ] }),
-  ev({ id:'antitrust', office:'vpres', not:['dpr'], w:6, title:'Antitrust Suit Against a Platform',
+  ev({ id:'antitrust', react:'institution', office:'vpres', not:['dpr'], w:6, title:'Antitrust Suit Against a Platform',
     cond:function (S) { return S.blocs.tech > 40; },
     text:'The department has a case ready against the largest of the platform companies. The firm employs four hundred thousand people and funds half the political advertising in Vale.',
     ch:[
@@ -7821,7 +7821,7 @@ var EVENTS = [
       { l:'Drop it', s:'The sector notices, and pays.',
         f:function (S) { S.treasury += 6; S.ind.corruption += 4; mood(S, { tech:8, smallbiz:-6, prof:-5, youth:-4 }); } }
     ] }),
-  ev({ id:'governors', office:'national', not:['empire','dpr','oneparty'], w:6, title:'Eleven Governors Sue the Federal Government',
+  ev({ id:'governors', react:'constitution', office:'national', not:['empire','dpr','oneparty'], w:6, title:'Eleven Governors Sue the Federal Government',
     cond:function (S) { return S.crown < 55; },
     text:'A coalition of state governments has filed against federal preemption in three fields at once, and they are asking the Supreme Court to hear it directly.',
     ch:[
@@ -7832,7 +7832,7 @@ var EVENTS = [
       { l:'Cut their federal grants', s:'A brawl.',
         f:function (S) { S.treasury += 6; S.crown -= 18; S.unrest += 8; mood(S, { smallbiz:-10, faith:-6, seniors:-5 }); } }
     ] }),
-  ev({ id:'veteransreport', office:'vpres', w:5, title:'Waiting Times at the Veterans Hospitals',
+  ev({ id:'veteransreport', react:'services', office:'vpres', w:5, title:'Waiting Times at the Veterans Hospitals',
     cond:function (S) { return S.blocs.veterans < 60; },
     text:'The inspector general has published the real numbers. The average wait for a first appointment is a hundred and nine days.',
     ch:[
@@ -7843,7 +7843,7 @@ var EVENTS = [
       { l:'Reorganise the agency', s:'Free, and slow.',
         f:function (S) { mood(S, { veterans:-6, prof:2 }); } }
     ] }),
-  ev({ id:'unionbill', office:'vchan', elective:true, w:5, title:'The Congress of Labour Demands a Vote',
+  ev({ id:'unionbill', react:'labour', office:'vchan', elective:true, w:5, title:'The Congress of Labour Demands a Vote',
     cond:function (S) { return (S.pol.unionRights || 0) < 3; },
     text:'Nine million members have voted to campaign for sectoral bargaining, and they intend to fund candidates in a hundred and fifty districts.',
     ch:[
@@ -7865,7 +7865,7 @@ var EVENTS = [
       { l:'Cancel it', s:'Money saved, prestige lost.',
         f:function (S) { S.treasury += 8; S.ind.technology -= 4; mood(S, { tech:-7, youth:-5, veterans:-3, smallbiz:3 }); } }
     ] }),
-  ev({ id:'inflation', office:'chan', not:['dpr'], w:6, title:'Inflation at Six Percent',
+  ev({ id:'inflation', react:'economy', office:'chan', not:['dpr'], w:6, title:'Inflation at Six Percent',
     text:'Groceries, rent and insurance are all running ahead of wages. The central bank has raised twice and says it will raise again.',
     ch:[
       { l:'Fiscal restraint to help the bank', s:'Costs support now.',
@@ -7875,7 +7875,7 @@ var EVENTS = [
       { l:'Blame the corporations and open an inquiry', s:'Free, and popular.',
         f:function (S) { S.ind.economy -= 2; mood(S, { labour:6, youth:5, seniors:4, tech:-7, smallbiz:-4 }); } }
     ] }),
-  ev({ id:'surplus', office:'chan', w:4, title:'The Receipts Come In High',
+  ev({ id:'surplus', react:'economy', office:'chan', w:4, title:'The Receipts Come In High',
     text:'The technology sector had a better year than the forecast allowed for, and the treasury is holding an unexpected surplus.',
     ch:[
       { l:'Pay down the debt', s:'Dull, and correct.',
@@ -7885,7 +7885,7 @@ var EVENTS = [
       { l:'Put it into infrastructure', s:'Slow, and lasting.',
         f:function (S) { S.ind.infrastructure += 5; S.ind.economy += 2; mood(S, { labour:6, smallbiz:4, prof:3 }); } }
     ] }),
-  ev({ id:'primary', office:'national', elective:true, w:5, title:'A Challenge From Inside the Party',
+  ev({ id:'primary', react:'party', office:'national', elective:true, w:5, title:'A Challenge From Inside the Party',
     text:'A faction of your own members has begun organising against the leadership, and the press has a list of the names.',
     ch:[
       { l:'Buy them off with committee chairs', s:'Costs capital.',
@@ -7895,7 +7895,7 @@ var EVENTS = [
       { l:'Adopt half their programme', s:'Free, and it moves you.',
         f:function (S) { mood(S, { labour:3, youth:3, prof:-2 }); S.capital -= 1; } }
     ] }),
-  ev({ id:'ai', office:'vpres', w:5, title:'A Frontier Model Is Released Without Review',
+  ev({ id:'ai', react:'institution', office:'vpres', w:5, title:'A Frontier Model Is Released Without Review',
     cond:function (S) { return S.ind.technology > 45; },
     text:'One of the Thaxia laboratories has released a system well past the threshold the voluntary framework was meant to cover, and told the agency afterwards.',
     ch:[
@@ -7918,7 +7918,7 @@ var EVENTS = [
       { l:'Raise their pay and say nothing', s:'Expensive, and it works for now.',
         f:function (S) { S.treasury -= 9; S.armyLoyalty += 13; mood(S, { veterans:7, prof:-3 }); } }
     ] }),
-  ev({ id:'exileBroadcast', office:'pres', closed:true, w:8, title:'The Exiles Are Broadcasting',
+  ev({ id:'exileBroadcast', react:'foreign', office:'pres', closed:true, w:8, title:'The Exiles Are Broadcasting',
     text:'A station beyond the northern frontier is carrying nightly bulletins into Vale, and the jamming is not working.',
     ch:[
       { l:'Jam it and prosecute listeners', s:'Liberties fall further.',
@@ -7928,7 +7928,7 @@ var EVENTS = [
       { l:'Buy the transmitter through intermediaries', s:'Costs a great deal, ends the problem.',
         f:function (S) { S.treasury -= 14; S.ind.corruption += 3; S.unrest -= 5; } }
     ] }),
-  ev({ id:'purgeList', office:'national', closed:true, w:8, title:'A List Arrives on Your Desk',
+  ev({ id:'purgeList', react:'repression', office:'national', closed:true, w:8, title:'A List Arrives on Your Desk',
     text:'Two hundred and forty names in the ministries, the academies and the general staff, compiled by the security service, with recommendations against each.',
     ch:[
       { l:'Sign the whole list', s:'Order and fear both rise.',
@@ -7939,7 +7939,7 @@ var EVENTS = [
       { l:'Refuse and shelve it', s:'The bureau will remember.',
         f:function (S) { S.ind.safety -= 3; mood(S, { prof:6, youth:4, veterans:-3 }); S.capital -= 3; } }
     ] }),
-  ev({ id:'crowdInCapital', office:'vpres', closed:true, w:9, title:'A Crowd in the Capital',
+  ev({ id:'crowdInCapital', react:'repression', office:'vpres', closed:true, w:9, title:'A Crowd in the Capital',
     cond:function (S) { return S.unrest > 45; },
     text:'Somewhere between two and four hundred thousand people are standing in the ministry square. The guard commander is asking, in writing, for instructions.',
     ch:[
@@ -7951,7 +7951,7 @@ var EVENTS = [
       { l:'Send a minister out to hear them', s:'Costs capital, lowers the temperature.',
         f:function (S) { S.capital -= 6; S.unrest -= 12; mood(S, { youth:6, prof:5, labour:4, veterans:-3 }); } }
     ] }),
-  ev({ id:'foreignCondemnation', office:'pres', closed:true, w:7, title:'The Alliance Suspends Vale',
+  ev({ id:'foreignCondemnation', react:'foreign', office:'pres', closed:true, w:7, title:'The Alliance Suspends Vale',
     text:'The Northern Alliance has suspended our participation and four capitals have recalled their ambassadors.',
     ch:[
       { l:'Withdraw from the Alliance entirely', s:'Tension rises, hands are free, and every member goes with it.',
@@ -7977,7 +7977,7 @@ var EVENTS = [
       { l:'Leave it open', s:'Everyone waits, and plots.',
         f:function (S) { S.unrest += 11; S.armyLoyalty -= 8; S.capital -= 3; mood(S, { veterans:-6, smallbiz:-4 }); } }
     ] }),
-  ev({ id:'prefectRevolt', office:'national', only:['empire'], w:8, title:'A Prefect Stops Sending Revenue',
+  ev({ id:'prefectRevolt', react:'constitution', office:'national', only:['empire'], w:8, title:'A Prefect Stops Sending Revenue',
     text:'The prefect of the western provinces has retained the assessment of the quarter and raised two additional cohorts on his own authority.',
     ch:[
       { l:'Send the legions', s:'Costs money and blood.',
@@ -8008,7 +8008,7 @@ var EVENTS = [
       { l:'Refuse', s:'He will hear of it within a week.',
         f:function (S) { S.armyLoyalty -= 10; mood(S, { veterans:-7 }); S.capital += 2; } }
     ] }),
-  ev({ id:'clientKing', office:'pres', only:['empire'], w:7, title:'A Client Ruler Dies',
+  ev({ id:'clientKing', react:'foreign', office:'pres', only:['empire'], w:7, title:'A Client Ruler Dies',
     cond:function (S) { return S.ind.territories > 30; },
     text:'The ruler of one of the older client states has died leaving three claimants, two of whom have written to us.',
     ch:[
@@ -8051,7 +8051,7 @@ var EVENTS = [
       { l:'Legalise small trade', s:'A crack in the doctrine.',
         f:function (S) { S.ind.economy += 5; S.ind.poverty -= 3; mood(S, { smallbiz:12, labour:-5, youth:4 }); S.capital -= 4; } }
     ] }),
-  ev({ id:'denunciation', office:'national', only:['dpr'], w:8, title:'A Denunciation From Within the Party',
+  ev({ id:'denunciation', react:'party', office:'national', only:['dpr'], w:8, title:'A Denunciation From Within the Party',
     text:'A member of the central committee has circulated a document criticising the leadership by name, and forty seven cadres have signed it.',
     ch:[
       { l:'Expel and try all forty eight', s:'Fear restored.',
@@ -8061,7 +8061,7 @@ var EVENTS = [
       { l:'Promote the author out of the way', s:'The document circulates anyway.',
         f:function (S) { S.ind.corruption += 3; mood(S, { prof:-3 }); } }
     ] }),
-  ev({ id:'congress', office:'national', only:['dpr'], w:7, title:'The Party Congress',
+  ev({ id:'congress', react:'party', office:'national', only:['dpr'], w:7, title:'The Party Congress',
     text:'Four thousand delegates, a week of sessions, and a line to be settled for the next five years.',
     ch:[
       { l:'A hard line: discipline and the plan', s:'Capital and order, at a cost.',
@@ -8083,7 +8083,7 @@ var EVENTS = [
       { l:'Let the budget fail', s:'Everything stops.',
         f:function (S) { S.ind.economy -= 5; S.unrest += 9; mood(S, { labour:-6, seniors:-5, tech:-4 }); } }
     ] }),
-  ev({ id:'tooBigToFail', office:'chan', only:['corporate'], w:8, title:'A Chartered Company Is Failing',
+  ev({ id:'tooBigToFail', react:'economy', office:'chan', only:['corporate'], w:8, title:'A Chartered Company Is Failing',
     text:'One of the four largest firms in Vale cannot meet its obligations on Friday. It employs a million people and holds the pensions of six million more.',
     ch:[
       { l:'Draw on the backstop', s:'Costs enormously.',
@@ -8093,7 +8093,7 @@ var EVENTS = [
       { l:'Take it into public ownership', s:'Heresy under this constitution.',
         f:function (S) { S.treasury -= 14; S.ind.economy -= 1; S.capital -= 6; mood(S, { labour:11, tech:-16, smallbiz:-5 }); } }
     ] }),
-  ev({ id:'franchiseDispute', office:'national', only:['corporate'], w:7, title:'A Dispute Over the Assessment Rolls',
+  ev({ id:'franchiseDispute', react:'election', office:'national', only:['corporate'], w:7, title:'A Dispute Over the Assessment Rolls',
     text:'Under a weighted franchise everything turns on the assessment, and the assessors have been generous to some districts and not to others.',
     ch:[
       { l:'Confirm the rolls as they stand', s:'The advantage is yours.',
@@ -8106,7 +8106,7 @@ var EVENTS = [
     ] }),
 
   /* the Imperial Federation */
-  ev({ id:'delegationWalkout', office:'national', only:['imperial'], w:8, title:'The Territorial Delegations Walk Out',
+  ev({ id:'delegationWalkout', react:'constitution', office:'national', only:['imperial'], w:8, title:'The Territorial Delegations Walk Out',
     cond:function (S) { return S.ind.territories > 30; },
     text:'All eleven territorial delegations have left the chamber over the revenue formula, and their governments have endorsed them.',
     ch:[
@@ -8117,7 +8117,7 @@ var EVENTS = [
       { l:'Suspend the delegations and govern by order', s:'Liberties and territories both suffer.',
         f:function (S) { S.ind.liberties -= 7; S.ind.territories -= 3; S.unrest += 9; mood(S, { veterans:5, prof:-9, youth:-8 }); } }
     ] }),
-  ev({ id:'colonialWar', office:'pres', only:['imperial','empire'], w:8, title:'A War in the Possessions',
+  ev({ id:'colonialWar', react:'foreign', office:'pres', only:['imperial','empire'], w:8, title:'A War in the Possessions',
     cond:function (S) { return S.ind.territories > 25; },
     text:'A rising in one of the newer territories has killed a resident and two companies of the garrison.',
     ch:[
@@ -8128,7 +8128,7 @@ var EVENTS = [
       { l:'Punitive measures', s:'Order restored, at a price abroad.',
         f:function (S) { S.ind.tension += 8; S.ind.liberties -= 5; S.ind.territories += 2; mood(S, { veterans:7, faith:-6, youth:-11, prof:-8 }); } }
     ] }),
-ev({ id:'movDemand', office:'national', w:9, title:'The Movement Presents Its Demands',
+ev({ id:'movDemand', react:'party', office:'national', w:9, title:'The Movement Presents Its Demands',
     cond:function (S) { return movStrength(S, biggestMovement(S).id) > 52; },
     text:'A delegation has arrived at the ministry with a document, a hundred thousand signatures behind it and a crowd outside that has been growing since eight this morning.',
     ch:[
@@ -8145,7 +8145,7 @@ ev({ id:'movDemand', office:'national', w:9, title:'The Movement Presents Its De
           S.movements[m.id] = clamp(movStrength(S, m.id) + 15, 0, 100);
           var mm = {}; mm[m.bloc] = -12; mood(S, mm); S.unrest += 10; S.ind.liberties -= 3; } }
     ] }),
-  ev({ id:'leaderChallenge', office:'national', w:8, title:'A Challenge to Your Own Leadership',
+  ev({ id:'leaderChallenge', react:'party', office:'national', w:8, title:'A Challenge to Your Own Leadership',
     cond:function (S) { return approval(S) < 46; },
     text:'A figure on your own benches has the numbers to force a contest, and has told three newspapers so.',
     ch:[
@@ -8164,7 +8164,7 @@ ev({ id:'movDemand', office:'national', w:9, title:'The Movement Presents Its De
           S.capital = clamp(S.capital + 6, -5, capCap(S)); S.unrest -= 5;
           mood(S, { prof:4, youth:3 }); logIt(S, f2.name + ' stood down. ' + S.figures.leaders[S.ruling].name + ' takes over.'); } }
     ] }),
-  ev({ id:'borderIncident', office:'pres', w:8, title:'An Incident on the Northern Line',
+  ev({ id:'borderIncident', react:'security', office:'pres', w:8, title:'An Incident on the Northern Line',
     cond:function (S) { return relOf(S, 'ostmark') < 55 && !S.war; },
     text:'A patrol crossed the line, or did not, depending on which capital is describing it. Eleven are dead and both governments have photographs.',
     ch:[
@@ -8177,7 +8177,7 @@ ev({ id:'movDemand', office:'national', w:9, title:'The Movement Presents Its De
       { l:'Say nothing publicly', s:'It will surface anyway.',
         f:function (S) { S.ind.corruption += 3; shiftRel(S, 'ostmark', 4); mood(S, { veterans:-5, prof:-3 }); } }
     ] }),
-  ev({ id:'allianceAsk', office:'pres', w:7, title:'The Alliance Asks for Troops',
+  ev({ id:'allianceAsk', react:'foreign', office:'pres', w:7, title:'The Alliance Asks for Troops',
     cond:function (S) { return relOf(S, 'alliance') > 45 && !S.war; },
     text:'A partner has invoked the treaty over a frontier of theirs that we have never seen, and the council is meeting on Thursday.',
     ch:[
@@ -8189,7 +8189,7 @@ ev({ id:'movDemand', office:'national', w:9, title:'The Movement Presents Its De
       { l:'Decline', s:'The guarantee looks thinner in both directions.',
         f:function (S) { shiftRel(S, 'alliance', -22); mood(S, { youth:6, prof:3, veterans:-9 }); } }
     ] }),
-  ev({ id:'defectionEvent', office:'national', w:7, title:'A Defection',
+  ev({ id:'defectionEvent', react:'party', office:'national', w:7, title:'A Defection',
     text:'A senior figure has crossed the floor, with a statement that will be quoted against somebody for twenty years.',
     ch:[
       { l:'Welcome them in', s:'Seats now, grumbling behind you.',
@@ -12763,6 +12763,153 @@ function v17AiDecide(st, e) {
   if (st.govRecord.length > 40) st.govRecord.length = 40;
   return pick;
 }
+/* ============================================================
+   S17d — THE REACTION
+   ============================================================
+   The owner, on being out of government: "the biggest national events also
+   offer YOU a reaction choice ... but it should not be that flat/stagnant. add
+   variety." So a reaction is never the same three buttons. Events belong to
+   FAMILIES -- a flood is not a scandal is not a purge -- and each family has
+   its own verbs, written for what actually happened. Twelve families, forty
+   verbs, and the widest event families carry four.
+
+   A reaction moves what an opposition party can really move: its own machine,
+   its standing with the blocs, its relations with the government, the salience
+   of an issue and the press narrative. It NEVER touches the outcome, and it
+   cannot, because it never runs the event's own `f` -- the government has
+   already decided, and this is what you say about it. */
+var V17_REACT = {
+  disaster:{ name:'the emergency', verbs:[
+    { l:'Go and be seen in the wreckage', s:'The leader on the ground before the minister is.',
+      e:{ mach:.05, mood:{ seniors:4, faith:4, labour:3 }, cap:-2 } },
+    { l:'Ask what the warnings said', s:'A demand for the file, and for whoever sat on it.',
+      e:{ rel:-6, sal:{ integrity:6 }, mood:{ prof:5, tech:3 } } },
+    { l:'Send your own people, not your cameras', s:'Party relief, quietly, and the neighbourhoods remember.',
+      e:{ mach:.07, mood:{ labour:5, youth:4 }, money:-6 } },
+    { l:'Say nothing while they are still counting', s:'Grief is not a platform, and restraint is noticed.',
+      e:{ mood:{ faith:5, seniors:3, prof:2 }, sal:{ integrity:-2 } } } ] },
+  security:{ name:'the attack', verbs:[
+    { l:'Stand with the government, this week only', s:'A united front, and a bill to present later.',
+      e:{ rel:8, mood:{ veterans:6, faith:4 }, mach:.02 } },
+    { l:'Ask who was asleep', s:'The warnings, the budget line, and the name of the officer who signed it off.',
+      e:{ rel:-9, sal:{ security:7, integrity:5 }, mood:{ prof:4 } } },
+    { l:'Demand the powers be temporary', s:'Whatever they take now, put a date on it.',
+      e:{ mood:{ prof:6, youth:5, tech:4 }, sal:{ liberty:6 }, rel:-4 } } ] },
+  foreign:{ name:'the crisis abroad', verbs:[
+    { l:'Back them at the water’s edge', s:'Politics stops where the frontier begins, and everyone sees you say so.',
+      e:{ rel:9, mood:{ veterans:5, seniors:4, prof:3 } } },
+    { l:'Ask what was promised, and to whom', s:'The despatches, the undertakings, the things not put to the House.',
+      e:{ rel:-7, sal:{ integrity:6 }, mood:{ prof:5, tech:3 } } },
+    { l:'Say plainly that it is not our war', s:'Unpopular in the capital, popular in the country.',
+      e:{ mach:.05, mood:{ labour:5, youth:6, veterans:-6 }, sal:{ foreign:6 } } } ] },
+  economy:{ name:'the shock', verbs:[
+    { l:'Put a number on what it costs a household', s:'One figure, repeated until it is theirs.',
+      e:{ mach:.06, sal:{ prices:8 }, mood:{ labour:5, seniors:4 }, rel:-5 } },
+    { l:'Offer to pass an emergency measure together', s:'Statesmanship, and a share of the credit if it works.',
+      e:{ rel:10, mood:{ smallbiz:5, prof:4 }, cap:2 } },
+    { l:'Blame the last decade, not the last month', s:'The longer story, which happens to be yours.',
+      e:{ mach:.04, mood:{ tech:4, smallbiz:3 }, sal:{ economy:6 } } },
+    { l:'Go to the firms before the unions do', s:'Employers first, and the columns notice the order.',
+      e:{ mood:{ smallbiz:7, tech:5, labour:-4 }, mach:.03 } } ] },
+  labour:{ name:'the dispute', verbs:[
+    { l:'Stand on the picket line', s:'Photographed, and not by accident.',
+      e:{ mach:.07, mood:{ labour:9, youth:5, smallbiz:-5, tech:-4 }, rel:-6 } },
+    { l:'Offer to mediate it yourself', s:'Above the fight, and useful to both sides.',
+      e:{ rel:5, mood:{ prof:6, seniors:4 }, cap:-2, mach:.02 } },
+    { l:'Say the country cannot afford them', s:'A hard line, and a different half of the country.',
+      e:{ mood:{ smallbiz:8, tech:6, veterans:3, labour:-9 }, sal:{ economy:5 } } } ] },
+  scandal:{ name:'the scandal', verbs:[
+    { l:'Move for a select committee', s:'Sworn evidence, in public, for as long as it takes.',
+      e:{ rel:-10, sal:{ integrity:9 }, mood:{ prof:6, youth:4 }, cap:-3 } },
+    { l:'Name the minister and nobody else', s:'One head, offered as the price of moving on.',
+      e:{ rel:-6, sal:{ integrity:6 }, mood:{ seniors:4, faith:3 }, mach:.03 } },
+    { l:'Let it burn without you', s:'No fingerprints, and the story keeps its own legs.',
+      e:{ sal:{ integrity:4 }, mood:{ prof:2 } } } ] },
+  constitution:{ name:'the constitutional question', verbs:[
+    { l:'Call it what it is from the despatch box', s:'The word "unconstitutional", on the record, in Hansard.',
+      e:{ rel:-9, sal:{ liberty:7, integrity:5 }, mood:{ prof:7, youth:4 } } },
+    { l:'Convene the other parties', s:'A common position, which is harder to ignore than yours alone.',
+      e:{ mach:.05, relOthers:6, mood:{ prof:5 }, cap:-3 } },
+    { l:'Take it to the states', s:'Governors and assemblies, where the writ runs differently.',
+      e:{ mach:.04, mood:{ faith:4, smallbiz:4 }, sal:{ federal:8 } } } ] },
+  repression:{ name:'the crackdown', verbs:[
+    { l:'Read the names into the record', s:'Every one of them, slowly, while the benches empty.',
+      e:{ rel:-12, sal:{ liberty:9 }, mood:{ youth:8, prof:6, veterans:-4 }, mach:.04 } },
+    { l:'Go to the families', s:'No cameras, no statement, and it gets out anyway.',
+      e:{ mach:.06, mood:{ faith:6, youth:5, labour:4 }, unrest:2 } },
+    { l:'Say it went too far, and stop there', s:'Enough to be quoted, not enough to be arrested.',
+      e:{ rel:-4, mood:{ prof:4, seniors:2 }, sal:{ liberty:4 } } } ] },
+  services:{ name:'the failure of a service', verbs:[
+    { l:'Take the case of one family', s:'A name, an address, and a waiting time. It travels.',
+      e:{ mach:.06, sal:{ health:8 }, mood:{ seniors:6, labour:5 }, rel:-5 } },
+    { l:'Publish your own costed plan', s:'Numbers on paper, which invites attack and earns respect.',
+      e:{ mood:{ prof:8, tech:5 }, mach:.03, cap:-3, sal:{ health:5 } } },
+    { l:'Put the staff in front of the committee', s:'The people who do the work, saying what it is like.',
+      e:{ mood:{ labour:7, prof:4 }, rel:-6, sal:{ health:6 } } } ] },
+  party:{ name:'the internal quarrel', verbs:[
+    { l:'Say nothing about another party’s war', s:'Silence, and the appearance of a grown-up.',
+      e:{ mood:{ prof:4, seniors:3 }, mach:.02 } },
+    { l:'Offer the losing side a home', s:'A quiet word, a safe seat, and a defection in a month.',
+      e:{ mach:.06, relOthers:-5, mood:{ tech:2 } } },
+    { l:'Make their split your argument', s:'A party that cannot govern itself, and so on.',
+      e:{ mach:.04, rel:-5, sal:{ integrity:4 } } } ] },
+  election:{ name:'the verdict of a ballot', verbs:[
+    { l:'Claim the trend, whatever the seat', s:'One result, generalised without blushing.',
+      e:{ mach:.05, mood:{ youth:3 }, sal:{ economy:3 } } },
+    { l:'Thank the volunteers by name', s:'Inward-facing, and worth more than the seat.',
+      e:{ mach:.08, mood:{ labour:3, faith:2 }, money:-4 } },
+    { l:'Concede it graciously and move on', s:'A day of good notices for the price of an evening.',
+      e:{ mood:{ prof:6, seniors:5 }, rel:4 } } ] },
+  institution:{ name:'the institution', verbs:[
+    { l:'Insist the appointment goes through the House', s:'Scrutiny, in public, before anybody takes an oath.',
+      e:{ rel:-7, sal:{ integrity:6, liberty:4 }, mood:{ prof:7 } } },
+    { l:'Propose a name of your own', s:'Constructive, and impossible to ignore politely.',
+      e:{ mach:.04, mood:{ prof:5, seniors:3 }, cap:-2, rel:-2 } },
+    { l:'Warn what a packed bench is for', s:'The argument that lands in ten years, made now.',
+      e:{ sal:{ liberty:7 }, mood:{ youth:5, prof:4 }, rel:-5 } } ] }
+};
+/* Applied through ONE door, so no reaction can reach the event's outcome. */
+function v17ApplyReaction(st, e, srcId, label) {
+  var me = playParty(st);
+  /* S17d: the reaction is written back against the decision it answers, so the
+     Gazette can print the pair -- what the government did, and what you said
+     about it -- rather than two lists that never meet. */
+  if (srcId) {
+    var rec = (st.govRecord || []).filter(function (r) { return r.id === srcId; })[0];
+    if (rec) rec.reaction = label || '';
+  }
+  if (e.mach) st.machine[me] = clamp((st.machine[me] || 0) + e.mach, -.8, 1);
+  if (e.mood) mood(st, e.mood);
+  if (e.rel) shiftPartyRel(st, st.ruling, e.rel);
+  if (e.relOthers) {
+    PARTIES.forEach(function (p) {
+      if (p.id !== me && p.id !== st.ruling) shiftPartyRel(st, p.id, e.relOthers);
+    });
+  }
+  if (e.sal) { for (var k in e.sal) st.salience[k] = c100((st.salience[k] || 50) + e.sal[k]); }
+  if (e.cap) st.capital = clamp(st.capital + e.cap, -5, capCap(st));
+  if (e.money) { if (typeof partySpend === 'function' && e.money < 0) partySpend(st, me, -e.money); }
+  if (e.unrest) st.unrest = clamp(st.unrest + e.unrest, 0, 110);
+}
+/* The sheet the player is offered after the government has decided. It is
+   shaped like any other queued event so `runQueue` renders it unchanged. */
+function v17ReactionEvent(st, src, pick) {
+  var fam = V17_REACT[src.react];
+  if (!fam) return null;
+  var gov = PARTY[st.ruling] ? PARTY[st.ruling].short : 'The government';
+  return {
+    id:'react_' + src.id, kind:'reaction', office:src.office, w:0,
+    title:src.title,
+    text:gov + ' has answered this: ' + (pick && pick.l ? '“' + pick.l + '”' : 'in its own way') +
+      '. The decision is taken and it was not yours to take. What is yours is what you say about it, ' +
+      'and who hears you say it.',
+    ch:fam.verbs.map(function (v) {
+      return { l:v.l, s:v.s, f:(function (eff, lab) {
+        return function (S2) { v17ApplyReaction(S2, eff, src.id, lab); };
+      })(v.e, v.l) };
+    })
+  };
+}
 /* The split. What the player answers stays in the queue; the rest is governed
    and goes into the record the Gazette prints. */
 function v17Route(st, fired) {
@@ -12770,7 +12917,14 @@ function v17Route(st, fired) {
   (fired || []).forEach(function (e) {
     if (!e) return;
     if (v17Decides(st, e)) { mine.push(e); return; }
-    v17AiDecide(st, e);
+    var pick = v17AiDecide(st, e);
+    /* S17d: and where the event is one of the big ones, the player still gets
+       a voice -- never over the outcome, which is already taken, but over what
+       is said about it and to whom. */
+    if (e.react) {
+      var r = v17ReactionEvent(st, e, pick);
+      if (r) mine.push(r);
+    }
   });
   return mine;
 }
@@ -17595,63 +17749,63 @@ function v6ExtraEvents(st) {
    NEW EVENTS
    ========================================================== */
 var V6_EVENTS = [
-  ev({ id:'v6recession', office:'chan', w:9, title:'The Economy Is in Recession', cond:function (S) { return S.macro.growth < -1; },
+  ev({ id:'v6recession', react:'economy', office:'chan', w:9, title:'The Economy Is in Recession', cond:function (S) { return S.macro.growth < -1; },
     text:'Two quarters of contraction are now three. Unemployment is ' + '' + 'rising in every region but Thaxia and the Treasury has revised receipts down twice.',
     ch:[
       { l:'Counter-cyclical spending', s:'Treasury ' + fmc(-24) + '. Economy +4, poverty -2, labour +6.', f:function (S) { S.treasury -= 24; S.ind.economy += 4; S.ind.poverty -= 2; mood(S, { labour:6, smallbiz:3, tech:-2 }); } },
       { l:'Cut rates and regulation', s:'Economy +2, technology +2, the exchanges +6, environment -2.', f:function (S) { S.ind.economy += 2; S.ind.technology += 2; S.ind.environment -= 2; mood(S, { tech:6, smallbiz:4, labour:-3 }); } },
       { l:'Hold the course', s:'Economy -2, unrest +4. The cycle turns on its own.', f:function (S) { S.ind.economy -= 2; S.unrest += 4; mood(S, { labour:-3, seniors:-2 }); } }
     ] }),
-  ev({ id:'v6boom', office:'chan', w:7, title:'The Boom', cond:function (S) { return S.macro.growth > 4; },
+  ev({ id:'v6boom', react:'economy', office:'chan', w:7, title:'The Boom', cond:function (S) { return S.macro.growth > 4; },
     text:'Growth is running above four percent, the exchanges are at a record and the Chancellor is being asked what to do with a surplus for the first time in a decade.',
     ch:[
       { l:'Bank it against the debt', s:'Debt ' + fmc(-30) + '. The exchanges +4, labour -2.', f:function (S) { S.debt = Math.max(0, S.debt - 30); mood(S, { tech:4, smallbiz:2, labour:-2 }); } },
       { l:'Spend it on services', s:'Healthcare +3, education +3, inflation risk. Labour +5, seniors +4.', f:function (S) { S.ind.healthcare += 3; S.ind.education += 3; S.macro.inflation += .6; mood(S, { labour:5, seniors:4, tech:-2 }); } },
       { l:'Cut taxes', s:'Economy +2, the exchanges +6, small business +5, poverty +1.', f:function (S) { S.ind.economy += 2; S.ind.poverty += 1; mood(S, { tech:6, smallbiz:5, labour:-2 }); } }
     ] }),
-  ev({ id:'v6bridge', office:'chan', w:7, title:'The Tenebris Bridge Falls', cond:function (S) { return S.ind.infrastructure < 44; },
+  ev({ id:'v6bridge', react:'disaster', office:'chan', w:7, title:'The Tenebris Bridge Falls', cond:function (S) { return S.ind.infrastructure < 44; },
     text:'A federal highway bridge over the Tenebris has collapsed in the morning rush. Forty-one dead, and the inspection reports were three years overdue.',
     ch:[
       { l:'A national inspection and repair programme', s:'Treasury ' + fmc(-20) + '. Infrastructure +5, public safety +2.', f:function (S) { S.treasury -= 20; S.ind.infrastructure += 5; S.ind.safety += 2; mood(S, { labour:4, prof:4, seniors:3 }); } },
       { l:'Rebuild the bridge and blame the state', s:'Treasury ' + fmc(-8) + '. State governments -8.', f:function (S) { S.treasury -= 8; S.crown -= 8; S.ind.infrastructure += 1; mood(S, { smallbiz:-4 }); } },
       { l:'An inquiry', s:'Unrest +3, capital -1. The report arrives after the next ballot.', f:function (S) { S.unrest += 3; S.capital -= 1; mood(S, { prof:-2, labour:-3 }); } }
     ] }),
-  ev({ id:'v6teachers', office:'vchan', w:6, title:'The Teachers Walk Out', cond:function (S) { return S.ind.education < 48; },
+  ev({ id:'v6teachers', react:'labour', office:'vchan', w:6, title:'The Teachers Walk Out', cond:function (S) { return S.ind.education < 48; },
     text:'Teachers in thirty states have struck over pay and class sizes. The schools are closed and the parents are not, on the whole, on the government\'s side.',
     ch:[
       { l:'Fund the settlement', s:'Treasury ' + fmc(-10) + '. Education +3, the professions +4, labour +4.', f:function (S) { S.treasury -= 10; S.ind.education += 3; mood(S, { prof:4, labour:4, youth:3, smallbiz:-2 }); } },
       { l:'Leave it to the states', s:'Education -2, state governments -4, unrest +3.', f:function (S) { S.ind.education -= 2; S.crown -= 4; S.unrest += 3; mood(S, { prof:-4 }); } },
       { l:'Legislate a national pay scale', s:'Capital -4. Education +2, the professions +5, state governments -6.', f:function (S) { S.capital -= 4; S.ind.education += 2; S.crown -= 6; mood(S, { prof:5, labour:3, smallbiz:-3 }); } }
     ] }),
-  ev({ id:'v6hospitals', office:'chan', w:7, title:'The Hospitals Turn Patients Away', cond:function (S) { return S.ind.healthcare < 44; },
+  ev({ id:'v6hospitals', react:'services', office:'chan', w:7, title:'The Hospitals Turn Patients Away', cond:function (S) { return S.ind.healthcare < 44; },
     text:'Emergency departments in four regions are refusing admissions. A senator\'s father died in a corridor last week and the photographs are everywhere.',
     ch:[
       { l:'Emergency funding for beds and staff', s:'Treasury ' + fmc(-14) + '. Healthcare +5, seniors +6.', f:function (S) { S.treasury -= 14; S.ind.healthcare += 5; mood(S, { seniors:6, labour:3, prof:3 }); } },
       { l:'Contract the private hospitals', s:'Treasury ' + fmc(-9) + '. Healthcare +3, corruption +2, the exchanges +4, labour -4.', f:function (S) { S.treasury -= 9; S.ind.healthcare += 3; S.ind.corruption += 2; mood(S, { tech:4, labour:-4, seniors:2 }); } },
       { l:'Blame the states and the winter', s:'Healthcare -2, unrest +5, seniors -6.', f:function (S) { S.ind.healthcare -= 2; S.unrest += 5; S.crown -= 3; mood(S, { seniors:-6, prof:-3 }); } }
     ] }),
-  ev({ id:'v6prison', office:'vpres', w:6, title:'Riot at the Federal Penitentiary', cond:function (S) { return S.ind.safety < 48 || S.ind.liberties < 40; },
+  ev({ id:'v6prison', react:'repression', office:'vpres', w:6, title:'Riot at the Federal Penitentiary', cond:function (S) { return S.ind.safety < 48 || S.ind.liberties < 40; },
     text:'Eleven hundred prisoners hold the east wing of the federal penitentiary at Cassian. Three officers are hostages and the governor of the state wants the guard.',
     ch:[
       { l:'Send in the guard', s:'Public safety +4, liberties -4, unrest +3. The hostages are the gamble.', f:function (S) { S.ind.safety += 4; S.ind.liberties -= 4; S.unrest += 3; mood(S, { veterans:4, faith:2, youth:-5, prof:-3 }); } },
       { l:'Negotiate', s:'Unrest -2, public safety -1. The demands are about conditions, and they are mostly true.', f:function (S) { S.unrest -= 2; S.ind.safety -= 1; mood(S, { prof:3, youth:3, seniors:-3 }); } },
       { l:'Negotiate and reform the prisons', s:'Treasury ' + fmc(-8) + '. Liberties +3, public safety +1, the professions +4.', f:function (S) { S.treasury -= 8; S.ind.liberties += 3; S.ind.safety += 1; mood(S, { prof:4, youth:4, faith:-2, veterans:-3 }); } }
     ] }),
-  ev({ id:'v6leak', office:'pres', w:6, title:'The Surveillance Files', cond:function (S) { return (S.pol.surveillance || 0) >= 1 || S.ind.liberties < 50; },
+  ev({ id:'v6leak', react:'security', office:'pres', w:6, title:'The Surveillance Files', cond:function (S) { return (S.pol.surveillance || 0) >= 1 || S.ind.liberties < 50; },
     text:'A contractor has published the security service\'s domestic collection programme. It has been reading the mail of four senators, two newspapers and the Congress of Labour.',
     ch:[
       { l:'Shut the programme down', s:'Liberties +6, public safety -3, the professions +6, veterans -4.', f:function (S) { S.ind.liberties += 6; S.ind.safety -= 3; mood(S, { prof:6, youth:5, veterans:-4 }); } },
       { l:'Defend it as lawful', s:'Liberties -3, unrest +5, the professions -6, veterans +3.', f:function (S) { S.ind.liberties -= 3; S.unrest += 5; mood(S, { prof:-6, youth:-5, veterans:3, seniors:2 }); } },
       { l:'Prosecute the contractor and review the rest', s:'Public safety +2, liberties -1, corruption +1.', f:function (S) { S.ind.safety += 2; S.ind.liberties -= 1; S.ind.corruption += 1; mood(S, { veterans:3, youth:-4 }); } }
     ] }),
-  ev({ id:'v6refugees', office:'pres', w:7, title:'Refugees at the Southern Crossings', cond:function (S) { return S.ind.tension > 58 || relOf(S, 'calavera') < 40; },
+  ev({ id:'v6refugees', react:'services', office:'pres', w:7, title:'Refugees at the Southern Crossings', cond:function (S) { return S.ind.tension > 58 || relOf(S, 'calavera') < 40; },
     text:'A war in the Calaveran Republics has sent four hundred thousand people to the southern crossings in a month. The border states have declared emergencies.',
     ch:[
       { l:'Open reception centres and process them', s:'Treasury ' + fmc(-12) + '. Liberties +2, the faith communities +4, small business -4, tension -3.', f:function (S) { S.treasury -= 12; S.ind.liberties += 2; S.ind.tension -= 3; mood(S, { faith:4, prof:4, youth:3, smallbiz:-4, veterans:-4 }); } },
       { l:'Close the crossings', s:'Public safety +2, tension +5, Calavera -10, liberties -3.', f:function (S) { S.ind.safety += 2; S.ind.tension += 5; S.ind.liberties -= 3; shiftRel(S, 'calavera', -10); mood(S, { veterans:6, smallbiz:4, faith:-5, youth:-5 }); } },
       { l:'Fund camps on the Calaveran side', s:'Treasury ' + fmc(-9) + '. Calavera +6, tension -2, the faith communities -2.', f:function (S) { S.treasury -= 9; shiftRel(S, 'calavera', 6); S.ind.tension -= 2; mood(S, { faith:-2, smallbiz:2 }); } }
     ] }),
-  ev({ id:'v6tradeWar', office:'vpres', w:7, title:'Retaliation Against the Tariffs', cond:function (S) { return (S.pol.tariffs || 0) >= 3; },
+  ev({ id:'v6tradeWar', react:'economy', office:'vpres', w:7, title:'Retaliation Against the Tariffs', cond:function (S) { return (S.pol.tariffs || 0) >= 3; },
     text:'The Sarath Federation and the Meridian League have matched the tariff schedule line for line. Grain exports from the plains have stopped at the ports.',
     ch:[
       { l:'Hold the line', s:'Economy -3, agriculture -3, farmers -5, labour +3.', f:function (S) { S.ind.economy -= 3; S.ind.agriculture -= 3; mood(S, { smallbiz:-5, labour:3 }); } },
@@ -17665,35 +17819,35 @@ var V6_EVENTS = [
       { l:'Nationalise the grid operator', s:'Treasury ' + fmc(-20) + '. Energy +3, labour +6, the exchanges -8.', f:function (S) { S.treasury -= 20; S.ind.energy += 3; mood(S, { labour:6, tech:-8, smallbiz:-3 }); } },
       { l:'Fine the utilities', s:'Treasury ' + fmc(8) + '. Energy -1, the exchanges -4, labour +2.', f:function (S) { S.treasury += 8; S.ind.energy -= 1; mood(S, { tech:-4, labour:2, seniors:-2 }); } }
     ] }),
-  ev({ id:'v6floods', office:'pres', w:7, title:'The Somnium Floods', cond:function (S) { return S.ind.environment < 48; },
+  ev({ id:'v6floods', react:'disaster', office:'pres', w:7, title:'The Somnium Floods', cond:function (S) { return S.ind.environment < 48; },
     text:'The spring tide and a week of rain have put the Somnium docks and three hundred thousand homes under water. The insurers have stopped answering the telephone.',
     ch:[
       { l:'A federal flood programme', s:'Treasury ' + fmc(-18) + '. Infrastructure +4, environment +3, the professions +5.', f:function (S) { S.treasury -= 18; S.ind.infrastructure += 4; S.ind.environment += 3; mood(S, { prof:5, labour:3, seniors:3 }); } },
       { l:'Relief and nothing structural', s:'Treasury ' + fmc(-7) + '. Seniors +3. It happens again.', f:function (S) { S.treasury -= 7; mood(S, { seniors:3, prof:-2 }); } },
       { l:'Guarantee the insurers', s:'Treasury ' + fmc(-12) + '. The exchanges +6, corruption +2, the young -3.', f:function (S) { S.treasury -= 12; S.ind.corruption += 2; mood(S, { tech:6, youth:-3 }); } }
     ] }),
-  ev({ id:'v6heat', office:'vchan', w:5, title:'The Heat', cond:function (S) { return S.ind.environment < 52; },
+  ev({ id:'v6heat', react:'disaster', office:'vchan', w:5, title:'The Heat', cond:function (S) { return S.ind.environment < 52; },
     text:'Forty days above forty degrees in the Meridian Belt. The hospitals are full of the old and the fields are brown by July.',
     ch:[
       { l:'Cooling centres and a heat plan', s:'Treasury ' + fmc(-6) + '. Healthcare +1, seniors +5.', f:function (S) { S.treasury -= 6; S.ind.healthcare += 1; mood(S, { seniors:5, labour:2 }); } },
       { l:'An emergency climate package', s:'Treasury ' + fmc(-16) + '. Environment +5, the young +6, small business -4.', f:function (S) { S.treasury -= 16; S.ind.environment += 5; mood(S, { youth:6, prof:3, smallbiz:-4 }); } },
       { l:'It is the weather', s:'Seniors -5, the young -5, unrest +2.', f:function (S) { mood(S, { seniors:-5, youth:-5 }); S.unrest += 2; } }
     ] }),
-  ev({ id:'v6pensionFund', office:'vchan', w:6, title:'The Pension Fund Is Short', cond:function (S) { return S.blocs.seniors < 48 || S.debt > 500; },
+  ev({ id:'v6pensionFund', react:'services', office:'vchan', w:6, title:'The Pension Fund Is Short', cond:function (S) { return S.blocs.seniors < 48 || S.debt > 500; },
     text:'The actuaries say the federal pension fund will be unable to meet its payments in six years. Every option is unpopular with somebody who votes.',
     ch:[
       { l:'Raise contributions', s:'Revenue up, labour -5, small business -4, seniors +4.', f:function (S) { S.treasury += 10; mood(S, { seniors:4, labour:-5, smallbiz:-4 }); } },
       { l:'Raise the pension age', s:'Treasury ' + fmc(10) + ' a year in effect. Seniors -8, labour -5, the exchanges +4.', f:function (S) { S.treasury += 10; mood(S, { seniors:-8, labour:-5, tech:4 }); } },
       { l:'Fund it from general revenue', s:'Treasury ' + fmc(-15) + '. Seniors +8, poverty -1.', f:function (S) { S.treasury -= 15; S.ind.poverty -= 1; mood(S, { seniors:8, labour:2, tech:-3 }); } }
     ] }),
-  ev({ id:'v6occupation', office:'vchan', w:6, title:'The Universities Are Occupied', cond:function (S) { return S.blocs.youth < 44; },
+  ev({ id:'v6occupation', react:'labour', office:'vchan', w:6, title:'The Universities Are Occupied', cond:function (S) { return S.blocs.youth < 44; },
     text:'Students hold the main buildings of nine universities. The demands are fees, climate and the security service, in that order, and the vice-chancellors want the police.',
     ch:[
       { l:'Meet the student leaders', s:'The young +8, the professions +2, veterans -3, capital -2.', f:function (S) { S.capital -= 2; mood(S, { youth:8, prof:2, veterans:-3, seniors:-2 }); } },
       { l:'Clear the buildings', s:'Public safety +2, liberties -3, the young -10, unrest +4, seniors +3.', f:function (S) { S.ind.safety += 2; S.ind.liberties -= 3; S.unrest += 4; mood(S, { youth:-10, prof:-4, seniors:3, faith:2 }); } },
       { l:'Cut fees for the next intake', s:'Treasury ' + fmc(-10) + '. Education +2, the young +10.', f:function (S) { S.treasury -= 10; S.ind.education += 2; mood(S, { youth:10, prof:2, smallbiz:-3 }); } }
     ] }),
-  ev({ id:'v6farm', office:'chan', w:6, title:'Foreclosures on the Plains', cond:function (S) { return S.ind.agriculture < 48 || S.blocs.smallbiz < 42; },
+  ev({ id:'v6farm', react:'economy', office:'chan', w:6, title:'Foreclosures on the Plains', cond:function (S) { return S.ind.agriculture < 48 || S.blocs.smallbiz < 42; },
     text:'The banks have begun foreclosing on the family farms of the Rigel Plains. Eleven thousand this year. The auctions are being disrupted and the sheriffs have stopped attending.',
     ch:[
       { l:'A foreclosure moratorium', s:'Farmers +8, the exchanges -6, agriculture +1.', f:function (S) { S.ind.agriculture += 1; mood(S, { smallbiz:8, faith:3, tech:-6 }); } },
@@ -17707,49 +17861,49 @@ var V6_EVENTS = [
       { l:'Let it pass', s:'The armed forces +3, the professions -4, liberties -1.', f:function (S) { S.armyLoyalty += 3; S.ind.liberties -= 1; mood(S, { prof:-4, veterans:3 }); } },
       { l:'Adopt his view and fund it', s:'Treasury ' + fmc(-12) + '. Armed forces +4, tension +4, veterans +7.', f:function (S) { S.treasury -= 12; S.ind.military += 4; S.ind.tension += 4; mood(S, { veterans:7, youth:-5, prof:-3 }); } }
     ] }),
-  ev({ id:'v6veteransMarch', office:'vpres', w:6, title:'The Veterans March on the Capital', cond:function (S) { return S.blocs.veterans < 46; },
+  ev({ id:'v6veteransMarch', react:'services', office:'vpres', w:6, title:'The Veterans March on the Capital', cond:function (S) { return S.blocs.veterans < 46; },
     text:'Sixty thousand veterans have camped in the Federal District with a list of grievances about pensions, hospitals and respect. The guard is watching from the bridges.',
     ch:[
       { l:'Meet their delegation and pay', s:'Treasury ' + fmc(-12) + '. Veterans +12, the armed forces +4.', f:function (S) { S.treasury -= 12; S.armyLoyalty += 4; mood(S, { veterans:12, faith:3, seniors:2 }); } },
       { l:'Clear the camp', s:'Veterans -15, the armed forces -8, liberties -3, unrest +8.', f:function (S) { S.armyLoyalty -= 8; S.ind.liberties -= 3; S.unrest += 8; mood(S, { veterans:-15, prof:-5, youth:-4 }); } },
       { l:'Wait them out', s:'Veterans -5, unrest +3.', f:function (S) { S.unrest += 3; mood(S, { veterans:-5 }); } }
     ] }),
-  ev({ id:'v6allianceSummit', office:'pres', w:5, title:'The Alliance Summit', cond:function (S) { return relOf(S, 'alliance') > 68; },
+  ev({ id:'v6allianceSummit', react:'foreign', office:'pres', w:5, title:'The Alliance Summit', cond:function (S) { return relOf(S, 'alliance') > 68; },
     text:'The Northern Alliance meets in the capital and wants Vale to lead: a joint command, a common tariff and a guarantee for the smaller members.',
     ch:[
       { l:'Lead the Alliance', s:'Alliance +10, tension +3, armed forces +2, treasury ' + fmc(-8) + '.', f:function (S) { shiftRel(S, 'alliance', 10); S.ind.tension += 3; S.ind.military += 2; S.treasury -= 8; mood(S, { veterans:5, prof:3, youth:-2 }); } },
       { l:'Join on equal terms', s:'Alliance +5, economy +1.', f:function (S) { shiftRel(S, 'alliance', 5); S.ind.economy += 1; mood(S, { prof:2, tech:2 }); } },
       { l:'Decline the guarantee', s:'Alliance -8, tension -2, veterans -3.', f:function (S) { shiftRel(S, 'alliance', -8); S.ind.tension -= 2; mood(S, { veterans:-3, youth:2 }); } }
     ] }),
-  ev({ id:'v6sarathOverture', office:'pres', w:6, title:'An Overture from Sarath', cond:function (S) { return relOf(S, 'sarath') < 38; },
+  ev({ id:'v6sarathOverture', react:'foreign', office:'pres', w:6, title:'An Overture from Sarath', cond:function (S) { return relOf(S, 'sarath') < 38; },
     text:'The Sarath Federation has proposed a summit, a hotline and an end to the arms race on the southern ocean. Half the cabinet thinks it is a trap.',
     ch:[
       { l:'Accept', s:'Sarath +14, tension -8, veterans -5, the professions +5.', f:function (S) { shiftRel(S, 'sarath', 14); S.ind.tension -= 8; mood(S, { prof:5, youth:4, veterans:-5 }); } },
       { l:'Accept the hotline only', s:'Sarath +5, tension -3.', f:function (S) { shiftRel(S, 'sarath', 5); S.ind.tension -= 3; } },
       { l:'Refuse', s:'Sarath -6, tension +4, veterans +4.', f:function (S) { shiftRel(S, 'sarath', -6); S.ind.tension += 4; mood(S, { veterans:4, prof:-3 }); } }
     ] }),
-  ev({ id:'v6piracy', office:'pres', w:5, title:'Piracy in the Meridian Straits', cond:function (S) { return relOf(S, 'meridian') < 58 || S.ind.tension > 48; },
+  ev({ id:'v6piracy', react:'foreign', office:'pres', w:5, title:'Piracy in the Meridian Straits', cond:function (S) { return relOf(S, 'meridian') < 58 || S.ind.tension > 48; },
     text:'Three Valean merchant ships have been taken in the straits this year. The Meridian League says its navy is a coastguard and asks what Vale intends.',
     ch:[
       { l:'Send a squadron', s:'Treasury ' + fmc(-9) + '. Tension +3, Meridian +6, armed forces +2, economy +1.', f:function (S) { S.treasury -= 9; S.ind.tension += 3; S.ind.military += 2; S.ind.economy += 1; shiftRel(S, 'meridian', 6); mood(S, { veterans:4, tech:3 }); } },
       { l:'Pay the ransoms quietly', s:'Treasury ' + fmc(-5) + '. Corruption +2, the exchanges +2.', f:function (S) { S.treasury -= 5; S.ind.corruption += 2; mood(S, { tech:2, veterans:-3 }); } },
       { l:'Reroute the trade', s:'Economy -2, Meridian -6.', f:function (S) { S.ind.economy -= 2; shiftRel(S, 'meridian', -6); mood(S, { smallbiz:-2 }); } }
     ] }),
-  ev({ id:'v6pressBaron', office:'vpres', w:5, title:'The Press Baron Asks a Favour', cond:function (S) { for (var k in S.press) { if (S.press[k] > .12) return true; } return false; },
+  ev({ id:'v6pressBaron', react:'institution', office:'vpres', w:5, title:'The Press Baron Asks a Favour', cond:function (S) { for (var k in S.press) { if (S.press[k] > .12) return true; } return false; },
     text:'The owner of eleven dailies and two networks wants a change in the broadcasting rules. He has been very helpful and he expects to go on being.',
     ch:[
       { l:'Grant it', s:'Capital +5, corruption +4, the professions -5, liberties -2.', f:function (S) { S.capital += 5; S.ind.corruption += 4; S.ind.liberties -= 2; mood(S, { prof:-5, youth:-3 }); } },
       { l:'Refuse', s:'The press turns: the governing party\'s press share falls. The professions +4.', f:function (S) { if (S.press[S.ruling]) S.press[S.ruling] = Math.max(0, S.press[S.ruling] - .08); mood(S, { prof:4, youth:2 }); } },
       { l:'Refer it to a commission', s:'Capital -2. Nothing else, for two years.', f:function (S) { S.capital -= 2; } }
     ] }),
-  ev({ id:'v6whistle', office:'chan', w:7, title:'A Whistleblower at the Treasury', cond:function (S) { return S.ind.corruption > 56; },
+  ev({ id:'v6whistle', react:'scandal', office:'chan', w:7, title:'A Whistleblower at the Treasury', cond:function (S) { return S.ind.corruption > 56; },
     text:'A deputy secretary has handed the Assembly the contracts register, annotated. It names two ministers, a governor and a committee chair.',
     ch:[
       { l:'Protect her and publish', s:'Corruption -7, the professions +8, capital -3, unity -4.', f:function (S) { S.ind.corruption -= 7; S.capital -= 3; S.unity -= 4; mood(S, { prof:8, youth:5, tech:-3 }); } },
       { l:'Prosecute the leak', s:'Liberties -4, corruption +3, the professions -8, unrest +4.', f:function (S) { S.ind.liberties -= 4; S.ind.corruption += 3; S.unrest += 4; mood(S, { prof:-8, youth:-6 }); } },
       { l:'A quiet review and two resignations', s:'Corruption -3, capital +1.', f:function (S) { S.ind.corruption -= 3; S.capital += 1; mood(S, { prof:1 }); } }
     ] }),
-  ev({ id:'v6deepfake', office:'vpres', w:5, elective:true, title:'The Synthetic Broadcast', cond:function (S) { return S.ind.technology > 60; },
+  ev({ id:'v6deepfake', react:'scandal', office:'vpres', w:5, elective:true, title:'The Synthetic Broadcast', cond:function (S) { return S.ind.technology > 60; },
     text:'A fabricated recording of the head of government ran on every platform for six hours before it was taken down. Nobody is sure who made it and a third of the country believes it.',
     ch:[
       { l:'An emergency platform law', s:'Liberties -3, technology -1, the professions +3, the exchanges -5.', f:function (S) { S.ind.liberties -= 3; S.ind.technology -= 1; mood(S, { prof:3, tech:-5, seniors:3 }); } },
@@ -17770,14 +17924,14 @@ var V6_EVENTS = [
       { l:'Open it to the Alliance', s:'Alliance +8, tension -3, technology +1.', f:function (S) { shiftRel(S, 'alliance', 8); S.ind.tension -= 3; S.ind.technology += 1; mood(S, { prof:3 }); } },
       { l:'Sell the berths', s:'Treasury ' + fmc(12) + '. The exchanges +5, the young -3.', f:function (S) { S.treasury += 12; mood(S, { tech:5, youth:-3 }); } }
     ] }),
-  ev({ id:'v6coalitionLeak', office:'national', w:6, title:'The Cabinet Minutes Are Leaked', cond:function (S) { return inPower(S) && (S.coalition || []).some(function (p) { return p !== S.ruling && S.partyRel[p] < 44; }); },
+  ev({ id:'v6coalitionLeak', react:'scandal', office:'national', w:6, title:'The Cabinet Minutes Are Leaked', cond:function (S) { return inPower(S) && (S.coalition || []).some(function (p) { return p !== S.ruling && S.partyRel[p] < 44; }); },
     text:'Six months of cabinet minutes are in the press, and the source is a coalition partner. The minutes show the government saying one thing to the partner and another to the country.',
     ch:[
       { l:'Find the source and expel them', s:'Unity +4, partner relations -10, capital +2.', f:function (S) { S.unity += 4; S.capital += 2; (S.coalition || []).forEach(function (p) { if (p !== S.ruling) shiftPartyRel(S, p, -10); }); } },
       { l:'Say nothing and tighten the circle', s:'Corruption +2, the professions -3.', f:function (S) { S.ind.corruption += 2; mood(S, { prof:-3 }); } },
       { l:'Publish the rest yourself', s:'Corruption -3, the professions +5, unity -3.', f:function (S) { S.ind.corruption -= 3; S.unity -= 3; mood(S, { prof:5, youth:2 }); } }
     ] }),
-  ev({ id:'v6byElection', office:'national', w:6, elective:true, title:'A By-election in the Bellwether', cond:function (S) { return lowerSits(S); },
+  ev({ id:'v6byElection', react:'election', office:'national', w:6, elective:true, title:'A By-election in the Bellwether', cond:function (S) { return lowerSits(S); },
     text:'The member for the most marginal seat in the Meridian Belt has died. The by-election is read by every editor as a verdict on the government.',
     ch:[
       { l:'Throw everything at it', s:'Capital -4, treasury ' + fmc(-4) + '. Your party gains three seats from the largest rival if approval is above 48; loses two otherwise.',
@@ -17786,48 +17940,48 @@ var V6_EVENTS = [
       { l:'Let the local party run it', s:'Fifty-fifty: one seat either way.', f:function (S) { var me = playParty(S), rival = null; PARTIES.forEach(function (q) { if (q.id !== me && !S.banned[q.id] && (!rival || (S.seats[q.id] || 0) > (S.seats[rival] || 0))) rival = q.id; }); if (rand() < .5) { S.seats[me] += 1; S.seats[rival] -= 1; } else { S.seats[me] = Math.max(0, S.seats[me] - 1); S.seats[rival] += 1; } } },
       { l:'Concede it early', s:'Capital +1, machine -2 percent.', f:function (S) { S.capital += 1; var me = playParty(S); S.machine[me] = clamp((S.machine[me] || 0) - .02, -.8, 1); } }
     ] }),
-  ev({ id:'v6defectionsIn', office:'national', w:5, title:'Members Cross the Floor to You', cond:function (S) { return (S.machine[playParty(S)] || 0) > .22 && lowerOn(S); },
+  ev({ id:'v6defectionsIn', react:'party', office:'national', w:5, title:'Members Cross the Floor to You', cond:function (S) { return (S.machine[playParty(S)] || 0) > .22 && lowerOn(S); },
     text:'Fourteen members of the largest party opposite want to join yours. They bring their seats, their donors and a reputation for crossing floors.',
     ch:[
       { l:'Welcome them', s:'Your party +14 seats, unity -3, corruption +1.', f:function (S) { var me = playParty(S), rival = null; PARTIES.forEach(function (q) { if (q.id !== me && !S.banned[q.id] && (!rival || (S.seats[q.id] || 0) > (S.seats[rival] || 0))) rival = q.id; }); var n = Math.min(14, S.seats[rival] || 0); S.seats[me] += n; S.seats[rival] -= n; S.unity -= 3; S.ind.corruption += 1; logIt(S, n + ' members crossed the floor to the ' + PARTY[me].short + '.'); } },
       { l:'Take them on probation', s:'Your party +7 seats, unity -1.', f:function (S) { var me = playParty(S), rival = null; PARTIES.forEach(function (q) { if (q.id !== me && !S.banned[q.id] && (!rival || (S.seats[q.id] || 0) > (S.seats[rival] || 0))) rival = q.id; }); var n = Math.min(7, S.seats[rival] || 0); S.seats[me] += n; S.seats[rival] -= n; S.unity -= 1; } },
       { l:'Refuse them', s:'Unity +3, the professions +2.', f:function (S) { S.unity += 3; mood(S, { prof:2 }); } }
     ] }),
-  ev({ id:'v6honours', office:'national', w:5, title:'The Honours Scandal', cond:function (S) { return (S.uses.honours || 0) > 0 && S.ind.corruption > 48; },
+  ev({ id:'v6honours', react:'scandal', office:'national', w:5, title:'The Honours Scandal', cond:function (S) { return (S.uses.honours || 0) > 0 && S.ind.corruption > 48; },
     text:'Every name on the last honours list gave money to the party fund within a year of the citation. The list is in the press with the amounts.',
     ch:[
       { l:'Return the money', s:'Treasury ' + fmc(-6) + '. Corruption -3, the professions +3.', f:function (S) { S.treasury -= 6; S.ind.corruption -= 3; mood(S, { prof:3 }); } },
       { l:'Defend the list', s:'Corruption +3, the professions -5, capital +1.', f:function (S) { S.ind.corruption += 3; S.capital += 1; mood(S, { prof:-5, youth:-3 }); } },
       { l:'Abolish the honours list', s:'Corruption -2, veterans -4, the faith communities -2, the young +3.', f:function (S) { S.ind.corruption -= 2; mood(S, { veterans:-4, faith:-2, youth:3 }); } }
     ] }),
-  ev({ id:'v6statue', office:'national', w:4, title:'A Statue Comes Down', text:'A crowd in Somnium has pulled down the statue of a founder whose fortune was made in ways the country no longer discusses politely. The governor wants it put back.',
+  ev({ id:'v6statue', react:'institution', office:'national', w:4, title:'A Statue Comes Down', text:'A crowd in Somnium has pulled down the statue of a founder whose fortune was made in ways the country no longer discusses politely. The governor wants it put back.',
     ch:[
       { l:'Leave it down and commission a review', s:'The young +5, the professions +3, the faith communities -4, veterans -4.', f:function (S) { mood(S, { youth:5, prof:3, faith:-4, veterans:-4, seniors:-2 }); } },
       { l:'Put it back', s:'The faith communities +4, veterans +4, seniors +3, the young -6.', f:function (S) { mood(S, { faith:4, veterans:4, seniors:3, youth:-6, prof:-2 }); } },
       { l:'Move it to a museum', s:'A little of everything: the professions +2, seniors +1.', f:function (S) { mood(S, { prof:2, seniors:1, youth:1 }); } }
     ] }),
-  ev({ id:'v6terror', office:'pres', w:5, title:'A Bomb in the Federal District', cond:function (S) { return S.ind.safety < 52 && S.ind.tension > 52; },
+  ev({ id:'v6terror', react:'security', office:'pres', w:5, title:'A Bomb in the Federal District', cond:function (S) { return S.ind.safety < 52 && S.ind.tension > 52; },
     text:'A device in the ministry quarter killed nine people. The claim came from a group nobody had heard of and the intelligence points in two directions at once.',
     ch:[
       { l:'Emergency powers for a year', s:'Public safety +5, liberties -8, unrest -2, the professions -6.', f:function (S) { S.ind.safety += 5; S.ind.liberties -= 8; S.unrest -= 2; mood(S, { prof:-6, youth:-6, veterans:6, seniors:4 }); } },
       { l:'A criminal investigation and nothing more', s:'Public safety +1, liberties +1, the professions +4.', f:function (S) { S.ind.safety += 1; S.ind.liberties += 1; mood(S, { prof:4, seniors:-3 }); } },
       { l:'Strike the sponsors abroad', s:'Tension +9, armed forces +2, veterans +7, the young -5.', f:function (S) { S.ind.tension += 9; S.ind.military += 2; mood(S, { veterans:7, youth:-5, prof:-3 }); } }
     ] }),
-  ev({ id:'v6dam', office:'chan', w:5, title:'The Cassian Dam', cond:function (S) { return S.ind.infrastructure < 48 && S.ind.environment < 52; },
+  ev({ id:'v6dam', react:'disaster', office:'chan', w:5, title:'The Cassian Dam', cond:function (S) { return S.ind.infrastructure < 48 && S.ind.environment < 52; },
     text:'Engineers say the Cassian dam will not survive another wet season. Downstream are two hundred thousand people and the only federal highway in the highlands.',
     ch:[
       { l:'Rebuild it now', s:'Treasury ' + fmc(-22) + '. Infrastructure +4, environment +2, the highlands remember it.', f:function (S) { S.treasury -= 22; S.ind.infrastructure += 4; S.ind.environment += 2; S.regions.cassian.federal += 8; mood(S, { faith:3, smallbiz:3 }); } },
       { l:'Drain the reservoir and plan', s:'Treasury ' + fmc(-6) + '. Energy -2, farmers -4.', f:function (S) { S.treasury -= 6; S.ind.energy -= 2; mood(S, { smallbiz:-4 }); } },
       { l:'Accept the engineers may be wrong', s:'Nothing now. If it fails, everything.', f:function (S) { if (rand() < .35) { S.ind.infrastructure -= 6; S.ind.safety -= 4; S.unrest += 10; S.regions.cassian.federal -= 15; mood(S, { faith:-8, smallbiz:-6, prof:-6 }); logIt(S, 'The Cassian dam failed.'); chronicle(S, 'The Cassian dam failed.'); } else logIt(S, 'The Cassian dam held through the season.'); } }
     ] }),
-  ev({ id:'v6wages', office:'vchan', w:6, title:'Real Wages Have Fallen Three Years Running', cond:function (S) { return S.macro.inflation > 4.5 && S.blocs.labour < 50; },
+  ev({ id:'v6wages', react:'economy', office:'vchan', w:6, title:'Real Wages Have Fallen Three Years Running', cond:function (S) { return S.macro.inflation > 4.5 && S.blocs.labour < 50; },
     text:'Prices have outrun pay for three years and the Congress of Labour has published the figures. The metros blame the government and the plains blame the metros.',
     ch:[
       { l:'Index the minimum wage to prices', s:'Poverty -3, labour +8, small business -7, inflation +0.4.', f:function (S) { S.ind.poverty -= 3; S.macro.inflation += .4; mood(S, { labour:8, youth:3, smallbiz:-7, tech:-3 }); } },
       { l:'A one-off household payment', s:'Treasury ' + fmc(-16) + '. Labour +5, seniors +4, the exchanges -2.', f:function (S) { S.treasury -= 16; mood(S, { labour:5, seniors:4, tech:-2 }); } },
       { l:'Tighten money and wait', s:'Inflation -0.8, economy -2, unrest +3.', f:function (S) { S.macro.inflation -= .8; S.ind.economy -= 2; S.unrest += 3; mood(S, { labour:-4, tech:3 }); } }
     ] }),
-  ev({ id:'v6housing', office:'vchan', w:6, title:'The Housing Question', cond:function (S) { return S.blocs.youth < 48 && S.blocs.prof < 52; },
+  ev({ id:'v6housing', react:'services', office:'vchan', w:6, title:'The Housing Question', cond:function (S) { return S.blocs.youth < 48 && S.blocs.prof < 52; },
     text:'The average rent in Somnium is now two thirds of the average wage. The under-thirties have started organising rent strikes and the landlords have started organising the Senate.',
     ch:[
       { l:'A federal building programme', s:'Treasury ' + fmc(-20) + '. Infrastructure +3, poverty -2, the young +8, the professions +4.', f:function (S) { S.treasury -= 20; S.ind.infrastructure += 3; S.ind.poverty -= 2; mood(S, { youth:8, prof:4, labour:3, smallbiz:-3 }); } },
@@ -17979,7 +18133,8 @@ function v17GovDigest(st) {
   var rows = rec.map(function (r) {
     var where = r.office && DEPTS[r.office] ? DEPTS[r.office].name : 'The Cabinet';
     return '<li><b>' + esc(where) + '</b><br>' + esc(r.title) + ' &mdash; ' +
-      esc(r.choice) + (r.note ? '<br><small class="muted">' + esc(r.note) + '</small>' : '') + '</li>';
+      esc(r.choice) + (r.note ? '<br><small class="muted">' + esc(r.note) + '</small>' : '') +
+      (r.reaction ? '<br><small>You said: ' + esc(r.reaction) + '</small>' : '') + '</li>';
   }).join('');
   return '<div class="gz-cols"><div><h4>What the Government Did</h4>' +
     '<p class="note">' + esc(gov) + ' answered ' + rec.length + ' ' +
@@ -21022,14 +21177,14 @@ function v8WorksRecordPanel() {
 function v8Flag(S2, name) { if (S2.v8) S2.v8.flags[name] = S2.turn; }
 function v8AnyWork(st, status) { return v8ActiveWorks(st).length > 0 && (!status || v8ActiveWorks(st).some(function (w) { return st.v8.works[w.id].mode === status; })); }
 var V8_EVENTS = [
-  ev({ id:'v8siteCollapse', office:'chan', w:7, title:'Collapse on the Site', cond:function (S) { return v8AnyWork(S, 'crash'); },
+  ev({ id:'v8siteCollapse', react:'disaster', office:'chan', w:7, title:'Collapse on the Site', cond:function (S) { return v8AnyWork(S, 'crash'); },
     text:'A shuttering failure on a crash-programme site has killed four workers and injured nineteen. The inspectorate had flagged the pace of work twice. The contractor says the ministry set the deadline.',
     ch:[
       { l:'Halt every crash programme for an inquiry', s:'Every crash programme returns to the steady rate. Labour +6, the professions +3, capital -2.', f:function (S2) { v8ActiveWorks(S2).forEach(function (w) { var q = S2.v8.works[w.id]; if (q.mode === 'crash') q.mode = 'steady'; }); mood(S2, { labour:6, prof:3 }); S2.capital -= 2; } },
       { l:'Compensate the families and carry on', s:'Treasury -6, labour -4, unrest +2. The deadline stands.', f:function (S2) { S2.treasury -= 6; mood(S2, { labour:-4, youth:-2 }); S2.unrest += 2; } },
       { l:'Prosecute the contractor', s:'Corruption -2, the exchanges -3, capital +2. The site stops for a season regardless.', f:function (S2) { S2.ind.corruption -= 2; mood(S2, { tech:-3, labour:3, prof:2 }); S2.capital += 2; v8ActiveWorks(S2).forEach(function (w) { var q = S2.v8.works[w.id]; if (q.mode === 'crash') q.spent = Math.max(0, q.spent - q.cost / w.years * .5); }); } }
     ] }),
-  ev({ id:'v8worksStrike', office:'vchan', w:6, title:'The Works Go Quiet', cond:function (S) { return v8AnyWork(S) && S.blocs.labour < 48; },
+  ev({ id:'v8worksStrike', react:'labour', office:'vchan', w:6, title:'The Works Go Quiet', cond:function (S) { return v8AnyWork(S) && S.blocs.labour < 48; },
     text:'The building unions have walked off every federal site over pay. The cranes are still. The contractors are billing the idle time to the ministry.',
     ch:[
       { l:'Settle on the unions\' terms', s:'Every active work costs five percent more. Labour +7.', f:function (S2) { v8ActiveWorks(S2).forEach(function (w) { var q = S2.v8.works[w.id]; q.cost = Math.round(q.cost * 1.05); }); mood(S2, { labour:7, smallbiz:-2 }); } },
@@ -21048,7 +21203,7 @@ var V8_EVENTS = [
       { l:'Fund the boom towns', s:'Treasury -6, regional prosperity and services rise, small business +3.', f:function (S2) { var w = v8ActiveWorks(S2).filter(function (x) { return x.region; })[0]; S2.treasury -= 6; if (w && S2.regions[w.region]) { S2.regions[w.region].services += 5; S2.regions[w.region].prosperity += 3; S2.regions[w.region].federal += 4; } mood(S2, { smallbiz:3, labour:2 }); } },
       { l:'It is a state matter', s:'State governments -4, unrest +2 in the region.', f:function (S2) { var w = v8ActiveWorks(S2).filter(function (x) { return x.region; })[0]; S2.crown -= 4; if (w && S2.regions[w.region]) { S2.regions[w.region].order -= 4; S2.regions[w.region].federal -= 3; } } }
     ] }),
-  ev({ id:'v8contractorGift', office:'chan', w:5, title:'The Contractor\'s Hospitality', cond:function (S) { return v8AnyWork(S) && inPower(S); },
+  ev({ id:'v8contractorGift', react:'scandal', office:'chan', w:5, title:'The Contractor\'s Hospitality', cond:function (S) { return v8AnyWork(S) && inPower(S); },
     text:'A newspaper has photographs of your minister of works on the contractor\'s yacht off the Meridian coast. The minister says it was a working visit. The yacht has no desk.',
     ch:[
       { l:'Accept the resignation', s:'Capital -2, corruption -1, the professions +3. The story tilts to sleaze briefly and then away.', f:function (S2) { S2.capital -= 2; S2.ind.corruption -= 1; mood(S2, { prof:3 }); v8Flag(S2, 'resignation'); } },
@@ -21061,104 +21216,104 @@ var V8_EVENTS = [
       { l:'The head of government cuts it', s:'Capital +3, unity +2, state governments -3.', f:function (S2) { S2.capital += 3; S2.unity = c100((S2.unity || 60) + 2); S2.crown -= 3; } },
       { l:'Share the ribbon with the governor', s:'State governments +4, regional trust +3, capital +1.', f:function (S2) { S2.crown += 4; S2.capital += 1; REGIONS.forEach(function (r) { S2.regions[r.id].federal += .5; }); } }
     ] }),
-  ev({ id:'v8leak', office:'national', w:8, title:'The Leaked Memorandum', cond:function (S) { return inPower(S) && (S.unity || 60) < 55; },
+  ev({ id:'v8leak', react:'scandal', office:'national', w:8, title:'The Leaked Memorandum', cond:function (S) { return inPower(S) && (S.unity || 60) < 55; },
     text:'The Federal Courier has a memorandum from your own chief of staff describing the cabinet as "a hospital with no doctors". It was sent to six people. One of them is a minister.',
     ch:[
       { l:'Find the leaker and sack them', s:'Unity +4, capital -2, the professions -2. The hunt takes a session.', f:function (S2) { S2.unity = c100((S2.unity || 60) + 4); S2.capital -= 2; mood(S2, { prof:-2 }); } },
       { l:'Laugh it off at Question Time', s:'Unity -2, the story tilts toward drift. It blows over.', f:function (S2) { S2.unity = c100((S2.unity || 60) - 2); if (S2.v8) S2.v8.press.nudge.drift = (S2.v8.press.nudge.drift || 0) + 1; } },
       { l:'Reshuffle the hospital', s:'Capital -4, unity +6, two ministries change hands and lose a session of competence.', f:function (S2) { S2.capital -= 4; S2.unity = c100((S2.unity || 60) + 6); if (S2.ministers) { var ids = Object.keys(S2.ministers).filter(function (k) { return S2.ministers[k]; }).slice(0, 2); ids.forEach(function (k) { if (S2.ministers[k] && S2.ministers[k].competence !== undefined) S2.ministers[k].competence = Math.max(10, S2.ministers[k].competence - 8); }); } v8Flag(S2, 'resignation'); } }
     ] }),
-  ev({ id:'v8editor', office:'vpres', w:6, title:'The Editor Calls', cond:function (S) { return S.turn > 2; },
+  ev({ id:'v8editor', react:'institution', office:'vpres', w:6, title:'The Editor Calls', cond:function (S) { return S.turn > 2; },
     text:function () { var p = V8_PAPERS[S.turn % V8_PAPERS.length]; return 'The editor of ' + p.name + ' would like dinner. The paper\'s proprietor has a broadcasting licence up for renewal and an opinion about the next leader of your party.'; },
     ch:[
       { l:'Go to dinner', s:'The press warms to your party. Corruption +1, the professions -1.', f:function (S2) { var me = playParty(S2); S2.press[me] = clamp((S2.press[me] || 0) + .06, -.4, .4); S2.ind.corruption += 1; mood(S2, { prof:-1 }); } },
       { l:'Send the press secretary', s:'Nothing changes. The editor takes note.', f:function (S2) { var me = playParty(S2); S2.press[me] = clamp((S2.press[me] || 0) - .02, -.4, .4); } },
       { l:'Refer the licence to an independent panel', s:'Corruption -2, the professions +3, the press cools toward you.', f:function (S2) { var me = playParty(S2); S2.ind.corruption -= 2; mood(S2, { prof:3, youth:2 }); S2.press[me] = clamp((S2.press[me] || 0) - .07, -.4, .4); S2.ind.liberties += 1; } }
     ] }),
-  ev({ id:'v8hotMic', office:'national', w:5, title:'The Microphone Was On', cond:function (S) { return true; },
+  ev({ id:'v8hotMic', react:'scandal', office:'national', w:5, title:'The Microphone Was On', cond:function (S) { return true; },
     text:function () { var f = leaderOf(S, playParty(S)); return f.name + ' has been recorded, after a rally, describing a loyal section of the party\'s own voters in terms the party would not print. The recording is on every front page.'; },
     ch:[
       { l:'Apologise in full', s:'Unity -3, the professions +2, the offended bloc forgives half of it.', f:function (S2) { S2.unity = c100((S2.unity || 60) - 3); mood(S2, { prof:2, faith:-2, labour:-2 }); } },
       { l:'Say it was a joke', s:'Unity +1, the offended blocs -5, the youth -2.', f:function (S2) { S2.unity = c100((S2.unity || 60) + 1); mood(S2, { faith:-5, labour:-5, youth:-2 }); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + .8; } },
       { l:'Blame the recording', s:'The press cools toward your party. Unity +2.', f:function (S2) { var me = playParty(S2); S2.press[me] = clamp((S2.press[me] || 0) - .05, -.4, .4); S2.unity = c100((S2.unity || 60) + 2); mood(S2, { prof:-3 }); } }
     ] }),
-  ev({ id:'v8byelection', office:'national', w:7, title:'The By-Election', elective:true, cond:function (S) { return electionsOn(S) && S.turn > 1; },
+  ev({ id:'v8byelection', react:'election', office:'national', w:7, title:'The By-Election', elective:true, cond:function (S) { return electionsOn(S) && S.turn > 1; },
     text:'A member has died and the writ is moved in a seat your party held by four hundred votes. The other parties are pouring in organisers. The result will be read as a verdict on everything.',
     ch:[
       { l:'Throw the machine at it', s:'Capital -3, treasury -2. Wins if the machine and the mood allow; the story follows the result.', f:function (S2) { var me = playParty(S2); S2.capital -= 3; S2.treasury -= 2; var win = (S2.machine[me] || 0) + (approval(S2) - 45) / 100 + rand() * .3 > .15; if (win) { mood(S2, { prof:1, youth:1 }); S2.unity = c100((S2.unity || 60) + 4); logIt(S2, 'The by-election was held. The ' + PARTY[me].short + ' kept the seat.'); if (S2.v8) S2.v8.press.nudge.competence = (S2.v8.press.nudge.competence || 0) + 1.2; } else { S2.unity = c100((S2.unity || 60) - 5); logIt(S2, 'The by-election was lost. The seat went to the ' + PARTY[v8Opposition(S2)].short + '.'); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + 1.4; } } },
       { l:'Let the local party fight it', s:'No cost. A loss is likelier, and a loss is a story.', f:function (S2) { var me = playParty(S2); var win = (S2.machine[me] || 0) + (approval(S2) - 50) / 100 + rand() * .3 > .2; if (win) { S2.unity = c100((S2.unity || 60) + 2); logIt(S2, 'The by-election was held and the seat was kept.'); } else { S2.unity = c100((S2.unity || 60) - 4); logIt(S2, 'The by-election was lost.'); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + 1; } } }
     ] }),
-  ev({ id:'v8pollShock', office:'national', w:6, title:'The Poll of Polls', elective:true, cond:function (S) { return electionsOn(S) && approval(S) < 42 && inPower(S); },
+  ev({ id:'v8pollShock', react:'election', office:'national', w:6, title:'The Poll of Polls', elective:true, cond:function (S) { return electionsOn(S) && approval(S) < 42 && inPower(S); },
     text:'The poll of polls has the government eleven points behind. A cabinet minister has told a columnist that the leader has "until the conference". The conference is in six weeks.',
     ch:[
       { l:'Face the conference with a new programme', s:'Capital -5, unity +5, the youth +3. The story tilts toward renewal.', f:function (S2) { S2.capital -= 5; S2.unity = c100((S2.unity || 60) + 5); mood(S2, { youth:3, prof:2 }); if (S2.v8) S2.v8.press.nudge.renewal = (S2.v8.press.nudge.renewal || 0) + 2; } },
       { l:'Sack the minister who talked', s:'Unity -3 now, +2 later, capital -1.', f:function (S2) { S2.unity = c100((S2.unity || 60) - 1); S2.capital -= 1; v8Flag(S2, 'resignation'); } },
       { l:'Ignore the polls', s:'Nothing now. Unity -2 a session while the polls stay bad.', f:function (S2) { S2.unity = c100((S2.unity || 60) - 2); if (S2.v8) S2.v8.press.nudge.drift = (S2.v8.press.nudge.drift || 0) + 1; } }
     ] }),
-  ev({ id:'v8veteranMarch', office:'vpres', w:5, title:'The March of the Veterans', cond:function (S) { return S.blocs.veterans < 45; },
+  ev({ id:'v8veteranMarch', react:'services', office:'vpres', w:5, title:'The March of the Veterans', cond:function (S) { return S.blocs.veterans < 45; },
     text:'Forty thousand veterans have marched on the capital over pensions and the hospitals. They are orderly, they are armed with nothing but medals, and they have set up camp on the federal lawn.',
     ch:[
       { l:'Meet them on the lawn', s:'Veterans +8, capital -2. A pledge on pensions is expected.', f:function (S2) { mood(S2, { veterans:8, faith:2 }); S2.capital -= 2; S2.salience.defence = c100(S2.salience.defence + 4); } },
       { l:'A pension supplement, now', s:'Treasury -8, veterans +12, seniors +3.', f:function (S2) { S2.treasury -= 8; mood(S2, { veterans:12, seniors:3 }); } },
       { l:'Clear the lawn', s:'Veterans -10, the armed forces -4, unrest +6, public safety +2.', f:function (S2) { mood(S2, { veterans:-10, faith:-3 }); S2.armyLoyalty -= 4; S2.unrest += 6; S2.ind.safety += 2; } }
     ] }),
-  ev({ id:'v8ratingAgency', office:'chan', w:6, title:'The Agency Calls', cond:function (S) { return S.debt > 700 && inPower(S); },
+  ev({ id:'v8ratingAgency', react:'economy', office:'chan', w:6, title:'The Agency Calls', cond:function (S) { return S.debt > 700 && inPower(S); },
     text:'The sovereign rating is under review. The agency wants a plan with numbers in it by Friday. The bond desk says a downgrade costs a point on every loan for a decade.',
     ch:[
       { l:'A credible plan: cuts and taxes', s:'Treasury +6, labour -4, seniors -3, the exchanges +5. The rating holds.', f:function (S2) { S2.treasury += 6; mood(S2, { labour:-4, seniors:-3, tech:5, prof:2 }); S2.ind.poverty += 1; } },
       { l:'A plan with adjectives', s:'Nothing now. The rating may fall.', f:function (S2) { if (rand() < .5) { S2.debt += 20; mood(S2, { tech:-4 }); logIt(S2, 'The sovereign rating was cut.'); if (S2.v8) S2.v8.press.nudge.squeeze = (S2.v8.press.nudge.squeeze || 0) + 1; } } },
       { l:'Borrow from the Meridian League instead', s:'Treasury +12, debt +12, relations with Meridian +4, the Alliance -3.', f:function (S2) { S2.treasury += 12; S2.debt += 12; shiftRel(S2, 'meridian', 4); shiftRel(S2, 'alliance', -3); } }
     ] }),
-  ev({ id:'v8teachers', office:'vchan', w:5, title:'The Teachers\' Ballot', cond:function (S) { return S.ind.education < 52; },
+  ev({ id:'v8teachers', react:'labour', office:'vchan', w:5, title:'The Teachers\' Ballot', cond:function (S) { return S.ind.education < 52; },
     text:'The teaching unions have voted for rolling strikes over class sizes. Every parent in the country is about to become a child-minder on alternate Tuesdays.',
     ch:[
       { l:'Fund smaller classes', s:'Treasury -7, education +3, labour +4, the professions +3.', f:function (S2) { S2.treasury -= 7; S2.ind.education += 3; mood(S2, { labour:4, prof:3, youth:2 }); } },
       { l:'Ban strikes in essential services', s:'Liberties -4, labour -8, small business +4, the exchanges +3.', f:function (S2) { S2.ind.liberties -= 4; mood(S2, { labour:-8, smallbiz:4, tech:3 }); S2.unrest += 3; } },
       { l:'Let the strikes run', s:'Education -2, parents -3 across the blocs, unrest +2.', f:function (S2) { S2.ind.education -= 2; mood(S2, { smallbiz:-3, prof:-3, seniors:-1 }); S2.unrest += 2; } }
     ] }),
-  ev({ id:'v8cyber', office:'pres', w:6, title:'The Ministries Go Dark', cond:function (S) { return S.ind.technology < 62 || relOf(S, 'sarath') < 40; },
+  ev({ id:'v8cyber', react:'security', office:'pres', w:6, title:'The Ministries Go Dark', cond:function (S) { return S.ind.technology < 62 || relOf(S, 'sarath') < 40; },
     text:'Every federal system from pensions to passports has been encrypted by someone who wants thirty million in an untraceable currency. The Sarath embassy has expressed sympathy, which is worse.',
     ch:[
       { l:'Pay', s:'Treasury -6, corruption +2, the systems return. Everyone who does this again will know it works.', f:function (S2) { S2.treasury -= 6; S2.ind.corruption += 2; } },
       { l:'Rebuild from backups', s:'Treasury -10, technology +3, a season of chaos in the ministries, the professions -3.', f:function (S2) { S2.treasury -= 10; S2.ind.technology += 3; mood(S2, { prof:-3, seniors:-3 }); if (S2.v8) S2.v8.press.nudge.chaos = (S2.v8.press.nudge.chaos || 0) + 1; } },
       { l:'Blame Sarath and expel its attaches', s:'Tension +6, relations with Sarath -8, veterans +3, technology +1.', f:function (S2) { S2.ind.tension += 6; shiftRel(S2, 'sarath', -8); mood(S2, { veterans:3 }); S2.ind.technology += 1; } }
     ] }),
-  ev({ id:'v8bridge', office:'chan', w:5, title:'The Bridge at Thaxia Falls', cond:function (S) { return S.ind.infrastructure < 50; },
+  ev({ id:'v8bridge', react:'disaster', office:'chan', w:5, title:'The Bridge at Thaxia Falls', cond:function (S) { return S.ind.infrastructure < 50; },
     text:'A federal bridge carrying the trunk road between the two largest cities has been closed after an inspection found the cables corroded through. Forty thousand vehicles a day are now driving sixty miles around.',
     ch:[
       { l:'Rebuild it at once', s:'Treasury -9, infrastructure +3, the exchanges +2, labour +2.', f:function (S2) { S2.treasury -= 9; S2.ind.infrastructure += 3; mood(S2, { tech:2, labour:2, smallbiz:2 }); } },
       { l:'A toll concession to a private operator', s:'Treasury +4, corruption +2, small business -3, the bridge reopens in a year.', f:function (S2) { S2.treasury += 4; S2.ind.corruption += 2; mood(S2, { smallbiz:-3, tech:3 }); S2.ind.infrastructure += 1; } },
       { l:'A national inspection of every bridge', s:'Treasury -4, infrastructure +1 now and public safety +2. Six more bridges close.', f:function (S2) { S2.treasury -= 4; S2.ind.infrastructure += 1; S2.ind.safety += 2; mood(S2, { prof:2, smallbiz:-2 }); } }
     ] }),
-  ev({ id:'v8drought', office:'vchan', w:5, title:'The Rigel Drought', cond:function (S) { return S.ind.agriculture < 55 || S.ind.environment < 45; },
+  ev({ id:'v8drought', react:'disaster', office:'vchan', w:5, title:'The Rigel Drought', cond:function (S) { return S.ind.agriculture < 55 || S.ind.environment < 45; },
     text:'The plains have had no rain in four months. The wheat is gone. The aquifer is being pumped dry by everyone who still has a pump. The governor wants a federal disaster declared.',
     ch:[
       { l:'Declare the disaster and pay the farms', s:'Treasury -8, small business +6, the plains +5, the exchanges -1.', f:function (S2) { S2.treasury -= 8; mood(S2, { smallbiz:6, faith:2 }); S2.regions.rigel.prosperity += 2; S2.regions.rigel.federal += 5; } },
       { l:'Ration the aquifer by federal order', s:'Environment +3, agriculture +1, small business -5, state governments -4.', f:function (S2) { S2.ind.environment += 3; S2.ind.agriculture += 1; mood(S2, { smallbiz:-5, youth:2 }); S2.crown -= 4; } },
       { l:'It is a state matter', s:'The plains -6, state governments -2, food prices rise.', f:function (S2) { S2.regions.rigel.federal -= 6; S2.regions.rigel.prosperity -= 3; S2.crown -= 2; S2.macro.inflation += .4; } }
     ] }),
-  ev({ id:'v8refinery', office:'chan', w:4, title:'Fire at the Refinery', cond:function (S) { return S.ind.energy < 55; },
+  ev({ id:'v8refinery', react:'security', office:'chan', w:4, title:'Fire at the Refinery', cond:function (S) { return S.ind.energy < 55; },
     text:'The country\'s largest refinery is on fire and will be for a week. The petrol stations have queues. The minister for energy has been photographed filling a can.',
     ch:[
       { l:'Release the strategic reserve', s:'Treasury -5, the blocs calm, energy -1 for a time.', f:function (S2) { S2.treasury -= 5; S2.ind.energy -= 1; mood(S2, { smallbiz:2, labour:1 }); } },
       { l:'Ration fuel by number plate', s:'Unrest +4, environment +1, the professions -2, prices held.', f:function (S2) { S2.unrest += 4; S2.ind.environment += 1; mood(S2, { prof:-2, smallbiz:-4 }); } },
       { l:'Let the price rise', s:'Inflation +0.5, small business -4, the exchanges +2.', f:function (S2) { S2.macro.inflation += .5; mood(S2, { smallbiz:-4, seniors:-2, tech:2 }); } }
     ] }),
-  ev({ id:'v8judgeDies', office:'vpres', w:4, title:'A Seat on the Court', cond:function (S) { return inPower(S) && S.turn > 3; },
+  ev({ id:'v8judgeDies', react:'institution', office:'vpres', w:4, title:'A Seat on the Court', cond:function (S) { return inPower(S) && S.turn > 3; },
     text:'The longest-serving justice of the federal court has died. The vacancy is yours to fill, and the Senate has been waiting for it.',
     ch:[
       { l:'A jurist of your own persuasion', s:'The court moves toward you. The professions -2, capital -2.', f:function (S2) { S2.capital -= 2; mood(S2, { prof:-2 }); if (S2.court && S2.court.justices && S2.court.justices.length) { var me = playParty(S2), q = ppos(S2, me); S2.court.justices[0] = { party:me, e:q.e, a:q.a, since:yearOf(S2.turn) }; } } },
       { l:'A consensus nominee', s:'The professions +3, capital +1, the court barely moves.', f:function (S2) { S2.capital += 1; mood(S2, { prof:3, seniors:1 }); } },
       { l:'Leave the seat empty', s:'Unrest +1, the court weakens, liberties -1.', f:function (S2) { S2.unrest += 1; S2.ind.liberties -= 1; mood(S2, { prof:-3 }); } }
     ] }),
-  ev({ id:'v8senateRevolt', office:'national', w:5, title:'The Senate Sits Late', cond:function (S) { return upperOn(S) && inPower(S) && S.bills.some(function (b) { return b.stage === 'senate'; }); },
+  ev({ id:'v8senateRevolt', react:'constitution', office:'national', w:5, title:'The Senate Sits Late', cond:function (S) { return upperOn(S) && inPower(S) && S.bills.some(function (b) { return b.stage === 'senate'; }); },
     text:'The Senate has decided to treat your legislation as an insult and is reading every clause aloud. Nothing will pass the upper house this session unless something changes.',
     ch:[
       { l:'A package of amendments for the senators', s:'Capital -3. Every bill in the Senate gains support there.', f:function (S2) { S2.capital -= 3; S2.bills.forEach(function (b) { if (b.stage === 'senate') b.support = (b.support || 0) + 6; }); } },
       { l:'Campaign against the Senate', s:'Unity +2, the professions -2, the Senate digs in. Every bill there loses support.', f:function (S2) { S2.unity = c100((S2.unity || 60) + 2); mood(S2, { prof:-2, youth:1 }); S2.bills.forEach(function (b) { if (b.stage === 'senate') b.support = (b.support || 0) - 5; }); S2.salience.federal = c100(S2.salience.federal + 3); } },
       { l:'Let them read', s:'Nothing changes.', f:function () {} }
     ] }),
-  ev({ id:'v8localDefeat', office:'national', w:5, title:'The State Elections', elective:true, cond:function (S) { return inPower(S) && electionsOn(S) && approval(S) < 48; },
+  ev({ id:'v8localDefeat', react:'election', office:'national', w:5, title:'The State Elections', elective:true, cond:function (S) { return inPower(S) && electionsOn(S) && approval(S) < 48; },
     text:'The state elections have gone badly for every governing party. Three governors have lost their legislatures and one has lost his seat. The television is calling it a referendum on the capital.',
     ch:[
       { l:'Listen and learn, publicly', s:'Unity -2, the professions +2, state governments +3.', f:function (S2) { S2.unity = c100((S2.unity || 60) - 2); mood(S2, { prof:2 }); S2.crown += 3; } },
@@ -21170,35 +21325,35 @@ var V8_EVENTS = [
       { l:'A national holiday and a parade', s:'Treasury -3, unity +3, every bloc +1, the exchanges -1.', f:function (S2) { S2.treasury -= 3; S2.unity = c100((S2.unity || 60) + 3); mood(S2, { labour:1, faith:1, veterans:2, youth:1, seniors:1, smallbiz:1, prof:1, tech:-1 }); } },
       { l:'A stamp', s:'Nothing much. The seniors +1.', f:function (S2) { mood(S2, { seniors:1 }); } }
     ] }),
-  ev({ id:'v8fisheries', office:'pres', w:4, title:'The Fishing War', cond:function (S) { return POWERS.some(function (p) { return relOf(S, p.id) < 45; }); },
+  ev({ id:'v8fisheries', react:'foreign', office:'pres', w:4, title:'The Fishing War', cond:function (S) { return POWERS.some(function (p) { return relOf(S, p.id) < 45; }); },
     text:'A neighbouring navy has seized three Somnium trawlers in waters both countries claim. The fishing towns want a gunboat. The foreign ministry wants a conference.',
     ch:[
       { l:'Send the coastguard, armed', s:'Tension +5, veterans +3, the coast +3, relations -5 with the lowest power.', f:function (S2) { S2.ind.tension += 5; mood(S2, { veterans:3 }); S2.regions.somnium.federal += 3; var low = POWERS.slice().sort(function (a, b) { return relOf(S2, a.id) - relOf(S2, b.id); })[0]; shiftRel(S2, low.id, -5); } },
       { l:'A conference on the line', s:'Capital -2, tension -2, the coast -2, the professions +2.', f:function (S2) { S2.capital -= 2; S2.ind.tension -= 2; S2.regions.somnium.federal -= 2; mood(S2, { prof:2 }); } },
       { l:'Buy the trawlers back', s:'Treasury -3, the coast +1, veterans -2.', f:function (S2) { S2.treasury -= 3; S2.regions.somnium.federal += 1; mood(S2, { veterans:-2, smallbiz:1 }); } }
     ] }),
-  ev({ id:'v8hungerMarch', office:'vchan', w:5, title:'The Hunger March', cond:function (S) { return S.ind.poverty > 55 && S.macro.unemployment > 7; },
+  ev({ id:'v8hungerMarch', react:'services', office:'vchan', w:5, title:'The Hunger March', cond:function (S) { return S.ind.poverty > 55 && S.macro.unemployment > 7; },
     text:'The unemployed of the northern cities are marching on the capital, two thousand miles, fed by the congregations along the road. They will arrive in a month. Every town they pass through joins them.',
     ch:[
       { l:'Meet them with a jobs programme', s:'Treasury -9, unemployment falls, labour +6, the faithful +3.', f:function (S2) { S2.treasury -= 9; S2.macro.unemployment = Math.max(2, S2.macro.unemployment - .8); mood(S2, { labour:6, faith:3, youth:3 }); S2.ind.poverty -= 2; } },
       { l:'Meet them with bread', s:'Treasury -3, the faithful +2, poverty unchanged.', f:function (S2) { S2.treasury -= 3; mood(S2, { faith:2, labour:1 }); } },
       { l:'Stop them at the county line', s:'Unrest +8, liberties -3, the faithful -5, labour -8, public safety +2.', f:function (S2) { S2.unrest += 8; S2.ind.liberties -= 3; S2.ind.safety += 2; mood(S2, { faith:-5, labour:-8, youth:-4, veterans:2 }); } }
     ] }),
-  ev({ id:'v8oppositionSplit', office:'national', w:4, title:'The Opposition Divides', cond:function (S) { return inPower(S) && S.turn > 4; },
+  ev({ id:'v8oppositionSplit', react:'party', office:'national', w:4, title:'The Opposition Divides', cond:function (S) { return inPower(S) && S.turn > 4; },
     text:function () { var o = v8Opposition(S); return 'The ' + PARTY[o].name + ' has split over the leadership. Two front benches are claiming the title. The Speaker has asked you which of them you recognise.'; },
     ch:[
       { l:'Recognise the weaker faction', s:'The opposition machine weakens. Corruption +1, the professions -1.', f:function (S2) { var o = v8Opposition(S2); S2.machine[o] = clamp((S2.machine[o] || 0) - .05, -.8, 1); S2.ind.corruption += 1; mood(S2, { prof:-1 }); } },
       { l:'Let the Speaker decide', s:'The professions +2. Nothing else moves.', f:function (S2) { mood(S2, { prof:2 }); } },
       { l:'Offer the moderates a pact', s:'Capital -3, trust with them +8, unity -2.', f:function (S2) { var o = v8Opposition(S2); S2.capital -= 3; shiftPartyRel(S2, o, 8); S2.unity = c100((S2.unity || 60) - 2); } }
     ] }),
-  ev({ id:'v8winter', office:'chan', w:4, title:'The Hard Winter', cond:function (S) { return S.ind.energy < 58 || S.ind.poverty > 50; },
+  ev({ id:'v8winter', react:'disaster', office:'chan', w:4, title:'The Hard Winter', cond:function (S) { return S.ind.energy < 58 || S.ind.poverty > 50; },
     text:'The coldest winter in forty years has found the gaps in the grid and the gaps in the pensions. Eleven hundred old people have died in unheated rooms. The number is on every front page.',
     ch:[
       { l:'A winter fuel payment', s:'Treasury -6, seniors +8, poverty -1.', f:function (S2) { S2.treasury -= 6; mood(S2, { seniors:8, faith:2 }); S2.ind.poverty -= 1; } },
       { l:'Cap the energy price by decree', s:'The exchanges -5, seniors +5, energy -2, small business +2.', f:function (S2) { mood(S2, { tech:-5, seniors:5, smallbiz:2 }); S2.ind.energy -= 2; } },
       { l:'Express sorrow', s:'Seniors -5, the story tilts to the squeeze.', f:function (S2) { mood(S2, { seniors:-5, faith:-2 }); if (S2.v8) S2.v8.press.nudge.squeeze = (S2.v8.press.nudge.squeeze || 0) + 1.5; } }
     ] }),
-  ev({ id:'v8spyScandal', office:'pres', w:4, title:'The Attache', cond:function (S) { return S.ind.tension > 45 && S.turn > 2; },
+  ev({ id:'v8spyScandal', react:'foreign', office:'pres', w:4, title:'The Attache', cond:function (S) { return S.ind.tension > 45 && S.turn > 2; },
     text:'A junior minister\'s private secretary has been arrested leaving a restaurant with an attache of a foreign embassy and a memory card. The minister says she was a very good private secretary.',
     ch:[
       { l:'Expel the embassy staff', s:'Tension +4, relations with the lowest power -6, veterans +3, the story holds.', f:function (S2) { S2.ind.tension += 4; var low = POWERS.slice().sort(function (a, b) { return relOf(S2, a.id) - relOf(S2, b.id); })[0]; shiftRel(S2, low.id, -6); mood(S2, { veterans:3 }); } },
@@ -22880,7 +23035,7 @@ viewJudicial = function () {
    ========================================================== */
 var V9_EVENTS = [
   /* ---- centralised republic ---- */
-  ev({ id:'v9govRevolt', office:'national', w:8, only:['centralised'], title:'The Governors Refuse the Circular',
+  ev({ id:'v9govRevolt', react:'constitution', office:'national', w:8, only:['centralised'], title:'The Governors Refuse the Circular',
     text:'Nineteen state governments have declined to administer the latest federal circular on the grounds that nobody elected the capital to run their schools. The circular sits unread in nineteen capitols and the federal inspectors have been shown the door.',
     ch:[
       { l:'Withhold the grants until they comply', s:'State governments -8, unrest +4, corruption -1. They will comply, and remember.', f:function (S2) { S2.crown -= 8; S2.unrest += 4; S2.ind.corruption -= 1; mood(S2, { smallbiz:-6, faith:-4, prof:2 }); } },
@@ -22888,7 +23043,7 @@ var V9_EVENTS = [
       { l:'Redraft it with the governors', s:'Capital -3. State governments +6; the circular is weaker.', f:function (S2) { S2.capital -= 3; S2.crown += 6; mood(S2, { smallbiz:3, faith:2 }); } },
       { l:'Quietly let it drop', s:'State governments +2, capital -2. The centralised republic looks less centralised.', f:function (S2) { S2.crown += 2; S2.capital -= 2; mood(S2, { prof:-3 }); } }
     ] }),
-  ev({ id:'v9centralAudit', office:'chan', w:6, only:['centralised'], title:'The Consolidated Accounts',
+  ev({ id:'v9centralAudit', react:'scandal', office:'chan', w:6, only:['centralised'], title:'The Consolidated Accounts',
     text:'For the first time the accounts of all fifty states run through the federal Treasury, and the Treasury has found the money: duplicated agencies, twelve state airlines, and a marina.',
     ch:[
       { l:'Consolidate the agencies', s:'Treasury ' + fmc(12) + ' a session in savings paid up front, corruption -4, state governments -6.', f:function (S2) { S2.treasury += 12; S2.ind.corruption -= 4; S2.crown -= 6; mood(S2, { prof:5, smallbiz:-4 }); } },
@@ -22896,7 +23051,7 @@ var V9_EVENTS = [
       { l:'Leave the states their marina', s:'State governments +4. The marina stays.', f:function (S2) { S2.crown += 4; mood(S2, { smallbiz:3 }); } }
     ] }),
   /* ---- executive republic ---- */
-  ev({ id:'v9ratifyRevolt', office:'national', w:8, only:['executive'], title:'The Houses Refuse to Ratify',
+  ev({ id:'v9ratifyRevolt', react:'constitution', office:'national', w:8, only:['executive'], title:'The Houses Refuse to Ratify',
     text:'The Assembly has sent back the executive orders of the session unratified, for the first time since the Executive Authority Act. It is a gesture, since the orders stand anyway, but the Speaker made it on television.',
     ch:[
       { l:'Proceed as if nothing had happened', s:'Capital +2, liberties -3, unrest +4. The houses are ornamental and everyone now knows it.', f:function (S2) { S2.capital += 2; S2.ind.liberties -= 3; S2.unrest += 4; mood(S2, { prof:-6, youth:-4, veterans:2 }); } },
@@ -22911,7 +23066,7 @@ var V9_EVENTS = [
       { l:'Double the basement', s:'Capital +4, corruption +3, liberties -2. More orders, faster.', f:function (S2) { S2.capital += 4; S2.ind.corruption += 3; S2.ind.liberties -= 2; mood(S2, { prof:-5 }); } }
     ] }),
   /* ---- emergency powers ---- */
-  ev({ id:'v9emergencyRenewal', office:'national', w:9, only:['emergency'], title:'The Emergency Comes Up for Renewal',
+  ev({ id:'v9emergencyRenewal', react:'constitution', office:'national', w:9, only:['emergency'], title:'The Emergency Comes Up for Renewal',
     text:'The proclamation expires at midnight on Friday. The services want it renewed, the governors want a date for its end, and the Constitutional Front has announced a vigil outside the executive office for every night it continues.',
     ch:[
       { l:'Renew it for two more years', s:'Capital +5, armed forces +4, liberties -4, unrest +5.', f:function (S2) { S2.capital += 5; S2.armyLoyalty += 4; S2.ind.liberties -= 4; S2.unrest += 5; mood(S2, { veterans:5, prof:-7, youth:-7 }); } },
@@ -22927,7 +23082,7 @@ var V9_EVENTS = [
       { l:'Commend him and change the rules of engagement', s:'Liberties +5, unrest -6, armed forces -7. The squares will not be cleared by rifle again.', f:function (S2) { S2.ind.liberties += 5; S2.unrest -= 6; S2.armyLoyalty -= 7; mood(S2, { prof:7, youth:8, veterans:-6 }); } }
     ] }),
   /* ---- one party state ---- */
-  ev({ id:'v9listPurge', office:'national', w:8, only:['oneparty'], title:'The Single List Needs Names',
+  ev({ id:'v9listPurge', react:'repression', office:'national', w:8, only:['oneparty'], title:'The Single List Needs Names',
     text:'The electoral commission, which is the party, has asked for the list of candidates for the ritual. Three hundred of the incumbents are former members of dissolved parties and the National Directorate wants them gone.',
     ch:[
       { l:'Purge the list', s:'Unity +8, capital +4, liberties -5, unrest +6. The former parties have nothing left.', f:function (S2) { S2.unity += 8; S2.capital += 4; S2.ind.liberties -= 5; S2.unrest += 6; PARTIES.forEach(function (p) { if (p.id !== S2.ruling) S2.machine[p.id] = clamp((S2.machine[p.id] || 0) - .08, -.8, 1); }); mood(S2, { prof:-6, youth:-5 }); } },
@@ -22950,7 +23105,7 @@ var V9_EVENTS = [
       { l:'Let them fight', s:'Economy -4, technology -2, unrest +3. The small firms pick up the pieces.', f:function (S2) { S2.ind.economy -= 4; S2.ind.technology -= 2; S2.unrest += 3; mood(S2, { smallbiz:4, tech:-6, labour:-3 }); } },
       { l:'Revoke both charters', s:'Economy -3, corruption -6, liberties +2, the exchanges -12. The franchise loses two of its loudest voices.', f:function (S2) { S2.ind.economy -= 3; S2.ind.corruption -= 6; S2.ind.liberties += 2; mood(S2, { tech:-12, labour:6, prof:5, youth:4 }); } }
     ] }),
-  ev({ id:'v9propertyRolls', office:'national', w:6, only:['corporate'], title:'The Property Rolls',
+  ev({ id:'v9propertyRolls', react:'election', office:'national', w:6, only:['corporate'], title:'The Property Rolls',
     text:'Under the weighted franchise the rolls are revalued every four years. This year the valuers have found that the Thaxia corridor is worth half the country and the Tenebris basin is worth very little at all.',
     ch:[
       { l:'Certify the rolls as they stand', s:'The exchanges +8, labour -10, unrest +6, corruption +2. Thaxia decides the elections.', f:function (S2) { S2.unrest += 6; S2.ind.corruption += 2; mood(S2, { tech:8, labour:-10, youth:-5 }); v9Bump(S2, 'tenebris', 'federal', -8); } },
@@ -22958,7 +23113,7 @@ var V9_EVENTS = [
       { l:'Revalue by head as well as by property', s:'Liberties +4, unrest -5, the exchanges -8. The corporate republic starts to look like a republic.', f:function (S2) { S2.ind.liberties += 4; S2.unrest -= 5; mood(S2, { tech:-8, labour:6, youth:5, prof:3 }); } }
     ] }),
   /* ---- imperial federation ---- */
-  ev({ id:'v9territorialDelegates', office:'national', w:8, only:['imperial'], title:'The Territorial Delegations Walk Out',
+  ev({ id:'v9territorialDelegates', react:'constitution', office:'national', w:8, only:['imperial'], title:'The Territorial Delegations Walk Out',
     text:'The delegates from the territories, seated by the Imperial Federation Act, have walked out of the Assembly over the levies. They hold forty seats on paper and the First Consul needs them on Thursday.',
     ch:[
       { l:'Cut the levies', s:'Treasury ' + fmc(-8) + ' a session forgone, territories +5, tension -3. They return.', f:function (S2) { S2.treasury -= 8; S2.ind.territories += 5; S2.ind.tension -= 3; mood(S2, { veterans:-2, prof:2 }); } },
@@ -22996,7 +23151,7 @@ var V9_EVENTS = [
       { l:'Revise the plan downward and say so', s:'Economy -2, unrest -4, labour +4, the professions +3. Honesty, for once.', f:function (S2) { S2.ind.economy -= 2; S2.unrest -= 4; mood(S2, { labour:4, prof:3 }); } },
       { l:'Import the steel quietly', s:'Treasury ' + fmc(-14) + '. Economy +1, unrest -2, tension +2. Nobody mentions it.', f:function (S2) { S2.treasury -= 14; S2.ind.economy += 1; S2.unrest -= 2; S2.ind.tension += 2; } }
     ] }),
-  ev({ id:'v9vanguardSplit', office:'national', w:6, only:['dpr'], title:'A Faction Inside the Vanguard',
+  ev({ id:'v9vanguardSplit', react:'party', office:'national', w:6, only:['dpr'], title:'A Faction Inside the Vanguard',
     text:'A group of younger cadres has circulated a paper calling for the plan to be decided by the work units rather than the centre. It is the first open argument inside the party since the proclamation, and it is popular.',
     ch:[
       { l:'Expel the authors', s:'Unity +6, liberties -4, unrest +4, the young -6.', f:function (S2) { S2.unity += 6; S2.ind.liberties -= 4; S2.unrest += 4; mood(S2, { youth:-6, labour:-2 }); } },
@@ -23004,7 +23159,7 @@ var V9_EVENTS = [
       { l:'Debate it at the Congress', s:'Capital -3, unity -2, liberties +2, unrest -3. The Congress divides for the first time in its history.', f:function (S2) { S2.capital -= 3; S2.unity -= 2; S2.ind.liberties += 2; S2.unrest -= 3; mood(S2, { prof:3, youth:3 }); } }
     ] }),
   /* ---- general dispatches, most with four ways out ---- */
-  ev({ id:'v9drought', office:'vchan', w:7, not:['dpr'], cond:function (S2) { return S2.ind.environment < 50 || S2.ind.agriculture < 50; }, title:'The Rigel Drought',
+  ev({ id:'v9drought', react:'disaster', office:'vchan', w:7, not:['dpr'], cond:function (S2) { return S2.ind.environment < 50 || S2.ind.agriculture < 50; }, title:'The Rigel Drought',
     text:'The third dry year on the plains. The reservoirs are at a fifth, the grain is a third of the average, and the water allocations written in 1974 give the cities everything and the growers nothing.',
     ch:[
       { l:'Emergency allocations to the growers', s:'Treasury ' + fmc(-9) + '. Agriculture +4, small business +7, the metros -3.', f:function (S2) { S2.treasury -= 9; S2.ind.agriculture += 4; mood(S2, { smallbiz:7, faith:3, prof:-3 }); v9Bump(S2, 'rigel', 'federal', 8); } },
@@ -23012,7 +23167,7 @@ var V9_EVENTS = [
       { l:'Buy the grain abroad', s:'Treasury ' + fmc(-7) + '. Poverty -1, tension -1, the plains -5.', f:function (S2) { S2.treasury -= 7; S2.ind.poverty -= 1; S2.ind.tension -= 1; mood(S2, { smallbiz:-5, labour:2 }); shiftRel(S2, 'calavera', 3); } },
       { l:'Let the market allocate', s:'Agriculture -4, poverty +3, unrest +5. Rigel trust -10.', f:function (S2) { S2.ind.agriculture -= 4; S2.ind.poverty += 3; S2.unrest += 5; v9Bump(S2, 'rigel', 'federal', -10); mood(S2, { smallbiz:-8, faith:-4, tech:3 }); } }
     ] }),
-  ev({ id:'v9aiLayoffs', office:'vchan', w:7, cond:function (S2) { return S2.ind.technology > 62; }, title:'The Machines Take the Back Office',
+  ev({ id:'v9aiLayoffs', react:'economy', office:'vchan', w:7, cond:function (S2) { return S2.ind.technology > 62; }, title:'The Machines Take the Back Office',
     text:'The three largest insurers have dismissed forty thousand clerks in a single quarter, replaced by models run out of the Thaxia corridor. The clerks were salaried, suburban and voted. The models do not.',
     ch:[
       { l:'A transition fund for the clerks', s:'Treasury ' + fmc(-12) + '. Poverty -2, the professions +5, the suburbs +4.', f:function (S2) { S2.treasury -= 12; S2.ind.poverty -= 2; mood(S2, { prof:5, seniors:3, smallbiz:2 }); v9Bump(S2, 'meridian', 'federal', 5); } },
@@ -23020,7 +23175,7 @@ var V9_EVENTS = [
       { l:'A right to a human review', s:'Capital -3, liberties +2, technology -1, the professions +6.', f:function (S2) { S2.capital -= 3; S2.ind.liberties += 2; S2.ind.technology -= 1; mood(S2, { prof:6, youth:3, tech:-4 }); } },
       { l:'Welcome the productivity', s:'Economy +3, technology +2, poverty +2, unrest +3. The exchanges cheer.', f:function (S2) { S2.ind.economy += 3; S2.ind.technology += 2; S2.ind.poverty += 2; S2.unrest += 3; mood(S2, { tech:9, prof:-6, labour:-5 }); } }
     ] }),
-  ev({ id:'v9carrierFire', office:'pres', w:6, cond:function (S2) { return S2.ind.military > 60; }, title:'Fire Aboard the Carrier',
+  ev({ id:'v9carrierFire', react:'security', office:'pres', w:6, cond:function (S2) { return S2.ind.military > 60; }, title:'Fire Aboard the Carrier',
     text:'A fire in the hangar deck of a supercarrier in the Somnium yards has killed nineteen sailors. The board of inquiry has found that the damage control system was procured eleven years late and installed in a hurry.',
     ch:[
       { l:'Reform procurement from the top', s:'Capital -4, armed forces +2, military +3 in the long run, corruption -4. The contractors lose their friends.', f:function (S2) { S2.capital -= 4; S2.armyLoyalty += 2; S2.ind.military += 2; S2.ind.corruption -= 4; mood(S2, { veterans:5, prof:4, tech:-3 }); } },
@@ -23028,7 +23183,7 @@ var V9_EVENTS = [
       { l:'Blame the crew', s:'Armed forces -8, veterans -9, capital +2. The board\u2019s report is sealed.', f:function (S2) { S2.armyLoyalty -= 8; S2.capital += 2; S2.ind.corruption += 2; mood(S2, { veterans:-9, prof:-4 }); } },
       { l:'Publish the report and sue the yard', s:'Corruption -3, the professions +5, the exchanges -4, treasury ' + fmc(6) + ' in damages.', f:function (S2) { S2.ind.corruption -= 3; S2.treasury += 6; mood(S2, { prof:5, veterans:2, tech:-4 }); } }
     ] }),
-  ev({ id:'v9pensionRow', office:'vchan', w:7, cond:function (S2) { return (S2.pol.socialSecurity || 0) >= 3 || S2.blocs.seniors < 45; }, title:'The Pension Indexation Row',
+  ev({ id:'v9pensionRow', react:'services', office:'vchan', w:7, cond:function (S2) { return (S2.pol.socialSecurity || 0) >= 3 || S2.blocs.seniors < 45; }, title:'The Pension Indexation Row',
     text:'The actuaries have reported that the pension, indexed to wages since 1961, will cost a fifth of the budget within twenty years. The Pensioners Union has eleven million members and a telephone number for every deputy.',
     ch:[
       { l:'Index to prices instead', s:'Treasury ' + fmc(11) + ' a session in time. Seniors -12, unrest +4, the exchanges +5.', f:function (S2) { S2.treasury += 11; S2.unrest += 4; mood(S2, { seniors:-12, labour:-3, tech:5 }); } },
@@ -23036,7 +23191,7 @@ var V9_EVENTS = [
       { l:'Commission a review to report in five years', s:'Capital -1, seniors +2. The problem is given a date.', f:function (S2) { S2.capital -= 1; mood(S2, { seniors:2, prof:-2 }); } },
       { l:'Guarantee the pension by statute', s:'Seniors +10, labour +4, debt +' + fm(20) + ', the exchanges -6.', f:function (S2) { S2.debt += 20; mood(S2, { seniors:10, labour:4, tech:-6, prof:-2 }); } }
     ] }),
-  ev({ id:'v9universityOccupation', office:'vchan', w:6, cond:function (S2) { return S2.blocs.youth < 48; }, title:'The Universities Are Occupied',
+  ev({ id:'v9universityOccupation', react:'labour', office:'vchan', w:6, cond:function (S2) { return S2.blocs.youth < 48; }, title:'The Universities Are Occupied',
     text:'Students hold the administration buildings of eleven universities. The demands are tuition, the climate and the security state, in that order, and the chancellors want the police.',
     ch:[
       { l:'Send the police', s:'Public safety +2, liberties -3, the young -10, unrest +5.', f:function (S2) { S2.ind.safety += 2; S2.ind.liberties -= 3; S2.unrest += 5; mood(S2, { youth:-10, prof:-4, seniors:3 }); } },
@@ -23044,7 +23199,7 @@ var V9_EVENTS = [
       { l:'Wait them out', s:'Unrest +2, education -1. Term ends eventually.', f:function (S2) { S2.unrest += 2; S2.ind.education -= 1; mood(S2, { youth:-3 }); } },
       { l:'Go and speak to them', s:'Capital -2. An orator wins the room; anyone else is shouted down. Either way the young remember the attempt.', f:function (S2) { S2.capital -= 2; var t = leaderOf(S2, S2.ruling).trait; if (t === 'orator' || t === 'liberal') { S2.unrest -= 6; mood(S2, { youth:10, prof:4 }); } else { S2.unrest -= 1; mood(S2, { youth:3, prof:-2 }); } } }
     ] }),
-  ev({ id:'v9spyScandal', office:'pres', w:6, cond:function (S2) { return S2.ind.tension > 50; }, title:'The Ambassador\u2019s Driver',
+  ev({ id:'v9spyScandal', react:'foreign', office:'pres', w:6, cond:function (S2) { return S2.ind.tension > 50; }, title:'The Ambassador\u2019s Driver',
     text:'The driver of the Sarath ambassador has been arrested with the minutes of the last three cabinet meetings. The minutes were accurate, which is the embarrassing part.',
     ch:[
       { l:'Expel the ambassador', s:'Tension +6, Sarath relations -12, veterans +6.', f:function (S2) { S2.ind.tension += 6; shiftRel(S2, 'sarath', -12); mood(S2, { veterans:6, prof:2, tech:-2 }); } },
@@ -23052,14 +23207,14 @@ var V9_EVENTS = [
       { l:'Find the leak in the cabinet', s:'Capital -3, unity -4, corruption -3. Somebody in the room is finished.', f:function (S2) { S2.capital -= 3; S2.unity -= 4; S2.ind.corruption -= 3; mood(S2, { prof:4 }); } },
       { l:'Use him to feed Sarath the wrong minutes', s:'Tension -2, armed forces +3, corruption +3. Nobody is told, least of all the cabinet.', f:function (S2) { S2.ind.tension -= 2; S2.armyLoyalty += 3; S2.ind.corruption += 3; } }
     ] }),
-  ev({ id:'v9churchState', office:'national', w:6, cond:function (S2) { return S2.blocs.faith > 55 || (S2.pol.religiousExemptions || 0) >= 2; }, title:'The Chaplaincy Bill',
+  ev({ id:'v9churchState', react:'constitution', office:'national', w:6, cond:function (S2) { return S2.blocs.faith > 55 || (S2.pol.religiousExemptions || 0) >= 2; }, title:'The Chaplaincy Bill',
     text:'A private member has proposed that every federal institution from the schools to the carriers carry a chaplaincy paid for by the state. The congregations have filled the galleries and the Constitutional Club has filled the lobby.',
     ch:[
       { l:'Adopt it as a government bill', s:'Faith +9, liberties -3, the professions -5, the young -5, treasury ' + fmc(-4) + '.', f:function (S2) { S2.treasury -= 4; S2.ind.liberties -= 3; mood(S2, { faith:9, seniors:3, prof:-5, youth:-5 }); } },
       { l:'Allow a free vote', s:'Capital +1, unity -2. It passes or it does not; the government is not blamed either way.', f:function (S2) { S2.capital += 1; S2.unity -= 2; if (rand() < .5) { mood(S2, { faith:5, prof:-2 }); logIt(S2, 'The chaplaincy bill passed on a free vote.'); } else { mood(S2, { faith:-3, prof:3 }); logIt(S2, 'The chaplaincy bill failed on a free vote.'); } } },
       { l:'Oppose it on constitutional grounds', s:'Liberties +2, the professions +5, the young +3, faith -7.', f:function (S2) { S2.ind.liberties += 2; mood(S2, { prof:5, youth:3, faith:-7 }); } }
     ] }),
-  ev({ id:'v9portCollapse', office:'chan', w:6, cond:function (S2) { return S2.ind.infrastructure < 50; }, title:'The Somnium Locks Fail',
+  ev({ id:'v9portCollapse', react:'disaster', office:'chan', w:6, cond:function (S2) { return S2.ind.infrastructure < 50; }, title:'The Somnium Locks Fail',
     text:'The tidal locks that carry half the republic\u2019s container trade have failed in the closed position. Forty ships are waiting outside the harbour and the engineers want six weeks.',
     ch:[
       { l:'Work round the clock, at any cost', s:'Treasury ' + fmc(-15) + '. Infrastructure +3, economy +1, labour +5.', f:function (S2) { S2.treasury -= 15; S2.ind.infrastructure += 3; S2.ind.economy += 1; mood(S2, { labour:5, tech:3, smallbiz:2 }); } },
@@ -23067,7 +23222,7 @@ var V9_EVENTS = [
       { l:'Take the six weeks', s:'Economy -4, the exchanges -6, unrest +2.', f:function (S2) { S2.ind.economy -= 4; S2.unrest += 2; mood(S2, { tech:-6, smallbiz:-3 }); } },
       { l:'Nationalise the port authority', s:'Treasury ' + fmc(-10) + '. Infrastructure +2, corruption -2, labour +6, the exchanges -5.', f:function (S2) { S2.treasury -= 10; S2.ind.infrastructure += 2; S2.ind.corruption -= 2; mood(S2, { labour:6, tech:-5, prof:2 }); } }
     ] }),
-  ev({ id:'v9frontierIncident', office:'pres', w:6, cond:function (S2) { return !S2.war && relOf(S2, 'ostmark') < 45; }, title:'Shots on the Northern Line',
+  ev({ id:'v9frontierIncident', react:'security', office:'pres', w:6, cond:function (S2) { return !S2.war && relOf(S2, 'ostmark') < 45; }, title:'Shots on the Northern Line',
     text:'An Ostmark patrol and a Valean one have exchanged fire over a survey marker that both maps place on their own side. Two dead on each side, and both capitals have their photographs.',
     ch:[
       { l:'Demand an apology and reinforce the line', s:'Tension +7, Ostmark -10, veterans +7, the frontier calms.', f:function (S2) { S2.ind.tension += 7; shiftRel(S2, 'ostmark', -10); mood(S2, { veterans:7, smallbiz:3, prof:-3 }); v9Bump(S2, 'marches', 'order', 5); } },
@@ -23075,28 +23230,28 @@ var V9_EVENTS = [
       { l:'Move the marker ourselves, at night', s:'Tension +3, corruption +2, Ostmark -6. The maps now agree, with ours.', f:function (S2) { S2.ind.tension += 3; S2.ind.corruption += 2; shiftRel(S2, 'ostmark', -6); mood(S2, { veterans:4 }); } },
       { l:'Propose a demilitarised strip', s:'Capital -3, tension -6, Ostmark +9, veterans -6, armed forces -2.', f:function (S2) { S2.capital -= 3; S2.ind.tension -= 6; shiftRel(S2, 'ostmark', 9); S2.armyLoyalty -= 2; mood(S2, { veterans:-6, youth:4, prof:3 }); } }
     ] }),
-  ev({ id:'v9heatwave', office:'vchan', w:6, cond:function (S2) { return S2.ind.environment < 48; }, title:'The Long Heat',
+  ev({ id:'v9heatwave', react:'disaster', office:'vchan', w:6, cond:function (S2) { return S2.ind.environment < 48; }, title:'The Long Heat',
     text:'Six weeks above forty degrees across the Meridian belt and the Tenebris basin. The grid held, the hospitals did not, and the excess deaths are running into the thousands.',
     ch:[
       { l:'Cooling centres and a heat agency', s:'Treasury ' + fmc(-8) + '. Healthcare +2, seniors +6, environment salience up.', f:function (S2) { S2.treasury -= 8; S2.ind.healthcare += 2; S2.salience.climate = c100((S2.salience.climate || 40) + 8); mood(S2, { seniors:6, labour:3, prof:2 }); } },
       { l:'Mandate adaptation in the building codes', s:'Capital -4, environment +3, infrastructure +1, small business -4.', f:function (S2) { S2.capital -= 4; S2.ind.environment += 3; S2.ind.infrastructure += 1; mood(S2, { smallbiz:-4, youth:4, prof:3 }); } },
       { l:'Blame the grid operators', s:'Energy +1, corruption +1, seniors -4. Somebody has to be blamed.', f:function (S2) { S2.ind.energy += 1; S2.ind.corruption += 1; mood(S2, { seniors:-4, tech:-3 }); } }
     ] }),
-  ev({ id:'v9federalStrike', office:'vchan', w:5, cond:function (S2) { return S2.blocs.prof < 46; }, title:'The Civil Service Walks Out',
+  ev({ id:'v9federalStrike', react:'labour', office:'vchan', w:5, cond:function (S2) { return S2.blocs.prof < 46; }, title:'The Civil Service Walks Out',
     text:'The federal service has struck for the first time in its history, over pay, the freeze and the tone of the ministers. The ministries are empty and, the opposition notes, the country has not noticed.',
     ch:[
       { l:'Settle with a pay award', s:'Treasury ' + fmc(-9) + '. The professions +8, corruption -1. The district calms.', f:function (S2) { S2.treasury -= 9; S2.ind.corruption -= 1; mood(S2, { prof:8, labour:2, smallbiz:-2 }); v9Bump(S2, 'district', 'federal', 8); } },
       { l:'Hold the line', s:'The professions -6, services -1 in the regions, capital +2.', f:function (S2) { S2.capital += 2; mood(S2, { prof:-6, smallbiz:2 }); REGIONS.forEach(function (r) { v9Bump(S2, r.id, 'services', -1); }); } },
       { l:'Cut the service by a tenth while it is out', s:'Treasury ' + fmc(10) + '. The professions -12, corruption +3, the exchanges +5, unrest +4.', f:function (S2) { S2.treasury += 10; S2.ind.corruption += 3; S2.unrest += 4; mood(S2, { prof:-12, tech:5, smallbiz:3 }); } }
     ] }),
-  ev({ id:'v9debtDesk', office:'chan', w:5, cond:function (S2) { return S2.debt > 500; }, title:'The Bond Desk Calls',
+  ev({ id:'v9debtDesk', react:'economy', office:'chan', w:5, cond:function (S2) { return S2.debt > 500; }, title:'The Bond Desk Calls',
     text:'The syndicate that places the republic\u2019s paper has asked for a meeting, which is the polite form of a warning. They would like a plan, a date and a name.',
     ch:[
       { l:'A fiscal rule written into law', s:'Capital -5, rating improves, the exchanges +6, labour -4. The next spending bill is harder.', f:function (S2) { S2.capital -= 5; S2.macro.confidence = c100(S2.macro.confidence + 8); mood(S2, { tech:6, smallbiz:3, labour:-4 }); } },
       { l:'Sell them a story', s:'Capital -2, corruption +1. It works once.', f:function (S2) { S2.capital -= 2; S2.ind.corruption += 1; S2.macro.confidence = c100(S2.macro.confidence + 3); } },
       { l:'Tell them the republic does not answer to a desk', s:'Labour +6, the young +4, the exchanges -10, debt service dearer.', f:function (S2) { S2.macro.confidence = c100(S2.macro.confidence - 8); mood(S2, { labour:6, youth:4, tech:-10, seniors:-3 }); } }
     ] }),
-  ev({ id:'v9movementMarch', office:'vpres', w:6, cond:function (S2) { var m = biggestMovement(S2); return m && movStrength(S2, m.id) > 50; }, title:'The March on the Capital',
+  ev({ id:'v9movementMarch', react:'repression', office:'vpres', w:6, cond:function (S2) { var m = biggestMovement(S2); return m && movStrength(S2, m.id) > 50; }, title:'The March on the Capital',
     text:'The largest movement in the country has brought a quarter of a million people to the Federal District. They have permits for a day and food for a week.',
     ch:[
       { l:'Receive its leaders', s:'Unrest -8, the movement loses a third of its grievance, the bloc behind it +8.', f:function (S2) { var m = biggestMovement(S2); if (m) { var mm = {}; mm[m.bloc] = 8; mood(S2, mm); S2.movements[m.id] = Math.max(0, (S2.movements[m.id] || 0) - 15); } S2.unrest -= 8; } },
@@ -26110,7 +26265,7 @@ if (!V8_GOALS.v9twoVales) V8_GOALS.v9twoVales = [
 /* ---------- the turn-by-turn events of the roads ---------- */
 var V10_ROAD_EVENTS = [
   /* -- the repression spiral: the apparatus generates its own weather -- */
-  ev({ id:'v10crackdownRadicals', office:'pres', w:9, cond:function (S) { return securityState(S) >= 45 && S.suppressed &&
+  ev({ id:'v10crackdownRadicals', react:'repression', office:'pres', w:9, cond:function (S) { return securityState(S) >= 45 && S.suppressed &&
       MOVEMENTS.some(function (m) { return S.suppressed[m.id] && S.turn - S.suppressed[m.id] < 4; }); },
     title:'The Crackdown Has Radicalised Them',
     text:'The movement you broke up has reformed smaller, harder and quieter. The moderates who used to answer the telephone have been replaced by people who do not have telephones.',
@@ -26120,7 +26275,7 @@ var V10_ROAD_EVENTS = [
       { l:'Open a channel to what is left', s:'Unrest +2; the Front -6; liberties +2. Talking to them admits they exist.',
         f:function (S) { S.unrest = clamp(S.unrest + 2, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') - 6, 0, 100); S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'A channel was opened to the remnant, quietly.'); } }
     ] }),
-  ev({ id:'v10disappearance', office:'vpres', w:8, cond:function (S) { return securityState(S) >= 45; },
+  ev({ id:'v10disappearance', react:'repression', office:'vpres', w:8, cond:function (S) { return securityState(S) >= 45; },
     title:'A Name the Bureau Cannot Produce',
     text:'A schoolteacher was taken at the border in October. The family has a receipt for his watch and nothing else. A newspaper abroad has the receipt.',
     ch:[
@@ -26129,7 +26284,7 @@ var V10_ROAD_EVENTS = [
       { l:'The state has no record of any such person', s:'Tension +2, corruption +2, the Front +4. Files can be unmade; families cannot.',
         f:function (S) { S.ind.tension = c100(S.ind.tension + 2); S.ind.corruption = c100(S.ind.corruption + 2); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The state had no record, and everyone understood exactly what that meant.'); } }
     ] }),
-  ev({ id:'v10informantFile', office:'pres', w:7, cond:function (S) { return securityState(S) >= 30 && (S.pol.informantNetwork || 0) > 0; },
+  ev({ id:'v10informantFile', react:'scandal', office:'pres', w:7, cond:function (S) { return securityState(S) >= 30 && (S.pol.informantNetwork || 0) > 0; },
     title:'The File on Your Own Minister',
     text:'The informant network has produced a file on a serving minister: an indiscretion, a foreign account, a meeting that should not have happened. The bureau chief brought it to you personally, which is the point.',
     ch:[
@@ -26138,7 +26293,7 @@ var V10_ROAD_EVENTS = [
       { l:'Burn it and warn the chief', s:'Capital -2; unity +4. Somewhere a copy survives.',
         f:function (S) { S.capital = clamp(S.capital - 2, -5, capCap(S)); S.unity = clamp((S.unity || 60) + 4, 5, 100); logIt(S, 'The file was burned in front of its author.'); } }
     ] }),
-  ev({ id:'v10quotaArrests', office:'vpres', w:7, cond:function (S) { return securityState(S) >= 45; },
+  ev({ id:'v10quotaArrests', react:'repression', office:'vpres', w:7, cond:function (S) { return securityState(S) >= 45; },
     title:'The Bureau Invents Its Numbers',
     text:'The quarterly return shows four hundred subversives processed. A district officer, drunk, has told a foreign correspondent that the district invents its quota and arrests to fit.',
     ch:[
@@ -26147,7 +26302,7 @@ var V10_ROAD_EVENTS = [
       { l:'Raise them', s:'Unrest -3 now; the Front +5; corruption +2. The machine eats what it is fed.',
         f:function (S) { S.unrest = clamp(S.unrest - 3, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 5, 0, 100); S.ind.corruption = c100(S.ind.corruption + 2); logIt(S, 'The quotas were raised, and met.'); } }
     ] }),
-  ev({ id:'v10torturePhotos', office:'vpres', w:6, cond:function (S) { return securityState(S) >= 55; },
+  ev({ id:'v10torturePhotos', react:'repression', office:'vpres', w:6, cond:function (S) { return securityState(S) >= 55; },
     title:'The Photographs',
     text:'Photographs from a holding facility have reached three foreign capitals. An allied government has asked, formally, whether they are genuine.',
     ch:[
@@ -26165,7 +26320,7 @@ var V10_ROAD_EVENTS = [
       { l:'Cut it and demand the annex', s:'Capital -2, safety -2; corruption -3. The bureau remembers.',
         f:function (S) { S.capital = clamp(S.capital - 2, -5, capCap(S)); S.ind.safety = c100(S.ind.safety - 2); S.ind.corruption = c100(S.ind.corruption - 3); logIt(S, 'The estimate was halved and the annex, eventually, produced.'); } }
     ] }),
-  ev({ id:'v10watchlistLeak', office:'pres', w:6, elective:true, cond:function (S) { return securityState(S) >= 30; },
+  ev({ id:'v10watchlistLeak', react:'security', office:'pres', w:6, elective:true, cond:function (S) { return securityState(S) >= 30; },
     title:'The Register Was Public for Nine Hours',
     text:'A contractor misconfigured the watchlist and for nine hours anyone could search it. Forty thousand citizens now know they are on it, including two judges and a bishop.',
     ch:[
@@ -26174,7 +26329,7 @@ var V10_ROAD_EVENTS = [
       { l:'The list is the list', s:'Unrest +4, the Front +4. The bishop preaches on it Sunday.',
         f:function (S) { S.unrest = clamp(S.unrest + 4, 0, 110); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The list stood, and so did the bishop.'); } }
     ] }),
-  ev({ id:'v10defectorAbroad', office:'pres', w:6, cond:function (S) { return securityState(S) >= 45; },
+  ev({ id:'v10defectorAbroad', react:'foreign', office:'pres', w:6, cond:function (S) { return securityState(S) >= 45; },
     title:'The Colonel Gives Interviews',
     text:'A colonel of the bureau has surfaced abroad with a suitcase of files and a publisher. The first excerpt names the officers who run the informant network, district by district.',
     ch:[
@@ -26185,7 +26340,7 @@ var V10_ROAD_EVENTS = [
     ] }),
 
   /* -- the capital road -- */
-  ev({ id:'v10charterStrike', office:'vchan', w:8, only:['corporate','syndicate'],
+  ev({ id:'v10charterStrike', react:'labour', office:'vchan', w:8, only:['corporate','syndicate'],
     title:'The Strike Against Scrip',
     text:'Three company towns are out. Their demand is not wages: it is to be paid in money.',
     ch:[
@@ -26203,7 +26358,7 @@ var V10_ROAD_EVENTS = [
       { l:'Take their man', s:'Capital +4, corruption +3, labour -6. The board notes the precedent.',
         f:function (S) { S.capital = clamp(S.capital + 4, -5, capCap(S)); S.ind.corruption = c100(S.ind.corruption + 3); mood(S, { labour:-6, tech:8 }); logIt(S, 'The board\u2019s man took the seals and supply flowed.'); } }
     ] }),
-  ev({ id:'v10auditScandal', office:'chan', w:7, only:['corporate','syndicate'],
+  ev({ id:'v10auditScandal', react:'scandal', office:'chan', w:7, only:['corporate','syndicate'],
     title:'The Auditors Audited',
     text:'The firm that certifies the assessment rolls has been caught certifying its own partners\u2019 holdings at a tenth of value. The register the franchise stands on is crooked, and now provably.',
     ch:[
@@ -26212,7 +26367,7 @@ var V10_ROAD_EVENTS = [
       { l:'A fine, and the same firm next year', s:'Corruption +3, the Front +4.',
         f:function (S) { S.ind.corruption = c100(S.ind.corruption + 3); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The firm was fined a week\u2019s fees and retained.'); } }
     ] }),
-  ev({ id:'v10townRebellion', office:'national', w:6, only:['corporate','syndicate'], cond:function (S) { return (S.pol.companyTownsAct || 0) > 0; },
+  ev({ id:'v10townRebellion', react:'constitution', office:'national', w:6, only:['corporate','syndicate'], cond:function (S) { return (S.pol.companyTownsAct || 0) > 0; },
     title:'A Town Votes to Exist',
     text:'A company town has petitioned to incorporate as an ordinary municipality: its own council, its own constable, its own store. The charter calls this expropriation.',
     ch:[
@@ -26230,7 +26385,7 @@ var V10_ROAD_EVENTS = [
       { l:'Welcome the capital', s:'Treasury +12, corruption +3, tension +1. A foreign vote on the board.',
         f:function (S) { S.treasury += 12; S.ind.corruption = c100(S.ind.corruption + 3); S.ind.tension = c100(S.ind.tension + 1); logIt(S, 'The capital was welcomed and the board\u2019s new member seated.'); } }
     ] }),
-  ev({ id:'v10marketPanic', office:'chan', w:6, only:['syndicate'],
+  ev({ id:'v10marketPanic', react:'economy', office:'chan', w:6, only:['syndicate'],
     title:'The State Is Margin-Called',
     text:'The exchanges have repriced the charters and the charters ARE the state: the treasury\u2019s paper, the pension consolidations, the concession revenues, all of it moving together, downward.',
     ch:[
@@ -26257,7 +26412,7 @@ var V10_ROAD_EVENTS = [
       { l:'The register is blind', s:'Smallbiz -10, the strike wave and the Front both stir.',
         f:function (S) { mood(S, { smallbiz:-10 }); S.movements.strikeWave = clamp(movStrength(S, 'strikeWave') + 4, 0, 100); S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 3, 0, 100); logIt(S, 'The petition was noted and filed.'); } }
     ] }),
-  ev({ id:'v10charterCourtDefiance', office:'vpres', w:5, only:['corporate','syndicate'], cond:function (S) { return (S.pol.charterCourts || 0) > 0; },
+  ev({ id:'v10charterCourtDefiance', react:'institution', office:'vpres', w:5, only:['corporate','syndicate'], cond:function (S) { return (S.pol.charterCourts || 0) > 0; },
     title:'Their Court Voids Your Order',
     text:'A charter court has held that an executive order of the federal government does not bind a charter within its concession. Your marshals and their constables are looking at each other across a gate.',
     ch:[
@@ -26277,7 +26432,7 @@ var V10_ROAD_EVENTS = [
     ] }),
 
   /* -- sham-election theatre -- */
-  ev({ id:'v10turnoutOrder', office:'national', w:7, closed:true,
+  ev({ id:'v10turnoutOrder', react:'election', office:'national', w:7, closed:true,
     title:'Choose the Number',
     text:'The registrar of the confirmation, an honest man in a dishonest office, asks what turnout the government would like reported. He has brought three drafts.',
     ch:[
@@ -26286,7 +26441,7 @@ var V10_ROAD_EVENTS = [
       { l:'The real number', s:'Unrest +3; liberties +2. The real number is sixty-one.',
         f:function (S) { S.unrest = clamp(S.unrest + 3, 0, 110); S.ind.liberties = c100(S.ind.liberties + 2); logIt(S, 'Sixty-one percent was reported, to general astonishment at the honesty.'); } }
     ] }),
-  ev({ id:'v10foreignObservers', office:'national', w:6, closed:true,
+  ev({ id:'v10foreignObservers', react:'election', office:'national', w:6, closed:true,
     title:'The Observers Ask to Come',
     text:'An international commission requests access to observe the confirmation. Refusal is a headline; admission is a risk; a guided tour is both.',
     ch:[
@@ -26295,7 +26450,7 @@ var V10_ROAD_EVENTS = [
       { l:'The guided tour', s:'Tension -1, corruption +2. They see the district that works.',
         f:function (S) { S.ind.tension = c100(S.ind.tension - 1); S.ind.corruption = c100(S.ind.corruption + 2); logIt(S, 'The observers observed what had been prepared for observation.'); } }
     ] }),
-  ev({ id:'v10spoiledBallots', office:'national', w:6, closed:true,
+  ev({ id:'v10spoiledBallots', react:'election', office:'national', w:6, closed:true,
     title:'A District Votes Wrong Anyway',
     text:'In one river district, a third of the ballots came back spoiled \u2014 the same word written across each in the same three inks. The word is the name of a dissolved party.',
     ch:[
@@ -26304,7 +26459,7 @@ var V10_ROAD_EVENTS = [
       { l:'Reprint the district\u2019s return', s:'Rigging +1; the Front +4. The inks were counted anyway.',
         f:function (S) { S.rigging = (S.rigging || 0) + 1; S.rigCount = (S.rigCount || 0) + 1; S.movements.democracyFront = clamp(movStrength(S, 'democracyFront') + 4, 0, 100); logIt(S, 'The district\u2019s return was reprinted clean.'); } }
     ] }),
-  ev({ id:'v10listPurge', office:'national', w:6, closed:true, only:['oneparty','dpr'],
+  ev({ id:'v10listPurge', react:'repression', office:'national', w:6, closed:true, only:['oneparty','dpr'],
     title:'Who Comes Off the List',
     text:'The single list has three more names than places. The secretariat asks which three careers end this morning.',
     ch:[
@@ -26313,7 +26468,7 @@ var V10_ROAD_EVENTS = [
       { l:'The three least able', s:'Capital +2; economy +1. Competence, of a kind.',
         f:function (S) { S.capital = clamp(S.capital + 2, -5, capCap(S)); S.ind.economy = c100(S.ind.economy + 1); logIt(S, 'The list was pruned for ability, a novelty that unsettled everyone.'); } }
     ] }),
-  ev({ id:'v10confessionShow', office:'vpres', w:5, closed:true, cond:function (S) { return securityState(S) >= 45; },
+  ev({ id:'v10confessionShow', react:'repression', office:'vpres', w:5, closed:true, cond:function (S) { return securityState(S) >= 45; },
     title:'A Trial for the Cameras',
     text:'The bureau has prepared a televised trial: a saboteur, a confession, a schedule. The confession is word-perfect, which is the problem with it.',
     ch:[
@@ -26391,7 +26546,7 @@ var V10_ROAD_EVENTS = [
       { l:'Shoot the messenger\u2019s career', s:'Corruption +3, economy -3; the fiction continues, compounding.',
         f:function (S) { S.ind.corruption = c100(S.ind.corruption + 3); S.ind.economy = c100(S.ind.economy - 3); logIt(S, 'The statisticians were reassigned to the provinces and the figures improved at once.'); } }
     ] }),
-  ev({ id:'v10charterFlight', office:'chan', w:8, only:['syndicate'], once:true,
+  ev({ id:'v10charterFlight', react:'economy', office:'chan', w:8, only:['syndicate'], once:true,
     title:'The Charters Leave',
     text:'Two of the five great charters have re-domiciled abroad in a single week, taking their registers, their courts and their tax farms with them. The Chartered State is being asset-stripped by its own shareholders.',
     ch:[
