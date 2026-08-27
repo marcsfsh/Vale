@@ -310,6 +310,52 @@ the ones nobody would hold a press conference about.
 - Measured from the opposition bench over forty sessions on a fixed stream:
   **37 reactions offered in 12 different shapes.**
 
+## The executive season (S17j)
+
+Before this there was no season. `execNominate` picked a name off the bench on
+the render path, `execPush` was one button and the only writer of
+`st.execPush` in three megabytes, and the contest happened inside a single
+line of `runElection`.
+
+**`st.execRace`** is one object per cycle, seeded at the boundary and closed by
+the vote:
+
+```
+{ cycle, offices:[a,b], stage:'primaries'|'general', seeded,
+  field:{ office:{ pid:{ open, runners[], winner, by, share, outsider } } },
+  push:{ 'office:name': n }, spent:{ 'office:pid': money } }
+```
+
+- **`v17RaceTick`** is the clock, called from `endTurn` after `S.turn += 1`.
+  It seeds at three sessions out, resolves the primaries at one, and lets the
+  AI parties spend in the general.
+- **`v17Field`** is the four candidates: the best bench person belonging to
+  each caucus, and a minted one for a wing with nobody there — a caucus that
+  cannot field a candidate has no voice in its own party.
+- **`v17PrimaryScore`** is the caucus's strength, the candidate's own standing
+  with the membership, and whatever has been spent on them. Those are ruling
+  2's two levers: Promote moves a caucus and therefore its candidate;
+  **`v17BackCandidate`** moves one person, which `execPush` could never do
+  because it moved a whole party's ticket.
+- **`v17ResolvePrimaries`** gives every party a candidate — chosen by the
+  membership where the party's rule is open, named by the leadership where it
+  is not — and **`v17RaceWinner`** is what `execContest` runs.
+- **`v17AiRaceSpend`** puts an AI party's own money behind a ticket it can win
+  or already holds. `st.execPush` has more than one writer for the first time.
+
+**EVERY DIE IS ROLLED AT SEED TIME.** The field, the draw for an empty wing and
+each candidate's standing are drawn once; the primary result, the polls and the
+panel are arithmetic over them. A die on the render path would make the season
+depend on how often the player opened the page — the rule the executive bench
+has kept since S15i.
+
+**`artRunningMate`** (ruling 3) wraps `execPair`: each vice attaches to its
+principal, so President and Vice-President are contested together and
+Chancellor with Vice-Chancellor, both principals at every executive ballot
+instead of the staggered eight-year pair. **It moves no ballot** — only which
+two offices are on them. The constitution is eighty-one articles now, and the
+offices book carries eleven.
+
 ## The caucuses, and who picks the candidate (S17i)
 
 **`PARTY_FACTIONS` is 7 x 4**, authored, every name and every id its own,

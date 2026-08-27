@@ -991,7 +991,7 @@ its place twice:
    other caucuses, it took five out of the party; with three it would have
    taken seven and a half every time the button was pressed.
 
-**s17j — always running** (XL). `st.execRace` state machine seeded by the
+**s17j — always running** (XL). **STATUS: DONE.** `st.execRace` state machine seeded by the
 dispatcher at cycle boundaries for the execPair offices in parallel:
 sessions 1–2 primaries (4 caucus candidates; levers = caucus strength AND
 direct candidate influence — outsiders can win), 3–4 general (campaign
@@ -1004,6 +1004,21 @@ years (ruling 3). SHAPE: st.execRace, ensure null, pre-S17j save resumed
 mid-cycle seeds at next stage boundary LOUDLY. Harness: season never
 dark; scripted outsider wins a primary; running-mate article changes pair
 and year; AI push nonzero; race state rides save/resume.
+
+*What landing it found.* Everything on the list landed. Three notes:
+
+1. **The season needed no dispatcher.** The plan's "seeded by the dispatcher"
+   was written before s17c turned out not to install one; `v17RaceTick` is
+   called from `endTurn` beside the executive contest s17h lifted out, which
+   is the same seam and one fewer wrapper.
+2. **The constitution is eighty-one articles.** There was no eighty-first slot
+   for the Article of the Running Mate without taking one from a book it
+   belonged to, so the offices book carries eleven and S11d's assertion says
+   the new shape. Loosening it to "at least ten" would have made it a bound
+   nothing could breach.
+3. **Two new wrappers, both adjudicated**: the season's view (deliberately the
+   LAST wrapper on `viewExec`, so what it sits above is everything the earlier
+   chunks put there) and the running mate's `execPair`.
 
 ### Group 4 — the other six
 

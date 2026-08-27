@@ -11224,7 +11224,12 @@ function execContest(st, res) {
          eighty-year-old nobody the party had just installed were the same
          number. execPush is aimed at one office now instead of lifting both
          contests of the pair at once. */
-      noms[p.id] = execNominate(st, office, p.id);
+      /* S17j: the season decides who a party is running. `execNominate` is
+         what is left for a party with no primary and for a build without the
+         race, and it is the same call it always was. */
+      var chosen = (typeof v17RaceWinner === 'function') ? v17RaceWinner(st, office, p.id) : null;
+      noms[p.id] = chosen ? { winner:chosen, runners:execNominate(st, office, p.id).runners }
+                          : execNominate(st, office, p.id);
       var v = (shares[p.id] || 0) * (1 + execPushOn(st, office, p.id));
       v *= .78 + rand() * .44;
       v *= execPersonFactor(st, office, p.id, noms[p.id].winner);
@@ -11242,6 +11247,7 @@ function execContest(st, res) {
   });
   st.execPush = {};
   if (st.execNominee) st.execNominee = {};
+  st.execRace = null;                       /* S17j: the season closed with it */
   st.lastExec = st.turn;
   return execRes;
 }
@@ -12790,6 +12796,8 @@ function endTurn() {
     if (checkCollapse()) return;
     if (!electionsOn(S) && isBallotTurn(S.turn)) regimeCycle(S);
     var electionDue = electionsOn(S) && isBallotTurn(S.turn);
+    /* S17j: the season runs whether or not a ballot falls this year. */
+    if (typeof v17RaceTick === 'function') v17RaceTick(S);
     /* S17h: and the executive's own calendar, which is not the legislature's.
        The contest used to run only inside `runElection`, so a legislative term
        of three -- both timing articles adopted -- moved the ballots off the
@@ -14826,6 +14834,10 @@ function wire(root) {
   /* S17i: how the party picks its candidates is a rule of the party. */
   root.querySelectorAll('[data-primaries]').forEach(function (b) {
     b.addEventListener('click', function () { v17SetPrimaries(playParty(S), b.getAttribute('data-primaries') === '1'); });
+  });
+  /* S17j: and money behind one candidate in a primary. */
+  root.querySelectorAll('[data-back-office]').forEach(function (b) {
+    b.addEventListener('click', function () { v17BackCandidate(b.getAttribute('data-back-office'), b.getAttribute('data-back-name')); });
   });
   var ps = root.querySelector('#policySearch');
   if (ps) ps.addEventListener('input', function () {
@@ -30922,6 +30934,16 @@ v11RegisterArticles([
       text:'The Assembly shall run its term, and shall not be dissolved at the convenience of the government.',
       moves:'the government cannot go to the country early; the office is steadier for it',
       mods:{ capital:.4 } }),
+  /* S17j: ruling 3's other half. The four great offices are elected every
+     eight years and two are contested every four, alternating President with
+     Vice-Chancellor and Chancellor with Vice-President. This article attaches
+     each vice to its principal instead: President and Chancellor are then both
+     contested every four years, and the two vices run on their tickets. */
+  A({ id:'artRunningMate', book:'offices', name:'Article of the Running Mate', cost:12,
+      pos:{ e:0, a:.12 },
+      text:'The Vice-President shall be chosen with the President and the Vice-Chancellor with the Chancellor, and shall stand and fall with them.',
+      moves:'both principals are contested at every executive ballot, each with a vice on the ticket; the staggered eight-year rotation ends',
+      mods:{ capital:.2 } }),
   A({ id:'artOathOfOffice', book:'offices', name:'Article of the Oath', cost:6,
       pos:{ e:0, a:0 },
       text:'Every officer of the state shall swear to the constitution, and to nothing above it.',
@@ -35124,6 +35146,314 @@ function v17Refound(st) {
     logIt(st, 'The government fell and nothing could replace it. A caretaker holds office.');
   }
   return out;
+}
+
+/* ============================================================
+   S17j — ALWAYS RUNNING
+   ============================================================
+   Ruling 2 and ruling 6, together: the four sessions before an executive
+   ballot ARE the race. The first two are the primaries, in which each of a
+   party's four caucuses puts a name forward; the last two are the general;
+   the vote closes it. Both offices of the contested pair run in parallel.
+
+   Before this there was no season at all. `execNominate` picked a name off
+   the bench on the render path, `execPush` was one button the player could
+   press and the only writer of `st.execPush` in three megabytes, and the
+   contest itself happened inside a single line of `runElection`. A player
+   could not see a campaign, could not lose a nomination, and no AI party ever
+   spent a penny on an office.
+
+   WHERE THE DICE ARE. The race is SEEDED once, at the cycle boundary, and
+   every roll it will ever make is made there: the field, the caucus draw for
+   a wing with nobody on the bench, and each candidate's own standing with the
+   membership. Everything afterwards -- the primary result, the polls, the
+   panel -- is arithmetic over what was seeded. A die on the render path would
+   make the season depend on how often the player opened the page, which is
+   the rule `execBench` has kept since S15i and this keeps with it. */
+
+var V17_PRIMARY_INFLUENCE = .18;   /* what one push is worth to one candidate */
+var V17_AI_OFFICE_SPEND = 26;      /* what an AI party will put into a ticket */
+
+function v17RaceOn(st) { return !!(st.execRace && st.execRace.cycle); }
+function v17NextExecTurn(st) {
+  var t = st.turn, last = lastTurn();
+  while (t <= last + 8 && !isExecTurn(t)) t++;
+  return isExecTurn(t) ? t : null;
+}
+
+/* THE FIELD. Every caucus of a party that puts its nominations to the
+   membership fields the best person on the bench who belongs to it; a wing
+   with nobody there finds somebody, because a caucus that cannot field a
+   candidate has no voice in its own party. */
+function v17Field(st, office, pid) {
+  var bench = execBench(st, office, pid).filter(function (c) { return !execTermBarred(st, office, c); });
+  var fs = (st.factions || {})[pid] || [];
+  var out = [];
+  fs.forEach(function (f) {
+    var mine = bench.filter(function (c) { return c.caucus === f.id; });
+    mine.sort(function (a, b) { return execNomScore(st, office, b) - execNomScore(st, office, a); });
+    var c = mine[0];
+    if (!c) {
+      c = v15Cand(makeFigure(st, pid, 44 + Math.floor(rand() * 16)));
+      c.from = f.name; c.caucus = f.id; c.caucusName = f.name; c.seat = 'caucus';
+    }
+    out.push({ name:c.name, caucus:f.id, caucusName:f.name, from:c.from || f.name,
+      trait:c.trait, competence:c.competence, loyalty:c.loyalty, ambition:c.ambition,
+      exposure:c.exposure || 0, terms:c.terms || 0, sitting:!!c.sitting, seat:c.seat || 'caucus',
+      post:c.post || null, region:c.region || null,
+      /* their own standing with the membership, drawn once */
+      standing:Math.round(40 + rand() * 40) });
+  });
+  return out;
+}
+
+/* WHAT A PRIMARY CANDIDATE IS WORTH. The caucus behind them, the candidate
+   themselves, and whatever anybody has spent on them -- which is the two
+   levers ruling 2 asks for: move a caucus's strength and you move its
+   candidate, and back a candidate directly and an outsider can win. */
+function v17PrimaryScore(st, office, pid, cand) {
+  var fs = (st.factions || {})[pid] || [];
+  var f = fs.filter(function (x) { return x.id === cand.caucus; })[0];
+  var strength = f ? f.strength : 25;
+  var v = strength * 1.6 + cand.standing * .55 + cand.competence * .22 + cand.ambition * .12;
+  if (cand.sitting) v += 18;
+  var push = ((st.execRace && st.execRace.push) || {})[office + ':' + cand.name] || 0;
+  return Math.max(0, v * (1 + push));
+}
+
+/* SEEDING. One race per cycle, both offices in parallel. */
+function v17RaceSeed(st, cycle) {
+  var offices = execPair(cycle);
+  var field = {};
+  offices.forEach(function (o) {
+    field[o] = {};
+    PARTIES.forEach(function (p) {
+      if (st.banned[p.id]) return;
+      field[o][p.id] = { open:v17PrimariesOn(st, p.id), runners:v17Field(st, o, p.id), winner:null };
+    });
+  });
+  st.execRace = { cycle:cycle, offices:offices, stage:'primaries', seeded:st.turn,
+    field:field, push:{}, spent:{}, resolved:null };
+  logIt(st, 'The season opened for ' + offices.map(function (o) { return DEPTS[o].name; }).join(' and ') +
+    '. ' + PARTIES.filter(function (p) { return !st.banned[p.id] && v17PrimariesOn(st, p.id); }).length +
+    ' of the parties put their nominations to the membership; the rest will be told who is standing.');
+  return st.execRace;
+}
+
+/* THE PRIMARIES CLOSE. Every party has a candidate afterwards: the one the
+   membership chose, or the one the leadership named. */
+function v17ResolvePrimaries(st) {
+  var r = st.execRace; if (!r) return;
+  r.offices.forEach(function (o) {
+    Object.keys(r.field[o]).forEach(function (pid) {
+      var e = r.field[o][pid];
+      if (!e.open || !e.runners.length) {
+        var nom = execNominate(st, o, pid);
+        e.winner = nom.winner.name;
+        e.by = 'the leadership';
+        return;
+      }
+      var scored = e.runners.map(function (c) { return { c:c, s:v17PrimaryScore(st, o, pid, c) }; })
+        .sort(function (a, b) { return b.s - a.s; });
+      var tot = 0; scored.forEach(function (x) { tot += x.s; });
+      e.winner = scored[0].c.name;
+      e.by = 'the membership';
+      e.share = tot ? Math.round(scored[0].s / tot * 100) : 100;
+      e.beat = scored.length - 1;
+      /* an outsider is a candidate whose caucus is not the party's largest */
+      var fs = (st.factions || {})[pid] || [];
+      var big = fs.slice().sort(function (a, b) { return b.strength - a.strength; })[0];
+      e.outsider = !!(big && scored[0].c.caucus !== big.id);
+    });
+  });
+  r.stage = 'general';
+  r.resolved = st.turn;
+  var mine = r.offices.map(function (o) {
+    var e = r.field[o][playParty(st)];
+    return e ? DEPTS[o].name + ': ' + e.winner + ', ' + (e.by === 'the membership'
+      ? e.share + ' per cent of the membership' + (e.outsider ? ', and not the largest caucus’s candidate' : '')
+      : 'named by the leadership') : null;
+  }).filter(Boolean);
+  if (mine.length) {
+    logIt(st, 'The primaries closed. ' + mine.join('. ') + '.');
+    addNews(st, 'The Primaries', 'The ' + PARTY[playParty(st)].short + ' have their candidates',
+      mine.join('. ') + '. The general campaign runs for two sessions.', 'watch');
+  }
+}
+
+/* WHO A PARTY IS ACTUALLY RUNNING. The contest reads this instead of asking
+   the bench again, so a primary result is the thing that decides. */
+function v17RaceWinner(st, office, pid) {
+  var r = st.execRace;
+  if (r && r.field && r.field[office] && r.field[office][pid] && r.field[office][pid].winner) {
+    var name = r.field[office][pid].winner;
+    var bench = execBench(st, office, pid);
+    var hit = bench.filter(function (c) { return c.name === name; })[0];
+    if (hit) return hit;
+    var run = (r.field[office][pid].runners || []).filter(function (c) { return c.name === name; })[0];
+    if (run) return v15Cand(JSON.parse(JSON.stringify(run)));
+  }
+  return null;
+}
+
+/* THE POLLS. National support, what each party has spent on this office, and
+   the person standing -- the same three terms the vote itself reads, so the
+   number on the screen is the number the country is going to produce rather
+   than a decoration beside it. */
+function v17RacePolls(st, office) {
+  var out = {}, tot = 0;
+  PARTIES.forEach(function (p) {
+    if (st.banned[p.id]) { out[p.id] = 0; return; }
+    var base = st.psupport[p.id] || 0;
+    var cand = v17RaceWinner(st, office, p.id);
+    var v = base * (1 + execPushOn(st, office, p.id)) *
+      (cand ? execPersonFactor(st, office, p.id, cand) : 1);
+    out[p.id] = Math.max(0, v); tot += out[p.id];
+  });
+  PARTIES.forEach(function (p) { out[p.id] = tot ? out[p.id] / tot : 0; });
+  return out;
+}
+
+/* THE PLAYER'S SECOND LEVER: a named candidate, not a party ticket. This is
+   what lets an outsider win a primary -- ruling 2's "influence a primary
+   candidate directly", where `execPush` only ever moved a whole party. */
+function v17BackCandidate(office, name) {
+  var r = S.execRace;
+  if (!r || r.stage !== 'primaries') { flash('The primaries are not open.'); return; }
+  var me = playParty(S), e = r.field[office] && r.field[office][me];
+  if (!e || !e.open) { flash('Your party’s nominations are the leadership’s. There is no primary to spend in.'); return; }
+  if (!e.runners.some(function (c) { return c.name === name; })) { flash('They are not in this primary.'); return; }
+  if (!pv5Spend(3, 5, 'Back ' + name, myPurse())) return;
+  r.push = r.push || {};
+  r.push[office + ':' + name] = (r.push[office + ':' + name] || 0) + V17_PRIMARY_INFLUENCE;
+  logIt(S, 'Money and organisation went behind ' + name + ' in the ' + DEPTS[office].name + ' primary.');
+  render();
+}
+
+/* AND THE OTHER SIX SPEND TOO. `st.execPush` had exactly one writer in three
+   megabytes -- the player's button -- so an AI party fielded a candidate and
+   spent nothing on them. They pay out of the purse S15f gave them, in the
+   general, and what they will spend depends on whether the office is worth
+   it to them. */
+function v17AiRaceSpend(st) {
+  var r = st.execRace; if (!r || r.stage !== 'general') return;
+  var me = playParty(st);
+  r.offices.forEach(function (o) {
+    PARTIES.forEach(function (p) {
+      if (p.id === me || st.banned[p.id]) return;
+      var key = o + ':' + p.id;
+      if ((r.spent[key] || 0) > 0) return;
+      var have = partyPurse(st, p.id);
+      if (have < V17_AI_OFFICE_SPEND) return;
+      /* a party spends on an office it can win or already holds */
+      var polls = v17RacePolls(st, o);
+      var share = polls[p.id] || 0;
+      if (share < .12 && st.exec[o] !== p.id) return;
+      v16AiPay(st, p.id, V17_AI_OFFICE_SPEND);
+      st.execPush = st.execPush || {};
+      st.execPush[key] = (st.execPush[key] || 0) + .12;
+      r.spent[key] = V17_AI_OFFICE_SPEND;
+    });
+  });
+}
+
+/* THE SEASON'S CLOCK, called from endTurn after `S.turn += 1`, so `st.turn`
+   here is the session being played. */
+function v17RaceTick(st) {
+  if (!electionsOn(st)) { st.execRace = null; return; }
+  var next = v17NextExecTurn(st);
+  if (next === null) return;
+  var away = next - st.turn;
+  if (away > 3) { if (st.execRace && st.execRace.cycle !== next) st.execRace = null; return; }
+  if (!st.execRace || st.execRace.cycle !== next) v17RaceSeed(st, next);
+  var r = st.execRace;
+  if (r.stage === 'primaries' && away <= 1) v17ResolvePrimaries(st);
+  if (r.stage === 'general') v17AiRaceSpend(st);
+}
+
+/* RULING 3'S OTHER HALF. `execPair` alternates President with Vice-Chancellor
+   and Chancellor with Vice-President, so each of the four is elected every
+   eight years and two are contested every four. The Article of the Running
+   Mate attaches each vice to its principal: both principals are contested at
+   every executive ballot and the vices stand on their tickets. Nothing else
+   about the calendar moves -- the ballots fall where they fell, and it is only
+   WHICH TWO offices are on them that changes. */
+var v17ExecPairBase = execPair;
+execPair = function (t) {
+  var st = (typeof S !== 'undefined' && S) ? S : null;
+  if (st && typeof v11Adopted === 'function' && v11Adopted(st, 'artRunningMate')) {
+    return (Math.floor((t - 5) / 4) % 2 === 0) ? ['pres', 'vpres'] : ['chan', 'vchan'];
+  }
+  return v17ExecPairBase(t);
+};
+
+/* The season sits above the offices, and it is the LAST wrapper on this view
+   so that what it sits above is everything the earlier chunks put there. */
+var v17ViewExecRace = viewExec;
+viewExec = function () {
+  return (typeof v17RacePanel === 'function' ? v17RacePanel() : '') + v17ViewExecRace();
+};
+
+/* WHAT THE SEASON LOOKS LIKE. One panel, both offices, every party. */
+function v17RacePanel() {
+  var r = S.execRace;
+  if (!r) {
+    var n = v17NextExecTurn(S);
+    return '<div class="panel"><h2>The Executive Season</h2><p class="note">' +
+      (n === null ? 'No executive election is scheduled under this constitution.'
+        : 'No season is running. The next opens ' + v8Plural(n - S.turn - 3, 'session') +
+          ' from now and closes with the ballot for ' + esc(execPair(n).map(function (o) { return DEPTS[o].name; }).join(' and ')) + '.') +
+      '</p></div>';
+  }
+  var me = playParty(S), away = r.cycle - S.turn;
+  var cards = r.offices.map(function (o) {
+    var polls = v17RacePolls(S, o);
+    var order = PARTIES.filter(function (p) { return !S.banned[p.id]; })
+      .sort(function (a, b) { return polls[b.id] - polls[a.id]; });
+    var rows = order.map(function (p) {
+      var e = r.field[o][p.id] || {};
+      var who = e.winner || (e.runners && e.runners.length ? e.runners.length + ' still standing' : '—');
+      return '<tr' + (p.id === me ? ' class="mine"' : '') + '><td><span class="dot" style="background:' + p.color + '"></span> ' +
+        esc(p.short) + '</td><td>' + esc(who) + '</td>' +
+        '<td>' + (e.open ? 'the membership' : 'the leadership') + '</td>' +
+        '<td class="num">' + (polls[p.id] * 100).toFixed(1) + '%</td></tr>';
+    }).join('');
+    var mine = r.field[o][me] || {};
+    var primary = '';
+    if (r.stage === 'primaries' && mine.open && mine.runners) {
+      primary = '<div class="subhead">Your primary &middot; ' + v8Plural(mine.runners.length, 'candidate') + '</div>' +
+        mine.runners.slice().sort(function (a, b) {
+          return v17PrimaryScore(S, o, me, b) - v17PrimaryScore(S, o, me, a);
+        }).map(function (c) {
+          var tot = 0;
+          mine.runners.forEach(function (x) { tot += v17PrimaryScore(S, o, me, x); });
+          var share = tot ? Math.round(v17PrimaryScore(S, o, me, c) / tot * 100) : 0;
+          return '<button class="strategy-choice" data-back-office="' + o + '" data-back-name="' + esc(c.name) + '">' +
+            '<b>' + esc(c.name) + ' &middot; ' + share + '%</b><small>' + esc(c.caucusName) +
+            ' &middot; out of ' + esc(c.from) + ' &middot; competence ' + Math.round(c.competence) +
+            ' &middot; standing with the membership ' + Math.round(c.standing) +
+            ' &middot; back them for ' + cst(3) + ', ' + fmc(5) + '</small></button>';
+        }).join('');
+    } else if (mine.winner) {
+      primary = '<div class="redline"><b>You are running ' + esc(mine.winner) + '</b>, ' +
+        (mine.by === 'the membership'
+          ? 'chosen by the membership with ' + (mine.share || 0) + ' per cent against ' + v8Plural(mine.beat || 0, 'other') +
+            (mine.outsider ? ', and not the largest caucus’s candidate' : '')
+          : 'named by the leadership') + '.</div>';
+    }
+    return '<article class="card"><div class="bill-title"><h3>' + esc(DEPTS[o].name) + '</h3>' +
+      '<span class="bill-no">' + esc(PARTY[S.exec[o]].short) + ' hold it</span></div>' +
+      '<div class="tablewrap"><table><thead><tr><th>Party</th><th>Standing</th><th>Chosen by</th><th class="num">Poll</th></tr></thead><tbody>' +
+      rows + '</tbody></table></div>' + primary + '</article>';
+  }).join('');
+  var stage = r.stage === 'primaries'
+    ? 'The primaries are running. Each caucus has put a name forward, and money behind one of them moves the result.'
+    : 'The general campaign is running. The primaries are closed and the tickets are set.';
+  return '<div class="panel"><h2>The Executive Season</h2>' +
+    '<p class="note">' + esc(stage) + ' The country votes in ' + v8Plural(Math.max(0, away), 'session') +
+    ', for ' + esc(r.offices.map(function (o) { return DEPTS[o].name; }).join(' and ')) +
+    ' together — both offices of the pair run in parallel, and the offices are held for eight years.</p>' +
+    '<div class="cards">' + cards + '</div></div>';
 }
 
 /* ---------- boot ---------- */

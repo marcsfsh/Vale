@@ -1990,6 +1990,76 @@ async function run() {
     await lg.close();
   }
 
+  // -- S17j: THE SEASON IS ON THE PAGE, AND ITS BUTTONS WORK. The state
+  //    machine is asserted in roads; this proves the screen: the executive
+  //    page carries the season above the offices, a primary lists its four
+  //    candidates with the caucus behind each, and a real click on one of them
+  //    moves that candidate's share of the primary.
+  {
+    const rc = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    await rc.addInitScript(() => { window.confirm = () => true; });
+    await rc.goto(URL);
+    await rc.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await rc.click('[data-setup-begin]');
+    await rc.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await rc.click('[data-doctrine]');
+    await rc.waitForTimeout(250);
+    const seed = await rc.evaluate(() => {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.turn = 7; S.capital = 400; S.treasury = 8000;
+      if (S.purse) S.purse.lp = 900;
+      v17RaceTick(S);
+      UI.tab = 'exec'; render();
+      var o = S.execRace.offices[0];
+      return { office:o, stage:S.execRace.stage,
+        runners:S.execRace.field[o].lp.runners.map(function (c) { return c.name; }) };
+    });
+    const before = await rc.evaluate((o) => {
+      var me = 'lp', run = S.execRace.field[o].lp.runners, tot = 0;
+      run.forEach(function (c) { tot += v17PrimaryScore(S, o, me, c); });
+      var out = {};
+      run.forEach(function (c) { out[c.name] = Math.round(v17PrimaryScore(S, o, me, c) / tot * 100); });
+      return out;
+    }, seed.office);
+    const page = await rc.evaluate(() => {
+      var root = document.getElementById('app');
+      var btns = [].slice.call(root.querySelectorAll('[data-back-office]'));
+      return { season:root.textContent.indexOf('The Executive Season') >= 0,
+        offices:root.textContent.indexOf('The Presidency') >= 0 || root.textContent.indexOf('Chancellor') >= 0,
+        buttons:btns.length, named:btns.filter(function (b) { return /out of/.test(b.textContent); }).length,
+        caucus:btns.filter(function (b) { return /Caucus|Group|Bloc|League|Club|Council|Wing|Committee|Forum|Alliance|Members|Independents|Collectives|Progressives|Conservatives|Left|Socialists|Moderates/.test(b.textContent); }).length,
+        first:btns.length ? btns[0].getAttribute('data-back-name') : null };
+    });
+    let clicked = null;
+    if (page.first) {
+      await rc.evaluate((n) => {
+        var b = [].slice.call(document.querySelectorAll('[data-back-name]'))
+          .filter(function (x) { return x.getAttribute('data-back-name') === n; })[0];
+        if (b) b.click();
+      }, page.first);
+      await rc.waitForTimeout(150);
+      clicked = await rc.evaluate((a) => {
+        var o = a[0], n = a[1], me = 'lp', run = S.execRace.field[o].lp.runners, tot = 0;
+        run.forEach(function (c) { tot += v17PrimaryScore(S, o, me, c); });
+        return { share:Math.round(v17PrimaryScore(S, o, me,
+          run.filter(function (c) { return c.name === n; })[0]) / tot * 100),
+          push:(S.execRace.push || {})[o + ':' + n] || 0, purse:Math.round(partyPurse(S, 'lp')) };
+      }, [seed.office, page.first]);
+    }
+    step('exec-season',
+      seed.stage === 'primaries' && seed.runners.length === 4 && page.season && page.buttons === 8 &&
+      page.named === 8 && page.caucus === 8 && !!clicked && clicked.push > 0 &&
+      clicked.share > before[page.first],
+      `the executive page carries the season above the offices (${page.season}) with the primaries running and ` +
+      `${page.buttons} candidates on the cards — four in each of the TWO primaries running in parallel, which ` +
+      `is the contested pair — each naming where they came from (${page.named}) and which ` +
+      `caucus put them forward (${page.caucus}); the page used to print a bench and no season at all; and a ` +
+      `real click on one of them moves that candidate's share of the primary from ` +
+      `${clicked ? before[page.first] : '?'}% to ${clicked ? clicked.share : '?'}%, paid for out of the party's ` +
+      `own purse (${clicked ? clicked.purse : '?'} left)`);
+    await rc.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.
