@@ -7079,6 +7079,35 @@ function execPushOn(st, office, pid) {
   return (p[office + ':' + pid] || 0) + (p[pid] || 0);
 }
 
+/* S17h: A RESHUFFLE THAT DRAWS FROM THE BENCH, AND AIMS AT AN OFFICE THE
+   PARTY ACTUALLY HOLDS. Three sites replaced the holder of a RANDOMLY chosen
+   great office with a minted stranger: a government could sack the
+   opposition's President, and whoever arrived came from nowhere, with none of
+   the competence, ambition or provenance the bench has carried since S15i and
+   none of the multi-office exclusion S17e added to it. The office is one the
+   party holds, the successor is the best free person on that party's own
+   bench, and the seating goes through execSeat like everything else. */
+function v17Reshuffle(st, pid, exclude) {
+  var held = V15_EXEC_OFFICES.filter(function (o) {
+    return st.exec[o] === pid && o !== exclude;
+  });
+  if (!held.length) return null;
+  /* the office whose holder the party can most afford to lose */
+  held.sort(function (a, b) {
+    var fa = st.figures && st.figures.exec[a], fb = st.figures && st.figures.exec[b];
+    return ((fa ? fa.competence || 50 : 50) - (fb ? fb.competence || 50 : 50)) ||
+      (v15Hash(a + st.turn) - v15Hash(b + st.turn));
+  });
+  var office = held[0], out = holderOf(st, office);
+  var bench = execBench(st, office, pid).filter(function (c) {
+    return c.name !== out.name && !v17OtherOffice(st, c.name, office);
+  });
+  bench.sort(function (a, b) { return (b.competence + b.loyalty) - (a.competence + a.loyalty); });
+  st.figures.exec[office] = null;
+  var f = execSeat(st, office, pid, bench[0] || null);
+  return { office:office, out:out, in:f };
+}
+
 function execSeat(st, office, pid, cand) {
   if (!st.figures) seedFigures(st);
   var prev = st.figures.exec[office];
@@ -7728,7 +7757,7 @@ var EVENTS = [
         f:function (S) { S.treasury -= 7; S.ind.poverty -= 2; mood(S, { labour:7, youth:6, tech:-3 }); } }
     ] }),
   ev({ id:'court', react:'institution', office:'vpres', elective:true, w:7, title:'A Justice Dies in Office',
-    text:'A seat on the Supreme Court has opened outside the normal cycle. Under the constitution the vacancy runs to the next biennial ballot, and the campaign has already started.',
+    text:'A seat on the Supreme Court has opened outside the normal cycle. Under the constitution the vacancy runs to the next general ballot, and the campaign has already started.',
     ch:[
       { l:'Spend everything on the seat', s:'Costs capital. Moves the court your way.',
         f:function (S) { S.capital -= 8; var g = govPos(S);
@@ -8189,9 +8218,11 @@ ev({ id:'movDemand', react:'party', office:'national', w:9, title:'The Movement 
             logIt(S, f.name + ' was replaced by ' + S.figures.leaders[S.ruling].name + ' at the head of the party.');
             chronicle(S, 'A change of leadership in the governing party.'); S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) - .06, -.8, 1); } } },
       { l:'Buy them off with a great office', s:'Costs capital and a department.',
-        f:function (S) { S.capital -= 4; var off = rnd(['pres','vpres','chan','vchan']);
-          S.figures.exec[off] = makeFigure(S, S.exec[off], 45); S.ind.corruption += 3;
-          logIt(S, 'The challenger was given ' + DEPTS[off].name + ' instead.'); } },
+        f:function (S) { S.capital -= 4;
+          var sh = v17Reshuffle(S, S.ruling, null);
+          S.ind.corruption += 3;
+          logIt(S, sh ? 'The challenger was given ' + DEPTS[sh.office].name + ' instead, and ' + sh.out.name + ' left it.'
+                      : 'There was no great office in the government\u2019s hands to give them.'); } },
       { l:'Stand down in their favour', s:'A new leader, and a fresh start you did not choose.',
         f:function (S) { var f2 = leaderOf(S, S.ruling); S.figures.leaders[S.ruling] = makeFigure(S, S.ruling, 42);
           S.capital = clamp(S.capital + 6, -5, capCap(S)); S.unrest -= 5;
@@ -8233,8 +8264,10 @@ ev({ id:'movDemand', react:'party', office:'national', w:9, title:'The Movement 
       { l:'Refuse them and make a virtue of it', s:'Costs seats, buys standing.',
         f:function (S) { mood(S, { prof:7, youth:5, smallbiz:3 }); S.capital += 3; } },
       { l:'Take them and give them a department', s:'Costs capital.',
-        f:function (S) { S.capital -= 5; var off = rnd(['pres','vpres','chan','vchan']);
-          S.figures.exec[off] = makeFigure(S, S.exec[off], 48); S.ind.corruption += 4; } }
+        f:function (S) { S.capital -= 5;
+          var sh = v17Reshuffle(S, S.ruling, null);
+          S.ind.corruption += 4;
+          if (sh) logIt(S, sh.out.name + ' made way at ' + DEPTS[sh.office].name + ' and ' + sh.in.name + ' took it.'); } }
     ] })
 ];
 
@@ -11090,6 +11123,58 @@ function courtSeat(st) {
            winner: totA >= totB ? A : B };
 }
 
+/* S17h: THE EXECUTIVE CONTEST IS NOT PART OF THE BALLOT. It lived inside
+   `runElection`, which meant the four great offices were only contested on
+   turns a legislative election happened to fall on -- and adopting both timing
+   articles makes the legislative term three, so the ballots land on 4, 7, 10,
+   13 and the exec turns 5, 9, 13, 17 are SILENTLY SKIPPED. Two of them are
+   never contested again for the rest of the campaign, and nothing anywhere
+   says so. It is lifted out here, called from `runElection` when the two
+   coincide and from `endTurn` when they do not.
+
+   `res` is the national vote share the contest is read against. On a ballot
+   turn that is the count just taken; on a bare exec turn the country has not
+   voted, so the standing support is used -- which spends no dice of its own
+   beyond the contest's, and is what a mid-term executive election reads. */
+function execContest(st, res) {
+  var shares = res;
+  if (!shares) {
+    shares = {}; var tot = 0;
+    PARTIES.forEach(function (p) { var v = st.psupport[p.id] || 0; shares[p.id] = v; tot += v; });
+    PARTIES.forEach(function (p) { shares[p.id] = tot ? shares[p.id] / tot : 1 / PARTIES.length; });
+  }
+  var execRes = {};
+  execPair(st.turn).forEach(function (office) {
+    var r = {}, t = 0, noms = {};
+    PARTIES.forEach(function (p) {
+      /* S15i: every party puts up a NAMED person off its own bench, and the
+         contest reads that person. The flat 1.18 for whoever held the office
+         was keyed on the party, so a beloved twenty-year technocrat and an
+         eighty-year-old nobody the party had just installed were the same
+         number. execPush is aimed at one office now instead of lifting both
+         contests of the pair at once. */
+      noms[p.id] = execNominate(st, office, p.id);
+      var v = (shares[p.id] || 0) * (1 + execPushOn(st, office, p.id));
+      v *= .78 + rand() * .44;
+      v *= execPersonFactor(st, office, p.id, noms[p.id].winner);
+      r[p.id] = Math.max(0, v); t += r[p.id];
+    });
+    PARTIES.forEach(function (p) { r[p.id] = t ? r[p.id] / t : 0; });
+    var w = rcvWinner(r);
+    execRes[office] = w;
+    st.exec[office] = w;
+    var seated = execSeat(st, office, w, noms[w].winner);
+    execRemember(st, noms[w].runners);
+    logIt(st, seated.name + ' was returned as ' + DEPTS[office].name + ' for the ' + PARTY[w].short +
+      (seated.terms > 1 ? ', for a ' + (seated.terms === 2 ? 'second' : 'further') + ' term.'
+                        : ', out of ' + seated.from + '.'));
+  });
+  st.execPush = {};
+  if (st.execNominee) st.execNominee = {};
+  st.lastExec = st.turn;
+  return execRes;
+}
+
 function runElection(st, early) {
   var before = {};
   PARTIES.forEach(function (p) { before[p.id] = st.seats[p.id] || 0; });
@@ -11199,36 +11284,7 @@ function runElection(st, early) {
   }
 
   var execRes = null;
-  if (isExecTurn(st.turn)) {
-    execRes = {};
-    execPair(st.turn).forEach(function (office) {
-      var r = {}, t = 0, noms = {};
-      PARTIES.forEach(function (p) {
-        /* S15i: every party puts up a NAMED person off its own bench, and the
-           contest reads that person. The flat 1.18 for whoever held the office
-           was keyed on the party, so a beloved twenty-year technocrat and an
-           eighty-year-old nobody the party had just installed were the same
-           number. execPush is aimed at one office now instead of lifting both
-           contests of the pair at once. */
-        noms[p.id] = execNominate(st, office, p.id);
-        var v = res[p.id] * (1 + execPushOn(st, office, p.id));
-        v *= .78 + rand() * .44;
-        v *= execPersonFactor(st, office, p.id, noms[p.id].winner);
-        r[p.id] = Math.max(0, v); t += r[p.id];
-      });
-      PARTIES.forEach(function (p) { r[p.id] = r[p.id] / t; });
-      var w = rcvWinner(r);
-      execRes[office] = w;
-      st.exec[office] = w;
-      var seated = execSeat(st, office, w, noms[w].winner);
-      execRemember(st, noms[w].runners);
-      logIt(st, seated.name + ' was returned as ' + DEPTS[office].name + ' for the ' + PARTY[w].short +
-        (seated.terms > 1 ? ', for a ' + (seated.terms === 2 ? 'second' : 'further') + ' term.'
-                          : ', out of ' + seated.from + '.'));
-    });
-    st.execPush = {};
-    if (st.execNominee) st.execNominee = {};
-  }
+  if (isExecTurn(st.turn)) execRes = execContest(st, res);
 
   var delta = {}, swing = 0;
   PARTIES.forEach(function (p) { delta[p.id] = (seats[p.id] || 0) - (before[p.id] || 0); swing += Math.abs(delta[p.id]); });
@@ -11973,12 +12029,12 @@ var ACTIONS = [
   A({ id:'sackMinister', need:'gov', cat:'Figures', name:'Sack a Minister', cost:4, cool:1,
     desc:'Somebody has to answer for it, and it is not going to be you.',
     run:function (S) {
-      var off = rnd(['pres','vpres','chan','vchan']);
-      var old = holderOf(S, off);
-      S.figures.exec[off] = makeFigure(S, S.exec[off], 44);
+      var sh = v17Reshuffle(S, playParty(S), null);
+      if (!sh) { flash('Your party holds no great office to sack anybody from.'); return; }
       S.capital += 5; S.unrest -= 3; S.ind.corruption -= 2;
       mood(S, { prof:3, seniors:2 });
-      logIt(S, old.name + ' was dismissed from ' + DEPTS[off].name + ' and took the blame with them.');
+      logIt(S, sh.out.name + ' was dismissed from ' + DEPTS[sh.office].name + ' and took the blame with them. ' +
+        sh.in.name + ' takes the office, out of ' + sh.in.from + '.');
     } })
 ];
 var HOUSE_ACTIONS = ACTIONS.filter(function (a) { return a.house; });
@@ -12590,6 +12646,16 @@ function doTransition(tr) {
 function callElection() {
   if (!leads(S)) { flash('Only the head of government can dissolve the Assembly.'); return; }
   if (!electionsOn(S)) { flash('There is no Assembly to dissolve.'); return; }
+  /* S17h: THE ARTICLE OF THE FIXED TERM GETS ITS TEETH. Its card says "The
+     Assembly shall run its term, and shall not be dissolved at the convenience
+     of the government", and until now it said only that: it moved capital
+     income and left the dissolution untouched, so a government could adopt it
+     and go to the country the same session. */
+  if (typeof v11Adopted === 'function' && v11Adopted(S, 'artFixedTerm')) {
+    flash('The Article of the Fixed Term stands. The Assembly runs its term and is not dissolved at the convenience of the government.');
+    return;
+  }
+  if (S.caretaker) { flash('A caretaker does not dissolve the Assembly. It has not been invested by it.'); return; }
   if (S.capital < cst(10)) { flash('Not enough political capital.'); return; }
   captureUndo('Call a snap election');
   S.capital -= cst(10);
@@ -12653,6 +12719,19 @@ function endTurn() {
     if (checkCollapse()) return;
     if (!electionsOn(S) && isBallotTurn(S.turn)) regimeCycle(S);
     var electionDue = electionsOn(S) && isBallotTurn(S.turn);
+    /* S17h: and the executive's own calendar, which is not the legislature's.
+       The contest used to run only inside `runElection`, so a legislative term
+       of three -- both timing articles adopted -- moved the ballots off the
+       exec turns and the four great offices were never contested again. It is
+       asked here, on its own schedule, and `runElection` is left to answer it
+       when the two coincide. */
+    if (electionsOn(S) && !electionDue && isExecTurn(S.turn) && S.lastExec !== S.turn) {
+      var er = execContest(S, null);
+      addNews(S, 'The Executive', 'The country returns ' +
+        execPair(S.turn).map(function (o) { return DEPTS[o].name; }).join(' and '),
+        'A mid-term executive ballot: the Assembly was not dissolved and the offices were contested on their own eight-year cycle.',
+        execPair(S.turn).some(function (o) { return er[o] === playParty(S); }) ? 'good' : 'watch');
+    }
     /* S17f: the caretaker's clock. Every session the parties are asked again
        whether they can make a government out of the seats they have; when they
        still cannot after three, the country goes back to the polls whether a
@@ -13113,7 +13192,7 @@ function quietElection(r) {
   var courtLine = r.court && r.court.length
     ? ' Court seats to the ' + r.court.map(function (c) { return PARTY[c.winner].short; }).join(' and the ') + '.'
     : '';
-  logIt(S, 'Biennial ballot. The ' + PARTY[r.lead].short + ' hold the government. Largest swing: the ' +
+  logIt(S, (typeof v11TermYears === 'function' ? v8Plural(v11TermYears(S), 'year') + ' ballot' : 'Biennial ballot') + '. The ' + PARTY[r.lead].short + ' hold the government. Largest swing: the ' +
     PARTY[moved.id].short + ' ' + (r.delta[moved.id] >= 0 ? 'up ' : 'down ') + Math.abs(r.delta[moved.id]) + ' seats.' + courtLine);
 }
 
@@ -13650,13 +13729,13 @@ function viewHouses() {
       '<p class="note">' + esc(S.upper.ceremonial
         ? 'The chamber still sits. It is opened, addressed and adjourned, and it has no power to withhold, amend or delay anything at all.'
         : (S.upper.elected
-        ? 'Six senators from each of the fifty states on twelve year terms, one seat per state renewed at every biennial ballot. It must concur in legislation unless that power is taken from it.'
+        ? 'Six senators from each of the fifty states on twelve year terms, one seat per state renewed at every general ballot, which under the constitution as it stands falls every ' + v8Plural(v11TermYears(S), 'year') + '. It must concur in legislation unless that power is taken from it.'
         : 'Appointed rather than elected. Six seats from each state, filled by the federal executive and answerable to it.')) + '</p>' +
       senateMap() + '<div class="seatlegend">' + legendFor(S.upper.seats) + '</div>' +
       '<table style="margin-top:12px"><tbody>' +
       tr('Power', S.upper.ceremonial ? 'ceremonial only' : VETO[S.upper.veto]) +
       tr('Returned by', S.upper.elected ? 'Direct election, six per state' : 'Appointment by the federal executive') +
-      tr('Renewal', S.upper.elected ? 'Fifty seats at every biennial ballot' : 'At the pleasure of the executive') +
+      tr('Renewal', S.upper.elected ? 'Fifty seats at every general ballot, ' + v8Plural(v11TermYears(S), 'year') + ' apart' : 'At the pleasure of the executive') +
       tr('Largest group', (function () { var b = null; PARTIES.forEach(function (q) { if (!b || (S.upper.seats[q.id] || 0) > (S.upper.seats[b] || 0)) b = q.id; }); return PARTY[b].short + ', ' + (S.upper.seats[b] || 0) + ' seats'; })()) +
       tr('Lean', upperLean(S).toFixed(2) + ', against a government at ' + govLean(S).toFixed(2)) +
       tr('Distance from the government', Math.abs(upperLean(S) - govLean(S)).toFixed(2) +
@@ -14458,7 +14537,7 @@ function viewJudicial() {
 
   var ss = seniorSenate(S);
   var proc = '<div class="panel"><h2>How a Justice Is Returned</h2>' +
-    '<p class="note">' + (S.acts.courtTerms ? 'Three' : 'Two') + ' seats are returned at every biennial ballot, in three sealed rounds. ' +
+    '<p class="note">' + (S.acts.courtTerms ? 'Three' : 'Two') + ' seats are returned at every general ballot, ' + v8Plural(v11TermYears(S), 'year') + ' apart, in three sealed rounds. ' +
     'The fifty senior senators, one from each state, hold a ranked choice ballot worth 10 points and send two names forward with their shares attached. ' +
     'The four executive officers then vote between those two at 1.25 points each. The general populace decides the remaining 85. ' +
     'No round is published until the last one closes.</p>' +
@@ -30490,12 +30569,31 @@ function v11CallConvention() {
    which is exactly (t - 1) % 2 === 0), so the general form reduces to the old
    one when no article moves it — asserted, because a silent off-by-one here
    would move every ballot in every campaign. */
+/* S17h: AND ANCHORED TO THE LAST ELECTION, NOT TO SESSION ONE. `(t - 1) %
+   term === 0` re-phases the whole calendar the moment the term changes
+   instead of extending the term that is running. Measured before the fix: a
+   ballot at t=3, the Quadrennial Article adopted at t=4, and the next ballot
+   at t=5 -- TWO years later, under an article that says four -- and then 9,
+   13, 17 correctly. Half of all adoption windows hit it, and laying the
+   article the session after a ballot hit it every time.
+
+   A term is counted from the last election and not before: lengthen it and
+   the sitting Assembly runs the longer term, shorten it and the next ballot
+   comes forward, and in neither case does a session that has already been
+   served stop counting. Before the first election there is nothing to anchor
+   to, so the old phase stands. */
 var v11BallotTurnBase = isBallotTurn;
 isBallotTurn = function (t) {
-  var e = (typeof S !== 'undefined' && S) ? v11ConEffects(S) : null;
+  var st = (typeof S !== 'undefined' && S) ? S : null;
+  var e = st ? v11ConEffects(st) : null;
   if (!e || !e.term) return v11BallotTurnBase(t);
   var term = clamp(Math.round(2 + e.term), 1, 6);
-  return t > 1 && (t - 1) % term === 0;
+  var last = st.lastElection;
+  if (!last || last < 1) return t > 1 && (t - 1) % term === 0;
+  /* ON THE BEAT, counted from the last election: `>= term` would make every
+     session after the term elapsed a ballot turn, and `nextBallot` and the
+     "sessions to the ballot" readout walk forward asking exactly that. */
+  return t > last && (t - last) % term === 0;
 };
 function v11TermYears(st) {
   return clamp(Math.round(2 + v11ConEffects(st).term), 1, 6);

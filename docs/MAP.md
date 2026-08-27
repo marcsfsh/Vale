@@ -310,6 +310,47 @@ the ones nobody would hold a press conference about.
 - Measured from the opposition bench over forty sessions on a fixed stream:
   **37 reactions offered in 12 different shapes.**
 
+## The calendar (S17h)
+
+**One session is one year.** Three clocks run on it and, until S17h, two of
+them printed one thing and charged another.
+
+- **The legislative term.** `isBallotTurn` is two years by default; the term
+  articles move it through `v11ConEffects().term`, clamped to 1..6. Since
+  S17h the beat is counted **from `st.lastElection`** — `(t - last) % term`
+  — not from session one. Anchored to session one, adopting a longer term
+  re-phased the whole campaign instead of extending the term being served: a
+  ballot at 3 and the Quadrennial Article at 4 put the next ballot at **5**,
+  two years later, under an article that says four. It falls at 7 now. The
+  base body is untouched when no article moves the term, asserted across a
+  four-hundred-session epic.
+- **The executive rotation.** `isExecTurn` / `execPair` — each of the four
+  great offices every eight years, two contested every four, alternating
+  pres+vchan and chan+vpres. **`execContest`** is the contest itself, lifted
+  out of `runElection` in S17h: it lived inside the legislative ballot, so a
+  term of three moved the ballots off every exec turn and two of the four
+  offices were never contested again for the rest of the campaign. It is
+  called from `runElection` when the two coincide and from `endTurn` when they
+  do not, and it stamps `st.lastExec` so neither calls it twice.
+- **The caretaker's clock**, `V17_CARETAKER_MAX` — see *Forming a government*.
+
+**A term article that says four means four on the page as well.** Five sites
+printed "biennial" as a constant; they read `v11TermYears(st)` now.
+
+**`artFixedTerm` has teeth.** `callElection` refuses a dissolution while it
+stands, in the article's own words — it moved capital income and nothing else
+before, so a government could adopt it and go to the country the same session.
+A caretaker is refused too: it has not been invested by the house it would
+dissolve.
+
+**`v17Reshuffle(st, pid, exclude)`** is the rest of the multi-office work
+S17e began. Three sites — `sackMinister` and two events — replaced the holder
+of a **randomly chosen** great office with a minted stranger, so a government
+could sack the opposition's President and the successor came from nowhere. It
+picks an office the party holds (the one whose holder it can most afford to
+lose), takes the best free person off that party's own bench, and seats them
+through `execSeat`, which carries the exclusion.
+
 ## Keeping an agreement, or not (S17g)
 
 S17e wrote the agreement down and S17f negotiated it; neither made keeping it

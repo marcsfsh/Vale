@@ -1609,7 +1609,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        so the identity is checked across a full epic rather than sampled. */
     blank();
     out.calendarSame = (() => { for (let t = 1; t <= 401; t++) if (isBallotTurn(t) !== (t > 1 && t % 2 === 1)) return 'differs at ' + t; return true; })();
+    /* S17h: and the general form is anchored to the LAST ELECTION rather than
+       to session one, so the ballots that follow an adoption are counted from
+       the term being served. This used to read 5,9,13 -- the phase the article
+       imposed on the whole campaign, which put the next ballot TWO years after
+       a four-year article was adopted. */
     v11AdoptArticle(S, V11_ART.artQuadrennial, 61);
+    S.lastElection = 3;
     out.termNow = v11TermYears(S);
     out.ballotsAfter = (() => { const h = []; for (let t = 1; t <= 13; t++) if (isBallotTurn(t)) h.push(t); return h.join(','); })();
 
@@ -1713,10 +1719,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(con.articles >= 40 && con.books === 8 && con.perBook.every(n => n >= 5),
     'forty articles, eight books',
     `${con.articles} articles across ${con.books} books [${con.perBook.join(',')}], none of them thin`);
-  say(con.calendarSame === true && con.termNow === 4 && con.ballotsAfter === '5,9,13',
+  say(con.calendarSame === true && con.termNow === 4 && con.ballotsAfter === '7,11',
     'the calendar reduces to what it was',
     con.calendarSame !== true ? 'the general form ' + con.calendarSame + ' from (t % 2 === 1)'
-      : `identical to the old body at every turn of a full epic with an unwritten constitution · the quadrennial article then makes the term ${con.termNow} and the ballots fall at ${con.ballotsAfter}`);
+      : `identical to the old body at every turn of a full epic with an unwritten constitution · the quadrennial ` +
+        `article then makes the term ${con.termNow} and, from a last election at 3, the ballots fall at ` +
+        `${con.ballotsAfter} -- four years apart and counted from the term being served, where the old form ` +
+        `re-phased the whole campaign onto 5, 9, 13 and put the next ballot two years after a four-year article`);
   say(con.badLevels.length === 0 && con.nanBallot.length === 0,
     'no article can put a NaN in the ballot',
     con.badLevels.length ? 'franchise level off its domain: ' + con.badLevels.slice(0, 3).join(', ')
@@ -5814,6 +5823,153 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `never touches the red line (${g.alter.redLineSafe}), and is refused outright once the agreement carries ` +
     `three broken promises · and BETRAYING it -- collapsing the coalition -- breaks all ` +
     `${g.betray.outstanding} promises still outstanding at once`);
+
+
+  /* S17h — THE CALENDAR TELLS THE TRUTH. Three clocks that printed one thing
+     and charged another, and a reshuffle that reached into offices the
+     government did not hold. */
+  const cal = await page.evaluate(() => {
+    var R = {};
+    function con(st) {
+      if (!st.v11) st.v11 = {};
+      if (!st.v11.con) st.v11.con = { arts:{}, order:[], pending:[], failed:{}, conv:0, convUsed:0, plebiscites:0 };
+      return st.v11.con;
+    }
+    function adopt(st, id, turn) {
+      con(st).arts[id] = { year:yearOf(turn), margin:null, turn:turn, entrenched:false };
+    }
+    /* (a) THE TERM ARTICLE EXTENDS THE TERM, IT DOES NOT RE-PHASE THE
+       CALENDAR. `(t - 1) % term === 0` is anchored to session one, so adopting
+       a longer term moved every ballot in the campaign onto a new phase
+       instead of lengthening the one being served. Measured before the fix:
+       a ballot at 3, the Quadrennial Article adopted at 4, and the next ballot
+       at 5 -- TWO years later, under an article whose card says four. */
+    function ballotsAfter(adoptAt, art) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.lastElection = 3; S.turn = adoptAt;
+      if (art) adopt(S, art, adoptAt);
+      var seen = [];
+      for (var t = adoptAt + 1; t <= adoptAt + 14 && seen.length < 3; t++) {
+        if (isBallotTurn(t)) { seen.push(t); S.lastElection = t; }
+      }
+      return { seen:seen, term:v11TermYears(S) };
+    }
+    R.plain = ballotsAfter(4, null);
+    R.quad = ballotsAfter(4, 'artQuadrennial');
+    R.annual = ballotsAfter(4, 'artAnnualAssembly');
+
+    /* (b) AND THE EXECUTIVE'S CALENDAR IS NOT THE LEGISLATURE'S. The contest
+       lived inside runElection, so a legislative term of three -- both timing
+       articles adopted -- moved the ballots off every exec turn and the four
+       great offices were never contested again for the rest of the campaign.
+       Driven through REAL sessions, because a hand-called contest proves the
+       function and not the wiring. */
+    function play(arts, n) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.rngState = 20260827;
+      (arts || []).forEach(function (a) { adopt(S, a, 1); });
+      var execTurns = [], ballots = [], rq = runQueue;
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        for (var t = 0; t < n; t++) {
+          UI.queue = []; UI.busy = false; S.capital = 80;
+          var le = S.lastElection, lx = S.lastExec;
+          endTurn(); UI.queue = [];
+          if (S.over) break;
+          if (S.lastExec !== lx) execTurns.push(S.lastExec);
+          if (S.lastElection !== le) ballots.push(S.lastElection);
+        }
+      } finally { runQueue = rq; }
+      return { exec:execTurns, ballots:ballots, term:v11TermYears(S) };
+    }
+    R.normal = play([], 26);
+    R.term3 = play(['artQuadrennial', 'artAnnualAssembly'], 26);
+
+    /* (c) THE ARTICLE OF THE FIXED TERM GETS ITS TEETH. Its card said the
+       Assembly shall not be dissolved at the convenience of the government,
+       and it moved capital income and nothing else. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.ruling = 'lp'; S.capital = 400; S.turn = 4;
+    var before = S.lastElection;
+    callElection();
+    R.snapOpen = S.lastElection !== before;
+    adopt(S, 'artFixedTerm', 1);
+    S.capital = 400;
+    var before2 = S.lastElection, msg = null, f = flash;
+    flash = function (x) { msg = x; };
+    try { callElection(); } finally { flash = f; }
+    R.snapShut = { moved:S.lastElection !== before2, why:String(msg || '') };
+
+    /* (d) AND A RESHUFFLE STAYS IN THE GOVERNMENT'S OWN OFFICES AND DRAWS FROM
+       ITS OWN BENCH. Three sites replaced the holder of a RANDOMLY chosen
+       great office with a minted stranger, so a government could sack the
+       opposition's President and whoever arrived came from nowhere. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.ruling = 'lp';
+    S.exec = { pres:'lp', vpres:'fp', chan:'lp', vchan:'sd' };
+    var was = V15_EXEC_OFFICES.map(function (o) { return holderOf(S, o).name; });
+    var hits = { own:0, other:0, benched:0, minted:0 }, offices = {};
+    for (var k = 0; k < 12; k++) {
+      S.turn += 1;
+      var sh = v17Reshuffle(S, 'lp', null);
+      if (!sh) continue;
+      offices[sh.office] = true;
+      if (S.exec[sh.office] === 'lp') hits.own++; else hits.other++;
+      if (/party|states|cabinet|Assembly|bench|leader/i.test(sh.in.from || '')) hits.benched++; else hits.minted++;
+    }
+    var now = V15_EXEC_OFFICES.map(function (o) { return holderOf(S, o).name; });
+    /* (e) AND THE PAGES STOP SAYING "BIENNIAL". Five sites printed the word as
+       a constant -- the Senate's renewal, the court's returned seats, the
+       quiet-election log and the vacancy card -- so a republic that had voted
+       itself a four-year term read about a two-year one on four screens. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.ruling = 'lp';
+    var pagesBefore = [viewHouses(), viewJudicial()].join(' ');
+    adopt(S, 'artQuadrennial', 1);
+    var pagesAfter = [viewHouses(), viewJudicial()].join(' ');
+    R.prose = { term:v11TermYears(S),
+      biennialBefore:/biennial/i.test(pagesBefore), biennialAfter:/biennial/i.test(pagesAfter),
+      saysFour:/4 years apart|every 4 years|4 years/.test(pagesAfter) };
+
+    R.reshuffle = { own:hits.own, other:hits.other, benched:hits.benched, minted:hits.minted,
+      offices:Object.keys(offices).join('+'),
+      rivalsUntouched:was[1] === now[1] && was[3] === now[3],
+      unique:new Set(now).size === 4,
+      froms:hits.benched + hits.minted };
+    return R;
+  });
+  const calOk =
+    cal.plain.seen.join() === '5,7,9' && cal.plain.term === 2 &&
+    cal.quad.term === 4 && cal.quad.seen[0] === 7 && cal.quad.seen.join() === '7,11,15' &&
+    cal.annual.term === 1 && cal.annual.seen[0] === 5 &&
+    cal.normal.exec.join() === '5,9,13,17,21,25' &&
+    cal.term3.term === 3 && cal.term3.exec.join() === '5,9,13,17,21,25' &&
+    cal.term3.ballots.indexOf(5) < 0 && cal.term3.ballots.indexOf(9) < 0 &&
+    cal.snapOpen && !cal.snapShut.moved && /Fixed Term/.test(cal.snapShut.why) &&
+    !cal.prose.biennialBefore && !cal.prose.biennialAfter && cal.prose.saysFour &&
+    cal.reshuffle.other === 0 && cal.reshuffle.own > 0 &&
+    cal.reshuffle.minted === 0 && cal.reshuffle.rivalsUntouched && cal.reshuffle.unique;
+  say(calOk, 'the calendar tells the truth',
+    `A TERM IS COUNTED FROM THE LAST ELECTION AND NOT BEFORE. With a ballot at 3 and the Quadrennial Article ` +
+    `adopted at 4, the next ballot falls at ${cal.quad.seen[0]} and then ${cal.quad.seen.slice(1).join(', ')} -- ` +
+    `four years apart, which is what its card says. Anchored to session one, as it was, the same case gave a ` +
+    `ballot at 5: TWO years later, under an article that promises four, and half of every adoption window hit ` +
+    `it · shortening works the same way round (the Annual Article puts the next at ${cal.annual.seen[0]}) and ` +
+    `an unamended constitution is untouched (${cal.plain.seen.join(', ')} on a term of ${cal.plain.term}) · ` +
+    `AND THE EXECUTIVE'S CALENDAR IS ITS OWN: the contest lived inside runElection, so adopting both timing ` +
+    `articles moved the ballots to ${cal.term3.ballots.slice(0, 5).join(', ')} and the exec turns 5, 9, 13 were ` +
+    `never contested again. Over twenty-six real sessions on a term of ${cal.term3.term} the four great offices ` +
+    `are returned at ${cal.term3.exec.join(', ')} -- the same eight-year rotation as an unamended constitution ` +
+    `(${cal.normal.exec.join(', ')}) · THE ARTICLE OF THE FIXED TERM HAS TEETH: the snap dissolution is open ` +
+    `without it (${cal.snapOpen}) and refused with it, in the article's own words · AND THE PAGES SAY THE TERM ` +
+    `THE COUNTRY VOTED FOR: with the Quadrennial Article adopted the Senate and the court read ` +
+    `${cal.prose.term} years (${cal.prose.saysFour}) and the word "biennial" is on neither ` +
+    `(${cal.prose.biennialAfter}), where five sites printed it as a constant · AND A RESHUFFLE STAYS AT ` +
+    `HOME: twelve of them hit ${cal.reshuffle.own} offices the government holds and ${cal.reshuffle.other} it ` +
+    `does not (it used to pick at random, so a government could sack the opposition's President), every ` +
+    `successor came off the party's own bench and none was minted from nowhere ` +
+    `(${cal.reshuffle.benched}/${cal.reshuffle.froms}), the rivals' offices were untouched ` +
+    `(${cal.reshuffle.rivalsUntouched}) and no two chairs ended with the same name`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
