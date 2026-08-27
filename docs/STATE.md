@@ -25,10 +25,11 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17j.** Group 3 (the executive cycle) is closed and
-Group 4 is next: **s17k — verbs are the buttons' functions**, which extracts
-the six click-only instruments so an AI party can use the same ones the player
-does, under the same gates. Its design is in `docs/PLAN-S17.md`.
+**Landed so far: s17a–s17k.** Group 3 (the executive cycle) is closed and
+Group 4 is open. Next: **s17l — minds and memories**, which widens the
+postures s17k gave verbs to, takes the grudge to a vote for the first time,
+and makes a party's purse burn depend on what it is trying to do. Its design
+is in `docs/PLAN-S17.md`.
 
 ### S17a — the seven defects
 
@@ -87,6 +88,109 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17k — verbs are the buttons' functions
+
+> *"they should have agency, in the same way that the other nations/factions
+> have agency in a Paradox Plaza or Total War game."*
+
+**Three instruments an AI party could not touch, because each of them existed
+only as a click handler.** The gate, the price, the effect and the flash were
+one body keyed on `playParty`, so there was no line an engine could call — and
+`bill.lines`, the field that records a party's line on somebody else's bill and
+is read straight into its vote, had **exactly one writer in three megabytes**:
+the player's `pressure` button. The other six parties voted. They never acted.
+
+**The rule is one gate and two callers.** Every gate now takes an **actor** and
+defaults it to the player, so what the player's button does is unchanged to the
+line; every effect lives in a `Core` the handler and the deck both call. An AI
+party obeys the same constitution the player does, and it obeys it by running
+the same code — which is the only arrangement in which the two can never drift
+apart. Nothing here is a rebind: the gates and the cores are widened where they
+live.
+
+- **An article** — `v17ArticleCore` behind `v11CanPropose(st, a, repeal, route,
+  actor)`. A party out of government lays one at a time, exactly as S17b ruled
+  for the player, and the pending record carries **who laid it**.
+- **An order** — `v17OrderCore` behind `v10OrderOpen(st, o, target, actor)`,
+  and the record carries **who signed it**.
+- **A line on the floor** — `v17FloorCore` for support, oppose and pressure.
+  Measured on the sponsor's own forecast, a party coming out for a bill moves
+  it three to thirteen.
+
+**The department test was wrong for everybody.** `v10OrderOpen` asked
+`holdsDept` — whether the **government** holds the department — which a
+coalition partner sitting in no office at all satisfies. It asks about the
+actor now, and the poison proof is what found it: the old line and the new one
+both passed the first assertion, so the assertion was the thing at fault.
+
+**A party under twelve per cent of the chamber does not amend the
+constitution.** Ungated, the article card laid twenty-one articles in forty
+sessions and was a third of everything the six parties did.
+
+**The attack goes at whoever it holds something against.** The target was
+`st.ruling`, always — so a party could carry a grudge of a hundred against an
+opposition player and spend every attack it ever made on the government
+instead. There was no path from the memory to the thing it was a memory of.
+
+**And the engine stops drafting the player's bills for them.** The private
+members' engine picked any opposition party by weight, the player's included,
+and stamped the result `owner:'opposition'` with `playerPosition:'support'` —
+so a bill the player had never chosen appeared on the paper in their name, and
+`pressure` could then be aimed at it. An opposition player introduces their
+own; S17a gave them the door.
+
+**One regression this PR caused and caught.** `partyBillSupport` reads **two
+fields that say the same thing** — `playerPosition`, worth 24/-28 to the
+player's own party since S10b, and `lines`, worth 16/-18 to whoever declared
+it. Routing the player's Support and Oppose buttons through the shared Core
+wrote both, so a declared line quietly became worth **40**: a sixty-seven per
+cent buff to an existing button, delivered by a refactor whose whole rule was
+to change nothing. The player's line goes where it has always gone; every
+other party's goes in `lines`; and 24 is pinned in the assertion rather than
+read off the field, so folding the two into one has to be a decision somebody
+makes rather than a number that drifts.
+
+```
+ALL CHECKS PASS   11/11 (no new wrapper — the gates and cores are widened
+                  where they live)
+ROADS OK          178 assertions (+1: "verbs are the buttons' functions";
+                  "the six that are not yours act" now covers 10 deck cards)
+PLAYTEST PASS     60 steps
+DETERMINISM / RUNGS / CORPORA / TABS / TIERS   all green
+PACING            see below
+POISON            12 reverts — the article's `by`, the one-at-a-time gate,
+                  the article gate's actor, the order gate's actor, the
+                  order's `by`, the line on the bill, a party's own bill,
+                  the three cards off the deck, the three cards unreachable,
+                  the attack's target, the player's own private bills, and
+                  the double-counted line
+```
+
+**Pacing, six seeds against s17j — and what the aggregate hides.** The totals
+say years governing fell from 128 to 44 on epic and 67 to 40 on standard. That
+is **two seeds and no more**: 5EED1234 and VALE1337 each carried a long reign
+on the s17j build (70 and 34 years on epic), and **every perturbation of the
+dice ends them** — measured with the article card off (8 years), with all
+three new cards off (12), and with only the private-bill change reverted (6).
+None of the three restores the reign, so it is a single-run outlier, not a
+mechanism. On the **other four seeds** years governing went the other way:
+**24 → 34 on epic, 24 → 30 on standard, unchanged on short.**
+
+| six seeds | elections won | years governing | crises | achievements |
+|---|---|---|---|---|
+| short | 12 → 12 | 30 → 30 | 19 → 23 | 35 → 40 |
+| standard | 12 → 12 | 67 → 40 *(24 → 30 without the two)* | 38 → 47 | 54 → 54 |
+| epic | 21 → 12 | 128 → 44 *(24 → 34 without the two)* | 74 → 97 | 70 → 63 |
+
+**The one movement that is real and directional is crises: up on every seed at
+every length** (74 → 97 on epic, and 56 → 64 counting only the other four).
+Six parties that lay articles, sign orders and take positions on the floor
+produce more for the country to survive, which is the intended effect and the
+lever if the owner wants it smaller: `V17_AI_COST_ARTICLE` (34),
+`V17_AI_COST_ORDER` (22), `V17_AI_COST_FLOOR` (12), the twelve-per-cent seat
+gate on the article card, and `V16_AI_CADENCE` above all of them. Balance is
+the owner's (`docs/AGREEMENT.md`); this is a measurement, not a proposal.
 
 ### S17j — always running
 

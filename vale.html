@@ -9395,8 +9395,10 @@ function billAction(id, action) {
   if (action === 'amend') { b.whip += 4; b.upperDeal += 7; b.concessions++; b.notes.push('Government amendment accepted'); }
   if (action === 'confidence') { b.confidence = true; b.notes.push('Declared a matter of confidence'); S.unity = c100((S.unity || 60) - 3); }
   if (action === 'urgent') { b.urgent = true; b.notes.push('Urgent procedure invoked'); S.unrest = clamp(S.unrest + 2, 0, 110); }
-  if (action === 'support') { b.playerPosition = 'support'; shiftPartyRel(S, b.sponsor, 5); }
-  if (action === 'oppose') { b.playerPosition = 'oppose'; shiftPartyRel(S, b.sponsor, -5); }
+  /* S17k: a line on somebody else's bill is `v17FloorCore`, and an AI party
+     takes one through the same function. `bill.lines` -- the field read
+     straight into a party's vote -- had one writer in three megabytes. */
+  if (action === 'support' || action === 'oppose') v17FloorCore(S, playParty(S), b, action);
   /* ---- S10b: the instruments you have against a bill that is not yours.
      What is available scales with what you actually command: a line and the
      public argument in opposition, the timetable and the committee in
@@ -9406,10 +9408,7 @@ function billAction(id, action) {
        you standing with them whichever way it goes. */
     var sp = b.sponsor, rel = (S.partyRel && S.partyRel[sp] !== undefined ? S.partyRel[sp] : 50);
     var bite = clamp(4 + (rel - 50) * .12 + (outright(S) ? 4 : (leads(S) ? 2 : 0)), 2, 12);
-    b.lines = b.lines || {}; b.lines[sp] = 'oppose';
-    b.notes.push('The sponsor was leaned on');
-    shiftPartyRel(S, sp, -6);
-    S.machine[playParty(S)] = clamp((S.machine[playParty(S)] || 0) + .01, -.8, 1);
+    v17FloorCore(S, playParty(S), b, 'pressure');
     logIt(S, 'The ' + PARTY[playParty(S)].short + ' put private pressure on the ' + PARTY[sp].short + ' over ' + b.title + '.');
     if (bite < 4) { S.ind.corruption = c100(S.ind.corruption + .5); }
   }
@@ -15431,7 +15430,14 @@ function pv5AiPrivateBill(st){
      private members' time for the length of a campaign. Every unbanned party
      outside the coalition now gets a look in, weighted by its seats — the big
      ones still dominate the paper, the small ones are heard. */
-  var cands=PARTIES.filter(function(p){return(st.coalition||[]).indexOf(p.id)<0&&!st.banned[p.id]&&(st.seats[p.id]||0)>0;});
+  /* S17k: AND NOT THE PLAYER'S OWN PARTY. This engine drafted private
+     members' bills for whichever opposition party the weighting picked --
+     including the player's -- and stamped them owner:'opposition' with
+     playerPosition:'support', so a bill the player had never chosen appeared
+     on the paper in their name and the `pressure` lever could then be aimed
+     at it. An opposition player introduces their own bills; S17a gave them
+     the door. */
+  var cands=PARTIES.filter(function(p){return(st.coalition||[]).indexOf(p.id)<0&&!st.banned[p.id]&&(st.seats[p.id]||0)>0&&p.id!==playParty(st);});
   if(!cands.length)return;
   var tot=0,i;for(i=0;i<cands.length;i++)tot+=st.seats[cands[i].id]||0;
   var roll=rand()*tot,opp=cands[cands.length-1];
@@ -27686,8 +27692,12 @@ policyCost = function (id, dir) {
 };
 
 /* ---- issuing, revoking, lapsing ---- */
-function v10OrderOpen(st, o, target) {
-  if (!inPower(st)) return 'Only a government issues orders.';
+/* S17k: an order is signed by the office that holds the department, so the
+   gate takes the party doing the signing and defaults it to the player's. */
+function v10OrderOpen(st, o, target, actor) {
+  actor = actor || playParty(st);
+  var inGov = (st.coalition || [st.ruling]).indexOf(actor) >= 0;
+  if (!inGov) return 'Only a government issues orders.';
   /* S17f: a caretaker signs what the emergency itself requires and nothing
      else. The exception is the whole point -- a country between governments
      still has floods and frontiers -- so it is the one category that stays
@@ -27695,7 +27705,9 @@ function v10OrderOpen(st, o, target) {
   if (typeof v17CareBar === 'function' && st.caretaker && o.cat !== 'Emergency and territory') {
     return v17CareBar(st, 'order');
   }
-  if (!holdsDept(st, o.dept)) return DEPTS[o.dept].name + ' is in other hands.';
+  if (st.exec[o.dept] !== actor && !(actor === playParty(st) && holdsDept(st, o.dept))) {
+    return DEPTS[o.dept].name + ' is in other hands.';
+  }
   /* S15: "In the session before a general ballot this executive signs nothing
      new." It now signs nothing new. */
   if (v10OrderMods(st).book.preBallot && electionsOn(st) && nextBallot(st.turn) - st.turn <= 1) {
@@ -27715,27 +27727,9 @@ function v10IssueOrder(id, target) {
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
   captureUndo('Issue ' + o.name);
   S.capital -= cost;
-  var key = v10OrderKey(o.id, target);
-  /* S15: the book's own rules, applied to the thing being signed -- INCLUDING
-     when the thing being signed is the rule. "No direction of this executive is
-     to stand beyond its second session" means no direction, so the record goes
-     in first and the book is read with it already there. A week on the table
-     needs a table: with no Assembly there is nowhere to lay it, so the delay
-     does not apply and the card says so rather than pretending. */
-  v10Orders(S)[key] = { status:'inforce', issued:S.turn, dept:o.dept, target:target || null };
-  var bk = v10OrderMods(S).book, rec15 = v10Orders(S)[key];
-  if (bk.expire) rec15.expires = S.turn + bk.expire;
-  if (bk.lay > 0 && lowerState(S) !== 'abolished') { rec15.status = 'laid'; rec15.due = S.turn + bk.lay; }
-  S.v10.orderTurn = S.v10.orderTurn || {}; S.v10.orderTurn[key] = S.turn;
-  /* S11b: this map was written on every issue and never pruned, so a long
-     campaign carried a stamp for every order it had ever signed. Only the
-     current session's stamps are ever read. */
-  for (var ot in S.v10.orderTurn) if (S.v10.orderTurn[ot] < S.turn) delete S.v10.orderTurn[ot];
-  S.ind.liberties = c100(S.ind.liberties - 1);
-  /* and the states watch this doctrine more closely too */
-  S.crown = c100(S.crown - (S.doctrine === 'executive' ? 2.6 : 1.5));
-  if (o.onIssue) o.onIssue(S, target);
-  logIt(S, 'Executive order: ' + v10OrderTitle(o, target) + ', signed without reference to either house.');
+  /* S17k: the signing itself is `v17OrderCore`, which the deck calls too. */
+  var oerr = v17OrderCore(S, playParty(S), id, target);
+  if (oerr) { S.capital += cost; flash(oerr); return; }
   render();
 }
 function v10RevokeOrder(key) {
@@ -30437,9 +30431,13 @@ function v11ArtBody(st) {
   if (ls === 'suspended') return 'the council';
   return upperState(st) === 'sitting' ? 'the Senate' : 'the government in council';
 }
-function v11CanPropose(st, a, repeal, route) {
+/* S17k: THE GATE TAKES AN ACTOR, and defaults it to the player -- so every
+   call that was written before this reads exactly as it did, and an AI party
+   laying an article is refused by the same lines the player is. */
+function v11CanPropose(st, a, repeal, route, actor) {
   var c = v11Con(st);
   route = route || 'assembly';
+  actor = actor || playParty(st);
   if (c.pending.length >= v11PendingCap(st)) {
     return v11PendingCap(st) + ' articles are already before the country, which is all ' +
       (v11ConventionSits(st) ? 'a convention' : 'a parliament') + ' will carry at once.';
@@ -30450,9 +30448,12 @@ function v11CanPropose(st, a, repeal, route) {
      member's bill is one at a time. Carrying it is another matter: the
      chamber test is unchanged, and an opposition article has to find its
      majority the hard way. */
-  if (!inPower(st)) {
-    var mine = c.pending.filter(function (p) { return (p.by || st.ruling) === playParty(st); });
-    if (mine.length >= 1) return 'Your party already has an article before the country.';
+  if ((st.coalition || [st.ruling]).indexOf(actor) < 0) {
+    var mine = c.pending.filter(function (p) { return (p.by || st.ruling) === actor; });
+    if (mine.length >= 1) {
+      return actor === playParty(st) ? 'Your party already has an article before the country.'
+                                     : 'The ' + PARTY[actor].short + ' already have one before the country.';
+    }
   }
   if (repeal && !v11Adopted(st, a.id)) return 'That article is not in the document.';
   if (!repeal && v11Adopted(st, a.id)) return 'That article is already in the document.';
@@ -30472,39 +30473,12 @@ function v11ProposeArticle(id, repeal, route) {
   var cost = v11ArtCost(S, a, repeal);
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
   captureUndo((repeal ? 'Repeal ' : 'Lay ') + a.name);
-  var c = v11Con(S);
   S.capital -= cost;
-  /* The clock. Two sessions before the houses, one before the country, and
-     one while a convention sits -- but a convention article that is put early
-     and does not carry is not struck: it stands to its full term and is put
-     again, which is what "in one session if there is enough support" means. */
-  var conv = v11ConventionSits(S);
-  var span = route === 'plebiscite' ? 1 : (conv ? 1 : 2);
-  /* S17b: WHO LAID IT. The record carried no sponsor, because until now only a
-     government could lay an article and the answer was never in doubt. The
-     out-of-government cap below reads this field, and S17k's AI parties will
-     lay articles of their own -- a cap that reads a field nobody writes is not
-     a cap at all. An older save's pending article has no `by` and is read as
-     the government's, which is what it was. */
-  c.pending.push({ id:id, repeal:!!repeal, laid:S.turn, due:S.turn + span, campaign:0,
-    by:playParty(S), route:route, fast:route === 'assembly' && conv });
-  S.salience.federal = c100((S.salience.federal || 50) + 7);
-  if (route === 'plebiscite') {
-    /* Government by plebiscite is a real instrument and it has a real price:
-       it costs the standing of everything that is decided any other way, and
-       it costs more each time it is used. */
-    c.plebiscites = (c.plebiscites || 0) + 1;
-    var bite = 1 + Math.min(3, c.plebiscites * .5);
-    S.ind.liberties = c100(S.ind.liberties - bite);
-    S.salience.integrity = c100((S.salience.integrity || 50) + 5);
-    mood(S, { prof:-2, youth:1 });
-    logIt(S, (repeal ? 'Repeal of ' : '') + a.name + ' was laid before the country. It is the ' +
-      v11Ordinal(c.plebiscites) + ' plebiscite of this republic.');
-    chronicle(S, (repeal ? 'A repeal of ' : 'An amendment, ') + a.name + ', went to the country.');
-  } else {
-    logIt(S, (repeal ? 'Repeal of ' : '') + a.name + ' was laid before ' + v11ArtBody(S) + '.');
-    chronicle(S, (repeal ? 'A repeal of ' : 'An amendment, ') + a.name + ', was laid before ' + v11ArtBody(S) + '.');
-  }
+  /* S17k: what laying it DOES is `v17ArticleCore`, and the deck calls the
+     same function. What is left here is the player's price, their undo and
+     their screen. */
+  var err = v17ArticleCore(S, playParty(S), id, repeal, route);
+  if (err) { S.capital += cost; flash(err); return; }
   render();
 }
 var V11_ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
@@ -33016,7 +32990,18 @@ var V16_AI_DECK = [
     can:function (st, pid) { return pid !== st.ruling && (st.coalition || []).indexOf(pid) < 0 && partyPurse(st, pid) >= V16_AI_COST.attack; },
     run:function (st, pid) {
       v16AiPay(st, pid, V16_AI_COST.attack);
-      var t = st.ruling;
+      /* S17k: THE TARGET WAS `st.ruling`, ALWAYS. So a party could carry a
+         grudge of a hundred against an opposition player and spend every
+         attack it ever made on the government instead -- there was no path
+         from the memory to the thing it was a memory of. It goes at whoever
+         it actually holds something against, and falls back to the
+         government when it holds nothing against anybody. */
+      var t = st.ruling, worst = 0;
+      PARTIES.forEach(function (q) {
+        if (q.id === pid || st.banned[q.id]) return;
+        var g = v16Grudge(st, pid, q.id);
+        if (g > worst) { worst = g; t = q.id; }
+      });
       st.machine[t] = clamp((st.machine[t] || 0) - V16_AI_ATTACK * 2, -.8, 1);
       st.machine[pid] = clamp((st.machine[pid] || 0) + V16_AI_ATTACK, -.8, 1);
       shiftPartyRel(st, pid, -3);
@@ -33051,6 +33036,51 @@ var V16_AI_DECK = [
       st.aiPacts[pid] = { with:o, since:st.turn };
       shiftPartyRel(st, pid, -2);
       return 'The ' + PARTY[pid].short + ' and the ' + PARTY[o].short + ' agreed to stand down for each other in most seats.';
+    } },
+  /* S17k: THE THREE INSTRUMENTS AN AI PARTY COULD NEVER TOUCH. Each of these
+     calls the same Core the player's button calls, so the gate is asked once
+     and answered the same way for both -- and an AI party that is not
+     entitled to an instrument is refused by the identical line. */
+  { id:'article', post:['consolidate', 'attack', 'govern', 'organise', 'moderate'],
+    can:function (st, pid) {
+      /* A party with eight per cent of the chamber does not amend the
+         constitution, and a deck that let it turned the document into the
+         cheapest thing on the board: measured without this, twenty-one
+         articles were laid in forty sessions and the card was a third of
+         everything the six parties did. */
+      if (seatShare(st, [pid]) < .12) return false;
+      return partyPurse(st, pid) >= V17_AI_COST_ARTICLE && !!v17AiArticleFor(st, pid);
+    },
+    run:function (st, pid) {
+      var id = v17AiArticleFor(st, pid); if (!id) return null;
+      var err = v17ArticleCore(st, pid, id, false, 'assembly');
+      if (err) return null;
+      v16AiPay(st, pid, V17_AI_COST_ARTICLE);
+      return 'The ' + PARTY[pid].short + ' laid ' + V11_ART[id].name + ' before the country.';
+    } },
+  { id:'order', post:['govern', 'partner', 'consolidate'],
+    can:function (st, pid) {
+      return partyPurse(st, pid) >= V17_AI_COST_ORDER && !!v17AiOrderFor(st, pid);
+    },
+    run:function (st, pid) {
+      var o = v17AiOrderFor(st, pid); if (!o) return null;
+      var err = v17OrderCore(st, pid, o.id, o.target);
+      if (err) return null;
+      v16AiPay(st, pid, V17_AI_COST_ORDER);
+      return 'The ' + PARTY[pid].short + ' signed ' + v10OrderTitle(V10_ORDER[o.id], o.target) + '.';
+    } },
+  { id:'floor', post:['attack', 'partner', 'consolidate', 'moderate', 'hold', 'organise'],
+    can:function (st, pid) {
+      return partyPurse(st, pid) >= V17_AI_COST_FLOOR && !!v17AiFloorFor(st, pid);
+    },
+    run:function (st, pid) {
+      var f = v17AiFloorFor(st, pid); if (!f) return null;
+      var err = v17FloorCore(st, pid, f.bill, f.verb);
+      if (err) return null;
+      v16AiPay(st, pid, V17_AI_COST_FLOOR);
+      return 'The ' + PARTY[pid].short + ' ' +
+        (f.verb === 'support' ? 'came out for ' : f.verb === 'oppose' ? 'came out against ' : 'leaned on the sponsors of ') +
+        f.bill.title + '.';
     } },
   { id:'demand', post:['partner', 'attack', 'hold'],
     can:function (st, pid) { return pid !== st.ruling && partyPurse(st, pid) >= V16_AI_COST.demand && !!partyDemandPolicy(st, pid); },
@@ -35454,6 +35484,169 @@ function v17RacePanel() {
     ', for ' + esc(r.offices.map(function (o) { return DEPTS[o].name; }).join(' and ')) +
     ' together — both offices of the pair run in parallel, and the offices are held for eight years.</p>' +
     '<div class="cards">' + cards + '</div></div>';
+}
+
+/* ============================================================
+   S17k — VERBS ARE THE BUTTONS' FUNCTIONS
+   ============================================================
+   The owner: *"they should have agency, in the same way that the other
+   nations/factions have agency in a Paradox Plaza or Total War game."*
+
+   The research found the shape of the problem exactly. An AI party could not
+   propose an article, issue an order, or take a position on a bill, because
+   every one of those instruments existed only as a click handler: the gate,
+   the price, the effect and the flash were one body keyed on `playParty`.
+   `bill.lines` -- the field that records a party's line on somebody else's
+   bill and is read straight into its vote -- had exactly one writer in three
+   megabytes, and it was the player's `pressure` button.
+
+   THE RULE HERE IS ONE GATE AND TWO CALLERS. Every gate takes an ACTOR and
+   defaults it to the player, so the existing behaviour is reproduced exactly;
+   every effect lives in a `Core` the handler and the deck both call. An AI
+   party obeys the same constitution the player does, and it obeys it by
+   running the same lines of code -- which is the only arrangement in which
+   the two can never drift apart. Nothing here is a rebind: the gates and the
+   cores are widened where they live. */
+
+var V17_AI_COST_ARTICLE = 34;
+var V17_AI_COST_ORDER = 22;
+var V17_AI_COST_FLOOR = 12;
+
+/* --- THE FLOOR. What a party may say about a bill that is not its own. --- */
+function v17FloorWhy(st, actor, b, verb) {
+  if (!b) return 'No such bill.';
+  if (['support', 'oppose', 'pressure'].indexOf(verb) < 0) return 'No such line.';
+  if (b.sponsor === actor) return 'That is your own party’s bill.';
+  if (b.stage === 'assent' || b.stage === 'done' || b.stage === 'referendum') {
+    return 'It is past the floor. There is nothing left to say about it there.';
+  }
+  if (verb === 'pressure' && b.lines && b.lines[b.sponsor]) return 'The sponsor has been leaned on already.';
+  return null;
+}
+/* The effect, once. The player's handler keeps its own price, its undo and
+   its prose; what it does to the bill is this. */
+function v17FloorCore(st, actor, b, verb) {
+  var why = v17FloorWhy(st, actor, b, verb);
+  if (why) return why;
+  b.lines = b.lines || {};
+  if (verb === 'support' || verb === 'oppose') {
+    /* TWO FIELDS SAY THE SAME THING, and `partyBillSupport` reads BOTH:
+       `playerPosition` is worth 24/-28 to the player's own party and `lines`
+       is worth 16/-18 to whoever declared it. Writing both for the player
+       makes a declared line worth 40 where it has been worth 24 since S10b --
+       a sixty-seven per cent buff to an existing button, delivered silently by
+       a refactor that was supposed to reproduce the behaviour exactly. So the
+       player's line goes where it has always gone and every other party's goes
+       in `lines`. Folding the two fields into one is a real change to what the
+       button is worth; it is not this PR's to make. */
+    if (actor === playParty(st)) { b.playerPosition = verb; shiftPartyRel(st, b.sponsor, verb === 'support' ? 5 : -5); }
+    else {
+      b.lines[actor] = verb;
+      if (b.sponsor === playParty(st)) shiftPartyRel(st, actor, verb === 'support' ? 4 : -4);
+    }
+    return null;
+  }
+  /* pressure: the sponsor is leaned on privately, and remembers it */
+  var sp = b.sponsor;
+  b.lines[sp] = 'oppose';
+  b.notes.push('The sponsor was leaned on');
+  if (actor === playParty(st)) shiftPartyRel(st, sp, -6);
+  else if (sp === playParty(st)) shiftPartyRel(st, actor, -6);
+  if (typeof v16Resent === 'function' && sp !== actor) v16Resent(st, sp, actor, 10);
+  st.machine[actor] = clamp((st.machine[actor] || 0) + .01, -.8, 1);
+  return null;
+}
+
+/* --- THE ARTICLE. `v11CanPropose` is widened above to take an actor; this is
+   what laying one DOES, for whoever is laying it. --- */
+function v17ArticleCore(st, actor, id, repeal, route) {
+  var a = V11_ART[id]; if (!a) return 'No such article.';
+  route = V11_ROUTES[route] ? route : 'assembly';
+  var why = v11CanPropose(st, a, repeal, route, actor);
+  if (why) return why;
+  var c = v11Con(st);
+  var conv = v11ConventionSits(st);
+  var span = route === 'plebiscite' ? 1 : (conv ? 1 : 2);
+  c.pending.push({ id:id, repeal:!!repeal, laid:st.turn, due:st.turn + span, campaign:0,
+    by:actor, route:route, fast:route === 'assembly' && conv });
+  st.salience.federal = c100((st.salience.federal || 50) + 7);
+  if (route === 'plebiscite') {
+    c.plebiscites = (c.plebiscites || 0) + 1;
+    var bite = 1 + Math.min(3, c.plebiscites * .5);
+    st.ind.liberties = c100(st.ind.liberties - bite);
+    st.salience.integrity = c100((st.salience.integrity || 50) + 5);
+    mood(st, { prof:-2, youth:1 });
+    logIt(st, (repeal ? 'Repeal of ' : '') + a.name + ' was laid before the country by the ' +
+      PARTY[actor].short + '. It is the ' + v11Ordinal(c.plebiscites) + ' plebiscite of this republic.');
+    chronicle(st, (repeal ? 'A repeal of ' : 'An amendment, ') + a.name + ', went to the country.');
+  } else {
+    logIt(st, (repeal ? 'Repeal of ' : '') + a.name + ' was laid before ' + v11ArtBody(st) +
+      ' by the ' + PARTY[actor].short + '.');
+    chronicle(st, (repeal ? 'A repeal of ' : 'An amendment, ') + a.name + ', was laid before ' + v11ArtBody(st) + '.');
+  }
+  return null;
+}
+
+/* --- THE ORDER. An order is signed by the office that holds the department,
+   so the actor has to be the party sitting in it. --- */
+function v17OrderCore(st, actor, id, target) {
+  var o = V10_ORDER[id]; if (!o) return 'No such order.';
+  var why = v10OrderOpen(st, o, target, actor);
+  if (why) return why;
+  var key = v10OrderKey(o.id, target);
+  v10Orders(st)[key] = { status:'inforce', issued:st.turn, dept:o.dept, target:target || null, by:actor };
+  var bk = v10OrderMods(st).book, rec = v10Orders(st)[key];
+  if (bk.expire) rec.expires = st.turn + bk.expire;
+  if (bk.lay > 0 && lowerState(st) !== 'abolished') { rec.status = 'laid'; rec.due = st.turn + bk.lay; }
+  st.v10.orderTurn = st.v10.orderTurn || {}; st.v10.orderTurn[key] = st.turn;
+  for (var ot in st.v10.orderTurn) if (st.v10.orderTurn[ot] < st.turn) delete st.v10.orderTurn[ot];
+  st.ind.liberties = c100(st.ind.liberties - 1);
+  st.crown = c100(st.crown - (st.doctrine === 'executive' ? 2.6 : 1.5));
+  if (o.onIssue) o.onIssue(st, target);
+  logIt(st, 'Executive order: ' + v10OrderTitle(o, target) + ', signed without reference to either house.');
+  return null;
+}
+
+/* --- WHAT A PARTY WOULD PICK. Target selection is all the deck does; the
+   verbs above are what it then calls. --- */
+function v17AiArticleFor(st, pid) {
+  var want = PARTY[pid].wants || {}, home = ppos(st, pid), best = null, bd = 99;
+  V11_ARTICLES.forEach(function (a) {
+    if (v11Adopted(st, a.id)) return;
+    if (v11CanPropose(st, a, false, 'assembly', pid)) return;
+    var d = dist2(a.pos || { e:0, a:0 }, home);
+    if (d < bd) { bd = d; best = a; }
+  });
+  /* .8 on the compass: an article this party would actually want, not the
+     least-bad of eighty-one. Measured, the nearest allowed article for the
+     League sits at .64 -- the weighted roll, the state of siege, the court
+     stripped of review -- and the ones it would never lay are past .9. */
+  return best && bd <= .8 ? best.id : null;
+}
+function v17AiOrderFor(st, pid) {
+  var best = null;
+  V10_ORDERS.forEach(function (o) {
+    if (best) return;
+    if (st.exec[o.dept] !== pid) return;
+    if (v10OrderOpen(st, o, o.target ? REGIONS[0].id : null, pid)) return;
+    best = { id:o.id, target:o.target ? REGIONS[0].id : null };
+  });
+  return best;
+}
+function v17AiFloorFor(st, pid) {
+  var live = (st.bills || []).filter(function (b) {
+    return !v17FloorWhy(st, pid, b, 'oppose');
+  });
+  if (!live.length) return null;
+  /* the bill furthest from where this party stands, and whether it likes it */
+  var pick = null, worst = 0;
+  live.forEach(function (b) {
+    var p = POL[b.policy]; if (!p) return;
+    var d = dist2(polPos(p), ppos(st, pid)) * (b.dir > 0 ? 1 : -1);
+    if (!pick || Math.abs(d) > Math.abs(worst)) { worst = d; pick = b; }
+  });
+  if (!pick) return null;
+  return { bill:pick, verb:worst > .45 ? 'oppose' : (worst < -.15 ? 'support' : 'pressure') };
 }
 
 /* ---------- boot ---------- */

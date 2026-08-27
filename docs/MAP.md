@@ -1221,6 +1221,55 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## One gate, two callers (S17k)
+
+**An instrument that exists only as a click handler is an instrument only the
+player has.** The article, the order and the line on somebody else's bill were
+each one body — the gate, the price, the effect and the flash — keyed on
+`playParty`, so there was nothing an engine could call. `bill.lines`, read
+straight into a party's vote, had exactly one writer in three megabytes and it
+was the player's `pressure` button.
+
+**Every gate takes an actor and defaults it to the player.** That default is
+what makes the widening safe: the handler passes `playParty(st)` and gets the
+line it always got. The deck passes a party id and gets the same answer for the
+same reason.
+
+- **`v11CanPropose(st, a, repeal, route, actor)`** — the one-article-at-a-time
+  rule out of government asks whose articles are pending (`p.by`), so the
+  refusal names the party. **`v17ArticleCore(st, actor, id, repeal, route)`**
+  is what laying one does; the pending record carries `by`.
+- **`v10OrderOpen(st, o, target, actor)`** — this one was **wrong for the
+  player too**. It asked `holdsDept`, which is whether the *government* holds
+  the department, so any partner in the room satisfied it. It asks whether the
+  actor sits at the desk. **`v17OrderCore`** signs, and the record carries
+  `by`.
+- **`v17FloorWhy` / `v17FloorCore(st, actor, b, verb)`** — support, oppose and
+  pressure for any party against a bill that is not its own. The player's
+  handler keeps its own price, its undo and its prose; what it does to the bill
+  is the Core. **The player's line goes in `playerPosition`, everybody else's
+  in `lines`**, because `partyBillSupport` reads both and writing both makes a
+  declared line worth 40 where it has been worth 24 since S10b. Two fields say
+  one thing here; folding them is a change to what the button is worth, not a
+  tidy-up.
+- **`v17AiArticleFor` / `v17AiOrderFor` / `v17AiFloorFor`** are target
+  selection and nothing else — the nearest allowed article to where the party
+  stands, an order for a department it actually holds, the live bill furthest
+  from its position. The three deck cards call them, then call the Core.
+
+**The article card is gated on `seatShare >= .12`.** Without it, twenty-one
+articles were laid in forty sessions and the card was a third of everything the
+six parties did: the constitution became the cheapest thing on the board.
+
+**Two verbs that could only point one way.** The `attack` card's target was
+`st.ruling`, so a grudge against an opposition player reached nothing; it goes
+at the highest grudge now and falls back to the government. And
+`pv5AiPrivateBill` drafted private members' bills for **any** opposition party
+including the player's, stamped `owner:'opposition'` with
+`playerPosition:'support'` — a bill on the paper in the player's name that they
+never chose, at which `pressure` could then be aimed. It excludes
+`playParty(st)`.
+
 ## The party you lead (S16d)
 
 **`S.playAs` is written once, at setup, and by nothing else.** `playParty(st)`

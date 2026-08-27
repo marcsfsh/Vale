@@ -1022,7 +1022,7 @@ and year; AI push nonzero; race state rides save/resume.
 
 ### Group 4 — the other six
 
-**s17k — verbs are the buttons' functions** (XL). Extract
+**s17k — verbs are the buttons' functions** (XL). **STATUS: DONE.** Extract
 `<verb>Core(st, actor, args)` from the six click-only instruments
 (articles :30391, measures :14181/:17773, orders :14185, acts :14193,
 coalition join/leave, exec push) — extraction at the live outermost body,
@@ -1036,6 +1036,44 @@ target un-hard-coded from st.ruling :31861. Harness: AI government takes
 initiative most sessions (C1's measurement inverted); AI paths hit the
 same refusals (probe an AI opposition party against a government
 instrument); determinism unchanged.
+
+*What landing it found.* Three of the six instruments landed — the article,
+the order and the line on the floor, which are the three the research proved
+an AI party had no path to at all. Four notes:
+
+1. **The plan's other three were already reachable and did not need a Core.**
+   Measures and acts are `doExtra`/`doAct` bodies that already take the state
+   and an id and were never keyed on `playParty`; coalition join and leave got
+   their actor in s17f and s17g. Extracting a Core for them would have added a
+   layer around code that already answered the question. The three that needed
+   it are the three that had the gate, the price, the effect and the flash in
+   one click handler.
+2. **`v10OrderOpen`'s department test was wrong for everybody, not just for an
+   AI.** It asked `holdsDept` — whether the GOVERNMENT holds the department —
+   so a coalition partner sitting in no office at all satisfied it. Widening it
+   to ask about the actor fixed a hole the player could walk through too, and
+   the assertion that first covered this was too weak to see it: it took the
+   poison proof to find that the old line and the new one both passed. The
+   probe now asks about a party inside the government that does not sit at the
+   desk.
+3. **The article card had to be gated on seats.** Unqualified it laid
+   twenty-one articles in forty sessions and was a third of everything the six
+   parties did — the constitution became the cheapest thing on the board. A
+   party under twelve per cent of the chamber does not amend it.
+4. **The attack card's target was `st.ruling`, always.** A party could carry a
+   grudge of a hundred against an opposition player and spend every attack it
+   ever made on the government instead: there was no path from the memory to
+   the thing it was a memory of. Named in the plan, and worth restating,
+   because it is the same defect as the other three in a different coat — a
+   verb that could only ever point one way.
+5. **The refactor bought the player a buff, and the pacing run is what asked
+   the question that found it.** `partyBillSupport` reads two fields for one
+   idea — `playerPosition` (24/-28) and `lines` (16/-18) — so routing Support
+   and Oppose through the shared Core wrote both and made a declared line worth
+   40. This is the risk in "one gate, two callers" that the architecture note
+   did not name: a Core that is right for the new caller can still be wrong for
+   the old one, wherever the old one had a field of its own. Fixed, pinned at
+   24, and poison-proved.
 
 **s17l — minds and memories** (M). v16Posture widened (govern/partner not
 dead ends); memory beyond the 5-action whitelist to the full capital-verb

@@ -93,7 +93,28 @@ before touching the file.
   government the clock was supposed to). And when what you are measuring is a
   RUNNING RECORD, **tally it once, not every session**: S17g's first lifespan
   probe summed a three-entry ledger across sixty sessions, read 527, and sent
-  me hunting a runaway mechanism that was working correctly.
+  me hunting a runaway mechanism that was working correctly. And the sharpest
+  form of all, from S17k: **an assertion that passes under both the old line
+  and the new one is not testing the change.** The order gate went from
+  "does the GOVERNMENT hold this department" to "does the ACTOR sit in it",
+  and the probe — which put its party in the office — could not tell them
+  apart. Reverting the widening left it green. When a gate is narrowed, the
+  probe has to stand in the gap the narrowing closes.
+- **A shared body that is right for the new caller can still be wrong for the
+  old one.** `partyBillSupport` reads TWO fields for one idea —
+  `playerPosition` at 24/-28 and `lines` at 16/-18 — so S17k's floor Core,
+  writing both, made the player's declared line worth 40 where it had been
+  worth 24 since S10b. Nothing failed; a button just got 67% stronger. When
+  you extract a Core from a handler, grep every field it writes for a SECOND
+  reader that the old caller was already feeding, and pin the old number in
+  the assertion rather than reading it off the constant.
+- **"The government holds it" and "this party holds it" are different
+  questions, and `holdsDept` only answers the first.** It asks whether
+  `st.exec[dept]` is anywhere in the coalition, so every partner in the room
+  passes — which handed the whole order book to a party sitting in no office
+  at all, for the player as much as for an engine. `officeMine` (S17a) is the
+  player's side of it; a gate that decides who may *sign* has to ask about the
+  actor by name.
 - **`typeof x === 'string'` is not validation, and the UI is not the validation
   layer.** The custom start checked every id against a registry except its two
   chamber states, which took any string at all — and since an unknown string is
@@ -125,7 +146,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **177 content assertions**, the largest harness here: the
+- `tools/roads.js` — **178 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
