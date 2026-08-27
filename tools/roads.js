@@ -314,18 +314,33 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return a;
     };
     out.castSize = liveList().length;
+    /* S17a: MEASURED ON FIXED STREAMS, NOT ON WHATEVER STREAM THIS RUN LANDED
+       IN. The harness leaves the seed blank, so every run is a different
+       campaign and this was one sample of a chance event: it reddened on a bad
+       draw during S17a and greened on the next run with no code change at all.
+       A bar that cries wolf is worse than no bar. Eight fixed streams are
+       churned every run instead -- strictly more coverage than one random one,
+       and the same answer every time -- and the live stream is put back
+       exactly where it was found, so nothing downstream shifts because of it. */
+    const keepRng = S.rngState;
+    const STREAMS = 8;
     let worst = 0;
-    for (let i = 0; i < 200; i++) {
-      const pid = PARTIES[i % PARTIES.length].id;
-      S.figures.leaders[pid] = makeFigure(S, pid, 44);
-      const r = REGIONS[i % REGIONS.length];
-      S.v6.governors[r.id] = v6MakeGovernor(S, r, pid);
-      const a = liveList();
-      const d = a.length - new Set(a).size;
-      if (d > worst) worst = d;
+    for (let s = 0; s < STREAMS; s++) {
+      S.rngState = (s + 1) * 7919;
+      for (let i = 0; i < 200; i++) {
+        const pid = PARTIES[i % PARTIES.length].id;
+        S.figures.leaders[pid] = makeFigure(S, pid, 44);
+        const r = REGIONS[i % REGIONS.length];
+        S.v6.governors[r.id] = v6MakeGovernor(S, r, pid);
+        const a = liveList();
+        const d = a.length - new Set(a).size;
+        if (d > worst) worst = d;
+      }
     }
+    S.rngState = keepRng;
     out.castDupes = worst;
-    out.castChurn = 200;
+    out.castChurn = 200 * STREAMS;
+    out.castStreams = STREAMS;
 
     /* Very easy's opening numbers, and the guard that S10a's raise and S15c's
        raise both stayed on that tier. The berth ladder and the floor itself are
@@ -364,7 +379,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     republic.dupWorkNames.length ? republic.dupWorkNames.join('; ') : republic.workCount + ' grand works, every name its own');
   say(republic.castDupes === 0, 'no two officials share a name',
     republic.castDupes ? republic.castDupes + ' duplicate(s) among ' + republic.castSize
-      : republic.castSize + ' in public life, no name twice, through ' + republic.castChurn + ' replacements');
+      : republic.castSize + ' in public life, no name twice, through ' + republic.castChurn +
+        ' replacements across ' + republic.castStreams + ' fixed dice streams (the same answer every run)');
   say(republic.easyCap === '250/5.4/26/750' && republic.easyFloor === 150 && republic.othersUnmoved,
     'the raise stays on very easy',
     'easy capital/mult/flat/cap ' + republic.easyCap + ' over a floor of ' + republic.easyFloor +
@@ -4638,6 +4654,145 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     (clockBad.length ? ` · DISAGREE: ${clockBad.map(r => r.clock).join(', ')}` : '') +
     ` · before S16a four of these were counted against the session the click was leaving rather than the one it ` +
     `was producing, so an amendment that said two sessions wanted three End Session clicks`);
+
+  /* S17a — THE SEVEN DEFECTS. Each one was measured on the page before it was
+     fixed, and each assertion below reddens if its fix is reverted. They are
+     grouped because they share one setup cost and because the program's first
+     PR is the one that has to leave nothing lying. */
+  const seven = await page.evaluate(() => {
+    var R = {}, flashed = null, realFlash = window.flash;
+
+    /* 1. A START'S ARTICLES ARE IN THE MODEL, NOT ONLY IN THE DOCUMENT.
+       `c.arts[id] = 0` reads as un-adopted through `v11Adopted`, so every
+       article chosen at setup contributed nothing but its one-shot apply. */
+    UI.setup = UI.setup || {};
+    UI.setup.custom = { articles:['artQuadrennial', 'artEntrenchment'] };
+    var cs = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    var eff = v11ConEffects(cs);
+    R.startArticles = {
+      adopted:v11Adopted(cs, 'artQuadrennial') && v11Adopted(cs, 'artEntrenchment'),
+      term:v11TermYears(cs), ratify:eff.ratify,
+      refusesRelay:typeof v11CanPropose(cs, V11_ART.artQuadrennial, false) === 'string',
+      founding:!!(cs.v11.con.arts.artQuadrennial || {}).founding
+    };
+    UI.setup.custom = null;
+
+    /* 2. THE EXECUTIVE CARDS SPEAK TO THE PLAYER. In opposition the tags asked
+       whether the GOVERNMENT's coalition held the office, so a rival's office
+       read "In the coalition · Measures 22% cheaper" and the player's OWN
+       party's office read "Held against you". */
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.playAs = 'lp';
+    /* The tags are read PER CARD, not searched for across the page: the whole
+       defect was a true sentence printed on the wrong office, so presence
+       somewhere proves nothing. Cards render in DEPTS order. */
+    var cards = viewExec().split('<div class="card">').slice(1);
+    var byOffice = {};
+    ['pres', 'vpres', 'chan', 'vchan'].forEach(function (k, i) { byOffice[k] = cards[i] || ''; });
+    R.execPanel = {
+      opposition:standing(S) === 'opposition',
+      fourCards:cards.length >= 4,
+      ownOfficeIsMine:officeMine(S, 'vchan') === true && S.exec.vchan === 'lp',
+      rivalOfficeNotMine:officeMine(S, 'vpres') === false && S.exec.vpres === 'fp',
+      /* the player's OWN party's office must not be described as hostile, and
+         must be the one card that claims the player's party */
+      ownCardClaimsIt:byOffice.vchan.indexOf('Your party holds it') >= 0,
+      ownCardNotHostile:byOffice.vchan.indexOf('Held against you') < 0,
+      /* the rival's office must not claim the player's party, nor offer the
+         player a discount on an instrument opposition cannot use */
+      rivalCardDisclaims:byOffice.vpres.indexOf('Your party holds it') < 0,
+      rivalCardNoDiscount:byOffice.vpres.indexOf('cheaper') < 0,
+      rivalCardNoCoalitionClaim:byOffice.vpres.indexOf('In the coalition') < 0,
+      ownOfficeCheap:deptFactor(S, { dept:'vchan' }) < 1,
+      rivalOfficeDear:deptFactor(S, { dept:'vpres' }) > 1
+    };
+
+    /* 3-4-6. THREE GOVERNMENT SURFACES REFUSE AN OPPOSITION PLAYER. */
+    window.flash = function (m) { flashed = m; };
+    flashed = null; pv5OpenAppointment(pv5PortfolioRows()[0].key);
+    R.appointmentRefused = !!flashed;
+    flashed = null;
+    var partner = (S.coalition || []).filter(function (p) { return p !== S.ruling; })[0];
+    pv5CoalitionAction(partner, 'council');
+    R.coalitionRefused = !!flashed;
+
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.capital = 400; S.treasury = 4000;
+    var govBill = sponsorBill(S, Object.keys(POL)[0], 1, 'government', 'clean', true);
+    var t0 = S.treasury, w0 = govBill ? (govBill.committeeWork || 0) : 0;
+    flashed = null;
+    if (govBill) pv5CommitteeAction(govBill.committeeId, 'hearing', govBill.id);
+    R.committee = { refused:!!flashed, treasuryUntouched:S.treasury === t0,
+      workUnmoved:govBill ? (govBill.committeeWork || 0) === w0 : false };
+
+    /* 4b. COHESION IS CLAMPED. `+= 16` and `+= 9` were the only two writes not
+       passed through c100, and drove the meter past its own track. */
+    S.playAs = S.ruling; S.capital = 400; S.treasury = 4000;
+    var d = S.coalitionDeals[partner];
+    /* Read after EACH write, never only at the end: the two unclamped writes
+       were followed by clamped ones, so a final reading is re-clamped and the
+       overflow is invisible. */
+    var peak = [];
+    if (d) {
+      d.satisfaction = 95; pv5CoalitionAction(partner, 'portfolio');
+      peak.push(S.coalitionDeals[partner] ? S.coalitionDeals[partner].satisfaction : 0);
+      d = S.coalitionDeals[partner];
+      if (d) { d.satisfaction = 95; pv5CoalitionAction(partner, 'programme'); }
+      peak.push(S.coalitionDeals[partner] ? S.coalitionDeals[partner].satisfaction : 0);
+    }
+    R.cohesionSeen = peak;
+    R.cohesionClamped = peak.length === 2 && peak.every(function (n) { return n <= 100; });
+    window.flash = realFlash;
+
+    /* 5. A PRIVATE MEMBER'S BILL NAMES ITS OWN SPONSOR, ONCE. `owner:
+       'opposition'` was not handled and fell through to the player's party,
+       and the generic line printed before the specific one corrected it. */
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'fp'), false);
+    S.playAs = 'fp';
+    var tries = 0, made = null;
+    while (tries++ < 500 && !made) {
+      var n = S.bills.length; pv5AiPrivateBill(S);
+      if (S.bills.length > n) made = S.bills[S.bills.length - 1];
+    }
+    var lines = S.log.map(function (l) { return typeof l === 'string' ? l : (l.text || ''); });
+    var noSponsor = sponsorBill(S, Object.keys(POL).filter(function (k) { return !activeBillFor(S, k); })[0],
+      1, 'opposition', 'clean', true);
+    R.privateBill = made ? {
+      sponsorNotPlayer:made.sponsor !== playParty(S),
+      sponsorOutsideGovernment:(S.coalition || []).indexOf(made.sponsor) < 0,
+      introducedOnce:lines.filter(function (l) { return l.indexOf(made.title) >= 0 && /introduc/i.test(l); }).length === 1,
+      fallbackNotPlayer:!!noSponsor && noSponsor.sponsor !== playParty(S)
+    } : { none:true };
+
+    /* 7. A PACT DOES NOT OUTLIVE THE ELECTION IT WAS MADE FOR. Written in one
+       place, read in two, and deleted NOWHERE -- so it pooled six per cent of
+       the vote for the rest of the campaign and locked both parties out of
+       ever making another. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.aiPacts = { rsf:{ with:'sd', since:S.turn } };
+    S.turn += 1; runElection(S, false);
+    R.pactLapsed = Object.keys(S.aiPacts || {}).length === 0;
+    return R;
+  });
+
+  const sevenOk = seven.startArticles.adopted && seven.startArticles.term === 4 &&
+    seven.startArticles.ratify > 0 && seven.startArticles.refusesRelay && seven.startArticles.founding &&
+    Object.keys(seven.execPanel).every(k => seven.execPanel[k]) &&
+    seven.appointmentRefused && seven.coalitionRefused &&
+    seven.committee.refused && seven.committee.treasuryUntouched && seven.committee.workUnmoved &&
+    seven.cohesionClamped && !seven.privateBill.none &&
+    Object.keys(seven.privateBill).every(k => seven.privateBill[k]) && seven.pactLapsed;
+  say(sevenOk, 'the seven defects stay fixed',
+    `a start's articles are ADOPTED rather than stored as a falsy zero, so the ones the player chose reach the ` +
+    `model (the term reads ${seven.startArticles.term} years, the ratify bar moved ${seven.startArticles.ratify}) ` +
+    `and cannot be laid a second time · the executive cards ask whose side an office is on from the PLAYER's ` +
+    `chair, so in opposition a rival's office is no longer advertised as "In the coalition · 22% cheaper" and the ` +
+    `player's own party's office is no longer "Held against you" · the ministry, the coalition agreement and the ` +
+    `committee room all refuse an opposition player, and the committee no longer buys a lift on the government's ` +
+    `bill out of the national exchequer (treasury untouched: ${seven.committee.treasuryUntouched}) · cohesion ` +
+    `cannot pass its own track · a private member's bill names its own sponsor and is introduced exactly once ` +
+    `· and a pact lapses at the count it was made for` +
+    (sevenOk ? '' : ' · DISAGREE: ' + JSON.stringify(seven)));
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
