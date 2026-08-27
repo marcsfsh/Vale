@@ -1792,6 +1792,46 @@ async function run() {
     await op.close();
   }
 
+  // -- S17c: THE GOVERNMENT'S DIGEST REACHES THE REAL GAZETTE. `v17GovDigest`
+  //    is spliced into `v6ShowReport`'s column block, and this file's own map
+  //    warns that later chunks splice rendered HTML by marker strings, so a
+  //    renamed heading can disable a feature with nothing on screen to say so.
+  //    The unit assertion in roads proves the function; this proves the page.
+  {
+    const gz = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    await gz.addInitScript(() => { window.confirm = () => true; });
+    await gz.goto(URL);
+    await gz.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await gz.click('[data-setup-begin]');
+    await gz.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await gz.click('[data-doctrine]');
+    await gz.waitForTimeout(300);
+    const dig = await gz.evaluate(() => {
+      S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.capital = 300; S.treasury = 4000; S.rngState = 20260827;
+      S.uiPrefs = S.uiPrefs || {}; S.uiPrefs.report = true;
+      for (var t = 0; t < 10 && !(S.govRecord || []).length; t++) { S.capital = 300; endTurn(); }
+      var rec = S.govRecord || [];
+      if (!rec.length) return { governed: 0 };
+      rec[0].turn = S.turn - 1;
+      var rep = S.v6 && S.v6.report;
+      if (!rep) return { governed: rec.length, noReport: true };
+      v6ShowReport(rep);
+      var sheet = document.getElementById('sheet');
+      var html = sheet ? sheet.innerHTML : '';
+      return { governed: rec.length, opened: !!sheet,
+        digest: html.indexOf('What the Government Did') >= 0,
+        namesOffice: /President|Chancellor|Cabinet/.test(html),
+        namesChoice: html.indexOf(rec[0].choice.slice(0, 18)) >= 0 };
+    });
+    step('gazette-digest', dig.governed > 0 && dig.opened && dig.digest && dig.namesOffice && dig.namesChoice,
+      dig.governed
+        ? `the government decided ${dig.governed} and the Gazette prints them: section ${dig.digest}, ` +
+          `office named ${dig.namesOffice}, choice named ${dig.namesChoice}`
+        : 'the government decided nothing in ten sessions — the probe measured nothing');
+    await gz.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.

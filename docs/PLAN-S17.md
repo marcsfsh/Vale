@@ -740,7 +740,7 @@ one — and s17k's AI parties will write it. A sixth poison proved that field's
 WRITER, after the first version of the probe supplied `by` itself and so
 tested only the cap's arithmetic.
 
-**s17c — whose desk it lands on** (XL). Office attribution + the AI
+**s17c — whose desk it lands on** (XL). **STATUS: DONE.** Office attribution + the AI
 government + the digest. Author `office:` on all 174 event literals
 (six registries; values pres/vpres/chan/vchan/national); derive where
 dept/POL id exists (officeOf :9893); explicit marks for extra/ritual/
@@ -754,7 +754,25 @@ carries a valid office (any future unattributed event reddens);
 opposition probe — held-office event queues a modal, all else resolves
 into the digest; determinism (aiDecideEvent through rand() only).
 
-**s17d — the reaction** (M). National-tier events offer the opposition/
+
+
+**What landing it found.** (i) The dispatcher the plan called for is NOT
+installed here: s17c adds no tick logic (the routing lives in `endTurn`), and
+an empty wrapper would be a body nothing reads. It goes in with s17g's breach
+scanner, the first PR that needs one. (ii) **A probe that calls the new
+function directly proves the function and nothing about the game** — with the
+`v17Route` call site deleted from `endTurn`, every other part of the assertion
+still passed. The harness closes real sessions and catches the queue on its way
+into `runQueue`, comparing both chairs over one fixed stream. (iii) The event
+registries are concatenated into each other, so walking all six counts the same
+object twice — it reported 299 events for 174. Count by identity. (iv)
+`v17Utility` had to be **tuned by measurement**: approval is itself a
+population-weighted bloc average, so weighting it above the party's own blocs
+made four different governments answer identically. (v) **`makeName` never
+guaranteed a unique name** — ten random tries then whatever it had — which is
+why `no two officials share a name` cried wolf in two consecutive slices. It
+walks the pool now; measured, the old code returned an already-held name 89
+times in 300 under a forced pool, the new code none.**s17d — the reaction** (M). National-tier events offer the opposition/
 junior a reaction — per-event authored `react:` verb sets (ruling 7:
 VARIETY, never a fixed triple), moving standing/blocs/press via the
 :20278-shaped asymmetric machinery, never the outcome. Digest links each

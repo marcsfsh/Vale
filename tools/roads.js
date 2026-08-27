@@ -4987,6 +4987,183 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `censure and no-confidence deck, the campaign, the party machine, meeting an interest, stumping for a challenger` +
     (matrixBad.length ? ' · DISAGREE: ' + matrixBad.join('; ') : ''));
 
+  /* S17c — WHOSE DESK IT LANDS ON. Every event declares the office it belongs
+     to; the head of government answers everything; anybody else answers what
+     their OWN party's office holds; the government of the day answers the
+     rest and the Gazette prints what it did. */
+  const desk = await page.evaluate(() => {
+    var R = {};
+    /* 1. THE REGISTRY IS COMPLETE. Any event added later without an office
+       reddens here rather than silently routing to the government. */
+    var OK = { pres:1, vpres:1, chan:1, vchan:1, national:1 };
+    var pools = [EVENTS, typeof V6_EVENTS !== 'undefined' ? V6_EVENTS : [],
+      typeof V8_EVENTS !== 'undefined' ? V8_EVENTS : [], typeof V9_EVENTS !== 'undefined' ? V9_EVENTS : [],
+      typeof V10_EVENTS !== 'undefined' ? V10_EVENTS : [],
+      typeof V10_ROAD_EVENTS !== 'undefined' ? V10_ROAD_EVENTS : []];
+    /* Counted by IDENTITY, not by array position: the later registries are
+       concatenated into the earlier ones, so walking all six naively counts
+       the same object twice and reported 299 for 175 events. */
+    var seenEv = [], bad = [];
+    pools.forEach(function (pool) {
+      (pool || []).forEach(function (e) {
+        if (seenEv.indexOf(e) >= 0) return;
+        seenEv.push(e);
+        if (!e.office || !OK[e.office]) bad.push(e.id + ':' + (e.office || 'none'));
+      });
+    });
+    R.events = { total:seenEv.length, bad:bad.slice(0, 5), badCount:bad.length };
+
+    /* 2. THE ROUTING, over forty sessions from each chair. */
+    function run(pid, turns) {
+      S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
+      S.playAs = pid;
+      var asked = 0, offices = {};
+      for (var t = 0; t < turns; t++) {
+        S.capital = 200; S.treasury = 3000;
+        var mine = v17Route(S, pickEvents());
+        asked += mine.length;
+        mine.forEach(function (e) { offices[e.office] = 1; });
+        S.turn += 1;
+      }
+      return { standing:standing(S), asked:asked, governed:(S.govRecord || []).length,
+        offices:Object.keys(offices).sort(), holds:S.exec.vchan === pid };
+    }
+    R.lead = run('fp', 40);
+    R.opp = run('lp', 40);
+
+    /* 3. THE GOVERNMENT'S CHOICE IS THE GOVERNMENT'S. The same rail strike put
+       to four different governments: a party of the left funds a settlement,
+       a party of the right sends them back to work. Nothing is scripted --
+       the split falls out of each party's own blocs. */
+    var strike = EVENTS.filter(function (x) { return x.id === 'strike'; })[0];
+    function decideAs(rul) {
+      S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.ruling = rul; S.capital = 200; S.treasury = 3000;
+      var pick = v17AiDecide(S, strike);
+      return pick ? pick.l : null;
+    }
+    R.byGovernment = { rsf:decideAs('rsf'), lp:decideAs('lp'), pnl:decideAs('pnl'), cup:decideAs('cup') };
+
+    /* 4. DECIDING SPENDS NO LIVE DICE. The choices are weighed on sandboxed
+       clones, so the stream the campaign rides must be exactly where it was. */
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.capital = 200; S.treasury = 3000;
+    var rngBefore = S.rngState;
+    v17AiDecide(S, strike);
+    R.rngUnmoved = S.rngState === rngBefore;
+
+    /* 4b. AND endTurn ACTUALLY ROUTES. Calling `v17Route` directly proves the
+       function and nothing about the game: with the call site removed from
+       `endTurn` the rest of this probe still passed. So real sessions are
+       closed and the queue is caught on its way into `runQueue`, which is the
+       only place a player's questions can come from. Waiting for one of the
+       player's own offices to come up by chance made the probe a lottery -- it
+       caught 2 questions on one run and 0 on the next -- so what is compared
+       is the two chairs over the SAME fixed stream: the head of government is
+       asked everything, the opposition only its own, and if the routing is not
+       wired the two numbers are equal. */
+    function sessions(pid, n) {
+      S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
+      S.playAs = pid; S.capital = 300; S.treasury = 4000; S.rngState = 20260827;
+      var got = [], rq = runQueue;
+      runQueue = function (done) {
+        (UI.queue || []).forEach(function (e) {
+          if (!e) return;
+          got.push({ id:e.id, office:e.office || 'national',
+            holder:e.office && e.office !== 'national' ? S.exec[e.office] : null, me:playParty(S) });
+        });
+        UI.queue = []; rq(done);
+      };
+      try { for (var t = 0; t < n; t++) { S.capital = 300; endTurn(); } }
+      catch (e) { R.endTurnErr = e.message.slice(0, 90); }
+      finally { runQueue = rq; }
+      return got;
+    }
+    var asLead = sessions('fp', 45), asOpp = sessions('lp', 45);
+    R.wired = {
+      lead:asLead.length, opp:asOpp.length,
+      notMine:asOpp.filter(function (c) { return c.office !== 'national' && c.holder !== c.me; })
+        .map(function (c) { return c.id + ':' + c.office; }).slice(0, 4),
+      nationalAsked:asOpp.filter(function (c) { return c.office === 'national'; }).length };
+
+    /* 5. AND THE GAZETTE PRINTS IT. */
+    S.govRecord = [{ turn:S.turn - 1, id:'strike', title:'National Rail and Port Strike',
+      office:'vchan', by:S.ruling, choice:'Mediate and fund the settlement', note:'' }];
+    var dig = v17GovDigest(S);
+    R.digest = { renders:dig.indexOf('What the Government Did') >= 0,
+      namesTheOffice:dig.indexOf('Vice Chancellor') >= 0,
+      namesTheChoice:dig.indexOf('Mediate and fund') >= 0 };
+    S.govRecord = [];
+    R.digestSilentWhenNothing = v17GovDigest(S) === '';
+    return R;
+  });
+
+  const distinctGov = new Set(Object.keys(desk.byGovernment).map(k => desk.byGovernment[k])).size;
+  const deskOk = desk.events.badCount === 0 && desk.events.total >= 170 &&
+    desk.lead.asked > 0 && desk.lead.governed === 0 &&
+    desk.opp.asked > 0 && desk.opp.governed > 0 &&
+    desk.opp.offices.length === 1 && desk.opp.offices[0] === 'vchan' && desk.opp.holds &&
+    distinctGov >= 2 && desk.rngUnmoved && !desk.endTurnErr &&
+    desk.wired.lead > 0 && desk.wired.lead > desk.wired.opp &&
+    desk.wired.notMine.length === 0 && desk.wired.nationalAsked === 0 &&
+    desk.digest.renders && desk.digest.namesTheOffice && desk.digest.namesTheChoice &&
+    desk.digestSilentWhenNothing;
+  say(deskOk, 'whose desk it lands on',
+    `all ${desk.events.total} events in six registries declare the office they belong to` +
+    (desk.events.badCount ? ` (BAD: ${desk.events.bad.join(', ')})` : '') +
+    ` · over forty sessions the head of government answered ${desk.lead.asked} and governed ${desk.lead.governed} ` +
+    `by proxy, while an opposition player was asked ${desk.opp.asked} times and only ever about ` +
+    `[${desk.opp.offices.join(', ')}] -- the one great office their own party holds -- and read about the other ` +
+    `${desk.opp.governed} in the Gazette · the same rail strike put to four governments splits ` +
+    `${distinctGov} ways (${Object.keys(desk.byGovernment).map(k => k + ': ' + desk.byGovernment[k]).join(' · ')}), ` +
+    `which falls out of each party's own blocs rather than a table · weighing the choices spends no live dice ` +
+    `(${desk.rngUnmoved}) and the digest is silent when the player decided everything themselves · and the routing is ` +
+    `WIRED: forty-five real sessions closed on one fixed stream put ${desk.wired.lead} questions to the head of ` +
+    `government and ${desk.wired.opp} to an opposition player, none of them about an office that player's party does ` +
+    `not hold -- and with the routing unwired the two numbers are the same` +
+    (desk.wired.notMine.length ? ' (LEAKED: ' + desk.wired.notMine.join(', ') + ')' : '') +
+    (desk.endTurnErr ? ' · endTurn threw: ' + desk.endTurnErr : ''));
+
+  /* S17c: AND THE UNIQUENESS IS A PROPERTY, NOT A RUN OF LUCK. The churn above
+     samples: it draws names from a 39,400-pair pool for a cast of about
+     twenty and finds no collision, which is unsurprising and was never proof.
+     `makeName` tried ten times and then returned whatever it had, so a
+     collision was always possible and the assertion above reddened at random
+     in two consecutive slices. The corner is forced here instead -- a pool of
+     nine pairs with eight of them already held -- where ten random draws
+     almost always collide. Measured on the build before the fix: 89 of 300
+     names came back already in use. */
+  const nameProp = await page.evaluate(() => {
+    var G0 = GIVEN, S0 = SURNAME, out = { tries:300, bad:0 };
+    try {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      GIVEN = ['Ada', 'Bo', 'Cy']; SURNAME = ['Dane', 'Ek', 'Fane'];
+      var pairs = [];
+      GIVEN.forEach(function (g) { SURNAME.forEach(function (s) { pairs.push(g + ' ' + s); }); });
+      var taken = pairs.slice(0, 8);
+      for (var i = 0; i < out.tries; i++) {
+        S.rngState = (i + 1) * 7919 % 2147483647;
+        S.figures.leaders = {}; S.ministers = {};
+        PARTIES.slice(0, 7).forEach(function (p, k) { S.figures.leaders[p.id] = { name:taken[k] || taken[0], party:p.id }; });
+        S.figures.exec = { pres:{ name:taken[7], party:'lp' }, vpres:{ name:taken[0], party:'lp' },
+          chan:{ name:taken[1], party:'lp' }, vchan:{ name:taken[2], party:'lp' } };
+        REGIONS.forEach(function (r) { S.v6.governors[r.id] = { name:taken[3], party:'lp' }; });
+        if (v16NameHeld(makeName(S), S)) out.bad++;
+      }
+    } catch (e) { out.err = e.message.slice(0, 80); }
+    finally {
+      GIVEN = G0; SURNAME = S0;
+      /* the probe hand-builds minimal figures to force the corner; leave a
+         healthy state behind so nothing downstream inherits them */
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    }
+    return out;
+  });
+  say(nameProp.bad === 0 && !nameProp.err, 'a free name is always found',
+    nameProp.err ? 'probe threw: ' + nameProp.err
+      : `${nameProp.tries} names minted into a nine-pair pool with eight pairs already held, and not one came back ` +
+        `already in use — where ten random tries and then whatever came out returned a collision 89 times in 300`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

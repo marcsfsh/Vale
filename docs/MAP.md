@@ -237,6 +237,45 @@ standing: a caretaker still *leads*.
   asking whether the model moved. A gate that only disables a button is not a
   gate.
 
+## Whose desk it lands on (S17c)
+
+**Every one of the 174 event literals declares an `office`** — one of the four
+great offices, or `national` for what belongs to the government as a whole (the
+constitution, the regime, the party, the franchise, the federation). Before
+this slice exactly ONE decision source in about twenty knew which office it
+belonged to: the assent event, and only because S15d had put `assentOffice` on
+the bill. **An event added without a valid `office` reddens `whose desk it
+lands on`** — the registries are walked by identity, because the later ones are
+concatenated into the earlier and walking them naively counts the same object
+twice (it reported 299 for 174).
+
+- **`v17Decides(st, e)`** — the head of government decides everything (the
+  owner's ruling); anybody else decides only what their OWN party's office
+  holds. That is the STRICT test (`st.exec[o] === playParty(st)`), the one
+  `assentIsMine` makes, not `holdsDept`'s coalition test: a junior partner
+  answers for its own departments and not for its senior partner's.
+- **`v17AiDecide(st, e)`** — the government of the day answers the rest. Each
+  choice is applied to a **sandboxed clone** (`v6Sandbox` swaps in a deep copy
+  and stubs the nine UI globals) and the resulting state is scored by
+  `v17Utility` from the deciding party's own position, so the decision reflects
+  what a choice DOES rather than what its label says, and **no live dice are
+  spent** — asserted.
+- **`v17Utility` is tuned by measurement.** The first weighting put general
+  approval at 1.2 against a bloc term of .25, and since approval is itself a
+  population-weighted average of the blocs it swamped everything a party
+  believes: four governments of four different parties answered a rail strike
+  identically. The party's own blocs carry the weight now and the national
+  average is the smaller shared term — a party of the left funds the
+  settlement, a party of the right orders them back, and nothing is scripted.
+- **`st.govRecord`** (created on write, capped at 40) records what was decided
+  and by whom; **`v17GovDigest`** prints it in the Gazette as *What the
+  Government Did*, and renders nothing when the player decided everything.
+- **A probe that calls `v17Route` directly proves the function and nothing
+  about the game.** With the call site deleted from `endTurn` every other part
+  of the assertion still passed. The harness closes real sessions and catches
+  the queue on its way into `runQueue`, comparing the two chairs over one fixed
+  stream — unwired, the two numbers are equal.
+
 ## The legislature, and what happens when there isn't one
 
 Three states per chamber, not two (S15). `lowerState(st)` returns `sitting` /
