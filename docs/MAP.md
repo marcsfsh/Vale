@@ -636,7 +636,7 @@ the tool that re-runs it: very easy's capital and works ceiling
 (`tools/roads.js`, the campaign block), and the +460 all-five-channels ceiling
 recorded in `docs/STATE.md`'s open items.
 
-## The custom start (S16f)
+## The custom start (S16f, rebuilt in S16f2)
 
 The twelfth opening, written by the player. **`UI.setup.custom`** holds the
 blob; **`v16CustomApply(st, blob)`** lands it **between `v6NewGame` and
@@ -654,6 +654,40 @@ organisation and money, and the fifteen indicators plus the exchequer.
 
 - **Every field is optional.** A field left blank takes whatever the chosen
   opening gives. `v16CustomCount` is what the start screen prints.
+- **Every field says its range, its opening and its direction**, then what the
+  number means (`V16_IND_SAY`). The opening is the real number this difficulty,
+  scenario, length and party would produce: `v16CustomPreview` caches a detached
+  `enrichState(v6NewGame(...))` per `diff|scenario|length|party`, with
+  `s.custom` nulled first and the six migration flags saved and restored, so
+  building the preview spends **no live dice** and leaves no trace.
+- **THE BOUNDS TABLE IS THE SINGLE SOURCE.** `V16_PARTY_FIELDS` and
+  `V16_CUSTOM_MONEY` draw the sliders *and* clamp `v16CustomClean`, and
+  `V16_CHAMBER_OPTS` both offers the chamber vocabulary and derives the set the
+  cleaner accepts. The range offered and the range accepted must be one range,
+  because **a blob pasted into the import box never passes a slider** — the UI
+  is not a validation layer, the cleaner is. Two fields were once checked with
+  `typeof` alone and any string was accepted; since an unknown string is neither
+  `'abolished'` nor `'suspended'`, apply read it as a house that SITS.
+- **The seat track always spans the whole chamber; the cap is on the VALUE.** A
+  dynamic `max` recomputed from what is left put a 65-of-1305 party's handle
+  hard right and lied about its size. `capPool` sums the other parties on input
+  and trims the moved control instead.
+- **The bench length comes from the law.** `v16BenchSize(blob)` reads
+  `artFixedBench` (9), `artWidenBench` (+4) and `artConstitutionalBench` (+4),
+  clamped 5–24. The roll is built to that length absolutely — never appended —
+  so a start that both adopts an article and names the seats cannot double-count.
+- **`courtLean` is S16f's slider, kept only so a start saved by that build still
+  loads.** It assigns every justice the same position and runs after the roll,
+  so it must stand down when the blob names the bench seat by seat: a blob
+  carrying both once kept the roll's party labels and flattened seven distinct
+  positions to one. **The more specific field wins.**
+- **The sheet reads the live DOM before every redraw.** `v16CustomSheet` lifts
+  `v16CustomRead(live, draft)` into `UI.setup.custom` as an invariant, so
+  switching section, changing an opening or repainting a pool never drops
+  unsaved work; `UI.csSkipRead` is the one opt-out, for import and clear, where
+  the draft is authoritative and the DOM is stale. Focus is set **after**
+  `showSheet` returns (it focuses the first choice button itself, which put the
+  ring on the wrong tab), keyed by `UI.csFocusCat`.
 - **Seats are a SHARE.** The chamber has a constitutional size the editor may
   not change, so what the player types is apportioned. Read the size from
   **the state**, not from `CFG.seats` — measured, the state opens with a

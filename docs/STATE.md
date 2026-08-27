@@ -58,7 +58,7 @@ start screen:
 | the National Assembly | seats by party, and whether the house sits, is suspended or is abolished |
 | the Senate | seats by party, its veto, and whether it sits, is ceremonial, suspended or abolished |
 | the executive | the four great offices, and how many portfolios are filled — **the ministry follows**, because a minister takes the party of the office they answer to |
-| the judiciary | which way the sixteen justices lean, which is what the court gap reads |
+| the judiciary | the roll, seat by seat: the party that returned each justice, over a bench whose LENGTH is whatever the articles this start turns on say it is |
 | the states | who holds each of the eight governorships |
 | the powers | relations with each of the **eleven capitals**, and which of the twenty instruments are already written with them |
 | the parties | each of the seven's relations, organisation and money |
@@ -78,9 +78,11 @@ round-trips as text so a start can be kept and given away.
 **An id this build does not carry is dropped and COUNTED**, and the sheet says
 how many. A blob that is not a start at all is refused whole. Same contract as
 the save layer since S1. Measured: one blob setting **all ten axes at once**
-with a piece of rubbish planted on every one of them lands **18 of 18** through
-the real `v6NewGame` and the whole ensure chain, drops **7**, and a campaign
-begun with no custom start is untouched.
+with a piece of rubbish planted on every one of them lands **19 of 19** through
+the real `v6NewGame` and the whole ensure chain, drops **8**, and a campaign
+begun with no custom start is untouched. Eleven more fields given values no
+slider would ever have offered are each **clamped** to the bound the editor
+draws its own track from, rather than accepted.
 
 ### Two things measurement caught
 
@@ -97,15 +99,81 @@ begun with no custom start is untouched.
    apparently fixed it. Every caller has the state in hand now; the global is
    only the fallback. **Eight consecutive green roads runs.**
 
+### S16f2 — the custom start, refined
+
+The owner played it and asked for four things:
+
+> *"For pretty much all of the text entry fields, you need to define what to
+> write. […] I need to know what can be entered and what the scale is. I should
+> never be able to enter an unacceptable or invalid entry to any field. For
+> party seats such as senate, assembly — I should have an indicator showing how
+> many unallocated seats are left, wherever I would be entering seats. The
+> judiciary customization is way too bare. […] And the UI could be seriously
+> improved."*
+
+**1. Every field says what it is.** Each row prints its range, its opening and
+its direction, then a sentence of what the number *means*: `0 to 100 · opens at
+58 · higher is better · The pace of the whole economy. Poverty, the treasury and
+the mood of business all read it.` Fifteen indicator glosses in `V16_IND_SAY`;
+the opening is the real number the chosen difficulty, scenario, length and party
+would produce, from a cached detached `v6NewGame` that spends no live dice.
+
+**2. Nothing invalid can be entered.** There are now **zero** `input[type=
+number]` on the sheet and zero out-of-range values across all ten sections — a
+value is chosen on a track whose bounds are *measured* against what a campaign
+actually produces, not guessed. The first build ran the treasury from −500 to
+9000 and put a real opening of 110 at one per cent of the track; it runs
+−200 to 1200 now. **The bounds table is the single source**: `V16_PARTY_FIELDS`
+and `V16_CUSTOM_MONEY` draw the sliders *and* clamp the cleaner, so the range
+offered and the range accepted are one range — which matters because a blob
+pasted into the import box never passes a slider.
+
+**3. The seat pool follows you.** Both chambers carry a sticky bar with
+allocated, left and the majority line, so the last party's arithmetic no longer
+means scrolling back. The chamber cannot be overdrawn: the **track always spans
+the whole chamber** (a dynamic `max` put a 65-of-1305 party's handle hard right
+and lied about its size) and the cap is applied to the *value* on input.
+
+**4. The judiciary is a bench.** It was one slider called "the bench leans",
+which is not a bench. It is the roll now, seat by seat, each justice taking the
+position of the party that returned them — exactly how the opening roll is built
+and how every later seating works — and **its length comes from the law**:
+`v16BenchSize` reads all three articles that move the count `[16, 20, 20, 9,
+24]`.
+
+### Four defects the rebuild turned up
+
+1. **The article that promised four justices and seated none.**
+   `artConstitutionalBench` wrote `st.court.size` — a field written in **four
+   places and read in none**, since every consumer in three megabytes counts
+   `justices.length`. Its two siblings already went through `v11SeatJustices`.
+   All three do now.
+2. **`--rule` and `--ink-2` do not exist.** Four uses, all in S16f's own editor
+   CSS, so those sections rendered with no border and no card background.
+3. **The two fields taken on the blob's word.** `lowerState` and `upperState`
+   were validated with `typeof` alone, so any string was accepted and `lost`
+   said nothing was dropped — and since an unknown string is neither
+   `'abolished'` nor `'suspended'`, apply read it as a house that **sits**. A
+   start asking for an abolished Assembly opened with one sitting. Checked
+   against the vocabulary the picker offers now, and dropped and counted.
+4. **The old slider erased the new roll.** `courtLean` is kept only so a start
+   saved by S16f still loads, but it assigns every justice the *same* position
+   and it ran *after* the roll: a blob carrying both kept the roll's party
+   labels and flattened the whole bench to one disposition. Measured, **seven
+   distinct positions became one**. The specific field wins now.
+
 ```
 ALL CHECKS PASS   11/11
-ROADS OK          162 assertions, stable over eight runs
-PLAYTEST PASS     54 steps + the WebKit SKIP, stable over three runs
+ROADS OK          162 assertions, the custom-start road landing 19 of 19 axes
+PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS  8 properties
-CORPORA OK
-CHAMBER / TIERS / TABS   all green
-PACING            six seeds, identical to the build before this PR
+RUNGS OK / CORPORA OK
+TIERS / TABS      all green, no width scrolls sideways
+PACING            six seeds A/B against main — all six trajectories IDENTICAL
 ```
+
+Each of the four defects ships with the assertion that reddens without it, and
+three were proved against a poisoned scratch copy.
 
 **All six of the owner's explicit requirements are now done.** What remains of
 S16 is the half the slice is named for: the court, the street, and playing from

@@ -3842,6 +3842,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       out.landed = {}; out.axes = 0; out.landedAll = 0;
       out.missed = ['every axis: there is no custom start'];
       out.plainUntouched = true; out.rubbish = 0;
+      out.benchBefore = 0; out.benchAfterArticle = 0; out.benchSizeSynced = false;
+      out.benchAfterRepeal = 0; out.benchCounts = [];
       out.openings = (typeof V6_SCENARIOS !== 'undefined') ? V6_SCENARIOS.length : 0;
       return out;
     }
@@ -3849,7 +3851,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     const region = REGIONS[0].id;
     /* every axis at once, with a deliberate piece of rubbish on each of them */
     const blob = {
-      v:1, form:'executive', articles:[art, 'nosuchArticle'],
+      v:1, form:'executive', articles:[art, 'artWidenBench', 'nosuchArticle'],
       pol:{ [pol.id]:pol.max, nosuchPolicy:2 },
       seats:{ lp:60, fp:20, sd:20 },
       upperSeats:{ lp:70, fp:30 },
@@ -3859,9 +3861,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       governors:{ [region]:'lp', nosuchRegion:'lp' },
       powers:{ sarath:95, tarnow:5, nosuchPower:50 },
       treaties:{ sarath:['consular', 'defence', 'nosuchTreaty'] },
-      partyRel:{ fp:12 }, machine:{ lp:.9 }, purse:{ lp:1200 },
+      partyRel:{ fp:12 }, machine:{ lp:.9 }, purse:{ lp:420 },
       ind:{ liberties:20, tension:90, nosuchIndicator:5 },
-      money:{ capital:400, treasury:2000, unrest:70, unity:35 }
+      money:{ capital:250, treasury:800, unrest:70, unity:35 },
+      /* S16f2: the roll, seat by seat, with a party this build does not carry */
+      judges:['rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','rsf','nosuchParty']
     };
     out.lost = v16CustomClean(blob).lost;
     out.fields = v16CustomCount(v16CustomClean(blob).blob);
@@ -3885,14 +3889,92 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       treaties:v6TreatyKinds(S, 'sarath').join(',') === 'consular,defence',
       partyRel:Math.round(S.partyRel.fp) === 12,
       machine:Math.abs(S.machine.lp - .9) < .001,
-      purse:Math.round(partyPurse(S, 'lp')) === 1200,
+      purse:Math.round(partyPurse(S, 'lp')) === 420,
       indicators:S.ind.liberties === 20 && S.ind.tension === 90,
-      exchequer:S.capital === 400 && S.treasury === 2000 && S.unrest === 70 && S.unity === 35,
-      marked:S.v6.scenario === 'custom' && !!S.customStart
+      exchequer:S.capital === 250 && S.treasury === 800 && S.unrest === 70 && S.unity === 35,
+      marked:S.v6.scenario === 'custom' && !!S.customStart,
+      /* S16f2: the bench is a roll now, and its LENGTH comes from the articles
+         this start turns on -- artWidenBench is in the fixture above, so
+         sixteen seats become twenty and every one of them is RSF. */
+      bench:S.court.justices.length === 20 && S.court.justices.every(j => j.party === 'rsf') &&
+        S.court.size === S.court.justices.length
     };
     out.axes = Object.keys(out.landed).length;
     out.landedAll = Object.keys(out.landed).filter(k => out.landed[k]).length;
     out.missed = Object.keys(out.landed).filter(k => !out.landed[k]);
+
+    /* S16f2: THE ARTICLE THAT PROMISED FOUR JUSTICES AND SEATED NOBODY.
+       `st.court.size` is written in four places in this file and READ IN NONE
+       -- every consumer in three megabytes counts `justices.length` -- so an
+       article whose card says "four more justices, sitting only on this
+       document" moved a field nothing reads and left the bench at sixteen.
+       Its two siblings in the same book already went through `v11SeatJustices`.
+       All three do now, and the editor's bench count reads all three. */
+    UI.setup.custom = null;
+    const benchProbe = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    out.benchBefore = benchProbe.court.justices.length;
+    V11_ART.artConstitutionalBench.apply(benchProbe);
+    out.benchAfterArticle = benchProbe.court.justices.length;
+    out.benchSizeSynced = benchProbe.court.size === benchProbe.court.justices.length;
+    V11_ART.artConstitutionalBench.repeal(benchProbe);
+    out.benchAfterRepeal = benchProbe.court.justices.length;
+    /* and the editor counts what the laws do */
+    out.benchCounts = [v16BenchSize({ articles:[] }), v16BenchSize({ articles:['artWidenBench'] }),
+      v16BenchSize({ articles:['artConstitutionalBench'] }), v16BenchSize({ articles:['artFixedBench'] }),
+      v16BenchSize({ articles:['artWidenBench', 'artConstitutionalBench'] })];
+
+    /* S16f2: OUT OF RANGE IS CLAMPED, NEVER ACCEPTED. The owner: "I should
+       never be able to enter an unacceptable or invalid entry to any field."
+       The sliders enforce that on the way in, but a blob typed or pasted into
+       the import box never passes a slider, so the CLEANER is what actually
+       holds the line -- and it holds it to the same table the sliders are drawn
+       from, so the range offered and the range accepted are one range. */
+    const wild = v16CustomClean({
+      purse:{ lp:999999 }, machine:{ lp:99 }, partyRel:{ fp:-40 },
+      money:{ capital:9999, treasury:99999, debt:-500, unrest:900 },
+      ind:{ liberties:800 }, powers:{ sarath:-70 }, upperVeto:99, cabinetDepth:-5
+    }).blob;
+    const bound = (t, k) => t.filter(f => f.k === k)[0];
+    out.clamped = {
+      purse:wild.purse.lp === bound(V16_PARTY_FIELDS, 'purse').max,
+      machine:wild.machine.lp === bound(V16_PARTY_FIELDS, 'machine').max,
+      partyRel:wild.partyRel.fp === bound(V16_PARTY_FIELDS, 'partyRel').min,
+      capital:wild.money.capital === bound(V16_CUSTOM_MONEY, 'capital').max,
+      treasury:wild.money.treasury === bound(V16_CUSTOM_MONEY, 'treasury').max,
+      debt:wild.money.debt === bound(V16_CUSTOM_MONEY, 'debt').min,
+      unrest:wild.money.unrest === bound(V16_CUSTOM_MONEY, 'unrest').max,
+      ind:wild.ind.liberties === 100, power:wild.powers.sarath === 0,
+      veto:wild.upperVeto === 3, depth:wild.cabinetDepth === 0
+    };
+    out.clampedAll = Object.keys(out.clamped).every(k => out.clamped[k]);
+    out.clampMissed = Object.keys(out.clamped).filter(k => !out.clamped[k]);
+
+    /* S16f2: THE TWO FIELDS THAT WERE TAKEN ON THE BLOB'S WORD. Every id in
+       the editor is checked against what this build carries -- except these
+       two, which were checked with `typeof` alone, so any string at all was
+       accepted and `lost` said nothing was dropped. The failure was silent in
+       the worst direction: an unknown string is neither 'abolished' nor
+       'suspended', so apply read it as a house that SITS. */
+    const vocab = v16CustomClean({ lowerState:'banana', upperState:'nonsense' });
+    out.vocabLost = vocab.lost;
+    out.vocabDropped = vocab.blob.lowerState === null && vocab.blob.upperState === null;
+    out.vocabKeeps = v16CustomClean({ lowerState:'abolished', upperState:'ceremonial' });
+    out.vocabKeeps = out.vocabKeeps.lost === 0 && out.vocabKeeps.blob.lowerState === 'abolished' &&
+      out.vocabKeeps.blob.upperState === 'ceremonial';
+
+    /* S16f2: THE OLD SLIDER MUST NOT ERASE THE NEW ROLL. `courtLean` is the
+       S16f control, kept only so a start saved by that build still loads. It
+       assigns every justice the SAME position, and it runs AFTER the roll, so a
+       blob carrying both kept the roll's party labels and flattened the whole
+       bench to one disposition. Measured before the fix: seven distinct
+       positions became one. The blob below carries both. */
+    UI.setup.custom = { judges:['rsf', 'lp', 'sd', 'fp', 'cup', 'pnl', 'rsf', 'lp'], courtLean:80 };
+    const both = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    UI.setup.custom = { judges:['rsf', 'lp', 'sd', 'fp', 'cup', 'pnl', 'rsf', 'lp'] };
+    const rollOnly = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    const es = st => st.court.justices.map(j => Math.round(j.e * 1000) / 1000);
+    out.leanDistinct = new Set(es(both)).size;
+    out.leanMatchesRoll = es(both).join(',') === es(rollOnly).join(',');
 
     /* a start that sets nothing changes nothing */
     UI.setup.custom = null;
@@ -3903,8 +3985,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     return out;
   });
 
-  say(custom.built && custom.sections === 10 && custom.lost === 7 && custom.fields > 25 &&
-      custom.landedAll === custom.axes && custom.plainUntouched && custom.rubbish === -1,
+  say(custom.built && custom.sections === 10 && custom.lost === 8 && custom.fields > 25 &&
+      custom.landedAll === custom.axes && custom.plainUntouched && custom.rubbish === -1 &&
+      custom.benchBefore === 16 && custom.benchAfterArticle === 20 && custom.benchSizeSynced &&
+      custom.benchAfterRepeal === 16 && custom.benchCounts.join(',') === '16,20,20,9,24' &&
+      custom.vocabLost === 2 && custom.vocabDropped && custom.vocabKeeps &&
+      custom.leanDistinct > 1 && custom.leanMatchesRoll && custom.clampedAll,
     'a start of your own',
     `the editor covers ${custom.sections} axes and one blob setting all of them at once -- the form, an article, a ` +
     `statute at its top rung, both houses, all four great offices, the cabinet's depth, the bench, a governorship, two ` +
@@ -3913,7 +3999,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${custom.missed.length ? ' (missed: ' + custom.missed.join(', ') + ')' : ''} through the real ` +
     `\`v6NewGame\` and the whole ensure chain · ${custom.fields} fields set and ${custom.lost} pieces of rubbish planted ` +
     `on every axis were each dropped and COUNTED rather than half-written, and a blob that is not a start at all is ` +
-    `refused whole (${custom.rubbish}) · a campaign begun with no custom start is untouched (${custom.plainUntouched})` +
+    `refused whole (${custom.rubbish}) · a campaign begun with no custom start is untouched (${custom.plainUntouched}) · ` +
+    `the Article of the Constitutional Bench seats ${custom.benchBefore} -> ${custom.benchAfterArticle} justices and ` +
+    `unseats them on repeal (${custom.benchAfterRepeal}), where it used to write \`court.size\` -- a field written in ` +
+    `four places and READ IN NONE -- and leave the bench exactly as it found it; and the editor's own count reads ` +
+    `every law that moves it [${custom.benchCounts.join(', ')}] for no article, the Wider Bench, the Constitutional ` +
+    `Bench, the Fixed Bench and two at once · eleven fields given values no slider would ever have offered ` +
+    `(a purse of 999999, an organisation of 99, a treasury of 99999, a veto of 99) are each CLAMPED to the bound the ` +
+    `editor draws its own track from rather than accepted` +
+    `${custom.clampMissed.length ? ' (missed: ' + custom.clampMissed.join(', ') + ')' : ''} · the two chamber states are checked against the vocabulary the picker ` +
+    `offers rather than against \`typeof\`, so rubbish is dropped and counted (${custom.vocabLost}) instead of read as ` +
+    `a house that SITS, and the four real states still land · and S16f's bench slider, kept only so a start saved by ` +
+    `that build still loads, no longer flattens a roll the blob names seat by seat (${custom.leanDistinct} distinct ` +
+    `positions, matching the roll alone: ${custom.leanMatchesRoll})` +
     (custom.built ? '' : ' · THIS BUILD HAS NO CUSTOM START: the eleven openings are eleven fixed literals'));
 
   /* S16e -- THE SIX THAT ARE NOT YOURS. The owner: "other parties should be
