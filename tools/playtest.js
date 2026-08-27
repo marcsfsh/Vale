@@ -1440,52 +1440,114 @@ async function run() {
       `-- before this PR the sheet listed ten cards against one slot, signing on the click and ` +
       `replacing whatever was in it` + (tr.built ? '' : ' -- THIS BUILD HAS NO PROPOSAL PATH'));
 
-    /* S16f: the editor, driven through the real start screen. The model side
-       is in roads.js; what this asks is whether a player can reach it, set a
-       field, keep it, and see that it is kept. */
+    /* S16f2: the editor, driven through the real start screen. The model side
+       is in roads.js; what this asks is whether a player can reach it, read a
+       scale, move a control, see a pool answer, and keep it -- and that there is
+       nothing on the sheet they could type a wrong number into. */
     const cs = await page.evaluate(() => {
-      const out = { built:typeof v16CustomSheet === 'function' };
+      const out = { built:typeof v16CustomSheet === 'function', sections:{}, badRange:[] };
       const keepSetup = UI.setup ? JSON.parse(JSON.stringify(UI.setup)) : null;
       startScreen();
       const open = document.querySelector('#sheet [data-cs-open]');
       out.onStartScreen = !!open;
-      if (!open) { if (typeof hideSheet === 'function') hideSheet(); UI.setup = keepSetup; render(); return out; }
+      if (!open || !out.built) { if (typeof hideSheet === 'function') hideSheet(); UI.setup = keepSetup; render(); return out; }
       open.click();
-      const sh = document.getElementById('sheet');
-      out.sections = sh.querySelectorAll('[data-cs-sec]').length;
-      out.controls = sh.querySelectorAll('[data-cs]').length;
-      out.hasText = !!sh.querySelector('[data-cs-text]');
-      out.sectionNames = [...sh.querySelectorAll('[data-cs-sec] > summary > b')].map(x => x.textContent);
-      const form = sh.querySelector('[data-cs="form"]');
-      if (form) form.value = 'empire';
+      out.wide = document.getElementById('sheet').classList.contains('cs-wide');
+      out.tabs = [...document.querySelectorAll('#sheet [data-cs-tab]')].length;
+
+      /* EVERY section: only controls that cannot be given an illegal value */
+      v16CustomSections().forEach((sec) => {
+        UI.csOpen = sec.id; v16CustomSheet();
+        const sh = document.getElementById('sheet');
+        const ranges = [...sh.querySelectorAll('input.cs-range')];
+        ranges.forEach(e => {
+          const v = Number(e.value);
+          if (isNaN(v) || v < Number(e.min) || v > Number(e.max)) out.badRange.push(sec.id + '/' + e.getAttribute('data-cs'));
+        });
+        out.sections[sec.id] = { ranges:ranges.length,
+          numbers:sh.querySelectorAll('input[type=number]').length,
+          text:sh.querySelectorAll('input[type=text]').length };
+      });
+      out.numbers = Object.keys(out.sections).reduce((n, k) => n + out.sections[k].numbers + out.sections[k].text, 0);
+
+      /* a scale line on every scalar row in the heaviest section */
+      UI.csOpen = 'ind'; v16CustomSheet();
+      let sh = document.getElementById('sheet');
+      const rows = [...sh.querySelectorAll('.cs-row')];
+      out.indRows = rows.length;
+      out.everyRowSaysScale = rows.every(r => /\d+ to |opens at/.test((r.querySelector('.cs-open') || {}).textContent || ''));
+      out.everyRowSaysWhat = rows.every(r => ((r.querySelector('.cs-say') || {}).textContent || '').length > 40);
+      const eco = sh.querySelector('[data-cs="ind.economy"]');
+      out.economyOpensReal = eco.getAttribute('data-cs-open');
+      eco.value = '84'; eco.dispatchEvent(new Event('input', { bubbles:true }));
+      out.economyReadout = sh.querySelector('[data-cs-out="ind.economy"]').textContent;
+      out.economyWord = sh.querySelector('[data-cs-word="ind.economy"]').textContent;
+      out.economyMarked = eco.closest('.cs-row').classList.contains('is-set');
+
+      /* the pool: a counter that is live, and a chamber that cannot be overdrawn */
+      UI.csOpen = 'lower'; v16CustomSheet();
+      sh = document.getElementById('sheet');
+      out.poolLeftAtOpening = sh.querySelector('[data-cs-left="seats"]').textContent;
+      const lp = sh.querySelector('[data-cs="seats.lp"]');
+      out.trackSpansChamber = lp.max === String(CFG.seats);
+      lp.value = '0'; lp.dispatchEvent(new Event('input', { bubbles:true }));
+      out.poolLeftAfterZero = sh.querySelector('[data-cs-left="seats"]').textContent;
+      const all = [...sh.querySelectorAll('[data-cs-pool="seats"]')];
+      all.forEach(e => { e.value = e.max; e.dispatchEvent(new Event('input', { bubbles:true })); });
+      out.overdraw = all.reduce((n, e) => n + Number(e.value), 0) - CFG.seats;
+      sh.querySelector('[data-cs-reset="seats"]').click();
+      out.poolAfterReset = sh.querySelector('[data-cs-left="seats"]').textContent;
+
+      /* the bench: a roll, and a count that follows the articles */
+      UI.setup.custom.articles = [];
+      UI.csOpen = 'court'; v16CustomSheet();
+      sh = document.getElementById('sheet');
+      out.benchAtOpening = sh.querySelectorAll('[data-cs-judge]').length;
+      out.benchSaysStanding = /reliably with the government|usually|persuadable|implacable/.test(sh.textContent);
+      UI.setup.custom.articles = ['artWidenBench']; v16CustomSheet();
+      out.benchWithArticle = document.querySelectorAll('#sheet [data-cs-judge]').length;
+      UI.setup.custom.articles = [];
+
+      /* keep three things and read them back */
+      UI.csOpen = 'ind'; v16CustomSheet();
+      sh = document.getElementById('sheet');
       const cap = sh.querySelector('[data-cs="money.capital"]');
-      if (cap) cap.value = '321';
-      const gov = sh.querySelector('[data-cs="governors.' + REGIONS[0].id + '"]');
-      if (gov) gov.value = 'lp';
+      cap.value = String(Number(cap.getAttribute('data-cs-open')) + 100);
+      cap.dispatchEvent(new Event('input', { bubbles:true }));
+      out.keptCapital = Number(cap.value);
       sh.querySelector('[data-cs-apply]').click();
-      const kept = UI.setup.custom || {};
-      out.keptForm = kept.form;
-      out.keptCapital = kept.money && kept.money.capital;
-      out.keptGovernor = kept.governors && kept.governors[REGIONS[0].id];
-      out.backOnStartScreen = !!document.querySelector('#sheet [data-cs-open]');
+      out.keptBack = (UI.setup.custom.money || {}).capital;
       out.label = (document.querySelector('#sheet [data-cs-open] b') || {}).textContent || '';
-      /* and clearing puts it back */
+      out.backOnStartScreen = !!document.querySelector('#sheet [data-cs-open]');
       document.querySelector('#sheet [data-cs-open]').click();
-      document.getElementById('sheet').querySelector('[data-cs-clear]').click();
+      document.querySelector('#sheet [data-cs-clear]').click();
       out.cleared = !UI.setup.custom;
+
       if (typeof hideSheet === 'function') hideSheet();
       UI.setup = keepSetup; render();
       return out;
     });
     step('custom-start',
-      cs.built && cs.onStartScreen && cs.sections === 10 && cs.controls > 300 && cs.hasText &&
-      cs.keptForm === 'empire' && cs.keptCapital === 321 && cs.keptGovernor === 'lp' &&
-      cs.backOnStartScreen && /3 fields set/.test(cs.label) && cs.cleared,
-      `the start screen carries "Design the republic" (${cs.onStartScreen}), which opens ${cs.sections} sections ` +
-      `[${(cs.sectionNames || []).join(', ')}] and ${cs.controls} controls over one sheet; setting the form, the ` +
-      `opening capital and a governorship and keeping them writes all three (${cs.keptForm}/${cs.keptCapital}/` +
-      `${cs.keptGovernor}), the start screen says so ("${cs.label}"), and clearing puts it back (${cs.cleared}) -- ` +
-      `the eleven openings were eleven fixed literals and this is the twelfth` +
+      cs.built && cs.onStartScreen && cs.wide && cs.tabs === 10 &&
+      cs.numbers === 0 && cs.badRange.length === 0 &&
+      cs.everyRowSaysScale && cs.everyRowSaysWhat && cs.indRows === 22 &&
+      cs.economyReadout === '84' && cs.economyWord === 'very strong' && cs.economyMarked &&
+      cs.poolLeftAtOpening === '0' && cs.trackSpansChamber && Number(cs.poolLeftAfterZero) > 0 &&
+      cs.overdraw === 0 && cs.poolAfterReset === '0' &&
+      cs.benchAtOpening === 16 && cs.benchWithArticle === 20 && cs.benchSaysStanding &&
+      cs.keptBack === cs.keptCapital && cs.backOnStartScreen && cs.cleared,
+      `the start screen carries "Design the republic" (${cs.onStartScreen}), opening ${cs.tabs} sections on a wide ` +
+      `sheet (${cs.wide}) with ${cs.numbers} places a wrong number could be typed and ${cs.badRange.length} controls ` +
+      `holding a value outside their own range · all ${cs.indRows} rows of the country say their scale ` +
+      `(${cs.everyRowSaysScale}) and what the field means (${cs.everyRowSaysWhat}), and economy opens on ` +
+      `${cs.economyOpensReal}, the number a real campaign would have given -- moved to 84 it reads back "84 / ` +
+      `${cs.economyWord}" and marks itself changed (${cs.economyMarked}) · the Assembly opens with ` +
+      `${cs.poolLeftAtOpening} seats unallocated, its track spans the whole chamber (${cs.trackSpansChamber}), ` +
+      `emptying one party frees ${cs.poolLeftAfterZero}, dragging every party to its maximum overdraws the house by ` +
+      `${cs.overdraw}, and the reset puts it back to ${cs.poolAfterReset} · the bench is ` +
+      `${cs.benchAtOpening} editable seats with a standing on each (${cs.benchSaysStanding}) and ` +
+      `${cs.benchWithArticle} once the Article of the Wider Bench is ticked · a kept field reads back ` +
+      `(${cs.keptBack}) and clearing puts it all back (${cs.cleared})` +
       (cs.built ? '' : ' -- THIS BUILD HAS NO CUSTOM START'));
 
     /* S16e: the six on the page. A posture the player cannot see is not in the

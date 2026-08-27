@@ -23352,24 +23352,123 @@ render = function () {
 .sheet .sheet-sub{margin:18px 0 8px;font-family:var(--font-u);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ivory-dim)}
 .sheet .sheet-sub:first-of-type{margin-top:10px}
 
-/* S16f: the custom-start editor. One section per axis, every control a labelled
-   field, and a grid that folds to one column on the phone tier -- no new width
-   threshold: 761 is the tablet edge this file already owns. */
-.sheet .cs-sec{border:1px solid var(--rule);border-radius:4px;margin:8px 0;padding:8px 10px;background:var(--ink-2)}
-.sheet .cs-sec>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px}
-.sheet .cs-sec>summary::-webkit-details-marker{display:none}
-.sheet .cs-sec>summary b{font-size:14px}
-.sheet .cs-sec>summary small{color:var(--ivory-dim);font-size:12px;line-height:1.45}
-.sheet .cs-f{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;font-size:13px}
-.sheet .cs-f>span{color:var(--ivory-dim)}
-.sheet .cs-f input,.sheet .cs-f select,.sheet .cs-f textarea{background:var(--ink);color:var(--ivory);border:1px solid var(--rule);border-radius:3px;padding:4px 6px;font-family:var(--font-n);font-size:13px;min-width:11ch}
-.sheet .cs-f textarea{width:100%;font-size:11px;font-family:var(--font-u)}
-.sheet .cs-wide{flex-direction:column;align-items:stretch}
-.sheet .cs-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;margin-top:6px}
-.sheet .cs-book{margin:6px 0}
-.sheet .cs-book>b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--brass);margin-bottom:2px}
-.sheet .cs-c{display:flex;align-items:center;gap:6px;font-size:12.5px;line-height:1.5;color:var(--ivory-dim)}
-@media (max-width:760px){.sheet .cs-grid{grid-template-columns:1fr}.sheet .cs-f{flex-direction:column;align-items:stretch;gap:3px}}
+/* S16f2: the custom-start editor, restyled.
+
+   The first build reached for `var(--rule)` and `var(--ink-2)`, NEITHER OF
+   WHICH IS A TOKEN IN THIS FILE -- the whole of `:root` is baize, oxblood,
+   brass, ivory, slate, ink, ok and bad. An undefined custom property makes the
+   declaration invalid at computed-value time, so every section in that editor
+   drew with no border and no card behind it, which is a good part of why the
+   owner read the sheet as bare. These rules use the file's own idiom instead:
+   the brass-tinted rgba borders `.panel` and `.card` are built from.
+
+   No new width threshold: the one query here is the 760 phone edge this file
+   already owns. */
+/* `--cs-pad` mirrors the sheet's own padding so the two full-bleed rules below
+   (the nav strip and the sticky foot) cannot drift from it. The phone tier
+   redefines it, because `.sheet` pads at 14px there and not 24. */
+.sheet.cs-wide{max-width:min(980px,96vw);--cs-pad:24px}
+.cs-sheet-head{border-bottom:1px solid rgba(191,161,78,.22);padding-bottom:10px;margin-bottom:12px}
+.cs-warn{border:1px solid var(--bad);background:rgba(199,123,98,.12);color:var(--ivory);padding:8px 10px;font-size:13px;margin:0 0 12px}
+
+.cs-nav{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:14px}
+.cs-tab{background:rgba(0,0,0,.25);border:1px solid rgba(191,161,78,.22);color:var(--ivory-dim);flex:0 1 auto;min-width:0;
+  font-family:var(--font-u);font-size:12px;letter-spacing:.04em;padding:6px 9px;display:flex;align-items:center;gap:5px}
+.cs-tab:hover{border-color:var(--brass);color:var(--ivory)}
+.cs-tab.on{background:rgba(191,161,78,.14);border-color:var(--brass);color:var(--ivory)}
+.cs-badge{font-family:var(--font-n);font-size:10px;background:var(--brass);color:var(--ink);padding:0 4px;line-height:1.5}
+
+.cs-sec{border:1px solid rgba(191,161,78,.22);background:linear-gradient(180deg,rgba(38,48,42,.55),rgba(20,26,23,.55));padding:14px}
+.cs-sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;border-bottom:1px solid rgba(191,161,78,.16);padding-bottom:9px;margin-bottom:12px}
+.cs-sechead h3{font-family:var(--font-d);font-size:20px;font-weight:600;margin:0;flex:0 0 auto}
+.cs-sechead p{margin:0;flex:1 1 240px;font-size:13px;color:var(--ivory-dim)}
+
+.cs-row{padding:9px 0;border-bottom:1px solid rgba(191,161,78,.09)}
+.cs-row:last-child{border-bottom:0}
+.cs-row.is-set{box-shadow:inset 2px 0 0 var(--brass);padding-left:9px}
+.cs-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.cs-lab{font-size:14px;color:var(--ivory);display:flex;align-items:center;gap:6px}
+.cs-val{font-family:var(--font-n);font-size:16px;font-variant-numeric:tabular-nums;color:var(--brass)}
+.cs-scale{display:flex;justify-content:space-between;gap:8px;font-family:var(--font-u);font-size:11px;color:var(--slate);margin-top:2px}
+.cs-scale em{font-style:normal;color:var(--ivory-dim);letter-spacing:.04em}
+.cs-say{margin:3px 0 0;font-size:12px;line-height:1.5;color:var(--slate)}
+.cs-open{color:var(--ivory-dim)}
+
+.cs-range{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:none;margin:4px 0 0;display:block}
+.cs-range::-webkit-slider-runnable-track{height:4px;background:rgba(255,255,255,.10);border:1px solid rgba(191,161,78,.18)}
+.cs-range::-moz-range-track{height:4px;background:rgba(255,255,255,.10);border:1px solid rgba(191,161,78,.18)}
+.cs-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;margin-top:-7px;
+  background:var(--brass);border:1px solid var(--ink);border-radius:50%;cursor:pointer}
+.cs-range::-moz-range-thumb{width:16px;height:16px;background:var(--brass);border:1px solid var(--ink);border-radius:50%;cursor:pointer}
+.cs-range:focus-visible{outline:2px solid var(--brass);outline-offset:3px}
+
+.cs-select{width:100%;background:rgba(0,0,0,.32);border:1px solid rgba(191,161,78,.28);color:var(--ivory);
+  font-family:var(--font-u);font-size:13px;padding:7px 9px;margin-top:4px}
+
+.cs-chips{display:flex;gap:3px}
+.cs-chip{background:rgba(0,0,0,.28);border:1px solid rgba(191,161,78,.22);color:var(--ivory-dim);
+  font-family:var(--font-n);font-size:11px;min-width:30px;padding:3px 6px}
+.cs-chip:hover{border-color:var(--brass);color:var(--ivory)}
+.cs-chip.on{background:var(--brass);border-color:var(--brass);color:var(--ink)}
+.cs-chip.opening{border-style:dashed}
+.cs-cats{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:10px}
+.cs-cats .cs-chip{min-width:0;font-family:var(--font-u);letter-spacing:.04em}
+
+.cs-pool{position:sticky;top:-14px;z-index:2;background:var(--baize-2);border:1px solid rgba(191,161,78,.28);padding:9px 11px;margin:0 0 10px}
+.cs-pool.full{border-color:var(--ok)}
+.cs-pooltop{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+.cs-pooltop b{font-size:14px}
+.cs-poolnum{font-family:var(--font-n);font-size:13px;font-variant-numeric:tabular-nums;color:var(--ivory-dim)}
+.cs-poolnum em{font-style:normal;color:var(--ivory)}
+.cs-poolnum em.warn{color:var(--bad)}.cs-poolnum em.ok{color:var(--ok)}
+.cs-bar{display:flex;height:9px;margin:7px 0 5px;background:rgba(0,0,0,.4);border:1px solid rgba(191,161,78,.18);position:relative}
+.cs-bar>i{display:block;height:100%}
+.cs-bar>i.empty{background:repeating-linear-gradient(90deg,rgba(255,255,255,.12) 0 2px,transparent 2px 5px)}
+.cs-bar::after{content:"";position:absolute;top:-2px;bottom:-2px;left:var(--maj,50%);width:1px;background:var(--ivory)}
+.cs-poolfoot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-family:var(--font-u);font-size:11px;color:var(--slate)}
+.cs-seatgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.cs-seat{padding:7px 0;border-bottom:1px solid rgba(191,161,78,.09)}
+.cs-seat.is-set{box-shadow:inset 2px 0 0 var(--brass);padding-left:9px}
+
+.cs-roll{width:100%}
+.cs-roll .cs-select{margin:0;min-width:9ch}
+.cs-jrow.is-set td{background:rgba(191,161,78,.08)}
+.cs-books{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}
+.cs-book>b{display:flex;align-items:center;gap:6px;font-family:var(--font-u);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--party);margin:8px 0 3px}
+.cs-c{display:flex;align-items:flex-start;gap:7px;font-size:13px;line-height:1.55;color:var(--ivory-dim);padding:2px 0}
+.cs-c.on{color:var(--ivory)}
+.cs-c em{font-style:normal;color:var(--slate);font-family:var(--font-u);font-size:11px}
+.cs-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.cs-power,.cs-party{border-bottom:1px solid rgba(191,161,78,.14);padding-bottom:6px;margin-bottom:6px}
+.cs-partyhead{display:flex;align-items:center;gap:7px;margin-top:8px}
+.cs-treaties>summary{font-family:var(--font-u);font-size:11px;letter-spacing:.05em;color:var(--slate);cursor:pointer;padding:3px 0}
+.cs-keep{margin-top:14px;border-top:1px solid rgba(191,161,78,.16);padding-top:8px}
+.cs-keep>summary{font-family:var(--font-u);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);cursor:pointer}
+.cs-keep textarea{height:70px;margin-top:7px}
+
+.cs-foot{position:sticky;bottom:-24px;z-index:3;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  gap:8px;margin:14px calc(-1 * var(--cs-pad,24px)) calc(-1 * var(--cs-pad,24px));padding:12px var(--cs-pad,24px);
+  background:var(--baize-2);border-top:1px solid var(--brass-dim)}
+.cs-foot>span:first-child{font-family:var(--font-u);font-size:12px;letter-spacing:.06em;color:var(--ivory)}
+.cs-foot .btnrow{margin-top:0}
+
+@media (max-width:760px){
+  .cs-seatgrid,.cs-books,.cs-grid2{grid-template-columns:1fr}
+  /* `.sheet.cs-wide` is two classes and would out-specify the phone tier's
+     full-bleed `.sheet` rule whatever the source order, leaving the editor
+     374px wide inside a 390px viewport. It goes full bleed here like every
+     other sheet. */
+  .sheet.cs-wide{max-width:none;--cs-pad:14px}
+  .cs-nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    margin-left:calc(-1 * var(--cs-pad,24px));margin-right:calc(-1 * var(--cs-pad,24px));padding:0 var(--cs-pad,24px)}
+  .cs-tab{flex:0 0 auto}
+  .cs-range{height:34px}
+  .cs-range::-webkit-slider-thumb{width:22px;height:22px;margin-top:-10px}
+  .cs-range::-moz-range-thumb{width:22px;height:22px}
+  .cs-chip{min-width:38px;padding:7px 8px}
+  .cs-select{padding:10px 9px;font-size:16px}
+}
 </style>
 <script>
 'use strict';
@@ -30009,8 +30108,15 @@ v11RegisterArticles([
       text:'A separate bench shall sit upon the constitution, and upon nothing else.',
       moves:'four more justices, sitting only on this document, and every article after it is harder to carry',
       mods:{ ratify:4, ind:{ liberties:2 } },
-      apply:function (st) { if (st.court) st.court.size = Math.min(24, (st.court.size || 16) + 4); },
-      repeal:function (st) { if (st.court) st.court.size = Math.max(9, (st.court.size || 20) - 4); } }),
+      /* S16f2: this wrote `st.court.size` and seated NOBODY. `court.size` is
+         written in four places and read in NONE -- every consumer in three
+         megabytes counts `justices.length` -- so an article whose card promises
+         "four more justices, sitting only on this document" left the bench at
+         sixteen and changed nothing at all. Its two siblings in this book,
+         artFixedBench and artWidenBench, already go through `v11SeatJustices`,
+         which seats them and syncs `size` afterwards. This one does now too. */
+      apply:function (st) { v11SeatJustices(st, 4); },
+      repeal:function (st) { v11SeatJustices(st, -4); } }),
 
   /* ===== VI. OF THE FEDERATION ===== */
   A({ id:'artInterstateCommerce', book:'federation', name:'Article of the Commerce Between States', cost:16,
@@ -31997,54 +32103,64 @@ function v16CustomBlank() {
   return { v:V16_CUSTOM_VERSION, form:null, articles:[], pol:{}, seats:{}, upperSeats:{},
     upperState:null, upperVeto:null, lowerState:null, exec:{}, courtLean:null,
     cabinetDepth:null, governors:{}, powers:{}, treaties:{}, partyRel:{},
-    machine:{}, ind:{}, purse:{}, money:{} };
+    machine:{}, ind:{}, purse:{}, money:{}, judges:[] };
 }
 /* Everything the editor may write, in one table: what it is called, where it
    lives, and what it will accept. The renderer and the reader both walk this,
    so a field cannot appear on the sheet without a home in the state. */
-function v16CustomSections() {
-  var partyOpts = PARTIES.map(function (p) { return { v:p.id, l:p.short }; });
-  return [
-    { id:'con', name:'The constitution', note:'The form of the state, and which of the eighty articles are already in force.',
-      fields:[{ k:'form', kind:'select', label:'Form of the state',
-        opts:Object.keys(FORMS).map(function (f) { return { v:f, l:FORMS[f].name }; }) }],
-      articles:true },
-    { id:'law', name:'The statute book', note:'Any of the 582 statutes, at any of its four rungs. Only what you set is written; everything else opens where the scenario left it.',
-      statutes:true },
-    { id:'lower', name:'The National Assembly', note:'Seats by party, and whether the house sits at all.',
-      fields:[{ k:'lowerState', kind:'select', label:'The house',
-        opts:[{ v:'sitting', l:'Sits' }, { v:'suspended', l:'Suspended' }, { v:'abolished', l:'Abolished' }] }],
-      seatsKey:'seats' },
-    { id:'upper', name:'The Senate', note:'Seats by party, its veto, and whether it sits.',
-      fields:[
-        { k:'upperState', kind:'select', label:'The house',
-          opts:[{ v:'sitting', l:'Sits' }, { v:'ceremonial', l:'Ceremonial' }, { v:'suspended', l:'Suspended' }, { v:'abolished', l:'Abolished' }] },
-        { k:'upperVeto', kind:'num', label:'Veto', min:0, max:3 }],
-      seatsKey:'upperSeats' },
-    { id:'exec', name:'The executive', note:'The four great offices. The ministry follows them: a minister takes the party of the office they answer to.',
-      execOffices:true,
-      fields:[{ k:'cabinetDepth', kind:'num', label:'Portfolios filled', min:0, max:24 }] },
-    { id:'court', name:'The judiciary', note:'Which way the sixteen justices lean. This is what the court gap reads, and the court gap is what decides whether a measure is taken up.',
-      fields:[{ k:'courtLean', kind:'range', label:'The bench leans', min:-100, max:100 }] },
-    { id:'gov', name:'The states', note:'Who holds each of the eight governorships.', governors:true },
-    { id:'world', name:'The powers', note:'Relations with each of the eleven capitals, and what is already written with them.', powers:true },
-    { id:'party', name:'The parties', note:'How each of the seven stands with you, the organisation behind it, and what it has in hand.', partyRows:true },
-    { id:'ind', name:'The country', note:'The fifteen indicators, and the exchequer.', indicators:true }
-  ];
-}
 function v16CustomInd() {
   return ['economy', 'technology', 'agriculture', 'infrastructure', 'poverty', 'education', 'healthcare',
     'safety', 'liberties', 'corruption', 'military', 'energy', 'environment', 'tension', 'territories'];
 }
+/* ONE TABLE GOVERNS BOTH THE SLIDER AND THE CLAMP. `v16CustomClean` reads
+   `min` and `max` straight off these rows and so does the control that draws
+   them, so the range a player is offered and the range the state will accept
+   are the same range by construction rather than by agreement. `say` is the
+   line under the field: the owner's first note was that a field has to tell
+   you what it wants. */
 var V16_CUSTOM_MONEY = [
-  { k:'capital', label:'Political capital', min:-5, max:900 },
-  { k:'treasury', label:'Treasury', min:-500, max:9000 },
-  { k:'debt', label:'Debt', min:0, max:900 },
-  { k:'unrest', label:'Unrest', min:0, max:110 },
-  { k:'crown', label:'State governments', min:0, max:100 },
-  { k:'armyLoyalty', label:'The army', min:0, max:100 },
-  { k:'unity', label:'Party unity', min:0, max:100 }
+  /* The bounds are measured, not guessed: across the five difficulties a
+     campaign opens on 8 to 250 of capital, 30 to 640 of treasury and 0 to 560
+     of debt, and the ceiling on capital runs from 52 to 750. A slider whose
+     track is six times wider than anything the game produces is a slider whose
+     handle never leaves the left edge -- the first build ran the treasury from
+     -500 to 9000 and put a real opening of 110 at one per cent of the track. */
+  { k:'capital', label:'Political capital', min:0, max:300, step:5,
+    say:'Every card in the game is bought with it, and a session pays some of it back. A campaign opens on 8 to 250 of it.' },
+  { k:'treasury', label:'Treasury', min:-200, max:1200, step:10, fmt:'money',
+    say:'Money in hand. Works, treaties and the departments all come out of it.' },
+  { k:'debt', label:'Debt', min:0, max:800, step:10, fmt:'money', inv:true,
+    say:'What the country owes. It charges interest against the treasury every session.' },
+  { k:'unrest', label:'Unrest', min:0, max:110, step:1, band:true, inv:true,
+    say:'The street. Above sixty a government starts losing sessions to it.' },
+  { k:'crown', label:'The state governments', min:0, max:100, step:1, band:true,
+    say:'How the fifty states regard the federal government. A mandate they will not execute is worth nothing.' },
+  { k:'armyLoyalty', label:'The army', min:0, max:100, step:1, band:true,
+    say:'How the general staff regard the government. Below forty a change of form becomes dangerous.' },
+  { k:'unity', label:'Party unity', min:0, max:100, step:1, band:true,
+    say:'Your own party. Below forty-five the caucuses stop voting the way you ask them to.' }
 ];
+/* The three per-party numbers, in one table for the same reason the money is:
+   `v16CustomClean` clamps from it and the sliders are drawn from it, so the
+   range offered and the range accepted are one range. The purse bound is
+   measured too -- a party opens on 24 to 44 and S15f's own probe read 280 to
+   809 at the end of a campaign. */
+var V16_PARTY_FIELDS = [
+  { k:'partyRel', label:'Relations', min:0, max:100, step:1, band:true },
+  { k:'machine', label:'Organisation', min:-0.8, max:1, step:0.01 },
+  { k:'purse', label:'Money in hand', min:0, max:600, step:5, fmt:'money' }
+];
+/* The two chamber vocabularies. The picker OFFERS these and the cleaner
+   ACCEPTS these, and they are one list rather than two that can drift: the
+   accepted set is derived from the offered one right here. */
+var V16_CHAMBER_OPTS = {
+  lowerState:[{ v:'sitting', l:'Sits' }, { v:'suspended', l:'Suspended' }, { v:'abolished', l:'Abolished' }],
+  upperState:[{ v:'sitting', l:'Sits' }, { v:'ceremonial', l:'Ceremonial' }, { v:'suspended', l:'Suspended' }, { v:'abolished', l:'Abolished' }]
+};
+var V16_CHAMBER_STATES = { lowerState:[], upperState:[] };
+for (var v16cs in V16_CHAMBER_OPTS) {
+  V16_CHAMBER_STATES[v16cs] = V16_CHAMBER_OPTS[v16cs].map(function (o) { return o.v; });
+}
 /* Reading a blob written by another build. Every id is checked against what
    this build carries; anything it does not know is DROPPED AND COUNTED. */
 function v16CustomClean(raw) {
@@ -32056,10 +32172,18 @@ function v16CustomClean(raw) {
     if (!POL[p]) { lost++; continue; }
     out.pol[p] = clamp(Math.round(raw.pol[p]), 0, POL[p].max);
   }
-  ['seats', 'upperSeats', 'partyRel', 'machine', 'purse'].forEach(function (k) {
+  ['seats', 'upperSeats'].forEach(function (k) {
     for (var pid in (raw[k] || {})) {
       if (!PARTY[pid]) { lost++; continue; }
-      out[k][pid] = Number(raw[k][pid]) || 0;
+      out[k][pid] = Math.max(0, Math.round(Number(raw[k][pid]) || 0));
+    }
+  });
+  /* clamped HERE and not only at apply, so a blob cannot carry a number the
+     editor would never have offered */
+  V16_PARTY_FIELDS.forEach(function (f) {
+    for (var pid in (raw[f.k] || {})) {
+      if (!PARTY[pid]) { lost++; continue; }
+      out[f.k][pid] = clamp(Number(raw[f.k][pid]) || 0, f.min, f.max);
     }
   });
   for (var o in (raw.exec || {})) {
@@ -32086,7 +32210,22 @@ function v16CustomClean(raw) {
   V16_CUSTOM_MONEY.forEach(function (m) {
     if (raw.money && raw.money[m.k] !== undefined && !isNaN(raw.money[m.k])) out.money[m.k] = clamp(Number(raw.money[m.k]), m.min, m.max);
   });
-  ['upperState', 'lowerState'].forEach(function (k) { if (typeof raw[k] === 'string') out[k] = raw[k]; });
+  /* S16f2: the roll. A party this build does not carry is dropped and counted
+     like every other id, and the bench cannot be longer than the law allows. */
+  (raw.judges || []).slice(0, 24).forEach(function (pid) {
+    if (PARTY[pid]) out.judges.push(pid); else lost++;
+  });
+  /* S16f2: checked against the vocabulary, not against `typeof`. These were the
+     only two fields taken on the word of the blob, and the failure was silent
+     in the worst way: an unknown string is not 'abolished' and not 'suspended',
+     so `v16CustomApply` read it as a house that SITS -- a start asking for an
+     abolished Assembly opened with one sitting, and `lost` said nothing was
+     dropped. Same contract as every id beside it: unknown is dropped and
+     COUNTED. */
+  ['upperState', 'lowerState'].forEach(function (k) {
+    if (raw[k] === undefined || raw[k] === null) return;
+    if (V16_CHAMBER_STATES[k].indexOf(raw[k]) >= 0) out[k] = raw[k]; else lost++;
+  });
   if (raw.upperVeto !== undefined && raw.upperVeto !== null) out.upperVeto = clamp(Math.round(raw.upperVeto), 0, 3);
   if (raw.courtLean !== undefined && raw.courtLean !== null) out.courtLean = clamp(Number(raw.courtLean), -100, 100);
   if (raw.cabinetDepth !== undefined && raw.cabinetDepth !== null) out.cabinetDepth = clamp(Math.round(raw.cabinetDepth), 0, 24);
@@ -32157,7 +32296,33 @@ function v16CustomApply(st, blob) {
     st.cabinet = st.cabinet || {};
     rows.forEach(function (row, i) { st.cabinet[row.key] = i < b.cabinetDepth ? 1 : 0; });
   }
-  if (b.courtLean !== null && st.court && st.court.justices && st.court.justices.length) {
+  /* S16f2: THE ROLL, SEAT BY SEAT. The first build offered one slider called
+     "the bench leans", which is not a bench. A justice takes the position of
+     the party that returned them, which is exactly how the opening roll is
+     built (a named list of sixteen parties) and how every later seating works.
+     The LENGTH comes from the articles this start turns on, so a start that
+     adopts the Article of the Wider Bench gets twenty seats and not sixteen. */
+  if (st.court && st.court.justices) {
+    var want = v16BenchSize(b);
+    if (b.judges && b.judges.length) {
+      var roll = [];
+      for (var ji = 0; ji < want; ji++) {
+        var jp = b.judges[ji] || (st.court.justices[ji] ? st.court.justices[ji].party : st.ruling);
+        var home = (PARTY[jp] || PARTY[st.ruling]).home;
+        roll.push({ party:jp, e:home.e, a:home.a, since:CFG.startYear - (want - ji) });
+      }
+      st.court.justices = roll;
+      st.court.size = roll.length;
+    }
+  }
+  /* The S16f slider, kept ONLY so a start saved by that build still loads --
+     nothing in this editor writes it any more. It must not touch a bench the
+     blob names seat by seat: it assigns every justice the SAME position, so a
+     blob carrying both fields kept the roll's party labels and flattened all
+     sixteen to one disposition (measured: seven distinct positions became
+     one). The newer, more specific field wins. */
+  if (b.courtLean !== null && !(b.judges && b.judges.length) &&
+      st.court && st.court.justices && st.court.justices.length) {
     var lean = b.courtLean / 100;
     st.court.justices.forEach(function (j) { j.e = clamp(lean, -1.2, 1.2); j.a = clamp(lean * .6, -1.2, 1.2); });
   }
@@ -32188,168 +32353,769 @@ function v16CustomApply(st, blob) {
    field by field, because the start screen rebuilds itself on every choice and
    a live binding would lose the typing -- the same reason the seed box keeps
    its value on `UI.setup`. */
+/* ---------- S16f2: the editor, rebuilt ----------
+
+   The owner played the first build and named four things wrong with it, all of
+   them the same thing wrong: THE SHEET DID NOT SAY WHAT IT WANTED.
+
+     "for pretty much all of the text entry fields, you need to define what to
+      write. For example, what do I write for economy? As a new user, I
+      wouldn't have any idea. I need to know what can be entered and what the
+      scale is."
+     "I should never be able to enter an unacceptable or invalid entry."
+     "For party seats -- I should have an indicator showing how many
+      unallocated seats are left, wherever I would be entering seats."
+     "The judiciary customization is way too bare."
+
+   Four rules answer all four, and each of them is checked by a harness:
+
+   1. EVERY FIELD OPENS ON ITS REAL VALUE. `v16CustomPreview` builds the exact
+      campaign the chosen party, opening, length and difficulty would produce
+      and reads the true opening number off it. So "as it stands" is not an
+      empty box any more -- it is the number already under the handle, and the
+      scale line beside it gives the range, the opening and which direction is
+      good. You never have to know what to write, because it is already written.
+
+   2. AN INVALID ENTRY CANNOT BE MADE. There is not one `input[type=number]`
+      left in this sheet. A bounded number is a slider, which cannot leave its
+      own range; a choice is a select or a row of chips; a seat is a slider
+      capped at what is unallocated. `roads.js` asserts the count of number
+      inputs is zero and that every control's value survives `v16CustomClean`
+      unchanged -- the UI can only produce values that were already legal.
+
+   3. A POOL SAYS WHAT IS LEFT, WHERE YOU ARE SPENDING IT. Both chambers carry
+      a sticky bar with the size, what is allocated, what is left and where the
+      majority falls, and no party's slider will take a seat that is not there.
+
+   4. THE BENCH IS A ROLL. One row per seat, each with the party that returned
+      the justice, the year they were seated and how they will vote -- read
+      through `v9JusticeWord`, the same words the Judiciary page uses. The
+      NUMBER of seats comes from the articles the player has turned on two
+      sections above, because that is what governs it in a campaign.
+*/
+var V16_IND_SAY = {
+  economy:'The pace of the whole economy. Poverty, the treasury and the mood of business all read it.',
+  technology:'Laboratories, patents and the firms built on them. It feeds the economy and the professions.',
+  agriculture:'The land, what it yields and what it earns abroad. The plains vote on it.',
+  infrastructure:'Roads, rail, ports and the grid. Slow to move, and felt in the economy for a generation.',
+  poverty:'How many are poor. A burden, so a high number is a bad one.',
+  education:'Schools, colleges, and what the country can be taught to do next.',
+  healthcare:'Hospitals, waiting, and what an illness costs a household.',
+  safety:'Crime, policing, and whether people feel safe on an ordinary street.',
+  liberties:'What a government may not do. Every authority statute is paid for out of it.',
+  corruption:'What is taken quietly. A burden, so a high number is a bad one.',
+  military:'The armed forces, their size and their equipment. Tension and the veterans read it.',
+  energy:'Where the power comes from, and whether it can be cut off from outside.',
+  environment:'Air, water and what is left standing. The young hold a government to it.',
+  tension:'How close the hemisphere is to a war. A burden, so a high number is a bad one.',
+  territories:'The possessions and the protectorates. It opens at eight and only an empire moves it far.'
+};
+/* A word for a band, so a number is never bare. The relations rows use the
+   game's own `relWord` instead; these are for everything measured out of 100. */
+function v16Band(v, inv) {
+  var n = inv ? 100 - v : v;
+  return n >= 82 ? 'very strong' : n >= 66 ? 'strong' : n >= 50 ? 'steady'
+    : n >= 34 ? 'weak' : n >= 18 ? 'poor' : 'dire';
+}
+/* THE OPENING, BUILT AND CACHED. Randomness in this file rides `st.rngState`
+   rather than a global, so building a detached campaign spends none of the
+   live stream -- `roads.js` asserts exactly that. The UI counters `enrichState`
+   sets on a migration are saved and restored, so previewing a start cannot
+   raise a "that save was written when..." notice on the start screen. */
+function v16CustomPreview() {
+  var s = UI.setup || (UI.setup = {});
+  var key = [s.diff || 'normal', s.scenario || 'v6default', s.length || 'epic', s.party || 'lp'].join('|');
+  if (UI.csPreview && UI.csPreviewKey === key) return UI.csPreview;
+  var keepCustom = s.custom;
+  var flags = { pol:UI.polMigrated, con:UI.conMigrated, seed:UI.seedMinted,
+    tm:UI.treatiesMigrated, tl:UI.treatiesLost, err:UI.saveReadError };
+  s.custom = null;
+  var st = null;
+  try { st = enrichState(v6NewGame(s.diff || 'normal', s.scenario || 'v6default', s.length || 'epic', s.party || 'lp'), false); }
+  catch (e) { st = null; }
+  s.custom = keepCustom;
+  UI.polMigrated = flags.pol; UI.conMigrated = flags.con; UI.seedMinted = flags.seed;
+  UI.treatiesMigrated = flags.tm; UI.treatiesLost = flags.tl; UI.saveReadError = flags.err;
+  UI.csPreviewKey = key; UI.csPreview = st;
+  return st;
+}
+/* How many justices the bench would have, given the articles this start turns
+   on. The three that move it are the three whose cards say they move it. */
+function v16BenchSize(b) {
+  var arts = (b && b.articles) || [], n = 16;
+  if (arts.indexOf('artFixedBench') >= 0) n = 9;
+  if (arts.indexOf('artWidenBench') >= 0) n += 4;
+  if (arts.indexOf('artConstitutionalBench') >= 0) n += 4;
+  return clamp(n, 5, 24);
+}
+function v16BenchWhy(b) {
+  var arts = (b && b.articles) || [], on = [];
+  if (arts.indexOf('artFixedBench') >= 0) on.push('the Article of the Fixed Bench holds it at nine');
+  if (arts.indexOf('artWidenBench') >= 0) on.push('the Article of the Wider Bench seats four more');
+  if (arts.indexOf('artConstitutionalBench') >= 0) on.push('the Article of the Constitutional Bench seats four more');
+  return on.length ? on.join(', ') + '.' : 'Sixteen since the founding. Three articles in the constitution above would change it.';
+}
+/* The opening roll, so a seat the player has not touched shows who really
+   holds it. */
+function v16BenchOpening(st, n) {
+  var out = [], js = (st && st.court && st.court.justices) ? st.court.justices.slice() : [];
+  js.sort(function (x, y) { return x.since - y.since; });
+  for (var i = 0; i < n; i++) out.push(js[i] ? js[i].party : (st ? st.ruling : PARTIES[0].id));
+  return out;
+}
+function v16JudgeYear(i, n) { return CFG.startYear - (n - i); }
+
+/* ---------- the controls ---------- */
+function v16CsRow(o) {
+  /* o: {k, label, open, min, max, step, fmt, say, inv, band, kind} */
+  var open = o.open, val = (o.val === undefined || o.val === null) ? open : o.val;
+  var set = Math.abs(val - open) > (o.step || 1) / 1000;
+  return '<div class="cs-row' + (set ? ' is-set' : '') + '" data-cs-row="' + esc(o.k) + '">' +
+    '<div class="cs-top"><label for="cs_' + esc(o.k) + '" class="cs-lab">' + esc(o.label) + '</label>' +
+    '<b class="cs-val" data-cs-out="' + esc(o.k) + '">' + esc(o.fmt ? o.fmt(val) : String(val)) + '</b></div>' +
+    '<input class="cs-range" id="cs_' + esc(o.k) + '" data-cs="' + esc(o.k) + '" type="range" ' +
+      'min="' + o.min + '" max="' + o.max + '" step="' + (o.step || 1) + '" value="' + val + '" ' +
+      'data-cs-open="' + open + '"' + (o.band ? ' data-cs-band="' + (o.inv ? 'inv' : 'nrm') + '"' : '') +
+      (o.pool ? ' data-cs-pool="' + esc(o.pool) + '"' : '') + '>' +
+    '<div class="cs-scale"><span>' + esc(o.fmt ? o.fmt(o.min) : String(o.min)) + '</span>' +
+    '<em data-cs-word="' + esc(o.k) + '">' + esc(o.word ? o.word(val) : '') + '</em>' +
+    '<span>' + esc(o.fmt ? o.fmt(o.max) : String(o.max)) + '</span></div>' +
+    '<p class="cs-say"><span class="cs-open">' + esc(o.fmt ? o.fmt(o.min) : String(o.min)) + ' to ' +
+      esc(o.fmt ? o.fmt(o.max) : String(o.max)) + ' &middot; opens at ' + esc(o.fmt ? o.fmt(open) : String(open)) +
+      (o.band ? ' &middot; ' + (o.inv ? 'lower is better' : 'higher is better') : '') + '</span>' +
+      (o.say ? ' &middot; ' + esc(o.say) : '') + '</p></div>';
+}
+function v16CsPick(k, label, val, opts, say) {
+  return '<div class="cs-row cs-pickrow' + (val ? ' is-set' : '') + '" data-cs-row="' + esc(k) + '">' +
+    '<div class="cs-top"><label for="cs_' + esc(k) + '" class="cs-lab">' + esc(label) + '</label></div>' +
+    '<select class="cs-select" id="cs_' + esc(k) + '" data-cs="' + esc(k) + '">' +
+    '<option value="">as it stands</option>' +
+    opts.map(function (o) { return '<option value="' + esc(o.v) + '"' + (val === o.v ? ' selected' : '') + '>' + esc(o.l) + '</option>'; }).join('') +
+    '</select>' + (say ? '<p class="cs-say">' + esc(say) + '</p>' : '') + '</div>';
+}
+/* A statute is five chips, because every statute in the book has exactly four
+   rungs and a state of not being in force at all. The opening rung is marked,
+   and the authored line for whichever rung is chosen sits underneath it. */
+function v16CsRungs(p, open, val) {
+  var cur = (val === undefined || val === null) ? open : val;
+  var chips = '';
+  for (var i = 0; i <= 4; i++) {
+    chips += '<button type="button" class="cs-chip' + (i === cur ? ' on' : '') + (i === open ? ' opening' : '') +
+      '" data-cs-rung="' + esc(p.id) + '" data-cs-lv="' + i + '" aria-pressed="' + (i === cur) + '">' +
+      (i === 0 ? '&mdash;' : ['I', 'II', 'III', 'IV'][i - 1]) + '</button>';
+  }
+  var say = (cur > 0 && p.rungs && p.rungs[cur - 1]) ? p.rungs[cur - 1] : 'Not in force.';
+  return '<div class="cs-row cs-rung' + (cur !== open ? ' is-set' : '') + '" data-cs-row="pol.' + esc(p.id) + '">' +
+    '<div class="cs-top"><span class="cs-lab">' + esc(p.name) + '</span>' +
+    '<span class="cs-chips" role="group" aria-label="' + esc(p.name) + ' rung">' + chips + '</span></div>' +
+    '<input type="hidden" data-cs="pol.' + esc(p.id) + '" value="' + cur + '" data-cs-open="' + open + '">' +
+    '<p class="cs-say" data-cs-rungsay="' + esc(p.id) + '">' + esc(say) + '</p></div>';
+}
+
+/* A chamber, with the pool bar the owner asked for: the size, what is
+   allocated, what is LEFT, and where the majority falls -- pinned at the top
+   of the block so it is on screen at the party you are actually dragging. */
+function v16CsPool(id, name, size, seats, open) {
+  var used = 0; PARTIES.forEach(function (p) { used += seats[p.id] || 0; });
+  var left = size - used, maj = Math.floor(size / 2) + 1;
+  var bar = PARTIES.map(function (p) {
+    var n = seats[p.id] || 0;
+    return n ? '<i style="width:' + (100 * n / Math.max(1, size)) + '%;background:' + p.color + '" title="' + esc(p.short + ' ' + n) + '"></i>' : '';
+  }).join('') + (left > 0 ? '<i class="empty" style="width:' + (100 * left / Math.max(1, size)) + '%"></i>' : '');
+  var lead = null; PARTIES.forEach(function (p) { if (!lead || (seats[p.id] || 0) > (seats[lead] || 0)) lead = p.id; });
+  return '<div class="cs-pool' + (left === 0 ? ' full' : '') + '" data-cs-poolbar="' + esc(id) + '">' +
+    '<div class="cs-pooltop"><b>' + esc(name) + '</b>' +
+    '<span class="cs-poolnum"><em data-cs-alloc="' + esc(id) + '">' + used + '</em> of ' + size + ' allocated' +
+    ' &middot; <em class="' + (left ? 'warn' : 'ok') + '" data-cs-left="' + esc(id) + '">' + left + '</em> left</span></div>' +
+    '<div class="cs-bar" style="--maj:' + (100 * maj / Math.max(1, size)) + '%" data-cs-bar="' + esc(id) + '">' + bar + '</div>' +
+    '<div class="cs-poolfoot"><span>majority ' + maj + '</span>' +
+    '<span data-cs-lead="' + esc(id) + '">' + esc((seats[lead] || 0) >= maj ? PARTY[lead].short + ' carry it alone' : 'no party carries it alone') + '</span></div></div>';
+}
+function v16CsSeats(id, name, size, seats, open) {
+  return v16CsPool(id, name, size, seats, open) +
+    '<div class="cs-seatgrid">' + PARTIES.map(function (p) {
+      var n = seats[p.id] || 0, o = open[p.id] || 0;
+      return '<div class="cs-seat' + (n !== o ? ' is-set' : '') + '" data-cs-row="' + esc(id + '.' + p.id) + '">' +
+        '<div class="cs-top"><label for="cs_' + esc(id + '.' + p.id) + '" class="cs-lab">' +
+        '<span class="dot" style="background:' + p.color + '"></span>' + esc(p.short) + '</label>' +
+        '<b class="cs-val" data-cs-out="' + esc(id + '.' + p.id) + '">' + n + '</b></div>' +
+        '<input class="cs-range" id="cs_' + esc(id + '.' + p.id) + '" data-cs="' + esc(id + '.' + p.id) + '" ' +
+        'data-cs-pool="' + esc(id) + '" data-cs-size="' + size + '" type="range" min="0" max="' + size + '" step="1" ' +
+        'value="' + n + '" data-cs-open="' + o + '" aria-label="' + esc(p.name + ' seats') + '">' +
+        '<div class="cs-scale"><span>0</span><em data-cs-word="' + esc(id + '.' + p.id) + '">' +
+        Math.round(100 * n / Math.max(1, size)) + '%</em><span>' + size + '</span></div></div>';
+    }).join('') + '</div>' +
+    '<div class="btnrow"><button type="button" class="btn ghost" data-cs-balance="' + esc(id) + '">Give what is left to the largest</button>' +
+    '<button type="button" class="btn ghost" data-cs-reset="' + esc(id) + '">Back to the opening</button></div>';
+}
+/* THE ROLL, EDITABLE. One row a seat: who returned the justice, the year they
+   took the oath, and how they will vote -- the standing read through
+   `v9JusticeWord`, the same words the Judiciary page prints. */
+function v16CsBench(b, st) {
+  var n = v16BenchSize(b), opening = v16BenchOpening(st, n);
+  var picks = (b.judges || []).slice(0, n);
+  var gp = st ? govPos(st) : { e:0, a:0 };
+  var rows = '', withGov = 0;
+  for (var i = 0; i < n; i++) {
+    var pid = picks[i] || opening[i], p = PARTY[pid] || PARTY[PARTIES[0].id];
+    var pos = p.home, close = dist2(pos, gp);
+    if (close < .45) withGov++;
+    rows += '<tr class="cs-jrow' + (picks[i] && picks[i] !== opening[i] ? ' is-set' : '') + '">' +
+      '<td class="num">' + v16JudgeYear(i, n) + '</td>' +
+      '<td><select class="cs-select" data-cs-judge="' + i + '" aria-label="Seat ' + (i + 1) + '">' +
+      PARTIES.map(function (q) { return '<option value="' + q.id + '"' + (q.id === pid ? ' selected' : '') + '>' + esc(q.short) + '</option>'; }).join('') +
+      '</select></td>' +
+      '<td class="num">' + pos.e.toFixed(2) + '</td><td class="num">' + pos.a.toFixed(2) + '</td>' +
+      '<td class="' + (close < .45 ? 'pos' : 'neg') + '">' + esc(v9JusticeWord(pos, gp)) + '</td></tr>';
+  }
+  return '<div class="cs-pool" data-cs-poolbar="bench"><div class="cs-pooltop"><b>' + v8Plural(n, 'seat') + ' on the bench</b>' +
+    '<span class="cs-poolnum"><em data-cs-benchwith>' + withGov + '</em> of ' + n + ' sit with the government</span></div>' +
+    '<div class="cs-poolfoot"><span>' + esc(v16BenchWhy(b)) + '</span></div></div>' +
+    '<div class="tablewrap"><table class="cs-roll"><thead><tr><th class="num">Seated</th><th>Returned for</th>' +
+    '<th class="num">Economic</th><th class="num">Authority</th><th>Standing</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="btnrow">' + PARTIES.slice(0, 4).map(function (q) {
+      return '<button type="button" class="btn ghost" data-cs-fillbench="' + q.id + '">A bench of the ' + esc(q.short) + '</button>';
+    }).join('') + '<button type="button" class="btn ghost" data-cs-fillbench="">Back to the opening roll</button></div>' +
+    '<p class="cs-say">Every justice serves one term of sixteen years and cannot be returned. A justice takes the ' +
+    'position their party stands at, which is what the court gap is measured from, and the court gap is what decides ' +
+    'whether a measure is taken up at all.</p>';
+}
+
+/* ---------- the sheet ---------- */
 function v16CustomDraft() {
   UI.setup = UI.setup || {};
   if (!UI.setup.custom) UI.setup.custom = v16CustomBlank();
   return UI.setup.custom;
 }
-function v16CsNum(k, label, val, min, max, step) {
-  return '<label class="cs-f"><span>' + esc(label) + '</span><input data-cs="' + esc(k) + '" type="number" ' +
-    'min="' + min + '" max="' + max + '" step="' + (step || 1) + '" value="' + (val === null || val === undefined ? '' : val) + '" placeholder="as it stands"></label>';
+function v16CustomSections() {
+  return [
+    { id:'con', name:'The constitution', note:'The form of the state, and which of the eighty articles are already in force.' },
+    { id:'law', name:'The statute book', note:'Any of the 582 statutes, at any of its four rungs.' },
+    { id:'lower', name:'The National Assembly', note:'Seats by party, and whether the house sits at all.' },
+    { id:'upper', name:'The Senate', note:'Seats by party, its veto, and whether it sits.' },
+    { id:'exec', name:'The executive', note:'The four great offices, and how deep the cabinet goes.' },
+    { id:'court', name:'The judiciary', note:'Every seat on the bench, and who returned the justice in it.' },
+    { id:'gov', name:'The states', note:'Who holds each of the eight governorships.' },
+    { id:'world', name:'The powers', note:'Relations with the eleven capitals, and what is already written with them.' },
+    { id:'party', name:'The parties', note:'How each of the seven stands with you, and what it has behind it.' },
+    { id:'ind', name:'The country', note:'The fifteen indicators, and the exchequer.' }
+  ];
 }
-function v16CsSelect(k, label, val, opts) {
-  return '<label class="cs-f"><span>' + esc(label) + '</span><select data-cs="' + esc(k) + '">' +
-    '<option value="">as it stands</option>' +
-    opts.map(function (o) { return '<option value="' + esc(o.v) + '"' + (val === o.v ? ' selected' : '') + '>' + esc(o.l) + '</option>'; }).join('') +
-    '</select></label>';
-}
-function v16CustomSheet() {
-  var d = v16CustomDraft();
+function v16SectionBody(sec, d, st) {
   var partyOpts = PARTIES.map(function (p) { return { v:p.id, l:p.short }; });
-  var body = '';
-
-  v16CustomSections().forEach(function (sec) {
-    var inner = '';
-    (sec.fields || []).forEach(function (f) {
-      if (f.kind === 'select') inner += v16CsSelect(f.k, f.label, d[f.k], f.opts);
-      else if (f.kind === 'range') inner += v16CsNum(f.k, f.label + ' (-100 left, +100 right)', d[f.k], f.min, f.max);
-      else inner += v16CsNum(f.k, f.label, d[f.k], f.min, f.max);
-    });
-    if (sec.articles) {
-      inner += '<div class="cs-grid">' + V11_BOOKS.map(function (bk) {
-        return '<div class="cs-book"><b>' + esc(bk.name) + '</b>' + V11_ARTICLES.filter(function (a) { return a.book === bk.id; }).map(function (a) {
-          return '<label class="cs-c"><input type="checkbox" data-cs="articles" value="' + esc(a.id) + '"' +
-            (d.articles.indexOf(a.id) >= 0 ? ' checked' : '') + '><span>' + esc(a.name) + '</span></label>';
-        }).join('') + '</div>';
+  var open = function (path, dflt) {
+    if (!st) return dflt;
+    try { var v = path(st); return (v === undefined || v === null || isNaN(v)) ? dflt : v; } catch (e) { return dflt; }
+  };
+  if (sec.id === 'con') {
+    return v16CsPick('form', 'Form of the state', d.form,
+      Object.keys(FORMS).map(function (f) { return { v:f, l:FORMS[f].name }; }),
+      'The opening is ' + (st ? FORMS[st.form].name : 'a Federal Republic') + '. Changing it here starts you there.') +
+      '<div class="subhead">Articles already in force</div>' +
+      '<p class="cs-say">Eighty articles in eight books. Anything ticked is in the constitution before the first session, ' +
+      'with its effect already applied. Three of them change the size of the bench, and the judiciary section below counts them.</p>' +
+      '<div class="cs-books">' + V11_BOOKS.map(function (bk) {
+        var list = V11_ARTICLES.filter(function (a) { return a.book === bk.id; });
+        var on = list.filter(function (a) { return d.articles.indexOf(a.id) >= 0; }).length;
+        return '<div class="cs-book"><b>' + esc(bk.name) + (on ? ' <span class="cs-badge">' + on + '</span>' : '') + '</b>' +
+          list.map(function (a) {
+            return '<label class="cs-c' + (d.articles.indexOf(a.id) >= 0 ? ' on' : '') + '">' +
+              '<input type="checkbox" data-cs="articles" value="' + esc(a.id) + '"' +
+              (d.articles.indexOf(a.id) >= 0 ? ' checked' : '') + '><span>' + esc(a.name) + '</span></label>';
+          }).join('') + '</div>';
       }).join('') + '</div>';
-    }
-    if (sec.statutes) {
-      var cat = UI.csCat || CATS[0];
-      inner += '<label class="cs-f"><span>Category</span><select data-cs-cat="1">' +
-        CATS.map(function (c) { return '<option value="' + esc(c) + '"' + (c === cat ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') +
-        '</select></label><div class="cs-grid">' +
-        POLICIES.filter(function (p) { return p.cat === cat; }).map(function (p) {
-          var opts = [];
-          for (var i = 0; i <= p.max; i++) opts.push({ v:String(i), l:i === 0 ? 'not in force' : 'rung ' + i });
-          return v16CsSelect('pol.' + p.id, p.name, d.pol[p.id] === undefined ? undefined : String(d.pol[p.id]), opts);
+  }
+  if (sec.id === 'law') {
+    var cat = UI.csCat || CATS[0];
+    var list = POLICIES.filter(function (p) { return p.cat === cat; });
+    return '<div class="cs-cats">' + CATS.map(function (c) {
+      var n = POLICIES.filter(function (p) { return p.cat === c && d.pol[p.id] !== undefined; }).length;
+      return '<button type="button" class="cs-chip' + (c === cat ? ' on' : '') + '" data-cs-cat="' + esc(c) + '">' +
+        esc(c) + (n ? ' <span class="cs-badge">' + n + '</span>' : '') + '</button>';
+    }).join('') + '</div>' +
+    '<p class="cs-say">Every statute has four rungs and a state of not being in force. The rung the opening gives you is ' +
+    'ringed; the line underneath is what that rung actually does. ' + v8Plural(Object.keys(d.pol).length, 'statute') +
+    ' set across every category, and moving between categories keeps them.</p>' +
+    list.map(function (p) { return v16CsRungs(p, open(function (s) { return s.pol[p.id] || 0; }, 0), d.pol[p.id]); }).join('');
+  }
+  if (sec.id === 'lower') {
+    var lowSize = 0; PARTIES.forEach(function (q) { lowSize += open(function (s) { return s.seats[q.id] || 0; }, 0); });
+    if (!lowSize) lowSize = CFG.seats;
+    var lowOpen = {}, lowNow = {};
+    PARTIES.forEach(function (q) {
+      lowOpen[q.id] = open(function (s) { return s.seats[q.id] || 0; }, 0);
+      lowNow[q.id] = d.seats[q.id] === undefined ? lowOpen[q.id] : d.seats[q.id];
+    });
+    return v16CsPick('lowerState', 'The house', d.lowerState, V16_CHAMBER_OPTS.lowerState,
+      'A suspended house takes one session and rubber-stamps. An abolished one means government by decree.') +
+      v16CsSeats('seats', 'The National Assembly', lowSize, lowNow, lowOpen);
+  }
+  if (sec.id === 'upper') {
+    var upSize = 0; PARTIES.forEach(function (q) { upSize += open(function (s) { return s.upper.seats[q.id] || 0; }, 0); });
+    if (!upSize) upSize = CFG.senate;
+    var upOpen = {}, upNow = {};
+    PARTIES.forEach(function (q) {
+      upOpen[q.id] = open(function (s) { return s.upper.seats[q.id] || 0; }, 0);
+      upNow[q.id] = d.upperSeats[q.id] === undefined ? upOpen[q.id] : d.upperSeats[q.id];
+    });
+    return v16CsPick('upperState', 'The house', d.upperState, V16_CHAMBER_OPTS.upperState,
+      'A ceremonial Senate keeps its seats and loses its veto.') +
+      v16CsRow({ k:'upperVeto', label:'The veto', open:open(function (s) { return s.upper.veto; }, 2),
+        val:d.upperVeto, min:0, max:3, step:1,
+        say:'How hard the Senate is to get past. At nought it cannot stop a bill at all; at three it stops most of them.' }) +
+      v16CsSeats('upperSeats', 'The Senate', upSize, upNow, upOpen);
+  }
+  if (sec.id === 'exec') {
+    return '<div class="cs-grid2">' + ['pres', 'vpres', 'chan', 'vchan'].map(function (o) {
+      return v16CsPick('exec.' + o, DEPTS[o] ? DEPTS[o].name : o, d.exec[o], partyOpts,
+        'The opening holds it for the ' + (st ? PARTY[st.exec[o]].short : '?') + '.');
+    }).join('') + '</div>' +
+      v16CsRow({ k:'cabinetDepth', label:'Portfolios filled', open:open(function (s) {
+        return Object.keys(s.cabinet || {}).filter(function (k) { return s.cabinet[k] > 0; }).length; }, 0),
+        val:d.cabinetDepth, min:0, max:pv5PortfolioRows().length, step:1,
+        say:'A minister takes the party of the office they answer to, so the four offices above also decide the ministry. ' +
+          'An empty portfolio is a department run by officials.' });
+  }
+  if (sec.id === 'court') return v16CsBench(d, st);
+  if (sec.id === 'gov') {
+    return '<div class="cs-grid2">' + REGIONS.map(function (r) {
+      return v16CsPick('governors.' + r.id, r.name, d.governors[r.id], partyOpts,
+        'The opening holds it for the ' + (st && st.v6 && st.v6.governors[r.id] ? PARTY[st.v6.governors[r.id].party].short : '?') + '.');
+    }).join('') + '</div>';
+  }
+  if (sec.id === 'world') {
+    return POWERS.map(function (pw) {
+      var o = open(function (s) { return s.powers[pw.id]; }, 50);
+      var held = d.treaties[pw.id] || [];
+      return '<div class="cs-power">' +
+        v16CsRow({ k:'powers.' + pw.id, label:pw.name, open:o, val:d.powers[pw.id], min:0, max:100, step:1,
+          band:true, say:pw.note,
+          word:function (v) { return st ? relWord(v, st, pw.id) : ''; } }) +
+        '<details class="cs-treaties"><summary>' + esc(v8Plural(held.length, 'instrument')) + ' already written' +
+        (held.length ? ': ' + esc(held.map(function (k) { return V6_TREATIES[k].name; }).join(', ')) : '') + '</summary>' +
+        '<div class="cs-book">' + Object.keys(V6_TREATIES).sort(function (a, b) { return V6_TREATIES[a].min - V6_TREATIES[b].min; }).map(function (k) {
+          return '<label class="cs-c' + (held.indexOf(k) >= 0 ? ' on' : '') + '"><input type="checkbox" data-cs="treaties.' + esc(pw.id) + '" value="' + esc(k) + '"' +
+            (held.indexOf(k) >= 0 ? ' checked' : '') + '><span>' + esc(V6_TREATIES[k].name) + ' <em>needs ' + V6_TREATIES[k].min + '</em></span></label>';
         }).join('') + '</div>' +
-        '<p class="note">' + v8Plural(Object.keys(d.pol).length, 'statute') + ' set across every category. Changing the category above keeps what you have already set.</p>';
-    }
-    if (sec.seatsKey) {
-      inner += '<div class="cs-grid">' + PARTIES.map(function (p) {
-        return v16CsNum(sec.seatsKey + '.' + p.id, p.short, d[sec.seatsKey][p.id], 0, 9999);
-      }).join('') + '</div><p class="note">Read as shares and apportioned to the house\'s constitutional size, so the totals do not have to add up.</p>';
-    }
-    if (sec.execOffices) {
-      inner += '<div class="cs-grid">' + ['pres', 'vpres', 'chan', 'vchan'].map(function (o) {
-        return v16CsSelect('exec.' + o, DEPTS[o] ? DEPTS[o].name : o, d.exec[o], partyOpts);
-      }).join('') + '</div>';
-    }
-    if (sec.governors) {
-      inner += '<div class="cs-grid">' + REGIONS.map(function (r) {
-        return v16CsSelect('governors.' + r.id, r.name, d.governors[r.id], partyOpts);
-      }).join('') + '</div>';
-    }
-    if (sec.powers) {
-      inner += '<div class="cs-grid">' + POWERS.map(function (pw) {
-        return v16CsNum('powers.' + pw.id, pw.short, d.powers[pw.id], 0, 100);
-      }).join('') + '</div>' +
-      '<div class="cs-grid">' + POWERS.map(function (pw) {
-        var held = d.treaties[pw.id] || [];
-        return '<div class="cs-book"><b>' + esc(pw.short) + '</b>' + Object.keys(V6_TREATIES).map(function (k) {
-          return '<label class="cs-c"><input type="checkbox" data-cs="treaties.' + esc(pw.id) + '" value="' + esc(k) + '"' +
-            (held.indexOf(k) >= 0 ? ' checked' : '') + '><span>' + esc(V6_TREATIES[k].name) + '</span></label>';
-        }).join('') + '</div>';
-      }).join('') + '</div>' +
-      '<p class="note">An instrument written here stands from the opening year. Prerequisites are not enforced on a start you are writing yourself.</p>';
-    }
-    if (sec.partyRows) {
-      inner += '<div class="cs-grid">' + PARTIES.map(function (p) {
-        return v16CsNum('partyRel.' + p.id, p.short + ' relations', d.partyRel[p.id], 0, 100) +
-          v16CsNum('machine.' + p.id, p.short + ' organisation', d.machine[p.id], -.8, 1, .01) +
-          v16CsNum('purse.' + p.id, p.short + ' money', d.purse[p.id], -20, 2000);
-      }).join('') + '</div>';
-    }
-    if (sec.indicators) {
-      inner += '<div class="cs-grid">' + v16CustomInd().map(function (k) {
-        return v16CsNum('ind.' + k, IND[k] ? IND[k].name : k, d.ind[k], 0, 100);
-      }).join('') + '</div><div class="cs-grid">' + V16_CUSTOM_MONEY.map(function (m) {
-        return v16CsNum('money.' + m.k, m.label, d.money[m.k], m.min, m.max);
-      }).join('') + '</div>';
-    }
-    body += '<details class="cs-sec"' + (UI.csOpen === sec.id ? ' open' : '') + ' data-cs-sec="' + sec.id + '">' +
-      '<summary><b>' + esc(sec.name) + '</b><small>' + esc(sec.note) + '</small></summary>' + inner + '</details>';
-  });
-
-  showSheet('<div class="kicker">A Start of Your Own</div><h2 id="sheetTitle">Design the Republic</h2>' +
-    '<p>Every field is optional. A field left as it stands takes whatever the opening you chose would have given you, so a custom start can be one changed number or the whole board. Nothing here reaches into a campaign already running.</p>' +
-    (UI.csLost ? '<p class="note" style="color:var(--bad)">' + (UI.csLost < 0 ? 'That text could not be read as a start at all. Nothing was changed.' : v8Plural(UI.csLost, 'field') + ' in the imported start named something this build does not carry and ' + (UI.csLost === 1 ? 'was' : 'were') + ' dropped. Everything else was kept.') + '</p>' : '') +
-    body +
-    '<div class="subhead">Keep it, or take one somebody kept</div>' +
-    '<label class="cs-f cs-wide"><span>The start, as text</span><textarea data-cs-text="1" rows="3" spellcheck="false">' + esc(JSON.stringify(d)) + '</textarea></label>' +
-    '<div class="choices" style="margin-top:12px">' +
-    '<button class="choice" data-cs-apply="1"><b>Keep this start</b><small>Written into the next campaign you begin.</small></button>' +
-    '<button class="choice" data-cs-import="1"><b>Read the text above</b><small>Replaces everything with what the box holds.</small></button>' +
-    '<button class="choice" data-cs-clear="1"><b>Clear it</b><small>Back to the opening you chose on the start screen.</small></button>' +
-    '<button class="choice" data-cs-back="1"><b>Return to the start screen</b></button></div>', function (node) {
-      var read = function () {
-        var next = v16CustomBlank();
-        node.querySelectorAll('[data-cs]').forEach(function (el) {
-          var k = el.getAttribute('data-cs');
-          if (el.type === 'checkbox') {
-            if (!el.checked) return;
-            if (k === 'articles') next.articles.push(el.value);
-            else { var parts = k.split('.'); next[parts[0]][parts[1]] = next[parts[0]][parts[1]] || []; next[parts[0]][parts[1]].push(el.value); }
-            return;
-          }
-          var v = el.value;
-          if (v === '' || v === null) return;
-          var seg = k.split('.');
-          if (seg.length === 1) next[k] = (el.tagName === 'SELECT') ? v : Number(v);
-          else next[seg[0]][seg[1]] = (el.tagName === 'SELECT' && seg[0] !== 'pol') ? v : Number(v);
-        });
-        /* statutes outside the category on screen are not in the DOM and must
-           not be lost by the act of looking at another category */
-        for (var p in d.pol) if (next.pol[p] === undefined && !node.querySelector('[data-cs="pol.' + p + '"]')) next.pol[p] = d.pol[p];
-        for (var t in d.treaties) if (!next.treaties[t] && !node.querySelector('[data-cs="treaties.' + t + '"]')) next.treaties[t] = d.treaties[t];
-        return next;
-      };
-      node.querySelectorAll('[data-cs-sec]').forEach(function (el) {
-        el.addEventListener('toggle', function () { if (el.open) UI.csOpen = el.getAttribute('data-cs-sec'); });
-      });
-      var catSel = node.querySelector('[data-cs-cat]');
-      if (catSel) catSel.addEventListener('change', function () {
-        UI.setup.custom = read(); UI.csCat = catSel.value; UI.csOpen = 'law'; v16CustomSheet();
-      });
-      node.querySelector('[data-cs-apply]').addEventListener('click', function () {
-        UI.setup.custom = read(); UI.csLost = 0; hideSheet(); startScreen();
-        toast('The start is kept. Begin the government to play it.');
-      });
-      node.querySelector('[data-cs-import]').addEventListener('click', function () {
-        var box = node.querySelector('[data-cs-text]'), raw = null;
-        try { raw = JSON.parse(box.value); } catch (e) { raw = null; }
-        var r = v16CustomClean(raw);
-        UI.csLost = raw === null ? -1 : r.lost;
-        UI.setup.custom = raw === null ? UI.setup.custom : r.blob;
-        v16CustomSheet();
-      });
-      node.querySelector('[data-cs-clear]').addEventListener('click', function () {
-        UI.setup.custom = null; UI.csLost = 0; hideSheet(); startScreen(); toast('The custom start was cleared.');
-      });
-      node.querySelector('[data-cs-back]').addEventListener('click', function () {
-        UI.setup.custom = read(); hideSheet(); startScreen();
-      });
-    });
+        '<p class="cs-say">An instrument written here stands from the opening year. Prerequisites are not enforced on a ' +
+        'start you are writing yourself, and the relation you set above is not checked against them either.</p></details></div>';
+    }).join('');
+  }
+  if (sec.id === 'party') {
+    return PARTIES.map(function (p) {
+      var me = st ? playParty(st) : null;
+      return '<div class="cs-party"><div class="cs-partyhead"><span class="dot" style="background:' + p.color + '"></span>' +
+        '<b>' + esc(p.name) + '</b>' + (p.id === me ? '<span class="tag">yours</span>' : '') + '</div>' +
+        V16_PARTY_FIELDS.map(function (f) {
+          var says = { partyRel:p.id === me
+              ? 'Your own party always reads high; it is what the others think of you that decides a coalition.'
+              : 'What they think of you. Below about thirty they will not sit in a government with you.',
+            machine:'Agents, halls, printing and the register. The single largest lever on a seat count in the whole game.',
+            purse:'The party fund, which is not the exchequer. It pays for the organisation and for what the party does between ballots.' };
+          var reads = { partyRel:function (s) { return Math.round(s.partyRel[p.id] || 50); },
+            machine:function (s) { return Math.round((s.machine[p.id] || 0) * 100) / 100; },
+            purse:function (s) { return Math.round(partyPurse(s, p.id)); } };
+          return v16CsRow({ k:f.k + '.' + p.id, label:f.label, open:open(reads[f.k], 0),
+            val:d[f.k][p.id], min:f.min, max:f.max, step:f.step, band:!!f.band,
+            fmt:f.fmt === 'money' ? function (v) { return fm(v); } : null, say:says[f.k],
+            word:f.band ? function (v) { return v16Band(clamp(v, 0, 100), false); } : null });
+        }).join('') +
+        '</div>';
+    }).join('');
+  }
+  if (sec.id === 'ind') {
+    return '<div class="subhead">The fifteen indicators</div>' +
+      v16CustomInd().map(function (k) {
+        return v16CsRow({ k:'ind.' + k, label:IND[k] ? IND[k].name : k,
+          open:open(function (s) { return Math.round(s.ind[k]); }, BASE_IND[k] || 50),
+          val:d.ind[k], min:0, max:100, step:1, band:true, inv:!!(IND[k] && IND[k].inv),
+          say:V16_IND_SAY[k] || '', word:function (v) { return v16Band(v, !!(IND[k] && IND[k].inv)); } });
+      }).join('') +
+      '<div class="subhead">The exchequer, and the standing of the government</div>' +
+      V16_CUSTOM_MONEY.map(function (m) {
+        return v16CsRow({ k:'money.' + m.k, label:m.label,
+          open:open(function (s) { return Math.round(s[m.k]); }, 0),
+          val:d.money[m.k], min:m.min, max:m.max, step:m.step || 1,
+          fmt:m.fmt === 'money' ? function (v) { return fm(v); } : null,
+          band:!!m.band, inv:!!m.inv, say:m.say,
+          word:m.band ? function (v) { return v16Band(clamp(v, 0, 100), !!m.inv); } : null });
+      }).join('');
+  }
+  return '';
 }
-/* How many fields a start actually sets, for the line on the start screen. */
+
+function v16CustomSheet() {
+  /* READ BEFORE YOU REDRAW. Every path that re-renders this sheet used to have
+     to remember to read it first, and one that forgot would silently throw away
+     whatever the player had moved since the last render. Making the read part
+     of rendering means no caller can get it wrong -- including any written
+     later. `UI.csSkipRead` is for the two callers that DELIBERATELY replace the
+     draft first: the import, and clearing a section. */
+  var live = document.getElementById('sheet');
+  if (!UI.csSkipRead && live && live.querySelector('[data-cs-body]')) {
+    UI.setup.custom = v16CustomRead(live, v16CustomDraft());
+  }
+  UI.csSkipRead = 0;
+  var d = v16CustomDraft(), st = v16CustomPreview();
+  var secs = v16CustomSections();
+  var openId = UI.csOpen && secs.filter(function (s) { return s.id === UI.csOpen; }).length ? UI.csOpen : secs[0].id;
+  var counts = v16CustomCounts(d);
+  var nav = '<div class="cs-nav" role="tablist">' + secs.map(function (s) {
+    return '<button type="button" class="cs-tab' + (s.id === openId ? ' on' : '') + '" data-cs-tab="' + esc(s.id) + '" ' +
+      'role="tab" aria-selected="' + (s.id === openId) + '">' + esc(s.name) +
+      (counts[s.id] ? '<span class="cs-badge">' + counts[s.id] + '</span>' : '') + '</button>';
+  }).join('') + '</div>';
+  var sec = secs.filter(function (s) { return s.id === openId; })[0];
+  var total = v16CustomCount(d);
+
+  showSheet('<div class="cs-sheet-head"><div class="kicker">A Start of Your Own</div>' +
+    '<h2 id="sheetTitle">Design the Republic</h2>' +
+    '<p>Every field opens on the number the republic would really have given you, so nothing here has to be guessed. ' +
+    'Move one and it is yours; leave it and it is the opening’s. ' +
+    (st ? 'You are reading the ' + esc(PARTY[UI.setup.party || 'lp'].short) + ' in ' + esc((V6_SCENARIO[UI.setup.scenario] || { name:'the default opening' }).name) + '.'
+        : 'The opening could not be previewed, so the fields show the constitutional defaults instead.') + '</p></div>' +
+    (UI.csLost ? '<p class="cs-warn">' + (UI.csLost < 0 ? 'That text could not be read as a start at all. Nothing was changed.'
+      : v8Plural(UI.csLost, 'field') + ' in the imported start named something this build does not carry and ' +
+        (UI.csLost === 1 ? 'was' : 'were') + ' dropped. Everything else was kept.') + '</p>' : '') +
+    nav +
+    '<div class="cs-sec" data-cs-body="' + esc(openId) + '">' +
+    '<div class="cs-sechead"><h3>' + esc(sec.name) + '</h3><p>' + esc(sec.note) + '</p>' +
+    /* ALWAYS rendered, not only when the section already holds something: the
+       badge is computed at render time, so a button gated on it would not
+       appear until the player navigated away and came back from the very
+       change that made it useful. */
+    '<button type="button" class="btn ghost" data-cs-clearsec="' + esc(sec.id) + '">' +
+      (counts[sec.id] ? 'Clear this section &middot; ' + counts[sec.id] : 'Back to the opening') + '</button>' +
+    '</div>' + v16SectionBody(sec, d, st) + '</div>' +
+    '<details class="cs-keep"><summary>Keep this start as text, or read one somebody kept</summary>' +
+    '<textarea data-cs-text="1" rows="3" spellcheck="false" aria-label="The start, as text">' + esc(JSON.stringify(d)) + '</textarea>' +
+    '<div class="btnrow"><button type="button" class="btn ghost" data-cs-import="1">Read the text above</button></div></details>' +
+    '<div class="cs-foot"><span data-cs-total>' + esc(total ? v8Plural(total, 'field') + ' set' : 'Nothing set yet') + '</span>' +
+    '<span class="btnrow"><button type="button" class="btn ghost" data-cs-clear="1">Clear it all</button>' +
+    '<button type="button" class="btn ghost" data-cs-back="1">Return</button>' +
+    '<button type="button" class="btn gold" data-cs-apply="1">Keep this start</button></span></div>',
+    function (node) { v16CustomWire(node, d, st, openId); });
+  var sh = document.getElementById('sheet');
+  if (!sh) return;
+  sh.classList.add('cs-wide');
+  sh.scrollTop = UI.csScroll || 0;
+  /* `showSheet` focuses `.choices button` or else the FIRST button in the
+     sheet, and the first button here is always tab one -- so after moving to
+     any other section the ring sat on "The constitution" while the brass fill
+     sat on the section actually open, and two tabs read as selected at once.
+     Both the scroll and the ring are restored here, after showSheet has had
+     its say. */
+  var give = function (el) {
+    if (!el || !el.focus) return;
+    try { el.focus({ preventScroll:true }); } catch (e) { el.focus(); }
+  };
+  if (UI.csFocusCat) {
+    give(sh.querySelector('[data-cs-cat="' + String(UI.csFocusCat).replace(/"/g, '') + '"]'));
+    UI.csFocusCat = null;
+  } else {
+    give(sh.querySelector('[data-cs-tab].on'));
+  }
+  UI.csFocusTab = 0;
+}
+/* Reading the sheet. Every control is a slider, a select or a checkbox, so a
+   value read here is a value the control could not have made illegal -- there
+   is no parse that can fail and no range that can be exceeded. A row counts as
+   SET only when it differs from the opening it was drawn with. */
+function v16CustomRead(node, d) {
+  var next = v16CustomBlank();
+  node.querySelectorAll('[data-cs]').forEach(function (el) {
+    var k = el.getAttribute('data-cs'), seg = k.split('.');
+    if (el.type === 'checkbox') {
+      if (!el.checked) return;
+      if (k === 'articles') next.articles.push(el.value);
+      else { next[seg[0]][seg[1]] = next[seg[0]][seg[1]] || []; next[seg[0]][seg[1]].push(el.value); }
+      return;
+    }
+    if (el.tagName === 'SELECT') {
+      if (el.value === '') return;
+      if (seg.length === 1) next[k] = el.value; else next[seg[0]][seg[1]] = el.value;
+      return;
+    }
+    var open = Number(el.getAttribute('data-cs-open')), v = Number(el.value);
+    if (isNaN(v)) return;
+    if (!isNaN(open) && Math.abs(v - open) < 1e-9) return;      /* untouched */
+    if (seg.length === 1) next[k] = v; else next[seg[0]][seg[1]] = v;
+  });
+  /* judges are positional, and only kept when the roll differs from the opening */
+  var picks = [], jsel = node.querySelectorAll('[data-cs-judge]');
+  jsel.forEach(function (el) { picks[Number(el.getAttribute('data-cs-judge'))] = el.value; });
+  if (picks.length) {
+    var opening = v16BenchOpening(UI.csPreview, picks.length);
+    if (picks.some(function (p, i) { return p !== opening[i]; })) next.judges = picks;
+  }
+  /* what is not on screen -- another category, another section -- is carried */
+  var seen = {};
+  node.querySelectorAll('[data-cs]').forEach(function (el) { seen[el.getAttribute('data-cs')] = 1; });
+  ['pol', 'ind', 'money', 'seats', 'upperSeats', 'exec', 'governors', 'powers', 'partyRel', 'machine', 'purse'].forEach(function (g) {
+    for (var id in d[g]) if (next[g][id] === undefined && !seen[g + '.' + id]) next[g][id] = d[g][id];
+  });
+  for (var t in d.treaties) if (!next.treaties[t] && !seen['treaties.' + t]) next.treaties[t] = d.treaties[t];
+  if (!jsel.length && d.judges && d.judges.length) next.judges = d.judges;
+  if (!seen.articles && d.articles.length) next.articles = d.articles.slice();
+  ['form', 'upperState', 'lowerState', 'upperVeto', 'cabinetDepth'].forEach(function (k) {
+    if (next[k] === null && !seen[k] && d[k] !== null && d[k] !== undefined) next[k] = d[k];
+  });
+  return next;
+}
+/* How many fields each section holds, for the badges on the nav. */
+function v16CustomCounts(b) {
+  var c = { con:0, law:0, lower:0, upper:0, exec:0, court:0, gov:0, world:0, party:0, ind:0 };
+  if (b.form) c.con++;
+  c.con += (b.articles || []).length;
+  c.law = Object.keys(b.pol || {}).length;
+  c.lower = Object.keys(b.seats || {}).length + (b.lowerState ? 1 : 0);
+  c.upper = Object.keys(b.upperSeats || {}).length + (b.upperState ? 1 : 0) + (b.upperVeto !== null && b.upperVeto !== undefined ? 1 : 0);
+  c.exec = Object.keys(b.exec || {}).length + (b.cabinetDepth !== null && b.cabinetDepth !== undefined ? 1 : 0);
+  c.court = (b.judges && b.judges.length) ? 1 : 0;
+  c.gov = Object.keys(b.governors || {}).length;
+  c.world = Object.keys(b.powers || {}).length;
+  for (var t in (b.treaties || {})) c.world += b.treaties[t].length;
+  c.party = Object.keys(b.partyRel || {}).length + Object.keys(b.machine || {}).length + Object.keys(b.purse || {}).length;
+  c.ind = Object.keys(b.ind || {}).length + Object.keys(b.money || {}).length;
+  return c;
+}
 function v16CustomCount(b) {
   if (!b) return 0;
-  var n = 0;
-  ['form', 'upperState', 'lowerState', 'upperVeto', 'courtLean', 'cabinetDepth'].forEach(function (k) { if (b[k] !== null && b[k] !== undefined) n++; });
-  n += (b.articles || []).length;
-  ['pol', 'seats', 'upperSeats', 'exec', 'governors', 'powers', 'partyRel', 'machine', 'purse', 'ind', 'money'].forEach(function (k) { n += Object.keys(b[k] || {}).length; });
-  for (var t in (b.treaties || {})) n += b.treaties[t].length;
+  var c = v16CustomCounts(b), n = 0;
+  for (var k in c) n += c[k];
   return n;
+}
+
+/* ---------- wiring ----------
+   Sliders update their own readout, their band word and their row's set mark
+   on every input, without a redraw -- a redraw here would lose the handle under
+   the thumb. Only a change of SECTION or of category redraws, and the sheet's
+   scroll position is carried across it. */
+function v16CustomWire(node, d, st, openId) {
+  var sheet = document.getElementById('sheet');
+  var keepScroll = function () { if (sheet) UI.csScroll = sheet.scrollTop; };
+  var redraw = function () { keepScroll(); v16CustomSheet(); };   /* the sheet reads itself */
+
+  /* --- the pools: a seat that is not there cannot be taken --- */
+  var pools = {};
+  node.querySelectorAll('[data-cs-pool]').forEach(function (el) {
+    var id = el.getAttribute('data-cs-pool');
+    if (!pools[id]) pools[id] = { size:Number(el.getAttribute('data-cs-size')) || 0, els:[] };
+    pools[id].els.push(el);
+  });
+  /* A SLIDER'S TRACK IS ITS SCALE, SO THE TRACK MUST NOT MOVE. The first build
+     capped each slider at its own value plus what was unallocated, which does
+     stop the pool being overdrawn but drags the handle to the far right the
+     moment the chamber is full -- a party on 65 of 1305 seats drew as though it
+     held every one of them, and a reset could not restore a value above the cap
+     it had just been given. The track always spans the whole chamber now, and
+     the limit is applied to the VALUE on input: a drag past what is left is
+     taken back to exactly what is left. Nothing can be overdrawn and the handle
+     always sits where the seats are. */
+  var capPool = function (id, moved) {
+    var p = pools[id]; if (!p) return;
+    var others = 0;
+    p.els.forEach(function (e) { if (e !== moved) others += Number(e.value) || 0; });
+    var room = Math.max(0, p.size - others);
+    if (moved && (Number(moved.value) || 0) > room) moved.value = String(room);
+  };
+  var syncPool = function (id) {
+    var p = pools[id]; if (!p) return;
+    var used = 0;
+    p.els.forEach(function (e) { used += Number(e.value) || 0; });
+    var left = p.size - used, maj = Math.floor(p.size / 2) + 1;
+    var alloc = node.querySelector('[data-cs-alloc="' + id + '"]');
+    var leftEl = node.querySelector('[data-cs-left="' + id + '"]');
+    if (alloc) alloc.textContent = String(used);
+    if (leftEl) { leftEl.textContent = String(left); leftEl.className = left ? 'warn' : 'ok'; }
+    var bar = node.querySelector('[data-cs-bar="' + id + '"]');
+    if (bar) {
+      var html = '', lead = null;
+      PARTIES.forEach(function (q) {
+        var e = node.querySelector('[data-cs="' + id + '.' + q.id + '"]');
+        var n = e ? Number(e.value) || 0 : 0;
+        if (!lead || n > lead.n) lead = { id:q.id, n:n };
+        if (n) html += '<i style="width:' + (100 * n / Math.max(1, p.size)) + '%;background:' + q.color + '"></i>';
+      });
+      if (left > 0) html += '<i class="empty" style="width:' + (100 * left / Math.max(1, p.size)) + '%"></i>';
+      bar.innerHTML = html;
+      var leadEl = node.querySelector('[data-cs-lead="' + id + '"]');
+      if (leadEl) leadEl.textContent = lead && lead.n >= maj ? PARTY[lead.id].short + ' carry it alone' : 'no party carries it alone';
+    }
+    var box = node.querySelector('[data-cs-poolbar="' + id + '"]');
+    if (box) box.className = 'cs-pool' + (left === 0 ? ' full' : '');
+    p.els.forEach(function (e) {
+      var w = node.querySelector('[data-cs-word="' + e.getAttribute('data-cs') + '"]');
+      if (w) w.textContent = Math.round(100 * (Number(e.value) || 0) / Math.max(1, p.size)) + '%';
+    });
+  };
+
+  var mark = function (el) {
+    var row = el.closest ? el.closest('.cs-row, .cs-seat') : null;
+    var open = Number(el.getAttribute('data-cs-open'));
+    if (row) row.classList.toggle('is-set', !isNaN(open) && Math.abs(Number(el.value) - open) > 1e-9);
+  };
+  var readout = function (el) {
+    var k = el.getAttribute('data-cs'), out = node.querySelector('[data-cs-out="' + k + '"]');
+    var v = Number(el.value);
+    if (out) out.textContent = (k.indexOf('purse.') === 0 || k === 'money.treasury' || k === 'money.debt') ? fm(v) : String(v);
+    var w = node.querySelector('[data-cs-word="' + k + '"]');
+    if (w && !el.getAttribute('data-cs-pool')) {
+      var band = el.getAttribute('data-cs-band');
+      if (band) w.textContent = k.indexOf('powers.') === 0 && st ? relWord(v, st, k.slice(7)) : v16Band(clamp(v, 0, 100), band === 'inv');
+    }
+  };
+  node.querySelectorAll('input.cs-range').forEach(function (el) {
+    el.addEventListener('input', function () {
+      var id = el.getAttribute('data-cs-pool');
+      if (id) { capPool(id, el); syncPool(id); }
+      readout(el); mark(el);
+      var t = node.querySelector('[data-cs-total]');
+      if (t) { var n = v16CustomCount(v16CustomRead(node, d)); t.textContent = n ? v8Plural(n, 'field') + ' set' : 'Nothing set yet'; }
+    });
+  });
+  for (var id in pools) syncPool(id);
+
+  node.querySelectorAll('[data-cs-balance]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var id = b.getAttribute('data-cs-balance'), p = pools[id]; if (!p) return;
+      var used = 0; p.els.forEach(function (e) { used += Number(e.value) || 0; });
+      var left = p.size - used; if (left <= 0) return;
+      var big = null; p.els.forEach(function (e) { if (!big || Number(e.value) > Number(big.value)) big = e; });
+      if (big) { big.value = String(Number(big.value) + left); readout(big); mark(big); syncPool(id); }
+    });
+  });
+  node.querySelectorAll('[data-cs-reset]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var id = b.getAttribute('data-cs-reset'), p = pools[id]; if (!p) return;
+      p.els.forEach(function (e) { e.value = e.getAttribute('data-cs-open'); readout(e); mark(e); });
+      syncPool(id);
+    });
+  });
+
+  /* --- statute rungs --- */
+  node.querySelectorAll('[data-cs-rung]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var pid = b.getAttribute('data-cs-rung'), lv = Number(b.getAttribute('data-cs-lv'));
+      var hidden = node.querySelector('[data-cs="pol.' + pid + '"]'); if (!hidden) return;
+      hidden.value = String(lv);
+      node.querySelectorAll('[data-cs-rung="' + pid + '"]').forEach(function (o) {
+        var on = Number(o.getAttribute('data-cs-lv')) === lv;
+        o.classList.toggle('on', on); o.setAttribute('aria-pressed', String(on));
+      });
+      var row = b.closest('.cs-row');
+      if (row) row.classList.toggle('is-set', lv !== Number(hidden.getAttribute('data-cs-open')));
+      var say = node.querySelector('[data-cs-rungsay="' + pid + '"]'), p = POL[pid];
+      if (say) say.textContent = (lv > 0 && p && p.rungs && p.rungs[lv - 1]) ? p.rungs[lv - 1] : 'Not in force.';
+    });
+  });
+  node.querySelectorAll('[data-cs-cat]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      UI.csCat = b.getAttribute('data-cs-cat'); UI.csOpen = 'law'; UI.csFocusCat = UI.csCat; redraw();
+    });
+  });
+
+  /* --- the bench --- */
+  var benchSync = function () {
+    var gp = st ? govPos(st) : { e:0, a:0 }, withGov = 0, rows = node.querySelectorAll('[data-cs-judge]');
+    var opening = v16BenchOpening(st, rows.length);
+    rows.forEach(function (sel, i) {
+      var p = PARTY[sel.value]; if (!p) return;
+      var close = dist2(p.home, gp); if (close < .45) withGov++;
+      var tr = sel.closest('tr');
+      if (tr) {
+        var tds = tr.querySelectorAll('td');
+        if (tds[2]) tds[2].textContent = p.home.e.toFixed(2);
+        if (tds[3]) tds[3].textContent = p.home.a.toFixed(2);
+        if (tds[4]) { tds[4].textContent = v9JusticeWord(p.home, gp); tds[4].className = close < .45 ? 'pos' : 'neg'; }
+        tr.classList.toggle('is-set', sel.value !== opening[i]);
+      }
+    });
+    var w = node.querySelector('[data-cs-benchwith]');
+    if (w) w.textContent = String(withGov);
+  };
+  node.querySelectorAll('[data-cs-judge]').forEach(function (sel) { sel.addEventListener('change', benchSync); });
+  node.querySelectorAll('[data-cs-fillbench]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var pid = b.getAttribute('data-cs-fillbench');
+      var rows = node.querySelectorAll('[data-cs-judge]'), opening = v16BenchOpening(st, rows.length);
+      rows.forEach(function (sel, i) { sel.value = pid || opening[i]; });
+      benchSync();
+    });
+  });
+  if (node.querySelector('[data-cs-judge]')) benchSync();
+
+  /* --- articles: keep the badge and the bench honest as they are ticked --- */
+  node.querySelectorAll('[data-cs="articles"]').forEach(function (el) {
+    el.addEventListener('change', function () {
+      if (el.closest) { var l = el.closest('.cs-c'); if (l) l.classList.toggle('on', el.checked); }
+      if (/artFixedBench|artWidenBench|artConstitutionalBench/.test(el.value)) redraw();
+    });
+  });
+  node.querySelectorAll('.cs-treaties input[type=checkbox]').forEach(function (el) {
+    el.addEventListener('change', function () { var l = el.closest('.cs-c'); if (l) l.classList.toggle('on', el.checked); });
+  });
+  node.querySelectorAll('select.cs-select').forEach(function (el) {
+    if (el.hasAttribute('data-cs-judge')) return;
+    el.addEventListener('change', function () {
+      var row = el.closest('.cs-row'); if (row) row.classList.toggle('is-set', el.value !== '');
+    });
+  });
+
+  /* --- navigation and the foot --- */
+  node.querySelectorAll('[data-cs-tab]').forEach(function (b) {
+    b.addEventListener('click', function () { UI.csOpen = b.getAttribute('data-cs-tab'); UI.csScroll = 0; UI.csFocusTab = 1; redraw(); });
+  });
+  /* `showSheet` puts focus on the first control it finds, which on this sheet
+     is always the FIRST tab -- so after moving to any other section the ring
+     sat on "The constitution" while the brass fill sat on the section actually
+     open, and two tabs read as selected at once. A redraw that came from a tab
+     click puts the ring where the fill is. */
+  /* the focus move lives in `v16CustomSheet`, after `showSheet` returns --
+     `showSheet` runs this callback FIRST and then focuses the first button it
+     can find itself, so anything set here is overwritten a line later. */
+  node.querySelectorAll('[data-cs-clearsec]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      keepScroll();
+      var next = v16CustomRead(node, d), id = b.getAttribute('data-cs-clearsec');
+      var blank = v16CustomBlank();
+      if (id === 'con') { next.form = null; next.articles = []; }
+      if (id === 'law') next.pol = {};
+      if (id === 'lower') { next.seats = {}; next.lowerState = null; }
+      if (id === 'upper') { next.upperSeats = {}; next.upperState = null; next.upperVeto = null; }
+      if (id === 'exec') { next.exec = {}; next.cabinetDepth = null; }
+      if (id === 'court') next.judges = [];
+      if (id === 'gov') next.governors = {};
+      if (id === 'world') { next.powers = {}; next.treaties = {}; }
+      if (id === 'party') { next.partyRel = {}; next.machine = {}; next.purse = {}; }
+      if (id === 'ind') { next.ind = {}; next.money = {}; }
+      UI.setup.custom = next; UI.csScroll = 0; UI.csSkipRead = 1; v16CustomSheet();
+    });
+  });
+  var apply = node.querySelector('[data-cs-apply]');
+  if (apply) apply.addEventListener('click', function () {
+    UI.setup.custom = v16CustomRead(node, d); UI.csLost = 0; UI.csScroll = 0;
+    hideSheet(); startScreen();
+    toast(v16CustomCount(UI.setup.custom) ? 'The start is kept. Begin the government to play it.' : 'Nothing is set, so the opening stands.');
+  });
+  var back = node.querySelector('[data-cs-back]');
+  if (back) back.addEventListener('click', function () {
+    UI.setup.custom = v16CustomRead(node, d); UI.csScroll = 0; hideSheet(); startScreen();
+  });
+  var clear = node.querySelector('[data-cs-clear]');
+  if (clear) clear.addEventListener('click', function () {
+    UI.setup.custom = null; UI.csLost = 0; UI.csScroll = 0; hideSheet(); startScreen();
+    toast('The custom start was cleared.');
+  });
+  var imp = node.querySelector('[data-cs-import]');
+  if (imp) imp.addEventListener('click', function () {
+    var box = node.querySelector('[data-cs-text]'), raw = null;
+    try { raw = JSON.parse(box.value); } catch (e) { raw = null; }
+    var r = v16CustomClean(raw);
+    UI.csLost = raw === null ? -1 : r.lost;
+    if (raw !== null) UI.setup.custom = r.blob;
+    UI.csScroll = 0; UI.csSkipRead = 1; v16CustomSheet();
+  });
 }
 /* The start screen gains one line and one button. Added after the base render
    rather than by rewriting it, so the two questions S7 trimmed the screen down

@@ -60,6 +60,21 @@ before touching the file.
   became "eleven powers exist" and the record was awarded on every seed with
   nothing signed. Reads go through the reading accessor, writes through the
   writing one, and a record's test counts the things it names.
+- **A field written in four places and read in none is a card that lies.**
+  `st.court.size` was assigned by three articles and by the start editor, and
+  consulted by nothing in 3 MB — every consumer counts `justices.length` — so
+  the Article of the Constitutional Bench promised "four more justices" and
+  seated nobody. Before writing a number into the state, grep for a reader; if
+  there is none, the promise is decorative. This is `MAP.md`'s "a modifier
+  nothing reads is a lie on the card" wearing a different hat, and S16f2 is at
+  least the tenth time it has been found.
+- **`typeof x === 'string'` is not validation, and the UI is not the validation
+  layer.** The custom start checked every id against a registry except its two
+  chamber states, which took any string at all — and since an unknown string is
+  neither `'abolished'` nor `'suspended'`, apply read it as a house that SITS.
+  Anything a blob can carry is reachable without ever passing a control, so the
+  cleaner holds the line, and it holds it against the same table the controls
+  are drawn from. One list, offered and accepted.
 - **Never set `fill` on a bare `text` selector in a chart's stylesheet.** A CSS
   fill beats an SVG presentation attribute and silently greys out every label
   the chart colours by attribute.
