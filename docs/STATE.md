@@ -84,6 +84,94 @@ DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
 
+### S17c — whose desk it lands on
+
+> *"If you are an opposition party, you should not be reacting / deciding on
+> events/decisions each turn unless its a decision/event that would be handled
+> by an executive office which your party holds. If you're a ruling party, you
+> should be able to react/decide on national events/decisions each turn."*
+
+**Measured before: of about twenty per-session decision sources, exactly ONE
+knew which office it belonged to** — the assent event, and only because S15d
+had put `assentOffice` on the bill. The entire 174-event pool across six
+registries carried no notion of office at all, so every question went to the
+player whatever chair they sat in.
+
+**All 174 now declare one.** Attribution was judged against the four offices'
+own briefs — foreign affairs, defence and security to the President; justice,
+the courts, trade and veterans to the Vice President; the budget, energy,
+transport and health to the Chancellor; education, labour, housing and welfare
+to the Vice Chancellor — with `national` for what belongs to the government as
+a whole. The distribution came out **pres 42 · chan 39 · vpres 21 · vchan 20 ·
+national 52**.
+
+**Who decides is then one question asked once.** The head of government decides
+everything. Anybody else decides what their own party's office holds — the
+strict test, not the coalition one, so a junior partner answers for its own
+departments and not for its senior partner's. Measured over forty sessions on
+the Hung Assembly board: the head was asked 53 and governed nothing by proxy;
+an opposition player was asked 11 times and **only ever about the one great
+office their party holds**, reading about the rest in the Gazette.
+
+**The government that decides is a real government.** Each choice is applied to
+a sandboxed clone and scored from the deciding party's own position, so the
+answer follows what a choice *does*, not what its label says — and no live dice
+are spent doing it. The first weighting was wrong and measurement caught it:
+general approval at 1.2 against a bloc term of 0.25 swamped everything a party
+believes, and four governments of four different parties answered a rail strike
+identically. With the party's own blocs carrying the weight, **RSF and LP fund
+the settlement while PNL and CUP order them back to work** — a split that falls
+out of their affinities rather than a table.
+
+**And you read what was done in your name.** `What the Government Did` in the
+Gazette names the office, the question and which way it went, and prints
+nothing at all when the player decided everything themselves.
+
+### One more defect, found by the harness crying wolf
+
+`no two officials share a name` reddened again. It was a lottery in S17a and it
+was still a lottery after S17a fixed its dice, because **`makeName` tried ten
+random names and then returned whatever it had.** Ten tries and hope is a
+probability, not a guarantee, so the assertion had never been testing a
+property of the model — it was sampling one. It walks the pool for a free pair
+now, from an offset derived from the name that failed. Proved by forcing the
+corner the loop was hiding — a pool of nine pairs with eight already held:
+**the old code returned an already-held name 89 times in 300, the new code
+none.**
+
+### The pacing moved, and it should have
+
+This is the first PR of the program whose A/B is **not** identical to main, and
+the reason is the change itself. `tools/pacing.js` plays first-choice-always
+and loses government early, and from the session it does, the events it used to
+answer are answered by the AI government instead — by utility rather than by
+whichever option came first. The country is governed differently, so everything
+downstream of it moves.
+
+| seed | elections won | years governing | crises |
+|---|---|---|---|
+| 5EED1234 | 3 → **3** | 10 → 20 | 6 → 4 |
+| VALE0011 | 2 → **2** | 6 → 6 | 5 → 7 |
+| VALE0027 | 3 → **3** | 41 → 10 | 7 → 7 |
+| VALE0404 | 3 → **3** | 8 → 8 | 7 → 7 |
+| VALE1337 | 6 → **6** | 38 → 22 | 6 → 5 |
+| VALE8080 | 3 → **3** | 22 → 36 | 7 → 6 |
+
+**Elections won is unchanged on all six seeds** — the arc's spine holds. Years
+governing swings both ways (10→20 on one seed, 41→10 on another), which is
+variance from a different hand on the tiller rather than a drift in one
+direction. Whether an AI government that picks by utility makes opposition play
+too hard is a balance question, and balance is the owner's to rule.
+
+```
+ALL CHECKS PASS   11/11
+ROADS OK          168 assertions
+PLAYTEST PASS     56 steps — the digest reaches the real Gazette
+DETERMINISM / TABS / TIERS   all green
+PACING            six seeds A/B — elections won identical, the rest moved (above)
+POISON            8 reverts, each reddens its own assertion
+```
+
 ### S17b — the three chairs
 
 The owner named three ways to play. `standing()` has returned exactly those
