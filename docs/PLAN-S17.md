@@ -961,7 +961,7 @@ consulate. A leader may hold exactly one office; that already holds.
    three sites that bypassed `execSeat` entirely and minted a stranger into a
    random office.
 
-**s17i — four voices in every hall** (L). PARTY_FACTIONS 7×3 → 7×4
+**s17i — four voices in every hall** (L). **STATUS: DONE.** PARTY_FACTIONS 7×3 → 7×4
 (authored, unique). FIRST convert the two positional consumers
 (factionPanel :13471, faction_demand paper :9508) to id-keys, THEN append
 fourth entries (old saves extend in place); renormalise strengths, retune
@@ -971,6 +971,25 @@ provenance on the bench (v15Cand + caucus id). Primaries toggle =
 between cycles, AI dispositions seeded (ruling 5). Harness: pacing A/B —
 the turnout term must NOT silently shift; the positional poison; toggle
 refuses mid-season.
+
+*What landing it found.* Every item landed, and the plan's own warning earned
+its place twice:
+
+1. **The turnout term DID shift**, and only a direct measurement found it. A
+   fourth caucus seeded on the old loyalty ladder took a point off
+   `factionAverage` for all seven parties, and `partyTurnout` reads that
+   number: 1.0690 to 1.0568, uniform and invisible in the pacing trajectories.
+   The ladder is re-centred and the term is back within .0012. Pacing alone
+   would never have caught it.
+2. **The positional consumer is the INBOX, not the panel.** `factionPanel`
+   indexes by position but renders and consumes in the same pass, so it is
+   safe; the faction_demand paper stores an index that outlives the render and
+   rides the save. Appending rather than sorting is what protects it, and the
+   poison that proves this had to give an old save's caucuses strengths OUT of
+   order before a sort would move them.
+3. **`promote`'s -2.5 was a third defect nobody had listed**: tuned for two
+   other caucuses, it took five out of the party; with three it would have
+   taken seven and a half every time the button was pressed.
 
 **s17j — always running** (XL). `st.execRace` state machine seeded by the
 dispatcher at cycle boundaries for the execPair offices in parallel:

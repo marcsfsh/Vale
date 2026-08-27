@@ -576,42 +576,48 @@ var ISSUE = {}; ISSUES.forEach(function (i) { ISSUE[i.id] = i; });
 
 var PARTY_FACTIONS = {
   rsf:[
-    { name:'The Vanguard Committee', strength:36, e:-.22, a:.34, demand:'central direction and irreversible public ownership' },
-    { name:'Congress of Industrial Socialists', strength:38, e:.04, a:-.12, demand:'union power, wages and democratic control of industry' },
-    { name:'Republican Socialists', strength:26, e:.16, a:-.52, demand:'civil liberties and an elected road to socialism' }
+    { id:'rsfVanguard', name:'The Vanguard Committee', strength:30, e:-.22, a:.34, demand:'central direction and irreversible public ownership' },
+    { id:'rsfIndustrial', name:'Congress of Industrial Socialists', strength:31, e:.04, a:-.12, demand:'union power, wages and democratic control of industry' },
+    { id:'rsfRepublican', name:'Republican Socialists', strength:21, e:.16, a:-.52, demand:'civil liberties and an elected road to socialism' },
+    { id:'rsfAgrarian', name:'The Agrarian Collectives', strength:18, e:-.30, a:.06, demand:'land reform, cooperative farms and the villages the plan forgot' }
   ],
   lp:[
-    { name:'Industrial Caucus', strength:40, e:-.16, a:.12, demand:'collective bargaining and the old manufacturing districts' },
-    { name:'Social Welfare Group', strength:34, e:-.28, a:-.28, demand:'health, pensions and universal public services' },
-    { name:'Modern Labour Forum', strength:26, e:.24, a:-.34, demand:'growth, skills and a coalition with salaried professionals' }
+    { id:'lpIndustrial', name:'Industrial Caucus', strength:33, e:-.16, a:.12, demand:'collective bargaining and the old manufacturing districts' },
+    { id:'lpWelfare', name:'Social Welfare Group', strength:28, e:-.28, a:-.28, demand:'health, pensions and universal public services' },
+    { id:'lpModern', name:'Modern Labour Forum', strength:21, e:.24, a:-.34, demand:'growth, skills and a coalition with salaried professionals' },
+    { id:'lpPublicSector', name:'The Public Service Alliance', strength:18, e:-.20, a:-.02, demand:'the pay, the pensions and the staffing of the public services' }
   ],
   sd:[
-    { name:'New Progressives', strength:38, e:-.08, a:-.30, demand:'climate policy, rights and generational renewal' },
-    { name:'Civic Left', strength:33, e:-.26, a:-.08, demand:'strong services and accountable institutions' },
-    { name:'Social Market Caucus', strength:29, e:.28, a:.04, demand:'fiscal credibility and a regulated market economy' }
+    { id:'sdProgressive', name:'New Progressives', strength:31, e:-.08, a:-.30, demand:'climate policy, rights and generational renewal' },
+    { id:'sdCivic', name:'Civic Left', strength:27, e:-.26, a:-.08, demand:'strong services and accountable institutions' },
+    { id:'sdMarket', name:'Social Market Caucus', strength:24, e:.28, a:.04, demand:'fiscal credibility and a regulated market economy' },
+    { id:'sdMunicipal', name:'The Municipal Bloc', strength:18, e:-.14, a:-.16, demand:'housing, transit and the powers of the cities' }
   ],
   fp:[
-    { name:'Constitutional Club', strength:37, e:.02, a:-.34, demand:'the courts, federal restraint and clean administration' },
-    { name:'Federal Moderates', strength:39, e:-.10, a:.02, demand:'stable coalition government and the fifty-state settlement' },
-    { name:'Reform League', strength:24, e:.24, a:-.48, demand:'electoral reform, competition and administrative modernisation' }
+    { id:'fpConstitutional', name:'Constitutional Club', strength:30, e:.02, a:-.34, demand:'the courts, federal restraint and clean administration' },
+    { id:'fpModerates', name:'Federal Moderates', strength:32, e:-.10, a:.02, demand:'stable coalition government and the fifty-state settlement' },
+    { id:'fpReform', name:'Reform League', strength:20, e:.24, a:-.48, demand:'electoral reform, competition and administrative modernisation' },
+    { id:'fpAtlantic', name:'The Atlantic Group', strength:18, e:.14, a:-.06, demand:'the alliance, open trade and a foreign service worth the name' }
   ],
   cup:[
-    { name:'Free Enterprise Group', strength:42, e:.30, a:-.12, demand:'lower taxation, deregulation and the chartered economy' },
-    { name:'One Nation Conservatives', strength:34, e:-.12, a:.16, demand:'order, public institutions and a durable social settlement' },
-    { name:'Defence Caucus', strength:24, e:.06, a:.42, demand:'readiness, alliances and the service vote' }
+    { id:'cupEnterprise', name:'Free Enterprise Group', strength:35, e:.30, a:-.12, demand:'lower taxation, deregulation and the chartered economy' },
+    { id:'cupOneNation', name:'One Nation Conservatives', strength:28, e:-.12, a:.16, demand:'order, public institutions and a durable social settlement' },
+    { id:'cupDefence', name:'Defence Caucus', strength:20, e:.06, a:.42, demand:'readiness, alliances and the service vote' },
+    { id:'cupCountry', name:'The Country Members', strength:17, e:.10, a:.10, demand:'farm prices, the land and the counties that never see a minister' }
   ],
   tvc:[
-    { name:'Faith and Family Council', strength:43, e:-.06, a:.24, demand:'religious institutions, family policy and local schools' },
-    { name:'National Conservatives', strength:32, e:.12, a:.38, demand:'borders, order and national preference' },
-    { name:'Localist Right', strength:25, e:.24, a:-.08, demand:'state power, small firms and suspicion of the capital' }
+    { id:'tvcFaith', name:'Faith and Family Council', strength:36, e:-.06, a:.24, demand:'religious institutions, family policy and local schools' },
+    { id:'tvcNational', name:'National Conservatives', strength:27, e:.12, a:.38, demand:'borders, order and national preference' },
+    { id:'tvcLocalist', name:'Localist Right', strength:21, e:.24, a:-.08, demand:'state power, small firms and suspicion of the capital' },
+    { id:'tvcChapel', name:'The Chapel Independents', strength:16, e:-.14, a:.06, demand:'plain dealing, clean government and the chapels that built the party' }
   ],
   pnl:[
-    { name:'National Directorate', strength:38, e:.14, a:.22, demand:'discipline, central authority and control of the state' },
-    { name:'Popular Sovereignty Wing', strength:37, e:-.26, a:.10, demand:'tariffs, wages and confrontation with established wealth' },
-    { name:'Frontier League', strength:25, e:.18, a:.42, demand:'territory, the armed forces and closed borders' }
+    { id:'pnlDirectorate', name:'National Directorate', strength:32, e:.14, a:.22, demand:'discipline, central authority and control of the state' },
+    { id:'pnlSovereignty', name:'Popular Sovereignty Wing', strength:31, e:-.26, a:.10, demand:'tariffs, wages and confrontation with established wealth' },
+    { id:'pnlFrontier', name:'Frontier League', strength:21, e:.18, a:.42, demand:'territory, the armed forces and closed borders' },
+    { id:'pnlVeterans', name:'The Veterans Bloc', strength:16, e:-.10, a:.30, demand:'the veterans, their pensions and the flag over every public building' }
   ]
 };
-
 var BILL_STAGES = ['committee','assembly','senate','assent'];
 /* S15: `council` is the suspended Assembly and `decree` is no Assembly at all.
    They are not in BILL_STAGES because BILL_STAGES is the FULL ladder of a
@@ -6937,6 +6943,24 @@ function v15Person(st, f) {
   return f;
 }
 
+/* S17i: WHICH CAUCUS WOULD PUT THIS PERSON FORWARD. Nominations have never
+   touched the caucuses -- "one candidate per caucus" was the whole point of
+   ruling 2 and there was no line between a person and a wing of their party.
+   The backing is derived from the person's own name against the party's
+   caucuses, weighted by strength, so it is stable, previewable and spends no
+   dice: the same person is always the same wing's candidate, and a caucus
+   that grows carries more of the bench. S17j turns this into the primary. */
+function v17CaucusOf(st, pid, name) {
+  var fs = (st.factions || {})[pid] || [];
+  if (!fs.length) return null;
+  var tot = 0; fs.forEach(function (f) { tot += Math.max(1, f.strength || 1); });
+  var roll = v15Hash(name + '|' + pid + '|caucus') % Math.max(1, Math.round(tot));
+  for (var i = 0; i < fs.length; i++) {
+    roll -= Math.max(1, fs[i].strength || 1);
+    if (roll < 0) return fs[i];
+  }
+  return fs[fs.length - 1];
+}
 function v15Cand(o) {
   o.competence = clamp(o.competence === undefined ? 55 : o.competence, 5, 99);
   o.loyalty = clamp(o.loyalty === undefined ? 55 : o.loyalty, 0, 100);
@@ -6975,7 +6999,10 @@ function execBench(st, office, pid) {
   var add = function (c) {
     if (!c.name || seen[c.name]) return;
     if (v17OtherOffice(st, c.name, office)) return;   /* already sits elsewhere */
-    seen[c.name] = 1; out.push(v15Cand(c));
+    seen[c.name] = 1;
+    var cc = v17CaucusOf(st, pid, c.name);
+    if (cc) { c.caucus = cc.id; c.caucusName = cc.name; }
+    out.push(v15Cand(c));
   };
   var sit = st.figures && st.figures.exec && st.figures.exec[office];
   if (sit && sit.party === pid) {
@@ -8486,12 +8513,35 @@ function enrichState(st, fresh) {
 
     st.factions = st.factions || {};
     PARTIES.forEach(function (p) {
-      if (!st.factions[p.id]) {
-        st.factions[p.id] = PARTY_FACTIONS[p.id].map(function (f, i) {
-          return { name:f.name, strength:f.strength, loyalty:clamp(64 - i * 3 + (p.id === playParty(st) ? 3 : 0), 30, 85),
-            e:f.e, a:f.a, demand:f.demand, favours:0 };
-        });
+      function mint(f, i) {
+        return { id:f.id, name:f.name, strength:f.strength,
+          /* S17i: RE-CENTRED FOR FOUR. The ladder was 64, 61, 58 -- three
+             caucuses averaging 61.3 by strength, which is the number
+             `factionAverage` hands to `partyTurnout` and the number every
+             party's ballot is read against. A fourth seeded at 55 pulled that
+             to 60.2 and moved the turnout term for all seven parties by a
+             point, in the same direction, for no reason anybody chose. At 65
+             the ladder is 65, 62, 59, 56 and the weighted average comes back
+             to where it was. */
+          loyalty:clamp(65 - i * 3 + (p.id === playParty(st) ? 3 : 0), 30, 85),
+          e:f.e, a:f.a, demand:f.demand, favours:0 };
       }
+      if (!st.factions[p.id]) { st.factions[p.id] = PARTY_FACTIONS[p.id].map(mint); return; }
+      /* S17i: A SAVE FROM BEFORE THE FOURTH CAUCUS EXTENDS IN PLACE. The three
+         it carries keep their strengths, their loyalties and their positions
+         in the array -- the inbox stores a caucus by index as well as by id,
+         and reordering would point an old paper at somebody else's resolution
+         -- and the fourth is APPENDED with the strength it was authored with.
+         The party's caucuses then sum to a little over a hundred on that save
+         and to exactly a hundred on a new campaign, which is the honest
+         outcome: a save is not re-founded, it is extended. */
+      var have = st.factions[p.id];
+      have.forEach(function (f, i) {
+        if (!f.id && PARTY_FACTIONS[p.id][i]) f.id = PARTY_FACTIONS[p.id][i].id;
+      });
+      PARTY_FACTIONS[p.id].forEach(function (f, i) {
+        if (!have.some(function (x) { return x.id === f.id || x.name === f.name; })) have.push(mint(f, i));
+      });
     });
 
     st.bills = st.bills || [];
@@ -8689,6 +8739,19 @@ function regionPartyFactor(st, pid) {
   return clamp(f, .86, 1.15);
 }
 
+/* S17i: A CAUCUS IS FOUND BY ITS ID, and by its position only for the papers
+   an old save is already carrying. The inbox stores the caucus a resolution
+   came from, and it stored an ARRAY INDEX -- which is why the fourth caucus
+   had to be appended rather than sorted into place, and why every consumer
+   asks here instead of subscripting. */
+function v17Caucus(st, pid, it) {
+  var fs = (st.factions || {})[pid] || [];
+  if (it && it.factionId) {
+    var byId = fs.filter(function (f) { return f.id === it.factionId; })[0];
+    if (byId) return byId;
+  }
+  return fs[(it && it.faction) || 0] || null;
+}
 function factionAverage(st, pid) {
   var fs = st.factions[pid] || [], n = 0, w = 0;
   fs.forEach(function (f) { n += f.loyalty * f.strength; w += f.strength; });
@@ -9555,7 +9618,7 @@ function respondInbox(id, choice) {
     if (choice === 'committee') { shiftPartyRel(S, from, 4); S.ind.corruption = c100(S.ind.corruption - 1); }
     if (choice === 'reject') shiftPartyRel(S, from, -7);
   } else if (it.type === 'faction_demand') {
-    var fs = S.factions[playParty(S)] || [], f = fs[it.faction || 0];
+    var fs = S.factions[playParty(S)] || [], f = v17Caucus(S, playParty(S), it);
     if (f) {
       if (choice === 'endorse') { f.loyalty = c100(f.loyalty + 16); var q = ppos(S, playParty(S)); q.e += f.e * .05; q.a += f.a * .05; }
       if (choice === 'meet') f.loyalty = c100(f.loyalty + 9);
@@ -9599,7 +9662,7 @@ function expireInbox(st) {
     if (st.turn < it.deadline) return;
     if (it.from) shiftPartyRel(st, it.from, -8);
     if (it.type === 'faction_demand') {
-      var f = (st.factions[playParty(st)] || [])[it.faction || 0]; if (f) f.loyalty = c100(f.loyalty - 9);
+      var f = v17Caucus(st, playParty(st), it); if (f) f.loyalty = c100(f.loyalty - 9);
     }
     if (it.type === 'governors_conference') st.crown = c100(st.crown - 4);
     it.outcome = 'ignored'; it.resolved = st.turn;
@@ -9637,7 +9700,8 @@ function politicsTick(st) {
   }
   if (lowFaction && lowFaction.loyalty < 48) {
     var idx = (st.factions[playParty(st)] || []).indexOf(lowFaction);
-    addInbox(st, { type:'faction_demand', from:playParty(st), faction:idx,
+    /* S17i: BY ID, with the index kept for the papers already in old saves. */
+    addInbox(st, { type:'faction_demand', from:playParty(st), faction:idx, factionId:lowFaction.id,
       title:lowFaction.name + ' Passes a Resolution', body:'The caucus demands ' + lowFaction.demand + ' and wants the leadership on record before conference.' });
     return;
   }
@@ -9665,7 +9729,14 @@ function factionAction(pid, idx, action) {
   captureUndo('Manage ' + f.name); S.capital -= c; if (money) partySpend(S, pid, money);
   if (action === 'consult') { f.loyalty = c100(f.loyalty + 10); S.unity = c100(S.unity + 2); }
   if (action === 'patronage') { f.loyalty = c100(f.loyalty + 17); f.favours += 6; S.ind.corruption = c100(S.ind.corruption + 3); }
-  if (action === 'promote') { f.strength = clamp(f.strength + 5, 10, 70); f.loyalty = c100(f.loyalty + 7); S.factions[pid].forEach(function (o) { if (o !== f) o.strength = Math.max(10, o.strength - 2.5); }); }
+  /* S17i: the -2.5 was tuned for TWO other caucuses and took 5 out of the
+     party in total. With three it would take 7.5, so a promotion would inflate
+     the party a little every time it was used. The transfer is a fixed 5,
+     divided among however many others there are. */
+  if (action === 'promote') { f.strength = clamp(f.strength + 5, 10, 70); f.loyalty = c100(f.loyalty + 7);
+    var others = S.factions[pid].filter(function (o) { return o !== f; });
+    var share = others.length ? 5 / others.length : 0;
+    others.forEach(function (o) { o.strength = Math.max(10, o.strength - share); }); }
   if (action === 'discipline') { f.loyalty = c100(f.loyalty - 12); f.strength = Math.max(10, f.strength - 6); S.unity = c100(S.unity + 5); }
   logIt(S, 'The leadership dealt with ' + f.name + '.'); render();
 }
@@ -14752,6 +14823,10 @@ function wire(root) {
   root.querySelectorAll('[data-faction]').forEach(function (b) {
     b.addEventListener('click', function () { factionAction(b.getAttribute('data-faction-party'), parseInt(b.getAttribute('data-faction'),10), b.getAttribute('data-faction-action')); });
   });
+  /* S17i: how the party picks its candidates is a rule of the party. */
+  root.querySelectorAll('[data-primaries]').forEach(function (b) {
+    b.addEventListener('click', function () { v17SetPrimaries(playParty(S), b.getAttribute('data-primaries') === '1'); });
+  });
   var ps = root.querySelector('#policySearch');
   if (ps) ps.addEventListener('input', function () {
     UI.polSearch=ps.value; clearTimeout(UI.searchTimer); UI.searchTimer=setTimeout(function () { render(); var n=document.getElementById('policySearch'); if(n){try{n.focus({preventScroll:true});}catch(e){n.focus();}n.setSelectionRange(n.value.length,n.value.length);} },180);
@@ -15242,6 +15317,9 @@ function pv5EnsureState(st, fresh) {
      slice carries an ordinary invested government, which is what null says. */
   if(st.caretaker===undefined)st.caretaker=null;
   if(st.formation===undefined)st.formation=null;
+  /* S17i: how each party picks its candidates -- an in-game rule, seeded from
+     where the party stands and changed only between cycles. */
+  if(typeof v17PartyRules==='function')v17PartyRules(st);
   st.fiscal=st.fiscal||{stance:'balanced',priority:'productivity',revenue:'broad',changed:-99,credibility:58};
   st.scandals=st.scandals||[]; st.scandalSeq=st.scandalSeq||1;
   st.v5History=st.v5History||[];
@@ -32221,12 +32299,22 @@ function v15NominationPanel() {
       var barred = execTermBarred(S, office, c), chosen = nom.winner.name === c.name;
       return '<button class="strategy-choice" data-nominate="' + office + '" data-nominee="' + esc(c.name) + '"' +
         (barred ? ' disabled' : '') + ' aria-pressed="' + chosen + '"><b>' + esc(c.name) + '</b><small>' +
-        esc(TRAIT[c.trait].name) + ' from ' + esc(c.from) + ' · competence ' + Math.round(c.competence) +
+        esc(TRAIT[c.trait].name) + ' from ' + esc(c.from) +
+        (c.caucusName ? ' · put forward by ' + esc(c.caucusName) : '') +
+        ' · competence ' + Math.round(c.competence) +
         ' · loyalty ' + Math.round(c.loyalty) + ' · ambition ' + Math.round(c.ambition) +
         (barred ? ' · barred by the Article of the Limited Term' : '') + '</small></button>';
     }).join('');
+    /* S17i: a candidate belongs to a wing of the party, and whether the wings
+       are asked is the party's own rule. */
+    var open = typeof v17PrimariesOn === 'function' && v17PrimariesOn(S, me);
+    var backing = {};
+    nom.bench.forEach(function (c) { if (c.caucusName) backing[c.caucusName] = 1; });
     return '<article class="card"><h3>' + esc(DEPTS[office].name) + '</h3><p class="desc">' +
-      (nom.contested ? nom.bench.length + ' of your people want it. ' : 'One name only. ') +
+      (nom.contested ? nom.bench.length + ' of your people want it, backed by ' +
+        v8Plural(Object.keys(backing).length, 'caucus', 'caucuses') + '. ' : 'One name only. ') +
+      (open ? 'Your nominations go to the membership, so this is who the caucuses are running rather than who you have chosen. '
+            : 'Your nominations are the leadership\u2019s, so this is your choice and you answer for it. ') +
       'The party will put up <b>' + esc(nom.winner.name) + '</b> unless you say otherwise' +
       (nom.barred ? ', and ' + nom.barred + ' of them cannot stand again' : '') + '.</p>' + rows + '</article>';
   }).join('');
@@ -33336,6 +33424,109 @@ doAction = function (a, opt) {
 };
 /* What the Parties page says about them. A posture the player cannot see is a
    posture that is not in the game. */
+/* ============================================================
+   S17i — FOUR VOICES IN EVERY HALL, AND WHO PICKS THE CANDIDATE
+   ============================================================
+   Ruling 2: a primary typically fields four candidates, one put forward by
+   each caucus. There were three caucuses per party in the whole game, and
+   whether a party held a primary at all was not a question anybody could ask.
+   The fourth caucus is authored above, in `PARTY_FACTIONS`; this is the rule
+   that decides what the caucuses are FOR.
+
+   Ruling 5: the toggle is an in-game party rule on the Parties tab,
+   changeable between cycles and not mid-season, and the AI parties have their
+   own dispositions. A party that distrusts the membership does not discover
+   halfway through a primary that it would rather not have held one. */
+
+/* Where the executive cycle stands. The four sessions before an exec ballot
+   ARE the race: the first two are the primaries, the last two the general,
+   and the vote closes it. Between cycles is the one session the rule can be
+   changed in, which is the session immediately after a ballot. */
+function v17CycleStage(st) {
+  var t = st.turn, next = t;
+  while (next < t + 24 && !isExecTurn(next)) next++;
+  var away = next - t;
+  if (!isExecTurn(next)) return { away:null, stage:'none' };
+  /* Ruling 6: the four sessions before the vote ARE the race -- the first two
+     the primaries, the last two the general, the vote closing it. So there is
+     no gap between one season and the next, and "between cycles" is the
+     session the vote falls in: the season has closed, the next has not opened,
+     and a rule set now governs the one to come. */
+  if (away === 0) return { away:0, stage:'ballot' };
+  if (away === 1) return { away:1, stage:'general' };
+  if (away <= 3) return { away:away, stage:'primaries' };
+  return { away:away, stage:'between' };
+}
+/* A party's own disposition, seeded from where it stands rather than from a
+   table: a party built on discipline and central authority does not put its
+   nominations out to the membership. Deterministic -- no die is rolled here. */
+function v17PrimaryDefault(pid) {
+  return (PARTY[pid].home.a || 0) < .15;
+}
+function v17PartyRules(st) {
+  if (!st.partyRules || typeof st.partyRules !== 'object') st.partyRules = {};
+  PARTIES.forEach(function (p) {
+    if (!st.partyRules[p.id]) st.partyRules[p.id] = { primaries:v17PrimaryDefault(p.id) };
+    if (typeof st.partyRules[p.id].primaries !== 'boolean') {
+      st.partyRules[p.id].primaries = v17PrimaryDefault(p.id);
+    }
+  });
+  return st.partyRules;
+}
+function v17PrimariesOn(st, pid) { return !!v17PartyRules(st)[pid].primaries; }
+function v17CanSetPrimaries(st) {
+  if (!electionsOn(st)) return 'There are no contested offices under this constitution.';
+  var c = v17CycleStage(st);
+  if (c.stage === 'none') return 'No executive election is scheduled.';
+  if (c.stage === 'general' || c.stage === 'primaries') {
+    return 'The season is under way — ' + (c.stage === 'general' ? 'the general campaign is running'
+      : 'the primaries are running') + ', ' + v8Plural(c.away, 'session') + ' from the vote. ' +
+      'A party does not change how it picks its candidates halfway through picking them. ' +
+      'Ask again at the ballot, and the answer governs the season after it.';
+  }
+  return null;
+}
+function v17SetPrimaries(pid, on) {
+  var why = v17CanSetPrimaries(S);
+  if (why) { flash(why); return; }
+  if (pid !== playParty(S)) { flash('That is another party\u2019s rulebook.'); return; }
+  if (!pv5Spend(2, 0, on ? 'Open the nominations' : 'Close the nominations', myPurse())) return;
+  v17PartyRules(S)[pid].primaries = !!on;
+  logIt(S, on
+    ? 'The ' + PARTY[pid].short + ' voted to put their nominations to the membership. Four caucuses, four candidates, and the leadership counts votes like everybody else.'
+    : 'The ' + PARTY[pid].short + ' took the nominations back into the room. The leadership picks, and answers for it.');
+  render();
+}
+
+/* The rule, on the page, for every party. */
+function v17RulesPanel() {
+  var me = playParty(S), rules = v17PartyRules(S), c = v17CycleStage(S), why = v17CanSetPrimaries(S);
+  var rows = PARTIES.filter(function (p) { return !S.banned[p.id]; }).map(function (p) {
+    var on = !!rules[p.id].primaries;
+    return '<tr' + (p.id === me ? ' class="mine"' : '') + '><td><span class="dot" style="background:' + p.color + '"></span> ' +
+      esc(p.short) + (p.id === me ? ' &middot; yours' : '') + '</td>' +
+      '<td>' + (on ? 'The membership chooses' : 'The leadership chooses') + '</td>' +
+      '<td class="num">' + (S.factions[p.id] || []).length + '</td></tr>';
+  }).join('');
+  var mine = !!rules[me].primaries;
+  var stage = c.stage === 'between' ? 'No season is running. The rule can be changed now.'
+    : c.stage === 'ballot' ? 'The country votes this session, and the season closes with it. A rule set now governs the next one.'
+    : c.stage === 'general' ? 'The general campaign is running, ' + v8Plural(c.away, 'session') + ' from the vote.'
+    : c.stage === 'primaries' ? 'The primaries are running, ' + v8Plural(c.away, 'session') + ' from the vote.'
+    : 'No executive election is scheduled.';
+  return '<div class="panel"><h2>How the Party Picks</h2>' +
+    '<p class="note">Every party carries four caucuses, and each of them would put a name forward if it were asked. ' +
+    'Whether it is asked is a rule of the party, not of the constitution: open the nominations and the membership ' +
+    'chooses between four candidates, close them and the leadership chooses and answers for it. ' + esc(stage) + '</p>' +
+    '<div class="tablewrap"><table><thead><tr><th>Party</th><th>Nominations</th><th class="num">Caucuses</th></tr></thead><tbody>' +
+    rows + '</tbody></table></div>' +
+    '<div class="btnrow"><button class="btn" data-primaries="' + (mine ? '0' : '1') + '"' +
+    (why ? ' disabled title="' + esc(why) + '"' : '') + '>' +
+    (mine ? 'Take the nominations back into the room' : 'Put the nominations to the membership') +
+    ' <span class="c">' + cst(2) + '</span></button></div>' +
+    (why ? '<p class="note">' + esc(why) + '</p>' : '') + '</div>';
+}
+
 function v16AiPanel() {
   var me = playParty(S), ai = v16Ai(S);
   var rows = PARTIES.filter(function (p) { return p.id !== me && !S.banned[p.id]; }).map(function (p) {
@@ -33376,8 +33567,10 @@ viewParties = function () {
   var html = v16ViewPartiesBase();
   var mk = '<div class="grid"><div>';
   var i = html.indexOf(mk);
-  return i >= 0 ? html.slice(0, i + mk.length) + v16AiPanel() + html.slice(i + mk.length)
-                : v16AiPanel() + html;
+  /* S17i: the party's own rulebook sits beside what the others are doing. */
+  var add = v16AiPanel() + v17RulesPanel();
+  return i >= 0 ? html.slice(0, i + mk.length) + add + html.slice(i + mk.length)
+                : add + html;
 };
 
 
