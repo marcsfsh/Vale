@@ -4,13 +4,27 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S16 — Somebody can stop you, and the other half of the game** is **open**.
-Six of twelve PRs: **S16a** the session clocks, **S16b** the treaty book,
-**S16c** the Foreign Office, **S16d** one party for the campaign, **S16e** the
-six that are not yours and **S16f** the custom start.
+**S17 — Three ways to play, and the republic plays back** is **open**, and it
+**absorbs the whole remaining half of S16** (the court, the street, playing
+from opposition, the deck fold, contrast and the thumb, the prose close) by the
+owner's ruling. **Its plan is `docs/PLAN-S17.md` — read that file top to bottom
+before any S17 work.** It is the program's anchor: the owner's verbatim brief,
+twelve binding rulings, three research reports with file:line anchors, twenty
+designed PRs (s17a–s17t), the architecture decisions and the risk list. Nothing
+about this program lives in conversation; every ruling and finding is in that
+file.
 
-**All six of the owner's explicit requirements are done.** What remains is the
-half the slice is named for.
+The owner played the game and named the shape it is missing: **three modes of
+play** — opposition, junior partner, ruling party — which the model gates
+almost nowhere; coalitions that are "surface-level… in some cases non
+functional or broken"; an executive nomination process that is "half finished";
+AI parties that need agency "in the same way that the other nations/factions
+have agency in a Paradox Plaza or Total War game"; and cards across the
+statute book, the constitution and the order book whose implementations are not
+"respected and reflected everywhere they should be."
+
+**S16a–S16f are merged and all six of the owner's S16 requirements are done.**
+S16f2 (the custom start, refined) is on its branch. S17 starts from there.
 
 **The order below was changed after S16c**: the owner's six explicit
 requirements come first, and the four "somebody can stop you" PRs follow. Three
