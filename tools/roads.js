@@ -8118,10 +8118,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         UI.queue = []; UI.busy = false;
         (S.inbox || []).forEach(function (it) {
           kinds[it.type] = (kinds[it.type] || 0) + 1;
-          if (it.from) senders[it.from] = (senders[it.from] || 0) + 1;
+          /* `faction_demand` carries the player's own party by design -- a
+             caucus writing to its own leadership is not the defect. The
+             defect is a COALITION paper from the player's own benches. */
+          if (it.from === playParty(S) &&
+              ['coalition_demand', 'confidence_threat', 'coalition_review'].indexOf(it.type) >= 0) {
+            senders.self = (senders.self || 0) + 1;
+          }
         });
       }
-      return { kinds: kinds, fromSelf: senders[playParty(S)] || 0 };
+      return { kinds: kinds, fromSelf: senders.self || 0 };
     }
     R.opp = run('opposition', 26);
     R.jun = run('junior', 26);
