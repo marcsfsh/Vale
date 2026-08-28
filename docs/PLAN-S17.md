@@ -1253,7 +1253,7 @@ was re-worded, so ruling 12c was not reached. Four notes:
 
 ### Group 6 — somebody can stop you (S16g/h)
 
-**s17p — the court can stop you** (L). courtReview extended from
+**s17p — the court can stop you** (L). **STATUS: DONE.** courtReview extended from
 commentary to consequence: standing to strike orders/acts/articles on
 constitutional conflict — the s17m declarations ARE the docket; bench
 composition decides appetite; the government (player or AI via s17k)
@@ -1261,6 +1261,31 @@ responds — comply, re-legislate, court-strip at its now-real price;
 strikes land as events of the relevant office. Harness: scripted
 unconstitutional order struck within N sessions and its effect reverted;
 a packed friendly bench does not strike it.
+
+
+*What landing it found.* Four notes.
+
+1. **The court chose by ideological distance.** `courtReview` picks the recent
+   statute furthest from where the bench sits, which is a court that strikes
+   what it dislikes. S17m gave it the thing a court that strikes what is
+   UNLAWFUL needs: a constitution that says what contradicts what. The docket
+   has three sources and none of them was invented here - an order that digs
+   below a `libFloor` an article of rights sets, an act a standing article
+   forbids, and two articles a save written before S17m already carries.
+2. **The appetite is the bench**, which is the whole reason a government packs
+   one. Measured over forty sessions: a hostile bench takes the case 34 times,
+   a bench of the government's own takes it never.
+3. **The reconciliation case is the nicest one.** Two timing articles both
+   standing average their terms, so a country votes every third year under two
+   articles that name neither; the court strikes the later and the calendar
+   reads four again.
+4. **One assertion elsewhere had to be told about it.** "the calendar tells the
+   truth" reaches a term of three by adopting both timing articles, which is
+   now a case the court hears within a few sessions. The probe holds the
+   constitutional docket out of that one run and says so, because its subject
+   is whether the executive's calendar is the legislature's. It also names
+   which of its fourteen conditions failed now, on the pattern "always
+   running" got in S17o.
 
 **s17q — the street has leverage** (M). On securityState + the blocs:
 sustained unrest → demands with deadlines (V10_PAPERS machinery);

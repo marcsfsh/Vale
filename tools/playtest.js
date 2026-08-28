@@ -2152,6 +2152,58 @@ async function run() {
     await cp.close();
   }
 
+  // -- S17p: the court's ruling on an order, answered on screen. The court had
+  //    no standing over an order at all before this slice.
+  {
+    const sp = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+    await sp.addInitScript(() => { window.confirm = () => true; });
+    await sp.goto(URL);
+    await sp.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await sp.click('[data-setup-begin]');
+    await sp.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await sp.click('[data-doctrine]');
+    await sp.waitForTimeout(250);
+    const set = await sp.evaluate(() => {
+      S.ruling = playParty(S); S.coalition = [playParty(S)]; S.capital = 900;
+      var bad = V10_ORDERS.filter(function (o) {
+        return o.ind && o.ind.liberties < 0 && !o.needs && !o.target;
+      })[0];
+      S.exec[bad.dept] = playParty(S);
+      v11Con(S).arts.artHabeas = { laid:S.turn, by:S.ruling };
+      v17OrderCore(S, playParty(S), bad.id, null);
+      S.court.justices.forEach(function (j) { j.e = 9; j.a = 9; });
+      S.pendingStrike = null; v17CourtTick(S);
+      var r = S.pendingStrike;
+      if (r) UI.queue = [v17StrikeEvent(r)], runQueue(function () {});
+      return { order:bad.id, queued:!!r, orders:Object.keys(v10Orders(S)).length,
+        sheet:!!document.querySelector('.sheet, #sheet, [data-close]') };
+    });
+    await sp.waitForTimeout(200);
+    const onScreen = await sp.evaluate(() => {
+      var t = document.body.textContent || '';
+      return { striking:/The Court Strikes at/.test(t), comply:/Comply, and let it go/.test(t),
+        refuse:/Refuse the court/.test(t), narrow:/Re-make it inside the judgment/.test(t) };
+    });
+    const btn = await sp.$$('button');
+    let clicked = null;
+    for (const el of btn) {
+      const txt = await el.textContent();
+      if (txt && /Comply, and let it go/.test(txt)) { await el.click(); clicked = true; break; }
+    }
+    await sp.waitForTimeout(200);
+    const after = await sp.evaluate(() => ({ orders:Object.keys(v10Orders(S)).length,
+      pending:!!S.pendingStrike }));
+    step('court-strikes',
+      set.queued && onScreen.striking && onScreen.comply && onScreen.refuse && onScreen.narrow &&
+      !!clicked && after.orders < set.orders && !after.pending,
+      `an executive order that digs below a right an article guarantees is put to the government as a ruling ` +
+      `on screen (${onScreen.striking}) with all three answers on it — comply, re-make it narrower, refuse the ` +
+      `court (${onScreen.comply}/${onScreen.narrow}/${onScreen.refuse}) — and a real click on the first ` +
+      `revokes it (${set.orders} → ${after.orders} orders in force). Before this slice the court could reach a ` +
+      `statute and an extraordinary measure and had no standing over an order at all`);
+    await sp.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.

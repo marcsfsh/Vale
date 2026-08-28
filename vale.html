@@ -8392,7 +8392,7 @@ function newGame(diff) {
       acts: {},
       machine: { fp:.63, lp:.25, cup:.11, sd:.09, pnl:-.05, tvc:-.19, rsf:-.60 },
       gerry:{}, press:{}, pact:null, electoral:'boroughs',
-      extra: {}, precedents: 0, pendingExtra: null,
+      extra: {}, precedents: 0, pendingExtra: null, pendingStrike: null,
       cooldown: {}, uses: {}, agenda: null,
       apparatus: 0, unity: 60, confidence: null, cordon: {}, inherited: null,
       playAs: 'lp', agendaShift: { e:0, a:0 }, radicalism: 0, oppYears: 0,
@@ -12915,10 +12915,14 @@ function endTurn() {
   var revolt = agendaEvent(S);
   courtReview(S);
   extraReview(S);
+  /* S17p: and the constitutional docket -- what a standing article forbids,
+     which the court had no standing over at all. */
+  if (typeof v17CourtTick === 'function') v17CourtTick(S);
   var fired = pickEvents();
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
   if (S.pendingExtra) fired.unshift(extraEvent(S.pendingExtra));
+  if (S.pendingStrike && typeof v17StrikeEvent === 'function') fired.unshift(v17StrikeEvent(S.pendingStrike));
   /* S15d: the bills that carried and are waiting on an office your own party
      holds. Queued on the same pattern as every other pending decision here;
      a bill left unanswered is signed by its office at the next session
@@ -36399,6 +36403,176 @@ var V17_BOOK_WIRING = {
            'fiscalEqualisation', 'stateReceivership', 'commandeeringAct']
   }
 };
+/* ============================================================
+   S17p — THE COURT CAN STOP YOU
+   ============================================================
+   The court could strike a statute and an extraordinary measure, and nothing
+   else. An executive order, a constitutional act and an article of the
+   constitution itself were all beyond it: the order book S11b uncapped, the
+   acts that carry a government down the Authority road, and the document
+   S11d let a player assemble were none of them the court's business.
+
+   And what it heard was chosen by IDEOLOGICAL DISTANCE. `courtReview` picks
+   the recent statute furthest from where the bench sits, which is a court
+   that strikes what it dislikes. A court that strikes what is UNLAWFUL is a
+   different institution, and S17m gave it the thing it needed: a constitution
+   that says what contradicts what.
+
+   THE DOCKET IS CONSTITUTIONAL, and it has three sources, none of them
+   invented for this slice:
+
+   1. AN ORDER THAT DIGS BELOW A RIGHT. `libFloor` is what an article of
+      rights sets and `indicatorTargets` has honoured since S11d -- a floor
+      under liberties that no statute reaches. An order in force whose own
+      modifiers push liberties down or the emergency up is working against
+      that floor, and the court says so.
+   2. AN ACT A STANDING ARTICLE FORBIDS. The S17m declarations, asked of the
+      acts actually in force. The gate stops a new one being carried; this is
+      for the one already standing when the article arrives, and for a save
+      written before S17m.
+   3. TWO ARTICLES THAT CONTRADICT EACH OTHER. Also only reachable from a
+      legacy save or a start editor, and also the court's business.
+
+   AND THE BENCH DECIDES WHETHER IT WANTS THE CASE. `courtWith` is how much of
+   the bench sits near the government; a bench of the government's own people
+   does not go looking for a fight with it, which is the whole reason a
+   government packs one. */
+
+function v17CourtAppetite(st) {
+  var js = (st.court && st.court.justices) || [];
+  if (!js.length) return 0;
+  var friendly = courtWith(st) / js.length;
+  /* a bench that agrees with you is slow to take a case against you */
+  var v = (1 - friendly) * .9;
+  if (st.acts && st.acts.courtStripping) v *= .35;
+  v -= securityState(st) * .004;
+  v -= (st.court.defied || 0) * .06;
+  return clamp(v, 0, .9);
+}
+
+/* WHAT IS BEFORE THE COURT. A read: it installs nothing and decides nothing. */
+function v17Docket(st) {
+  var out = [];
+  var e = (typeof v11ConEffects === 'function') ? v11ConEffects(st) : null;
+  /* 1. orders against a right */
+  if (e && e.libFloor > 0 && typeof v10Orders === 'function') {
+    var reg = v10Orders(st);
+    for (var key in reg) {
+      var rec = reg[key]; if (!rec || rec.status !== 'inforce') continue;
+      var o = v10OrderOf(key); if (!o) continue;
+      /* an order's cost in liberties is its own top-level `ind`, and its
+         `exposure` is this file's existing statement of how much of it will
+         not survive being looked at. Fifteen of the ninety cost liberties. */
+      if (!(o.ind && o.ind.liberties < 0)) continue;
+      out.push({ kind:'order', key:key, id:o.id, dept:o.dept,
+        exposure:o.exposure || 0,
+        name:v10OrderTitle(o, rec.target),
+        why:'It reaches below a floor the constitution puts under civil liberties, and a right is not a thing an order may reach.' });
+    }
+  }
+  /* 2. acts a standing article forbids */
+  if (typeof v17ConflictWhy === 'function') {
+    ACTS.forEach(function (a) {
+      if (!a.done(st)) return;
+      var w = v17ConflictWhy(st, 'act', a.id);
+      if (w) out.push({ kind:'act', key:a.id, id:a.id, dept:'chan', name:a.name, why:w });
+    });
+    /* 3. two articles that cannot both be the law */
+    var c = st.v11 && st.v11.con;
+    if (c && c.arts) {
+      (typeof V17_CONFLICTS !== 'undefined' ? V17_CONFLICTS : []).forEach(function (pr) {
+        if (pr.a.kind !== 'article' || pr.b.kind !== 'article') return;
+        if (!c.arts[pr.a.id] || !c.arts[pr.b.id]) return;
+        /* the later one is the one the court reaches */
+        var la = (c.arts[pr.a.id] || {}).laid || 0, lb = (c.arts[pr.b.id] || {}).laid || 0;
+        var later = lb >= la ? pr.b.id : pr.a.id, other = lb >= la ? pr.a.id : pr.b.id;
+        out.push({ kind:'article', key:later, id:later, dept:'vpres',
+          name:(V11_ART[later] || {}).name || later,
+          why:(V11_ART[other] || {}).name + ' stands. ' + pr.why });
+      });
+    }
+  }
+  return out;
+}
+
+/* ONE CASE A SESSION, AND ONLY IF THE BENCH WANTS IT. */
+function v17CourtTick(st) {
+  if (st.pendingStrike || st.pendingRuling || st.pendingExtra) return;
+  var docket = v17Docket(st);
+  if (!docket.length) return;
+  var want = v17CourtAppetite(st);
+  if (rand() > want) return;
+  /* the most exposed thing on the docket, because `exposure` is this file's
+     own statement of how much of an order will not survive being looked at.
+     An act or an article carries none and reads as the middle of the range. */
+  var pick = null, worst = -1;
+  docket.forEach(function (d) {
+    var x = d.exposure === undefined ? .5 : d.exposure;
+    if (x > worst) { worst = x; pick = d; }
+  });
+  st.pendingStrike = pick;
+}
+
+/* AND WHAT THE GOVERNMENT MAY DO ABOUT IT. Comply, narrow it, or refuse the
+   court -- the three answers the statute and the measure have had since S9,
+   with the prices this file already charges for defiance. */
+function v17StrikeComply(st, r) {
+  if (r.kind === 'order') {
+    var o = v10OrderOf(r.key), target = v10OrderTargetOf(r.key);
+    delete v10Orders(st)[r.key];
+    if (o && o.onRevoke) o.onRevoke(st, target);
+    logIt(st, r.name + ' was revoked on the order of the court.');
+  } else if (r.kind === 'act') {
+    if (st.acts) st.acts[r.id] = false;
+    logIt(st, r.name + ' was held unlawful and ceased to have effect.');
+  } else if (r.kind === 'article') {
+    var c = v11Con(st);
+    if (c.arts[r.id]) { c.arts[r.id].repealed = true; }
+    logIt(st, r.name + ' was struck out of the constitution as irreconcilable with what stands beside it.');
+  }
+  st.ind.liberties = c100(st.ind.liberties + 3);
+  st.crown = c100(st.crown + 3);
+  st.capital = clamp(st.capital - 2, -5, capCap(st));
+  st.precedents = (st.precedents || 0) + 1;
+  st.pendingStrike = null;
+}
+function v17StrikeDefy(st, r) {
+  st.court.defied = (st.court.defied || 0) + 1;
+  st.ind.liberties = c100(st.ind.liberties - 10);
+  st.unrest = clamp(st.unrest + 13, 0, 110);
+  st.crown = c100(st.crown - 11);
+  st.armyLoyalty = c100(st.armyLoyalty - 8);
+  mood(st, { prof:-12, youth:-8, smallbiz:-7, seniors:-5, faith:-4 });
+  logIt(st, 'The government declined to give effect to the ruling on ' + r.name +
+    '. The marshals were turned away at the door.');
+  st.pendingStrike = null;
+}
+function v17StrikeEvent(r) {
+  return { id:'v17Strike', w:0, office:r.dept || 'chan',
+    title:'The Court Strikes at ' + r.name,
+    text:'The court has held it beyond the power that made it. ' + r.why +
+      ' The remedy is immediate and the opinion is on the point of power, which leaves nothing to argue about except whether the government intends to obey.',
+    ch:[
+      { l:'Comply, and let it go', s:'It ceases to have effect. Liberties and the states recover a little.',
+        f:function (S) { v17StrikeComply(S, r); } },
+      { l:'Re-make it inside the judgment', s:'Costs capital. It stands in a narrower form and the court is not defied.',
+        f:function (S) {
+          S.capital = clamp(S.capital - 7, -5, capCap(S));
+          S.precedents = (S.precedents || 0) + 1;
+          if (r.kind === 'order') {
+            var rec = v10Orders(S)[r.key];
+            if (rec) rec.expires = S.turn + 2;
+          } else if (r.kind === 'act') {
+            S.ind.liberties = c100(S.ind.liberties + 2);
+          }
+          S.pendingStrike = null;
+          logIt(S, r.name + ' was re-made inside the judgment, and what it can reach is narrower for it.');
+        } },
+      { l:'Refuse the court', s:'Liberties, unrest, the states and the army all pay for it.',
+        f:function (S) { v17StrikeDefy(S, r); } }
+    ] };
+}
+
 /* ============================================================
    S17o — THE BOOK MEANS WHAT IT SAYS, II
    ============================================================

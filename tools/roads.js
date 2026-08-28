@@ -5920,6 +5920,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
       S.playAs = 'lp'; S.rngState = 20260827;
       (arts || []).forEach(function (a) { adopt(S, a, 1); });
+      /* S17p: a term of three needs BOTH timing articles standing, and that is
+         a constitution which contradicts itself -- S17m shuts the gate against
+         reaching it by play and S17p's court strikes the later of the two
+         within a few sessions. Both are right, and both would end this
+         probe's SUBJECT (whether the executive's calendar is the
+         legislature's) before it could be measured over twenty-six sessions.
+         So the constitutional docket is held out of this one run, and named
+         here rather than worked around quietly. That the court does strike
+         the pair is "the court can stop you", further down. */
+      var docket = (typeof v17CourtTick === 'function') ? v17CourtTick : null;
+      if (docket) v17CourtTick = function () {};
       var execTurns = [], ballots = [], rq = runQueue;
       runQueue = function (done) { UI.queue = []; rq(done); };
       try {
@@ -5931,7 +5942,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           if (S.lastExec !== lx) execTurns.push(S.lastExec);
           if (S.lastElection !== le) ballots.push(S.lastElection);
         }
-      } finally { runQueue = rq; }
+      } finally { runQueue = rq; if (docket) v17CourtTick = docket; }
       return { exec:execTurns, ballots:ballots, term:v11TermYears(S) };
     }
     R.normal = play([], 26);
@@ -6001,7 +6012,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     !cal.prose.biennialBefore && !cal.prose.biennialAfter && cal.prose.saysFour &&
     cal.reshuffle.other === 0 && cal.reshuffle.own > 0 &&
     cal.reshuffle.minted === 0 && cal.reshuffle.rivalsUntouched && cal.reshuffle.unique;
+  /* S17p: named, on the pattern "always running" got in S17o -- an assertion
+     with eighteen conditions should say which one went. */
+  const calWhy = {
+    quadTerm:cal.quad.term === 4, quadSeen:cal.quad.seen.join() === '7,11,15',
+    annual:cal.annual.term === 1 && cal.annual.seen[0] === 5,
+    normalExec:cal.normal.exec.join() === '5,9,13,17,21,25',
+    term3:cal.term3.term === 3, term3Exec:cal.term3.exec.join() === '5,9,13,17,21,25',
+    term3Ballots:cal.term3.ballots.indexOf(5) < 0 && cal.term3.ballots.indexOf(9) < 0,
+    snapOpen:cal.snapOpen, snapShut:!cal.snapShut.moved && /Fixed Term/.test(cal.snapShut.why),
+    prose:!cal.prose.biennialBefore && !cal.prose.biennialAfter && cal.prose.saysFour,
+    reshuffleOther:cal.reshuffle.other === 0, reshuffleOwn:cal.reshuffle.own > 0,
+    minted:cal.reshuffle.minted === 0, rivals:cal.reshuffle.rivalsUntouched,
+    unique:cal.reshuffle.unique
+  };
+  const calBad = Object.keys(calWhy).filter((k) => !calWhy[k]);
   say(calOk, 'the calendar tells the truth',
+    (calBad.length ? `WHAT FAILED: ${calBad.join(', ')} · ` : '') +
     `A TERM IS COUNTED FROM THE LAST ELECTION AND NOT BEFORE. With a ballot at 3 and the Quadrennial Article ` +
     `adopted at 4, the next ballot falls at ${cal.quad.seen[0]} and then ${cal.quad.seen.slice(1).join(', ')} -- ` +
     `four years apart, which is what its card says. Anchored to session one, as it was, the same case gave a ` +
@@ -7177,6 +7204,161 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${abroad.pair.same.length}), where the two primaries ran in parallel and nothing stopped one -- and since ` +
     `S17h forbids a person holding two great offices, winning both then seated a STRANGER in the second, so a ` +
     `membership that had voted got somebody it had never heard of`);
+
+  /* ================================================================
+     S17p — THE COURT CAN STOP YOU
+     ================================================================ */
+  const court = await page.evaluate(() => {
+    const R = {};
+    function fresh() {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.ruling = 'lp'; S.coalition = ['lp']; S.capital = 900; S.treasury = 9000;
+      return S;
+    }
+    /* (a) AN ORDER THAT DIGS BELOW A RIGHT. The court had no standing over an
+       order at all: `courtReview` hears statutes and `extraReview` hears
+       measures, and the order book S11b uncapped was nobody's business. */
+    fresh();
+    var bad = V10_ORDERS.filter(function (o) {
+      return o.ind && o.ind.liberties < 0 && !o.needs && !o.target;
+    })[0];
+    S.exec[bad.dept] = 'lp';
+    v11Con(S).arts.artHabeas = { laid:1, by:'lp' };      /* libFloor 40 */
+    R.order = { id:bad.id, signed:v17OrderCore(S, 'lp', bad.id, null) === null };
+    R.order.onDocket = v17Docket(S).some(function (d) { return d.kind === 'order' && d.id === bad.id; });
+    /* and WITHOUT the article there is no floor and no case: the docket is
+       constitutional, not a list of things the bench dislikes */
+    var keep = v11Con(S).arts.artHabeas;
+    delete v11Con(S).arts.artHabeas;
+    R.order.noFloorNoCase = v17Docket(S).length === 0;
+    v11Con(S).arts.artHabeas = keep;
+
+    /* (b) AND THE BENCH DECIDES WHETHER IT WANTS THE CASE, which is the whole
+       reason a government packs one. */
+    S.court.justices.forEach(function (j) { j.e = 9; j.a = 9; });
+    R.appetite = { hostile:+v17CourtAppetite(S).toFixed(3) };
+    var g = govPos(S);
+    S.court.justices.forEach(function (j) { j.e = g.e; j.a = g.a; });
+    R.appetite.packed = +v17CourtAppetite(S).toFixed(3);
+    /* a packed bench, driven forty sessions, never takes the case */
+    var took = 0;
+    for (var i = 0; i < 40; i++) { S.pendingStrike = null; v17CourtTick(S); if (S.pendingStrike) took++; }
+    R.appetite.packedTook = took;
+    S.court.justices.forEach(function (j) { j.e = 9; j.a = 9; });
+    took = 0;
+    for (i = 0; i < 40; i++) { S.pendingStrike = null; v17CourtTick(S); if (S.pendingStrike) took++; }
+    R.appetite.hostileTook = took;
+
+    /* (c) AND COMPLYING REVOKES IT. */
+    S.pendingStrike = null; v17CourtTick(S);
+    R.order.queued = !!S.pendingStrike;
+    var n0 = Object.keys(v10Orders(S)).length;
+    /* GUARDED: a poisoned build has nothing on the docket, and a probe that
+       throws aborts the whole harness instead of failing one assertion --
+       which is the mistake S17m's ghost id already taught once. */
+    if (S.pendingStrike) v17StrikeComply(S, S.pendingStrike);
+    R.order.revoked = Object.keys(v10Orders(S)).length < n0;
+
+    /* (d) AN ACT A STANDING ARTICLE FORBIDS. S17m shuts the gate against a new
+       one; this is the one already in force when the article arrives. */
+    fresh();
+    v11Con(S).arts.artUniversalFranchise = { laid:1, by:'lp' };
+    S.acts.wealthFranchise = true;
+    R.act = { onDocket:v17Docket(S).some(function (d) { return d.kind === 'act' && d.id === 'wealthFranchise'; }) };
+    var actCase = v17Docket(S).filter(function (d) { return d.kind === 'act'; })[0];
+    if (actCase) v17StrikeComply(S, actCase);
+    R.act.cleared = S.acts.wealthFranchise === false;
+
+    /* (e) AND TWO ARTICLES A LEGACY SAVE CARRIES. Their terms AVERAGED, so the
+       country went to the polls every third year under two articles that named
+       neither; the court strikes the later and the calendar reads four again. */
+    fresh();
+    v11Con(S).arts.artQuadrennial = { laid:1, by:'lp' };
+    v11Con(S).arts.artAnnualAssembly = { laid:3, by:'lp' };
+    R.article = { onDocket:v17Docket(S).map(function (d) { return d.id; }).join(','),
+      termBoth:v11ConEffects(S).term };
+    var artCase = v17Docket(S).filter(function (d) { return d.kind === 'article'; })[0];
+    if (artCase) v17StrikeComply(S, artCase);
+    R.article.termAfter = v11ConEffects(S).term;
+
+    /* (f) AND IT REACHES THE PLAYER THROUGH REAL SESSIONS. Calling
+       `v17CourtTick` here proves the function; whether `endTurn` calls it, and
+       whether the ruling is put on the queue when it does, are two separate
+       call sites and neither is tested by calling the function. Driven. */
+    fresh();
+    S.exec[bad.dept] = 'lp';
+    v11Con(S).arts.artHabeas = { laid:1, by:'lp' };
+    v17OrderCore(S, 'lp', bad.id, null);
+    S.court.justices.forEach(function (j) { j.e = 9; j.a = 9; });
+    S.rngState = 5150;
+    var sawSheet = false, rq2 = runQueue;
+    runQueue = function (done) {
+      (UI.queue || []).forEach(function (ev) { if (ev && ev.id === 'v17Strike') sawSheet = true; });
+      UI.queue = []; rq2(done);
+    };
+    try {
+      for (var k = 0; k < 6 && !sawSheet; k++) {
+        UI.queue = []; UI.busy = false; S.capital = 120;
+        endTurn(); UI.queue = [];
+        if (S.over) break;
+      }
+    } finally { runQueue = rq2; }
+    R.inPlay = sawSheet;
+
+    /* (g) AND AN ORDER THAT COSTS NO LIBERTIES IS NOT ON THE DOCKET. A court
+       that hears everything is not a constitutional court, it is the old
+       `courtReview` with a longer reach. */
+    fresh();
+    var mild = V10_ORDERS.filter(function (o) {
+      return (!o.ind || !(o.ind.liberties < 0)) && !o.needs && !o.target;
+    })[0];
+    S.exec[mild.dept] = 'lp';
+    v11Con(S).arts.artHabeas = { laid:1, by:'lp' };
+    v17OrderCore(S, 'lp', mild.id, null);
+    R.mild = { id:mild.id, signed:!!v10Orders(S)[mild.id],
+      onDocket:v17Docket(S).some(function (d) { return d.kind === 'order' && d.id === mild.id; }) };
+
+    /* (h) AND REFUSING THE COURT COSTS WHAT REFUSING A COURT COSTS. */
+    fresh();
+    S.exec[bad.dept] = 'lp';
+    v11Con(S).arts.artHabeas = { laid:1, by:'lp' };
+    v17OrderCore(S, 'lp', bad.id, null);
+    var lib0 = S.ind.liberties, defied0 = S.court.defied || 0;
+    var defyCase = v17Docket(S)[0];
+    if (defyCase) v17StrikeDefy(S, defyCase);
+    R.defy = { liberties:Math.round(lib0 - S.ind.liberties), defied:(S.court.defied || 0) - defied0,
+      standing:Object.keys(v10Orders(S)).length > 0, had:!!defyCase };
+    return R;
+  });
+  const courtOk =
+    court.order.signed && court.order.onDocket && court.order.noFloorNoCase &&
+    court.appetite.hostile > .5 && court.appetite.packed === 0 &&
+    court.appetite.packedTook === 0 && court.appetite.hostileTook > 20 &&
+    court.order.queued && court.order.revoked &&
+    court.act.onDocket && court.act.cleared &&
+    /artAnnualAssembly/.test(court.article.onDocket) &&
+    court.article.termBoth === 1 && court.article.termAfter === 2 &&
+    court.inPlay && court.mild.signed && !court.mild.onDocket &&
+    court.defy.had && court.defy.liberties > 5 && court.defy.defied === 1 && court.defy.standing;
+  say(courtOk, 'the court can stop you',
+    `THE COURT HAS STANDING OVER AN ORDER, AN ACT AND AN ARTICLE, where it could reach a statute and an ` +
+    `extraordinary measure and nothing else -- the order book S11b uncapped, the acts that carry a government ` +
+    `down the Authority road and the document S11d let a player assemble were none of them its business · AND ` +
+    `THE DOCKET IS CONSTITUTIONAL rather than a list of what the bench dislikes: "${court.order.id}" is before ` +
+    `it because it digs below a floor an article of rights puts under liberties, and with that article gone ` +
+    `there is no case at all (${court.order.noFloorNoCase}) where \`courtReview\` picks by ideological distance ` +
+    `· THE BENCH DECIDES WHETHER IT WANTS IT, which is the whole reason a government packs one: a hostile bench ` +
+    `reads ${court.appetite.hostile} and took the case ${court.appetite.hostileTook} times in forty sessions, a ` +
+    `bench of the government's own reads ${court.appetite.packed} and took it ${court.appetite.packedTook} · ` +
+    `complying REVOKES the order (${court.order.revoked}), an act a standing article forbids ceases to have ` +
+    `effect (${court.act.cleared}), and two articles a save written before S17m carries are reconciled -- their ` +
+    `terms AVERAGED to ${court.article.termBoth} so the country voted every third year under two articles that ` +
+    `named neither, and striking the later reads ${court.article.termAfter} again · and refusing the court ` +
+    `costs ${court.defy.liberties} of liberties and is written down (${court.defy.defied}), with the order ` +
+    `still standing (${court.defy.standing}) · driven through REAL sessions the ruling reaches the player as a ` +
+    `sheet (${court.inPlay}), and an order that costs no liberties ("${court.mild.id}") is NOT on the ` +
+    `docket (${!court.mild.onDocket}), because a court that hears everything is the old \`courtReview\` ` +
+    `with a longer reach`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

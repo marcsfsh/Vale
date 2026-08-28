@@ -25,9 +25,9 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17o.** Group 5 is closed. Next is Group 6,
-**s17p — the court can stop you**: `courtReview` extended from commentary to
-consequence, with the s17m conflict declarations as its docket.
+**Landed so far: s17a–s17p.** Next: **s17q — the street has leverage**,
+which puts sustained unrest and the blocs behind demands with deadlines, and
+gives an opposition player something to back.
 
 **One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
 asked for — what s17m shipped without waiting, what needs your ruling with a
@@ -91,6 +91,66 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17p — the court can stop you
+
+**The court could strike a statute and an extraordinary measure, and nothing
+else.** An executive order, a constitutional act and an article of the
+constitution itself were all beyond it: the order book S11b uncapped, the acts
+that carry a government down the Authority road, and the document S11d let a
+player assemble were none of them the court's business.
+
+**And what it heard was chosen by ideological distance.** `courtReview` picks
+the recent statute furthest from where the bench sits, which is a court that
+strikes what it dislikes. A court that strikes what is *unlawful* is a
+different institution, and S17m gave it the thing it needed: a constitution
+that says what contradicts what.
+
+**The docket is constitutional, and it has three sources**, none of them
+invented for this slice.
+
+1. **An order that digs below a right.** `libFloor` is what an article of
+   rights sets and `indicatorTargets` has honoured since S11d: a floor under
+   liberties that no statute reaches. Fifteen of the ninety orders cost
+   liberties, and while such a floor stands they are the court's business.
+2. **An act a standing article forbids.** The S17m declarations, asked of the
+   acts actually in force. The gate stops a new one being carried; this is the
+   one already standing when the article arrives.
+3. **Two articles that contradict each other**, which only a save written
+   before S17m or a start editor can produce.
+
+**The bench decides whether it wants the case**, which is the whole reason a
+government packs one. Driven forty sessions: a hostile bench takes it 34 times,
+a bench of the government's own never. And the government answers as it always
+has - comply, re-make it inside the judgment, or refuse the court and pay what
+refusing a court costs.
+
+**The reconciliation case is the nicest of the three.** Two timing articles
+both standing average their terms, so the country votes every third year under
+two articles that name neither. The court strikes the later, and the calendar
+reads four again.
+
+```
+ALL CHECKS PASS   11/11 (no new wrapper)
+ROADS OK          183 assertions (+1: "the court can stop you"; "the calendar
+                  tells the truth" now names which condition failed)
+PLAYTEST PASS     63 steps (+1: the ruling answered on screen)
+DETERMINISM / RUNGS / CORPORA / TIERS / TABS   all green
+POISON            13 reverts, each reddening the assertion
+```
+
+**Four of those poisons found weak probes**, three of them the same mistake the
+last slice made: calling `v17CourtTick` proves the function, and whether
+`endTurn` calls it and whether the ruling reaches the queue are two more call
+sites that a direct call does not touch. All three are driven through real
+sessions now. The fourth: the docket has to refuse an order that costs no
+liberties, or a court that hears everything passes as a constitutional one.
+
+**Pacing is byte-identical on all six seeds at all three lengths**, for the
+same reason as S17m: `tools/pacing.js` plays first-choice-always and never
+reaches a state where a rights article stands and an order digs below it, so
+the docket is empty for the whole of its play. The coverage is in `roads.js`
+and `playtest.js`.
 
 ### S17o — the book means what it says, II
 
