@@ -100,6 +100,23 @@ before touching the file.
   and the probe — which put its party in the office — could not tell them
   apart. Reverting the widening left it green. When a gate is narrowed, the
   probe has to stand in the gap the narrowing closes.
+- **A book whose cards are about something the model has no channel to is a
+  book of decoration, however carefully each card is authored.** Every statute
+  reaches the model through `eff`, `mood`, `rev`/`exp` and `auth`, which is
+  enough for a health statute because a health statute is ABOUT the indicators.
+  It is not enough for a book about the ballot or a book about the states:
+  42 of those 48 cards named a mechanism nothing consulted. The Authority
+  book's shape is the answer — ONE number every statute in the book reaches,
+  so there is nowhere for a card to be decorative from — and the assertion
+  drives every statute to its top rung and reads that number.
+- **A probe that joins two readings into one string lets either half carry the
+  other.** S17n's Primary Elections check compared
+  `String(on) + '/' + String(refusal)`, so removing the first mechanism
+  entirely still passed on the second. Compare component-wise, and when a
+  statute has two halves, say so. Its neighbour is the same mistake in a
+  different coat: **a test that a number ROSE is not a test that it moved the
+  way the card says** — equalisation was checked by "the poor state rises",
+  which a statute that simply added to every state would also pass.
 - **A relation declared on one card and not the other is a one-way door.**
   S17m's conflict table is ONE central symmetric array rather than a
   `conflicts:` field on each card, for exactly that reason: with per-card
@@ -173,7 +190,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **180 content assertions**, the largest harness here: the
+- `tools/roads.js` — **181 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

@@ -25,10 +25,10 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17m.** Groups 3 and 4 are closed and Group 5 is open.
-Next: **s17n — the book means what it says, I**, which wires the Elections and
-Federalism books to real mechanisms (22 of 24 Elections statutes and 20 of 24
-Federalism statutes are read NOWHERE).
+**Landed so far: s17a–s17n.** Next: **s17o — the book means what it says,
+II**, which sweeps the remaining books one commit at a time, wiring where the
+S17 systems have given a statute its first honest target and listing any
+proposed re-wording for the owner's explicit approval (ruling 12c).
 
 **One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
 asked for — what s17m shipped without waiting, what needs your ruling with a
@@ -92,6 +92,86 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17n — the book means what it says, I
+
+> *"all of those should be checked to see whether their actual implementations
+> are respected and reflected everywhere they should be."*
+
+**Two whole books did not.** Every statute reaches the model through four
+generic channels — `eff` into the indicators, `mood` into the blocs, `rev`/`exp`
+into the budget, `auth` into the security state — and for most of the book that
+is enough, because a health statute is *about* the indicators. But the Elections
+book is about the ballot and the Federalism book is about the states, and
+neither had any way to reach either. **Twenty-two of the twenty-four Elections
+statutes and twenty of the twenty-four Federalism statutes named no mechanism at
+all.** Ranked Choice Everywhere did not touch how votes became seats. Compulsory
+Voting did not touch turnout. The Independent Boundary Commission did not touch
+the boundaries. The Articles of Separation did not touch secession.
+
+**The pattern is the Authority book's.** There, every statute reaches
+`securityState` through `auth` — one number gating measures, the court and
+unrest — so no card in it *can* be decorative, because there is nowhere to be
+decorative from. This slice gives the two books six such numbers and two, each
+named for the mechanism it is, with its statutes written out beside it. **A
+twenty-fifth statute added to either book without a line there reddens
+`roads.js`** rather than joining the forty-two that were already like that.
+
+- **The roll.** `franchiseLevel` is an index into each bloc's own `fr` array and
+  cannot carry more than three states, so the six statutes that make enrolling
+  harder or easier *without* changing the roll's legal shape move a term of
+  their own — scaled by that bloc's `fr[2] − fr[0]`, which is the file's own
+  statement of how much its participation depends on how open the roll is.
+- **The poll.** Compulsory Voting, the Election Day Holiday and the limits on
+  postal voting multiply `partyTurnout`, outside the S15h span, because the span
+  is what campaigning can move and this is what the law does.
+- **The count.** A ranked ballot is not a sixth entry in `st.electoral`; it is a
+  rule about whose second choice counts, and it transfers to whoever is least
+  disliked — the centre of the compass. Observation missions discount what a
+  crooked boundary is worth, because a count nobody will certify is not a count.
+  And **the commission takes the pen**: the advantage a chamber drew for itself
+  does not vanish on the day the commission is founded, it goes as the lines are
+  redrawn.
+- **The money.** Four statutes move what a party may raise; the *statute* of
+  State Party Funding — the one with a ladder on it, where only the Act of the
+  same name was ever read — pays a grant that rises with the rung. Allotted
+  airtime **levels from both ends**: a floor nobody had to buy, and a ceiling on
+  what buying reaches.
+- **The offices.** Stricter Term Limits appeared exactly *once* in three
+  megabytes, in its own declaration, and barred nobody; it now bars from its
+  second rung whether or not the constitution carries the Article of the Term
+  Limit. Primary Elections forces every party's nominations open and shuts the
+  party rule S17i built that could close them again.
+- **The states.** Every Federalism statute moves `v11AutonomyPressure` — the
+  capital reaching in raises it, the capital letting go or paying for it lowers
+  it. **The Articles of Separation cut both ways**, which is the card's own
+  claim: within the union a lawful road out answers the grievance (7 against 14
+  without it); from an autonomous state it *is* the road (25 against 14). And
+  the money statutes reach the states themselves, with **equalisation closing
+  the gap** — the poorest rises, the richest pays, 60 to 36 of disparity —
+  rather than adding to everybody.
+
+```
+ALL CHECKS PASS   11/11 (no new wrapper)
+ROADS OK          181 assertions (+1: "the elections and federalism books
+                  reach the model" — 48 statutes, each driven to its top rung)
+PLAYTEST PASS     62 steps
+DETERMINISM / RUNGS / CORPORA / TIERS / TABS   all green
+POISON            16 reverts, each reddening the assertion
+```
+
+**Two of those poisons found weak halves of my own assertion.** Equalisation was
+tested by "the poor state rises", which a statute that simply *added* to every
+state would also pass; and Primary Elections' two halves were joined into one
+string, so either could carry the other. Both fixed — the driver compares
+component-wise now.
+
+**Pacing: excluding VALE0404, years governing is unchanged to the number on all
+three tiers.** That one seed supplies the whole aggregate (epic 40 → 72,
+standard 29 → 13) and has been the volatile one for three slices running. With
+it in, the totals read 28 → 28 short, 53 → 37 standard, 64 → 96 epic; with it
+out, 24 → 24 on both longer tiers. Crises +4 on epic, achievements −2 and −3 on
+the two longer tiers. Elections won identical at 12 everywhere.
 
 ### S17m — one truth at a time
 
