@@ -290,6 +290,10 @@
       "aliasCaptured": true,
       "reason": "alias var v8ViewNationBase captured above"
     },
+    "viewNation#2": {
+      "aliasCaptured": true,
+      "reason": "alias var v17ViewNationBase captured above — S17q splices the street panel above the movements panel"
+    },
     "viewParties#1": {
       "aliasCaptured": true,
       "reason": "alias var v8ViewPartiesBase captured above"

@@ -9624,6 +9624,14 @@ function inboxChoices(it) {
      and the Industrial Caucus of the LP went from 68 to 59 for it. The letter
      has its own paper now, and the three answers are answers to the party
      that sent it. */
+  /* S17q: THE STREET'S PAPER. The organisation behind it is not a party: it
+     cannot be whipped, bought or invited into a coalition, so the three
+     answers are carry it, buy time, or refuse it and take what follows. */
+  if (it.type === 'street_demand') return [
+    { id:'carry', label:'Carry the measure they have asked for', cost:5, tip:'The bill goes on the paper. The demand is met and the pressure goes with it.' },
+    { id:'talks', label:'Open talks and offer what can be offered', cost:3, tip:'Buys sessions rather than settling it. The deadline moves; the demand does not.' },
+    { id:'refuse', label:'Say plainly that it will not be done', cost:0, tip:'Free, and read as an answer. What follows is a matter for them.' }
+  ];
   if (it.type === 'party_demand') return [
     { id:'carry', label:'Carry the measure they asked for', cost:4, tip:'The bill goes on the paper in your name. They will remember being listened to.' },
     { id:'talks', label:'Ask them to come and discuss it', cost:2, tip:'No promise, but the door was open and they walked through it.' },
@@ -9683,6 +9691,32 @@ function respondInbox(id, choice) {
       if (choice === 'meet') f.loyalty = c100(f.loyalty + 9);
       if (choice === 'refuse') { f.loyalty = c100(f.loyalty - 12); S.unity = c100(S.unity + 2); }
     }
+  } else if (it.type === 'street_demand') {
+    var sq = (typeof v17Street === 'function') ? v17Street(S) : null;
+    if (choice === 'carry' && it.policy) {
+      /* LAYING IT IS NOT CARRYING IT. This button used to end the demand and
+         count it won the moment the bill went on the paper, so a government
+         whose bill died in the Senate had still "met" the demand -- and the
+         street's own date, which reads the statute, never got to speak. The
+         bill goes on the paper; the date decides. */
+      sponsorBill(S, it.policy, 1, 'player', 'negotiated', true);
+      if (sq && sq.demand) sq.demand.answered = true;
+      if (sq) sq.pressure = Math.max(0, sq.pressure - 12);
+      S.unrest = clamp(S.unrest - 4, 0, 110);
+      var bl = BLOC[it.bloc]; if (bl) { var mm = {}; mm[it.bloc] = 3; mood(S, mm); }
+      logIt(S, 'The government put ' + (POL[it.policy] ? POL[it.policy].name : 'the measure') + ' on the paper, and said where it had come from.');
+    }
+    if (choice === 'talks') {
+      if (sq && sq.demand) sq.demand.due = S.turn + V17_STREET_DEADLINE;
+      if (sq) sq.pressure = Math.max(0, sq.pressure - 8);
+      logIt(S, 'Talks were opened. Nothing was conceded and the date moved.');
+    }
+    if (choice === 'refuse') {
+      if (sq) { sq.pressure = clamp(sq.pressure + 20, 0, 100); sq.demand = null; sq.refused = (sq.refused || 0) + 1; }
+      var bl2 = {}; if (it.bloc) bl2[it.bloc] = -8; mood(S, bl2);
+      S.unrest = clamp(S.unrest + 4, 0, 110);
+      logIt(S, 'The government answered that it would not be done. The answer was printed in full.');
+    }
   } else if (it.type === 'party_demand') {
     /* S17l: and this one is answered TO THE SENDER. Carrying it puts the bill
        on the paper and spends their grudge down; declining is cheaper than
@@ -9737,6 +9771,24 @@ function expireInbox(st) {
        card dated to the third. */
     if (st.turn < it.deadline) return;
     if (it.from) shiftPartyRel(st, it.from, -8);
+    if (it.type === 'street_demand') {
+      /* S17q: THE PAPER DOES NOT DECIDE THE DEMAND. `politicsTick` runs before
+         `v17StreetTick` in the same session, and this branch used to clear the
+         demand and book a refusal without ever asking whether the statute had
+         moved -- so a government that carried the measure was recorded as
+         having ignored it, and the street's own date, which is the thing that
+         reads the statute, was dead code. The paper is the notification; the
+         date is the decision, and it is taken later in this same session. */
+      var sq2 = (typeof v17Street === 'function') ? v17Street(st) : null;
+      var met = sq2 && sq2.demand && (st.pol[sq2.demand.policy] || 0) > (sq2.demand.was || 0);
+      it.outcome = met ? 'answered' : 'ignored';
+      it.resolved = st.turn;
+      st.inbox = st.inbox.filter(function (x) { return x.id !== it.id; });
+      st.inboxArchive.unshift(it);
+      if (st.inboxArchive.length > 30) st.inboxArchive.length = 30;
+      logIt(st, met ? it.title + ' was answered in the statute book.' : it.title + ' went unanswered.');
+      return;
+    }
     if (it.type === 'party_demand') {
       /* S17l: silence from the government IS the answer, and the party that
          wrote carries it. It is worth more than declining to their face,
@@ -11653,7 +11705,9 @@ function changePolicy(id, dir) {
   if (S.changed[id]) { flash('That measure has already been before Parliament this session.'); return; }
   if (!policyOpen(S, p)) { flash(policyWhy(S, p) || 'That measure has no place under this constitution.'); return; }
   if (!inPower(S)) { flash('You are in opposition. You cannot introduce government legislation.'); return; }
-  var care = (typeof v17CareBar === 'function') ? v17CareBar(S, 'policy') : null;
+  /* S17q: a caretaker and a general strike are two facts about the same
+     government, asked on one line. */
+  var care = (typeof v17Barred === 'function') ? v17Barred(S, 'policy') : null;
   if (care) { flash(care); return; }
   var cost = policyCost(id, dir);
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
@@ -12164,6 +12218,28 @@ var ACTIONS = [
           S.machine[me] = clamp((S.machine[me] || 0) + .1, -.8, 1);
           var m = {}; BLOCS.forEach(function (b) { if (affOf(S, me, b.id) > .35) m[b.id] = 6; }); mood(S, m);
           logIt(S, 'A national campaign was run against the government.'); } },
+      /* S17q: AND THE STREET IS SOMETHING AN OPPOSITION CAN STAND WITH. It
+         costs: a party that puts itself at the head of a crowd is a party the
+         propertied blocs stop trusting, and the crowd's demand is not the
+         party's to withdraw afterwards. This is the only lever any player has
+         on `st.street.pressure` and it belongs to the side out of office. */
+      { label:'Stand with the street', cost:5,
+        run:function (S) {
+          var st17 = (typeof v17Street === 'function') ? v17Street(S) : null;
+          if (!st17) return;
+          var me = playParty(S), b = (typeof v17StreetBloc === 'function') ? v17StreetBloc(S) : null;
+          st17.pressure = clamp(st17.pressure + 15, 0, 100);
+          if (st17.demand) st17.demand.due = Math.max(S.turn, st17.demand.due - 1);
+          S.machine[me] = clamp((S.machine[me] || 0) + .06, -.8, 1);
+          var mm = {};
+          if (b) mm[b.id] = 9;
+          mm.tech = -6; mm.smallbiz = -5; mm.faith = -3;
+          mood(S, mm);
+          S.ind.corruption = c100(S.ind.corruption - 1);
+          logIt(S, 'The ' + PARTY[me].short + ' put itself at the head of the demonstration' +
+            (b ? ' with ' + BLOC[b.id].name.toLowerCase() : '') +
+            '. The propertied papers noticed which side of the barrier it stood on.');
+        } },
       /* S17f: THE HOUSE REMOVES A GOVERNMENT, NOT THE OPINION POLLS. This
          read `approval(S) < 42` -- a national mood number, consulted instead
          of the chamber -- so a government holding 71% of the seats fell on a
@@ -12918,6 +12994,8 @@ function endTurn() {
   /* S17p: and the constitutional docket -- what a standing article forbids,
      which the court had no standing over at all. */
   if (typeof v17CourtTick === 'function') v17CourtTick(S);
+  /* S17q: and what the country outside the chamber is doing about it. */
+  if (typeof v17StreetTick === 'function') v17StreetTick(S);
   var fired = pickEvents();
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
@@ -16146,7 +16224,7 @@ function pv5CampaignAction(action,id){
    inflation, the balance and the rating. It is the head of government's. */
 function pv5FiscalAction(kind,id){
   var why=modeWhy(S,'leading');if(why){flash(why);return;}
-  var care=(typeof v17CareBar==='function')?v17CareBar(S,'fiscal'):null;if(care){flash(care);return;}
+  var care=(typeof v17Barred==='function')?v17Barred(S,'fiscal'):null;if(care){flash(care);return;}
   if(!PV5_FISCAL[kind]||!PV5_FISCAL[kind][id])return;if(!pv5Spend(3,0,'Set fiscal framework'))return;
   S.fiscal[kind]=id;S.fiscal.changed=S.turn;var name=PV5_FISCAL[kind][id].name;logIt(S,'The fiscal framework was reset: '+name+'.');render();
 }
@@ -17304,7 +17382,7 @@ function v6TreatyWhy(st, pid, kind) {
      spent governing. S16f is where being out of power gets its own things to
      do; this is only the door that should never have been open. */
   if (!inPower(st)) return 'The Foreign Office answers to the government, and you are not it.';
-  if (typeof v17CareBar === 'function' && v17CareBar(st, 'treaty')) return v17CareBar(st, 'treaty');
+  if (typeof v17Barred === 'function' && v17Barred(st, 'treaty')) return v17Barred(st, 'treaty');
   if (st.war && st.war.power === pid) return 'The two countries are at war.';
   if (v6TreatyExcluded(st, pid, kind)) return 'They are in the Alliance. Neither may open a war on the other already.';
   if (v6HasTreaty(st, pid, kind)) return 'Already in force.';
@@ -17657,7 +17735,7 @@ function v6ProgrammesTick(st) {
    the S16f2 lesson wearing different clothes: the UI is not the gate. */
 function v6AdoptProgramme(id) {
   var whyP = modeWhy(S, 'leading'); if (whyP) { flash(whyP); return; }
-  var careP = (typeof v17CareBar === 'function') ? v17CareBar(S, 'programme') : null;
+  var careP = (typeof v17Barred === 'function') ? v17Barred(S, 'programme') : null;
   if (careP) { flash(careP); return; }
   var pr = V6_PROGRAMME[id]; if (!pr) return;
   if (S.v6.programme === id) { if (!pv5Spend(1, 0, 'Drop programme')) return; S.v6.programme = null; logIt(S, 'The ' + pr.name + ' was set aside.'); render(); return; }
@@ -27885,6 +27963,12 @@ function v10OrderOpen(st, o, target, actor) {
   if (typeof v17CareBar === 'function' && st.caretaker && o.cat !== 'Emergency and territory') {
     return v17CareBar(st, 'order');
   }
+  /* S17q: and the same exemption while the country is shut -- an order about
+     a flood or a frontier still has somebody to carry it out. */
+  if (typeof v17StrikeBar === 'function' && o.cat !== 'Emergency and territory') {
+    var sb = v17StrikeBar(st, 'order');
+    if (sb) return sb;
+  }
   if (st.exec[o.dept] !== actor && !(actor === playParty(st) && holdsDept(st, o.dept))) {
     return DEPTS[o.dept].name + ' is in other hands.';
   }
@@ -36403,6 +36487,296 @@ var V17_BOOK_WIRING = {
            'fiscalEqualisation', 'stateReceivership', 'commandeeringAct']
   }
 };
+/* ============================================================
+   S17q — THE STREET HAS LEVERAGE
+   ============================================================
+   Unrest was a number with one consequence at the far end of it. It rose, it
+   fell, it was read by a dozen cards for flavour, and at 95 the government
+   fell twice and the campaign ended. Between 0 and 95 the country could be
+   furious for thirty years and never ask the government for anything.
+
+   A CROWD THAT CANNOT MAKE A DEMAND IS WEATHER, NOT POLITICS. What follows
+   gives it three things it did not have: something it wants, a date by which
+   it wants it, and something it can do when it does not get it.
+
+   `st.street` is one object and it rides the save. Pressure builds while the
+   country runs HOT -- SUSTAINED, so a single bad session does not start a
+   movement and thirty quiet years cannot end in one. Past the first threshold
+   the angriest bloc puts a statute to the government with a deadline on it.
+   Refused or ignored, pressure keeps rising; past the second the country
+   stops working, and a general strike is the one thing in this game that
+   stops a government legislating without touching the chamber at all.
+
+   AND HEAT IS THE BLOCS, NOT UNREST. Unrest was the obvious driver and it is
+   the wrong one: measured over six hundred sessions of play it sits at 24,
+   reaches 47 at the ninety-fifth session in a hundred and TOPS OUT AT 57 --
+   a bar anywhere near the 95 that ends a campaign is a bar the game never
+   reaches, and a movement that never happens is the same decoration as a
+   modifier nothing reads. The blocs do move: over those same sessions the
+   worst-treated bloc sits at 26 and reaches 2, so a country is routinely
+   governed with a fifth of it abandoned while unrest reads a placid 24.
+   Heat is therefore how far the bloc that would CARRY a movement sits below
+   fifty, plus what unrest adds above the middle of its own range, less what
+   an apparatus takes away -- because a police state does not make people
+   content, it makes organising them hard. Those three terms are what the
+   Country page prints, and each is a thing a player did.
+
+   THE FREEZE IS S17F'S SHAPE, NOT A NEW GATE LAYER. `V17_CARE_BARS` is a
+   table read at five instruments by one predicate, and a caretaker and a
+   general strike are the same kind of fact about a government: it is still
+   the government and it cannot use them. The strike's table is read at the
+   same five call sites by a sibling predicate. */
+
+var V17_STREET_BAR = 22;        /* heat above which pressure builds */
+var V17_STREET_DEMAND = 26;     /* pressure at which the street asks */
+var V17_STREET_STRIKE = 58;     /* and at which it stops working */
+/* SESSIONS TO ANSWER, measured against the instrument the answer has to use
+   rather than picked for the ring of it: laying a bill is one session, the
+   floor is a second, and since S15d the statute does not move until an office
+   signs, which is a third. A deadline of three left the government one short
+   of the only route it has, so every demand was refused on a bill that was
+   about to carry. Four is the shortest date that can be met. */
+var V17_STREET_DEADLINE = 4;
+var V17_STREET_MID = 35;        /* the unrest above which unrest adds heat */
+var V17_STREET_GUARD = .18;     /* and what a point of security state takes off */
+var V17_STREET_SPENT = 3;       /* sessions a strike lasts before it runs out */
+var V17_STREET_REST = 6;        /* and before the country can be shut again */
+
+function v17Street(st) {
+  if (!st.street || typeof st.street !== 'object') {
+    st.street = { pressure:0, demand:null, strike:0, won:0, refused:0, rest:0, bloc:null };
+  }
+  if (typeof st.street.pressure !== 'number') st.street.pressure = 0;
+  return st.street;
+}
+/* WHOSE STREET IT IS: the bloc with the most people and the least to lose,
+   which is the file's own `pop` against how far below fifty it sits. */
+function v17StreetBloc(st) {
+  var best = null, worst = 0;
+  BLOCS.forEach(function (b) {
+    var anger = Math.max(0, 50 - (st.blocs[b.id] || 50)) * b.pop;
+    if (anger > worst) { worst = anger; best = b; }
+  });
+  return best;
+}
+/* HOW HOT THE COUNTRY IS, in three named terms rather than one number. The
+   grievance of the bloc that would carry a movement, what unrest adds above
+   the middle of its own range, and what an apparatus takes off -- returned
+   split so the page can print the reason and a probe can read the parts
+   without reassembling the formula. */
+function v17StreetHeat(st) {
+  /* ONCE A MOVEMENT EXISTS IT IS THE MOVEMENT'S BLOC, not whoever is angriest
+     this session. A movement organised around one constituency does not
+     re-target itself every year, and the panel printed one bloc in the heat
+     term while the demand beneath it named another. */
+  var held = st.street && st.street.bloc;
+  var bloc = (held && BLOC[held]) ? BLOCS.filter(function (b) { return b.id === held; })[0] : null;
+  bloc = bloc || v17StreetBloc(st);
+  var anger = bloc ? Math.max(0, 50 - (st.blocs[bloc.id] || 50)) : 0;
+  var restive = st.unrest - V17_STREET_MID;
+  var guard = (typeof securityState === 'function' ? securityState(st) : 0) * V17_STREET_GUARD;
+  return { bloc:bloc, anger:anger, restive:restive, guard:guard,
+    heat:anger + restive - guard };
+}
+/* AND WHAT IT WANTS: a statute in the book that the bloc it comes from would
+   feel, taken from the same `mood` rows every card already carries. */
+function v17StreetWant(st, bloc) {
+  var pick = null, best = 0;
+  POLICIES.forEach(function (p) {
+    if (!p.mood || !p.mood[bloc.id] || p.mood[bloc.id] <= 0) return;
+    if (!policyOpen(st, p)) return;
+    var lv = st.pol[p.id] || 0;
+    if (lv >= p.max) return;
+    var v = p.mood[bloc.id] * (1 + v15Hash(p.id + '|' + bloc.id) % 7 / 10);
+    if (v > best) { best = v; pick = p; }
+  });
+  return pick;
+}
+/* THE SESSION. Pressure follows sustained unrest, the demand is posted once,
+   and the strike is what an unanswered demand becomes. */
+function v17StreetTick(st) {
+  var s = v17Street(st);
+  /* THE APPARATUS BREAKS A STRIKE. A government that has built a security
+     state can end one without conceding anything, and it is the one use of
+     `securityState` that the player will feel as a choice already made rather
+     than a number on a page: the depots open under guard because of statutes
+     carried years earlier. It costs liberties, which is what that state is
+     made of. */
+  if (s.strike > 0 && securityState(st) >= 45 && rand() < (securityState(st) - 45) / 90) {
+    v17StreetEnd(st, 'broken');
+    return;
+  }
+  /* read BEFORE the decrement, so the window is the six sessions the constant
+     names rather than five: spending the count and then asking whether any is
+     left lets a strike start on the last one */
+  var resting = s.rest > 0;
+  if (s.rest > 0) s.rest -= 1;
+  var over = v17StreetHeat(st).heat - V17_STREET_BAR;
+  if (over > 0) s.pressure += 2 + over * .3;
+  else s.pressure = Math.max(0, s.pressure - 5);
+  /* a strike feeds itself while it runs and costs the country every session */
+  if (s.strike > 0) {
+    s.strike += 1;
+    s.pressure = clamp(s.pressure, 0, 100);
+    st.ind.economy = c100(st.ind.economy - 1.6);
+    st.treasury -= 14;
+    st.unrest = clamp(st.unrest + 1.5, 0, 110);
+    if (s.strike > V17_STREET_SPENT) { v17StreetEnd(st, 'exhausted'); }
+    return;
+  }
+  s.pressure = clamp(s.pressure, 0, 100);
+  /* the demand, once, with a date on it */
+  if (!s.demand && s.pressure >= V17_STREET_DEMAND) {
+    var bloc = v17StreetBloc(st);
+    var want = bloc ? v17StreetWant(st, bloc) : null;
+    if (!bloc || !want) return;
+    /* the level the statute stood at WHEN THEY ASKED. Without it the deadline
+       reads as met the moment it arrives, because anything is greater than
+       nothing and the comparison had no left-hand side. */
+    s.demand = { bloc:bloc.id, policy:want.id, was:st.pol[want.id] || 0,
+      from:st.turn, due:st.turn + V17_STREET_DEADLINE };
+    /* held past the demand, because `v17StreetEnd` runs after `s.demand` is
+       gone and still has to say whose movement it was and move them */
+    s.bloc = bloc.id;
+    logIt(st, BLOC[bloc.id].name + ' put ' + want.name + ' to the government, and named the session by which they want an answer.');
+    addNews(st, 'The Country', BLOC[bloc.id].name + ' ask for ' + want.name,
+      'The demand is specific and it has a date on it, which is what makes it different from the last thirty years of complaint.', 'bad');
+    addInbox(st, { type:'street_demand', from:null, bloc:bloc.id, policy:want.id,
+      deadline:s.demand.due,
+      title:BLOC[bloc.id].name + ' Demand ' + want.name,
+      body:'The organisation behind it is not a party and cannot be whipped, bought or invited into a coalition. ' +
+        'It has named a measure and a session, and it has the numbers to stop the country if neither arrives.' });
+    return;
+  }
+  /* the deadline passes */
+  if (s.demand && st.turn >= s.demand.due) {
+    var got = (st.pol[s.demand.policy] || 0) > (s.demand.was || 0);
+    var who = BLOC[s.demand.bloc] ? BLOC[s.demand.bloc].name : 'the country';
+    if (got) { v17StreetEnd(st, 'carried'); return; }
+    s.refused = (s.refused || 0) + 1;
+    s.pressure = clamp(s.pressure + 16, 0, 100);
+    s.demand = null;
+    logIt(st, 'The session named by ' + who + ' passed without an answer.');
+  }
+  /* AND A COUNTRY CANNOT BE SHUT TWICE RUNNING. One session is one year, so a
+     general strike every other year is not a labour movement, it is a state of
+     nature -- and without the rest the strike's own unrest feed (+1.5 a
+     session) drives the heat that starts the next one. Measured before it: a
+     campaign that answered nothing was shut for 24 to 39 sessions in a
+     hundred, which is the mechanic eating the game rather than pressing on
+     it. Asking again is free; shutting the country again waits. */
+  /* AND NOT WHILE THE DATE THEY NAMED IS STILL RUNNING. Pressure keeps
+     building under a standing demand, and at the old ordering it crossed the
+     strike bar two sessions before the deadline -- so the street asked for an
+     answer by a session, then shut the country before that session arrived
+     and the government never got to give one. Measured: the demand was
+     overtaken every time, which is why nothing was ever carried. A strike is
+     what an UNANSWERED demand becomes, which is what the card says. */
+  if (s.pressure >= V17_STREET_STRIKE && !s.strike && !s.demand && !resting) {
+    s.strike = 1;
+    st.unrest = clamp(st.unrest + 8, 0, 110);
+    st.ind.economy = c100(st.ind.economy - 3);
+    logIt(st, 'A general strike began this morning. The ports, the railways and the depots are shut, and nobody in the capital can say for how long.');
+    addNews(st, 'The Country', 'A general strike', 'What could not be got by asking is being got by stopping. The government legislates nothing while it holds.', 'bad');
+    chronicle(st, 'A general strike shut the country.');
+  }
+}
+/* HOW A MOVEMENT ENDS, and what it leaves behind. A movement that ends is
+   SPENT -- pressure goes to nought whichever way it went, because the people
+   who organised it went back to work and the next one has to be organised
+   again from the beginning. What differs is what happened to the bloc that
+   carried it, which is the term the heat is built on: carrying the measure
+   answers them, breaking them with the apparatus does not and they know it. */
+function v17StreetEnd(st, how) {
+  var s = v17Street(st);
+  var who = s.bloc && BLOC[s.bloc] ? BLOC[s.bloc].name : 'The country';
+  var mv = {};
+  s.strike = 0; s.demand = null;
+  s.pressure = 0;
+  s.rest = V17_STREET_REST;
+  if (how === 'carried') {
+    s.won = (s.won || 0) + 1;
+    st.unrest = clamp(st.unrest - 14, 0, 110);
+    if (s.bloc) { mv[s.bloc] = 4; mood(st, mv); }
+    logIt(st, who + ' got what they asked for and the country went back to work.');
+  } else if (how === 'broken') {
+    st.unrest = clamp(st.unrest - 6, 0, 110);
+    st.ind.liberties = c100(st.ind.liberties - 9);
+    /* the apparatus buys quiet now and a worse-treated constituency later,
+       which is the whole trade and the reason the rest window is bounded */
+    if (s.bloc) { mv[s.bloc] = -6; mood(st, mv); }
+    logIt(st, 'The strike was broken. The depots opened under guard and the organisers are before a magistrate.');
+  } else {
+    st.unrest = clamp(st.unrest - 4, 0, 110);
+    logIt(st, 'The strike ran itself out. Nothing was conceded and nothing was forgotten.');
+  }
+  s.bloc = null;
+}
+
+/* WHAT A GENERAL STRIKE STOPS. The same shape as `V17_CARE_BARS`: a table
+   read at the five instruments by one predicate, so a strike and a caretaker
+   are two facts about the same government rather than two gate layers. */
+var V17_STRIKE_BARS = {
+  policy:'The country is not working. There is no Assembly quorum, no printer for the bill and no department to draft it.',
+  fiscal:'A framework is a plan for a year of ordinary work, and this is not one.',
+  treaty:'Nobody signs for Vale while Vale is shut.',
+  programme:'A programme is for a government that can get anything done at all.',
+  order:'The order can be signed. There is nobody at the depots to carry it out.'
+};
+function v17StrikeBar(st, what) {
+  var s = st && st.street;
+  if (!s || !s.strike) return null;
+  return V17_STRIKE_BARS[what] || V17_STRIKE_BARS.policy;
+}
+/* Both bars, asked once, so a call site reads one line and gets whichever
+   applies. */
+function v17Barred(st, what) {
+  return (typeof v17CareBar === 'function' ? v17CareBar(st, what) : null) || v17StrikeBar(st, what);
+}
+
+/* AND THE COUNTRY PAGE SAYS WHY. Pressure that builds where nobody can see it
+   is a demand that arrives out of nowhere, and each of the three terms is a
+   thing the player did: a bloc they let fall, an unrest they let stand, an
+   apparatus they built. Printed beside the movements, which are the same
+   constituencies organising by a slower road. */
+function v17StreetPanel(st) {
+  var s = v17Street(st), h = v17StreetHeat(st);
+  var pct = Math.round(clamp(s.pressure, 0, 100));
+  var state = s.strike ? 'A general strike, session ' + s.strike
+    : (s.demand ? 'A demand stands, answer due ' + yearOf(s.demand.due)
+      : (h.heat > V17_STREET_BAR ? 'Organising' : (s.pressure > 0 ? 'Going quiet' : 'Nothing organised')));
+  var terms = '<span class="tag' + (h.anger > 0 ? ' down' : '') + '">' +
+      (h.bloc ? esc(BLOC[h.bloc.id].name) + ' ' + (h.anger > 0 ? '-' + Math.round(h.anger) : 'content') : 'No bloc below fifty') + '</span>' +
+    '<span class="tag' + (h.restive > 0 ? ' down' : '') + '">Unrest ' + (h.restive > 0 ? '+' : '') + Math.round(h.restive) + '</span>' +
+    (h.guard > 0 ? '<span class="tag up">The apparatus -' + Math.round(h.guard) + '</span>' : '');
+  var body = s.strike
+    ? 'The ports, the railways and the depots are shut. Nothing can be legislated, no framework set, no treaty signed and no programme adopted while it holds. ' +
+      'An order about a flood or a frontier still goes out.'
+    : (s.demand
+      ? esc((BLOC[s.demand.bloc] || {}).name || 'They') + ' have named ' +
+        esc((POL[s.demand.policy] || {}).name || 'a measure') + ' and the session they want it by. ' +
+        'Carrying it ends this. Letting the date pass does not.'
+      : 'Heat is how far the worst-treated bloc sits below fifty, plus what unrest adds above ' + V17_STREET_MID +
+        ', less what a security state takes off. Above ' + V17_STREET_BAR + ' pressure builds; at ' + V17_STREET_DEMAND +
+        ' they ask, and at ' + V17_STREET_STRIKE + ' the country stops working.');
+  return '<div class="panel"><h2>The Street</h2>' +
+    '<div class="row"><span class="lab">Pressure</span>' +
+    '<span class="bar ' + (pct > 55 ? 'b-bad' : (pct > 20 ? 'b-ox' : 'b-ok')) + '"><i style="width:' + pct + '%"></i></span>' +
+    '<span class="val">' + pct + '</span></div>' +
+    '<div class="tagline"><span class="tag">' + esc(state) + '</span>' + terms +
+    (s.won ? '<span class="tag up">' + s.won + ' carried</span>' : '') +
+    (s.refused ? '<span class="tag down">' + s.refused + ' refused</span>' : '') + '</div>' +
+    '<p class="note">' + body + '</p></div>';
+}
+var v17ViewNationBase = viewNation;
+viewNation = function () {
+  var html = v17ViewNationBase();
+  var mark = '<div class="panel"><h2>Movements Outside the Chamber</h2>';
+  var i = html.indexOf(mark);
+  var panel = v17StreetPanel(S);
+  return i >= 0 ? html.slice(0, i) + panel + html.slice(i) : html + panel;
+};
+
 /* ============================================================
    S17p — THE COURT CAN STOP YOU
    ============================================================
