@@ -1221,6 +1221,33 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## The army and the eleven capitals (S17o)
+
+The same shape as S17n, for the two other books whose subject the indicators do
+not contain.
+
+- **`V17_ARMY`** → the target `armyLoyalty` drifts toward in `tickTurn`, which
+  read four things and none of them a Defence statute. **`V17_EDGE`** → the
+  `edge` that decides a war in `warTick`, which read six and none of them a
+  Defence statute either. Eighteen of the book's twenty-four reached neither.
+  The two tables disagree on purpose where the cards do: the Political
+  Directorate buys loyalty and costs speed in the field; an oath sworn to the
+  constitution alone is not an oath to the government of the day.
+- **`V17_ABROAD`** → `powersTick`'s drift, keyed by `POWERS[].kind`, and
+  `warTick`'s risk. Eleven Foreign statutes were already read there by name;
+  the other twelve reached no capital at all.
+- The remaining nineteen books are deliberately not wired further. A health
+  statute that moves the health indicator is wired; the indicator is what the
+  statute is about.
+
+**And two fixes to the executive season that came out of it.**
+`v17ResolvePrimaries` keeps a `taken` set per party across the two offices of
+the pair, so nobody is a party's candidate for both - without it, S17h's
+one-person-one-office rule seated a stranger in the second office and the
+membership got somebody it never voted for. And `e.winnerOf` holds the winning
+person beside the name, because `v17RaceWinner` looked the name up on the bench
+again at the vote and a bench moves between the primary and the vote.
+
 ## The two books that reached nothing (S17n)
 
 **Every statute reaches the model through four generic channels** — `eff`,

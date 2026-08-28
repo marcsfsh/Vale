@@ -100,6 +100,21 @@ before touching the file.
   and the probe — which put its party in the office — could not tell them
   apart. Reverting the widening left it green. When a gate is narrowed, the
   probe has to stand in the gap the narrowing closes.
+- **A probe that reassembles the formula proves the function, not the wiring.**
+  S17o's first Defence probe computed `52 + veterans*.7 + ... + v17ArmyTerm(st)`
+  itself and compared it either side of a statute; deleting the call from
+  `tickTurn` left it green. Read the number through the game's own path, always
+  - drive the tick and read `st.armyLoyalty`. The cost is that the real path
+  cannot say WHICH channel moved the number (a Defence statute that shifts the
+  veterans bloc moves the army by a road that predates the slice), so ask the
+  coverage separately: the statute is in the table AND the table reaches the
+  game. Three of S17o's twelve poisons found this one mistake.
+- **A flaky assertion is a defect report you have not read yet.** `always
+  running` failed on two runs in six and the cause was real: a party's two
+  parallel primaries could pick the same person, and S17h's one-person-one-
+  office rule then seated a stranger in the second. Pinning the probe would
+  have hidden it. Make the assertion name which of its conditions failed, run
+  it until it does, and fix what it points at.
 - **A book whose cards are about something the model has no channel to is a
   book of decoration, however carefully each card is authored.** Every statute
   reaches the model through `eff`, `mood`, `rev`/`exp` and `auth`, which is
@@ -190,7 +205,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **181 content assertions**, the largest harness here: the
+- `tools/roads.js` — **182 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
