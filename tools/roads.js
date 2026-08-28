@@ -8092,6 +8092,104 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${honest.deptTagSample}) where it used to mark it green · and the drafting sheet offers a private member ` +
     `no urgent procedure (${honest.sheet.urgent}) and calls the bill what it is ("${honest.sheet.clean.trim()}")`);
 
+  /* ================================================================
+     S18c — THE SECOND DECISION SURFACE
+     ================================================================
+     S17c routed the 174 turn events by office and the political papers went
+     round the back of it: produced by `politicsTick`, charged for by
+     `expireInbox`, rendered on the landing page every session, and never
+     asked which chair the player sits in. */
+  const inboxes = await page.evaluate(() => {
+    const R = {};
+    function seat(chair, ruling) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.rngState = 3131; S.capital = 400; S.treasury = 9000;
+      if (chair === 'opposition') { S.ruling = 'fp'; S.coalition = ['fp', 'sd']; }
+      if (chair === 'junior')     { S.ruling = 'fp'; S.coalition = ['fp', 'lp']; }
+      if (chair === 'leading')    { S.ruling = 'lp'; S.coalition = ['lp', 'sd']; }
+    }
+    /* drive real sessions and record what each chair is ASKED */
+    function run(chair, n) {
+      seat(chair);
+      const kinds = {}, senders = {};
+      for (var i = 0; i < n; i++) {
+        S.capital = 400;
+        try { endTurn(); } catch (e) { R.err = String(e).slice(0, 80); }
+        UI.queue = []; UI.busy = false;
+        (S.inbox || []).forEach(function (it) {
+          kinds[it.type] = (kinds[it.type] || 0) + 1;
+          if (it.from) senders[it.from] = (senders[it.from] || 0) + 1;
+        });
+      }
+      return { kinds: kinds, fromSelf: senders[playParty(S)] || 0 };
+    }
+    R.opp = run('opposition', 26);
+    R.jun = run('junior', 26);
+    R.gov = run('leading', 26);
+    /* and a paper from an old save is still answerable, but only from the
+       chair it belongs to: the gate is on the button AND at the handler */
+    seat('opposition');
+    addInbox(S, { type:'governors_conference', from:null, deadline:S.turn + 2,
+      title:'The Fifty Governors Call for a Conference', body:'x' });
+    UI.tab = 'chamber'; render();
+    const btn = document.querySelector('#view [data-inbox]');
+    R.oldPaper = { drawn: !!btn, shut: !!btn && !!btn.disabled,
+      why: btn ? (btn.getAttribute('title') || '').slice(0, 40) : '' };
+    const crown0 = S.crown, cap0 = S.capital;
+    const said = [];
+    const fb = flash; flash = function (m) { said.push(m); };
+    try { respondInbox(S.inbox[S.inbox.length - 1].id, 'compact'); } finally { flash = fb; }
+    R.oldPaper.moved = Math.round((S.crown - crown0) * 100) / 100;
+    R.oldPaper.spent = Math.round((cap0 - S.capital) * 100) / 100;
+    R.oldPaper.refused = said.join(' ').slice(0, 40);
+    /* AND THE DESPATCH BOX. Question Time asked `inPower`, so a junior was
+       handed the government's brief with the senior partner's leader named in
+       the question. */
+    R.qt = {};
+    ['opposition', 'junior', 'leading'].forEach(function (chair) {
+      seat(chair);
+      S.v8.qt.turn = -1;
+      v8EnsureQuestion(S);
+      UI.tab = 'chamber'; render();
+      const view = document.getElementById('view').textContent.replace(/\s+/g, ' ');
+      R.qt[chair] = { kind: S.v8.qt.kind || (S.v8.qt.pending ? '(pending)' : '(none)'),
+        yours: /The question is yours/.test(view),
+        answering: /asks/.test(view) };
+    });
+    return R;
+  });
+  const inboxesOk =
+    !inboxes.opp.kinds.governors_conference && !inboxes.opp.kinds.coalition_demand &&
+    !inboxes.opp.kinds.confidence_threat &&
+    !inboxes.jun.kinds.coalition_demand && !inboxes.jun.kinds.confidence_threat &&
+    inboxes.jun.fromSelf === 0 && inboxes.opp.fromSelf === 0 &&
+    (inboxes.gov.kinds.coalition_demand || inboxes.gov.kinds.confidence_threat ||
+     inboxes.gov.kinds.governors_conference) &&
+    inboxes.oldPaper.drawn && inboxes.oldPaper.shut && inboxes.oldPaper.moved === 0 &&
+    inboxes.oldPaper.spent === 0 && /opposition/.test(inboxes.oldPaper.refused) &&
+    inboxes.qt.leading.answering && !inboxes.qt.leading.yours &&
+    inboxes.qt.junior.yours && inboxes.qt.opposition.yours;
+  say(inboxesOk, 'the papers know which chair you sit in',
+    'THE POLITICAL PAPERS WENT ROUND THE BACK OF S17c. It routed all 174 turn events by office so an opposition ' +
+    'player decides nothing that is not theirs, and this second surface -- produced every session by politicsTick, ' +
+    'charged for by expireInbox, drawn on the landing page -- asked nothing about the chair at all. A real click ' +
+    'from the bench on "The Fifty Governors Call for a Conference" moved the national State-governments indicator ' +
+    'by +13, and one of its three answers is "send the responsible minister" to a player who has no minister. ' +
+    'Driven 26 sessions from each chair, the governors now write to a government (' +
+    (inboxes.gov.kinds.governors_conference || 0) + ' in office against ' +
+    (inboxes.opp.kinds.governors_conference || 0) + ' from the bench) \u00b7 AND THE COALITION PAPERS HAD THE ' +
+    'MIRROR DEFECT: gated on inPower, which includes a junior, and computing the partner as everyone in the ' +
+    'coalition who is not the ruling party -- which in a two-party coalition IS the player -- so a junior partner ' +
+    'received demands and confidence threats from their own benches. Papers written by the player\'s own party to ' +
+    'the player: ' + inboxes.jun.fromSelf + ' as a junior, ' + inboxes.opp.fromSelf + ' in opposition \u00b7 A ' +
+    'PAPER IN AN OLD SAVE IS STILL DRAWN (' + inboxes.oldPaper.drawn + ') rather than discarded, because a save ' +
+    'that loses something quietly is the worst failure this file knows -- but it is drawn SHUT (' +
+    inboxes.oldPaper.shut + ') with the reason on it, and the handler refuses too: the indicator moved ' +
+    inboxes.oldPaper.moved + ' and the click cost ' + inboxes.oldPaper.spent + ' \u00b7 AND THE DESPATCH BOX: ' +
+    'Question Time asked inPower, so a junior answered the CHANCELLOR\'s brief with the senior partner\'s leader ' +
+    'named in the question. The party that leads answers (' + inboxes.qt.leading.answering + '); a junior asks (' +
+    inboxes.qt.junior.yours + '), like the opposition (' + inboxes.qt.opposition.yours + ')');
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
