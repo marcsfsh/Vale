@@ -2280,6 +2280,199 @@ async function run() {
     await stp.close();
   }
 
+  // -- S17r: the long deck folds, and a fold and a caret survive an END TURN.
+  //    Three viewports, because a fold pass that measures nothing and a focus
+  //    restore that runs after it both have to hold at every tier — and the
+  //    thing that destroys them is the full re-render an end-turn does, not the
+  //    render() a probe can call.
+  for (const vp of [{ w:390, h:844, n:'phone' }, { w:900, h:1000, n:'tablet' }, { w:1500, h:950, n:'desktop' }]) {
+    const fp = await browser.newPage({ viewport:{ width:vp.w, height:vp.h } });
+    await fp.addInitScript(() => { window.confirm = () => true; });
+    await fp.goto(URL);
+    await fp.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await fp.click('[data-setup-begin]');
+    await fp.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await fp.click('[data-doctrine]');
+    await fp.waitForTimeout(250);
+    const r = await fp.evaluate(async () => {
+      const R = {};
+      function tall() {
+        return Math.round(document.getElementById('view').scrollHeight);
+      }
+      /* the deck that this slice was measured against */
+      UI.tab = 'exec'; render(); await new Promise(x => setTimeout(x, 80));
+      R.groups = document.querySelectorAll('#view details.deckgroup').length;
+      R.folded = tall();
+      /* open every group and measure what folding is worth on this tier */
+      document.querySelectorAll('#view details.deckgroup').forEach(function (d) { d.open = true; });
+      await new Promise(x => setTimeout(x, 40));
+      R.open = tall();
+      document.querySelectorAll('#view details.deckgroup').forEach(function (d) { d.open = false; });
+      /* THE WORKS BOOK, on its own page. Forty-eight works were one flat list
+         with no heading in it, so the fold pass had nothing to fold; grouping
+         them by the standing `rank` already sorted them into is what gives it
+         a seam. Measured here rather than assumed, because grouping a deck and
+         then leaving the biggest band open made the panel TALLER than before
+         it was grouped. */
+      UI.tab = 'nation'; render(); await new Promise(x => setTimeout(x, 80));
+      const wp = Array.prototype.filter.call(document.querySelectorAll('#view .panel'),
+        function (p) { return /Grand Works/.test((p.firstElementChild || {}).textContent || ''); })[0];
+      R.works = { panel:!!wp, groups:wp ? wp.querySelectorAll('details.deckgroup').length : 0,
+        h:wp ? Math.round(wp.getBoundingClientRect().height) : 0,
+        banded:wp ? /Open to commission|Under construction/.test(wp.textContent) : false };
+      /* and the band left open, if any, is a short one */
+      R.works.openCards = wp ? Array.prototype.reduce.call(
+        wp.querySelectorAll('details.deckgroup'),
+        function (a, d) { return a + (d.open ? d.querySelectorAll('.card').length : 0); }, 0) : 999;
+
+      /* now open a group that is NOT open already, focus a control inside it,
+         and end the session. Not the first: the first is open by default, so a
+         build that never remembered a toggle at all would still show it open
+         and this arm would pass on a mechanism that is not there. */
+      UI.tab = 'exec'; render(); await new Promise(x => setTimeout(x, 80));
+      const shut = Array.prototype.filter.call(document.querySelectorAll('#view details.deckgroup'),
+        function (d) { return !d.open && d.querySelector('button:not([disabled])'); });
+      R.hadShut = shut.length;
+      const one = shut[0];
+      if (!one) { R.groups = R.groups || 0; return R; }
+      one.open = true; one.dispatchEvent(new Event('toggle'));
+      const label = one.querySelector('summary').textContent.replace(/\s+/g, ' ').trim();
+      await new Promise(x => setTimeout(x, 40));
+      /* THE KEY NAMES ITS PANEL, asked separately because two panels on one
+         tab that happen to share a group label would otherwise share one fold
+         state and the page would open a deck the reader never touched. */
+      R.keyed = Object.keys(UI.deckOpen || {}).length > 0 &&
+        Object.keys(UI.deckOpen || {}).every(function (k) { return k.split('|').length === 3 && k.split('|')[1] !== 'null'; });
+      /* an ENABLED button: a disabled control cannot take focus at all, and
+         the first card in the Order Book is usually one the player cannot
+         sign yet */
+      const btn = Array.prototype.filter.call(one.querySelectorAll('button'),
+        function (x) { return !x.disabled; })[0];
+      R.hadButton = !!btn;
+      let key = null;
+      if (btn) { btn.focus(); key = (btn.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 26); }
+      R.before = document.activeElement === btn;
+      UI.queue = []; UI.busy = false;
+      try { endTurn(); } catch (e) { R.threw = String(e && e.message || e); }
+      /* the session leaves a sheet up and THE READER PUTS THEIR HANDS ON IT,
+         which is the whole case: focus moves outside the view, and a build
+         that treats that as the reader leaving throws away the control they
+         were on for exactly the turn they were answering. Without this the
+         sheet is never focused in a headless run and the arm below passes on
+         a build that clears the key. */
+      const sheet = document.getElementById('modal');
+      const sb = sheet && !sheet.hidden
+        ? Array.prototype.filter.call(sheet.querySelectorAll('button'), function (x) { return !x.disabled; })[0]
+        : null;
+      R.sheetFocused = false;
+      if (sb) { sb.focus(); R.sheetFocused = document.activeElement === sb; }
+      UI.queue = []; UI.busy = false;
+      try { hideSheet(); } catch (e) {}
+      render();
+      await new Promise(x => setTimeout(x, 90));
+      const act = document.activeElement;
+      R.after = !!(act && act.tagName === 'BUTTON' &&
+        (act.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 26) === key);
+      const same = Array.prototype.filter.call(document.querySelectorAll('#view details.deckgroup'),
+        function (d) { return d.querySelector('summary').textContent.replace(/\s+/g, ' ').trim() === label; })[0];
+      R.stillOpen = !!(same && same.open);
+      /* and every other group is still folded, so the fold did not simply
+         stop applying */
+      R.stillFolded = Array.prototype.filter.call(document.querySelectorAll('#view details.deckgroup'),
+        function (d) { return !d.open; }).length;
+
+      /* A PANEL THAT IS NOT GROUPED IS NOT TOUCHED. Folding a deck that has
+         one heading over it puts the panel behind a tap and saves nothing, so
+         the pass wants two groups before it does anything. Counted across
+         every tab rather than asserted of one, because the number that would
+         move is the number of panels the pass reaches. */
+      let grouped = 0, wrapped = 0;
+      for (const t of TABS.map(function (x) { return x.id; })) {
+        UI.tab = t; render(); await new Promise(x => setTimeout(x, 30));
+        document.querySelectorAll('#view .panel').forEach(function (pn) {
+          const w = pn.querySelectorAll('details.deckgroup').length;
+          if (w) { grouped++; wrapped += w; }
+        });
+      }
+      R.panels = grouped; R.wrapped = wrapped;
+
+      /* AND A READER WHO MOVED IS NOT DRAGGED BACK. The restore exists for a
+         control the RE-RENDER took away; putting focus back over something the
+         reader chose is the same defect wearing the other coat. */
+      UI.tab = 'exec'; render(); await new Promise(x => setTimeout(x, 60));
+      const b1 = document.querySelector('#view button:not([disabled])');
+      b1.focus();
+      /* a VISIBLE control outside the view: `.stats-toggle` is in the markup at
+         every tier and displayed only on the phone, and a hidden element
+         cannot take focus at all */
+      const view0 = document.getElementById('view');
+      /* `offsetParent` is null for a fixed-position element too, and the top
+         bar is fixed, so visibility is measured rather than inferred */
+      const outside = Array.prototype.filter.call(
+        document.querySelectorAll('button, a[href], [role="button"]'),
+        function (el) {
+          if (view0.contains(el) || el.disabled) return false;
+          const b = el.getBoundingClientRect();
+          return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+        })[0];
+      R.hadOutside = !!outside;
+      R.outsideWas = outside ? (outside.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 22) : 'none';
+      if (outside) outside.focus();
+      render(); await new Promise(x => setTimeout(x, 60));
+      R.leftAlone = document.activeElement === outside;
+
+      /* AND A RENDER WHILE A SHEET IS UP LEAVES THE SHEET ALONE. `endTurn`
+         renders with one raised, and a restore that fires there takes the
+         reader off the question they are being asked and puts them back on the
+         page behind it. Its own arm, at the end: an extra render in the middle
+         of the end-turn sequence above changes what that sequence measures. */
+      R.sheetKept = false; R.raised = false;
+      UI.tab = 'exec'; render(); await new Promise(x => setTimeout(x, 60));
+      const b2 = document.querySelector('#view button:not([disabled])');
+      if (b2) b2.focus();
+      UI.queue = []; UI.busy = false;
+      try { endTurn(); } catch (e) {}
+      const sheet2 = document.getElementById('modal');
+      const sb2 = sheet2 && !sheet2.hidden
+        ? Array.prototype.filter.call(sheet2.querySelectorAll('button'), function (x) { return !x.disabled; })[0]
+        : null;
+      if (sb2) {
+        sb2.focus();
+        R.raised = document.activeElement === sb2;
+        render(); await new Promise(x => setTimeout(x, 50));
+        R.sheetKept = document.activeElement === sb2;
+      }
+      UI.queue = []; UI.busy = false;
+      try { hideSheet(); } catch (e) {}
+      return R;
+    });
+    step('deck-folds-' + vp.n,
+      r.groups >= 8 && r.open > r.folded * 1.5 && r.hadButton && r.before &&
+      r.after && r.stillOpen && r.stillFolded >= 4 && !r.threw &&
+      r.hadShut >= 1 && r.keyed &&
+      r.works.panel && r.works.groups >= 2 && r.works.banded && r.works.openCards === 0 &&
+      r.panels === 3 && r.wrapped === 18 && r.hadOutside && r.leftAlone && r.sheetFocused && r.raised && r.sheetKept,
+      `the Executive page's ${r.groups} deck groups fold at ${vp.w}px: ${r.folded}px folded against ` +
+      `${r.open}px with every group open, which is the difference between a page and ` +
+      `${(r.open / vp.h).toFixed(0)} screens of one · the works book, which was forty-eight cards in one ` +
+      `flat list with no heading to fold, is banded by standing (${r.works.banded}) into ${r.works.groups} ` +
+      `groups holding ${r.works.openCards} open cards between them · across all fifteen pages the pass ` +
+      `reaches ${r.panels} panels and wraps ${r.wrapped} groups, and touches no panel that has fewer than ` +
+      `two — folding a deck with one heading over it costs a tap and saves nothing · every fold state names ` +
+      `the panel it belongs to (${r.keyed}), or two panels sharing a group label would share one · focus ` +
+      `the reader moved OUT of the deck is left where they put it — "${r.outsideWas}": ${r.leftAlone} — because restoring over ` +
+      `a control they chose is this defect wearing the other coat · and an END TURN keeps ` +
+      `the group the reader opened open (${r.stillOpen}) with ${r.stillFolded} still folded — opened from ` +
+      `${r.hadShut} that were shut, because the first group is open anyway and a build that remembered ` +
+      `nothing would pass on it — and keeps the focus on the control they ` +
+      `were on (${r.after}) — with the sheet the session raised focused first (${r.sheetFocused}), which is ` +
+      `what a reader does — and a render with that sheet up leaves the focus on it (${r.sheetKept}), because ` +
+      `a restore that fires there takes the reader off the question they are answering ` +
+      `— before this slice \`render()\` returned focus to the top of the document on ` +
+      `every action, on every page${r.threw ? ' · THREW ' + r.threw : ''}`);
+    await fp.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.
