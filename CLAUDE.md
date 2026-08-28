@@ -100,6 +100,18 @@ before touching the file.
   and the probe — which put its party in the office — could not tell them
   apart. Reverting the widening left it green. When a gate is narrowed, the
   probe has to stand in the gap the narrowing closes.
+- **A relation declared on one card and not the other is a one-way door.**
+  S17m's conflict table is ONE central symmetric array rather than a
+  `conflicts:` field on each card, for exactly that reason: with per-card
+  declarations, symmetry is something a check has to go looking for, and this
+  file's history says it will eventually not be there. Declare a pair once,
+  index it both ways, and assert BOTH directions — a block that only works one
+  way round passed the first version of the assertion.
+- **A mode with one value is a field nothing reads.** Ruling 11 asks for BLOCK
+  and SUPERSEDE; only BLOCK had approved pairs, so `supersede` is not in the
+  code at all rather than shipped as an unused branch. An enum whose second
+  value never occurs is the same decoration as `st.court.size`, and it rots the
+  same way.
 - **A field a wrapper READS is as dead as a field nothing reads, and looks
   exactly as alive.** S16e's memory wrapper keyed on `a.pid` and nothing in
   three megabytes ever wrote `a.pid`, so a whole channel — every hostile verb
@@ -161,7 +173,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **179 content assertions**, the largest harness here: the
+- `tools/roads.js` — **180 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

@@ -1221,6 +1221,44 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## One truth at a time (S17m)
+
+**`needs:` was the only relational field the cards had, and it only ever says
+what a card REQUIRES.** Nothing in three megabytes said what a card
+CONTRADICTS, so the constitution could hold two articles whose printed texts
+deny each other — and, because the modifiers ADD, forbidding and guaranteeing
+secession together produced more separatism than either alone.
+
+- **`V17_CONFLICTS`** is ONE central array of pairs, `{ a:{kind,id},
+  b:{kind,id}, why }`, **symmetric by construction**: declared once, indexed
+  both ways by `v17ConflictIndex`. Per-card declarations were the plan; a block
+  declared on one card and forgotten on the other is a one-way door, which is a
+  mistake this file has made often enough. The cards print from the same array
+  through `v17ConflictsOf`, so declaration and card cannot drift.
+- **`v17ConflictWhy(st, kind, id)`** is the one function, called from
+  `v11CanPropose` (articles) and `doAct` (acts). It returns the sentence the
+  button wears. `v17InForce` answers "does that other thing stand" per kind —
+  `v11Adopted` for an article, the act's own `done` for an act, asked about the
+  state passed in.
+- **BLOCK only. Nothing is repealed for you**, and the refusal names what to
+  repeal first. **A repeal is never blocked** — a save from before S17m can
+  carry both halves of a pair, and shutting the way out is worse than the
+  contradiction. `supersede` is not written: a mode with one value is a field
+  nothing reads. `docs/CONFLICTS.md` is the table awaiting ruling 11.
+- **Cross-kind is the point, not a bonus.** The Act to Weight the Franchise
+  needed nothing but half the Assembly and silently reversed an entrenched
+  article carried at a referendum.
+
+**And five article promises that reached nothing** — `artElectedSenate` now
+writes `upper.elected` and seats the house; `v11ConEffects().senate` scales
+`upperResist` (bounded .45–1.7) where the accumulated total had no reader at
+all; `artFixedBench` prices the `expandCourt` ACT in the base `actCost` (both
+wrappers above it delegate, so no new one was needed); `artPlebiscite` and
+`artConventionClause` gate the road and the convention they describe; and
+`extraMods().delivery / .crown / .army` reach `cabinetBonus` and
+`v10OrdersTick`, the same doors the orders' identically-named fields have used
+since S10e.
+
 ## What a party remembers (S17l)
 
 **S16e's memory wrapper never fired.** It read `a.pid` to find the party a verb

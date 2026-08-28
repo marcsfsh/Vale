@@ -1117,7 +1117,7 @@ a vote in a controlled probe; a partner renegotiates without walking.
 
 ### Group 5 — one truth at a time
 
-**s17m — mutual exclusion, and the article lies** (XL). `conflicts:`
+**s17m — mutual exclusion, and the article lies** (XL). **STATUS: DONE.** `conflicts:`
 field on cards + ONE shared `conflictWhy(st, kind, id)` called from the
 four existing enforcement points + v11CanPropose (declarations on cards
 so SUPERSEDE prints; logic in one place; cross-kind conflicts
@@ -1132,6 +1132,41 @@ delivery/crown/army gain the consumers the orders' same-named fields have
 (:26585/:26689). Harness: every probed absurdity from the research
 reddens (SecessionBar+Right, the 16→9→13→17 bench stack, the emergency
 stack's +5, the term average).
+
+*What landing it found.* Five notes, two of them departures from the plan
+above, both deliberate and both stated here rather than done quietly.
+
+1. **The table is CENTRAL, not a `conflicts:` field on the cards.** A block
+   declared on one card and forgotten on the other is a one-way door, and this
+   file's history is a long list of exactly that mistake. One symmetric array
+   makes the symmetry structural instead of something a check has to go looking
+   for; the cards still print it, because `v17ConflictsOf` reads the same
+   array; and `roads.js` asserts every pair refuses in **both** directions.
+2. **BLOCK ships, SUPERSEDE does not.** Ruling 11 asks for mixed semantics, and
+   nothing here was pre-agreed — so what shipped is the eleven pairs where the
+   printed text of one card is FALSE while the other stands, which is a
+   correctness question rather than a balance one, all of them refusing rather
+   than repealing. **A `mode` field with one value is a field nothing reads**,
+   the defect this repository punishes hardest, so `supersede` is not written
+   until there is an approved pair to write it for. `docs/CONFLICTS.md` is the
+   generated table, with a proposed semantic per pair and thirteen pairs
+   checked and CLEARED as compatible so the owner knows what was looked at.
+3. **The eleventh pair was found by fixing a lie in this same PR.** Making the
+   Article of the Elected Senate actually elect the Senate meant carrying it
+   after the upper house had been abolished would raise the abolished chamber
+   from the dead. A fix that creates a conflict is why the primitive comes
+   first.
+4. **The `!repeal` guard's real case is a legacy save.** A pair cannot both be
+   adopted through the gate any more — but every save written before this slice
+   can already carry both, and blocking the repeal too would leave that
+   campaign holding a self-contradicting constitution with no way out, which is
+   worse than the contradiction. The assertion drives that state directly.
+5. **Pacing is byte-identical on all six seeds and all three lengths**, because
+   the harness plays first-choice-always and never amends the constitution or
+   carries an act — so none of these gates fire in its play. That is a
+   limitation of the measurement, not evidence of no effect: this slice's
+   changes are to what a PLAYER can do, and `roads.js` and `playtest.js` are
+   where its coverage lives.
 
 **s17n — the book means what it says, I** (L). Elections book wired:
 rankedChoiceExpansion → allocateSeats; compulsoryVoting → turnout :10508;

@@ -2104,6 +2104,54 @@ async function run() {
     await mp.close();
   }
 
+  // -- S17m: an act the constitution forbids is shut ON THE CARD, with the
+  //    article named, rather than refusing after the click. The Act to Weight
+  //    the Franchise met every condition it has and silently reversed an
+  //    entrenched article the country had carried at a referendum.
+  {
+    const cp = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+    await cp.addInitScript(() => { window.confirm = () => true; });
+    await cp.goto(URL);
+    await cp.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await cp.click('[data-setup-begin]');
+    await cp.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await cp.click('[data-doctrine]');
+    await cp.waitForTimeout(250);
+    const before = await cp.evaluate(() => {
+      S.ruling = playParty(S); S.coalition = [playParty(S)];
+      S.capital = 900; S.treasury = 9000;
+      S.pol.propertyFranchise = 4; S.acts.charteredSenate = true; S.acts.wealthFranchise = false;
+      // the Senate blocks every act it does not like (S11d widened actBlocked
+      // beyond acts about itself); this step is about the CONSTITUTION shutting
+      // the card, so the chamber is taken out of the question
+      S.upper.veto = 0;
+      UI.tab = 'state'; render();
+      const wf = ACTS.filter(x => x.id === 'wealthFranchise')[0];
+      return { live: !!document.querySelector('[data-act2="wealthFranchise"]:not([disabled])'),
+        conditions: wf.ok(S) };
+    });
+    const after = await cp.evaluate(() => {
+      v11Con(S).arts.artUniversalFranchise = { laid:S.turn, by:S.ruling };
+      render();
+      const btn = document.querySelector('[data-act2="wealthFranchise"]');
+      const card = btn ? btn.closest('.card') : null;
+      return { disabled: !!(btn && btn.disabled),
+        namesIt: !!(card && /Universal Franchise/.test(card.textContent)),
+        tagged: !!(card && /constitution forbids it/.test(card.textContent)),
+        conditions: ACTS.filter(x => x.id === 'wealthFranchise')[0].ok(S) };
+    });
+    step('constitution-forbids',
+      before.live && before.conditions && after.disabled && after.namesIt &&
+      after.tagged && after.conditions,
+      `the Act to Weight the Franchise by Property is live on the Roads page while nothing forbids it ` +
+      `(${before.live}); with the Article of the Universal Franchise standing it still meets every condition ` +
+      `it has (${after.conditions}) and the card is shut with the article NAMED on it (${after.namesIt}) under ` +
+      `"the constitution forbids it" (${after.tagged}) — before this slice the act was live, and carrying it ` +
+      `turned over a flag an entrenched article had set at a referendum while the article's record stayed on ` +
+      `the page`);
+    await cp.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.

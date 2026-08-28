@@ -6359,7 +6359,17 @@ var ACTS = [
 
 function actCost(a) {
   var lean = a.house === 'Senate' ? -1.2 : (a.house === 'Supreme Court' ? -.5 : -.6);
-  return cst(Math.round(a.cost * (1 + upperResist(S, lean, 1, a.auth || 0))));
+  var c = a.cost;
+  /* S17m: "makes the court-packing act dear" is what the Article of the Fixed
+     Bench prints, and what it carried was `polCost:{Justice:1.25}` -- which
+     prices Justice STATUTES. Expanding the court is an ACT, priced here, and
+     nothing the article did reached it. The number is the article's own: the
+     same quarter it charges the statute book. Both wrappers above this one
+     delegate, so the base is the right place and no new wrapper is needed. */
+  if (a.id === 'expandCourt' && typeof v11Adopted === 'function' && v11Adopted(S, 'artFixedBench')) {
+    c = c * 1.25;
+  }
+  return cst(Math.round(c * (1 + upperResist(S, lean, 1, a.auth || 0))));
 }
 function actBlocked(a) {
   if (a.house !== 'Senate') return false;
@@ -6372,6 +6382,14 @@ function actBlocked(a) {
 function doAct(a) {
   if (!inPower(S)) { flash('Only a party in government can carry a constitutional act.'); return; }
   if (!a.ok(S)) { flash('The conditions are not met.'); return; }
+  /* S17m: an act cannot contradict a standing article. The Act to Weight the
+     Franchise by Property asked only whether it had already been carried, so
+     it reversed an entrenched article the country had carried at a
+     referendum, silently, and the article's record stayed on the page. */
+  if (typeof v17ConflictWhy === 'function') {
+    var clash = v17ConflictWhy(S, 'act', a.id);
+    if (clash) { flash(clash); return; }
+  }
   if (actBlocked(a)) { flash('The Senate will throw it out. Deal with them first.'); return; }
   var c = actCost(a);
   if (S.capital < c) { flash('Not enough political capital.'); return; }
@@ -10410,6 +10428,17 @@ function polAuth(p) { return polPos(p).a; }
 function upperResist(st, lean, dir, auth) {
   if (!upperOn(st) || st.upper.veto === 0 || st.upper.ceremonial) return 0;
   var vf = st.upper.veto === 2 ? 1 : .45;
+  /* S17m: AND WHAT THE CONSTITUTION HAS DONE TO THE SENATE. Five articles
+     write `mods.senate` and `v11ConEffects` has accumulated it since S11d,
+     and NOTHING read the total -- `v11ArtSupport` reads each article's own
+     field to decide how a party votes on the upper house, which is a
+     different question. This is the one the accumulated number answers: a
+     house the constitution has entrenched resists harder, one it has
+     stripped resists less, and both are bounded so no stack of articles can
+     make the Senate absolute or weightless while it still sits. */
+  if (typeof v11ConEffects === 'function') {
+    vf *= clamp(1 + v11ConEffects(st).senate * .2, .45, 1.7);
+  }
   if (st.turn - (st.lordsDeal || -99) < 5) vf *= .4;
   var up = upperPos(st), gp = govPos(st);
   var move = dir * lean, want = up.e, gap = want - gp.e;
@@ -13899,14 +13928,19 @@ function pathPanels() {
 
 function actCard(a) {
   var isDone = a.done(S), can = inPower(S) && a.ok(S), blocked = actBlocked(a), c = actCost(a);
+  /* S17m: a card the constitution forbids says which article forbids it, on
+     the card, rather than refusing after the click. */
+  var clash = (typeof v17ConflictWhy === 'function') ? v17ConflictWhy(S, 'act', a.id) : null;
   var state = isDone ? '<span class="tag up">In force</span>'
+    : (clash ? '<span class="tag down">The constitution forbids it</span>'
     : (blocked ? '<span class="tag down">Blocked by the Senate</span>'
-    : (can ? '<span class="tag up">Available</span>' : '<span class="tag down">Conditions not met</span>'));
+    : (can ? '<span class="tag up">Available</span>' : '<span class="tag down">Conditions not met</span>')));
   return '<div class="card"><h3>' + esc(a.name) + '</h3>' +
     '<p class="desc">' + esc(a.desc) + '</p>' +
     '<div class="tagline">' + state + '<span class="tag">Requires: ' + esc(a.req) + '</span></div>' +
+    (clash ? '<p class="note">' + esc(clash) + '</p>' : '') +
     '<div class="btnrow"><button class="btn" data-act2="' + a.id + '"' +
-    ((isDone || !can || blocked || S.capital < c) ? ' disabled' : '') + '>Carry it <span class="c">' + c + ' cap</span></button></div></div>';
+    ((isDone || !can || blocked || clash || S.capital < c) ? ' disabled' : '') + '>Carry it <span class="c">' + c + ' cap</span></button></div></div>';
 }
 
 function actionCard(a) {
@@ -27735,7 +27769,12 @@ capitalIncome = function (st) {
    card. */
 var v10CabinetBonusBase = cabinetBonus;
 cabinetBonus = function (st) {
+  /* S17m: AND THE MEASURES' `delivery` TOO. Ten measures write
+     `mods.delivery`, `extraMods` accumulates it and the card PRINTS it, and
+     it was read by nothing -- the measures stopped one wrapper short of the
+     pattern the orders' identically-named field completed here. */
   var out = v10CabinetBonusBase(st), d = v10OrderMods(st).delivery;
+  if (typeof extraMods === 'function') d += extraMods(st).delivery || 0;
   if (!d) return out;
   for (var k in out) out[k] = out[k] * (1 + d);
   return out;
@@ -27836,6 +27875,17 @@ function v10OrdersTick(st) {
   if (m.unrest) st.unrest = clamp(st.unrest + m.unrest, 0, 110);
   if (m.crown) st.crown = c100(st.crown + m.crown);
   if (m.army) st.armyLoyalty = c100(st.armyLoyalty + m.army);
+  /* S17m: AND THE MEASURES' `crown` AND `army`, which three and two measures
+     write, `extraMods` accumulates and the card prints -- and which nothing
+     read. The orders' identically-named fields have been applied on these two
+     lines since S10e; the measures stopped one wrapper short of the pattern
+     they were copying. Same door, same session cadence: a measure that stands
+     works on the states and the army for as long as it stands. */
+  if (typeof extraMods === 'function') {
+    var xm = extraMods(st);
+    if (xm.crown) st.crown = c100(st.crown + xm.crown);
+    if (xm.army) st.armyLoyalty = c100(st.armyLoyalty + xm.army);
+  }
 
   /* an order lapses when the department that issued it changes hands. This is
      the whole reason an order is not a statute. */
@@ -30537,6 +30587,23 @@ function v11CanPropose(st, a, repeal, route, actor) {
      a show of hands in a chamber. The flag was an EXTRA hurdle stacked on the
      chambers before S15e; it is which road the article must take now. */
   if (a.referendum && route !== 'plebiscite') return 'This article goes to the country. It cannot be carried in a chamber alone.';
+  /* S17m: AND THE ROAD TO THE COUNTRY IS ONE THE DOCUMENT HAS TO OPEN. The
+     Article of the Plebiscite says "An article may be carried over the
+     Assembly by the direct vote of the people", and the road was open from
+     the first session whether the article stood or not -- so the card
+     described a power the player already had. Three articles go to the
+     country by their own terms; the constitution has to grant the road
+     before any of them can travel it. */
+  if (route === 'plebiscite' && a.id !== 'artPlebiscite' && !v11Adopted(st, 'artPlebiscite')) {
+    return 'There is no road to the country. The Article of the Plebiscite has to stand first.';
+  }
+  /* S17m: AND WHETHER THE DOCUMENT ALREADY SAYS THE OPPOSITE. A repeal is
+     always allowed -- repealing is how a country changes its mind, and it is
+     the road the refusal points at. */
+  if (!repeal && typeof v17ConflictWhy === 'function') {
+    var clash = v17ConflictWhy(st, 'article', a.id);
+    if (clash) return clash;
+  }
   return null;
 }
 function v11ProposeArticle(id, repeal, route) {
@@ -30679,6 +30746,14 @@ function v11RepealArticle(st, a, margin) {
 function v11CallConvention() {
   var c = v11Con(S);
   if (v11ConventionSits(S)) { flash('The convention is already sitting.'); return; }
+  /* S17m: the Article of the Convention says "A convention of the states may
+     be summoned" and summoned nothing: conventions were ordinary business
+     from the first session, article or no article, so the card granted a
+     power that was never withheld. */
+  if (!v11Adopted(S, 'artConventionClause')) {
+    flash('There is no clause to summon one under. The Article of the Convention has to stand first.');
+    return;
+  }
   if ((c.convUsed || 0) >= 2) { flash('Two conventions have already sat. A third would not be believed.'); return; }
   if (!inPower(S)) { flash('Only a party in government may call a convention.'); return; }
   var cost = cst(24);
@@ -30903,7 +30978,22 @@ v11RegisterArticles([
       text:'The senators shall be returned by the states that send them, and shall sit for a term.',
       moves:'the Senate gains legitimacy and keeps its veto: every future article needs more of the house',
       mods:{ senate:1, ratify:4, ind:{ liberties:2 } },
-      apply:function (st) { if (st.upper) { st.upper.exists = true; st.upper.ceremonial = false; } st.acts.electedSenate = true; } }),
+      /* S17m: AND IT ELECTS THE SENATE. It wrote `acts.electedSenate`, which
+         is read by nothing, and never touched `upper.elected`, which is the
+         field the Senate page, the projection and the ballot all read -- so
+         the Article of the Elected Senate did not elect the Senate. The Act
+         of the same name two thousand lines above has always done both, and
+         seated the house at once; the article does what the act does. */
+      apply:function (st) {
+        if (st.upper) {
+          st.upper.exists = true; st.upper.ceremonial = false;
+          if (!st.upper.elected) {
+            st.upper.elected = true;
+            st.upper.seats = allocateSeats(st, ballot(st, false), CFG.senate, 'pr').seats;
+          }
+        }
+        st.acts.electedSenate = true;
+      } }),
   A({ id:'artQuorum', book:'chambers', name:'Article of the Quorum', cost:8,
       pos:{ e:0, a:-.3 },
       text:'No question shall be decided in either house unless a majority of its members is present.',
@@ -35845,6 +35935,127 @@ function v17MemoryCoverage(pid) {
     if (V17_MEMORY[a.id]) have++; else missing.push(a.id);
   });
   return { total:acts.length, have:have, missing:missing };
+}
+
+/* ============================================================
+   S17m — ONE TRUTH AT A TIME
+   ============================================================
+   The owner: *"some policies and constitutional articles should be mutually
+   exclusive but arent."*
+
+   There was no mutual-exclusion primitive in three megabytes. The only
+   pairwise exclusion anywhere was two build options on a great work, and
+   `needs:` -- the one relational field the cards carry -- is enforced at five
+   separate, unshared points and only ever says what a card REQUIRES. Nothing
+   said what a card CONTRADICTS. So the Article of the Indissoluble Union
+   ("no state may leave it") and the Article of the Right to Depart ("may
+   leave the union in peace") both stand at once, and because their autonomy
+   modifiers ADD, forbidding and guaranteeing secession together produces more
+   separatism than either one alone.
+
+   THE TABLE IS CENTRAL AND SYMMETRIC, and that is a deliberate departure from
+   the plan's `conflicts:` field on the cards. A block that is declared on one
+   card and forgotten on the other is not a block, it is a one-way door -- and
+   this file's history is a long list of exactly that mistake. Declaring the
+   pair once makes the symmetry structural instead of something a check has to
+   go looking for. The cards still print it: `v17ConflictsOf` reads the same
+   table, so the declaration and the card cannot drift.
+
+   WHAT IS SEEDED HERE IS ONLY WHAT NEEDS NO RULING. The owner's ruling 11
+   reserves the semantics of the full table -- which pairs BLOCK, which
+   SUPERSEDE at a price -- and `docs/CONFLICTS.md` is that table, generated
+   from the cards and waiting. These ten are the pairs where the printed text
+   of one card is FALSE while the other stands, which is a question of
+   correctness rather than of balance, and they all take the conservative
+   semantic: refusal, never repeal. A player who wants the other one repeals
+   the first, which is a road the constitution already has, and the refusal
+   says so by name. SUPERSEDE ships when the owner has ruled on the table.
+
+   Every entry names a real card, and `roads.js` asks that of all of them: a
+   conflict declared against an id that does not exist is a rule that never
+   fires, which is the same defect as no rule at all. */
+var V17_CONFLICTS = [
+  { a:{ kind:'article', id:'artSecessionBar' }, b:{ kind:'article', id:'artSecessionRight' },
+    why:'One says the union is perpetual and no state may leave it. The other says a state whose people ask twice may leave in peace. Both cannot be the law.' },
+  { a:{ kind:'article', id:'artUniversalFranchise' }, b:{ kind:'article', id:'artWeightedRoll' },
+    why:'The vote cannot belong to every adult citizen and to no property, and also be weighed by the assessment.' },
+  { a:{ kind:'article', id:'artNoPropertyTest' }, b:{ kind:'article', id:'artWeightedRoll' },
+    why:'No test of property can be required of an elector while the roll is weighed by one.' },
+  { a:{ kind:'article', id:'artBicameral' }, b:{ kind:'article', id:'artAbolishUpper' },
+    why:'No bill can need the assent of both houses in a legislature that has one.' },
+  /* Found while fixing the Elected Senate above, and made live BY that fix:
+     the article seats the house now, so carrying it after the Senate has been
+     abolished would raise the abolished chamber from the dead. */
+  { a:{ kind:'article', id:'artAbolishUpper' }, b:{ kind:'article', id:'artElectedSenate' },
+    why:'There cannot be one house of the legislature and senators returned by the states to sit in the other one.' },
+  { a:{ kind:'article', id:'artFixedBench' }, b:{ kind:'article', id:'artWidenBench' },
+    why:'The bench cannot be fixed at nine and enlarged. The Fixed Bench is entrenched; enlarging it is what it exists to forbid.' },
+  { a:{ kind:'article', id:'artStandingEmergency' }, b:{ kind:'article', id:'artEmergencyLimit' },
+    why:'An emergency cannot both stand until the executive revokes it and expire in six months unless the Assembly renews it.' },
+  { a:{ kind:'article', id:'artQuadrennial' }, b:{ kind:'article', id:'artAnnualAssembly' },
+    why:'The Assembly cannot be renewed every fourth year and not before, and also every year. Carried together their terms AVERAGED, and the country went to the polls every third year under two articles that named neither.' },
+  { a:{ kind:'article', id:'artMartialBar' }, b:{ kind:'article', id:'artArmedForcesBar' },
+    why:'They are the same rule in two sets of words — the armed forces shall not be employed against the people of Vale — and carrying both wrote the prohibition into the document twice and took the reach off the emergency twice for it.' },
+  /* AND ACROSS KINDS, which is where the sharpest one is: an ordinary act,
+     needing nothing but half the Assembly, silently reversed an ENTRENCHED
+     article the country had carried at a referendum. The article's record
+     went on standing on the constitution page while the flag it set was
+     turned back over. */
+  { a:{ kind:'article', id:'artUniversalFranchise' }, b:{ kind:'act', id:'wealthFranchise' },
+    why:'The Act weights the vote by assessed property. The Article, entrenched and carried by the country, says the vote belongs to no property at all.' },
+  { a:{ kind:'article', id:'artNoPropertyTest' }, b:{ kind:'act', id:'wealthFranchise' },
+    why:'The Act is a test of property. The Article forbids one.' }
+];
+
+/* THE INDEX, BOTH WAYS ROUND, built once from the table. */
+var V17_CONFLICT_BY = null;
+function v17ConflictIndex() {
+  if (V17_CONFLICT_BY) return V17_CONFLICT_BY;
+  var ix = {};
+  function key(c) { return c.kind + ':' + c.id; }
+  function add(from, to, why) {
+    (ix[key(from)] = ix[key(from)] || []).push({ kind:to.kind, id:to.id, why:why });
+  }
+  V17_CONFLICTS.forEach(function (p) { add(p.a, p.b, p.why); add(p.b, p.a, p.why); });
+  V17_CONFLICT_BY = ix;
+  return ix;
+}
+function v17ConflictsOf(kind, id) { return v17ConflictIndex()[kind + ':' + id] || []; }
+
+/* WHETHER THE OTHER THING STANDS. An article stands if it is adopted and not
+   repealed; an act stands if its own `done` says so, which is the test the
+   act's own card uses. A read, and only a read. */
+function v17InForce(st, kind, id) {
+  if (kind === 'article') return typeof v11Adopted === 'function' && v11Adopted(st, id);
+  if (kind === 'act') {
+    var act = ACTS.filter(function (x) { return x.id === id; })[0];
+    if (!act) return false;
+    var was = (typeof S !== 'undefined') ? S : null, out;
+    /* the act registry's predicates read the global; ask them about `st` */
+    S = st; try { out = !!act.done(st); } finally { S = was; }
+    return out;
+  }
+  return false;
+}
+function v17CardName(kind, id) {
+  if (kind === 'article') return (V11_ART[id] || {}).name || id;
+  if (kind === 'act') {
+    var act = ACTS.filter(function (x) { return x.id === id; })[0];
+    return act ? act.name : id;
+  }
+  return id;
+}
+/* THE ONE FUNCTION. Null, or the sentence the button wears. */
+function v17ConflictWhy(st, kind, id) {
+  var list = v17ConflictsOf(kind, id);
+  for (var i = 0; i < list.length; i++) {
+    if (!v17InForce(st, list[i].kind, list[i].id)) continue;
+    return v17CardName(list[i].kind, list[i].id) + ' stands. ' + list[i].why +
+      (list[i].kind === 'article'
+        ? ' Repeal it first if the country has changed its mind.'
+        : ' It has to go before this can.');
+  }
+  return null;
 }
 
 /* ---------- boot ---------- */
