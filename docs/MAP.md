@@ -1221,6 +1221,26 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## Contrast and the thumb (S17s)
+
+`tools/contrast.js` measures the rendered page rather than the stylesheet: a
+stylesheet says what a rule intends, and six chunks of CSS conflicting by
+source order say what the eye gets.
+
+- **Text**: every element that carries its OWN text, against the background
+  composited up through every translucent ancestor. 4.5:1, or 3:1 where size
+  and weight earn large-text status.
+- **Controls**: everything pressable, at **44px on the phone** (the reference
+  is a thumb on an iPhone) and **32px above it** (a mouse; the AA floor is 24).
+- **Exemptions** live in `checks/contrast.json` and it is empty.
+- The floor block is the last thing in the last stylesheet and every selector
+  in it is **element-qualified**, because last-in-source only wins at equal
+  specificity. The Atlas strip claims its own buttons three classes deep with
+  `min-height:0`.
+- Two THEME colours were lifted to clear AA (`--slate`, the medal brass). The
+  PARTY palette is untouched: the crest is cleared by bolding its initial and
+  lifting it to 19px on the phone, which earns large-text status.
+
 ## The long deck folds, and focus survives (S17r)
 
 Measured before it was designed, on a phone, after this program's content: the
