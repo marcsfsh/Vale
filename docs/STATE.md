@@ -2,6 +2,16 @@
 
 Update this file in the last commit of every PR.
 
+## Read this first
+
+**`docs/AUDIT-S17.md` is an audit of whether the owner's original brief was
+actually delivered by S17.** It was run after S18a, drives the shipped build
+rather than reading it, and every verdict was attacked by two independent
+verifiers. Seven of the eighteen claims are clean; eight are partial; two
+shipped as something other than what was asked. The two the program announced
+loudest — richer AI agency, and mutual exclusion — are the two that do not
+survive ordinary play. **Do not start new S18 work without reading it.**
+
 ## Current slice
 
 **S18a — The floor is open to every chair** is **OPEN**, and it exists because
