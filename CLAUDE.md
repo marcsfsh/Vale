@@ -319,17 +319,21 @@ you touched; a SKIP is never a PASS.
 - `tools/poison.js` — proves a body is dead before you delete it.
 - `tools/rungs.js` — the authored prose: `--brief` a book, `--apply` a shard
   (idempotent), `--check` the 582 statute ladders against the house style, and
-  `--corpora` the five authored registries — 60 measures, 90 orders, 80
-  articles, 20 treaties, 55 dispatch lines, 724 pieces — which fails on a breach
-  and then reports the punctuation residue in the rest of the file without
-  failing on it.
+  `--corpora` the five authored registries — 60 measures, 90 orders, 81
+  articles, 20 treaties, 11 capitals of dispatches carrying 55 lines, 727
+  pieces — which fails on a breach and then reports the punctuation residue in
+  the rest of the file without failing on it. `--residue` prints that list in
+  full rather than its first six.
 - `tools/prose/` — the blind measurement rig: `sweep.js` emits every ladder for
   an unaided reader, `sweepscore.js` scores it. Its README carries the one rule
   these tools exist to enforce: **never re-measure the sample you repaired
   against.**
 
 The prose standard is `docs/PROSE-STYLE.md`: the owner's writing skill carried
-verbatim, plus a statute addendum. All 2,910 authored pieces are written to it.
+verbatim, plus a statute addendum. The statute book's own 2,910 pieces (582
+descriptions and 2,328 rungs) are written to it, as are the 727 in the five
+registries, and the punctuation residue outside both stands at the 44 lines the
+owner has ruled on — S17 added fifteen more and S17t took them back out.
 `docs/PROSE-RESIDUE.md` names the ladders that two blind readers still fail.
 
 Playwright resolves from the global install (`npm root -g` + `createRequire`);

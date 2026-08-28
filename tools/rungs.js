@@ -480,8 +480,12 @@ function residue() {
   console.log('  INSIDE A SENTENCE               : ' + prose.length + '  <- the owner\'s call, listed in docs/PROSE-RESIDUE.md');
   const byLine = {};
   prose.forEach(x => { byLine[x.line] = byLine[x.line] || x; });
-  Object.keys(byLine).slice(0, 6).forEach(k => console.log('    ' + k + '  ' + byLine[k].t));
-  if (Object.keys(byLine).length > 6) console.log('    ... and ' + (Object.keys(byLine).length - 6) + ' more lines');
+  /* S17t: `--residue` prints all of them. Six was enough to notice the list
+     existed and not enough to work through it, and the prose pass at the end
+     of a program has to work through it. */
+  const cap = process.argv.indexOf('--residue') >= 0 ? 1e9 : 6;
+  Object.keys(byLine).slice(0, cap).forEach(k => console.log('    ' + k + '  ' + byLine[k].t));
+  if (Object.keys(byLine).length > cap) console.log('    ... and ' + (Object.keys(byLine).length - cap) + ' more lines (--residue prints them all)');
 }
 
 /* ---------------- the corpora S15 extended ----------------------------------
@@ -569,7 +573,16 @@ async function corpora() {
     });
   });
 
-  const counts = ['measures', 'orders', 'articles', 'treaties', 'dispatches'].map(k => k + ' ' + (data[k] || []).length).join(', ');
+  /* S17t: the dispatch corpus is ELEVEN ROWS holding one line per capital per
+     instrument, so "dispatches 11" beside four counts of pieces read as eleven
+     pieces and the documents recorded fifty-five. Both were true and the label
+     was not; it says which now. */
+  const counts = ['measures', 'orders', 'articles', 'treaties', 'dispatches'].map(k => {
+    const rows = data[k] || [];
+    if (k !== 'dispatches') return k + ' ' + rows.length;
+    const lines = rows.reduce((a, r) => a + Object.keys(r).filter(f => f !== 'id' && f !== 'kind' && f !== 'name').length, 0);
+    return k + ' ' + rows.length + ' capitals (' + lines + ' lines)';
+  }).join(', ');
   console.log('corpora            : ' + counts);
   console.log('authored pieces    : ' + pieces + ', mean ' + Math.round(chars / Math.max(1, pieces)) + ' chars');
   console.log('distinct names     : ' + seenName.size);
