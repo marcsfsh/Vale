@@ -47,7 +47,7 @@ member does on the floor. `v18FloorShut` is the one predicate, and the card,
 the dossier, the handler and the dialog all read it; the card puts its answer
 in the button's title rather than leaving a dead control with no reason on it.
 
-Twelve poison reverts, one per layer, and each reddens
+Thirteen poison reverts, one per layer, and each reddens
 `the floor is open to every chair` in `tools/roads.js` on its own. The
 `playtest.js` step `opposition-floor` drives the whole thing by real clicks
 from the bench. The six-seed pacing A/B against the build before this slice is

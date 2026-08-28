@@ -7759,6 +7759,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.kitRefusal = /government/.test(said3.join(' '));
     /* the sponsor may still narrow their own bill */
     R.ownVerbs = cardVerbs(ob);
+    /* and the appeal the v9 card offers on any bill you laid names WHO made
+       it: it called every appellant "the government", so a private member
+       going over the government's head read as the government appealing to
+       itself */
+    billAction(ob.id, 'appeal');
+    R.appeal = { log:(S.log[0] || {}).text || '', me:PARTY[playParty(S)].short };
 
     /* (e) AND THE MONEY IS THE PARTY'S. Pressing another party's sponsor took
        8 from the NATIONAL EXCHEQUER from the opposition bench -- the defect
@@ -7830,6 +7836,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     floor.kitTook.whip === 0 && floor.kitTook.deal === 0 &&
     !floor.kitTook.confidence && !floor.kitTook.urgent &&
     floor.ownVerbs.indexOf('amend') >= 0 &&
+    floor.appeal.log.indexOf(floor.appeal.me + ' appealed') === 4 &&
+    floor.appeal.log.indexOf('The government appealed') < 0 &&
     floor.oppMoney.treasury === 0 && floor.oppMoney.purse > 0 &&
     floor.govMoney.treasury > 0 && floor.govMoney.purse === 0 &&
     floor.dossier.open && floor.dossier.capped && floor.rec.opp && floor.rec.gov &&
@@ -7861,7 +7869,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `procedure are off the card (${floor.kitOnCard.length} of four) and refused at the point of effect ` +
     `(${floor.kitRefusal}), where S17b's own comment claimed \`canWork\` withheld them and it read ` +
     `\`inPower(S) || b.owner === 'player'\`, which grants them. What a private member keeps is the floor, the ` +
-    `arithmetic and their own bill: ${floor.ownVerbs.join(', ')} · and THE MONEY IS THE PARTY'S: pressing a ` +
+    `arithmetic and their own bill: ${floor.ownVerbs.join(', ')}, and the appeal to the country now names who ` +
+    `made it -- "${floor.appeal.log.slice(0, 46)}", where it called every appellant "the government" and a ` +
+    `private member going over the government's head read as the government appealing to itself · and THE ` +
+    `MONEY IS THE PARTY'S: pressing a ` +
     `sponsor from the bench costs the purse ${floor.oppMoney.purse} and the exchequer ${floor.oppMoney.treasury}, ` +
     `where the same click in government costs the exchequer ${floor.govMoney.treasury} and the purse ` +
     `${floor.govMoney.purse} · THE OTHER TWO DOORS ON THE SAME PAGE went the same way: the dossier's draft ` +

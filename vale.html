@@ -23754,7 +23754,12 @@ billAction = function (id, action) {
   var ps = v9PublicSupport(S, POL[b.policy], b.dir), swing = Math.round((ps - 50) / 4);
   b.appealed = true; b.whip += swing; b.upperDeal += Math.round(swing * .6); b.notes.push('Appeal to the country');
   S.v9.stats.appeals++;
-  logIt(S, 'The government appealed to the country on ' + b.title + '. ' + (swing >= 0 ? 'The houses felt the support.' : 'The houses felt the opposition.'));
+  /* S18a: the appeal is open to whoever laid the bill -- the v9 card offers
+     it on `inPower(S) || b.owner === 'player'` -- so the log names the
+     party that made it rather than calling every appellant the
+     government. A private member appealing over the government's head
+     read as the government appealing to itself. */
+  logIt(S, 'The ' + PARTY[playParty(S)].short + ' appealed to the country on ' + b.title + '. ' + (swing >= 0 ? 'The houses felt the support.' : 'The houses felt the opposition.'));
   render();
 };
 var v9BillCardAppeal = billCard;

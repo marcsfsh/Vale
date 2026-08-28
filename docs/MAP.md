@@ -1306,6 +1306,11 @@ touched, and five surfaces in front of that dialog still refused.
     amendment belongs to whoever laid the bill, the other four to a
     government, and `billAction` refuses all four at the point of effect
     because a card can be a session stale.
+- **The appeal to the country names who made it.** The v9 card offers it on
+  `inPower(S) || b.owner === 'player'`, so it has always been open to a private
+  member, and its log line called every appellant "the government" — a private
+  member going over the government's head read as the government appealing to
+  itself.
 - **Killing a bill asks two questions.** `outright(S)` is a seat count on the
   PLAYER's party, and S17f made being frozen out of a majority a thing that
   happens, so a party with the seats and no office could take a bill off the
@@ -1317,8 +1322,8 @@ touched, and five surfaces in front of that dialog still refused.
   which would have to carry its own copy of the prices and go stale the first
   time one of them moved. This is S17a's committee-panel fix arriving at the
   next lever along, on the seam `pv5Spend` and `campaignYes` already use.
-- Assertion: `the floor is open to every chair` in `tools/roads.js`, eight
-  arms, twelve poison reverts each reddening it alone. Playtest step
+- Assertion: `the floor is open to every chair` in `tools/roads.js`, nine
+  arms, thirteen poison reverts each reddening it alone. Playtest step
   `opposition-floor` drives the card button and then the drafting sheet's own
   button by real clicks from the bench.
 - **Still government-only and flagged, not changed:** constitutional **acts**.
