@@ -2426,7 +2426,25 @@ async function run() {
          were on for exactly the turn they were answering. Without this the
          sheet is never focused in a headless run and the arm below passes on
          a build that clears the key. */
-      const sheet = document.getElementById('modal');
+      /* S18a: SETTLE THE QUEUE BEFORE TAKING THE SHEET. S17r learned at the
+         arm below that a sheet read straight off an End Session can be
+         replaced between the focus and the check, and fixed it there and not
+         here -- so this arm read whatever the turn happened to leave up and
+         reddened about one run in ten at the phone and tablet tiers for that
+         reason and no other, on a build that passes it every time at the
+         desktop. Stop the drain, let the last one settle, and raise one when
+         the session left none: what the arm is about is focus landing OUTSIDE
+         the view during the end-turn sequence, and where the sheet came from
+         does not change that. */
+      UI.queue = []; UI.busy = false;
+      await new Promise(x => setTimeout(x, 90));
+      let sheet = document.getElementById('modal');
+      if (!sheet || sheet.hidden) {
+        showSheet('<h2>A question</h2><p class="note">Raised by the harness.</p>' +
+          '<div class="btnrow"><button class="btn">Answer</button></div>');
+        await new Promise(x => setTimeout(x, 90));
+        sheet = document.getElementById('modal');
+      }
       const sb = sheet && !sheet.hidden
         ? Array.prototype.filter.call(sheet.querySelectorAll('button'), function (x) { return !x.disabled; })[0]
         : null;
