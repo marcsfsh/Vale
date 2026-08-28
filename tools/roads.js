@@ -2875,6 +2875,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       S.acts.equalStates = false;
       return c0;
     }
+    /* S17m: the road to the country and the power to summon a convention are
+       things the document GRANTS now -- the two articles said so in their own
+       text and granted nothing at all. The probes below are about what those
+       roads DO once open, so each one that needs a road opens it EXPLICITLY,
+       rather than the frame opening both: an article in `c0.arts` is counted
+       by two of the probes here, and seeding the frame moved their arithmetic.
+       That they are shut until the constitution opens them is its own
+       assertion, further down. */
+    const openRoad = (c0, id) => { c0.arts[id] = { laid:S.turn, by:me }; return () => { delete c0.arts[id]; }; }
     const plist = (c0) => Array.isArray(c0.pending) ? c0.pending : (c0.pending ? [c0.pending] : []);
     const openIds = (route) => V11_ARTICLES
       .filter((a) => !v11CanPropose(S, a, false, route || 'assembly')).map((a) => a.id);
@@ -2898,12 +2907,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.assemblySpan = plist(c).length ? plist(c)[0].due - plist(c)[0].laid : 0;
     out.assemblyOn = has('v11ArtVerdict') && plist(c).length ? v11ArtVerdict(S, plist(c)[0]).on : 'the Assembly';
     c = frame();
+    var shutPleb = openRoad(c, 'artPlebiscite');
     v11ProposeArticle(road, false, 'plebiscite');
+    shutPleb();
     out.plebSpan = plist(c).length ? plist(c)[0].due - plist(c)[0].laid : 0;
     out.plebOn = has('v11ArtVerdict') && plist(c).length ? v11ArtVerdict(S, plist(c)[0]).on : 'the Assembly';
 
     /* THE PLEBISCITE UNDER A FORM WITH NO ELECTIONS. */
     c = frame();
+    const shutPleb2 = openRoad(c, 'artPlebiscite');
     S.form = 'oneparty'; S.lower = { exists:true, suspended:true };
     out.electionsOn = electionsOn(S);
     const lib0 = S.ind.liberties;
@@ -2922,7 +2934,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
     /* THE CONVENTION. */
     c = frame();
+    const shutConv = openRoad(c, 'artConventionClause');
     v11CallConvention();
+    shutConv();
     out.convSits = v11ConventionSits(S);
     out.convSpanSessions = c.conv - S.turn;
     out.convCap = has('v11PendingCap') ? v11PendingCap(S) : 1;
@@ -4658,6 +4672,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        with no elections, which is the whole point of a plebiscite */
     fresh();
     c = v11Con(S); c.pending = []; c.arts = {}; c.order = []; c.failed = {};
+    /* S17m: the road to the country is one the constitution opens. This clock
+       is about how long the road takes, so the road is opened first. */
+    c.arts.artPlebiscite = { laid:S.turn, by:S.ruling };
     S.ind.liberties = 95;
     PARTIES.forEach(p => { S.partyRel[p.id] = 99; });
     BLOCS.forEach(x => { S.blocs[x.id] = 92; });
@@ -6596,6 +6613,207 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `posture across ${minds.burn.distinct} distinct rates, so a party holding on keeps ${minds.burn.holding} ` +
     `of party money over twelve sessions where one building spends down to ${minds.burn.building} -- it was ` +
     `seven tenths for every party in every circumstance, and a card costs twelve to thirty-four`);
+
+  /* ================================================================
+     S17m — ONE TRUTH AT A TIME
+     ================================================================ */
+  const truth = await page.evaluate(() => {
+    const R = {};
+    function fresh(me) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', me || 'lp'), false);
+      S.ruling = me || 'lp'; S.coalition = [S.ruling]; S.capital = 900; S.treasury = 9000;
+      var c = v11Con(S); c.arts = {}; c.pending = []; c.failed = {};
+      return c;
+    }
+    function adopt(c, id) { c.arts[id] = { laid:S.turn, by:S.ruling }; }
+
+    /* (a) EVERY DECLARED CONFLICT NAMES A REAL CARD. A rule against an id
+       that does not exist is a rule that never fires. */
+    fresh('lp');
+    R.unresolved = [];
+    V17_CONFLICTS.forEach(function (p) {
+      [p.a, p.b].forEach(function (c) {
+        var ok = c.kind === 'article' ? !!V11_ART[c.id]
+          : c.kind === 'act' ? ACTS.some(function (x) { return x.id === c.id; }) : false;
+        if (!ok) R.unresolved.push(c.kind + ':' + c.id);
+      });
+    });
+    R.pairs = V17_CONFLICTS.length;
+
+    /* (b) AND EVERY PAIR REFUSES IN BOTH DIRECTIONS. A block declared one way
+       round is a one-way door, which is the failure the central table exists
+       to make impossible -- so the assertion asks it of both. */
+    R.oneWay = [];
+    V17_CONFLICTS.filter(function (p) {
+      return p.a.kind === 'article' && p.b.kind === 'article';
+    }).forEach(function (p) {
+      [[p.a, p.b], [p.b, p.a]].forEach(function (d) {
+        var art = V11_ART[d[1].id];
+        /* a ghost id is caught above; do not let it throw the whole probe and
+           turn a plain finding into a harness crash */
+        if (!art || !V11_ART[d[0].id]) { R.oneWay.push(d[0].id + '->' + d[1].id + ': no such card'); return; }
+        var c = fresh('lp');
+        adopt(c, 'artPlebiscite'); adopt(c, 'artSuspensiveVeto'); adopt(c, d[0].id);
+        var w = v11CanPropose(S, art, false, art.referendum ? 'plebiscite' : 'assembly');
+        if (!(w && /stands\./.test(w))) R.oneWay.push(d[0].id + '->' + d[1].id + ': ' + String(w));
+      });
+    });
+
+    /* (c) THE ABSURDITY THE OWNER NAMED. Forbidding secession and guaranteeing
+       it both stood, and because the modifiers ADD it produced MORE
+       separatism than either one alone. */
+    var c1 = fresh('lp'); adopt(c1, 'artPlebiscite'); adopt(c1, 'artSecessionBar');
+    R.secession = { bar:Math.round(v11ConEffects(S).autonomy) };
+    /* ask BEFORE adopting it, or the refusal is "already in the document" */
+    R.secession.refused = /stands\./.test(String(
+      v11CanPropose(S, V11_ART.artSecessionRight, false, 'plebiscite') || ''));
+    adopt(c1, 'artSecessionRight');
+    R.secession.both = Math.round(v11ConEffects(S).autonomy);
+
+    /* (d) AND A REPEAL IS ALWAYS OPEN. Blocking is how the document stops
+       contradicting itself; it is not how a country is stopped from changing
+       its mind. */
+    var c2 = fresh('lp'); adopt(c2, 'artQuadrennial');
+    R.repeal = { blocked:/stands\./.test(String(v11CanPropose(S, V11_ART.artAnnualAssembly, false, 'assembly') || '')) };
+    /* THE CASE THE `!repeal` GUARD EXISTS FOR: a document that ALREADY carries
+       both, which is every save written before this slice and any start whose
+       editor put them there. Blocking the repeal too would leave that campaign
+       permanently holding a constitution that contradicts itself with no way
+       out of it -- the one outcome worse than the contradiction. */
+    var c2b = fresh('lp'); adopt(c2b, 'artQuadrennial'); adopt(c2b, 'artAnnualAssembly');
+    R.repeal.legacyBoth = Object.keys(c2b.arts).length === 2;
+    R.repeal.repealOpen = v11CanPropose(S, V11_ART.artQuadrennial, true, 'assembly') === null &&
+      v11CanPropose(S, V11_ART.artAnnualAssembly, true, 'assembly') === null;
+
+    /* (e) AN ORDINARY ACT DOES NOT REVERSE AN ENTRENCHED ARTICLE. `ok` asked
+       only whether the act had already been carried, so the Act to Weight the
+       Franchise flipped `acts.wealthFranchise` back over while the Article of
+       the Universal Franchise -- entrenched, carried at a referendum -- went
+       on standing on the page. */
+    var c3 = fresh('lp'); adopt(c3, 'artUniversalFranchise');
+    S.pol.propertyFranchise = 4; S.acts.charteredSenate = true; S.acts.wealthFranchise = false;
+    /* the Senate blocks any act it dislikes since S11d, and a refusal for THAT
+       reason would pass this probe whether the constitution refused or not */
+    S.upper.veto = 0;
+    var wf = ACTS.filter(function (x) { return x.id === 'wealthFranchise'; })[0];
+    R.act = { conditionsMet:wf.ok(S), refused:String(v17ConflictWhy(S, 'act', 'wealthFranchise') || ''),
+      cardSaysSo:/The constitution forbids it/.test(actCard(wf)) };
+    doAct(wf);
+    R.act.stillFalse = S.acts.wealthFranchise === false;
+
+    /* (f) THE ARTICLE OF THE ELECTED SENATE ELECTS THE SENATE. It wrote
+       `acts.electedSenate`, which nothing reads, and never touched
+       `upper.elected`, which the Senate page, the projection and the ballot
+       all read. */
+    var c4 = fresh('lp');
+    S.upper.elected = false;
+    R.senate = { before:!!S.upper.elected };
+    V11_ART.artElectedSenate.apply(S);
+    R.senate.after = !!S.upper.elected;
+    R.senate.seated = Object.keys(S.upper.seats || {}).length > 0;
+
+    /* (g) AND THE CONSTITUTION'S TOTAL VIEW OF THE SENATE REACHES SOMETHING.
+       Five articles write `mods.senate`, `v11ConEffects` has summed it since
+       S11d and nothing read the sum. */
+    /* the Supreme Court lean, because the Senate lean of -1.2 saturates the
+       function's own cap and a term measured against a ceiling is not
+       measured at all */
+    function resistNow(art) {
+      var cc = fresh('lp');
+      S.upper.exists = true; S.upper.veto = 2; S.upper.ceremonial = false;
+      S.upper.seats = {}; PARTIES.forEach(function (p) { S.upper.seats[p.id] = 40; });
+      if (art) adopt(cc, art);
+      return +upperResist(S, -.5, 1, 0).toFixed(4);
+    }
+    R.upper = { plain:resistNow(null), entrenched:resistNow('artBicameral'),
+      stripped:resistNow('artMoneyBills') };
+
+    /* (h) THE FIXED BENCH PRICES THE ACT IT NAMES. "makes the court-packing
+       act dear" was carried as `polCost:{Justice:1.25}`, which prices Justice
+       STATUTES; expanding the court is an act. */
+    var c7 = fresh('lp');
+    var ex = ACTS.filter(function (x) { return x.id === 'expandCourt'; })[0];
+    S.upper.exists = false;
+    R.bench = { plain:actCost(ex) };
+    adopt(c7, 'artFixedBench');
+    R.bench.fixed = actCost(ex);
+
+    /* (i) AND THE TWO ARTICLES THAT DESCRIBED POWERS THE PLAYER ALREADY HAD
+       now grant them. */
+    var c8 = fresh('lp');
+    R.roads = { plebisciteShut:String(v11CanPropose(S, V11_ART.artUniversalFranchise, false, 'plebiscite') || '') };
+    adopt(c8, 'artPlebiscite');
+    R.roads.plebisciteOpen = v11CanPropose(S, V11_ART.artUniversalFranchise, false, 'plebiscite') === null;
+    var flashed = [], fb = flash;
+    flash = function (m) { flashed.push(m); };
+    try { v11CallConvention(); } finally { flash = fb; }
+    R.roads.conventionShut = /Article of the Convention/.test(flashed.join(' '));
+    R.roads.sitsNot = !v11ConventionSits(S);
+
+    /* (j) AND THE THREE MEASURE MODIFIERS THAT WERE PRINTED AND READ BY
+       NOBODY. Ten measures write `delivery`, three `crown`, two `army`. */
+    fresh('lp');
+    var mk = Object.keys(EXTRA_BY).filter(function (k) {
+      var x = EXTRA_BY[k]; return x.mods && (x.mods.delivery || x.mods.crown || x.mods.army);
+    });
+    R.measures = { writers:mk.length };
+    var dm = mk.filter(function (k) { return EXTRA_BY[k].mods.delivery; })[0];
+    var cm = mk.filter(function (k) { return EXTRA_BY[k].mods.crown; })[0];
+    var am = mk.filter(function (k) { return EXTRA_BY[k].mods.army; })[0];
+    /* `cabinetBonus` sums over FILLED portfolios and a bare probe state has
+       none, so the multiplier would have had nothing to multiply -- an empty
+       object either side reads as "no change" and proves nothing */
+    S.extra = {}; S.cabinet = S.cabinet || {};
+    for (var office in CABINET) CABINET[office].forEach(function (row) { S.cabinet[row[0]] = 60; });
+    var cb0 = cabinetBonus(S), k0 = Object.keys(cb0)[0];
+    R.measures.portfolios = Object.keys(cb0).length;
+    S.extra[dm] = 'upheld';
+    R.measures.delivery = { field:EXTRA_BY[dm].mods.delivery,
+      moved:!!k0 && Math.abs(cabinetBonus(S)[k0] - cb0[k0]) > 1e-9 };
+    S.extra = {}; S.crown = 50; S.armyLoyalty = 50;
+    S.extra[cm] = 'upheld'; S.extra[am] = 'upheld';
+    v10OrdersTick(S);
+    R.measures.crownMoved = S.crown !== 50;
+    R.measures.armyMoved = S.armyLoyalty !== 50;
+    return R;
+  });
+  const truthOk =
+    truth.unresolved.length === 0 && truth.pairs >= 11 && truth.oneWay.length === 0 &&
+    truth.secession.bar === 6 && truth.secession.both === 20 && truth.secession.refused &&
+    truth.repeal.blocked && truth.repeal.legacyBoth && truth.repeal.repealOpen &&
+    truth.act.conditionsMet && /entrenched/.test(truth.act.refused) &&
+    truth.act.cardSaysSo && truth.act.stillFalse &&
+    !truth.senate.before && truth.senate.after && truth.senate.seated &&
+    truth.upper.entrenched > truth.upper.plain && truth.upper.stripped < truth.upper.plain &&
+    truth.bench.fixed > truth.bench.plain &&
+    /Article of the Plebiscite/.test(truth.roads.plebisciteShut) && truth.roads.plebisciteOpen &&
+    truth.roads.conventionShut && truth.roads.sitsNot &&
+    truth.measures.writers >= 10 && truth.measures.portfolios > 0 && truth.measures.delivery.moved &&
+    truth.measures.crownMoved && truth.measures.armyMoved;
+  say(truthOk, 'the document says one thing at a time',
+    `${truth.pairs} DECLARED CONFLICTS, every one naming a real card (${truth.unresolved.length} unresolved) and ` +
+    `every article pair refusing in BOTH directions (${truth.oneWay.length} one-way) -- there was no ` +
+    `mutual-exclusion primitive in three megabytes, and \`needs:\` only ever said what a card REQUIRED · ` +
+    `FORBIDDING SECESSION AND GUARANTEEING IT both stood, and because the modifiers ADD the pair reached ` +
+    `${truth.secession.both} of separatism against ${truth.secession.bar} for the bar alone; the second is ` +
+    `refused now (${truth.secession.refused}) and A REPEAL IS STILL OPEN, on both of a pair a save written ` +
+    `before this slice already carries (${truth.repeal.repealOpen}) -- blocking is how a document stops ` +
+    `contradicting itself and not how a country is stopped from changing its mind, and a campaign holding both ` +
+    `has to be able to get out · AN ORDINARY ACT NO LONGER REVERSES AN ENTRENCHED ARTICLE: the Act to Weight the Franchise met every ` +
+    `condition it has (${truth.act.conditionsMet}), the card says why it cannot be carried ` +
+    `(${truth.act.cardSaysSo}) and the flag it used to flip is still false after the click ` +
+    `(${truth.act.stillFalse}) · THE ARTICLE OF THE ELECTED SENATE ELECTS THE SENATE (${truth.senate.before} to ` +
+    `${truth.senate.after}, seated ${truth.senate.seated}), where it wrote a flag nothing reads and never ` +
+    `touched \`upper.elected\` · the constitution's TOTAL view of the Senate reaches its resistance ` +
+    `(${truth.upper.stripped} stripped · ${truth.upper.plain} plain · ${truth.upper.entrenched} entrenched), ` +
+    `where five articles wrote \`mods.senate\` and the sum was read by nothing · THE FIXED BENCH PRICES THE ACT ` +
+    `IT NAMES (${truth.bench.plain} to ${truth.bench.fixed} capital), where it priced Justice STATUTES and ` +
+    `court-packing is an act · the two articles that DESCRIBED POWERS THE PLAYER ALREADY HAD now grant them -- ` +
+    `the road to the country is shut until the Plebiscite stands (${truth.roads.plebisciteOpen} after) and no ` +
+    `convention sits without its clause (${truth.roads.conventionShut}) · and the ${truth.measures.writers} ` +
+    `measures writing delivery, crown and army finally reach the model (${truth.measures.delivery.moved}, ` +
+    `${truth.measures.crownMoved}, ${truth.measures.armyMoved}), where the orders' identically-named fields ` +
+    `have been read since S10e and the measures stopped one wrapper short`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

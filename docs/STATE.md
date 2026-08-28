@@ -25,12 +25,15 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17l.** Groups 3 and 4 are closed. Next is Group 5,
-**s17m — mutual exclusion, and the article lies**: the `conflicts:` primitive
-and the one shared `conflictWhy`, plus the articles whose promises reach
-nothing. Its design is in `docs/PLAN-S17.md`, and the conflict table itself
-waits on the owner's ruling (ruling 11) — the PR is primitive-first with a
-pre-agreed seed set.
+**Landed so far: s17a–s17m.** Groups 3 and 4 are closed and Group 5 is open.
+Next: **s17n — the book means what it says, I**, which wires the Elections and
+Federalism books to real mechanisms (22 of 24 Elections statutes and 20 of 24
+Federalism statutes are read NOWHERE).
+
+**One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
+asked for — what s17m shipped without waiting, what needs your ruling with a
+proposed semantic per pair, and thirteen pairs checked and cleared as
+compatible. Nothing there blocks s17n.
 
 ### S17a — the seven defects
 
@@ -89,6 +92,92 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17m — one truth at a time
+
+> *"some policies and constitutional articles should be mutually exclusive but
+> arent… all of those should be checked to see whether their actual
+> implementations are respected and reflected everywhere they should be."*
+
+**There was no mutual-exclusion primitive in three megabytes.** The only
+pairwise exclusion anywhere was two build options on a great work. `needs:` —
+the one relational field the cards carry — is enforced at five separate,
+unshared points and only ever says what a card **requires**. Nothing anywhere
+said what a card **contradicts**. So the Article of the Indissoluble Union
+("no state may leave it") and the Article of the Right to Depart ("may leave
+the union in peace") both stood, and because their modifiers ADD, **forbidding
+and guaranteeing secession together produced 20 of separatism against 6 for the
+bar alone** — more than either one on its own.
+
+**Eleven pairs ship, all of them BLOCK.** They are the ones where the printed
+text of one card is *false* while the other stands, which is a question of
+correctness rather than of balance — the same defect as "a card that lies", so
+they did not seem to need a ruling. The full table, with a proposed semantic
+per pair and thirteen more pairs **checked and cleared as compatible**, is
+`docs/CONFLICTS.md`, and it waits on ruling 11.
+
+- **The table is central and symmetric**, which is a deliberate departure from
+  the plan's per-card `conflicts:` field. A block declared on one card and
+  forgotten on the other is a one-way door, and this file's history is a long
+  list of exactly that mistake. The cards still print it — `v17ConflictsOf`
+  reads the same array — and `roads.js` asserts every pair refuses in **both**
+  directions.
+- **Nothing is ever repealed for you.** The refusal names the article you would
+  have to repeal first, which is a road the constitution already has. And a
+  **repeal stays open even on a pair that is already adopted**, because every
+  save written before this slice can carry both, and blocking the way out would
+  be worse than the contradiction.
+- **`supersede` is not in the code.** A mode with one value is a field nothing
+  reads. It arrives when a pair is approved for it.
+- **The sharpest pair is cross-kind.** The Act to Weight the Franchise by
+  Property needed nothing but half the Assembly and **silently reversed an
+  entrenched article the country had carried at a referendum** — the flag
+  turned over while the article's record went on standing on the page. The card
+  is shut now with the article named on it.
+
+**And the articles whose promises reached nothing.**
+
+1. **The Article of the Elected Senate did not elect the Senate.** It wrote
+   `acts.electedSenate`, which nothing reads, and never touched
+   `upper.elected` — the field the Senate page, the projection and the ballot
+   all read. It does what the Act of the same name has always done, and seats
+   the house at once. *(Which produced the eleventh conflict: carrying it after
+   abolition would raise the abolished chamber from the dead.)*
+2. **`v11ConEffects().senate` had no reader.** Five articles write it and it
+   has been summed since S11d; `v11ArtSupport` reads each article's *own*
+   field, which is a different question. The sum now scales `upperResist`, so
+   a house the constitution has entrenched resists harder and one it has
+   stripped resists less — bounded, so no stack of articles makes the Senate
+   absolute or weightless while it still sits.
+3. **The Fixed Bench priced the wrong thing.** "Makes the court-packing act
+   dear" was carried as `polCost:{Justice:1.25}`, which prices Justice
+   *statutes*; expanding the court is an **act**. 24 capital becomes 30.
+4. **Two articles described powers the player already had.** The road to the
+   country was open from the first session whether the Article of the
+   Plebiscite stood or not, and conventions were ordinary business without the
+   Article of the Convention. Both grant their road now.
+5. **Three measure modifiers were printed and read by nobody.** Ten measures
+   write `delivery`, three `crown`, two `army`; `extraMods` accumulates all
+   three and the card prints them. The orders' identically-named fields have
+   been consumed since S10e — the measures stopped one wrapper short of the
+   pattern they were copying.
+
+```
+ALL CHECKS PASS   11/11 (no new wrapper; the two act-cost wrappers already
+                  delegate, so the base was the right place)
+ROADS OK          180 assertions (+1: "the document says one thing at a time")
+PLAYTEST PASS     62 steps (+1: the act card the constitution shuts)
+DETERMINISM / RUNGS / CORPORA / TIERS / TABS   all green
+POISON            13 reverts, each reddening its own assertion
+```
+
+**Pacing is byte-identical on all six seeds at all three lengths** — elections
+won, years governing, crises and achievements all unchanged to the number. That
+is not evidence of no effect: `tools/pacing.js` plays first-choice-always and
+**never amends the constitution or carries an act**, so not one of these gates
+fires in its play. This slice changes what a *player* can do, and its coverage
+is in `roads.js` and `playtest.js`, not here. Worth knowing as a limit on what
+the pacing harness can see.
 
 ### S17l — minds and memories
 
