@@ -100,6 +100,21 @@ before touching the file.
   and the probe — which put its party in the office — could not tell them
   apart. Reverting the widening left it green. When a gate is narrowed, the
   probe has to stand in the gap the narrowing closes.
+- **A field a wrapper READS is as dead as a field nothing reads, and looks
+  exactly as alive.** S16e's memory wrapper keyed on `a.pid` and nothing in
+  three megabytes ever wrote `a.pid`, so a whole channel — every hostile verb
+  the player has against another party — had not fired once across two slices.
+  Its whitelist also named `radicalise`, an id no action carries. The rule from
+  `st.court.size` runs both ways: before keying on a field, grep for a WRITER,
+  and when the answer is a hand-kept list of ids, cover the surface and assert
+  the coverage instead — `V17_MEMORY` fails `roads.js` if a verb arrives
+  without a weight, which is the guard a whitelist can never have.
+- **A borrowed paper type reaches into whatever the original paper pointed at.**
+  S16e's AI demand letter was posted as a `faction_demand` with `faction:0`, so
+  answering another party's letter moved the loyalty of the PLAYER's own first
+  caucus by sixteen. Reusing an inbox type inherits every branch that keys on
+  it — the choices, the answer arm and the ignore arm — so a new kind of letter
+  gets a new type, not a convenient old one.
 - **A shared body that is right for the new caller can still be wrong for the
   old one.** `partyBillSupport` reads TWO fields for one idea —
   `playerPosition` at 24/-28 and `lines` at 16/-18 — so S17k's floor Core,
@@ -146,7 +161,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **178 content assertions**, the largest harness here: the
+- `tools/roads.js` — **179 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

@@ -8844,6 +8844,16 @@ function partyBillSupport(st, pid, bill) {
     score += bill.playerPosition === 'support' ? 24 : -28;
   }
   if (bill.lines && bill.lines[pid]) score += bill.lines[pid] === 'support' ? 16 : -18;
+  /* S17l: AND WHAT THE SPONSOR DID TO THEM LAST TIME. A grudge had exactly two
+     consumers -- which posture a party adopts and whom it will make a pact
+     with -- and neither of them was a vote, so a party that had been split,
+     audited and had its funding cut went on backing the government's bills at
+     the same rate as one that had been left alone. It is bounded at
+     V17_GRUDGE_VOTE: a memory colours a vote, it does not decide one, and a
+     party that agrees with a bill still votes for it. */
+  if (typeof v16Grudge === 'function' && bill.sponsor && bill.sponsor !== pid) {
+    score -= Math.min(V17_GRUDGE_VOTE, v16Grudge(st, pid, bill.sponsor) * .12);
+  }
   if (st.banned && st.banned[pid]) return 0;
   return clamp(score, 3, 98);
 }
@@ -9569,6 +9579,20 @@ function inboxChoices(it) {
     { id:'meet', label:'Hear them privately', cost:2, tip:'A smaller loyalty gain without moving the platform.' },
     { id:'refuse', label:'The leadership decides the line', cost:0, tip:'Unity now, resentment later.' }
   ];
+  /* S17l: A LETTER FROM ANOTHER PARTY IS NOT A LETTER FROM YOUR OWN CAUCUS.
+     S16e's `demand` card posted its letter as a `faction_demand` with
+     `faction:0`, which is the index the caucus paper stores -- so endorsing
+     the rival's demand raised the loyalty of the player's OWN first caucus by
+     sixteen and moved the player's party toward it, and ignoring the letter
+     docked that caucus nine. Measured on the opening board: the FP wrote in,
+     and the Industrial Caucus of the LP went from 68 to 59 for it. The letter
+     has its own paper now, and the three answers are answers to the party
+     that sent it. */
+  if (it.type === 'party_demand') return [
+    { id:'carry', label:'Carry the measure they asked for', cost:4, tip:'The bill goes on the paper in your name. They will remember being listened to.' },
+    { id:'talks', label:'Ask them to come and discuss it', cost:2, tip:'No promise, but the door was open and they walked through it.' },
+    { id:'decline', label:'Answer that the government has its own programme', cost:0, tip:'Said plainly, to their face. Cheaper than silence and remembered as less of a slight.' }
+  ];
   if (it.type === 'governors_conference') return [
     { id:'grants', label:'Arrive with a grants package', cost:4, money:12, tip:'Federal standing rises across every region.' },
     { id:'compact', label:'Offer a new intergovernmental compact', cost:5, tip:'The states gain room and the capital gains trust.' },
@@ -9623,6 +9647,23 @@ function respondInbox(id, choice) {
       if (choice === 'meet') f.loyalty = c100(f.loyalty + 9);
       if (choice === 'refuse') { f.loyalty = c100(f.loyalty - 12); S.unity = c100(S.unity + 2); }
     }
+  } else if (it.type === 'party_demand') {
+    /* S17l: and this one is answered TO THE SENDER. Carrying it puts the bill
+       on the paper and spends their grudge down; declining is cheaper than
+       silence, because a party that gets an answer has been dealt with. */
+    if (choice === 'carry' && it.policy) {
+      sponsorBill(S, it.policy, it.dir, 'player', 'negotiated', true);
+      shiftPartyRel(S, from, 9);
+      if (typeof v16Resent === 'function') v16Resent(S, from, playParty(S), -18);
+    }
+    if (choice === 'talks') {
+      shiftPartyRel(S, from, 4);
+      if (typeof v16Resent === 'function') v16Resent(S, from, playParty(S), -7);
+    }
+    if (choice === 'decline') {
+      shiftPartyRel(S, from, -5);
+      if (typeof v16Resent === 'function') v16Resent(S, from, playParty(S), 5);
+    }
   } else if (it.type === 'governors_conference') {
     if (choice === 'grants') { REGIONS.forEach(function (r) { S.regions[r.id].federal = c100(S.regions[r.id].federal + 8); S.regions[r.id].services = c100(S.regions[r.id].services + 3); }); S.crown = c100(S.crown + 8); }
     if (choice === 'compact') { S.crown = c100(S.crown + 13); S.capital += 2; S.ind.corruption = c100(S.ind.corruption - 1); }
@@ -9660,6 +9701,12 @@ function expireInbox(st) {
        card dated to the third. */
     if (st.turn < it.deadline) return;
     if (it.from) shiftPartyRel(st, it.from, -8);
+    if (it.type === 'party_demand') {
+      /* S17l: silence from the government IS the answer, and the party that
+         wrote carries it. It is worth more than declining to their face,
+         which is the point of writing at all. */
+      if (it.from && typeof v16Resent === 'function') v16Resent(st, it.from, playParty(st), 14);
+    }
     if (it.type === 'faction_demand') {
       var f = v17Caucus(st, playParty(st), it); if (f) f.loyalty = c100(f.loyalty - 9);
     }
@@ -15554,9 +15601,18 @@ function partyPurseTick(st) {
     var inc = partyIncome(st, p.id);
     partyEarn(st, p.id, inc.total);
     /* An AI party spends what it raises on the thing the vote model reads.
-       The player's own party spends nothing it was not told to. */
+       The player's own party spends nothing it was not told to.
+
+       S17l: AND WHAT IT KEEPS BACK DEPENDS ON WHAT IT IS TRYING TO DO. Seven
+       tenths of income went out every session for every party in every
+       circumstance, so strategy never touched the burn and a party saving for
+       something could not save: the cards S16e and S17k gave it cost 12 to 34,
+       and at a flat seven tenths a small party never reached them. A party
+       building an organisation spends hard; a party that has been beaten, or
+       is waiting, holds on to it. `V17_BURN` is the whole table. */
     if (p.id !== playParty(st)) {
-      var spend = Math.min(partyPurse(st, p.id), inc.total * .7);
+      var rate = V17_BURN[typeof v16Posture === 'function' ? v16Posture(st, p.id) : 'hold'];
+      var spend = Math.min(partyPurse(st, p.id), inc.total * (rate === undefined ? .7 : rate));
       if (spend > 0) partySpend(st, p.id, spend);
     }
   });
@@ -23022,6 +23078,14 @@ partyActions = function (pid) {
       run:function () { var b = v9WorstBloc(S), m = {}; m[b] = 6; mood(S, m); logIt(S, 'The ' + p.short + ' held a listening exercise among ' + BLOC[b].name.toLowerCase() + '.'); } });
   }
   list.forEach(function (a) { if (/^v9/.test(a.id) && !a.scope) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.purse = 'party'; } });
+  /* S17l: WHO IT IS BEING DONE TO. S16e's memory wrapper read `a.pid` to find
+     the party that had just been poached, split or banned -- and NOTHING in
+     three megabytes ever wrote `a.pid`, so the target was null every time and
+     the whole channel had never once fired. Measured: poaching a party's base
+     left its grudge at nought. The list is built inside a closure over `pid`;
+     the entry now carries it, and it is stamped HERE, on the live function,
+     because this wrapper is what the buttons call. */
+  list.forEach(function (a) { a.pid = pid; });
   return list;
 };
 
@@ -30339,6 +30403,16 @@ function v11ArtSupport(st, pid, a, repeal) {
   if (typeof factionAverage === 'function') score += (factionAverage(st, pid) - 55) * .12;
   if (st.cordon && st.cordon[pid] && pid !== me) score -= 8;
   if (st.coopted && st.coopted[pid]) score += 6;
+  /* S17l: AND WHO IS ASKING. The proposer is on the pending record since
+     S17k, so the same bounded memory term the floor uses applies to the
+     constitution -- where it matters more, because an article needs a
+     majority nobody is whipping. A read, through the reading accessor: asking
+     `v11PendingOf` must not install a record for an article that has not been
+     laid. */
+  if (typeof v16Grudge === 'function' && typeof v11PendingOf === 'function') {
+    var laid = v11PendingOf(st, a.id), by = laid && laid.by;
+    if (by && by !== pid) score -= Math.min(V17_GRUDGE_VOTE, v16Grudge(st, pid, by) * .12);
+  }
   /* INSTITUTIONAL SELF-INTEREST. A party is asked to vote on the rules it
      will be governed by AND the rules it is currently winning under. */
   var d = a.mods || {};
@@ -33087,8 +33161,12 @@ var V16_AI_DECK = [
     run:function (st, pid) {
       var d = partyDemandPolicy(st, pid); if (!d) return null;
       v16AiPay(st, pid, V16_AI_COST.demand);
-      addInbox(st, { type:'faction_demand', title:'The ' + PARTY[pid].short + ' Ask for ' + POL[d.policy].name,
-        from:pid, faction:0,
+      /* S17l: `type:'party_demand'`, and no `faction` index. This was posted
+         as a `faction_demand` with `faction:0` -- the caucus paper's shape --
+         so the answer reached into the PLAYER's own first caucus and moved
+         its loyalty for a letter another party had written. */
+      addInbox(st, { type:'party_demand', title:'The ' + PARTY[pid].short + ' Ask for ' + POL[d.policy].name,
+        from:pid, policy:d.policy, dir:d.dir,
         body:'The ' + PARTY[pid].name + ' have written asking the government to ' +
           (d.dir > 0 ? 'carry ' : 'withdraw ') + POL[d.policy].name +
           '. They have not said what follows if it is refused, which is itself an answer.' });
@@ -33466,13 +33544,81 @@ tickTurn = function (st) {
   v16AiTurn(st);
 };
 /* The cards that give a party something to remember. Each of these already
-   did its damage and none of them was remembered by anybody. */
+   did its damage and none of them was remembered by anybody.
+
+   S17l REWROTE THE BODY OF THIS WRAPPER, in place, for two reasons. The first
+   is that it never fired: it read `a.pid` and nothing wrote `a.pid`, so the
+   target was null at every call and a party that had just been split, poached
+   or banned went on regarding the government exactly as before. The second is
+   that its list of five named `radicalise`, which appears ONCE in three
+   megabytes -- here -- and is the id of no action in the game. Four verbs of
+   thirty-four, and none of them reaching anybody.
+
+   `V17_MEMORY` is the whole surface, authored: what each verb is worth to the
+   party it is done TO, and what the gravest of them are worth to everybody
+   ELSE in the room. Anything a party can do to another party has a weight, so
+   a thirty-fifth verb that arrives without one fails `roads.js` rather than
+   being quietly forgotten the way these thirty were. */
+var V17_MEMORY = {
+  /* what is done TO them (self), and what the rest of the room makes of it
+     (seen) -- an attack on one party's existence is an argument about the
+     republic, and the others were watching */
+  ban:            { self:46, seen:26 },
+  prosecute:      { self:34, seen:12 },
+  split:          { self:30, seen:8 },
+  blackmail:      { self:30, seen:10 },
+  splinter:       { self:28, seen:6 },
+  discredit:      { self:26, seen:5 },
+  cutFunding:     { self:24, seen:6 },
+  cordon:         { self:22, seen:8 },
+  expelPartner:   { self:22, seen:4 },
+  absorb:         { self:20, seen:4 },
+  backChallenger: { self:20, seen:3 },
+  coopt:          { self:18, seen:3 },
+  defect:         { self:18, seen:2 },
+  byElection:     { self:16 },
+  pushAway:       { self:16 },
+  audit:          { self:14, seen:2 },
+  poach:          { self:12 },
+  v9leakPolling:  { self:12 },
+  infiltrate:     { self:10 },
+  v9poachOrganiser:{ self:8 },
+  pushLeft:       { self:6 },
+  debate:         { self:2 },
+  /* AND IT WORKS THE OTHER WAY. A memory that only counts injuries is a grudge
+     counter with a nicer name: `v16Resent` clamps at nought, so a kindness
+     spends a grudge down and a party that has been treated well has nothing
+     to carry. */
+  joinCoalition:  { self:-20 },
+  liftCordon:     { self:-18 },
+  invite:         { self:-16 },
+  drawseats:      { self:-16 },
+  fund:           { self:-14 },
+  tradeMinistry:  { self:-14 },
+  givepress:      { self:-12 },
+  champion:       { self:-12 },
+  confidence:     { self:-12 },
+  v9concede:      { self:-12 },
+  pact:           { self:-10 },
+  v9jointInquiry: { self:-6 }
+};
 var v16DoActionMemory = doAction;
 doAction = function (a, opt) {
-  var target = null;
-  if (a && /^(radicalise|poach|infiltrate|split|ban)$/.test(a.id)) target = a.pid || null;
+  var m = a && V17_MEMORY[a.id], target = m ? (a.pid || null) : null;
+  var before = target ? (S.uses[actionKey(a)] || 0) : 0;
   v16DoActionMemory(a, opt);
-  if (target) v16Resent(S, target, playParty(S), 14);
+  /* `doAction` returns nothing and refuses silently -- four separate `flash`
+     and return paths -- so the honest test of whether the verb HAPPENED is its
+     own use counter, which nothing but a completed action touches. A refusal
+     the player never paid for is not a thing anybody can resent. */
+  if (!target || target === playParty(S) || (S.uses[actionKey(a)] || 0) === before) return;
+  v16Resent(S, target, playParty(S), m.self);
+  if (m.seen) {
+    PARTIES.forEach(function (q) {
+      if (q.id === target || q.id === playParty(S)) return;
+      v16Resent(S, q.id, playParty(S), m.seen);
+    });
+  }
 };
 /* What the Parties page says about them. A posture the player cannot see is a
    posture that is not in the game. */
@@ -35647,6 +35793,58 @@ function v17AiFloorFor(st, pid) {
   });
   if (!pick) return null;
   return { bill:pick, verb:worst > .45 ? 'oppose' : (worst < -.15 ? 'support' : 'pressure') };
+}
+
+/* ============================================================
+   S17l — MINDS AND MEMORIES
+   ============================================================
+   The grudge was a field with two readers -- which posture a party adopts and
+   whom it will stand down for -- and no writer that the player could reach.
+   S16e's memory wrapper was supposed to be that writer and never fired once
+   (`V17_MEMORY`, above, is what it became), so in three megabytes a party that
+   had been prosecuted, split and had its funding cut regarded the government
+   exactly as one that had been left alone.
+
+   Two constants here, and they are the whole of the balance in this slice. */
+
+/* HOW FAR A MEMORY REACHES INTO A VOTE. Twelve points on a hundred-point
+   forecast: enough that a party which has been wronged is a harder count, not
+   so much that it stops voting for what it believes. A party's own position
+   is worth up to forty-two and the sponsor's identity nineteen, so the memory
+   is never the largest term and cannot be made to be. */
+var V17_GRUDGE_VOTE = 12;
+
+/* WHAT A PARTY SPENDS, BY WHAT IT IS TRYING TO DO. Seven tenths of income,
+   every session, for every party in every circumstance -- that was the whole
+   model, and it meant a small party could never accumulate the twelve to
+   thirty-four a card costs. A party building spends hard because building is
+   the spending; a party beaten or waiting keeps its powder dry, and can
+   therefore do something with it later. The flat seven tenths survives as
+   `govern`, because a party with the state behind it has other money. */
+var V17_BURN = {
+  organise:    .88,
+  consolidate: .82,
+  govern:      .70,
+  partner:     .66,
+  attack:      .52,
+  moderate:    .42,
+  hold:        .38
+};
+
+/* What the whole memory surface is worth, for the harness and the panel: the
+   party verbs that carry a weight, against the party verbs that exist. */
+function v17MemoryCoverage(pid) {
+  /* the OTHER-party list: the own-party verbs are things a party does to
+     itself, and nobody resents you for holding your own conference */
+  if (!pid || pid === playParty(S)) {
+    pid = PARTIES.filter(function (p) { return p.id !== playParty(S); })[0].id;
+  }
+  var acts = partyActions(pid);
+  var have = 0, missing = [];
+  acts.forEach(function (a) {
+    if (V17_MEMORY[a.id]) have++; else missing.push(a.id);
+  });
+  return { total:acts.length, have:have, missing:missing };
 }
 
 /* ---------- boot ---------- */

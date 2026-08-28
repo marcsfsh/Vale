@@ -1075,7 +1075,7 @@ an AI party had no path to at all. Four notes:
    the old one, wherever the old one had a field of its own. Fixed, pinned at
    24, and poison-proved.
 
-**s17l — minds and memories** (M). v16Posture widened (govern/partner not
+**s17l — minds and memories** (M). **STATUS: DONE.** v16Posture widened (govern/partner not
 dead ends); memory beyond the 5-action whitelist to the full capital-verb
 set; grudge's third consumer — a bounded term in partyBillSupport/
 v11ArtSupport (it finally reaches a vote); partyPurseTick's flat 70% burn
@@ -1083,6 +1083,37 @@ v11ArtSupport (it finally reaches a vote); partyPurseTick's flat 70% burn
 escalates into s17g renegotiation when ignored. Harness: pacing —
 AI trajectories differentiate by posture (variance floor); grudge shifts
 a vote in a controlled probe; a partner renegotiates without walking.
+
+*What landing it found.* The plan called this M and named "memory beyond the
+5-action whitelist" as an extension. It was not an extension. Five notes:
+
+1. **The memory had never fired.** The wrapper read `a.pid` to find the party
+   that had just been split, poached or banned, and **nothing in three
+   megabytes ever wrote `a.pid`** — the target was null at every call for the
+   whole of S16 and S17 up to here. Measured before the fix: poaching a
+   party's base left its grudge at nought. The research report's "memory
+   covers only 5 actions" was generous; it covered none.
+2. **And one of the five was a ghost.** `radicalise` appears exactly once in
+   the file — inside that whitelist — and is the id of no action in the game.
+3. **`V17_MEMORY` is the whole surface, not a longer whitelist**, because a
+   whitelist is what failed: thirty-four verbs, each with what it is worth to
+   the party it is done to, and the gravest with what the rest of the room
+   makes of it. `roads.js` asserts the coverage, so a thirty-fifth verb that
+   arrives without a weight reddens rather than being forgotten the way these
+   thirty were.
+4. **An AI party's demand letter was posted as the player's own caucus paper.**
+   S16e's `demand` card used `type:'faction_demand'` with `faction:0`, which is
+   the index the caucus paper stores — so endorsing the FP's demand raised the
+   loyalty of the LP's **own** first caucus by sixteen and moved the player's
+   party toward it, and ignoring the letter docked that caucus nine while the
+   party that wrote it remembered nothing. Measured on the opening board: the
+   Industrial Caucus of the LP went 68 to 59 for a letter the FP had sent. It
+   is its own paper now, with its own three answers, answered to the sender.
+5. **Two of the plan's six items were already done and are not claimed here.**
+   `govern` and `partner` stopped being dead ends in s17k, which gave them the
+   article, the order and the floor; and pacts got their expiry in s17a, which
+   is the renewal the plan asked for — the card re-fires once the ballot it was
+   formed for has passed. Widening the posts further would have been motion.
 
 ### Group 5 — one truth at a time
 
