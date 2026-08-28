@@ -76,6 +76,21 @@ before touching the file.
   a wrapper that delegates carries the base's guard, a reassignment does not.
   And ask the question of ONE surface once — the v11 regional layer had its own
   `inPower` beside the new table, and two rules for one surface drift apart.
+- **A PERMISSION opened on the callee is worth nothing while the caller still
+  refuses, and the owner is the one who finds out.** The same slice that wrote
+  the rule above put the private members' rule inside `draftBillDialog` and
+  never touched `changePolicy`, the only function that calls it, which refused
+  flatly and returned — nor the card's two buttons, which rendered `disabled`;
+  nor the dossier's two, which were never emitted at all; nor the "Worth
+  drafting now" fold, hidden wholesale from the chair that most needs it. The
+  door was correct and reachable by nothing, and the shipped build was the
+  build the owner played. When you OPEN something, grep every caller and every
+  button that leads to it, drive it by a real click from the chair it was
+  opened for, and make ONE predicate the answer that all of them read. Its
+  twin: the same slice claimed in a comment that `canWork` withheld the
+  government's machinery from a private member's bill, and the line read
+  `inPower(S) || b.owner === 'player'`, which GRANTS it. A comment asserting
+  what a line does is not a reading of the line.
 - **An assertion that compares two things, one of which is derived from the
   other, proves nothing.** S17e's mirror check compared `redLine` with
   `terms.redLines[0]` as seeded — but the list is *built from* the scalar, so
@@ -297,7 +312,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **184 content assertions**, the largest harness here: the
+- `tools/roads.js` — **185 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

@@ -4,6 +4,57 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
+**S18a — The floor is open to every chair** is **OPEN**, and it exists because
+the owner played the shipped build and could not do the thing S17b's PR says
+it fixed:
+
+> "One of the first things I'm noticing is that I can't propose policies or
+> bills as an opposition party. That was explicitly laid out as something to
+> fix and it's still present. I was supposed to be able to do that. If I'm
+> playing opposition, I can propose legislation but it has a more difficult
+> path to being passed."
+
+They were right on both halves, and the second half was wrong in the opposite
+direction to the first.
+
+**The door was opened on the callee and the refusals were left on the
+callers.** S17b put the private members' rule inside `draftBillDialog` and
+opened `v11CanPropose` to any chair. It did not touch `changePolicy`, which is
+the ONLY function that calls that dialog and which refused flatly and returned;
+or the statute card's two Draft buttons, which rendered `disabled` on
+`!inPower(S)`; or the dossier's two, which were not disabled but never emitted
+at all; or the "Worth drafting now" fold, hidden wholesale from the chair that
+most needs it. `draftBillDialog` was correct and reachable by nothing. **This
+is the S17b rule read backwards: a guard goes on the live function, and a fix
+on the callee is worth nothing while the caller still refuses.**
+
+**And "a more difficult path" did not exist.** Measured on one board, the same
+statute laid by the player forecast **41 from opposition against 39 from
+government** — the government's own bill was the harder one — because three
+things paid the opposition player for being there. The ruling party was paid +8
+to back any bill whose `owner` was `'player'`, whichever chair the player sat
+in. The player's own party was counted twice for its own bill, +19 as sponsor
+and +24 again for a `playerPosition` that `sponsorBill` stamps on
+automatically, which is S17k's shared-body mistake in a second place. And
+`canWork = inPower(S) || b.owner === 'player'` **granted** an opposition player
+the whip, the Senate deal, the confidence motion and urgent procedure, where
+S17b's own comment claims that line withholds them.
+
+It now reads **39 from government against 37 from opposition**, and the
+difficulty is structural rather than a number on a scale: one bill at a time,
+no government machinery, and the party's own purse pays for what a private
+member does on the floor. `v18FloorShut` is the one predicate, and the card,
+the dossier, the handler and the dialog all read it; the card puts its answer
+in the button's title rather than leaving a dead control with no reason on it.
+
+Sixteen poison reverts, one per layer, and each reddens
+`the floor is open to every chair` in `tools/roads.js` on its own. The
+`playtest.js` step `opposition-floor` drives the whole thing by real clicks
+from the bench. The six-seed pacing A/B against the build before this slice is
+**byte-identical** across all three lengths: every branch S18a adds takes the
+in-power path for a harness that plays as the government, which is what the
+identical report says out loud.
+
 **S17 — Three ways to play, and the republic plays back** is **CLOSED**, and
 with it the whole remaining half of S16 (the court, the street, playing from
 opposition, the deck fold, contrast and the thumb, the prose close), which the
@@ -14,7 +65,42 @@ designed PRs with a status line each, the architecture decisions and the risk
 list. Nothing about this program lived in conversation; every ruling and
 finding is in that file.
 
-**Nothing is open. The next slice is yours to name.**
+**What is still open after S18a, and flagged rather than done:**
+
+1. Constitutional **acts** still refuse an opposition player. The owner's ruling
+   names bills and constitutional articles, so acts were left government-only
+   deliberately and are named here rather than changed quietly.
+2. **A private member whose bill is refused at assent has no remedy.** Both
+   ways out of a refusal -- `pressOffice` and `override` -- are gated on
+   `inPower`, so an opposition sponsor watches their own carried bill die on
+   the desk after three sessions with nothing to do about it. It almost never
+   fires today, because `assentFavour` hands an opposition bill about 73
+   against a bar of 55 and never refuses it. Opening `override` to the sponsor
+   at the same sixty per cent bar, and making assent read the sponsor so a
+   refusal can happen at all, is a balance change rather than a defect repair,
+   so it is the owner's to rule on.
+3. **`assemblySeat` ("Sit in their assembly") is gated to the head of
+   government on a rationale that is not true of it.** S17b's comment says the
+   six regional verbs it gated "spend the federal purse on a region exactly as
+   a grant or an enterprise zone does". That one spends none: its body writes
+   `S.campaign.targets`, the governor's attention and the player's own party
+   machine, and the Campaign page writes the identical field from any chair
+   out of `myPurse()`. One line at `V17_REGION_NEED`, plus routing its spend
+   through the party purse the way the Campaign page already does.
+4. **One half of S17r's `deck-folds` focus arm proves nothing, and S18a found it
+   without repairing it.** The arm makes two claims: that the S17r restore puts
+   the reader back on their control, and that focus landing OUTSIDE the view
+   (the sheet an End Session raises) does not clear the key. Poisoning the
+   restore itself reddens all three tiers, so the first claim is proved.
+   Poisoning the SECOND -- making `focusin` clear `UI.focusKey` whenever focus
+   lands outside the view, which is the exact defect the code's comment says it
+   exists to prevent -- changes nothing, at any tier, because `hideSheet`
+   restores `UI.lastFocus` on its own and the arm reads where focus ended up
+   rather than who put it there. The probe drives far enough for something else
+   to do the job, which is `CLAUDE.md`'s own rule. S18a settled the queue and
+   removed the arm's flakiness and stopped there; making the second claim
+   testable means taking `hideSheet` out of the path, and that belongs to a
+   slice that owns the assertion.
 
 The owner played the game and named the shape it is missing: **three modes of
 play** — opposition, junior partner, ruling party — which the model gates
@@ -32,8 +118,8 @@ statute book, the constitution and the order book whose implementations are not
 ```
                          before S17     after S17t
 checks/run.js              11 checks      11 checks
-tools/roads.js            162 roads      184 roads
-tools/playtest.js          ~52 steps      67 steps
+tools/roads.js            162 roads      184 roads (185 with S18a)
+tools/playtest.js          ~52 steps      67 steps (68 with S18a)
 tools/contrast.js               —        6 assertions, 3 tiers (new in S17s)
 vale.html                   3.32 MB       3.57 MB
 ```
