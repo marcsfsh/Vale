@@ -25,9 +25,9 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17p.** Next: **s17q — the street has leverage**,
-which puts sustained unrest and the blocs behind demands with deadlines, and
-gives an opposition player something to back.
+**Landed so far: s17a–s17q.** Next: **s17r — the long deck folds, and focus
+survives**, which is the first of the three finishing slices; then s17s
+(contrast and the thumb) and s17t (the prose pass and the close).
 
 **One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
 asked for — what s17m shipped without waiting, what needs your ruling with a
@@ -91,6 +91,90 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17q — the street has leverage
+
+**Unrest was a number with one consequence at the far end of it.** It rose, it
+fell, a dozen cards read it for flavour, and at 95 the government fell and the
+campaign ended. Between nought and 95 the country could be furious for thirty
+years and never ask the government for anything. A crowd that cannot make a
+demand is weather. `st.street` gives it three things it did not have: something
+it wants, a date by which it wants it, and something it can do when it does not
+get it.
+
+**The first build of this slice put the bar on unrest at 62, and the street
+never spoke once.** That number was picked by eye. Measured afterwards over six
+hundred played sessions, unrest sits at **24**, reaches 47 at the ninety-fifth
+session in a hundred, and **tops out at 57** — so a bar anywhere near the 95
+that ends a campaign is a bar the game never reaches, and the whole mechanic
+was decoration. The blocs do move: over those same sessions the worst-treated
+bloc sits at **26** and reaches **2**, so a country is routinely governed with a
+fifth of it abandoned while unrest reads a placid 24.
+
+**Heat is therefore three named terms, and each is a thing a player did.** How
+far the bloc that would carry a movement sits below fifty, plus what unrest
+adds above the middle of its own range, less what a security state takes off —
+because a police state does not make people content, it makes organising them
+hard. `v17StreetHeat` returns the parts split, so the Country page prints the
+reason and a probe reads the terms without reassembling the formula.
+
+**A general strike is the one thing in this game that stops a government
+legislating without touching the chamber.** It shuts the statute, the
+framework, the treaty, the programme and the ordinary order through
+`V17_STRIKE_BARS` — the same table shape S17f's caretaker uses, read at the
+same five call sites by a sibling predicate, so a caretaker and a strike are
+two facts about one government rather than two gate layers. An order about a
+flood or a frontier stays open, for the same reason it does under a caretaker.
+
+**Then the balance work, all of it measured rather than argued.** With the
+driver fixed, a campaign that answered nothing was shut for **24 to 39 sessions
+in a hundred** — the mechanic eating the game. Three corrections, each with the
+number that motivated it: one session is one year, so an eight-year general
+strike is not a labour movement and the strike now runs three; a spent movement
+leaves nothing behind, because the people who organised it went back to work
+and the next one starts from the beginning; and a country cannot be shut twice
+running, because without a rest window the strike's own unrest feed drove the
+heat that began the next one. **6 to 12 sessions in a hundred now**, in the
+worst case, which is a government that answers nothing at all.
+
+**And four defects of my own, each found by a probe rather than by reading.**
+
+1. **The date was overtaken.** Pressure keeps building under a standing demand,
+   and it crossed the strike bar two sessions before the deadline — so the
+   street asked for an answer by a session and shut the country before that
+   session arrived. A strike is what an *unanswered* demand becomes, which is
+   what the card says.
+2. **Three places decided the demand and two never read the statute.** The
+   paper's Carry button booked a win the moment the bill went on the paper, so
+   a government whose bill died in the Senate had still met the demand; and
+   `expireInbox`, which runs *before* `v17StreetTick` in the same session,
+   cleared the demand and booked a refusal whatever the statute book said —
+   which made the street's own date dead code and is why nothing was ever
+   carried in six hundred sessions of play. The date is the single owner now.
+3. **The deadline was one session shorter than the only instrument that can
+   meet it.** Laying a bill is one session, the floor is a second, and since
+   S15d the statute does not move until an office signs, which is a third.
+   Three sessions left the government one short; four is the shortest date that
+   can be met.
+4. **The rest window was one session short of its own constant**, because it
+   spent the count and then asked whether any was left.
+
+```
+ALL CHECKS PASS   11/11 (one new wrapper: viewNation, adjudicated)
+ROADS OK          184 assertions ("the street has leverage" rewritten around
+                  the measured driver; the court's `fresh()` seed pinned)
+PLAYTEST PASS     64 steps (street-demand now asserts the demand STANDS after
+                  the bill is laid, and that the Country page prints the heat)
+DETERMINISM / RUNGS / CORPORA / TIERS / TABS   all green
+POISON            24 reverts, each reddening the assertion
+```
+
+**Three poisons aborted the harness instead of failing one assertion**, which
+is the rule this file already records, and every lookup in the probe is guarded
+now. **One poison reddened the court's road too**, which turned out to be a
+real brittleness rather than a coupling: `the court can stop you` never pinned
+its own `rngState`, so its bench rolls continued from whatever road ran before
+it. Pinned.
 
 ### S17p — the court can stop you
 

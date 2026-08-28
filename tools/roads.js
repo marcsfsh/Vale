@@ -7213,6 +7213,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     function fresh() {
       S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
       S.ruling = 'lp'; S.coalition = ['lp']; S.capital = 900; S.treasury = 9000;
+      /* PINNED, because without it this road's dice continue from whatever the
+         road before it left behind -- so an unrelated change anywhere earlier
+         in this file moves the bench's rolls and the comply arm reads a
+         different answer for reasons that have nothing to do with the court */
+      S.rngState = 4242;
       return S;
     }
     /* (a) AN ORDER THAT DIGS BELOW A RIGHT. The court had no standing over an
@@ -7296,13 +7301,20 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       (UI.queue || []).forEach(function (ev) { if (ev && ev.id === 'v17Strike') sawSheet = true; });
       UI.queue = []; rq2(done);
     };
+    /* AND THE STREET IS HELD OUT OF THIS RUN. S17q freezes the order book
+       during a general strike, so a country that walks out mid-probe takes the
+       order off the docket and this arm measures the street rather than the
+       court. Same reason `the calendar tells the truth` holds `v17CourtTick`
+       out of one of its runs: one road, one mechanism. */
+    var stq = v17StreetTick;
+    v17StreetTick = function () {};
     try {
       for (var k = 0; k < 6 && !sawSheet; k++) {
         UI.queue = []; UI.busy = false; S.capital = 120;
         endTurn(); UI.queue = [];
         if (S.over) break;
       }
-    } finally { runQueue = rq2; }
+    } finally { runQueue = rq2; v17StreetTick = stq; }
     R.inPlay = sawSheet;
 
     /* (g) AND AN ORDER THAT COSTS NO LIBERTIES IS NOT ON THE DOCKET. A court
@@ -7359,6 +7371,260 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `sheet (${court.inPlay}), and an order that costs no liberties ("${court.mild.id}") is NOT on the ` +
     `docket (${!court.mild.onDocket}), because a court that hears everything is the old \`courtReview\` ` +
     `with a longer reach`);
+
+  /* ================================================================
+     S17q — THE STREET HAS LEVERAGE
+     ================================================================ */
+  const street = await page.evaluate(() => {
+    const R = {};
+    function fresh() {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.ruling = 'lp'; S.coalition = ['lp']; S.capital = 900; S.treasury = 9000;
+      S.rngState = 777;
+      return S;
+    }
+    /* (a) A BAD SESSION IS NOT A MOVEMENT, and UNREST IS NOT THE DRIVER. Both
+       halves are measured, not asserted: over six hundred sessions of played
+       campaigns unrest sits at 24 and tops out at 57, so a bar set anywhere
+       near the 95 that ends a campaign is a bar the game never reaches -- the
+       first build of this slice put it at 62 and the street never spoke once.
+       Heat is the BLOC that would carry a movement, plus what unrest adds
+       above the middle of its own range, less what an apparatus takes off. */
+    fresh(); S.unrest = 30; BLOCS.forEach(function (b) { S.blocs[b.id] = 55; });
+    for (var i = 0; i < 8; i++) v17StreetTick(S);
+    R.calm = Math.round(v17Street(S).pressure);
+    /* the bloc term ALONE, at an unrest the old bar would have called placid */
+    fresh(); S.unrest = V17_STREET_MID; BLOCS.forEach(function (b) { S.blocs[b.id] = 18; });
+    var h1 = v17StreetHeat(S);
+    for (i = 0; i < 4; i++) v17StreetTick(S);
+    R.blocOnly = { heat:Math.round(h1.heat), anger:Math.round(h1.anger),
+      restive:Math.round(h1.restive), pressure:Math.round(v17Street(S).pressure) };
+    /* the unrest term ALONE, with every bloc content */
+    fresh(); S.unrest = 80; BLOCS.forEach(function (b) { S.blocs[b.id] = 52; });
+    var h2 = v17StreetHeat(S);
+    for (i = 0; i < 4; i++) v17StreetTick(S);
+    R.unrestOnly = { heat:Math.round(h2.heat), anger:Math.round(h2.anger),
+      pressure:Math.round(v17Street(S).pressure) };
+    /* AND THE APPARATUS TAKES IT OFF. Same country, every Authority and
+       Security statute at its top rung: organising is harder, so the same
+       grievance builds slower. */
+    fresh(); S.unrest = 80; BLOCS.forEach(function (b) { S.blocs[b.id] = 18; });
+    var hot = Math.round(v17StreetHeat(S).heat);
+    POLICIES.filter(function (p) { return p.cat === 'Authority' || p.cat === 'Security'; })
+      .forEach(function (p) { S.pol[p.id] = p.max; });
+    R.guarded = { plain:hot, armed:Math.round(v17StreetHeat(S).heat),
+      guard:Math.round(v17StreetHeat(S).guard) };
+
+    fresh(); S.unrest = 80; BLOCS.forEach(function (b) { S.blocs[b.id] = 22; });
+    var rows = [];
+    for (i = 0; i < 5; i++) { v17StreetTick(S); rows.push(Math.round(v17Street(S).pressure)); }
+    R.builds = rows;
+    /* every lookup below is guarded: a poisoned build where no demand is ever
+       posted must FAIL this assertion, not throw out of `page.evaluate` and
+       abort the harness before the roads after it have run */
+    var d = v17Street(S).demand;
+    R.demand = d ? { policy:d.policy, was:d.was, dated:d.due > d.from } : { policy:'none', was:-1, dated:false };
+    var papers = (S.inbox || []).filter(function (x) { return x.type === 'street_demand'; });
+    R.paper = papers.length;
+    R.papered = R.paper === 1 && !!papers[0].deadline;
+
+    /* (a2) AND THE DATE THEY NAMED IS NOT OVERTAKEN. Pressure keeps building
+       under a standing demand, and at the first ordering it crossed the strike
+       bar two sessions BEFORE the deadline -- so the street asked for an
+       answer by a session and shut the country before that session came. */
+    var early = 0;
+    for (i = 0; i < 12 && v17Street(S).demand; i++) { v17StreetTick(S); if (v17Street(S).strike) early++; }
+    R.notOvertaken = !!d && early === 0 && Math.round(v17Street(S).pressure) > V17_STREET_STRIKE - 20;
+
+    /* (b) AND A DEMAND THAT IS MET ENDS IT. The level the statute stood at when
+       they asked is recorded WITH the demand -- without it the deadline reads
+       as met the moment it arrives, because anything is greater than nothing. */
+    if (d) {
+      S.pol[d.policy] = (S.pol[d.policy] || 0) + 1;
+      S.turn = d.due; v17StreetTick(S);
+      R.carried = { pressure:Math.round(v17Street(S).pressure), gone:!v17Street(S).demand,
+        won:v17Street(S).won || 0 };
+    } else R.carried = { pressure:-1, gone:false, won:0 };
+
+    /* (b2) LAYING IT IS NOT CARRYING IT, and THE PAPER DOES NOT DECIDE. Three
+       places used to end this demand and two of them never looked at the
+       statute: the paper's Carry button booked a win the moment the bill went
+       on the paper, and `expireInbox` -- which runs BEFORE the street's tick in
+       the same session -- cleared the demand and booked a refusal whatever the
+       book said. The date is the single owner and it reads the statute. */
+    function toDemand() {
+      fresh(); S.unrest = 80; BLOCS.forEach(function (b) { S.blocs[b.id] = 22; });
+      var k = 0; while (!v17Street(S).demand && k < 30) { v17StreetTick(S); k++; }
+      return (S.inbox || []).filter(function (x) { return x.type === 'street_demand'; })[0];
+    }
+    var pap = toDemand();
+    if (pap) {
+      respondInbox(pap.id, 'carry');
+      R.laid = { won:v17Street(S).won || 0, stands:!!v17Street(S).demand,
+        onPaper:S.bills.some(function (b) { return b.policy === pap.policy; }) };
+    } else R.laid = { won:-1, stands:false, onPaper:false };
+    /* and the same demand, silence, with the statute moved by other means:
+       the paper expires and the DATE reads the book */
+    pap = toDemand();
+    if (pap && v17Street(S).demand) {
+      S.pol[pap.policy] = (S.pol[pap.policy] || 0) + 1;
+      S.turn = v17Street(S).demand.due;
+      expireInbox(S);
+      R.paperSilent = { gone:!(S.inbox || []).some(function (x) { return x.id === pap.id; }),
+        demandStands:!!v17Street(S).demand, refused:v17Street(S).refused || 0 };
+      v17StreetTick(S);
+      R.paperSilent.wonAfter = v17Street(S).won || 0;
+    } else R.paperSilent = { gone:false, demandStands:false, refused:-1, wonAfter:0 };
+
+    /* (c) REFUSED, THE COUNTRY STOPS WORKING. */
+    fresh(); S.unrest = 85; BLOCS.forEach(function (b) { S.blocs[b.id] = 22; });
+    var n = 0;
+    while (!v17Street(S).strike && n < 30) { S.turn++; v17StreetTick(S); n++; }
+    R.strike = { after:n, on:v17Street(S).strike, refused:v17Street(S).refused };
+
+    /* (d) AND A STRIKE STOPS A GOVERNMENT LEGISLATING WITHOUT TOUCHING THE
+       CHAMBER AT ALL -- the five instruments S17f's caretaker table already
+       names, read by a sibling predicate rather than a second gate layer. */
+    R.barred = { policy:!!v17Barred(S, 'policy'), fiscal:!!v17Barred(S, 'fiscal'),
+      treaty:!!v17Barred(S, 'treaty'), programme:!!v17Barred(S, 'programme') };
+    var ord = V10_ORDERS.filter(function (o) {
+      return o.cat !== 'Emergency and territory' && !o.needs && !o.target; })[0];
+    var em = V10_ORDERS.filter(function (o) {
+      return o.cat === 'Emergency and territory' && !o.needs && !o.target; })[0];
+    S.exec[ord.dept] = 'lp'; if (em) S.exec[em.dept] = 'lp';
+    R.barred.order = /nobody at the depots/.test(String(v10OrderOpen(S, ord, null, 'lp') || ''));
+    /* the exemption is the point: a country between governments and a country
+       on strike both still have floods and frontiers */
+    R.barred.emergencyOpen = em ? v10OrderOpen(S, em, null, 'lp') === null : true;
+
+    /* (e) THE APPARATUS BREAKS IT, and a government without one waits. */
+    var quiet = JSON.parse(JSON.stringify(S));
+    POLICIES.filter(function (p) { return p.cat === 'Authority' || p.cat === 'Security'; })
+      .forEach(function (p) { S.pol[p.id] = p.max; });
+    R.security = Math.round(securityState(S));
+    var k = 0, lib0 = S.ind.liberties;
+    while (v17Street(S).strike && k < 25) { v17StreetTick(S); k++; }
+    R.broken = { after:v17Street(S).strike === 0 ? k : null, liberties:Math.round(lib0 - S.ind.liberties) };
+    S = quiet; S = enrichState(S, false);
+    var j = 0;
+    while (v17Street(S).strike && j < 20) { v17StreetTick(S); j++; }
+    R.exhausted = v17Street(S).strike === 0 ? j : null;
+
+    /* (e2) AND A COUNTRY CANNOT BE SHUT TWICE RUNNING. One session is one year.
+       Without the rest window the strike's own unrest feed drove the heat that
+       started the next one, and a campaign that answered nothing spent 24 to 39
+       sessions in a hundred with the government unable to legislate anything --
+       the mechanic eating the game rather than pressing on it. */
+    R.spent = { pressure:Math.round(v17Street(S).pressure), rest:v17Street(S).rest };
+    /* driven where the window BINDS: an abandoned country rebuilds past the
+       strike bar inside six sessions, so without the rest it walks out again
+       the year after it went back to work. Tested both ways -- no restart
+       while the window runs, and a restart once it has run out, because a
+       rest that never ends is a country that can only ever strike once. */
+    fresh(); S.unrest = 85; BLOCS.forEach(function (b) { S.blocs[b.id] = 8; });
+    var g = 0;
+    while (!v17Street(S).strike && g < 40) { S.turn++; v17StreetTick(S); g++; }
+    while (v17Street(S).strike && g < 60) { S.turn++; v17StreetTick(S); g++; }
+    var shutAgain = 0, restWas = v17Street(S).rest;
+    for (i = 0; i < restWas; i++) { S.turn++; v17StreetTick(S); if (v17Street(S).strike) shutAgain++; }
+    var after = 0, ok2 = false;
+    while (after < 10 && !ok2) { S.turn++; v17StreetTick(S); after++; ok2 = !!v17Street(S).strike; }
+    R.rested = { shutAgain:shutAgain, window:restWas, thenShut:ok2, thenAfter:after,
+      heldAt:Math.round(v17Street(S).pressure) };
+
+    /* (f) AND THE STREET IS SOMETHING AN OPPOSITION CAN STAND WITH, at a price
+       the propertied blocs collect. It is the only lever any player has on the
+       pressure and it belongs to the side out of office. */
+    fresh(); S.ruling = 'fp'; S.coalition = ['fp']; S.unrest = 80;
+    for (i = 0; i < 3; i++) v17StreetTick(S);
+    var act = ACTIONS.filter(function (a) { return a.id === 'oppositionAttack'; })[0];
+    var opt = (act.opts || []).filter(function (o) { return /Stand with the street/.test(o.label); })[0];
+    R.opposition = { exists:!!opt, open:standing(S) === 'opposition' && actionOpen(act) };
+    if (opt) {
+      var p0 = v17Street(S).pressure, tech0 = S.blocs.tech;
+      opt.run(S);
+      R.opposition.pressure = Math.round(v17Street(S).pressure - p0);
+      R.opposition.propertyPaid = S.blocs.tech < tech0;
+    }
+
+    /* (g) AND ALL OF IT RUNS OFF THE END OF A SESSION. Every arm above calls
+       `v17StreetTick` and so proves the function; whether `endTurn` calls it
+       is a separate call site and no amount of calling it here tests that.
+       Driven: three real sessions with the country held furious. */
+    fresh(); S.unrest = 85;
+    try {
+      for (i = 0; i < 3 && !S.over; i++) {
+        UI.queue = []; UI.busy = false; S.unrest = 85; S.capital = 120;
+        endTurn(); UI.queue = [];
+      }
+    } catch (e) { R.drivenErr = String(e && e.message || e); }
+    R.driven = Math.round(v17Street(S).pressure);
+    return R;
+  });
+  const streetOk =
+    street.calm === 0 &&
+    street.blocOnly.restive === 0 && street.blocOnly.anger > 25 && street.blocOnly.pressure > 0 &&
+    street.unrestOnly.anger === 0 && street.unrestOnly.pressure > 0 &&
+    street.guarded.guard > 8 && street.guarded.armed < street.guarded.plain &&
+    street.builds.length === 5 &&
+    street.builds[4] > street.builds[0] && street.demand && street.demand.dated &&
+    street.demand.was === 0 && street.papered && street.notOvertaken &&
+    street.carried.pressure === 0 && street.carried.gone && street.carried.won === 1 &&
+    street.laid.onPaper && street.laid.stands && street.laid.won === 0 &&
+    street.paperSilent.gone && street.paperSilent.demandStands &&
+    street.paperSilent.refused === 0 && street.paperSilent.wonAfter === 1 &&
+    street.strike.on > 0 && street.strike.after > 2 && street.strike.refused > 0 &&
+    street.barred.policy && street.barred.fiscal && street.barred.treaty &&
+    street.barred.programme && street.barred.order && street.barred.emergencyOpen &&
+    street.security > 60 && street.broken.after !== null && street.broken.liberties > 0 &&
+    street.exhausted !== null && street.broken.after < street.exhausted &&
+    street.spent.pressure === 0 && street.spent.rest > 0 &&
+    street.rested.shutAgain === 0 && street.rested.window > 0 && street.rested.thenShut &&
+    street.opposition.exists && street.opposition.open &&
+    street.opposition.pressure > 0 && street.opposition.propertyPaid &&
+    street.driven > 0;
+  say(streetOk, 'the street has leverage',
+    `UNREST WAS A NUMBER WITH ONE CONSEQUENCE AT THE FAR END OF IT -- it rose, it fell, and at 95 the ` +
+    `government fell; between nought and 95 the country could be furious for thirty years and never ask for ` +
+    `anything · AND UNREST IS NOT THE DRIVER, which is measured rather than argued: over six hundred played ` +
+    `sessions it sits at 24 and tops out at 57, so the first bar of this slice -- 62, picked by eye -- was one ` +
+    `the game never reached and the street never spoke once · heat is the BLOC that would carry a movement ` +
+    `(${street.blocOnly.anger} of grievance builds ${street.blocOnly.pressure} of pressure at an unrest the old ` +
+    `bar called placid, ${street.blocOnly.restive}), plus what unrest adds above the middle of its own range ` +
+    `(${street.unrestOnly.pressure} with every bloc content, ${street.unrestOnly.anger}), less what an apparatus ` +
+    `takes off (${street.guarded.plain} to ${street.guarded.armed}) -- because a police state does not make ` +
+    `people content, it makes organising them hard · a quiet country builds none (${street.calm}) and an ` +
+    `abandoned one builds ${street.builds.join(' to ')} · then the angriest bloc puts a MEASURE to the government ` +
+    `with a DATE on it ("${street.demand.policy}", at the level it stood when they asked: ${street.demand.was}) ` +
+    `and the paper carries the deadline (${street.papered}) · THE DATE IS NOT OVERTAKEN (${street.notOvertaken}): ` +
+    `pressure keeps building under a standing demand and at the first ordering it crossed the strike bar two ` +
+    `sessions early, so the street shut the country before the session it had asked for an answer by · THE DATE ` +
+    `IS ALSO THE ONLY THING THAT DECIDES: laying the bill leaves the demand standing and wins nothing ` +
+    `(${street.laid.onPaper}/${street.laid.stands}/${street.laid.won}) where the paper's own button used to book ` +
+    `a win the moment the bill went on the paper, and the paper expiring books no refusal ` +
+    `(${street.paperSilent.refused}) where \`expireInbox\` -- which runs BEFORE the street's tick in the same ` +
+    `session -- used to clear the demand and call it ignored whatever the statute book said (carried after: ` +
+    `${street.paperSilent.wonAfter}) · CARRIED, it ends (pressure ${street.carried.pressure}) ` +
+    `· REFUSED, the country stops working after ${street.strike.after} sessions, and a general strike is the one ` +
+    `thing in this game that stops a government legislating without touching the chamber: the statute, the ` +
+    `framework, the treaty, the programme and the ordinary order are all shut (${street.barred.policy}/` +
+    `${street.barred.fiscal}/${street.barred.treaty}/${street.barred.programme}/${street.barred.order}) while an ` +
+    `order about a flood or a frontier stays open (${street.barred.emergencyOpen}), which is S17f's caretaker ` +
+    `table read by a sibling predicate rather than a second gate layer · THE APPARATUS BREAKS IT: at a security ` +
+    `state of ${street.security} the depots open under guard in ${street.broken.after} sessions and it costs ` +
+    `${street.broken.liberties} of liberties, where a government without one waits ${street.exhausted} for it ` +
+    `to run itself out · AND A COUNTRY CANNOT BE SHUT TWICE RUNNING: a spent movement leaves nothing behind ` +
+    `(${street.spent.pressure}) and ${street.rested.window} sessions in which asking is free and shutting the ` +
+    `country is not -- an ABANDONED country, which rebuilds past the bar inside the window, restarts ` +
+    `${street.rested.shutAgain} times while it runs and walks out again ${street.rested.thenAfter} sessions ` +
+    `after it ends (${street.rested.thenShut}), because a rest that never lifts is a country that can strike ` +
+    `once · without it the strike's own unrest feed drove the heat that began the next one and a campaign that ` +
+    `answered nothing was shut for 24 to 39 sessions in a hundred · and STANDING WITH THE STREET is the only ` +
+    `lever any player has on the pressure ` +
+    `(+${street.opposition.pressure}), it belongs to the side out of office (${street.opposition.open}), and ` +
+    `the propertied blocs collect for it (${street.opposition.propertyPaid}) · and all of it runs off the end of ` +
+    `a REAL session rather than off this probe's own call: three of them with the country held furious leave the ` +
+    `pressure at ${street.driven}${street.drivenErr ? ' (' + street.drivenErr + ')' : ''}`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

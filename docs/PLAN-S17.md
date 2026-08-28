@@ -1287,14 +1287,32 @@ a packed friendly bench does not strike it.
    which of its fourteen conditions failed now, on the pattern "always
    running" got in S17o.
 
-**s17q — the street has leverage** (M). On securityState + the blocs:
-sustained unrest → demands with deadlines (V10_PAPERS machinery);
+**s17q — the street has leverage** (M). **STATUS: DONE.** On securityState +
+the blocs: sustained unrest → demands with deadlines (V10_PAPERS machinery);
 general-strike states freeze instruments through the same gate layer
 (one mechanism: opposition/caretaker/strike); concession/repression
 branches through s17c routing. Opposition leverage: backing the street
 at standing cost/gain (closes S16i's remainder). Harness: driven unrest →
 binding demand; ignoring freezes the asserted set; pacing soak — strikes
 occur, don't dominate.
+
+**Shipped, with the plan's own "sustained unrest" corrected by measurement.**
+Unrest is the wrong driver and the wrong instinct: across six hundred played
+sessions it sits at 24 and tops out at 57, so the first build's bar of 62 was
+one the game never reached and the street never spoke once. `v17StreetHeat`
+puts the plan's OTHER named term first — the blocs — and returns three parts
+split: the grievance of the bloc that would carry a movement, what unrest adds
+above the middle of its own range, and what `securityState` takes off. The
+freeze is `V17_STRIKE_BARS` read at S17f's five call sites by `v17Barred`, one
+mechanism as the plan asks. The pacing soak drove the tuning: a campaign that
+answered nothing was shut 24-39 sessions in a hundred, now 6-12, after the
+strike went from eight sessions to three (one session is one year), a spent
+movement stopped leaving its pressure behind, and a rest window stopped the
+strike's own unrest feed from starting the next one. Four defects of the
+slice's own found by probe: the date was overtaken by the strike; three places
+decided the demand and two never read the statute; the deadline was one session
+shorter than the only instrument that can meet it; and the rest window was one
+short of its constant. 24 poison reverts, each reddening the assertion.
 
 ### Group 7 — the finish (S16j/k/l)
 

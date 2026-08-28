@@ -119,6 +119,37 @@ before touching the file.
   veterans bloc moves the army by a road that predates the slice), so ask the
   coverage separately: the statute is in the table AND the table reaches the
   game. Three of S17o's twelve poisons found this one mistake.
+- **A threshold picked by eye is a mechanic that never fires.** S17q's first
+  build put the street's bar at 62 of unrest, which reads plausible against a
+  scale that ends at 95. Measured afterwards across six hundred played
+  sessions, unrest sits at 24 and TOPS OUT AT 57: the bar was above the ceiling
+  and the whole slice was decoration that passed its own assertion, because the
+  assertion set `st.unrest = 80` by hand. Before a number gates anything,
+  measure the distribution of what it gates on IN PLAY, and put the measurement
+  in the assertion's own words so the next reader cannot re-pick it by eye.
+- **The instrument the answer has to use decides the deadline.** The same slice
+  gave a demand three sessions and the only way to meet one is a bill: laying
+  is one, the floor is a second, and since S15d the statute does not move until
+  an office signs, which is a third. Every demand was refused on a bill that
+  was about to carry. Count the sessions the game's own path takes, then set
+  the clock.
+- **Two clocks for one fact means the one you did not write about wins.** The
+  street's demand carried a date, and the inbox paper carried the same date as
+  its expiry. `expireInbox` runs earlier in `endTurn` than the street's tick,
+  so the paper cleared the demand and booked a refusal without ever reading the
+  statute book — which made the street's own deadline, the half that reads the
+  book, unreachable code. When two mechanisms hold the same date, ONE owns the
+  outcome and the other reports it.
+- **A counter read after it is spent is a window one short of its name.**
+  `if (s.rest > 0) s.rest -= 1;` at the top of a tick and `!(s.rest > 0)` at the
+  gate below it give five sessions of protection from a constant that says six.
+  Capture the value first. This is the countdown rule above wearing the other
+  hat: `st.turn + 1` is the same mistake read forwards.
+- **An assertion that never pinned its dice depends on what ran before it.**
+  `the court can stop you` seeded nothing in its `fresh()`, so a poison applied
+  for a DIFFERENT road moved the bench's rolls and reddened the court for
+  reasons that had nothing to do with the court. Every probe that rolls pins
+  its own `rngState`.
 - **A flaky assertion is a defect report you have not read yet.** `always
   running` failed on two runs in six and the cause was real: a party's two
   parallel primaries could pick the same person, and S17h's one-person-one-
@@ -215,7 +246,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **183 content assertions**, the largest harness here: the
+- `tools/roads.js` — **184 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

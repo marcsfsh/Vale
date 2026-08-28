@@ -1221,6 +1221,51 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## The street has leverage (S17q)
+
+**Unrest was a number with one consequence at the far end of it**: it rose, it
+fell, and at 95 the campaign ended. `st.street` is one object riding the save -
+`{ pressure, demand, strike, rest, bloc, won, refused }`.
+
+- **`v17StreetHeat(st)`** is the driver, returned SPLIT into its three named
+  terms so the page can print the reason and a probe can read the parts without
+  reassembling the formula: `anger` (how far the bloc that would carry a
+  movement sits below fifty), `restive` (unrest above `V17_STREET_MID`), and
+  `guard` (`securityState` × `V17_STREET_GUARD`, because a police state does
+  not make people content, it makes organising them hard).
+  **Unrest is deliberately not the driver.** Measured over six hundred played
+  sessions it sits at 24 and tops out at 57, so the first build's bar of 62 was
+  one the game never reached; the worst-treated bloc over the same sessions
+  sits at 26 and reaches 2.
+- **`v17StreetBloc`** is whose street it is: the file's own `pop` against how
+  far below fifty a bloc sits. **`v17StreetWant`** is what it wants, taken from
+  the `mood` rows every statute already carries.
+- **`v17StreetTick`** is the session. Pressure builds while heat stands above
+  `V17_STREET_BAR` and decays otherwise; at `V17_STREET_DEMAND` the bloc posts
+  a demand naming a statute, the level it stood at (`was`) and a date; at
+  `V17_STREET_STRIKE` the country stops working. **The strike cannot start
+  while a demand stands** - it is what an *unanswered* demand becomes - and not
+  during the rest window after one ends.
+- **The date is the single owner of the outcome.** Three places used to decide
+  it and two never read the statute book: the paper's Carry button booked a win
+  when the bill went on the paper, and `expireInbox` - which runs before
+  `v17StreetTick` in the same session - cleared the demand and booked a refusal
+  regardless. `V17_STREET_DEADLINE` is 4 because the only instrument that can
+  meet it takes four: lay, floor, and since S15d the signature.
+- **`V17_STRIKE_BARS` / `v17StrikeBar` / `v17Barred`** are S17f's caretaker
+  shape wearing a second hat: one table read at the five instruments by one
+  predicate, so a caretaker and a general strike are two facts about one
+  government rather than two gate layers. Emergency and territory orders stay
+  open under both.
+- **`v17StreetEnd`** spends the movement whichever way it went - pressure to
+  nought, `V17_STREET_REST` sessions before the country can be shut again - and
+  moves the bloc that carried it: carrying answers them, breaking them with the
+  apparatus does not, and they know it. The rest is read BEFORE it is spent, or
+  the window is one session shorter than its constant.
+- **`v17StreetPanel`** splices into `viewNation` above the movements panel and
+  prints the pressure with its three terms, because pressure that builds where
+  nobody can see it is a demand that arrives out of nowhere.
+
 ## The court can stop you (S17p)
 
 **It could reach a statute and an extraordinary measure and nothing else**, and

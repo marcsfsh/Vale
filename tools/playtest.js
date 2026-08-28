@@ -2172,7 +2172,11 @@ async function run() {
       v11Con(S).arts.artHabeas = { laid:S.turn, by:S.ruling };
       v17OrderCore(S, playParty(S), bad.id, null);
       S.court.justices.forEach(function (j) { j.e = 9; j.a = 9; });
-      S.pendingStrike = null; v17CourtTick(S);
+      // the appetite is a roll, not a certainty: even a hostile bench declines
+      // about one session in ten, so ask until it takes the case rather than
+      // letting a 10% flake read as a broken mechanism
+      S.pendingStrike = null;
+      for (var t = 0; t < 25 && !S.pendingStrike; t++) v17CourtTick(S);
       var r = S.pendingStrike;
       if (r) UI.queue = [v17StrikeEvent(r)], runQueue(function () {});
       return { order:bad.id, queued:!!r, orders:Object.keys(v10Orders(S)).length,
@@ -2202,6 +2206,69 @@ async function run() {
       `revokes it (${set.orders} → ${after.orders} orders in force). Before this slice the court could reach a ` +
       `statute and an extraordinary measure and had no standing over an order at all`);
     await sp.close();
+  }
+
+  // -- S17q: the street's demand, answered on screen, and the strike that
+  //    follows a refusal shutting the statute book without touching the chamber.
+  {
+    const stp = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+    await stp.addInitScript(() => { window.confirm = () => true; });
+    await stp.goto(URL);
+    await stp.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await stp.click('[data-setup-begin]');
+    await stp.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await stp.click('[data-doctrine]');
+    await stp.waitForTimeout(250);
+    const posted = await stp.evaluate(() => {
+      S.ruling = playParty(S); S.coalition = [playParty(S)];
+      S.capital = 900; S.unrest = 82; S.rngState = 777;
+      for (var i = 0; i < 4; i++) v17StreetTick(S);
+      var it = (S.inbox || []).filter(function (x) { return x.type === 'street_demand'; })[0];
+      UI.tab = 'agenda'; render();
+      return { id:it ? it.id : null, policy:it ? it.policy : null,
+        bills:S.bills.length, pressure:Math.round(v17Street(S).pressure) };
+    });
+    const sel = `[data-inbox="${posted.id}"][data-answer="carry"]`;
+    const el = await stp.$(sel);
+    if (el) await el.click();
+    await stp.waitForTimeout(200);
+    const answered = await stp.evaluate(() => {
+      UI.tab = 'nation'; render();
+      var panel = document.body.innerHTML;
+      return {
+        bills:S.bills.length, pressure:Math.round(v17Street(S).pressure),
+        gone:!(S.inbox || []).some(function (x) { return x.type === 'street_demand'; }),
+        /* LAYING IT IS NOT CARRYING IT: the demand stands until its own date
+           reads the statute book */
+        stands:!!v17Street(S).demand,
+        /* and the Country page says why the pressure is where it is */
+        onPage:/>The Street</.test(panel) && /Pressure/.test(panel) && /A demand stands/.test(panel)
+      };
+    });
+    // and refused instead, the strike shuts the statute book
+    const struck = await stp.evaluate(() => {
+      S.unrest = 88; S.rngState = 777;
+      var s = v17Street(S); s.pressure = 0; s.demand = null; s.strike = 0;
+      for (var i = 0; i < 30 && !v17Street(S).strike; i++) { S.turn++; v17StreetTick(S); }
+      UI.tab = 'nation'; render();
+      var open = POLICIES.filter(function (p) { return policyOpen(S, p); })[0];
+      var flashed = [];
+      var fb = flash; flash = function (m) { flashed.push(m); };
+      try { changePolicy(open.id, 1); } finally { flash = fb; }
+      return { on:v17Street(S).strike > 0, refused:flashed.join(' ') };
+    });
+    step('street-demand',
+      !!posted.id && !!el && answered.bills > posted.bills && answered.pressure < posted.pressure &&
+      answered.gone && answered.stands && answered.onPage &&
+      struck.on && /not working|no Assembly quorum/.test(struck.refused),
+      `the country puts a measure to the government with a date on it, answerable on screen ` +
+      `(${!!el}); carrying it lays the bill (${posted.bills} → ${answered.bills}) and takes the pressure ` +
+      `down (${posted.pressure} → ${answered.pressure}) — and leaves the demand STANDING ` +
+      `(${answered.stands}), because laying a bill is not carrying it and the date reads the statute book · ` +
+      `the Country page prints the pressure and why it is there (${answered.onPage}) · and refused instead, ` +
+      `the general strike that follows shuts the statute book without touching the chamber — a real click on ` +
+      `a policy step is refused with "${struck.refused.slice(0, 46)}"`);
+    await stp.close();
   }
 
   // -- a number that is not a number is announced, not stored (S14). Its own
