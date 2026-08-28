@@ -25,11 +25,12 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17k.** Group 3 (the executive cycle) is closed and
-Group 4 is open. Next: **s17l — minds and memories**, which widens the
-postures s17k gave verbs to, takes the grudge to a vote for the first time,
-and makes a party's purse burn depend on what it is trying to do. Its design
-is in `docs/PLAN-S17.md`.
+**Landed so far: s17a–s17l.** Groups 3 and 4 are closed. Next is Group 5,
+**s17m — mutual exclusion, and the article lies**: the `conflicts:` primitive
+and the one shared `conflictWhy`, plus the articles whose promises reach
+nothing. Its design is in `docs/PLAN-S17.md`, and the conflict table itself
+waits on the owner's ruling (ruling 11) — the PR is primitive-first with a
+pre-agreed seed set.
 
 ### S17a — the seven defects
 
@@ -88,6 +89,83 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17l — minds and memories
+
+> *"a party that has been attacked, poached or dropped remembers it"* — the
+> note printed under the Parties table since S16e.
+
+**It did not.** The memory wrapper read `a.pid` to find the party that had just
+been split, poached or banned, and **nothing in three megabytes ever wrote
+`a.pid`**: the target was null at every call, so the channel had not fired once
+in the whole of S16 or S17 up to here. Measured on the opening board before the
+fix — poach the FP's base, and the FP's grudge stays at nought. The note under
+the table was a promise the model could not keep.
+
+**And one of the five verbs it named does not exist.** `radicalise` appears
+exactly once in the file, inside that whitelist, and is the id of no action in
+the game. Four of thirty-four, reaching nobody.
+
+**`V17_MEMORY` is the whole surface**, because a whitelist is the thing that
+failed. Thirty-four verbs, each authored with what it is worth to the party it
+is done to — and the gravest with what the rest of the room makes of it, since
+isolating a party is an argument about the republic and the others were
+watching. **It works in both directions**: `v16Resent` clamps at nought, so
+subsidising a party's fund spends its grudge back down and a memory is not a
+ratchet. A refusal is not remembered — `doAction` has four silent refusal
+paths, and the honest test of whether a verb happened is its own use counter.
+
+**And a memory finally reaches a division.** The grudge had exactly two
+consumers — which posture a party adopts, and whom it will stand down for —
+and neither of them was a vote, so a party that had been prosecuted, audited
+and had its funding cut backed the government's bills at the same rate as one
+left alone. It is a bounded term in `partyBillSupport` and in `v11ArtSupport`
+(the proposer has been on the pending record since S17k): **twelve points on a
+hundred-point forecast, capped**, where a party's own position is worth
+forty-two. A memory colours a vote. It does not decide one.
+
+**A letter from another party is not a letter from your own caucus.** S16e's
+`demand` card posted its letter as a `faction_demand` with `faction:0` — the
+index the caucus paper stores — so endorsing the FP's demand raised the loyalty
+of the **LP's own** first caucus by sixteen and moved the player's party toward
+it, and ignoring it docked that caucus nine while the FP remembered nothing.
+Measured: the Industrial Caucus of the LP went 68 to 59 for a letter the FP had
+written. It is a `party_demand` now, with its own three answers — carry it,
+ask them in, or say no to their face — answered to the party that sent it, and
+silence costs more than a plain refusal, which is the point of writing at all.
+
+**And what a party spends depends on what it is trying to do.** Seven tenths of
+income went out every session for every party in every circumstance, so
+strategy never touched the burn and a small party could never accumulate the
+twelve to thirty-four a card costs. `V17_BURN` is seven rates against the seven
+postures: a party building spends hard, a party beaten or waiting keeps its
+powder dry. Driven twelve sessions from an empty purse, one holding keeps 184
+where one building spends down to 36.
+
+```
+ALL CHECKS PASS   11/11 (no new wrapper — S16e's memory wrapper had its body
+                  rewritten in place, which is what it was there for)
+ROADS OK          179 assertions (+1: "a party remembers what was done to it")
+PLAYTEST PASS     61 steps (+1: the letter, answered with a real click)
+DETERMINISM / RUNGS / CORPORA / TIERS / TABS   all green
+POISON            12 reverts — the target stamp, the five-id whitelist, the
+                  ratchet, the remembered refusal, the room that stops
+                  watching, the bill term, the article term, an unbounded
+                  term, the caucus paper, the free silence, the flat burn,
+                  and one verb left out of the table
+```
+
+**Pacing, six seeds against s17k.** Elections won identical at 12 on every
+tier. Years governing moves the other way from the aggregate again: the totals
+say 30 → 28 short, 40 → 53 standard, 44 → 64 epic, but **VALE0404 alone
+supplies all of that and more** (10 → 40 on epic, 10 → 29 on standard). Without
+it, years governing **fell** on every tier — 30 → 24 epic, 30 → 24 standard,
+30 → 28 short — which is what parties that now vote their grievances do to a
+government's bills. Crises fell slightly (23 → 21, 47 → 42, 97 → 92) and
+achievements rose slightly (40 → 41, 54 → 57, 63 → 63). The deck is unaffected
+by the new burn: the six still take fifteen initiatives apiece over sixty
+sessions and spend 2,588 of party money doing it. The levers are `V17_BURN`'s
+seven rates and `V17_GRUDGE_VOTE` (12); balance is the owner's.
 
 ### S17k — verbs are the buttons' functions
 

@@ -1221,6 +1221,40 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## What a party remembers (S17l)
+
+**S16e's memory wrapper never fired.** It read `a.pid` to find the party a verb
+had just been aimed at, and nothing in three megabytes wrote `a.pid` — the
+target was null at every call. The action objects are built inside a closure
+over the target's id; the live `partyActions` wrapper stamps it now, on the
+line beside the `scope` stamp that has always carried the same id in a string.
+
+- **`V17_MEMORY`** is the whole other-party verb surface — thirty-four entries,
+  `{ self, seen }`. `self` is what the party it was done to carries; `seen` is
+  what each OTHER party carries, and only the gravest verbs have one, because
+  isolating or banning a party is an argument about the republic. **Negative
+  weights are the point**: `v16Resent` clamps at nought, so subsidising a
+  party's fund spends its grudge down and the memory is not a ratchet.
+  `v17MemoryCoverage` is what `roads.js` asks — a verb without a weight
+  reddens, which is the guard the five-id whitelist did not have.
+- **A refusal is not remembered.** `doAction` has four silent `flash`-and-return
+  paths, so the wrapper compares `S.uses[actionKey(a)]` across the call: only a
+  verb that was actually paid for is a thing to resent.
+- **The grudge reaches a division.** Bounded at `V17_GRUDGE_VOTE` (12) in
+  `partyBillSupport` against the sponsor and in `v11ArtSupport` against the
+  article's `by` (on the pending record since S17k). A party's own position is
+  worth up to 42 and the sponsor's identity 19, so the memory is never the
+  largest term and cannot be made to be.
+- **`party_demand`** is the paper an AI party's `demand` card posts. It used to
+  post a `faction_demand` with `faction:0` — the caucus paper's shape — so the
+  three buttons on it reached into the PLAYER's own first caucus. Its answers
+  are `carry` / `talks` / `decline`, all of them addressed to the sender, and
+  ignoring it costs the sender more than declining does.
+- **`V17_BURN`** is what a party spends by posture, replacing the flat seven
+  tenths of income that every party paid in every circumstance. Building spends
+  .88, holding .38. A party can now save for something, which is what makes the
+  S16e and S17k cards reachable for a small party at all.
+
 ## One gate, two callers (S17k)
 
 **An instrument that exists only as a click handler is an instrument only the

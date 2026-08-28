@@ -2060,6 +2060,50 @@ async function run() {
     await rc.close();
   }
 
+  // -- S17l: the letter another party wrote, answered on screen. It used to be
+  //    posted as the CAUCUS paper, so the buttons on it moved the player's own
+  //    first caucus; the point of this step is that a real click on a real
+  //    button reaches the party that wrote and nobody else.
+  {
+    const mp = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+    await mp.addInitScript(() => { window.confirm = () => true; });
+    await mp.goto(URL);
+    await mp.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await mp.click('[data-setup-begin]');
+    await mp.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await mp.click('[data-doctrine]');
+    await mp.waitForTimeout(250);
+    const posted = await mp.evaluate(() => {
+      S.ruling = playParty(S); S.coalition = [playParty(S)]; S.capital = 900;
+      PARTIES.forEach(function (p) { S.purse[p.id] = 900; });
+      V16_AI_DECK.filter(function (c) { return c.id === 'demand'; })[0].run(S, 'fp');
+      var it = S.inbox[S.inbox.length - 1];
+      UI.tab = 'agenda'; render();
+      return { id:it.id, from:it.from, type:it.type,
+        caucus:Math.round(S.factions[playParty(S)][0].loyalty),
+        grudge:v16Grudge(S, 'fp', playParty(S)), bills:S.bills.length };
+    });
+    const sel = `[data-inbox="${posted.id}"][data-answer="carry"]`;
+    const onScreen = await mp.$(sel);
+    if (onScreen) await onScreen.click();
+    await mp.waitForTimeout(200);
+    const after = await mp.evaluate(() => ({
+      caucus:Math.round(S.factions[playParty(S)][0].loyalty),
+      grudge:v16Grudge(S, 'fp', playParty(S)),
+      bills:S.bills.length,
+      gone:!(S.inbox || []).some(function (x) { return x.type === 'party_demand'; })
+    }));
+    step('party-letter',
+      posted.type === 'party_demand' && !!onScreen && after.gone &&
+      after.caucus === posted.caucus && after.bills > posted.bills,
+      `a letter from another party is answered on screen with its own buttons (${!!onScreen}) and it is that ` +
+      `party's letter: carrying it laid the bill (${posted.bills} → ${after.bills}) and left the player's own ` +
+      `first caucus exactly where it was (${posted.caucus} → ${after.caucus}) — the letter used to be posted as ` +
+      `the CAUCUS paper with faction 0, so this same button moved the LP's Industrial Caucus sixteen points for ` +
+      `a letter the FP had written`);
+    await mp.close();
+  }
+
   // -- a number that is not a number is announced, not stored (S14). Its own
   //    page: the probe deliberately fires console.error, which the step above
   //    counts, and the point of the fix is that it fires.

@@ -6452,6 +6452,151 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${verbs.inPlay.article || 0} articles, ${verbs.inPlay.order || 0} orders, ${verbs.inPlay.floor || 0} lines ` +
     `on the floor`);
 
+  /* ================================================================
+     S17l — A PARTY REMEMBERS WHAT WAS DONE TO IT
+     ================================================================ */
+  const minds = await page.evaluate(() => {
+    const R = {};
+    function board(me) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', me), false);
+      S.ruling = me; S.coalition = [me]; S.capital = 900;
+      PARTIES.forEach(function (p) { S.purse[p.id] = 900; });
+    }
+    function grudge(pid, against) { return v16Grudge(S, pid, against); }
+
+    /* (a) EVERY VERB A PARTY CAN AIM AT ANOTHER PARTY IS WORTH SOMETHING.
+       S16e's memory named five ids, one of which (`radicalise`) is the id of
+       no action in the game, and the surface is thirty-four. A thirty-fifth
+       arriving without a weight reddens here rather than being forgotten the
+       way those thirty were. */
+    board('lp');
+    R.cover = v17MemoryCoverage('fp');
+
+    /* (b) AND IT FIRES. It read `a.pid`, nothing wrote `a.pid`, and the target
+       was null at every call: poaching a party's base left its grudge at
+       nought for the whole of S16 and S17 up to here. */
+    board('lp');
+    var poach = partyActions('fp').filter(function (a) { return a.id === 'poach'; })[0];
+    R.fires = { open:!poach.can || poach.can(), before:grudge('fp', 'lp') };
+    doAction(poach);
+    R.fires.after = grudge('fp', 'lp');
+
+    /* (c) A KINDNESS SPENDS IT DOWN. `v16Resent` clamps at nought, so the same
+       door carries both directions and a memory is not a ratchet. */
+    var fund = partyActions('fp').filter(function (a) { return a.id === 'fund'; })[0];
+    S.capital = 900; doAction(fund);
+    R.fires.afterKindness = grudge('fp', 'lp');
+
+    /* (d) AND A REFUSAL IS NOT REMEMBERED. `doAction` has four silent refusal
+       paths; a verb the player never paid for is not a thing to resent. */
+    board('lp'); S.capital = 0;
+    doAction(partyActions('fp').filter(function (a) { return a.id === 'poach'; })[0]);
+    R.refused = grudge('fp', 'lp');
+
+    /* (e) THE ROOM WAS WATCHING. Isolating a party is an argument about the
+       republic, and the parties it was not done to have a view. */
+    board('lp');
+    var cordon = partyActions('pnl').filter(function (a) { return a.id === 'cordon'; })[0];
+    doAction(cordon);
+    R.seen = { target:grudge('pnl', 'lp'),
+      others:PARTIES.filter(function (p) { return p.id !== 'lp' && p.id !== 'pnl'; })
+        .map(function (p) { return grudge(p.id, 'lp'); }) };
+    R.seen.everyoneNoticed = R.seen.others.every(function (g) { return g > 0; });
+
+    /* (f) AND IT REACHES A VOTE. The grudge had two consumers -- a posture and
+       a pact -- and neither was a division. Bounded: the term is capped, and
+       the cap is stated here rather than read off the constant. */
+    board('lp'); S.ruling = 'fp'; S.coalition = ['fp'];
+    var bill = sponsorBill(S, 'incomeTax', 1, 'government', 'clean', true, 'fp', true);
+    var clean = partyBillSupport(S, 'lp', bill);
+    v16Resent(S, 'lp', 'fp', 100);
+    R.vote = { clean:Math.round(clean), grudged:Math.round(partyBillSupport(S, 'lp', bill)) };
+    R.vote.moved = R.vote.clean - R.vote.grudged;
+    /* and the article, where the proposer is on the pending record since S17k */
+    board('lp'); S.ruling = 'fp'; S.coalition = ['fp'];
+    var art = V11_ARTICLES.filter(function (a) { return !v11Adopted(S, a.id); })[0];
+    v17ArticleCore(S, 'fp', art.id, false, 'assembly');
+    var artClean = v11ArtSupport(S, 'lp', art, false);
+    v16Resent(S, 'lp', 'fp', 100);
+    R.art = { clean:Math.round(artClean), grudged:Math.round(v11ArtSupport(S, 'lp', art, false)) };
+    R.art.moved = R.art.clean - R.art.grudged;
+
+    /* (g) A LETTER FROM ANOTHER PARTY IS NOT A LETTER FROM YOUR OWN CAUCUS.
+       It was posted as a `faction_demand` with `faction:0`, so answering the
+       FP moved the loyalty of the LP's own first caucus by sixteen. */
+    board('lp');
+    V16_AI_DECK.filter(function (c) { return c.id === 'demand'; })[0].run(S, 'fp');
+    var it = S.inbox[S.inbox.length - 1], cauc = S.factions[playParty(S)][0];
+    R.letter = { type:it.type, from:it.from, faction:it.faction,
+      choices:inboxChoices(it).map(function (c) { return c.id; }).join(','),
+      caucusBefore:Math.round(cauc.loyalty), bills:S.bills.length };
+    S.capital = 900;
+    respondInbox(it.id, 'carry');
+    R.letter.caucusAfter = Math.round(cauc.loyalty);
+    R.letter.billLaid = S.bills.length > R.letter.bills;
+    /* and ignoring one is the SENDER's memory */
+    v16Resent(S, 'cup', 'lp', 30);
+    V16_AI_DECK.filter(function (c) { return c.id === 'demand'; })[0].run(S, 'cup');
+    var it2 = S.inbox[S.inbox.length - 1], loy = S.factions[playParty(S)][0].loyalty;
+    it2.deadline = S.turn; politicsTick(S);
+    R.letter.ignoredGrudge = grudge('cup', 'lp');
+    R.letter.caucusOnIgnore = Math.round(S.factions[playParty(S)][0].loyalty - loy);
+
+    /* (h) AND WHAT A PARTY SPENDS DEPENDS ON WHAT IT IS TRYING TO DO. Seven
+       tenths of income went out every session for every party in every
+       circumstance, so a small party could never accumulate a card's price. */
+    board('lp');
+    var rates = {};
+    Object.keys(V17_BURN).forEach(function (k) { rates[k] = V17_BURN[k]; });
+    R.burn = { rates:rates, distinct:Object.keys(rates).filter(function (k, i, all) {
+      return all.indexOf(k) === i; }).map(function (k) { return rates[k]; })
+      .filter(function (v, i, all) { return all.indexOf(v) === i; }).length };
+    /* driven: a party that is holding accumulates where before it could not */
+    function run(force) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.ruling = 'lp'; S.coalition = ['lp'];
+      PARTIES.forEach(function (p) { S.purse[p.id] = 0; });
+      var base = v16Posture;
+      if (force) v16Posture = function () { return force; };
+      try { for (var i = 0; i < 12; i++) partyPurseTick(S); }
+      finally { v16Posture = base; }
+      return Math.round(partyPurse(S, 'pnl'));
+    }
+    R.burn.holding = run('hold');
+    R.burn.building = run('organise');
+    return R;
+  });
+  const mindsOk =
+    minds.cover.total >= 30 && minds.cover.missing.length === 0 &&
+    minds.fires.open && minds.fires.before === 0 && minds.fires.after === 12 &&
+    minds.fires.afterKindness === 0 && minds.refused === 0 &&
+    minds.seen.target === 22 && minds.seen.everyoneNoticed &&
+    minds.vote.moved === 12 && minds.art.moved === 12 &&
+    minds.letter.type === 'party_demand' && minds.letter.faction === undefined &&
+    minds.letter.choices === 'carry,talks,decline' &&
+    minds.letter.caucusAfter === minds.letter.caucusBefore && minds.letter.billLaid &&
+    minds.letter.ignoredGrudge === 44 && minds.letter.caucusOnIgnore === 0 &&
+    minds.burn.distinct >= 5 && minds.burn.holding > minds.burn.building;
+  say(mindsOk, 'a party remembers what was done to it',
+    `ALL ${minds.cover.total} VERBS A PARTY CAN AIM AT ANOTHER PARTY CARRY A MEMORY ` +
+    `(${minds.cover.missing.length} without one), where S16e's list named five ids -- one of which, ` +
+    `\`radicalise\`, is the id of no action in the game -- AND NEVER FIRED ONCE: it read \`a.pid\` and nothing ` +
+    `in three megabytes wrote \`a.pid\`, so poaching a party's base left its grudge at ` +
+    `${minds.fires.before} and now leaves ${minds.fires.after} · a kindness spends it back down to ` +
+    `${minds.fires.afterKindness} and a REFUSAL is not remembered (${minds.refused}) · THE ROOM WAS WATCHING: ` +
+    `isolating the PNL costs ${minds.seen.target} with them and ${minds.seen.others[0]} with each of the ` +
+    `${minds.seen.others.length} parties it was not done to · AND IT REACHES A VOTE, bounded at twelve -- ` +
+    `a bill from a party it cannot forgive falls ${minds.vote.clean} to ${minds.vote.grudged} and an article ` +
+    `${minds.art.clean} to ${minds.art.grudged} -- where a grudge had two consumers, a posture and a pact, and ` +
+    `neither was a division · A LETTER FROM ANOTHER PARTY IS NOT A LETTER FROM YOUR OWN CAUCUS: it is a ` +
+    `\`${minds.letter.type}\` answered ${minds.letter.choices}, the player's own caucus is untouched at ` +
+    `${minds.letter.caucusAfter} where answering used to move it sixteen, carrying it lays the bill ` +
+    `(${minds.letter.billLaid}) and ignoring it costs the SENDER (${minds.letter.ignoredGrudge}) rather than ` +
+    `docking a caucus that never wrote (${minds.letter.caucusOnIgnore}) · and the purse burn follows the ` +
+    `posture across ${minds.burn.distinct} distinct rates, so a party holding on keeps ${minds.burn.holding} ` +
+    `of party money over twelve sessions where one building spends down to ${minds.burn.building} -- it was ` +
+    `seven tenths for every party in every circumstance, and a card costs twelve to thirty-four`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
