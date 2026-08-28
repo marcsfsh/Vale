@@ -1221,6 +1221,47 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## The long deck folds, and focus survives (S17r)
+
+Measured before it was designed, on a phone, after this program's content: the
+Executive page ran to **51,947px, 61.5 screens, 514 buttons and nothing
+folded**. The policy page holds 503 cards and comes out at 3,170px, because its
+categories fold.
+
+- **The machine existed and ran on one tab.** `v6mPolicyFolds` walks the
+  rendered view, finds a heading whose next sibling is a deck, and wraps the
+  pair in a `<details>`; its guard is `UI.tab !== 'policy'`. The Order Book and
+  Extraordinary Measures were ALREADY grouped by category in their own markup -
+  they emit `h3.eyebrow` where the policy page emits `.subhead` - and nothing
+  folded them.
+- **`v17DeckFolds`** is that pass for every other tab, and it is ONE rule: a
+  panel whose own markup divides it into two or more groups folds them all.
+  **It reads the deck, not a list of panel names** - `v7DefaultCollapsed` is
+  such a list, and eleven slices added panels without touching it. Two other
+  constants were drafted (a card count under which a panel is left alone, a
+  group size that stays open) and **deleted because nothing in the game could
+  tell them from their absence**: there are exactly three grouped panels, the
+  smallest holds 48 cards, the smallest group holds 6, and no order-book filter
+  a player can press produces a short one.
+- **The heading is MOVED into the summary, not copied.** Rebuilding the summary
+  from `head.innerHTML` and deleting the head takes the `h3.eyebrow` out of the
+  document, and later chunks and harnesses query that element to count what a
+  deck holds.
+- **`v8WorksPanel` bands its forty-eight works by standing** - under
+  construction, waiting for a berth, open to commission, not yet available,
+  opened - which is what its own `rank` already sorted them into. `tag` is not
+  a category: forty-four of them for forty-eight works.
+- **Compact cards fold their labelled verb groups.** `body.cards-compact` hid
+  only the prose; a party card carries five subhead-labelled blocks of buttons
+  and ran to 1,433px. Scoped to a `.btnrow` that FOLLOWS A SUBHEAD, so a card
+  whose buttons are its only row keeps them.
+- **Focus is remembered on `focusin`, not read at the top of `render`.** An End
+  Session is not one render: `endTurn` runs the queue, puts sheets up and takes
+  them down, and renders several times on the way, so by the time the last
+  render asks who has focus the answer is already `body`. Focus landing outside
+  the view does not clear the key (a sheet takes focus the moment a turn ends),
+  and the restore declines whenever anything else already holds focus.
+
 ## The street has leverage (S17q)
 
 **Unrest was a number with one consequence at the far end of it**: it rose, it

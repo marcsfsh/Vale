@@ -119,6 +119,40 @@ before touching the file.
   veterans bloc moves the army by a road that predates the slice), so ask the
   coverage separately: the statute is in the table AND the table reaches the
   game. Three of S17o's twelve poisons found this one mistake.
+- **A default written as a list of names goes stale; derive it from the thing
+  itself.** `v7DefaultCollapsed` decides which panels arrive folded by naming
+  them, in a chain of three functions, and eleven slices added panels without
+  touching it — so the pages this program grew most folded NOTHING, and the
+  Executive page reached 61.5 phone screens with 514 buttons on it. S17r's rule
+  reads the deck's own size instead, so a deck a later slice adds folds the
+  moment it is long and nobody has to remember anything.
+- **A post-pass that REBUILDS a heading breaks every query that counts it.**
+  S17r's fold pass first did `summary.innerHTML = head.innerHTML; head.remove()`,
+  which took the `h3.eyebrow` out of the document — and `measures-render-locked`
+  went from sixty cards in eight books to sixty in NONE. Move the node into its
+  new parent; never re-emit it. This is `MAP.md`'s "renaming a class, heading or
+  slot attribute can silently disable a feature" with the rename done by DOM
+  surgery rather than by editing a literal.
+- **Focus read at the top of `render` is focus already lost.** An End Session is
+  not one render: `endTurn` runs the queue, raises and drops sheets, and renders
+  several times, so the last render asks who has focus and the answer is `body`.
+  Record it on `focusin` as it happens. And a sheet taking focus is not the
+  reader leaving: clearing the key on focus landing outside the view threw it
+  away for exactly the turn it existed to survive.
+- **A probe that opens what is open by default proves nothing.** S17r's fold
+  test opened the first group — which the code opens anyway — so a build that
+  remembered no toggle at all still passed. Open one that is shut.
+- **A knob nothing in the game can turn is decoration, and the poison run is
+  where you find out.** S17r drafted a card-count threshold and a group-size
+  floor; two poisons that set both to absurd values changed nothing anywhere,
+  because the game has three grouped panels, the smallest holds 48 cards, the
+  smallest group holds 6, and no filter a player can press produces a short
+  one. Both were deleted rather than shipped. `st.court.size` is the same
+  mistake in the model; this is it in a stylesheet.
+- **A control the tier hides cannot take focus, and a fixed element has no
+  `offsetParent`.** Two versions of one probe arm picked an invisible button
+  and read the failure as the feature being broken. Measure visibility with a
+  rect, not with `offsetParent`.
 - **A threshold picked by eye is a mechanic that never fires.** S17q's first
   build put the street's bar at 62 of unrest, which reads plausible against a
   scale that ends at 95. Measured afterwards across six hundred played

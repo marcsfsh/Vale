@@ -550,6 +550,10 @@
       "aliasCaptured": true,
       "reason": "alias var v9RenderBase captured above"
     },
+    "render#5": {
+      "aliasCaptured": true,
+      "reason": "alias var v17RenderBase captured above — S17r is the outermost render wrapper: it must run its deck-fold pass after every earlier post-pass, and restore focus after that pass has moved the nodes"
+    },
     "tickTurn#4": {
       "aliasCaptured": true,
       "reason": "alias var v10TickBase captured above (S9d: records ssPeak after the base tick)"

@@ -20097,6 +20097,16 @@ body.cards-compact #view .card.cc > .bill-title .bill-no{margin-left:auto}
 body.cards-compact #view .card.cc > .bill-title:after{margin-left:8px}
 body.cards-compact #view .card.cc.show > h3:after,body.cards-compact #view .card.cc.show > .bill-title:after{transform:rotate(90deg)}
 body.cards-compact #view .card.cc:not(.show) > p.desc{display:none}
+/* S17r: AND THE VERB GROUPS INSIDE IT. A party card carries five labelled
+   blocks of buttons -- inside the party, build them up, arrangements,
+   undermine them, other measures -- and runs to 1,433px with 38 controls in
+   it, so seven of them made the Parties page 9,898px. Compact already promises
+   "show or hide the details" and was hiding only the prose. Scoped to a
+   `.btnrow` that FOLLOWS A SUBHEAD, which is what a labelled group is: a card
+   whose buttons are its only row (a statute, an order, a work) has no subhead
+   before them and keeps them. */
+body.cards-compact #view .card.cc:not(.show) > .subhead,
+body.cards-compact #view .card.cc:not(.show) > .subhead + .btnrow{display:none}
 body.cards-compact #view .card.cc:not(.show) > .tagline + .tagline{display:none}
 body.cards-compact #view .card.cc:not(.show) > .lvl{margin:6px 0}
 body.cards-compact #view .card.cc > h3:hover:after{color:var(--brass)}
@@ -20143,6 +20153,16 @@ body.clean .stat .sub{display:block;margin:0;font-size:10px;line-height:1.25}
 svg.hemi circle{stroke:var(--baize);stroke-width:.6;paint-order:stroke}
 svg.hemi text{font-family:var(--font-u);text-transform:uppercase;paint-order:stroke;stroke:var(--baize);stroke-width:2.4}
 .dot,.legend i{box-shadow:0 0 0 1px rgba(20,26,23,.9)}
+
+/* S17r: a long deck's groups fold. Same furniture as the policy page's own
+   categories, which is the deck this one is copied from; the summary is a
+   44px target on every tier because it is now the only way into the group. */
+details.fold.deckgroup{padding:0 10px;margin:6px 0}
+details.fold.deckgroup>summary{font-size:11px;letter-spacing:.14em;display:flex;align-items:center;gap:6px;min-height:44px;padding:10px 0}
+details.fold.deckgroup>summary>.subhead,details.fold.deckgroup>summary>h3.eyebrow{margin:0!important;padding:0;display:inline}
+details.fold.deckgroup>summary .muted{font-size:11px;letter-spacing:.04em;text-transform:none;margin-left:auto}
+details.fold.deckgroup>summary:hover{color:var(--brass)}
+details.fold.deckgroup .cards,details.fold.deckgroup .works-list{padding:2px 0 10px}
 
 </style>
 <script>
@@ -21461,7 +21481,23 @@ function v8WorksPanel() {
   var summary = '<div class="works-summary"><span><b>' + active.length + '</b> of ' + v8WorkMax(S) + ' under construction</span><span><b>' + fmc(spend) + '</b> a session</span>' +
     (queue.length ? '<span><b>' + queue.length + '</b> waiting</span>' : '') + '<span><b>' + done + '</b> opened</span>' +
     (shown < V8_WORKS.length ? '<span><b>' + shown + '</b> of ' + V8_WORKS.length + ' shown</span>' : '') + '</div>';
-  var list = order.length ? '<div class="works-list">' + order.map(v8WorkCard).join('') + '</div>'
+  /* S17r: GROUPED BY STANDING, which is what `rank` was already sorting them
+     into and what a player navigates the book by. Forty-eight works in one
+     flat list ran to 13,781px on a phone; the bands give S17r's fold pass
+     something to fold, and the two that matter -- what is being built and what
+     can be commissioned now -- are the ones it leaves open. `tag` is not a
+     category: forty-four of them for forty-eight works. */
+  var BANDS = ['Under construction', 'Waiting for a berth', 'Open to commission',
+    'Not yet available', 'Opened'];
+  var bands = {};
+  order.forEach(function (w) { (bands[rank(w)] = bands[rank(w)] || []).push(w); });
+  var list = order.length
+    ? BANDS.map(function (name, r) {
+        if (!bands[r] || !bands[r].length) return '';
+        return '<h3 class="eyebrow" style="margin:14px 0 6px">' + esc(name) +
+          ' <span class="muted">' + bands[r].length + '</span></h3>' +
+          '<div class="works-list">' + bands[r].map(v8WorkCard).join('') + '</div>';
+      }).join('')
     : '<div class="empty-state">No work matches that filter.</div>';
   var n = v8WorkMax(S);
   var berths = 'The ministry has ' + n + (n === 1 ? ' berth, and what you commission past it' : ' berths, and what you commission past them') +
@@ -37090,6 +37126,208 @@ function v17BookReach(cat) {
   return { total:all.length, wired:all.filter(function (id) { return wired[id]; }).length,
     missing:all.filter(function (id) { return !wired[id]; }) };
 }
+
+/* ==========================================================
+   S17r — THE LONG DECK FOLDS, AND FOCUS SURVIVES
+   ==========================================================
+   MEASURED FIRST, because the plan says to design this against the real load
+   and the real load is worse than it reads. On a phone, after this program's
+   content:
+
+     exec      51,947px   61.5 screens   176 cards   514 buttons   0 folded
+     nation    19,192px   22.7 screens    68 cards   140 buttons   0 folded
+     parties   17,645px   20.9 screens    24 cards   325 buttons   0 folded
+
+   Three panels carry nearly all of it: the Order Book at 29,811px and 90
+   cards, Grand Works at 13,781px and 48, Extraordinary Measures at 13,353px
+   and 60. Meanwhile the POLICY page holds 503 cards and comes out at 3,170px,
+   because its categories fold.
+
+   SO THE MACHINE EXISTED AND RAN ON ONE TAB. `v6mPolicyFolds` walks the
+   rendered view, finds a heading whose next sibling is a deck, and wraps the
+   pair in a `<details>`. Its guard is `UI.tab !== 'policy'`. The Order Book
+   and Extraordinary Measures were ALREADY grouped by category in their own
+   markup -- they emit `h3.eyebrow` where the policy page emits `.subhead` --
+   and nothing folded them, because the pass was written for one page and the
+   default-collapsed list it sits beside is a hand-written list of panel names
+   that eleven slices have added panels without touching.
+
+   THE RULE HERE READS THE DECK, NOT A LIST OF NAMES: a panel whose markup
+   already divides it into two or more groups folds them. A deck added by a
+   later slice folds the moment it is grouped, with nobody remembering to add
+   its name anywhere.
+
+   IT IS ONE RULE BECAUSE THE OTHER TWO COULD NOT BE TESTED. The first version
+   carried a card-count threshold under which a panel was left alone, and a
+   group size under which a group stayed open, and neither could be told from
+   its absence: the game has exactly three grouped panels, the smallest holds
+   48 cards, the smallest group in any of them holds 6, and no order-book
+   filter a player can press produces a short one. A constant nothing can
+   distinguish is the `st.court.size` mistake in a stylesheet's clothing, so
+   both were deleted rather than shipped as knobs with nobody at the other end.
+
+   AND FOCUS. `render()` rewrites `#view.innerHTML` on every action. S9b made
+   the SCROLL survive that; focus was never touched, so a keyboard player who
+   tabbed to a control and pressed it was returned to the top of the document,
+   every time, on every page. Measured: focus goes from the button to `BODY`
+   while the scroll stays exactly where it was. The identity is rebuilt from
+   what the control already carries -- its data attributes, its tag, its text,
+   and its ordinal among identical siblings -- so no view function had to be
+   touched to make its controls findable again. */
+
+/* WHAT COUNTS AS A GROUP HEADING. Both spellings the file already uses, and
+   the deck that follows one under either of the two class names decks are
+   built with. */
+function v17GroupHead(el) {
+  if (!el) return false;
+  if (el.classList.contains('subhead')) return true;
+  return el.tagName === 'H3' && el.classList.contains('eyebrow');
+}
+function v17GroupDeck(el) {
+  return !!el && (el.classList.contains('cards') || el.classList.contains('works-list'));
+}
+function v17DeckFolds() {
+  var view = document.getElementById('view');
+  /* the policy page keeps its own pass: it has filter and search semantics
+     (any filter opens every group) that this one deliberately does not, and
+     it is the one long deck that already reads well */
+  if (!view || UI.tab === 'policy') return;
+  UI.deckOpen = UI.deckOpen || {};
+  view.querySelectorAll('.panel').forEach(function (panel) {
+    var pairs = [];
+    Array.prototype.forEach.call(panel.children, function (el) {
+      if (v17GroupHead(el) && v17GroupDeck(el.nextElementSibling)) pairs.push([el, el.nextElementSibling]);
+    });
+    if (pairs.length < 2) return;
+    pairs.forEach(function (pair) {
+      var head = pair[0], deck = pair[1];
+      var label = head.textContent.replace(/\s+/g, ' ').trim();
+      var n = deck.querySelectorAll('.card, .work-card').length;
+      var key = UI.tab + '|' + panel.getAttribute('data-deckpanel') + '|' + label.toLowerCase();
+      /* EVERY GROUP ARRIVES FOLDED, which is what the policy page does with
+         503 cards. Leaving the first one open was tried and is wrong: at the
+         start of a campaign every Grand Work is in one band, so "the first
+         group is open" left forty cards open and the panel measured TALLER
+         than it had before it was grouped at all. */
+      var open = false;
+      if (UI.deckOpen[key] !== undefined) open = !!UI.deckOpen[key];
+      var d = document.createElement('details');
+      d.className = 'fold deckgroup'; d.open = open;
+      var s = document.createElement('summary');
+      /* THE HEADING IS MOVED, NOT COPIED. Rebuilding the summary from
+         `head.innerHTML` and deleting the head takes the `h3.eyebrow` out of
+         the document, and this file's later chunks and its harnesses query
+         that element to count what a deck holds -- `measures-render-locked`
+         went from sixty cards in eight books to sixty in NONE the first time
+         this pass ran. Moving it keeps every such query answerable. */
+      var anchor = document.createComment('deckgroup');
+      head.parentNode.insertBefore(anchor, head);
+      s.appendChild(head);
+      if (!/\d\s*<\/span>\s*$/.test(head.innerHTML)) {
+        var c = document.createElement('span'); c.className = 'muted'; c.textContent = n;
+        s.appendChild(c);
+      }
+      d.appendChild(s);
+      anchor.parentNode.insertBefore(d, anchor);
+      anchor.remove();
+      d.appendChild(deck);
+      d.addEventListener('toggle', function () { UI.deckOpen[key] = d.open; });
+    });
+  });
+}
+/* the panel needs a stable name in the key, or two panels on one tab with the
+   same group label share a fold state; the heading is the name the player
+   sees and it is what `v7FoldKey` uses for the same reason */
+function v17StampPanels() {
+  var view = document.getElementById('view'); if (!view) return;
+  view.querySelectorAll('.panel').forEach(function (panel) {
+    var h = panel.firstElementChild;
+    panel.setAttribute('data-deckpanel',
+      (h && h.tagName === 'H2') ? h.textContent.replace(/\s+/g, ' ').trim().toLowerCase() : '?');
+  });
+}
+
+/* ---------- focus survives the re-render ----------
+   The identity has to be rebuilt from the element itself, because `render()`
+   throws away the node. Data attributes first (most controls carry one), then
+   the tag and the trimmed text, then the ordinal among elements that produce
+   the same key -- which is what separates four identical "Meet them" buttons
+   on four different cards. */
+function v17FocusKey(el, seen) {
+  if (!el || el === document.body) return null;
+  var bits = [el.tagName];
+  var ds = el.dataset ? Object.keys(el.dataset).sort() : [];
+  ds.forEach(function (k) { bits.push(k + '=' + el.dataset[k]); });
+  bits.push((el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40));
+  if (el.name) bits.push('n=' + el.name);
+  var k = bits.join('');
+  if (seen) { seen[k] = (seen[k] || 0) + 1; k += '#' + seen[k]; }
+  return k;
+}
+function v17FocusFind(key) {
+  var view = document.getElementById('view'); if (!view || !key) return null;
+  var seen = {}, found = null;
+  var all = view.querySelectorAll('button, a[href], input, select, textarea, [tabindex], [role="button"]');
+  Array.prototype.forEach.call(all, function (el) {
+    var k = v17FocusKey(el, seen);
+    if (!found && k === key) found = el;
+  });
+  return found;
+}
+/* REMEMBERED AS IT HAPPENS, not read at the top of `render`. An End Session
+   is not one render: `endTurn` runs the queue, puts sheets up and takes them
+   down, and renders several times on the way. By the time the LAST render
+   asks who has focus, the answer is already `body` and the control the reader
+   was on is three renders gone. Recorded on `focusin` instead, so the key
+   outlives every intermediate render, and spent only when focus has actually
+   been lost. */
+document.addEventListener('focusin', function (e) {
+  var view = document.getElementById('view');
+  if (!view || !e.target || !view.contains(e.target)) return;
+  var seen = {}, all = view.querySelectorAll('button, a[href], input, select, textarea, [tabindex], [role="button"]');
+  Array.prototype.forEach.call(all, function (el) {
+    var k = v17FocusKey(el, seen);
+    if (el === e.target) UI.focusKey = k;
+  });
+  UI.focusSel = null;
+  try {
+    if (e.target.selectionStart !== undefined && e.target.selectionStart !== null) {
+      UI.focusSel = [e.target.selectionStart, e.target.selectionEnd];
+    }
+  } catch (x) {}
+}, true);
+/* Focus landing OUTSIDE the view does not clear the key. A sheet takes focus
+   the moment `endTurn` puts one up, and clearing on that threw away the
+   control the reader was on for the whole of the turn they were answering --
+   which is precisely the case this exists for. The key is spent only when it
+   is used, and the restore below declines whenever anything else already
+   holds focus, so a reader who really did move is never dragged back. */
+
+var v17RenderBase = render;
+render = function () {
+  var sel = UI.focusSel, key = UI.focusKey;
+  /* a text field's caret moves without a focusin, so take it fresh */
+  var act = document.activeElement;
+  try {
+    if (act && act.selectionStart !== undefined && act.selectionStart !== null) sel = [act.selectionStart, act.selectionEnd];
+  } catch (e) {}
+  v17RenderBase();
+  v17StampPanels();
+  v17DeckFolds();
+  /* restore only into a vacuum. If something already holds focus -- a sheet, a
+     control outside the view, anything the reader chose -- moving it would be
+     the defect this fixes, wearing the other coat. */
+  var now = document.activeElement;
+  if (!key || (now && now !== document.body)) return;
+  var modal = document.getElementById('modal');
+  if (modal && !modal.hidden) return;
+  var el = v17FocusFind(key);
+  if (!el) return;
+  /* preventScroll, because S9b already put the page back where it was and the
+     browser's own focus scroll would undo that work */
+  try { el.focus({ preventScroll:true }); } catch (e2) { el.focus(); }
+  if (sel) { try { el.setSelectionRange(sel[0], sel[1]); } catch (e3) {} }
+};
 
 /* ---------- boot ---------- */
 (function () {

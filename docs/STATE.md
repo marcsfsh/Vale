@@ -25,9 +25,8 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17q.** Next: **s17r — the long deck folds, and focus
-survives**, which is the first of the three finishing slices; then s17s
-(contrast and the thumb) and s17t (the prose pass and the close).
+**Landed so far: s17a–s17r.** Next: **s17s — contrast and the thumb**, then
+s17t (the prose pass and the close).
 
 **One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
 asked for — what s17m shipped without waiting, what needs your ruling with a
@@ -91,6 +90,101 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17r — the long deck folds, and focus survives
+
+**Measured before it was designed**, which the plan asked for and which turned
+out to matter more than it reads. On a phone, after this program's content:
+
+```
+exec      51,947px   61.5 screens   176 cards   514 buttons   0 folded
+nation    19,192px   22.7 screens    68 cards   140 buttons   0 folded
+parties   17,645px   20.9 screens    24 cards   325 buttons   0 folded
+```
+
+Three panels carried nearly all of it: the Order Book at 29,811px and 90 cards,
+Grand Works at 13,781px and 48, Extraordinary Measures at 13,353px and 60.
+Meanwhile the policy page holds **503 cards and comes out at 3,170px**, because
+its categories fold.
+
+**So the machine existed and ran on one tab.** `v6mPolicyFolds` walks the
+rendered view, finds a heading whose next sibling is a deck, and wraps the pair
+in a `<details>`. Its guard is `UI.tab !== 'policy'`. The Order Book and
+Extraordinary Measures were already grouped by category **in their own markup**
+and nothing folded them, because the pass was written for one page.
+
+**The rule reads the deck, not a list of names.** `v7DefaultCollapsed` — which
+decides what arrives folded — is a hand-written list of panel titles in a chain
+of three functions, and eleven slices have added panels without touching it.
+A panel whose own markup divides it into two or more groups folds them all. A
+deck a later slice adds folds the moment it is grouped.
+
+**And it is one rule because the other two could not be told from their
+absence.** The first version carried a card-count threshold under which a panel
+was left alone and a group size that stayed open, and the poison run found both
+inert: the game has exactly three grouped panels, the smallest holds 48 cards,
+the smallest group in any of them holds 6, and no order-book filter a player
+can press produces a short one. Deleted rather than shipped as knobs with
+nobody at the other end. Leaving the first group open was tried and is wrong
+for a measured reason: at the start of a campaign every Grand Work sits in one
+band, so it left forty cards open and the panel came out **taller** than before
+it was grouped at all.
+
+**Two decks needed a seam before they could fold.** Grand Works was
+forty-eight cards in one flat list, so it is banded by the standing its own
+`rank` already sorted them into (`tag` is not a category: forty-four of them
+for forty-eight works). And a party card carries five subhead-labelled blocks
+of buttons and ran to 1,433px, where compact mode was hiding only the prose —
+so compact now folds a `.btnrow` that follows a subhead, which leaves alone
+every card whose buttons are its only row.
+
+```
+phone      exec    51,947 → 9,934  (61.5 → 11.8 screens)
+           parties 17,645 → 8,874  (20.9 → 10.5 screens)
+           nation  19,192 → below the top five
+tablet     exec    35,756 → 6,277
+desktop    exec    17,911 → 4,997
+```
+
+No page now passes twelve phone screens; the worst was sixty-one.
+
+**And focus.** `render()` rewrites `#view.innerHTML` on every action. S9b made
+the scroll survive that; focus was never touched, so a keyboard player who
+tabbed to a control and pressed it was returned to the top of the document,
+every time, on every page — measured going from the button to `BODY` while the
+scroll stayed exactly where it was. The identity is rebuilt from what the
+control already carries, so no view function had to change.
+
+**Two things about focus were only found by driving a real session.** Reading
+`document.activeElement` at the top of `render` is reading it too late: an End
+Session is many renders, and by the last one the answer is already `body`. And
+clearing the remembered control when focus lands outside the view throws it
+away the moment a sheet goes up — which is exactly the turn it exists to
+survive.
+
+```
+ALL CHECKS PASS   11/11 (one new wrapper: render, adjudicated — S17r is the
+                  outermost, so its fold pass runs after every earlier one)
+ROADS OK          184 assertions
+PLAYTEST PASS     67 steps (+3: deck-folds at each of the three tiers)
+DETERMINISM / RUNGS / CHAMBER / TIERS / TABS   all green
+POISON            16 reverts, 14 reddening the step
+```
+
+**Four poisons aborted the harness rather than failing the step**, and five
+more found the step too weak: it opened the group the code opens anyway (so a
+build remembering no toggle passed), it measured only the Executive page (so
+the works banding and the works-list deck were untested), it never focused the
+sheet a session raises, and twice it picked a control the tier hides — a
+hidden element cannot take focus, and a fixed one has no `offsetParent`.
+
+**Two poisons do not redden this step, and neither is papered over.**
+Rebuilding the heading instead of moving it reddens `measures-render-locked`
+instead — the assertion that owns the mechanism it breaks, which is the right
+owner. And adding back a listener that clears the remembered control when a
+sheet takes focus changes nothing observable, because `hideSheet` restores
+`UI.lastFocus` along the same path; the listener is not in the code and its
+absence is a simplification rather than a tested guarantee.
 
 ### S17q — the street has leverage
 

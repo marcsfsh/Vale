@@ -1316,11 +1316,29 @@ short of its constant. 24 poison reverts, each reddening the assertion.
 
 ### Group 7 — the finish (S16j/k/l)
 
-**s17r — the long deck folds, and focus survives** (M). Deck folding with
-fold state in UI (transient, unsaved), S9b scroll-ownership respected;
-after the content PRs so folding is designed against the real load.
+**s17r — the long deck folds, and focus survives** (M). **STATUS: DONE.** Deck
+folding with fold state in UI (transient, unsaved), S9b scroll-ownership
+respected; after the content PRs so folding is designed against the real load.
 Playtest: fold + focus survive an end-turn re-render at three viewports;
 splices-land stays green.
+
+**Designed against the load, and the load is what the plan hoped it would be
+measured against.** On a phone the Executive page ran to 51,947px — 61.5
+screens, 514 buttons, nothing folded — where the policy page holds 503 cards in
+3,170px because its categories fold. The pass that does that already existed
+and was guarded to one tab; the Order Book and Extraordinary Measures were
+already grouped in their own markup and nothing folded them. Generalised, with
+the rule reading the deck's size rather than `v7DefaultCollapsed`'s
+hand-written list of panel names, which eleven slices had added panels without
+touching. Grand Works gained bands (its own `rank`, not its `tag`: 44 tags for
+48 works) and compact cards learned to fold a party card's five labelled verb
+blocks. Exec 51,947 → 9,934 on a phone (61.5 → 11.8 screens); parties 17,645 →
+8,874; no page passes twelve screens where the worst was sixty-one. Two other
+constants were drafted and DELETED when the poison run found nothing in the
+game could tell them from their absence. Fold state is
+`UI.deckOpen`, transient, as the plan says. Focus: recorded on `focusin`
+rather than read at the top of `render`, because an End Session is many
+renders and a sheet takes focus during it. 16 poison reverts.
 
 **s17s — contrast and the thumb** (M). Contrast + touch targets at the
 five thresholds, the new S17 surfaces (deal sheet, formation window, race
