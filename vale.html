@@ -6637,6 +6637,11 @@ function powersTick(st) {
     if (p.kind === 'southern') drift += (st.pol.tradeAgreements || 0) * .225 - (st.pol.borderSecurity || 0) * .3;
     if (!FORMS[st.form].elections) drift -= 1.1;
     if (st.form === 'empire' || st.form === 'dpr') drift -= 1.2;
+    /* S17o: AND THE TWELVE FOREIGN STATUTES THAT REACHED NO CAPITAL. Eleven
+       of the book's twenty-four are read above by name; the accords, the
+       diplomatic service, the arms talks, the asylum and the doctrine of the
+       near sphere reached nobody. */
+    if (typeof v17ForeignDrift === 'function') drift += v17ForeignDrift(st, p.kind);
     st.powers[p.id] = c100(relOf(st, p.id) + drift);
   });
 }
@@ -6651,6 +6656,9 @@ function warTick(st) {
     });
     risk += Math.max(0, st.ind.tension - 54) * .0075;
     risk += (st.pol.missileForce || 0) * .003 + (st.pol.armsExports || 0) * .0023 + (st.pol.protectorates || 0) * .003;
+    /* S17o: arms control talks lower it, a doctrine of the near sphere and a
+       microphone for other people's dissidents raise it */
+    if (typeof v17ForeignRisk === 'function') risk += v17ForeignRisk(st);
     if (st.ind.military > 78) risk += .01;
     if (rand() < risk) {
       /* The target used to be the plain argmin with NO FLOOR, over powers
@@ -6691,7 +6699,12 @@ function warTick(st) {
   allianceJoin(st);
   var edge = (st.ind.military - 55) * .05 + (st.ind.technology - 55) * .02 +
     (st.armyLoyalty - 55) * .03 + (relOf(st, 'alliance') - 50) * .02 - (st.ind.corruption - 50) * .02 +
-    (w.joined || []).length * 1.7;
+    (w.joined || []).length * 1.7 +
+    /* S17o: and what the Defence book bought. Air and Space Forces, Joint
+       Command Reform and Procurement Reform are cards about winning a war,
+       and the number that decides one read six things, none of them a
+       statute in their own book. */
+    (typeof v17WarEdge === 'function' ? v17WarEdge(st) : 0);
   w.momentum += edge + (rand() - .5) * 4;
   var spend = 9 + st.ind.military * .12;
   st.treasury -= spend; w.cost += spend;
@@ -10767,7 +10780,13 @@ function tickTurn(st) {
   var ct = 50 + (st.blocs.smallbiz + st.blocs.faith) / 2 - 50 + ((st.pol.federalGrants || 0) + (st.pol.stateRevenueSharing || 0)) * 3
            - (st.pol.federalPreemption || 0) * 3.75 - (FORMS[st.form].crown ? 0 : 12);
   st.crown = c100(st.crown + (c100(ct) - st.crown) * .22);
-  var at = 52 + (st.blocs.veterans - 50) * .7 + (st.ind.military - 60) * .2 + (FORMS[st.form].elections ? 0 : 5) - st.unrest * .1;
+  /* S17o: AND THE DEFENCE BOOK. This target read four things -- the veterans
+     bloc, the military indicator, the form and unrest -- and eighteen statutes
+     about pay, quarters, oaths, political officers and a chartered veterans'
+     league reached none of them. Military Pay and Conditions did not reach the
+     army. */
+  var at = 52 + (st.blocs.veterans - 50) * .7 + (st.ind.military - 60) * .2 + (FORMS[st.form].elections ? 0 : 5) - st.unrest * .1 +
+    (typeof v17ArmyTerm === 'function' ? v17ArmyTerm(st) : 0);
   st.armyLoyalty = c100(st.armyLoyalty + (c100(at) - st.armyLoyalty) * .25);
 
   if (st.debt > 1130 && st.turn - (st.lastDefault || -99) > 12) {
@@ -35583,26 +35602,58 @@ function v17RaceSeed(st, cycle) {
    membership chose, or the one the leadership named. */
 function v17ResolvePrimaries(st) {
   var r = st.execRace; if (!r) return;
+  /* S17o: NOBODY IS A PARTY'S CANDIDATE FOR BOTH OFFICES OF THE PAIR. The two
+     primaries run in parallel and nothing stopped a party picking the same
+     person in both -- and since S17h forbids one person holding two great
+     offices, winning both then seated a stranger in the second, so a
+     membership that had voted got a candidate it had never heard of.
+     Measured: it happened on two runs in six. The second office takes the
+     next name its own members ranked. */
+  var taken = {};
   r.offices.forEach(function (o) {
     Object.keys(r.field[o]).forEach(function (pid) {
       var e = r.field[o][pid];
+      taken[pid] = taken[pid] || {};
       if (!e.open || !e.runners.length) {
         var nom = execNominate(st, o, pid);
+        if (taken[pid][nom.winner.name]) {
+          /* the bench first, and then this office's OWN seeded field, because
+             a small party's bench is often nothing but its leader and the
+             leadership can name anybody its caucuses put up */
+          var free = function (c) { return c && !taken[pid][c.name]; };
+          var alt = (nom.runners || []).filter(free)[0] || (e.runners || []).filter(free)[0];
+          if (alt) nom = { winner:alt, runners:nom.runners };
+        }
+        taken[pid][nom.winner.name] = true;
         e.winner = nom.winner.name;
+        /* S17o: AND THE PERSON, not only the name. `v17RaceWinner` looked the
+           name up on the bench again at the vote, and a bench is not a fixed
+           list -- it is the sitting holder, the leader, whichever ministers
+           are ambitious and whichever governors are standing, all of which the
+           sessions between the primary and the vote can move. When the lookup
+           missed, the function returned null and the contest quietly nominated
+           somebody else, so a party went to the country with a candidate its
+           own primary had not chosen. Measured: it happened on two runs in
+           six. The primary's result is the primary's result. */
+        e.winnerOf = JSON.parse(JSON.stringify(nom.winner));
         e.by = 'the leadership';
         return;
       }
       var scored = e.runners.map(function (c) { return { c:c, s:v17PrimaryScore(st, o, pid, c) }; })
         .sort(function (a, b) { return b.s - a.s; });
       var tot = 0; scored.forEach(function (x) { tot += x.s; });
-      e.winner = scored[0].c.name;
+      /* and here too: the next name its own members ranked, not a stranger */
+      var pick = scored.filter(function (x) { return !taken[pid][x.c.name]; })[0] || scored[0];
+      taken[pid][pick.c.name] = true;
+      e.winner = pick.c.name;
+      e.winnerOf = JSON.parse(JSON.stringify(pick.c));
       e.by = 'the membership';
-      e.share = tot ? Math.round(scored[0].s / tot * 100) : 100;
+      e.share = tot ? Math.round(pick.s / tot * 100) : 100;
       e.beat = scored.length - 1;
       /* an outsider is a candidate whose caucus is not the party's largest */
       var fs = (st.factions || {})[pid] || [];
       var big = fs.slice().sort(function (a, b) { return b.strength - a.strength; })[0];
-      e.outsider = !!(big && scored[0].c.caucus !== big.id);
+      e.outsider = !!(big && pick.c.caucus !== big.id);
     });
   });
   r.stage = 'general';
@@ -35631,6 +35682,12 @@ function v17RaceWinner(st, office, pid) {
     if (hit) return hit;
     var run = (r.field[office][pid].runners || []).filter(function (c) { return c.name === name; })[0];
     if (run) return v15Cand(JSON.parse(JSON.stringify(run)));
+    /* S17o: and the person the primary actually chose, kept beside the name
+       since the bench can move between the primary and the vote. Returning
+       null here meant the contest re-nominated, and a party stood a candidate
+       its own membership had not picked. */
+    var kept = r.field[office][pid].winnerOf;
+    if (kept) return v15Cand(JSON.parse(JSON.stringify(kept)));
   }
   return null;
 }
@@ -36342,6 +36399,142 @@ var V17_BOOK_WIRING = {
            'fiscalEqualisation', 'stateReceivership', 'commandeeringAct']
   }
 };
+/* ============================================================
+   S17o — THE BOOK MEANS WHAT IT SAYS, II
+   ============================================================
+   Two more books with the same shape as the two S17n repaired, and for the
+   same reason: their cards are about a thing the model HAS and the four
+   generic channels do not reach.
+
+   The Foreign book talks about relations with eleven powers. Eleven of its
+   twenty-four statutes were read by `powersTick` and `warTick` by name; the
+   other twelve, which are about accords, embassies, arms control, asylum and
+   a doctrine of the near sphere, reached no power at all.
+
+   The Defence book is worse. It talks about an army, and the model has one --
+   `armyLoyalty`, whose target reads exactly four things, and the `edge` that
+   decides a war, which reads six. EIGHTEEN of the twenty-four Defence
+   statutes touched neither. Military Pay and Conditions did not reach the
+   army. Air and Space Forces did not reach a war. The Political Directorate
+   put an officer in every unit and the army's loyalty did not move.
+
+   THE REST OF THE BOOK IS NOT LIKE THIS, and this file says so rather than
+   manufacturing wiring for it: a health statute that moves the health
+   indicator IS wired, because the health indicator is what a health statute
+   is about. The four books that needed this are the four whose subject the
+   indicators do not contain. */
+
+/* --- WHAT THE ARMY THINKS OF YOU. Added to the target `armyLoyalty` drifts
+   toward, beside the veterans bloc and the military indicator. --- */
+var V17_ARMY = {
+  defenceBudget:        2.0,
+  reserveForces:        1.1,
+  defenceIndustrialBase: .8,
+  carrierProgramme:      .6,
+  missileForce:          .5,
+  /* a right to refuse an order is a right the service resents */
+  conscientiousObjection: -1.1,
+  militaryPay:          2.6,
+  militaryHousing:      1.8,
+  veteransPreference:   1.4,
+  veteransLeague:       1.6,
+  politicalDirectorate: 2.2,
+  officerCommissions:    .9,
+  nationalArsenals:      .7,
+  specialForces:         .6,
+  airProgramme:          .5,
+  mobilisationPowers:    .5,
+  nuclearReduction:     -.6,
+  commandReform:        -.8,
+  courtMartialReform:  -1.2,
+  procurementReform:   -1.3,
+  /* an oath sworn to the constitution alone is not an oath to the government
+     of the day, which is the whole point of the card */
+  oathToConstitution:  -1.5,
+  baseClosures:        -2.0,
+  forceDrawdown:       -2.4,
+  /* a force the governors raise, arm and keep is a rival army */
+  stateDefenceForces:  -2.6
+};
+function v17ArmyTerm(st) {
+  var p = st.pol || {}, v = 0;
+  for (var k in V17_ARMY) v += (p[k] || 0) * V17_ARMY[k];
+  return clamp(v, -22, 22);
+}
+/* --- AND WHAT IT CAN DO IN THE FIELD. Added to the war's `edge`, beside the
+   military indicator, technology, army loyalty and the Alliance. --- */
+var V17_EDGE = {
+  defenceBudget:       1.10,
+  carrierProgramme:     .85,
+  missileForce:         .75,
+  defenceIndustrialBase:.70,
+  reserveForces:        .50,
+  conscientiousObjection: -.25,
+  airProgramme:         .90,
+  commandReform:        .80,
+  specialForces:        .70,
+  procurementReform:    .60,
+  nationalArsenals:     .55,
+  mobilisationPowers:   .55,
+  militaryPay:          .40,
+  officerCommissions:   .35,
+  courtMartialReform:   .20,
+  militaryHousing:      .20,
+  baseClosures:        -.30,
+  nuclearReduction:    -.45,
+  /* a political officer in every unit reports on loyalty, and a decision
+     that has to be reported on is a decision made late */
+  politicalDirectorate:-.55,
+  stateDefenceForces:  -.60,
+  forceDrawdown:       -.95
+};
+function v17WarEdge(st) {
+  var p = st.pol || {}, v = 0;
+  for (var k in V17_EDGE) v += (p[k] || 0) * V17_EDGE[k];
+  return clamp(v, -14, 14);
+}
+
+/* --- WHOM THE TWELVE FOREIGN STATUTES REACH, by the kind of power. The
+   entries are read against `POWERS[].kind`, which is what `powersTick`
+   already branches on; `all` is a career service or an open text, which
+   touches every capital. --- */
+var V17_ABROAD = {
+  embassyNetwork:     { all:.30 },
+  multilateralAccession: { all:.22, risk:-.0026 },
+  culturalDiplomacy:  { all:.14 },
+  peacekeeping:       { bloc:.30, alliance:.26, southern:.22, risk:-.0020 },
+  allianceExpansion:  { alliance:.44, rival:-.20, risk:.0012 },
+  lendLease:          { alliance:.40, bloc:.24, rival:-.26, risk:.0018 },
+  sanctionsRegime:    { rival:-.46, trade:-.30, risk:.0026 },
+  assetSeizure:       { rival:-.60, trade:-.34, risk:.0034 },
+  armsExports:        { bloc:.22, southern:.18, rival:-.18 },
+  openCovenants:      { all:.16, risk:-.0022 },
+  climateAccord:      { bloc:.34, trade:.28, rival:.14 },
+  developmentBank:    { bloc:.40, southern:.36 },
+  scientificExchange: { rival:.34, trade:.20 },
+  armsControl:        { rival:.46, risk:-.0035 },
+  consularProtection: { neighbour:.24, southern:.20 },
+  grainDiplomacy:     { bloc:.30, southern:.26, trade:-.22 },
+  advisoryMissions:   { bloc:.26, risk:.0026 },
+  dissidentAsylum:    { rival:-.42, risk:.0024 },
+  compatriotsAbroad:  { neighbour:-.44, rival:-.20, risk:.0028 },
+  sphereDoctrine:     { neighbour:-.50, southern:-.34, rival:-.26, risk:.0032 }
+};
+function v17ForeignDrift(st, kind) {
+  var p = st.pol || {}, v = 0;
+  for (var k in V17_ABROAD) {
+    var row = V17_ABROAD[k], lvl = p[k] || 0;
+    if (!lvl) continue;
+    v += lvl * ((row.all || 0) + (row[kind] || 0));
+  }
+  return clamp(v, -3.5, 3.5);
+}
+function v17ForeignRisk(st) {
+  var p = st.pol || {}, v = 0;
+  for (var k in V17_ABROAD) v += (p[k] || 0) * (V17_ABROAD[k].risk || 0);
+  return v;
+}
+
 function v17BookReach(cat) {
   var wired = {}, k;
   for (k in V17_BOOK_WIRING[cat]) V17_BOOK_WIRING[cat][k].forEach(function (id) { wired[id] = true; });

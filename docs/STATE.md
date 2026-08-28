@@ -25,10 +25,9 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17n.** Next: **s17o — the book means what it says,
-II**, which sweeps the remaining books one commit at a time, wiring where the
-S17 systems have given a statute its first honest target and listing any
-proposed re-wording for the owner's explicit approval (ruling 12c).
+**Landed so far: s17a–s17o.** Group 5 is closed. Next is Group 6,
+**s17p — the court can stop you**: `courtReview` extended from commentary to
+consequence, with the s17m conflict declarations as its docket.
 
 **One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
 asked for — what s17m shipped without waiting, what needs your ruling with a
@@ -92,6 +91,72 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17o — the book means what it says, II
+
+Two more books with the shape S17n repaired, and the same reason: their cards
+are about a thing the model HAS and the four generic channels do not reach.
+
+**The Defence book was the worst in the game.** It talks about an army, and the
+model has one. `armyLoyalty` drifts toward a target that read four things (the
+veterans bloc, the military indicator, the form, unrest), and a war is decided
+by an `edge` that read six. **Eighteen of the book's twenty-four statutes
+touched neither.** Military Pay and Conditions did not reach the army. Air and
+Space Forces did not reach a war. The Political Directorate put a political
+officer in every unit and the army's loyalty did not move.
+
+**Twelve Foreign statutes reached no capital.** Eleven of the twenty-four were
+already read by `powersTick` and `warTick` by name; the accords, the diplomatic
+service, the arms talks, the asylum and the doctrine of the near sphere were
+not among them.
+
+Four tables now carry them, each named for the mechanism it is. Two of them
+pull against each other on purpose, because the cards do: an oath sworn to the
+constitution alone is not an oath to the government of the day, and a political
+officer in every unit is - and the loyalty that officer buys costs speed in the
+field, where an air programme pays there. The arms talks lower the risk of a
+war; a doctrine of the near sphere raises it.
+
+**The other nineteen books are not in this sweep**, and the file says why
+rather than leaving it implied: a health statute that moves the health
+indicator is wired, because the health indicator is what a health statute is
+about. The four books that needed this treatment are the four whose subject the
+indicators do not contain. No card was re-worded, so ruling 12c was not
+reached.
+
+**And a flake turned out to be a defect.** `always running` had been failing on
+two runs in six. The cause: a party's two parallel primaries could pick the
+same person, and since S17h forbids one person holding two great offices,
+winning both then seated a stranger in the second - so a membership that had
+voted got somebody it had never heard of. Two fixes, both at the source. The
+second office takes the next name its own members ranked. And the season keeps
+the winning *person* beside the name, because `v17RaceWinner` looked the name up
+on the bench again at the vote, and a bench moves; when the lookup missed, the
+contest quietly nominated somebody else.
+
+```
+ALL CHECKS PASS   11/11 (no new wrapper)
+ROADS OK          182 assertions (+1: "the foreign and defence books reach the
+                  model"; "always running" now names which of its nineteen
+                  conditions failed)
+PLAYTEST PASS     62 steps
+DETERMINISM / RUNGS / CORPORA / TIERS / TABS   all green
+POISON            12 reverts, each reddening the assertion
+```
+
+**Four of those poisons found four weak probes, three of them the same
+mistake.** Reading `v17ArmyTerm(S)` and reassembling the loyalty target around
+it proves the function and not the wiring: deleting the call from `tickTurn`
+left the assertion green. All three read through the game's own path now
+(`tickTurn` for the loyalty, `warTick` for the momentum and for the war risk
+over ninety seeded ticks), and since reading through the real path cannot say
+WHICH channel moved a number, the table coverage is asked separately.
+
+**Pacing: elections won identical at 12 on every tier**, and excluding VALE0404
+and VALE1337 - the two seeds that have carried every aggregate this group -
+years governing is unchanged on all three. With them in: 28 to 32 short, 37 to
+56 standard, 96 to 96 epic. Crises fell 9 on epic and moved by one either way
+elsewhere; achievements rose by one or three.
 
 ### S17n — the book means what it says, I
 

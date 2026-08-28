@@ -1211,11 +1211,45 @@ to its top rung and reads that mechanism before and after. Five notes:
    72, standard 29 → 13) and has been the volatile one for three slices
    running. Crises +4 on epic, achievements −2 and −3 on the two longer tiers.
 
-**s17o — the book means what it says, II** (L, splittable). Remaining
+**s17o — the book means what it says, II** (L, splittable). **STATUS: DONE.** Remaining
 books swept, one commit per book; wire where the S17 systems give a
 statute its first honest target; where none exists, the proposed
 re-wording listed for the owner's explicit approval before landing
 (ruling 12c). rungs --check --corpora on re-worded cards.
+
+*What landing it found.* The sweep is Foreign and Defence, and the reason the
+other nineteen books are not in it is written into the file rather than left
+implied: a health statute that moves the health indicator IS wired, because
+the health indicator is what a health statute is about. The four books that
+needed this are the four whose subject the indicators do not contain. No card
+was re-worded, so ruling 12c was not reached. Four notes:
+
+1. **The Defence book was the worst in the game.** It talks about an army, and
+   the model has one: `armyLoyalty`, whose target read four things, and the
+   `edge` that decides a war, which read six. EIGHTEEN of its twenty-four
+   statutes touched neither. Military Pay and Conditions did not reach the
+   army. Air and Space Forces did not reach a war. The Political Directorate
+   put an officer in every unit and nothing moved.
+2. **A flake in `always running` turned out to be a real defect.** The probe
+   failed on two runs in six, and the cause was that a party's two parallel
+   primaries could pick the SAME person - after which S17h's one-person-one-
+   office rule seated a stranger in the second office, so a membership that
+   had voted got somebody it had never heard of. Fixed at the source: the
+   second office takes the next name its own members ranked. The probe also
+   now names which of its nineteen conditions failed, because reading that off
+   a paragraph of prose was slower than it needed to be.
+3. **The season recorded its winner as a NAME and looked it up again at the
+   vote.** A bench is the sitting holder, the leader, whichever ministers are
+   ambitious and whichever governors are standing, all of which the sessions
+   between the primary and the vote can move; when the lookup missed, the
+   contest quietly nominated somebody else. The person is kept beside the name
+   now.
+4. **Four poisons found four weak probes, three of them the same mistake.**
+   Reading `v17ArmyTerm(S)` and reassembling the target around it proves the
+   function and not the wiring - deleting the call from `tickTurn` left the
+   assertion green. All three now read through the game's own path
+   (`tickTurn`, `warTick`), and because that cannot say WHICH channel moved a
+   number, the table coverage is asked separately as well.
 
 ### Group 6 — somebody can stop you (S16g/h)
 

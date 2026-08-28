@@ -6262,6 +6262,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return S.figures.exec[o].name === want[o + ':' + res[o]];
     });
     R.seatedNames = Object.keys(res).map(function (o) { return o + '=' + S.figures.exec[o].name; }).join(', ');
+    R.seatedWhy = Object.keys(res).map(function (o) {
+      return o + ' won by ' + res[o] + ', its primary chose "' + want[o + ':' + res[o]] +
+        '", seated "' + S.figures.exec[o].name + '"';
+    }).join(' | ');
 
     /* (f) THE RUNNING MATE ARTICLE changes which two offices are contested and
        nothing else about the calendar. */
@@ -6280,6 +6284,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.rides = !!(blob.execRace && blob.execRace.field && blob.execRace.stage);
     return R;
   });
+  /* S17o: NAMED, so a failure says which half of it failed. This probe drives
+     twelve sessions of real play and the other six parties have been given
+     more to do in every slice since it was written, so when it goes red the
+     next question is always "which part" -- and reading that off a paragraph
+     of prose that prints only some of the flags is slower than it needs to be. */
+  const raceWhy = {
+    shape:race.shapeOk, parallel:race.parallel, aiSpent:race.aiSpent,
+    fieldN:race.field.n === 4, caucuses:race.field.caucuses === 4,
+    open:race.field.open, parties:race.field.parties === 7,
+    noDice:race.noDiceOnRender,
+    outsider:race.outsider.changed && race.outsider.won && race.outsider.pushes > 0,
+    closedStage:race.closed.stage === 'general', closedAll:race.closed.all,
+    byMembership:race.closed.byMembership > 0, byLeadership:race.closed.byLeadership > 0,
+    seated:race.winnerSeated, seasonClosed:race.seasonClosed,
+    pairs:race.pairs === 'pres+vchan chan+vpres pres+vchan chan+vpres',
+    pairsMate:race.pairsMate === 'pres+vpres chan+vchan pres+vpres chan+vchan',
+    calendar:race.calendarSame, article:race.articleReal, rides:race.rides
+  };
+  const raceBad = Object.keys(raceWhy).filter((k) => !raceWhy[k]);
   const raceOk =
     race.shapeOk && race.parallel && race.aiSpent &&
     race.field.n === 4 && race.field.caucuses === 4 && race.field.open && race.field.parties === 7 &&
@@ -6292,6 +6315,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     race.pairsMate === 'pres+vpres chan+vchan pres+vpres chan+vchan' &&
     race.calendarSame && race.articleReal && race.rides;
   say(raceOk, 'always running',
+    (raceBad.length ? `WHAT FAILED: ${raceBad.join(', ')}` +
+      (raceWhy.seated ? '' : ` [${race.seatedWhy}]`) + ' · ' : '') +
     `THE FOUR SESSIONS BEFORE A VOTE ARE THE RACE, and they run whether a legislative ballot falls in them or ` +
     `not -- ${race.season}, and the shape holds against the cycle rather than against literal turn numbers ` +
     `(${race.shape.length} sessions, all of them where the calendar says: ${race.shapeOk}), because since S17k ` +
@@ -6955,6 +6980,203 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `CLOSES THE GAP — the poorest state rises (${bookReach.money.poorRose}) and the richest pays for it ` +
     `(${bookReach.money.richPaid}), ${bookReach.money.gap} of disparity — rather than adding to every state, ` +
     `which is what "money moved BETWEEN the states by a standing formula" says`);
+
+  /* ================================================================
+     S17o — THE BOOK MEANS WHAT IT SAYS, II
+     ================================================================
+     The same lie-detector for the two books whose subject the indicators do
+     not contain: the Foreign book talks about eleven powers and the Defence
+     book talks about an army, and the model has both. Every statute is driven
+     to its top rung and the mechanism its card names is read either side. */
+  const abroad = await page.evaluate(() => {
+    const R = {};
+    function fresh() {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.ruling = 'lp'; S.coalition = ['lp']; S.capital = 900; S.treasury = 9000;
+      return S;
+    }
+    /* THE POWERS. One tick, both roads: the eleven statutes `powersTick` has
+       always read by name and the twelve that reached no capital at all. */
+    const relations = function () {
+      powersTick(S);
+      return POWERS.map(function (p) { return Math.round(relOf(S, p.id) * 1e4); }).join(',');
+    };
+    R.foreign = { total:0, dead:[] };
+    Object.keys(POL).filter(function (k) { return POL[k].cat === 'Foreign'; }).forEach(function (id) {
+      R.foreign.total++;
+      fresh(); var a = relations();
+      fresh(); S.pol[id] = 4; var c = relations();
+      if (a === c) R.foreign.dead.push(id);
+    });
+    /* THE ARMY. What the service thinks of the government, and what it can do
+       in the field -- a Defence statute has to reach one of the two.
+
+       BOTH ARE READ THROUGH THE GAME'S OWN PATH, never by recomputing the
+       formula here. A probe that reassembles `52 + veterans*.7 + ... +
+       v17ArmyTerm(st)` proves the function and not the wiring: deleting the
+       term from `tickTurn` leaves it passing, which is exactly what the poison
+       proof found the first time this was written. `tickTurn` moves the real
+       loyalty and `warTick` moves the real momentum. */
+    const armyTarget = function () {
+      var was = S.armyLoyalty; S.armyLoyalty = 50;
+      tickTurn(S);
+      var out = Math.round(S.armyLoyalty * 1e4);
+      S.armyLoyalty = was;
+      return out;
+    };
+    const warEdge = function () {
+      S.war = { power:'sarath', year:2030, momentum:0, turns:1, cost:0 };
+      var seed = S.rngState;
+      warTick(S);
+      var out = Math.round((S.war ? S.war.momentum : 0) * 1e4);
+      S.rngState = seed;
+      return out;
+    };
+    /* COVERAGE, ASKED SEPARATELY. Reading through the game's own path proves
+       the call site is there; it cannot prove WHICH channel moved the number,
+       because a Defence statute that shifts the veterans bloc moves the army
+       through a road that existed before this slice. So the table is asked
+       directly as well: every statute in the book has a line in one of the
+       two, and a twenty-fifth arriving without one reddens here. */
+    R.tables = { defMissing:[], forMissing:[] };
+    var forNamed = ['allianceCommitments', 'nonIntervention', 'foreignAid', 'protectorates',
+      'tradeAgreements', 'tariffs', 'borderSecurity', 'missileForce'];
+    Object.keys(POL).filter(function (k) { return POL[k].cat === 'Defence'; }).forEach(function (id) {
+      if (!V17_ARMY[id] && !V17_EDGE[id]) R.tables.defMissing.push(id);
+    });
+    Object.keys(POL).filter(function (k) { return POL[k].cat === 'Foreign'; }).forEach(function (id) {
+      if (!V17_ABROAD[id] && forNamed.indexOf(id) < 0) R.tables.forMissing.push(id);
+    });
+
+    R.defence = { total:0, dead:[] };
+    Object.keys(POL).filter(function (k) { return POL[k].cat === 'Defence'; }).forEach(function (id) {
+      R.defence.total++;
+      fresh(); var a1 = armyTarget(), e1 = warEdge();
+      fresh(); S.pol[id] = 4;
+      if (a1 === armyTarget() && e1 === warEdge()) R.defence.dead.push(id);
+    });
+    /* AND THE TWO THAT SHOULD PULL OPPOSITE WAYS, because the cards say so:
+       an oath sworn to the constitution alone is not an oath to the government
+       of the day, and a political officer in every unit is. */
+    /* measured as a DIFFERENCE from the opening board, because the opening
+       board already carries statutes at their own levels and an absolute
+       reading would be mostly them */
+    function delta(id, read) {
+      fresh(); var a = read();
+      fresh(); S.pol[id] = 4;
+      return Math.round((read() - a) * 100);
+    }
+    R.oath = delta('oathToConstitution', armyTarget) ;
+    R.commissar = delta('politicalDirectorate', armyTarget);
+    /* and the directorate that buys loyalty COSTS speed in the field */
+    R.commissarEdge = delta('politicalDirectorate', warEdge);
+    R.airEdge = delta('airProgramme', warEdge);
+    /* THE ARMS TALKS LOWER THE RISK OF A WAR and the near sphere raises it. */
+    /* THROUGH `warTick`, not by reading the term: a probe that recomputes the
+       risk cannot tell whether `warTick` consults it. The roll is a die, so
+       the measurement is how many wars break out over a fixed run of ticks
+       from a fixed seed, on a board wound up to make the risk visible. */
+    function warsIn(id) {
+      var n = 0;
+      for (var seed = 0; seed < 90; seed++) {
+        fresh();
+        S.rngState = 90001 + seed * 977;
+        S.ind.tension = 72; S.ind.military = 74;
+        POWERS.forEach(function (pw) { S.powers[pw.id] = 30; });
+        if (id) S.pol[id] = 4;
+        S.war = null;
+        warTick(S);
+        if (S.war) n++;
+      }
+      return n;
+    }
+    R.risk = { plain:warsIn(null), talks:warsIn('armsControl'), sphere:warsIn('sphereDoctrine') };
+
+    /* AND NOBODY IS A PARTY'S CANDIDATE FOR BOTH OFFICES OF THE PAIR. The two
+       primaries run in parallel and nothing stopped a party choosing the same
+       person in both -- and since S17h forbids one person holding two great
+       offices, winning both seated a STRANGER in the second, so a membership
+       that had voted got somebody it had never heard of. This is what made
+       "always running" fail on two runs in six. */
+    /* AND THE PRIMARY'S RESULT SURVIVES A BENCH THAT MOVES. `v17RaceWinner`
+       looked the winner's NAME up on the bench again at the vote, and a bench
+       is the sitting holder, the leader, whichever ministers are ambitious and
+       whichever governors are standing -- all of which the sessions between
+       the primary and the vote can change. When the lookup missed it returned
+       null and the contest quietly nominated somebody else. Driven directly,
+       because with the pair fix above it no longer happens by accident. */
+    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+    S.playAs = 'lp'; S.turn = 2; S.rngState = 4247;
+    v17RaceTick(S);
+    R.bench = { seeded:!!S.execRace };
+    if (S.execRace) {
+      S.turn = S.execRace.cycle - 1;
+      v17ResolvePrimaries(S);
+      var o0 = S.execRace.offices[0], e0 = S.execRace.field[o0].lp;
+      R.bench.chose = e0.winner;
+      /* put the winner beyond every list the lookup walks -- off the bench by
+         giving them a name no bench carries, and off the runners -- and ask
+         whether the primary's result still stands */
+      e0.runners = [];
+      e0.winner = 'Somebody The Bench Forgot';
+      if (e0.winnerOf) e0.winnerOf.name = 'Somebody The Bench Forgot';
+      R.bench.stillTheirs = (function () {
+        var w = v17RaceWinner(S, o0, 'lp');
+        return !!w && w.name === 'Somebody The Bench Forgot';
+      })();
+    }
+
+    R.pair = { same:[], cycles:0 };
+    [5, 9, 13, 17, 21].forEach(function (cy) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.turn = cy - 4; S.rngState = 4242 + cy;
+      v17RaceTick(S);
+      if (!S.execRace) return;
+      S.turn = S.execRace.cycle - 1;
+      v17ResolvePrimaries(S);
+      R.pair.cycles++;
+      var offs = S.execRace.offices;
+      PARTIES.forEach(function (p) {
+        var names = offs.map(function (o) {
+          var e = S.execRace.field[o] && S.execRace.field[o][p.id];
+          return e ? e.winner : null;
+        }).filter(Boolean);
+        if (names.length === 2 && names[0] === names[1]) {
+          R.pair.same.push(cy + ':' + p.id + ':' + names[0]);
+        }
+      });
+    });
+    return R;
+  });
+  const abroadOk =
+    abroad.foreign.total === 24 && abroad.foreign.dead.length === 0 &&
+    abroad.defence.total === 24 && abroad.defence.dead.length === 0 &&
+    abroad.oath < 0 && abroad.commissar > 0 && abroad.commissarEdge < 0 && abroad.airEdge > 0 &&
+    abroad.risk.talks < abroad.risk.plain && abroad.risk.sphere > abroad.risk.plain &&
+    abroad.pair.cycles >= 4 && abroad.pair.same.length === 0 &&
+    abroad.bench.seeded && abroad.bench.stillTheirs &&
+    abroad.tables.defMissing.length === 0 && abroad.tables.forMissing.length === 0;
+  say(abroadOk, 'the foreign and defence books reach the model',
+    `ALL ${abroad.foreign.total} FOREIGN STATUTES move the eleven powers across one tick ` +
+    `(${abroad.foreign.dead.length} that do not) where twelve of them reached no capital at all, and all ` +
+    `${abroad.defence.total} DEFENCE STATUTES move what the army thinks of the government or what it can do in ` +
+    `the field (${abroad.defence.dead.length} that do not) where EIGHTEEN reached neither -- the loyalty target ` +
+    `read four things and the war's edge read six, and not one of them was a statute in the Defence book, so ` +
+    `Military Pay and Conditions did not reach the army and Air and Space Forces did not reach a war · AND THE ` +
+    `TWO THAT PULL OPPOSITE WAYS DO: an oath sworn to the constitution alone is not an oath to the government ` +
+    `of the day (${abroad.oath}) and a political officer in every unit is (${abroad.commissar}), and the ` +
+    `loyalty the directorate buys COSTS in the field (${abroad.commissarEdge}) where an air programme pays ` +
+    `there (${abroad.airEdge}) · and the arms talks lower the risk of a war -- ${abroad.risk.talks} wars over ` +
+    `ninety seeded ticks against ${abroad.risk.plain} -- where a doctrine of the near sphere raises it ` +
+    `(${abroad.risk.sphere}) · and across ` +
+    `${abroad.pair.cycles} executive cycles NO PARTY IS ITS OWN CANDIDATE FOR BOTH OFFICES OF THE PAIR ` +
+    `(${abroad.pair.same.length}), every statute in both books has a line in the tables above ` +
+    `(${abroad.tables.defMissing.length + abroad.tables.forMissing.length} without one), and a primary's ` +
+    `winner survives a bench that moved under it ` +
+    `("${abroad.bench.chose}": ${abroad.bench.stillTheirs}) ` +
+    `(${abroad.pair.same.length}), where the two primaries ran in parallel and nothing stopped one -- and since ` +
+    `S17h forbids a person holding two great offices, winning both then seated a STRANGER in the second, so a ` +
+    `membership that had voted got somebody it had never heard of`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
