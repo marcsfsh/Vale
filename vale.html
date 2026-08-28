@@ -9453,6 +9453,18 @@ function billAction(id, action) {
     }
   }
   if (['kill', 'amendIt', 'delayIt', 'talkOut', 'pressure'].indexOf(action) >= 0 && b.owner === 'player') { flash('That is your own bill.'); return; }
+  /* S18a: AND THE FLOOR VERBS ARE REFUSED BEFORE THEY ARE PAID FOR.
+     `v17FloorCore` returns a refusal string and neither call site below reads
+     it, so a support, oppose or press click on a bill that has already reached
+     assent took the capital and the money, did nothing, and wrote a log line
+     saying it had happened. The deck draws all three on a bill at assent --
+     which is exactly where a government bill sits while an office declines to
+     sign it, and exactly when a player would reach for them. Same question,
+     asked at the point of effect, above the spend. */
+  if (['support', 'oppose', 'pressure'].indexOf(action) >= 0 && typeof v17FloorWhy === 'function') {
+    var floorWhy = v17FloorWhy(S, playParty(S), b, action);
+    if (floorWhy) { flash(floorWhy); return; }
+  }
   var costs = { whip:4, bargain:5, amend:3, confidence:7, urgent:6, support:2, oppose:2, withdraw:0,
     pressure:3, amendIt:4, delayIt:5, talkOut:4, kill:8, pressOffice:3, override:6 };
   var monies = { bargain:8, pressure:5, amendIt:4, pressOffice:6 };
@@ -13947,7 +13959,11 @@ function viewChamber() {
   var oppNote = inPower(S) ? '' :
     '<div class="panel"><h2>You Are in Opposition</h2><p class="note">The ' + esc(PARTY[S.ruling].short) +
     ' hold the government and legislate without you, and they have done for ' + (S.oppYears || 0) + ' years. ' +
-    'You cannot move a measure. What you can do is build the machine, wreck theirs, work the movements, force a confidence vote when their standing collapses, ' +
+    /* S18a: this sentence said 'You cannot move a measure' and it was the
+       page the owner read before reporting that they could not. What is
+       true is narrower and it is worth saying in full. */
+    'You can put one private member\'s bill on the paper at a time, and it goes to the floor without the whip, the Senate deal or the timetable behind it. ' +
+    'Beyond that you can build the machine, wreck theirs, work the movements, force a confidence vote when their standing collapses, ' +
     'or cross the floor and take the leadership of whoever is winning.</p>' +
     '<div class="cards">' + actionsIn('Agenda').map(actionCard).join('') + '</div></div>';
   /* S9c: the Ministry deck lives on the Ministry page, the States deck on
@@ -14670,7 +14686,7 @@ function viewParties() {
   var agendaPanel = '<div class="panel"><h2>Your Party and Its Agenda</h2>' +
     '<p class="note">You lead the ' + esc(PARTY[me].name) + ' and you are ' +
     (st1 === 'leading' ? 'in government' : (st1 === 'junior' ? 'a junior partner in government, which makes every measure half again as dear' :
-      'in opposition, where you cannot move a measure at all and the government legislates around you')) + '. ' +
+      'in opposition, where one private member\'s bill at a time is what you can put on the paper and the government legislates around it')) + '. ' +
     'Push the party and it will follow you for a while. Past about forty five it starts pushing back, and past sixty it starts breaking.</p>' +
     '<div class="row"><span class="lab">Distance from the founding platform</span><span class="bar ' +
       (r > 55 ? 'b-bad' : (r > 30 ? 'b-ox' : 'b-ok')) + '"><i style="width:' + Math.round(r) + '%"></i></span><span class="val">' + Math.round(r) + '</span></div>' +

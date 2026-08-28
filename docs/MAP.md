@@ -1322,8 +1322,19 @@ touched, and five surfaces in front of that dialog still refused.
   which would have to carry its own copy of the prices and go stale the first
   time one of them moved. This is S17a's committee-panel fix arriving at the
   next lever along, on the seam `pv5Spend` and `campaignYes` already use.
-- Assertion: `the floor is open to every chair` in `tools/roads.js`, nine
-  arms, thirteen poison reverts each reddening it alone. Playtest step
+- **A floor verb refused costs nothing.** `v17FloorCore` returns a refusal
+  string and neither call site read it, so support, oppose and press on a bill
+  already at `assent` -- which the deck draws all three verbs on, and which is
+  exactly where a bill sits while an office declines to sign it -- took the
+  capital and the money, did nothing to the bill, and wrote a log line saying
+  it had happened. `v17FloorWhy` is asked at the point of effect, above the
+  spend.
+- **And the page says what the game does.** The opposition panel read "You
+  cannot move a measure" and the party page "in opposition, where you cannot
+  move a measure at all". Those are the sentences the owner read before
+  reporting that they could not, and they would have survived the fix.
+- Assertion: `the floor is open to every chair` in `tools/roads.js`, eleven
+  arms, sixteen poison reverts each reddening it alone. Playtest step
   `opposition-floor` drives the card button and then the drafting sheet's own
   button by real clicks from the bench.
 - **Still government-only and flagged, not changed:** constitutional **acts**.

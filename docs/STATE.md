@@ -47,7 +47,7 @@ member does on the floor. `v18FloorShut` is the one predicate, and the card,
 the dossier, the handler and the dialog all read it; the card puts its answer
 in the button's title rather than leaving a dead control with no reason on it.
 
-Thirteen poison reverts, one per layer, and each reddens
+Sixteen poison reverts, one per layer, and each reddens
 `the floor is open to every chair` in `tools/roads.js` on its own. The
 `playtest.js` step `opposition-floor` drives the whole thing by real clicks
 from the bench. The six-seed pacing A/B against the build before this slice is
@@ -70,7 +70,24 @@ finding is in that file.
 1. Constitutional **acts** still refuse an opposition player. The owner's ruling
    names bills and constitutional articles, so acts were left government-only
    deliberately and are named here rather than changed quietly.
-2. **One half of S17r's `deck-folds` focus arm proves nothing, and S18a found it
+2. **A private member whose bill is refused at assent has no remedy.** Both
+   ways out of a refusal -- `pressOffice` and `override` -- are gated on
+   `inPower`, so an opposition sponsor watches their own carried bill die on
+   the desk after three sessions with nothing to do about it. It almost never
+   fires today, because `assentFavour` hands an opposition bill about 73
+   against a bar of 55 and never refuses it. Opening `override` to the sponsor
+   at the same sixty per cent bar, and making assent read the sponsor so a
+   refusal can happen at all, is a balance change rather than a defect repair,
+   so it is the owner's to rule on.
+3. **`assemblySeat` ("Sit in their assembly") is gated to the head of
+   government on a rationale that is not true of it.** S17b's comment says the
+   six regional verbs it gated "spend the federal purse on a region exactly as
+   a grant or an enterprise zone does". That one spends none: its body writes
+   `S.campaign.targets`, the governor's attention and the player's own party
+   machine, and the Campaign page writes the identical field from any chair
+   out of `myPurse()`. One line at `V17_REGION_NEED`, plus routing its spend
+   through the party purse the way the Campaign page already does.
+4. **One half of S17r's `deck-folds` focus arm proves nothing, and S18a found it
    without repairing it.** The arm makes two claims: that the S17r restore puts
    the reader back on their control, and that focus landing OUTSIDE the view
    (the sheet an End Session raises) does not clear the key. Poisoning the

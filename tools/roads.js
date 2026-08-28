@@ -7779,6 +7779,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     const t1 = S.treasury, p1 = partyPurse(S, playParty(S));
     billAction(gb2.id, 'pressure');
     R.govMoney = { treasury: t1 - S.treasury, purse: Math.round(p1 - partyPurse(S, playParty(S))) };
+    /* and a floor verb REFUSED is a floor verb that costs nothing.
+       `v17FloorCore` returns a refusal string and neither call site read it,
+       so pressing a sponsor over a bill already at assent -- which the deck
+       draws all three verbs on, and which is exactly where a bill sits while
+       an office declines to sign it -- took the capital and the money, did
+       nothing, and logged that it had happened. */
+    seat('fp');
+    const late = sponsorBill(S, openStatute()[0].id, 1, 'government', 'clean', true);
+    late.stage = 'assent';
+    const lc = S.capital, lp = partyPurse(S, playParty(S)), llog = S.log.length;
+    const said5 = [];
+    const fb5 = flash; flash = function (m) { said5.push(m); };
+    try { ['support', 'oppose', 'pressure'].forEach(function (v) { billAction(late.id, v); }); }
+    finally { flash = fb5; }
+    R.late = { capital: lc - S.capital, purse: Math.round(lp - partyPurse(S, playParty(S))),
+      logged: S.log.length - llog, lines: late.lines ? Object.keys(late.lines).length : 0,
+      says: /past the floor/.test(said5.join(' ')) };
 
     /* (f) THE OTHER TWO DOORS ON THE SAME PAGE. The dossier is the game's
        considered view of a statute and its draft buttons were not disabled
@@ -7799,6 +7816,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.rec = { opp: !!document.querySelector('#view details.rec') };
     seat('lp'); UI.tab = 'policy'; render();
     R.rec.gov = !!document.querySelector('#view details.rec');
+    /* AND THE PAGE SAYS WHAT THE GAME DOES. Two panels told the player in the
+       game's own voice that the instrument does not exist, and they are the
+       sentences the owner read before reporting that it did not. */
+    function panelText(tab, heading) {
+      UI.tab = tab; render();
+      var h = Array.prototype.filter.call(document.querySelectorAll('#view h2'),
+        function (x) { return x.textContent.trim() === heading; })[0];
+      return h && h.parentNode ? h.parentNode.textContent.replace(/\s+/g, ' ') : '';
+    }
+    seat('fp');
+    R.panels = { opp: panelText('overview', 'You Are in Opposition'),
+      party: panelText('parties', 'Your Party and Its Agenda') };
 
     /* (g) AND KILLING A BILL IS THE GOVERNMENT'S, NOT A SEAT COUNT'S.
        `outright` asks whether the PLAYER'S party is above half the Assembly,
@@ -7841,6 +7870,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     floor.oppMoney.treasury === 0 && floor.oppMoney.purse > 0 &&
     floor.govMoney.treasury > 0 && floor.govMoney.purse === 0 &&
     floor.dossier.open && floor.dossier.capped && floor.rec.opp && floor.rec.gov &&
+    floor.late.capital === 0 && floor.late.purse === 0 && floor.late.logged === 0 &&
+    floor.late.lines === 0 && floor.late.says &&
+    floor.panels.opp.indexOf('cannot move a measure') < 0 &&
+    /private member/.test(floor.panels.opp) && /private member/.test(floor.panels.party) &&
     floor.kill.outright && floor.kill.standing === 'opposition' &&
     !floor.kill.onCard && floor.kill.refused && floor.kill.stillOnPaper &&
     floor.kill.govOutright && floor.kill.govOnCard;
@@ -7879,7 +7912,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `buttons were never emitted from the bench rather than disabled (${floor.dossier.open} now, and shut on the ` +
     `cap at ${floor.dossier.capped}), and "Worth drafting now" -- a reading of the statute book against your own ` +
     `platform, which is no government instrument -- was hidden wholesale from the chair that most needs it ` +
-    `(${floor.rec.opp} from opposition, ${floor.rec.gov} in government) · and KILLING A BILL IS A GOVERNMENT'S: ` +
+    `(${floor.rec.opp} from opposition, ${floor.rec.gov} in government) · A FLOOR VERB REFUSED COSTS NOTHING: ` +
+    `\`v17FloorCore\` returns a refusal string and neither call site read it, so support, oppose and press on a ` +
+    `bill already at assent -- which the deck draws all three verbs on, and which is exactly where a bill sits ` +
+    `while an office declines to sign it -- took the capital and the money, did nothing to the bill, and wrote ` +
+    `a line in the log saying it had happened. Three clicks now cost ${floor.late.capital} capital and ` +
+    `${floor.late.purse} from the purse, write ${floor.late.lines} lines on the bill and ${floor.late.logged} ` +
+    `in the log, and say why (${floor.late.says}) · AND THE PAGE SAYS WHAT THE GAME DOES: the opposition panel ` +
+    `and the party page both read "you cannot move a measure", which is the sentence the owner read before ` +
+    `reporting that they could not · and KILLING A BILL IS A GOVERNMENT'S: ` +
     `\`outright\` asks whether the PLAYER'S party is above half the Assembly, which S17f made a thing you can be ` +
     `frozen out of holding, so a party with the seats and no office could take a bill off the paper. On a bench ` +
     `with ${floor.kill.outright ? 'the majority' : 'no majority'} and standing '${floor.kill.standing}' the verb ` +
