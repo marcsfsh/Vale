@@ -36565,7 +36565,13 @@ function v17StreetBloc(st) {
    split so the page can print the reason and a probe can read the parts
    without reassembling the formula. */
 function v17StreetHeat(st) {
-  var bloc = v17StreetBloc(st);
+  /* ONCE A MOVEMENT EXISTS IT IS THE MOVEMENT'S BLOC, not whoever is angriest
+     this session. A movement organised around one constituency does not
+     re-target itself every year, and the panel printed one bloc in the heat
+     term while the demand beneath it named another. */
+  var held = st.street && st.street.bloc;
+  var bloc = (held && BLOC[held]) ? BLOCS.filter(function (b) { return b.id === held; })[0] : null;
+  bloc = bloc || v17StreetBloc(st);
   var anger = bloc ? Math.max(0, 50 - (st.blocs[bloc.id] || 50)) : 0;
   var restive = st.unrest - V17_STREET_MID;
   var guard = (typeof securityState === 'function' ? securityState(st) : 0) * V17_STREET_GUARD;

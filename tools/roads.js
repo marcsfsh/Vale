@@ -6882,6 +6882,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     function fresh() {
       S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
       S.ruling = 'lp'; S.coalition = ['lp']; S.capital = 900; S.treasury = 9000;
+      /* pinned for the reason the two roads below it are: a probe that rolls
+         and does not seed reads whatever the road before it left behind */
+      S.rngState = 2424;
       return S;
     }
     const turnout = function () { return Math.round(partyTurnout(S, 'lp') * 1e5); };
@@ -7020,6 +7023,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     function fresh() {
       S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
       S.ruling = 'lp'; S.coalition = ['lp']; S.capital = 900; S.treasury = 9000;
+      /* PINNED. Without it this road's dice continue from whatever ran before
+         it, and `warEdge` -- one `warTick` on a made-up war -- swung between
+         -4029800 and -2200000 on consecutive runs of the same build. It
+         happened to stay negative, which is what the assertion asks, until an
+         unrelated change moved the stream far enough to put it the other side
+         of nought. A road that rolls pins its own seed. */
+      S.rngState = 8181;
       return S;
     }
     /* THE POWERS. One tick, both roads: the eleven statutes `powersTick` has

@@ -146,10 +146,14 @@ before touching the file.
   Capture the value first. This is the countdown rule above wearing the other
   hat: `st.turn + 1` is the same mistake read forwards.
 - **An assertion that never pinned its dice depends on what ran before it.**
-  `the court can stop you` seeded nothing in its `fresh()`, so a poison applied
-  for a DIFFERENT road moved the bench's rolls and reddened the court for
-  reasons that had nothing to do with the court. Every probe that rolls pins
-  its own `rngState`.
+  Three roads seeded nothing in their `fresh()`, so a poison applied for a
+  DIFFERENT road moved their rolls and reddened them for reasons that had
+  nothing to do with what they test. The foreign book's `warEdge` swung between
+  -4,029,800 and -2,200,000 on consecutive runs of the same build; it happened
+  to stay negative, which is what the assertion asks, until an unrelated change
+  put it the other side of nought. Every probe that rolls pins its own
+  `rngState`, and a road whose reported figure moves between two runs of one
+  build is telling you it does not.
 - **A flaky assertion is a defect report you have not read yet.** `always
   running` failed on two runs in six and the cause was real: a party's two
   parallel primaries could pick the same person, and S17h's one-person-one-

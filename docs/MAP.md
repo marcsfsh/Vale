@@ -1239,7 +1239,11 @@ fell, and at 95 the campaign ended. `st.street` is one object riding the save -
   sits at 26 and reaches 2.
 - **`v17StreetBloc`** is whose street it is: the file's own `pop` against how
   far below fifty a bloc sits. **`v17StreetWant`** is what it wants, taken from
-  the `mood` rows every statute already carries.
+  the `mood` rows every statute already carries. Once a movement exists,
+  `st.street.bloc` holds it and the heat term follows THAT bloc rather than
+  re-picking the angriest each session - a movement does not re-target itself,
+  and the panel printed one bloc in the heat term while the demand beneath it
+  named another.
 - **`v17StreetTick`** is the session. Pressure builds while heat stands above
   `V17_STREET_BAR` and decays otherwise; at `V17_STREET_DEMAND` the bloc posts
   a demand naming a statute, the level it stood at (`was`) and a date; at

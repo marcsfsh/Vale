@@ -162,19 +162,35 @@ worst case, which is a government that answers nothing at all.
 ```
 ALL CHECKS PASS   11/11 (one new wrapper: viewNation, adjudicated)
 ROADS OK          184 assertions ("the street has leverage" rewritten around
-                  the measured driver; the court's `fresh()` seed pinned)
+                  the measured driver; three roads' `fresh()` seeds pinned)
 PLAYTEST PASS     64 steps (street-demand now asserts the demand STANDS after
                   the bill is laid, and that the Country page prints the heat)
 DETERMINISM / RUNGS / CORPORA / TIERS / TABS   all green
 POISON            24 reverts, each reddening the assertion
 ```
 
+**Pacing moved on two of six seeds and is byte-identical on the other four.**
+The two that moved shifted by a crisis or two and a handful of wars, and the
+achievement rate at the close is unchanged at 23 per cent. `tools/pacing.js`
+plays first-choice-always and answers no demand, so what it measures is the
+arc of a government that ignores the street: strikes occur, and they do not
+dominate. This is the first content slice since s17l whose A/B is not
+byte-identical, which is the expected shape for one that freezes a
+government's instruments.
+
 **Three poisons aborted the harness instead of failing one assertion**, which
 is the rule this file already records, and every lookup in the probe is guarded
-now. **One poison reddened the court's road too**, which turned out to be a
-real brittleness rather than a coupling: `the court can stop you` never pinned
-its own `rngState`, so its bench rolls continued from whatever road ran before
-it. Pinned.
+now. **And three roads rolled without pinning their own seed**, which is a
+harness defect this slice found by accident: `the court can stop you` and `the
+foreign and defence books reach the model` both took their dice from whatever
+road ran before them, so a poison applied for an unrelated road moved their
+rolls. The foreign road's `warEdge` swung between -4,029,800 and -2,200,000 on
+consecutive runs of the same build — it happened to stay negative, which is
+what the assertion asks, until an unrelated change put it the other side of
+nought. All three pinned. Three further roads still report figures that vary
+run to run (`war needs somebody to be hostile to`, the question-drawing road,
+and the organisations road); each asserts a range rather than a value, so none
+of them flips, and they are left as they are.
 
 ### S17p — the court can stop you
 

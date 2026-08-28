@@ -2234,7 +2234,14 @@ async function run() {
     await stp.waitForTimeout(200);
     const answered = await stp.evaluate(() => {
       UI.tab = 'nation'; render();
-      var panel = document.body.innerHTML;
+      /* READ THE RENDERED VIEW, not `document.body.innerHTML`: the file's own
+         source sits in script blocks inside the body, so a regex over the body
+         matches `v17StreetPanel`'s own string literals and passes whether the
+         panel rendered or not. The view element holds only what was drawn. */
+      var view = document.getElementById('view');
+      var head = Array.prototype.filter.call(view.querySelectorAll('h2'),
+        function (h) { return h.textContent.trim() === 'The Street'; })[0];
+      var card = head && head.parentNode, txt = card ? card.textContent : '';
       return {
         bills:S.bills.length, pressure:Math.round(v17Street(S).pressure),
         gone:!(S.inbox || []).some(function (x) { return x.type === 'street_demand'; }),
@@ -2242,7 +2249,9 @@ async function run() {
            reads the statute book */
         stands:!!v17Street(S).demand,
         /* and the Country page says why the pressure is where it is */
-        onPage:/>The Street</.test(panel) && /Pressure/.test(panel) && /A demand stands/.test(panel)
+        onPage:!!card && /Pressure/.test(txt) && /A demand stands/.test(txt) &&
+          /Unrest [+-]/.test(txt),
+        panel:txt.replace(/\s+/g, ' ').trim().slice(0, 120)
       };
     });
     // and refused instead, the strike shuts the statute book
@@ -2265,7 +2274,7 @@ async function run() {
       `(${!!el}); carrying it lays the bill (${posted.bills} → ${answered.bills}) and takes the pressure ` +
       `down (${posted.pressure} → ${answered.pressure}) — and leaves the demand STANDING ` +
       `(${answered.stands}), because laying a bill is not carrying it and the date reads the statute book · ` +
-      `the Country page prints the pressure and why it is there (${answered.onPage}) · and refused instead, ` +
+      `the Country page prints the pressure and why it is there — "${answered.panel}" · and refused instead, ` +
       `the general strike that follows shuts the statute book without touching the chamber — a real click on ` +
       `a policy step is refused with "${struck.refused.slice(0, 46)}"`);
     await stp.close();
