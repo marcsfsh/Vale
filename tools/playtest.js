@@ -2426,21 +2426,24 @@ async function run() {
          reader off the question they are being asked and puts them back on the
          page behind it. Its own arm, at the end: an extra render in the middle
          of the end-turn sequence above changes what that sequence measures. */
+      /* A SHEET RAISED HERE rather than one the turn happened to leave up: the
+         queue is still draining after an End Session, so a sheet taken from it
+         can be replaced between the focus and the check, and this arm failed
+         about one run in two for that reason and no other. */
       R.sheetKept = false; R.raised = false;
       UI.tab = 'exec'; render(); await new Promise(x => setTimeout(x, 60));
       const b2 = document.querySelector('#view button:not([disabled])');
       if (b2) b2.focus();
       UI.queue = []; UI.busy = false;
-      try { endTurn(); } catch (e) {}
-      const sheet2 = document.getElementById('modal');
-      const sb2 = sheet2 && !sheet2.hidden
-        ? Array.prototype.filter.call(sheet2.querySelectorAll('button'), function (x) { return !x.disabled; })[0]
-        : null;
+      showSheet('<h2>A question</h2><p class="note">Raised by the harness.</p>' +
+        '<div class="btnrow"><button class="btn" id="ptSheetBtn">Answer</button></div>');
+      await new Promise(x => setTimeout(x, 80));
+      const sb2 = document.getElementById('ptSheetBtn');
       if (sb2) {
         sb2.focus();
         R.raised = document.activeElement === sb2;
         render(); await new Promise(x => setTimeout(x, 50));
-        R.sheetKept = document.activeElement === sb2;
+        R.sheetKept = document.getElementById('ptSheetBtn') === sb2 && document.activeElement === sb2;
       }
       UI.queue = []; UI.busy = false;
       try { hideSheet(); } catch (e) {}

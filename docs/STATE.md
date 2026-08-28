@@ -25,8 +25,8 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17r.** Next: **s17s — contrast and the thumb**, then
-s17t (the prose pass and the close).
+**Landed so far: s17a–s17s.** Next: **s17t — the prose pass and the close**,
+which is the last slice of the program.
 
 **One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
 asked for — what s17m shipped without waiting, what needs your ruling with a
@@ -90,6 +90,71 @@ PLAYTEST PASS     54 steps + the WebKit SKIP
 DETERMINISM PASS / RUNGS OK / TIERS / TABS
 POISON            10 reverts, each reddens its own assertion
 ```
+
+### S17s — contrast and the thumb
+
+**A new tool, because a stylesheet says what a rule intends and the rendered
+page says what six chunks of CSS agreed on.** `tools/contrast.js` walks every
+element on all fifteen pages plus a raised sheet, at the three tiers, and reads
+two things off the real pixels: the contrast of every element that carries its
+OWN text against the background composited up through every translucent
+ancestor, and the size of every control that can be pressed. The floor is 44px
+on the phone, where the reference is a thumb on an iPhone, and 32px above it,
+where the pointer is a mouse and the WCAG AA minimum is 24. What is exempt is
+written down in `checks/contrast.json`, which is empty: nothing needed an
+exemption.
+
+**Contrast was nearly clean and the thumb was not.** Three readings under AA,
+twelve controls under the floor on the phone and six above it — and they are
+the ordinary furniture rather than anything exotic:
+
+```
+26x26   the forecast button        24px tall   a ghost button
+30px    the whole .btn family      30px        the range chips
+35px    the statute search         37px        the filter select
+18px    a foldable panel's own H2, which has been the control that opens and
+        shuts that panel since v7
+```
+
+**Two theme colours were lifted along their own hue** to the minimum that
+clears AA where they actually render: `--slate` #7C8A80 → #89988D (3.87:1 as
+11px text on the command deck's lighter ground, 4.63:1 now) and the medal brass
+#7E6A33 → #917A3B (3.68 → 4.65). **The party palette is untouched.** The
+crest's 4.41:1 is a party-coloured shield with the party's initial knocked out
+in the baize, and it is cleared by making the letter bold and lifting it to
+19px on the phone — which is what earns large-text status and its 3:1 bar —
+rather than by repainting anything the owner rules.
+
+**Every selector in the new block is element-qualified, and that is not
+decoration.** The first draft wrote `.select` and `.pg` and lost: last-in-source
+only wins at equal specificity, and half these controls are already claimed by
+a one-element-one-class rule somewhere in six chunks of stylesheet. The Atlas
+strip sets `min-height:0` on its own buttons three classes deep, so the game's
+primary navigation was the smallest target on the page and stayed that way
+until the floor was stated at the same depth.
+
+**And the block lost its opening comment delimiter twice.** A stylesheet does
+not report a syntax error; it resumes at the next thing it recognises, so every
+base rule in the block was silently dropped while the media query below carried
+on working. Only the measurement said so — and it invalidated a poison run
+taken while the block was suppressed, which had "proved" four rules redundant.
+Re-run against a parsing build: all twelve redden. Four base rules are gone
+anyway, because the tool measures clean at every tier without them and each is
+still stated for the phone, where each binds.
+
+```
+ALL CHECKS PASS   11/11 (palette adjudication updated for the two theme lifts)
+CONTRAST OK       new tool: 6 assertions, 3 tiers, empty exemption file
+ROADS OK          184 assertions
+PLAYTEST PASS     67 steps
+DETERMINISM / RUNGS / CHAMBER / TIERS / TABS   all green
+POISON            12 reverts, every one reddening the tool
+```
+
+**One playtest step was flaky at about one run in two** and the cause was in the
+probe: it took a sheet from the turn's own queue, which is still draining after
+an End Session, so the sheet could be replaced between the focus and the check.
+It raises its own sheet now.
 
 ### S17r — the long deck folds, and focus survives
 

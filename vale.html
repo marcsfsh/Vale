@@ -26,10 +26,10 @@
   --oxblood:#7A4038;
   --oxblood-lt:#C77B62;
   --brass:#BFA14E;
-  --brass-dim:#7E6A33;
+  --brass-dim:#917A3B;
   --ivory:#EAE7DC;
   --ivory-dim:#97A099;
-  --slate:#7C8A80;
+  --slate:#89988D;
   --ink:#0E120F;
   --ok:#6FAE8B;
   --bad:#C77B62;
@@ -24836,6 +24836,72 @@ render = function () {
   .cs-chip{min-width:38px;padding:7px 8px}
   .cs-select{padding:10px 9px;font-size:16px}
 }
+
+/* ==========================================================
+   S17s — CONTRAST AND THE THUMB
+   ==========================================================
+   Measured by `tools/contrast.js` on the rendered page rather than read off
+   the stylesheet, because a stylesheet says what a rule INTENDS and six
+   chunks of CSS conflicting by source order say what the eye actually gets.
+   The floor is 44px on the phone -- the reference is a thumb on an iPhone --
+   and 32px above it, where the pointer is a mouse and the AA minimum is 24.
+
+   Twelve selectors were under the floor on the phone and six above it, and
+   they are the ordinary furniture rather than anything exotic: the help
+   button at 26x26, a ghost button at 24 tall, the main `.btn` family at 30,
+   the range chips at 30, the statute search at 35, and -- the widest miss --
+   a foldable panel's own H2 at 18px high, which since v7 has been the control
+   that opens and shuts the panel.
+
+   LAST IN SOURCE ORDER ON PURPOSE. Several of these rules exist earlier and
+   lost: the phone block at line 19659 already asks for `min-height:44px` on
+   the search field and the page still measured 35.
+
+   EVERY SELECTOR HERE IS ELEMENT-QUALIFIED, which is not decoration. The
+   first version of this block wrote `.select` and `.pg` and lost to
+   `select.select` and to a rule three classes deep on the Atlas strip:
+   last-in-source only wins at EQUAL specificity, and half these controls are
+   already claimed by a one-element-one-class rule somewhere in six chunks of
+   stylesheet. The measurement is what caught it -- and it caught this block
+   losing its opening delimiter twice, which silently dropped every base rule
+   in this block while the media query below carried on working. A stylesheet
+   does not report a syntax error; it resumes at the next thing it recognises,
+   and only the measurement said so.
+
+   AND ONLY WHAT BINDS IS HERE. Above the phone the 32px floor is already met
+   by everything except the forecast button and the `.btn` family, so the four
+   further base rules the first draft carried -- the Atlas strip, the fold
+   summary, a width floor on the chips, and a base-tier select -- are gone, and
+   the tool measures clean at every tier without them. Each of the four is
+   still stated for the PHONE, where each of them binds. `tools/contrast.js`
+   guards against a future change dropping any of them above it; a stylesheet
+   rule that guards nothing is the same decoration as a modifier nothing
+   reads. */
+button.iconbtn,button.iconbtn.fx-btn{min-width:32px;min-height:32px}
+button.btn,button.pg,button[data-recrange],.filters button,button.stats-toggle,
+select.select,input[type="search"],input[type="text"],input[type="number"]{min-height:32px}
+/* the heading IS the control that folds its panel, so it is sized like one */
+.panel.foldable>h2{min-height:32px;align-items:center}
+
+@media(max-width:760px){
+  button.iconbtn,button.iconbtn.fx-btn{min-width:44px;min-height:44px}
+  button.btn,button.pg,button[data-recrange],.filters button,button.stats-toggle,
+  select.select,input[type="search"],input[type="text"],input[type="number"]{min-height:44px}
+  button[data-recrange],.filters button,button.pg{min-width:44px}
+  nav.tabs.grouped .pages button,nav.tabs.grouped .groups button{min-height:44px}
+  .panel.foldable>h2{min-height:44px}
+  details.fold>summary{min-height:44px}
+  /* bold alone does not earn large-text status under 18.66px, and the phone
+     draws the crest's initial at 16 */
+  .crest{font-size:19px}
+}
+
+/* AND THE THREE READINGS UNDER AA. The party palette is untouched: the crest
+   is a party-coloured shield with the party's initial knocked out in the
+   baize, and its 4.41:1 is cleared by making the letter BOLD at 20px, which
+   is what earns large-text status (3:1) rather than by repainting anything
+   the owner rules. */
+.crest{font-weight:700}
 </style>
 <script>
 'use strict';
@@ -29824,7 +29890,7 @@ function v11RangeStrip() {
    Titles must be DISTINCT after v7FoldKey's normalisation, which strips a
    trailing number and lowercases: "Chart 1" and "Chart 2" are one saved
    preference governing both panels. roads.js asserts it over this registry. */
-var V11_ACCENT = { gold:'#BFA14E', clay:'#C77B62', green:'#6FAE8B', deep:'#7E6A33', pale:'#D4B45E', rust:'#7A4038' };
+var V11_ACCENT = { gold:'#BFA14E', clay:'#C77B62', green:'#6FAE8B', deep:'#917A3B', pale:'#D4B45E', rust:'#7A4038' };
 function v11Party(st) { return PARTY[playParty(st)].color; }
 var V10_RECORD_CHARTS = [
   { id:'purse', title:'The Public Purse', src:'v6', axis:'money',

@@ -1344,6 +1344,8 @@ renders and a sheet takes focus during it. 16 poison reverts.
 five thresholds, the new S17 surfaces (deal sheet, formation window, race
 screen, digest) included; colour-literal and text-fill invariants held.
 
+**STATUS: DONE.** Contrast was nearly clean (three readings under AA, all borderline); the thumb was not — twelve controls under the floor on the phone and six above it, including the game's primary navigation at 34px and a foldable panel's own H2, the control that opens it, at 18px. Shipped with `tools/contrast.js`, which measures the RENDERED page at the three tiers with an empty exemption file, and 12 poison reverts. Two theme colours lifted; the party palette untouched.
+
 **s17t — the prose pass and the close** (M). Every new line to
 PROSE-STYLE via rungs --check/--corpora; the 2,910 audited pieces
 untouched; MAP.md gains sections (modes, formation, the deal, the season,

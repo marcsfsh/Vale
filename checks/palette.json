@@ -1,5 +1,5 @@
 {
-  "_comment": "Every colour literal vale.html may contain. The party palette is the game's identity (docs/AGREEMENT.md) and never changes for theming; the theme list is Ministry Precise. A new literal fails checks/run.js until it is adjudicated here \u2014 added after a retune shipped half-applied because lowercase hex in JS escaped an uppercase sweep.",
+  "_comment": "Every colour literal vale.html may contain. The party palette is the game's identity (docs/AGREEMENT.md) and never changes for theming; the theme list is Ministry Precise. A new literal fails checks/run.js until it is adjudicated here — added after a retune shipped half-applied because lowercase hex in JS escaped an uppercase sweep.",
   "allowed": {
     "_partyComment": "RSF and PNL carry the only two changes the party palette has ever had, ruled in S6b: both were invisible on the baize (contrast 1.90 and 1.35) and both are lifted along their own hue rather than replaced. RSF #9D0000 -> #C70000 moves 0.4 degrees of hue for contrast 1.90 -> 2.68; PNL #0000BC -> #1551FF moves 7.8 degrees for 1.35 -> 2.86. Re-measure any further proposal with tools/seats.js: the standing rule is that hue drift past ~12 degrees is a different party, not a lift.",
     "party": [
@@ -18,9 +18,9 @@
       "#0E120F",
       "#EAE7DC",
       "#97A099",
-      "#7C8A80",
+      "#89988D",
       "#BFA14E",
-      "#7E6A33",
+      "#917A3B",
       "#D4B45E",
       "#C77B62",
       "#7A4038",
@@ -37,12 +37,13 @@
     ]
   },
   "notes": {
-    "#000": "alpha stencils in mask-image gradients and black overlays \u2014 not colour",
+    "#000": "alpha stencils in mask-image gradients and black overlays — not colour",
     "#fff": "print stylesheet paper inversion, and one badge foreground",
     "#111": "print stylesheet",
     "#777": "print stylesheet",
     "#444": "print stylesheet",
     "#333": "hemiMap's fallback fill for a seat beyond the colour sequence",
-    "#888": "neutral chart gridline"
+    "#888": "neutral chart gridline",
+    "s17s": "Two THEME colours lifted along their own hue to clear WCAG AA where they actually render, measured by tools/contrast.js: --slate #7C8A80 -> #89988D (it read 3.87:1 as 11px text on the command deck's lighter ground, 4.63:1 now) and the medal brass #7E6A33 -> #917A3B (3.68:1 -> 4.65:1). The PARTY palette is untouched; the crest's 4.41:1 was cleared by bolding the initial, which earns large-text status, rather than by repainting anything the owner rules."
   }
 }

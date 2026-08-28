@@ -142,6 +142,19 @@ before touching the file.
 - **A probe that opens what is open by default proves nothing.** S17r's fold
   test opened the first group — which the code opens anyway — so a build that
   remembered no toggle at all still passed. Open one that is shut.
+- **A stylesheet does not report a syntax error.** S17s's block lost its
+  opening comment delimiter twice; the browser resumed at the next thing it
+  recognised, so every base rule in it was silently dropped while the media
+  query below carried on working — and a poison run taken in that state
+  "proved" four rules redundant, because none of them was applying. Nothing in
+  `checks/run.js` reads CSS. `tools/contrast.js` is what noticed, and a poison
+  run against a build you have not confirmed PARSES is a poison run that proves
+  nothing.
+- **Last-in-source only wins at EQUAL specificity.** Six chunks of stylesheet
+  mean half the controls in this game are already claimed by a
+  one-element-one-class rule, and the Atlas strip claims its own buttons three
+  classes deep. A new rule at the end of the file that writes `.select` where
+  the incumbent writes `select.select` loses and looks like it worked.
 - **A knob nothing in the game can turn is decoration, and the poison run is
   where you find out.** S17r drafted a card-count threshold and a group-size
   floor; two poisons that set both to absurd values changed nothing anywhere,
@@ -297,6 +310,11 @@ you touched; a SKIP is never a PASS.
 - `tools/chamber.js` — seat-map geometry, overlaps, label collisions, rendered
   size per tier. `tools/seats.js` — palette contrast, ΔE, colour-vision sim.
 - `tools/tiers.js` / `tools/tabs.js` — layout at each tier boundary.
+- `tools/contrast.js` — every element's text contrast against the background
+  composited up through its translucent ancestors, and every pressable
+  control's size, on all fifteen pages plus a raised sheet, at the three
+  tiers. 44px on the phone, 32px above it. Exemptions live in
+  `checks/contrast.json`, and it is empty.
 - `tools/pacing.js` — plays a length option to its end and reports the arc.
 - `tools/poison.js` — proves a body is dead before you delete it.
 - `tools/rungs.js` — the authored prose: `--brief` a book, `--apply` a shard
