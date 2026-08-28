@@ -109,6 +109,18 @@ before touching the file.
   one predicate makes them agree even when both are wrong — consistency is not
   correctness, and the first poison run proved the consistency half alone
   green on a build with the rule deleted.
+- **THE PROBE IS WRONG BEFORE THE GAME IS.** S18c's assertion took four
+  rounds and every fault was in the probe: it demanded the caretaker's exact
+  sentence where the code rightly answers with the most specific reason it
+  has; it demanded one NAMED paper type appear, where the producer returns at
+  the first branch that fires and any of five may pre-empt it; it seated a
+  chair once and drove 26 sessions, during which ballots move the player
+  between chairs, so six of the head of government's papers were tallied in
+  the opposition column; and it matched a word against a string it had
+  truncated before that word. Three of the four would have shown GREEN over a
+  wrong measurement, which is the failure this whole family of rules exists to
+  stop. Before believing a red assertion, check the probe. Before believing a
+  green one, poison it.
 - **An assertion that compares two things, one of which is derived from the
   other, proves nothing.** S17e's mirror check compared `redLine` with
   `terms.redLines[0]` as seeded — but the list is *built from* the scalar, so
@@ -330,7 +342,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **186 content assertions**, the largest harness here: the
+- `tools/roads.js` — **187 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

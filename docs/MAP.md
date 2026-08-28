@@ -1264,6 +1264,44 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The papers know which chair you sit in (S18c)
+
+S17c routed all 174 turn events by office so an opposition player decides
+nothing that is not theirs. **The political papers went round the back of
+it**: produced every session by `politicsTick`, charged for by `expireInbox`,
+drawn on the landing page, and asking nothing about the chair. A real click
+from the bench on "The Fifty Governors Call for a Conference" moved the
+national `crown` indicator by +13, and one of its three answers offers to send
+"the responsible minister" to a player who has none.
+
+- **`V18_PAPER_NEED`** is one table saying which chair each paper belongs to,
+  read by the producer, the button and the handler. `coalition_review` and
+  `senate_conference` are `'gov'` rather than `'leading'`, because S17b's own
+  junior branch in `seedOpeningInbox` seeds both deliberately.
+- **A paper already in an old save is still drawn** -- losing one quietly is
+  the worst failure this file knows -- but drawn shut with its reason, and the
+  handler refuses too.
+- **The coalition papers had the mirror defect.** Gated on `inPower`, which
+  includes a junior, and computing the partner as
+  `coalition.filter(p => p !== st.ruling)` -- which in a two-party coalition IS
+  the player. A junior partner received 68 demands and 16 confidence threats
+  from their own benches. The two guards are BELT AND BRACES and poison
+  together: with the gate back at `inPower` the partner list still comes out
+  empty, and with the player back in the list the gate still refuses a junior.
+- **The despatch box.** Question Time asked `inPower` at five sites, so a
+  junior answered the CHANCELLOR's brief with the senior partner's leader
+  named in the question -- indistinguishable from the head of government.
+  `v18QtAnswers` is `leads`, which is the owner's rule that a junior
+  "functions similarly to opposition" on the per-session decisions.
+- Assertion `the papers know which chair you sit in`, and **four faults in the
+  probe before the game had one**: it demanded the caretaker's exact sentence
+  where `v18DraftWhy` rightly gives the most specific reason; it demanded one
+  NAMED paper type reach a head of government, where the producer returns at
+  the first branch that fires; it seated a chair once and drove 26 sessions,
+  during which ballots move the player between chairs; and it matched a word
+  against a string it had already truncated before that word. Three of the
+  four would have shown green over a wrong measurement.
+
 ## No control lies, in any chair (S18b)
 
 The audit in `docs/AUDIT-S17.md` found the same defect in five slices and
