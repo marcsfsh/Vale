@@ -7636,6 +7636,246 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `a REAL session rather than off this probe's own call: three of them with the country held furious leave the ` +
     `pressure at ${street.driven}${street.drivenErr ? ' (' + street.drivenErr + ')' : ''}`);
 
+  /* ================================================================
+     S18a — THE FLOOR IS OPEN TO EVERY CHAIR
+     ================================================================ */
+  const floor = await page.evaluate(() => {
+    const R = {};
+    function seat(ruling) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.rngState = 5150; S.ruling = ruling;
+      S.coalition = ruling === 'lp' ? ['lp'] : [ruling, 'sd'];
+      S.capital = 400; S.treasury = 9000;
+      return S;
+    }
+    function openStatute() {
+      return POLICIES.filter(function (x) {
+        return policyOpen(S, x) && !(S.pol[x.id] > 0) && !x.needs;
+      });
+    }
+    function cardVerbs(b) {
+      return (billCard(b).match(/data-bill-action="([a-zA-Z]+)"/g) || [])
+        .map(function (m) { return m.slice(18, -1); }).sort();
+    }
+
+    /* (a) THE DOOR. A real click on the card's own button, from the bench.
+       S17b opened `draftBillDialog` and left the refusal on `changePolicy`,
+       the only function that calls it, and the button rendered `disabled`
+       besides -- so the dialog was correct and reachable by nothing. */
+    seat('fp'); UI.tab = 'policy'; render();
+    const up = document.querySelector('#view [data-pol][data-dir="1"]');
+    R.button = { there: !!up, live: !!up && !up.disabled };
+    const before = S.bills.length;
+    if (up) up.click();
+    const draft = document.querySelector('#modal [data-draft="clean"]');
+    R.clicked = { sheet: !document.getElementById('modal').hidden, choice: !!draft };
+    /* and it is driven all the way to a bill on the paper, by clicking the
+       drafting sheet's own button -- an opened sheet proves the door, a bill
+       proves the room behind it */
+    if (draft) draft.click();
+    try { hideSheet(); } catch (e) {}
+    const fresh = S.bills.slice(before);
+    R.laid = { count: fresh.length,
+      owner: fresh.length ? fresh[0].owner : null,
+      sponsor: fresh.length ? fresh[0].sponsor : null,
+      me: playParty(S) };
+
+    /* (b) ONE AT A TIME. Private members' time is scarce; the cap is the only
+       thing that refuses an opposition player, and it is asked where the
+       button is drawn as well as where the click lands. */
+    seat('fp');
+    const s2 = openStatute();
+    sponsorBill(S, s2[0].id, 1, 'player', 'clean', true);
+    const said2 = [];
+    const fb2 = flash; flash = function (m) { said2.push(m); };
+    try { changePolicy(s2[1].id, 1); } finally { flash = fb2; }
+    R.cap = { refused: document.getElementById('modal').hidden !== false,
+      says: /already has a bill before the House/.test(said2.join(' ')) };
+    try { hideSheet(); } catch (e) {}
+    UI.tab = 'policy'; render();
+    const up2 = document.querySelector('#view [data-pol][data-dir="1"]');
+    R.cap.buttonShut = !!up2 && up2.disabled;
+    R.cap.buttonSaysWhy = !!up2 && /already has a bill before the House/.test(up2.getAttribute('title') || '');
+
+    /* (c) AND IT IS HARDER, by arithmetic rather than by a number on a scale.
+       The SAME statute, laid by the player from each chair, read through the
+       game's own forecast. */
+    function forecastFrom(ruling) {
+      seat(ruling);
+      const id = openStatute()[0].id;
+      const b = sponsorBill(S, id, 1, 'player', 'clean', true);
+      if (!b) return null;
+      return { lower: Math.round(billForecast(S, b).lower),
+        own: Math.round(partyBillSupport(S, playParty(S), b)),
+        ruling: Math.round(partyBillSupport(S, S.ruling, b)),
+        verbs: cardVerbs(b) };
+    }
+    R.gov = forecastFrom('lp');
+    R.opp = forecastFrom('fp');
+    /* and the two terms that paid the opposition, COMPONENT-WISE -- a
+       forecast is a sum and either half can carry the other, and both of the
+       readings above sit against a party clamped at 98. Two bills identical
+       but for the one field the term reads. */
+    function ownerTerm(coalition) {
+      seat('fp');
+      if (coalition) S.coalition = coalition;
+      const b = sponsorBill(S, openStatute()[0].id, 1, 'player', 'clean', true);
+      if (!b) return null;
+      const asOther = Object.assign({}, b, { owner: 'opposition' });
+      return Math.round(partyBillSupport(S, S.ruling, b)) -
+        Math.round(partyBillSupport(S, S.ruling, asOther));
+    }
+    /* out of government the ruling party is paid nothing for the bill being
+       the player's; in the coalition it is still paid its +8 */
+    R.rulingTerm = { opp: ownerTerm(null), junior: ownerTerm(['fp', 'lp']) };
+    /* and the declared line is worth nothing on the bill you sponsored --
+       sponsoring it IS the line -- while it is still worth its 24 on someone
+       else's, which is the reading a test of "the number went down" misses */
+    seat('fp');
+    const mineB = sponsorBill(S, openStatute()[0].id, 1, 'player', 'clean', true);
+    /* the same bill with another party's name on it -- the live `sponsorBill`
+       takes six arguments and derives the sponsor, so a seventh would be
+       silently dropped and the League would sponsor its own bill again */
+    const theirB = mineB ? Object.assign({}, mineB, { owner: 'opposition', sponsor: 'rsf' }) : null;
+    function lineWorth(b) {
+      return Math.round(partyBillSupport(S, playParty(S), Object.assign({}, b, { playerPosition: 'support' }))) -
+        Math.round(partyBillSupport(S, playParty(S), Object.assign({}, b, { playerPosition: null })));
+    }
+    R.lineTerm = { own: mineB ? lineWorth(mineB) : null, theirs: theirB ? lineWorth(theirB) : null };
+
+    /* (d) THE GOVERNMENT'S INSTRUMENTS ARE THE GOVERNMENT'S. S17b's own
+       comment says the card withholds the whip, the Senate deal and the
+       committee from a private member's bill. It did not: `canWork` was
+       `inPower(S) || b.owner === 'player'`, which GRANTS them. Asked at the
+       card AND at the point of effect, because a card can be a session stale. */
+    seat('fp');
+    const ob = sponsorBill(S, openStatute()[0].id, 1, 'player', 'clean', true);
+    const kit = ['whip', 'bargain', 'confidence', 'urgent'];
+    R.kitOnCard = kit.filter(function (k) { return cardVerbs(ob).indexOf(k) >= 0; });
+    const said3 = [];
+    const fb3 = flash; flash = function (m) { said3.push(m); };
+    try { kit.forEach(function (k) { billAction(ob.id, k); }); } finally { flash = fb3; }
+    R.kitTook = { whip: ob.whip, deal: ob.upperDeal, confidence: !!ob.confidence, urgent: !!ob.urgent };
+    R.kitRefusal = /government/.test(said3.join(' '));
+    /* the sponsor may still narrow their own bill */
+    R.ownVerbs = cardVerbs(ob);
+
+    /* (e) AND THE MONEY IS THE PARTY'S. Pressing another party's sponsor took
+       8 from the NATIONAL EXCHEQUER from the opposition bench -- the defect
+       S17a fixed at the committee panel, one lever along. */
+    seat('fp');
+    const gb = sponsorBill(S, openStatute()[0].id, 1, 'government', 'clean', true);
+    const t0 = S.treasury, p0 = partyPurse(S, playParty(S));
+    billAction(gb.id, 'pressure');
+    R.oppMoney = { treasury: t0 - S.treasury, purse: Math.round(p0 - partyPurse(S, playParty(S))) };
+    seat('lp');
+    const gb2 = sponsorBill(S, openStatute()[0].id, 1, 'opposition', 'clean', true);
+    const t1 = S.treasury, p1 = partyPurse(S, playParty(S));
+    billAction(gb2.id, 'pressure');
+    R.govMoney = { treasury: t1 - S.treasury, purse: Math.round(p1 - partyPurse(S, playParty(S))) };
+
+    /* (f) THE OTHER TWO DOORS ON THE SAME PAGE. The dossier is the game's
+       considered view of a statute and its draft buttons were not disabled
+       for an opposition player, they were never EMITTED; and the
+       "Worth drafting now" fold -- a reading of the statute book against your
+       own platform -- was hidden from the chair that most needs it. Both read
+       the one predicate now, so both are asked here. */
+    seat('fp');
+    const dossierId = openStatute()[0].id;
+    v9Dossier(dossierId);
+    R.dossier = { open: !!document.querySelector('#modal [data-v9dossier-draft]') };
+    try { hideSheet(); } catch (e) {}
+    sponsorBill(S, dossierId, 1, 'player', 'clean', true);
+    v9Dossier(openStatute()[0].id);
+    R.dossier.capped = !document.querySelector('#modal [data-v9dossier-draft]');
+    try { hideSheet(); } catch (e) {}
+    seat('fp'); UI.tab = 'policy'; render();
+    R.rec = { opp: !!document.querySelector('#view details.rec') };
+    seat('lp'); UI.tab = 'policy'; render();
+    R.rec.gov = !!document.querySelector('#view details.rec');
+
+    /* (g) AND KILLING A BILL IS THE GOVERNMENT'S, NOT A SEAT COUNT'S.
+       `outright` asks whether the PLAYER'S party is above half the Assembly,
+       and S17f made being frozen out of a majority a thing that happens -- so
+       a party with the seats and no office could take a bill off the paper.
+       Taking it off the paper is control of the paper. Both are asked now, so
+       the arm builds the chair that tells them apart. */
+    function majorityBench(ruling, owner) {
+      seat(ruling);
+      PARTIES.forEach(function (q) { S.seats[q.id] = 4; });
+      S.seats.lp = CFG.seats - 4 * (PARTIES.length - 1);
+      return sponsorBill(S, openStatute()[0].id, 1, owner, 'clean', true);
+    }
+    const frozen = majorityBench('fp', 'government');
+    R.kill = { outright: outright(S), standing: standing(S),
+      onCard: cardVerbs(frozen).indexOf('kill') >= 0 };
+    const said4 = [];
+    const fb4 = flash; flash = function (m) { said4.push(m); };
+    try { billAction(frozen.id, 'kill'); } finally { flash = fb4; }
+    R.kill.refused = /government/.test(said4.join(' '));
+    R.kill.stillOnPaper = S.bills.some(function (x) { return x.id === frozen.id; });
+    const held = majorityBench('lp', 'opposition');
+    R.kill.govOutright = outright(S);
+    R.kill.govOnCard = cardVerbs(held).indexOf('kill') >= 0;
+    return R;
+  });
+  const floorOk =
+    floor.button.there && floor.button.live && floor.clicked.sheet && floor.clicked.choice &&
+    floor.laid.count === 1 && floor.laid.owner === 'player' && floor.laid.sponsor === floor.laid.me &&
+    floor.cap.refused && floor.cap.says && floor.cap.buttonShut && floor.cap.buttonSaysWhy &&
+    floor.gov && floor.opp && floor.opp.lower < floor.gov.lower &&
+    floor.rulingTerm.opp === 0 && floor.rulingTerm.junior === 8 &&
+    floor.lineTerm.own === 0 && floor.lineTerm.theirs >= 20 &&
+    floor.kitOnCard.length === 0 && floor.kitRefusal &&
+    floor.kitTook.whip === 0 && floor.kitTook.deal === 0 &&
+    !floor.kitTook.confidence && !floor.kitTook.urgent &&
+    floor.ownVerbs.indexOf('amend') >= 0 &&
+    floor.oppMoney.treasury === 0 && floor.oppMoney.purse > 0 &&
+    floor.govMoney.treasury > 0 && floor.govMoney.purse === 0 &&
+    floor.dossier.open && floor.dossier.capped && floor.rec.opp && floor.rec.gov &&
+    floor.kill.outright && floor.kill.standing === 'opposition' &&
+    !floor.kill.onCard && floor.kill.refused && floor.kill.stillOnPaper &&
+    floor.kill.govOutright && floor.kill.govOnCard;
+  say(floorOk, 'the floor is open to every chair',
+    `THE OWNER COULD NOT LAY A BILL FROM OPPOSITION IN THE SHIPPED BUILD, and the reason is this file's oldest ` +
+    `lesson wearing a new coat: S17b opened \`draftBillDialog\` and \`v11CanPropose\`, and left the refusal on ` +
+    `\`changePolicy\` -- the ONLY function that calls the dialog -- with the card's button rendering \`disabled\` ` +
+    `besides. The door was correct and reachable by nothing · a real click on the card's own button from the ` +
+    `bench opens the drafting sheet and its own Introduce button puts ${floor.laid.count} bill on the paper, `+
+    `owner '${floor.laid.owner}', sponsored by ${floor.laid.sponsor} · ONE AT A TIME, because ` +
+    `private members' time is scarce: with one on the paper the second is refused (${floor.cap.refused}) and the ` +
+    `button says why rather than dying silently (${floor.cap.buttonSaysWhy}) · AND IT IS HARDER, by arithmetic ` +
+    `and not by a number on a scale. The same statute, laid by the player: ${floor.gov.lower} from government ` +
+    `against ${floor.opp.lower} from opposition, where it used to be 39 against 41 -- the government's own ` +
+    `bill was the harder one. Two terms paid the opposition for being there, and both are read here COMPONENT-WISE ` +
+    `-- on two bills identical but for the one field the term reads -- because a forecast is a sum, either half ` +
+    `can carry the other, and the party the old reading compared against sits clamped at 98. The ruling party ` +
+    `was paid +8 to back any bill whose OWNER was 'player', whichever chair the player sat in: being the ` +
+    `player's bill is worth ${floor.rulingTerm.opp} to the government now when the player is out of it, and ` +
+    `still ${floor.rulingTerm.junior} when the player is in the coalition, which is what the term was for. And ` +
+    `the player's party was counted twice for its own bill -- +19 as sponsor and +24 again for a line ` +
+    `\`sponsorBill\` stamps on automatically -- which is the S17k mistake in a second place: the declared line ` +
+    `is worth ${floor.lineTerm.own} on the bill you sponsored, where sponsoring it IS the line, and still ` +
+    `${floor.lineTerm.theirs} on somebody else's · THE ` +
+    `GOVERNMENT'S INSTRUMENTS ARE THE GOVERNMENT'S: the whip, the Senate deal, the confidence motion and urgent ` +
+    `procedure are off the card (${floor.kitOnCard.length} of four) and refused at the point of effect ` +
+    `(${floor.kitRefusal}), where S17b's own comment claimed \`canWork\` withheld them and it read ` +
+    `\`inPower(S) || b.owner === 'player'\`, which grants them. What a private member keeps is the floor, the ` +
+    `arithmetic and their own bill: ${floor.ownVerbs.join(', ')} · and THE MONEY IS THE PARTY'S: pressing a ` +
+    `sponsor from the bench costs the purse ${floor.oppMoney.purse} and the exchequer ${floor.oppMoney.treasury}, ` +
+    `where the same click in government costs the exchequer ${floor.govMoney.treasury} and the purse ` +
+    `${floor.govMoney.purse} · THE OTHER TWO DOORS ON THE SAME PAGE went the same way: the dossier's draft ` +
+    `buttons were never emitted from the bench rather than disabled (${floor.dossier.open} now, and shut on the ` +
+    `cap at ${floor.dossier.capped}), and "Worth drafting now" -- a reading of the statute book against your own ` +
+    `platform, which is no government instrument -- was hidden wholesale from the chair that most needs it ` +
+    `(${floor.rec.opp} from opposition, ${floor.rec.gov} in government) · and KILLING A BILL IS A GOVERNMENT'S: ` +
+    `\`outright\` asks whether the PLAYER'S party is above half the Assembly, which S17f made a thing you can be ` +
+    `frozen out of holding, so a party with the seats and no office could take a bill off the paper. On a bench ` +
+    `with ${floor.kill.outright ? 'the majority' : 'no majority'} and standing '${floor.kill.standing}' the verb ` +
+    `is off the card (${!floor.kill.onCard}), refused at the handler (${floor.kill.refused}) and the bill is ` +
+    `still on the paper (${floor.kill.stillOnPaper}); the same majority in government keeps it ` +
+    `(${floor.kill.govOnCard})`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

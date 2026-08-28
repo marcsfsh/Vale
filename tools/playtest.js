@@ -2208,6 +2208,72 @@ async function run() {
     await sp.close();
   }
 
+  // -- S18a: the owner, on the shipped build, could not lay a bill from the
+  //    opposition bench. The door was opened on the callee and the refusals
+  //    were left on the callers, so this step is a real click on the card's
+  //    own button and then a real click on the drafting sheet's, from a chair
+  //    the player does not govern from.
+  {
+    const op = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+    await op.addInitScript(() => { window.confirm = () => true; });
+    await op.goto(URL);
+    await op.waitForSelector('[data-setup-begin]', { timeout: 15000 });
+    await op.click('[data-setup-begin]');
+    await op.waitForSelector('[data-doctrine]', { timeout: 10000 });
+    await op.click('[data-doctrine]');
+    await op.waitForTimeout(250);
+    const bench = await op.evaluate(() => {
+      /* the player's own party out of the government, which is the chair the
+         report was written from */
+      S.ruling = PARTIES.filter(function (q) { return q.id !== playParty(S); })[0].id;
+      S.coalition = [S.ruling];
+      S.capital = 500;
+      UI.tab = 'policy'; render();
+      var btn = document.querySelector('#view [data-pol][data-dir="1"]');
+      return { standing:standing(S), bills:S.bills.length,
+        live:!!btn && !btn.disabled,
+        rec:!!document.querySelector('#view details.rec') };
+    });
+    /* Guarded rather than `op.click(selector)`: a build that draws the button
+       dead makes Playwright wait for it to become enabled and then throw, and
+       a probe that throws aborts the harness instead of failing one step. */
+    const draftBtn = await op.$('#view [data-pol][data-dir="1"]:not([disabled])');
+    if (draftBtn) await draftBtn.click();
+    await op.waitForTimeout(250);
+    const sheetUp = await op.$('#modal [data-draft="clean"]');
+    if (sheetUp) await sheetUp.click();
+    await op.waitForTimeout(250);
+    const laid = await op.evaluate(() => {
+      var b = S.bills[S.bills.length - 1] || {};
+      UI.tab = 'houses'; render();
+      var card = document.querySelector('#view [data-bill-action]');
+      var verbs = Array.prototype.map.call(
+        document.querySelectorAll('#view [data-bill-action]'),
+        function (x) { return x.getAttribute('data-bill-action'); });
+      /* and a second is refused, because private members' time is scarce */
+      UI.tab = 'policy'; render();
+      var next = document.querySelector('#view [data-pol][data-dir="1"]:not([disabled])');
+      var shut = document.querySelector('#view [data-pol][data-dir="1"][disabled]');
+      return { bills:S.bills.length, owner:b.owner, sponsor:b.sponsor, me:playParty(S),
+        onPaper:!!card, verbs:verbs,
+        second:!next, why:(shut && shut.getAttribute('title')) || '' };
+    });
+    const kit = ['whip', 'bargain', 'confidence', 'urgent'];
+    step('opposition-floor',
+      bench.standing === 'opposition' && bench.live && bench.rec &&
+      laid.bills === bench.bills + 1 && laid.owner === 'player' && laid.sponsor === laid.me &&
+      laid.onPaper && kit.every(k => laid.verbs.indexOf(k) < 0) &&
+      laid.second && /already has a bill before the House/.test(laid.why),
+      `a real click on the statute card's own Draft button from the opposition bench opens the drafting ` +
+      `sheet, and a real click on its Introduce puts the bill on the paper — owner '${laid.owner}', ` +
+      `sponsored by ${laid.sponsor}, ${bench.bills} → ${laid.bills} bills — where the shipped build ` +
+      `refused in \`changePolicy\` and drew the button dead · what the card offers on it is the floor and ` +
+      `the arithmetic (${laid.verbs.join(', ')}) and none of the government's four instruments · "Worth ` +
+      `drafting now" is on the page from the bench too (${bench.rec}) · and the second bill is refused with ` +
+      `the reason on the button: "${laid.why.slice(0, 60)}"`);
+    await op.close();
+  }
+
   // -- S17q: the street's demand, answered on screen, and the strike that
   //    follows a refusal shutting the statute book without touching the chamber.
   {

@@ -225,7 +225,11 @@ standing: a caretaker still *leads*.
   them. Out of government it is a **private member's bill**: one at a time
   (`v17PrivateBillsOf`), one article at a time, and no government machinery
   behind it — the whip, the committee and the Senate deal stay the
-  government's, which the bill card already enforces through `canWork`. The
+  government's. **Two sentences of that were false until S18a and the owner
+  found both by playing the build** — see "The floor is open to every chair"
+  below: the door was opened on `draftBillDialog` and every caller still
+  refused, and `canWork` GRANTED the machinery this paragraph says it
+  withholds. The
   odds are worse because the arithmetic is worse; no number was put on the
   scale. **A pending article records `by`** — it never had a sponsor, because
   until S17b only a government could lay one; the cap reads it, and S17k's AI
@@ -1259,6 +1263,63 @@ source order say what the eye gets.
 - Two THEME colours were lifted to clear AA (`--slate`, the medal brass). The
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
+
+## The floor is open to every chair (S18a)
+
+**S17b's PR says it opened the floor to an opposition player, and the owner
+played the shipped build and could not lay a bill.** The fix went on the
+callee: `draftBillDialog` carries the private members' rule and
+`v11CanPropose` lets an article be laid from any chair. Nothing else was
+touched, and five surfaces in front of that dialog still refused.
+
+- **`v18FloorShut(st)`** (last chunk) is now the ONE predicate, and it returns
+  a REASON string or null rather than a boolean, so every surface can say why.
+  It answers null for anyone in power, and out of power it refuses only the
+  second private member's bill (`v17PrivateBillsOf`). Read by
+  `changePolicy`, the statute card's two Draft buttons (which put the reason
+  in the button's `title` rather than dying silent), `v9Dossier`'s two, and
+  `draftBillDialog` itself — a guard belongs on the live function as well as
+  on the button that leads to it.
+- **What was in front of the door:** `changePolicy` refused flatly and
+  returned, and it is the only caller of the dialog; the card's buttons
+  rendered `disabled` on `!inPower(S)`; the dossier's buttons were not
+  disabled but never EMITTED; and "Worth drafting now" (`v7RecommendedFold`,
+  a reading of the statute book against your own platform and priorities) was
+  hidden wholesale from a player out of office.
+- **And the path was EASIER out of office, not harder.** The same statute laid
+  by the player forecast 41 from opposition against 39 from government. Three
+  causes, all now fixed and all asserted component-wise (a forecast is a sum,
+  and either half carries the other):
+  - `partyBillSupport` paid the RULING party +8 for any bill whose `owner`
+    was `'player'`, whichever chair the player sat in. It now also asks
+    whether the sponsor is in the coalition: being the player's bill is worth
+    0 to a government the player is not in, and still 8 when they are.
+  - the player's own party was counted TWICE for its own bill, +19 as sponsor
+    and +24 again for the `playerPosition` that `sponsorBill` stamps on every
+    bill the player lays. A declared line is worth 24 on somebody else's bill
+    and 0 on your own, where sponsoring it IS the line. This is S17k's
+    shared-body mistake found in a second place.
+  - `canWork = inPower(S) || b.owner === 'player'` GRANTED an opposition
+    player the whip, the Senate deal, the confidence motion and urgent
+    procedure — the four the paragraph in "The three chairs" above says it
+    withholds. The card now splits `govKit` from `mine`: accepting an
+    amendment belongs to whoever laid the bill, the other four to a
+    government, and `billAction` refuses all four at the point of effect
+    because a card can be a session stale.
+- **Killing a bill asks two questions.** `outright(S)` is a seat count on the
+  PLAYER's party, and S17f made being frozen out of a majority a thing that
+  happens, so a party with the seats and no office could take a bill off the
+  paper. It is `outright(S) && inPower(S)` at the card and at the handler.
+- **And the money is the party's.** `billAction` spent `S.treasury` whatever
+  chair the player sat in; out of power a wrapper refunds the exchequer and
+  charges `partySpend` instead, refusing first when the purse cannot meet it.
+  This is S17a's committee-panel fix arriving at the next lever along.
+- Assertion: `the floor is open to every chair` in `tools/roads.js`, eight
+  arms, twelve poison reverts each reddening it alone. Playtest step
+  `opposition-floor` drives the card button and then the drafting sheet's own
+  button by real clicks from the bench.
+- **Still government-only and flagged, not changed:** constitutional **acts**.
+  The owner's ruling names bills and articles.
 
 ## The long deck folds, and focus survives (S17r)
 

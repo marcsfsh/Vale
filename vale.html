@@ -8865,7 +8865,11 @@ function partyBillSupport(st, pid, bill) {
   var coalition = st.coalition || [st.ruling];
   if (pid === bill.sponsor) score += 19;
   if (coalition.indexOf(pid) >= 0 && bill.sponsor === st.ruling) score += 12;
-  if (pid === st.ruling && bill.owner === 'player') score += 8;
+  /* S18a: keyed on `owner === 'player'` this paid the RULING party +8 to back
+     the bill of a player sitting in opposition -- measured at 32 against 24 on
+     the government's own bill, so the opposition's bill was the easier one.
+     The government backs the player's bill when the player is IN it. */
+  if (pid === st.ruling && bill.owner === 'player' && coalition.indexOf(bill.sponsor) >= 0) score += 8;
   score += ((st.partyRel && st.partyRel[pid] !== undefined ? st.partyRel[pid] : 50) - 50) * .22;
   if (st.cordon && st.cordon[pid] && pid !== bill.sponsor) score -= 8;
   if (st.coopted && st.coopted[pid]) score += 6;
@@ -8876,7 +8880,13 @@ function partyBillSupport(st, pid, bill) {
      Here it moves the DECLARING party's own score, and billForecast already
      weights every party by its seats, so the whip count, the forecast and the
      pass roll all move together and a party with no seats moves nothing. */
-  if (bill.playerPosition && pid === playParty(st)) {
+  /* S18a: AND NOT TWICE FOR ONE FACT. `sponsorBill` stamps
+     `playerPosition:'support'` on every bill the player sponsors, so the
+     player's own party collected +19 as sponsor AND +24 for a line it never
+     declared -- the S17k mistake in a second place. A declared line is worth
+     something on somebody else's bill; on your own, sponsoring it IS the
+     line. */
+  if (bill.playerPosition && pid === playParty(st) && pid !== bill.sponsor) {
     score += bill.playerPosition === 'support' ? 24 : -28;
   }
   if (bill.lines && bill.lines[pid]) score += bill.lines[pid] === 'support' ? 16 : -18;
@@ -9000,11 +9010,15 @@ function draftBillDialog(id, dir) {
      it -- the whip, the committee and the Senate deal are the government's
      instruments and the bill card already withholds them (`canWork`). Its
      odds are worse because the arithmetic is worse, not because a number was
-     put on the scale: `billForecast` reads the seats behind it. */
-  if (!inPower(S) && v17PrivateBillsOf(S, playParty(S)).length >= 1) {
-    flash('Private members\u2019 time is short: your party already has a bill before the House.');
-    return;
-  }
+     put on the scale: `billForecast` reads the seats behind it.
+     S18a: the comment above was half wrong when it was written -- `canWork`
+     GRANTED the government's machinery to a private member's bill rather than
+     withholding it -- and the rule stated here was stated again, in different
+     words, in the card and the handler that reach it. It is one rule and it
+     is `v18FloorShut` now, asked here as well because a guard belongs on the
+     live function and not only on the button that leads to it. */
+  var v18shut = (typeof v18FloorShut === 'function') ? v18FloorShut(S) : null;
+  if (v18shut) { flash(v18shut); return; }
   if (activeBillFor(S, id)) { flash('A bill on that measure is already before Parliament.'); return; }
   var fc = { clean:{lower:0,upper:0}, negotiated:{lower:5,upper:11}, urgent:{lower:5,upper:-6} };
   var preview = billForecast(S,{policy:id,dir:dir,sponsor:playParty(S),owner:'player',strategy:'clean',whip:0,upperDeal:0,committee:0,concessions:0,confidence:false,urgent:false,playerPosition:'support'});
@@ -9414,9 +9428,19 @@ function billAction(id, action) {
      committee panel's four actions are the cautionary tale: they render for
      every bill and their handler checks nothing, so an opposition player can
      spend their own capital pushing the government's bills through. */
-  if (action === 'kill' && !outright(S)) { flash('Only a party that holds the Assembly outright can take a bill off the paper.'); return; }
+  /* S18a: `outright` is a seat count and taking a bill off the paper is
+     control of the paper, which S17f made a thing a majority can be frozen
+     out of. Both are asked. */
+  if (action === 'kill' && !(outright(S) && inPower(S))) { flash('Only a government that holds the Assembly outright can take a bill off the paper.'); return; }
   if ((action === 'amendIt' || action === 'delayIt') && !inPower(S)) { flash('Only a government controls the order paper.'); return; }
   if (action === 'talkOut' && inPower(S)) { flash('A government does not obstruct its own House.'); return; }
+  /* S18a: and the four government instruments, gated HERE and not only where
+     the button is drawn -- which is what the comment above this block has
+     said since S10b and what the card was not doing. */
+  if (['whip', 'bargain', 'confidence', 'urgent'].indexOf(action) >= 0 && !inPower(S)) {
+    flash('The whip, the Senate deal, the confidence motion and the timetable are a government\'s instruments. A private member\'s bill has the floor and the arithmetic.');
+    return;
+  }
   /* S15d. Gated at the point of effect, like every other bill lever: the
      buttons are only drawn on a refused bill, and the handler says so anyway
      because a card can be stale by a session. */
@@ -11704,7 +11728,14 @@ function changePolicy(id, dir) {
   if (p.needs && next > 0 && !S.pol[p.needs]) { flash('Requires ' + POL[p.needs].name + '.'); return; }
   if (S.changed[id]) { flash('That measure has already been before Parliament this session.'); return; }
   if (!policyOpen(S, p)) { flash(policyWhy(S, p) || 'That measure has no place under this constitution.'); return; }
-  if (!inPower(S)) { flash('You are in opposition. You cannot introduce government legislation.'); return; }
+  /* S18a: THE REFUSAL THAT STOOD IN FRONT OF THE DOOR. S17b opened
+     `draftBillDialog` to every chair, with the private members' rule written
+     into it -- and left this line here, in the only function that calls it.
+     The dialog was reachable by nothing, and the owner, playing the shipped
+     build, could not lay a bill from opposition. One rule, asked once, at
+     every site that asks it. */
+  var v18shut = (typeof v18FloorShut === 'function') ? v18FloorShut(S) : null;
+  if (v18shut) { flash(v18shut); return; }
   /* S17q: a caretaker and a general strike are two facts about the same
      government, asked on one line. */
   var care = (typeof v17Barred === 'function') ? v17Barred(S, 'policy') : null;
@@ -13944,11 +13975,24 @@ function billCard(b) {
       (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(label) + (cost || money ? ' <span class="c">' + (cost ? cst(cost) + ' cap' : '') +
       (cost && money ? ', ' : '') + (money ? fmc(money) : '') + '</span>' : '') + '</button>');
   }
-  var canWork = inPower(S) || b.owner === 'player';
-  if (canWork) {
+  /* S18a: OWNING A BILL AND GOVERNING ARE TWO DIFFERENT CLAIMS, and this line
+     ran them together: `inPower(S) || b.owner === 'player'` handed an
+     opposition player the whip, the Senate deal, the confidence motion and
+     urgent procedure on their own private member's bill. Measured from the
+     opposition bench in one session: whip 0 to 14, upperDeal 0 to 19,
+     confidence and urgent both set. S17b's own comment says "the whip, the
+     committee and the Senate deal are the government's instruments and the
+     bill card already withholds them (`canWork`)" -- it did not, and that is
+     the whole of the owner's "more difficult path". Accepting an amendment
+     stays with whoever laid the bill: narrowing your own measure is not a
+     government instrument. */
+  var govKit = inPower(S), mine = b.owner === 'player';
+  if (govKit || mine) {
+    act('amend','Accept an amendment',3,0,b.concessions >= 4,'Improves both houses at the cost of a narrower settlement.');
+  }
+  if (govKit) {
     act('whip','Whip the Assembly',4,0,b.whip >= 25,'Raises Assembly support; repeated whipping strains unity.');
     if (upperOn(S) && S.upper.veto > 0) act('bargain','Deal with the Senate',5,8,b.upperDeal >= 30,'Adds upper-house support and a recorded concession.');
-    act('amend','Accept an amendment',3,0,b.concessions >= 4,'Improves both houses at the cost of a narrower settlement.');
     if (!b.confidence && lowerSits(S)) act('confidence','Make it confidence',7,0,false,'Raises Assembly support; defeat damages unity and capital.');
     if (b.stage === 'committee' && !b.urgent) act('urgent','Invoke urgency',6,0,false,'May clear committee and the Assembly in one session; antagonises the Senate.');
   }
@@ -13969,7 +14013,7 @@ function billCard(b) {
     } else {
       act('talkOut','Talk it out',4,0,(b.talkedOut || 0) >= 2,'No votes, only time and noise. Raises the issue and the temperature.');
     }
-    if (outright(S)) {
+    if (outright(S) && inPower(S)) {
       act('kill','Kill the bill',8,0,false,'Your party holds the Assembly alone. Take it off the paper without a division — and be seen to.');
     }
   }
@@ -14010,7 +14054,8 @@ function legislationPanel() {
     return '<tr><td>' + esc(b.id) + '</td><td>' + esc(b.title) + '</td><td>' + esc(PARTY[b.sponsor] ? PARTY[b.sponsor].short : '—') + '</td><td>' + esc(BILL_STAGE_NAMES[b.stage] || b.stage) + '</td><td>' + esc(dateLabel(b.resolved || b.introduced)) + '</td></tr>';
   }).join('');
   return '<div class="panel"><h2>The Live Order Paper</h2><p class="note">Bills now move through committee, the Assembly, the Senate and assent. Forecasts are whip estimates, not guarantees; other parties vote according to position, trust, coalition status and the public issue behind the bill.</p>' +
-    '<div class="cards">' + (active || '<div class="empty-state">No live legislation. Open Policy to introduce a government bill.</div>') + '</div>' +
+    '<div class="cards">' + (active || (inPower(S) ? '<div class="empty-state">No live legislation. Open Policy to introduce a government bill.</div>'
+      : '<div class="empty-state">No live legislation. Open Policy to introduce a private member\'s bill: one at a time, and it carries no government machinery behind it.</div>')) + '</div>' +
     (history ? '<div class="subhead">Recent legislation</div><table><thead><tr><th>No.</th><th>Measure</th><th>Sponsor</th><th>Result</th><th>Year</th></tr></thead><tbody>' + history + '</tbody></table>' : '') + '</div>';
 }
 
@@ -14177,6 +14222,10 @@ function viewPolicy() {
 
 function policyCard(p) {
     var lv = S.pol[p.id] || 0;
+    /* S18a: a dead control with no reason on it is the worst of both. The
+       button is drawn from the same predicate the handler refuses on, and
+       carries the refusal as its title when it is shut. */
+    var v18Shut = (typeof v18FloorShut === 'function') ? v18FloorShut(S) : null;
     /* S12: a statute the page lists but the model will not open yet. The card
        still shows what it would do, because that is the point of listing it,
        and it says in one line what would have to change first. */
@@ -14231,8 +14280,8 @@ function policyCard(p) {
       '<div class="tagline">' + tags.join('') + '</div>' +
       '<div class="tagline">' + moods.join('') + '</div>' +
       '<div class="btnrow">' +
-      (lv < p.max ? '<button class="btn" data-pol="' + p.id + '" data-dir="1"' + ((blocked || !inPower(S) || S.capital < upCost) ? ' disabled' : '') + '>Draft ' + (lv === 0 ? 'bill' : 'extension') + ' <span class="c">' + upCost + '</span></button>' : '') +
-      (lv > 0 ? '<button class="btn ghost" data-pol="' + p.id + '" data-dir="-1"' + ((blocked || !inPower(S) || S.capital < dnCost) ? ' disabled' : '') + '>Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + dnCost + '</span></button>' : '') +
+      (lv < p.max ? '<button class="btn" data-pol="' + p.id + '" data-dir="1"' + ((blocked || v18Shut || S.capital < upCost) ? ' disabled' : '') + (v18Shut ? ' title="' + esc(v18Shut) + '"' : '') + '>Draft ' + (lv === 0 ? 'bill' : 'extension') + ' <span class="c">' + upCost + '</span></button>' : '') +
+      (lv > 0 ? '<button class="btn ghost" data-pol="' + p.id + '" data-dir="-1"' + ((blocked || v18Shut || S.capital < dnCost) ? ' disabled' : '') + (v18Shut ? ' title="' + esc(v18Shut) + '"' : '') + '>Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + dnCost + '</span></button>' : '') +
       '</div></div>';
 }
 
@@ -20294,7 +20343,11 @@ function v7RecommendedFold() {
   return '<details class="fold rec"' + (UI.recOpen === false ? '' : ' open') + '><summary>Worth drafting now · ' + list.length + ' measure' + (list.length === 1 ? '' : 's') + '</summary><p class="note">Drawn from the adopted programme, manifesto promises, the party platform, coalition partners\' priorities and the issue the country cares most about. The full statute book is below.</p><div class="cards">' + cards + '</div></details>';
 }
 var v7ViewPolicyBase = viewPolicy;
-viewPolicy = function () { var html = v7ViewPolicyBase(); return (v7Clean() && inPower(S)) ? v7RecommendedFold() + html : html; };
+/* S18a: "Worth drafting now" was hidden wholesale from an opposition player,
+   so the page that tells you what to lay told the chair that most needs the
+   help nothing at all. It is a reading of the statute book against your own
+   platform and priorities; it is not a government instrument. */
+viewPolicy = function () { var html = v7ViewPolicyBase(); return v7Clean() ? v7RecommendedFold() + html : html; };
 
 /* policy categories fold on every screen in the clean layout */
 var v6mPolicyFolds = function () {
@@ -23534,6 +23587,11 @@ function v9Dossier(id) {
   /* What the constituencies hold BECAUSE of this statute at the rung it sits
      on, and what one more rung would add. The old heading said "per level"
      over a row that was really the one-shot shock of a single step. */
+  /* S18a: the dossier's draft buttons were not disabled for an opposition
+     player, they were never emitted -- the sheet the game offers as its
+     considered view of a statute simply had no door on it. Same predicate
+     as the card and the handler. */
+  var v18DossierShut = (typeof v18FloorShut === 'function') ? v18FloorShut(S) : null;
   var nowM = polMoodAt(p, lv), nextM = lv < p.max ? polMoodDelta(p, lv, lv + 1) : {};
   var blocs = BLOCS.map(function (b) {
     var m = nowM[b.id] || 0, nx = nextM[b.id] || 0;
@@ -23574,8 +23632,8 @@ function v9Dossier(id) {
     '<div class="subhead">Paired measures</div>' + syn +
     (hist ? '<div class="subhead">History</div><div class="tscroll"><table><thead><tr><th>Year</th><th>Bill</th><th>Sponsor</th><th>Result</th></tr></thead><tbody>' + hist + '</tbody></table></div>' : '') +
     '<div class="btnrow">' +
-    (lv < p.max && inPower(S) && policyOpen(S, p) && !S.changed[id] && !live ? '<button class="btn" data-v9dossier-draft="' + id + '" data-dir="1">Draft ' + (lv ? 'extension' : 'bill') + ' <span class="c">' + policyCost(id, 1) + '</span></button>' : '') +
-    (lv > 0 && inPower(S) && !S.changed[id] && !live ? '<button class="btn ghost" data-v9dossier-draft="' + id + '" data-dir="-1">Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + policyCost(id, -1) + '</span></button>' : '') +
+    (lv < p.max && !v18DossierShut && policyOpen(S, p) && !S.changed[id] && !live ? '<button class="btn" data-v9dossier-draft="' + id + '" data-dir="1">Draft ' + (lv ? 'extension' : 'bill') + ' <span class="c">' + policyCost(id, 1) + '</span></button>' : '') +
+    (lv > 0 && !v18DossierShut && !S.changed[id] && !live ? '<button class="btn ghost" data-v9dossier-draft="' + id + '" data-dir="-1">Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + policyCost(id, -1) + '</span></button>' : '') +
     '<button class="btn ghost" data-close>Close</button></div>';
   showSheet(html, function (sh) {
     sh.querySelectorAll('[data-v9dossier-draft]').forEach(function (b) {
@@ -37393,6 +37451,79 @@ render = function () {
      browser's own focus scroll would undo that work */
   try { el.focus({ preventScroll:true }); } catch (e2) { el.focus(); }
   if (sel) { try { el.setSelectionRange(sel[0], sel[1]); } catch (e3) {} }
+};
+
+/* ==========================================================
+   S18a — THE FLOOR IS OPEN TO EVERY CHAIR
+   ==========================================================
+   The owner, playing the shipped build: "I can't propose policies or bills as
+   an opposition party. That was explicitly laid out as something to fix and
+   it's still present. I was supposed to be able to do that. If I'm playing
+   opposition, I can propose legislation but it has a more difficult path to
+   being passed."
+
+   They were right, and the reason is this file's oldest lesson wearing a new
+   coat. S17b DID open the door: `draftBillDialog` carries the private
+   members' rule, and `v11CanPropose` lets an article be laid from any chair.
+   But the door was left behind three things that were never touched -- the
+   card's button, which rendered `disabled`; `changePolicy`, the only function
+   that calls the dialog, which refused flatly and returned; and the dossier's
+   buttons, which were not disabled but never emitted at all. The fix went on
+   the callee and the refusals stayed on the callers, so `draftBillDialog` was
+   an orphan: correct, and reachable by nothing.
+
+   THE SECOND HALF OF THE RULING WAS FALSE THE OTHER WAY. "A more difficult
+   path" did not exist; measured on one board, the same statute laid from
+   opposition forecast 41 against 39 from government, because three terms paid
+   the opposition player for being there:
+     - the ruling party was paid +8 to back any bill whose OWNER was 'player',
+       whichever chair the player sat in (fp scored 32 on the opposition
+       player's bill against 24 on the government's own);
+     - the player's own party was counted twice for its own bill, +19 as
+       sponsor and +24 again for a line `sponsorBill` stamps on automatically;
+     - and `canWork` GAVE an opposition player the whip, the Senate deal, the
+       confidence motion and urgent procedure on their own private member's
+       bill, which S17b's own comment claims it withholds.
+   The difficulty is structural now and not a number on a scale: a private
+   member's bill has the floor and the arithmetic, and nothing else.
+
+   ONE RULE, ASKED ONCE. `v18FloorShut` is the single predicate; the card, the
+   dossier and the handler all read it, and the card puts its answer in the
+   button's title rather than leaving a dead control with no reason on it. */
+function v18FloorShut(st) {
+  st = st || S;
+  if (inPower(st)) return null;
+  var mine = (typeof v17PrivateBillsOf === 'function')
+    ? v17PrivateBillsOf(st, playParty(st)) : [];
+  if (mine.length >= 1) {
+    return 'Private members\' time is short: your party already has a bill before the House.';
+  }
+  return null;
+}
+
+/* AND THE MONEY COMES FROM THE PARTY, NOT THE EXCHEQUER. `billAction` spent
+   `S.treasury` whatever chair the player sat in, so an opposition party bought
+   a Senate bargain for 8 out of the national accounts -- measured, the
+   treasury fell and the party purse was untouched. This is the defect S17a
+   fixed at the committee panel arriving at the next lever along; `pv5Spend`
+   is the same helper that fix used, and out of government it is handed the
+   party's own purse. */
+var v18BillActionBase = billAction;
+billAction = function (id, action) {
+  if (inPower(S)) return v18BillActionBase(id, action);
+  var monies = { bargain:8, pressure:5, amendIt:4, pressOffice:6 };
+  var m = monies[action] || 0;
+  if (m && partyPurse(S, playParty(S)) < m) {
+    flash('The ' + PARTY[playParty(S)].short + ' cannot meet it out of its own funds.');
+    return;
+  }
+  var t0 = S.treasury;
+  var out = v18BillActionBase(id, action);
+  /* the base spent the exchequer; put it back and take it from the purse the
+     act actually belongs to */
+  var spent = t0 - S.treasury;
+  if (spent > 0) { S.treasury = t0; partySpend(S, playParty(S), spent); }
+  return out;
 };
 
 /* ---------- boot ---------- */
