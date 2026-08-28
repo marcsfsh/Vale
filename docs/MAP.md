@@ -1221,6 +1221,32 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## The court can stop you (S17p)
+
+**It could reach a statute and an extraordinary measure and nothing else**, and
+it chose by ideological distance - a court that strikes what it dislikes.
+
+- **`v17Docket(st)`** is what a court that strikes what is UNLAWFUL hears, and
+  it reads three things: an order in force whose own `ind.liberties` is
+  negative while `v11ConEffects().libFloor` stands; an act in force that
+  `v17ConflictWhy` says a standing article forbids; and two articles both
+  adopted that the S17m table pairs, of which the LATER is the one it reaches.
+  A read: it installs nothing.
+- **`v17CourtAppetite(st)`** is the bench. `courtWith` over the bench size is
+  how much of it sits near the government, and the appetite is its inverse,
+  cut further by `acts.courtStripping`, by the security state and by how often
+  the government has already refused. A packed bench never takes a case, which
+  is the whole reason a government packs one.
+- **`v17CourtTick`** hears one case a session at most and picks the most
+  exposed thing on the docket, `exposure` being the order book's own statement
+  of how much of an order will not survive being looked at. It queues
+  `st.pendingStrike`; `endTurn` turns it into `v17StrikeEvent`, beside
+  `rulingEvent` and `extraEvent`.
+- **`v17StrikeComply` / `v17StrikeDefy`** are the two ends: an order is
+  revoked through its own `onRevoke`, an act's flag is cleared, an article is
+  marked repealed; or the government refuses and pays in liberties, unrest,
+  the states and the army, and it is written down in `court.defied`.
+
 ## The army and the eleven capitals (S17o)
 
 The same shape as S17n, for the two other books whose subject the indicators do

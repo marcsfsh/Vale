@@ -100,6 +100,16 @@ before touching the file.
   and the probe — which put its party in the office — could not tell them
   apart. Reverting the widening left it green. When a gate is narrowed, the
   probe has to stand in the gap the narrowing closes.
+- **Calling the function is not testing the wiring, and there is usually more
+  than one call site.** S17p's first court probe called `v17CourtTick`
+  directly; deleting the call from `endTurn` left it green, and so did
+  deleting the ruling from the event queue. Two call sites, neither touched.
+  Drive real sessions and look for what the player would see. Four of that
+  slice's thirteen poisons were this, and three of S17o's twelve were the same
+  thing wearing a different coat.
+- **A probe that throws aborts the harness instead of failing one assertion.**
+  Guard every lookup a poisoned build can empty. S17m learned this from a
+  ghost id and S17p relearned it from an empty docket.
 - **A probe that reassembles the formula proves the function, not the wiring.**
   S17o's first Defence probe computed `52 + veterans*.7 + ... + v17ArmyTerm(st)`
   itself and compared it either side of a statute; deleting the call from
@@ -205,7 +215,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **182 content assertions**, the largest harness here: the
+- `tools/roads.js` — **183 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
