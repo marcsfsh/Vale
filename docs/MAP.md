@@ -1221,6 +1221,41 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## The two books that reached nothing (S17n)
+
+**Every statute reaches the model through four generic channels** — `eff`,
+`mood`, `rev`/`exp`, `auth` — and for most of the book that is the whole story.
+The Elections book is about the ballot and the Federalism book is about the
+states, and neither had a channel to either: 22 of 24 and 20 of 24 named no
+mechanism at all. The Authority book's shape is the fix — one number every
+statute in it reaches — and this is eight of those.
+
+- **`v17RollReach`** → `supportTargets`, scaled per bloc by `fr[2] - fr[0]`,
+  because `franchiseLevel` is an index into that array and cannot carry more
+  than three states. Six register statutes.
+- **`v17TurnoutStatutes`** → `partyTurnout`, applied outside the S15h span:
+  the span is what campaigning can move, this is what the law does.
+- **`v17RankedTransfer`** → `allocateSeats`. A ranked ballot is not a system in
+  `st.electoral`; it transfers to whoever is least disliked, which is the
+  centre of the compass. **`v17GerryOf`** discounts a crooked boundary by what
+  observation missions report, and `politicsTick` decays `st.gerry` while the
+  Boundary Commission stands — the pen goes as the lines are redrawn.
+- **`v17PartyMoneyFactor` / `v17PartyGrant`** → `partyIncome`. The STATUTE of
+  State Party Funding is the one with a ladder on it and only the ACT was read.
+  **`v17PressReach`** is allotted airtime: a floor nobody bought and a ceiling
+  on what buying reaches — it does nothing on a level board, which is right.
+- **`v17StatuteTermBar`** → `execTermBarred` and **`v17PrimariesForced`** →
+  `v17PrimariesOn` / `v17CanSetPrimaries`. Stricter Term Limits appeared once
+  in three megabytes, in its own declaration.
+- **`v17FederalTerm`** → `v11AutonomyPressure`, all 24 Federalism statutes: the
+  capital reaching in raises it, letting go or paying lowers it. The Articles
+  of Separation are the one that **cuts both ways** — below the ladder a lawful
+  road out answers the grievance, at the top of it the road is the point.
+  **`v17FederalMoneyTick`** reaches the states themselves, with equalisation
+  closing the gap rather than adding to everybody.
+- **`V17_BOOK_WIRING` / `v17BookReach`** is what the harness asks: every statute
+  in both books against the ones a named mechanism consults.
+
 ## One truth at a time (S17m)
 
 **`needs:` was the only relational field the cards had, and it only ever says

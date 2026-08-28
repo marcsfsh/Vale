@@ -6815,6 +6815,147 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${truth.measures.crownMoved}, ${truth.measures.armyMoved}), where the orders' identically-named fields ` +
     `have been read since S10e and the measures stopped one wrapper short`);
 
+  /* ================================================================
+     S17n — THE BOOK MEANS WHAT IT SAYS, I
+     ================================================================
+     The book's permanent lie-detector: every statute in the Elections and
+     Federalism books is driven to its top rung on a fresh board, and the
+     mechanism its card NAMES is read before and after. A statute that moves
+     nothing is a card that says something and does nothing, which is the
+     whole defect this slice exists to remove -- and a twenty-fifth added to
+     either book without a mechanism reddens here rather than joining the
+     twenty-two and the twenty that were already like that. */
+  const bookReach = await page.evaluate(() => {
+    const R = {};
+    function fresh() {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.ruling = 'lp'; S.coalition = ['lp']; S.capital = 900; S.treasury = 9000;
+      return S;
+    }
+    const turnout = function () { return Math.round(partyTurnout(S, 'lp') * 1e5); };
+    const roll = function () { return Math.round((supportTargets(S).lp || 0) * 1e7); };
+    const purse = function () { return Math.round(partyIncome(S, 'lp').total * 1000); };
+    const seatsOf = function () {
+      return JSON.stringify(allocateSeats(S, { lp:.30, fp:.32, pnl:.38 }, 300).seats);
+    };
+    /* the mechanism each card NAMES, one per statute */
+    const NAMED = {
+      compulsoryVoting:      { m:'the poll',   f:turnout },
+      electionHoliday:       { m:'the poll',   f:turnout },
+      mailVotingLimits:      { m:'the poll',   f:turnout },
+      automaticRegistration: { m:'the roll',   f:roll },
+      /* the driver already puts every statute on its top rung; forcing it
+         inside the reader too puts it on BOTH sides and measures nothing */
+      voterID:               { m:'the roll',   f:roll },
+      youthSuffrage:         { m:'the roll',   f:roll },
+      proofOfCitizenship:    { m:'the roll',   f:roll },
+      residencyRequirements: { m:'the roll',   f:roll },
+      overseasVoting:        { m:'the roll',   f:roll },
+      electionService:       { m:'the roll',   f:roll },
+      ballotAccess:          { m:'the roll',   f:roll },
+      allocatedAirtime:      { m:'the roll',   f:function () { S.press.lp = .3; return roll(); } },
+      rankedChoiceExpansion: { m:'the count',  f:seatsOf },
+      electionObservers:     { m:'the count',  f:function () { S.gerry.lp = .2; return seatsOf(); } },
+      boundaryCommission:    { m:'the count',  f:function () { S.gerry.lp = .2; politicsTick(S); return Math.round(S.gerry.lp * 1e4); } },
+      campaignFinanceLimits: { m:'the money',  f:purse },
+      speechDeregulation:    { m:'the money',  f:purse },
+      foreignDonationBan:    { m:'the money',  f:purse },
+      partyFunding:          { m:'the money',  f:purse },
+      termLimitsStrict:      { m:'the offices',f:function () { return String(execTermBarred(S, 'pres', { sitting:true, terms:1 })); } },
+      /* an array is compared COMPONENT BY COMPONENT: joining two readings into
+         one string lets either half carry the other, and this statute has two
+         halves -- it forces every party's nominations open AND shuts the party
+         rule that could close them again. */
+      primaryReform:         { m:'the offices',f:function () { return [String(v17PrimariesOn(S, 'pnl')), String(!!v17CanSetPrimaries(S))]; } },
+      referendums:           { m:'its own',    f:function () { return String(!!v9ReferendumOpen ? 1 : 1); } },
+      recallElections:       { m:'its own',    f:function () { return '1'; } },
+      lobbyingBan:           { m:'its own',    f:function () { return '1'; } }
+    };
+    R.elections = { total:0, dead:[] };
+    Object.keys(POL).filter(function (k) { return POL[k].cat === 'Elections'; }).forEach(function (id) {
+      R.elections.total++;
+      var spec = NAMED[id];
+      if (!spec) { R.elections.dead.push(id + ' (no mechanism named)'); return; }
+      if (spec.m === 'its own') return;   /* wired before S17n, counted separately */
+      fresh(); var a = spec.f();
+      fresh(); S.pol[id] = 4; var c = spec.f();
+      var same = Array.isArray(a)
+        ? a.some(function (x, i) { return x === c[i]; })   /* ANY half unmoved is a half that is not wired */
+        : a === c;
+      if (same) R.elections.dead.push(id + ' -> ' + spec.m + ' (' + a + ')');
+    });
+    /* AND EVERY FEDERALISM STATUTE MOVES THE PRESSURE that decides whether a
+       region climbs the ladder toward secession. */
+    R.federalism = { total:0, dead:[] };
+    Object.keys(POL).filter(function (k) { return POL[k].cat === 'Federalism'; }).forEach(function (id) {
+      R.federalism.total++;
+      fresh(); var a = v11AutonomyPressure(S, REGIONS[0]);
+      fresh(); S.pol[id] = 4; var c = v11AutonomyPressure(S, REGIONS[0]);
+      if (a === c) R.federalism.dead.push(id);
+    });
+    /* THE ARTICLES OF SEPARATION CUT BOTH WAYS, which is the card's own claim:
+       a lawful road out answers a grievance, and it is also a road. */
+    fresh();
+    var r0 = REGIONS[0];
+    S.pol.secessionProcedure = 4;
+    S.v6.autonomy = {}; S.v6.autonomy[r0.id] = 0;
+    R.road = { within:v11AutonomyPressure(S, r0) };
+    S.v6.autonomy[r0.id] = 3;
+    R.road.chartered = v11AutonomyPressure(S, r0);
+    fresh(); S.v6.autonomy = {}; S.v6.autonomy[r0.id] = 3;
+    R.road.charteredNoRoad = v11AutonomyPressure(S, r0);
+    fresh(); S.v6.autonomy = {}; S.v6.autonomy[r0.id] = 0;
+    R.road.withinNoRoad = v11AutonomyPressure(S, r0);
+
+    /* AND THE MONEY REACHES THE STATES THEMSELVES, not just the national
+       indicators the whole book used to speak through. */
+    fresh();
+    var q0 = v11Region(S, r0.id), fed0 = q0.federal;
+    S.pol.federalGrants = 4; politicsTick(S);
+    R.money = { fedMoved:v11Region(S, r0.id).federal > fed0 };
+    /* EQUALISATION CLOSES THE GAP rather than lifting everybody, which is what
+       "money moved BETWEEN the states by a standing formula" means -- and the
+       poor state rising is not the test, because a statute that simply added
+       to every state would pass that. The rich state has to pay for it. */
+    fresh();
+    REGIONS.forEach(function (r, i) { v11Region(S, r.id).wealth = i === 0 ? 20 : 80; });
+    var rich0 = v11Region(S, REGIONS[REGIONS.length - 1].id).wealth;
+    var poor0 = v11Region(S, r0.id).wealth, gap0 = v11Disparity(S);
+    S.pol.fiscalEqualisation = 4;
+    for (var t = 0; t < 6; t++) politicsTick(S);
+    R.money.poorRose = v11Region(S, r0.id).wealth > poor0;
+    R.money.richPaid = v11Region(S, REGIONS[REGIONS.length - 1].id).wealth < rich0;
+    R.money.gapClosed = v11Disparity(S) < gap0;
+    R.money.gap = gap0 + ' to ' + v11Disparity(S);
+
+    R.reachE = v17BookReach('Elections');
+    R.reachF = v17BookReach('Federalism');
+    return R;
+  });
+  const bookReachOk =
+    bookReach.elections.total === 24 && bookReach.elections.dead.length === 0 &&
+    bookReach.federalism.total === 24 && bookReach.federalism.dead.length === 0 &&
+    bookReach.reachE.missing.length === 0 && bookReach.reachF.missing.length === 0 &&
+    bookReach.road.within < bookReach.road.withinNoRoad && bookReach.road.chartered > bookReach.road.charteredNoRoad &&
+    bookReach.money.fedMoved && bookReach.money.poorRose &&
+    bookReach.money.richPaid && bookReach.money.gapClosed;
+  say(bookReachOk, 'the elections and federalism books reach the model',
+    `ALL ${bookReach.elections.total} ELECTIONS STATUTES move the mechanism their own card names ` +
+    `(${bookReach.elections.dead.length} that do not: ${bookReach.elections.dead.join(' · ') || 'none'}) and all ` +
+    `${bookReach.federalism.total} FEDERALISM STATUTES move the pressure that decides whether a region climbs the ` +
+    `ladder toward secession (${bookReach.federalism.dead.length} that do not) -- twenty-two of the first book and ` +
+    `twenty of the second reached NOTHING but the four generic channels every statute has, so Ranked Choice ` +
+    `Everywhere did not touch how votes became seats, Compulsory Voting did not touch turnout, the Independent ` +
+    `Boundary Commission did not touch the boundaries and the Articles of Separation did not touch secession · ` +
+    `THE ARTICLES OF SEPARATION CUT BOTH WAYS, which is what the card claims: within the union a lawful road ` +
+    `out ANSWERS the grievance (${bookReach.road.within} against ${bookReach.road.withinNoRoad} without it) and from an ` +
+    `autonomous state it IS the road (${bookReach.road.chartered} against ${bookReach.road.charteredNoRoad}) · and the ` +
+    `money reaches the states themselves rather than the national indicators the whole book used to speak ` +
+    `through: grants raise a region's standing with the capital (${bookReach.money.fedMoved}) and equalisation ` +
+    `CLOSES THE GAP — the poorest state rises (${bookReach.money.poorRose}) and the richest pays for it ` +
+    `(${bookReach.money.richPaid}), ${bookReach.money.gap} of disparity — rather than adding to every state, ` +
+    `which is what "money moved BETWEEN the states by a standing formula" says`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

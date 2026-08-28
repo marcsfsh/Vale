@@ -7068,6 +7068,11 @@ function execBench(st, office, pid) {
    together" since S11d, and no executive term counter existed anywhere in the
    file for it to read. */
 function execTermBarred(st, office, c) {
+  /* S17n: Stricter Term Limits -- "a single term where the law allowed two" --
+     appeared exactly ONCE in three megabytes, in its own declaration, and
+     barred nobody. It bars from the second rung, whether or not the
+     constitution carries the Article of the Term Limit. */
+  if (typeof v17StatuteTermBar === 'function' && v17StatuteTermBar(st, c)) return true;
   if (typeof v11Adopted !== 'function' || !v11Adopted(st, 'artTermLimit')) return false;
   return !!c.sitting && (c.terms || 1) >= 2;
 }
@@ -9743,6 +9748,22 @@ function politicsTick(st) {
     if (p.id === playParty(st)) base = 75;
     st.partyRel[p.id] = c100(st.partyRel[p.id] + (base - st.partyRel[p.id]) * .06);
   });
+  /* S17n: THE COMMISSION TAKES THE PEN. "District lines are drawn by a
+     commission to a published formula, and the chamber loses the pen" -- the
+     statute appeared exactly once in three megabytes, in its own declaration,
+     and no boundary was ever redrawn by it. The advantage a chamber has drawn
+     for itself does not vanish on the day the commission is founded; it goes
+     as the lines are redrawn, cycle by cycle. */
+  var bc = (st.pol && st.pol.boundaryCommission) || 0;
+  if (bc && st.gerry) {
+    var rate = .10 + bc * .055;
+    for (var gp in st.gerry) {
+      if (!st.gerry[gp]) continue;
+      st.gerry[gp] = Math.abs(st.gerry[gp]) < .004 ? 0 : st.gerry[gp] * (1 - rate);
+    }
+  }
+  /* and what the money statutes do to the states themselves */
+  if (typeof v17FederalMoneyTick === 'function') v17FederalMoneyTick(st);
   expireInbox(st);
   if (st.inbox.length >= 4 || (st.turn + st.inboxSeq) % 2) return;
   var coalition = (st.coalition || []).filter(function (p) { return p !== st.ruling; });
@@ -10873,7 +10894,13 @@ function partyTurnout(st, pid) {
     if (c) v += Math.min(100, c.field || 0) / 330 + Math.min(100, c.data || 0) / 660;
     v += endorsedTurnout(st, pid);
   }
-  return clamp(1 + v * V15_TURNOUT_GAIN, V15_TURNOUT_SPAN[0], V15_TURNOUT_SPAN[1]);
+  var out = clamp(1 + v * V15_TURNOUT_GAIN, V15_TURNOUT_SPAN[0], V15_TURNOUT_SPAN[1]);
+  /* S17n: and the three statutes about whether people vote. Compulsory Voting
+     did not touch turnout; it is the whole of what the card promises. Applied
+     OUTSIDE the S15h span, because the span is what campaigning can move and
+     this is what the law does. */
+  if (typeof v17TurnoutStatutes === 'function') out *= v17TurnoutStatutes(st);
+  return out;
 }
 
 /* WHAT A CHANNEL IS WORTH IN SEATS, on the v11RegionalSeats pattern: read the
@@ -10943,6 +10970,15 @@ function supportTargets(st) {
       if (a <= 0) return;
       var weight = b.pop * b.fr[fr] * (.55 + st.blocs[b.id] / 100 * .95) *
         (st.acts.wealthFranchise ? BLOC_WEALTH[b.id] || 1 : 1);
+      /* S17n: AND WHAT THE REGISTER STATUTES DID TO THE ROLL. `franchiseLevel`
+         carries three states and six statutes in the Elections book make
+         registering harder or easier without changing which of the three the
+         roll is in -- so they move a term of their own, scaled by this bloc's
+         OWN spread across the three, which is the file's existing statement of
+         how much its turnout depends on how open the roll is. */
+      if (typeof v17RollReach === 'function') {
+        weight *= 1 + v17RollReach(st) * ((b.fr[2] || 1) - (b.fr[0] || 1));
+      }
       var m = st.blocs[b.id];
       var appeal;
       if (p.id === st.ruling) appeal = .915 + (m - 50) / 80;
@@ -10956,7 +10992,11 @@ function supportTargets(st) {
              machineOf(st, p.id) +
              (p.id === st.ruling ? (st.apparatus || 0) : 0);
     v *= regionPartyFactor(st, p.id);
-    v *= 1 + ((st.press && st.press[p.id]) || 0);
+    /* S17n: allotted airtime is a FLOOR under the broadcasting a party gets,
+       so it is worth most to whoever has bought least -- which is what "the
+       space that could be bought instead is closed" means. */
+    v *= 1 + (typeof v17PressReach === 'function' ? v17PressReach(st, p.id)
+                                                  : ((st.press && st.press[p.id]) || 0));
     if (st.coopted[p.id]) v *= .97;
     if (v < .001) v = .001;
     raw[p.id] = Math.max(.001, v);
@@ -11006,7 +11046,15 @@ function allocateSeats(st, res, total, force) {
     var v = res[p.id] || 0;
     if (sys === 'boroughs') v *= 1 + ruralBias(p) * .07;
     if (sys === 'fptp') v = Math.pow(v, 1.55);
-    v *= 1 + ((st.gerry && st.gerry[p.id]) || 0);
+    /* S17n: THE RANKED BALLOT, which is not a system in `st.electoral` but a
+       rule about whose second choice counts -- it transfers to whoever is
+       least disliked, and the centre of the compass is where that lands.
+       Ranked Choice Everywhere touched nothing at all before this. And
+       observation missions discount what a crooked boundary is worth, because
+       a count nobody will certify is not a count. */
+    if (typeof v17RankedTransfer === 'function') v *= v17RankedTransfer(st, p.id);
+    v *= 1 + (typeof v17GerryOf === 'function' ? v17GerryOf(st, p.id)
+                                               : ((st.gerry && st.gerry[p.id]) || 0));
     if (st.pact && st.pact === p.id) v *= .68;
     adj[p.id] = Math.max(0, v);
   });
@@ -15807,6 +15855,12 @@ function partyIncome(st, pid) {
      stands the exchequer pays every party that returns members a grant on the
      size of its return, and the party purse stops being private money alone. */
   var subsidy = (st.acts && st.acts.partyFunding) ? (12 + seats * 130) : 0;
+  /* S17n: AND THE STATUTE OF THE SAME NAME, which is the one with a ladder on
+     it and was read by nothing -- the grant rises with the rung. The four
+     other money statutes in the Elections book move what may be RAISED, and
+     allotted airtime is worth most to whoever has bought least. */
+  if (typeof v17PartyGrant === 'function') subsidy += v17PartyGrant(st, pid);
+  if (typeof v17PartyMoneyFactor === 'function') donors *= v17PartyMoneyFactor(st, pid);
   var graft = 0;
   if (st.purseGraft && st.purseGraft[pid]) graft = (dues + donors) * .35;
   /* The tier's own dial, not the budget's: the owner asked that raising party
@@ -30088,6 +30142,14 @@ function v11AutonomyPressure(st, r) {
   if (g && g.standing < 30) p += 8;
   p += Math.max(0, v11Disparity(st) - 22) * .5;
   p -= Math.max(0, st.crown - 55) * .4;
+  /* S17n: AND THE FEDERALISM BOOK. Twenty of its twenty-four statutes reached
+     no part of the state model at all -- the Articles of Separation did not
+     touch secession, the State Sovereignty Act did not touch sovereignty, and
+     the whole book spoke about the states through national indicators. This
+     is the book's term in the number that decides whether a region climbs the
+     ladder: the capital reaching in raises it, the capital letting go or
+     paying for it lowers it. */
+  if (typeof v17FederalTerm === 'function') p += v17FederalTerm(st, r);
   return Math.max(0, Math.round(p));
 }
 function v11AutonomyTick(st) {
@@ -33761,8 +33823,19 @@ function v17PartyRules(st) {
   });
   return st.partyRules;
 }
-function v17PrimariesOn(st, pid) { return !!v17PartyRules(st)[pid].primaries; }
+function v17PrimariesOn(st, pid) {
+  /* S17n: "the choice of candidate is taken off the party committee and
+     handed to voters" -- Primary Elections is a STATUTE, and it reached
+     nothing at all. Past its second rung it is the law of the land and no
+     party's own rule can close its nominations again. */
+  if (typeof v17PrimariesForced === 'function' && v17PrimariesForced(st)) return true;
+  return !!v17PartyRules(st)[pid].primaries;
+}
 function v17CanSetPrimaries(st) {
+  if (typeof v17PrimariesForced === 'function' && v17PrimariesForced(st)) {
+    return 'Primary Elections is on the statute book. Every party puts its nominations to its members, ' +
+      'and no party rule can take them back off them while it stands.';
+  }
   if (!electionsOn(st)) return 'There are no contested offices under this constitution.';
   var c = v17CycleStage(st);
   if (c.stage === 'none') return 'No executive election is scheduled.';
@@ -36056,6 +36129,225 @@ function v17ConflictWhy(st, kind, id) {
         : ' It has to go before this can.');
   }
   return null;
+}
+
+/* ============================================================
+   S17n — THE BOOK MEANS WHAT IT SAYS, I
+   ============================================================
+   The owner: *"all of those should be checked to see whether their actual
+   implementations are respected and reflected everywhere they should be."*
+
+   Two whole books did not. Every statute in the game reaches the model through
+   four generic channels -- `eff` into the indicators, `mood` into the blocs,
+   `rev`/`exp` into the budget, and `auth` into the security state -- and for
+   most of the book that is enough, because a health statute is ABOUT the
+   indicators. But the Elections book is about the ballot and the Federalism
+   book is about the states, and neither had any way to reach either.
+   Twenty-two of the twenty-four Elections statutes and twenty of the
+   twenty-four Federalism statutes named no mechanism at all. Ranked Choice
+   Everywhere did not touch how votes became seats. Compulsory Voting did not
+   touch turnout. The Independent Boundary Commission did not touch the
+   boundaries. The Articles of Separation did not touch secession.
+
+   THE PATTERN IS THE AUTHORITY BOOK'S. There, every statute reaches
+   `securityState` through `auth`, one number that gates measures, the court
+   and unrest -- so no card in it can be decorative, because there is nowhere
+   for a card to be decorative FROM. What follows is six of those numbers for
+   the Elections book and two for the Federalism book, each named for the
+   mechanism it is, each with the statutes that reach it written out. A
+   twenty-fifth statute added to either book without a line here is a card
+   that says something and does nothing, and `roads.js` counts them. */
+
+/* --- THE ROLL. WHO IS ON IT. `franchiseLevel` is a 0/1/2 index into each
+   bloc's own `fr` weights and cannot carry more than three states, so the
+   statutes that make registering harder or easier WITHOUT changing the roll's
+   legal shape move a separate term -- and it is scaled by `fr[2] - fr[0]`,
+   which is the file's own statement of how much a bloc's turnout depends on
+   how open the roll is. Students swing .63 of their weight on it; retirees
+   swing back the other way. --- */
+function v17RollReach(st) {
+  var p = st.pol || {}, v = 0;
+  v += (p.youthSuffrage || 0) * .042;
+  v += (p.overseasVoting || 0) * .028;
+  v += (p.electionService || 0) * .022;
+  v += (p.ballotAccess || 0) * .018;
+  v -= (p.residencyRequirements || 0) * .048;
+  v -= (p.proofOfCitizenship || 0) * .055;
+  return clamp(v, -.55, .55);
+}
+/* --- THE POLL. HOW MANY OF THEM COME. Multiplies `partyTurnout`, which the
+   ballot already reads for every party. --- */
+function v17TurnoutStatutes(st) {
+  var p = st.pol || {}, v = 0;
+  v += (p.compulsoryVoting || 0) * .055;
+  v += (p.electionHoliday || 0) * .030;
+  v -= (p.mailVotingLimits || 0) * .038;
+  return clamp(1 + v, .74, 1.30);
+}
+/* --- THE COUNT. A ranked ballot is not a system in `st.electoral`; it is a
+   rule about how the votes of everybody's second choice are treated, and what
+   it does is transfer to whoever is least disliked. The centre of the compass
+   is where that lands. Distance from it is what the file already uses for how
+   extreme a party reads. --- */
+function v17RankedTransfer(st, pid) {
+  var r = (st.pol && st.pol.rankedChoiceExpansion) || 0;
+  if (!r) return 1;
+  var ext = dist2(ppos(st, pid), { e:0, a:0 });
+  return clamp(1 + (.30 - ext) * r * .10, .78, 1.20);
+}
+/* Observation missions do not stop a boundary being drawn crooked, but they
+   make what it produces harder to certify: the pen's advantage is discounted
+   by what the reports say. */
+function v17GerryOf(st, pid) {
+  var g = (st.gerry && st.gerry[pid]) || 0;
+  if (!g) return 0;
+  var obs = (st.pol && st.pol.electionObservers) || 0;
+  return g * clamp(1 - obs * .16, .3, 1);
+}
+/* --- THE MONEY. What the parties may raise and what the state gives them,
+   into the purse S15f built and the season S17j spends it in. --- */
+function v17PartyMoneyFactor(st, pid) {
+  var p = st.pol || {}, v = 1;
+  v -= (p.campaignFinanceLimits || 0) * .075;
+  v -= (p.foreignDonationBan || 0) * .022;
+  v += (p.speechDeregulation || 0) * .085;
+  return clamp(v, .55, 1.5);
+}
+/* And what the exchequer pays. The ACT of the same name has been read since
+   S15f; the STATUTE beside it was read by nothing, and it is the one with a
+   ladder on it -- the grant rises with the rung. */
+function v17PartyGrant(st, pid) {
+  var r = (st.pol && st.pol.partyFunding) || 0;
+  if (!r) return 0;
+  var seats = ((st.seats && st.seats[pid]) || 0) / CFG.seats;
+  return (4 + seats * 44) * r;
+}
+/* Allotted airtime is the one that LEVELS, and it does it from both ends:
+   every party gets a floor it did not have to buy, and "the space that could
+   be bought instead is closed" is a ceiling on what buying can reach. On a
+   board where nobody has bought anything it changes nothing, which is right —
+   levelling a level field is not a defect. */
+function v17PressReach(st, pid) {
+  var mine = (st.press && st.press[pid]) || 0;
+  var r = (st.pol && st.pol.allocatedAirtime) || 0;
+  if (!r) return mine;
+  var ceiling = clamp(.30 - r * .05, .08, .30);
+  return Math.max(.045 * r, Math.min(mine, ceiling));
+}
+/* --- THE OFFICES. Two statutes about who may stand, and neither reached the
+   bench S15i built or the season S17j runs. --- */
+function v17StatuteTermBar(st, c) {
+  var r = (st.pol && st.pol.termLimitsStrict) || 0;
+  if (r < 2) return false;
+  /* "a single term where the law allowed two, counted across every office" */
+  return !!c && !!c.sitting && (c.terms || 1) >= 1;
+}
+function v17PrimariesForced(st) {
+  return ((st.pol && st.pol.primaryReform) || 0) >= 2;
+}
+
+/* --- THE STATES. The Federalism book talks about states and reached only
+   national indicators. `v11AutonomyPressure` is the number that decides
+   whether a region moves up the ladder toward secession, and this is the
+   book's term in it: the capital taking powers raises it, the capital handing
+   them over or paying for them lowers it. --- */
+function v17FederalTerm(st, r) {
+  var p = st.pol || {}, v = 0;
+  /* the capital reaching in */
+  v += (p.federalPreemption || 0) * 2.2;
+  v += (p.commandeeringAct || 0) * 2.6;
+  v += (p.nationalStandards || 0) * 1.2;
+  v += (p.internalMarket || 0) * .9;
+  v += (p.stateReceivership || 0) * 1.8;
+  v += (p.capitalDistrict || 0) * .5;
+  v += (p.capitalRelocation || 0) * .8;
+  /* the capital letting go */
+  v -= (p.stateSovereignty || 0) * 2.4;
+  v -= (p.mandateBan || 0) * 1.5;
+  v -= (p.homeRuleCharters || 0) * 1.9;
+  v -= (p.federalLandTransfer || 0) * 1.1;
+  v -= (p.interstateCompacts || 0) * .8;
+  v -= (p.localReferendums || 0) * .9;
+  v -= (p.governorsCouncil || 0) * 1.4;
+  v -= (p.stateEmergencyPowers || 0) * 1.0;
+  v -= (p.territorialStatehood || 0) * .6;
+  /* the capital paying */
+  v -= (p.federalGrants || 0) * 1.0;
+  v -= (p.stateRevenueSharing || 0) * 1.3;
+  v -= (p.regionalDevelopment || 0) * .9;
+  v -= (p.fiscalEqualisation || 0) * 1.1;
+  v -= (p.municipalFinance || 0) * .5;
+  v -= (p.antitrustAg || 0) * .3;
+  /* and a guard pooled under a command that answers to nobody in the capital
+     is the one devolution that raises the pressure rather than answering it */
+  v += (p.stateGuardCompact || 0) * 1.6;
+  /* THE ARTICLES OF SEPARATION cut both ways, which is the card's own claim:
+     a lawful road out is a grievance answered, and it is also a road. Below
+     the threshold it lowers the pressure; at the top of the ladder, where a
+     region is already chartered or autonomous, it is the thing that makes the
+     last step ordinary instead of unthinkable. */
+  var road = (p.secessionProcedure || 0);
+  if (road) {
+    var lvl = (typeof v11AutonomyLevel === 'function' && r) ? v11AutonomyLevel(st, r.id) : 0;
+    v += lvl >= 2 ? road * 2.8 : -road * 1.6;
+  }
+  return v;
+}
+/* And what the money statutes do to a state itself, once a session, on the
+   pattern the orders' region drifts already use. */
+function v17FederalMoneyTick(st) {
+  var p = st.pol || {};
+  var pay = (p.federalGrants || 0) * .34 + (p.stateRevenueSharing || 0) * .30 +
+            (p.regionalDevelopment || 0) * .26 + (p.municipalFinance || 0) * .16;
+  var equal = (p.fiscalEqualisation || 0) * .5;
+  var take = (p.stateReceivership || 0) * .22 + (p.commandeeringAct || 0) * .18;
+  if (!pay && !equal && !take) return;
+  var mean = 0, n = 0;
+  REGIONS.forEach(function (r) { var q = v11Region(st, r.id); if (q) { mean += q.wealth; n++; } });
+  mean = n ? mean / n : 50;
+  REGIONS.forEach(function (r) {
+    var q = v11Region(st, r.id); if (!q) return;
+    if (pay) { q.federal = c100(q.federal + pay * .5); q.services = c100(q.services + pay * .35); }
+    if (take) q.federal = c100(q.federal - take);
+    /* equalisation moves money BETWEEN the states, so it closes the gap
+       rather than lifting everybody: the poor state gains what the rich pays */
+    if (equal) q.wealth = c100(q.wealth + (mean - q.wealth) * equal * .04);
+  });
+}
+
+/* WHAT THE TWO BOOKS REACH, for the harness: every statute in them, against
+   the ones a named mechanism above consults. */
+var V17_BOOK_WIRING = {
+  Elections: {
+    roll:['youthSuffrage', 'overseasVoting', 'electionService', 'ballotAccess',
+          'residencyRequirements', 'proofOfCitizenship'],
+    franchise:['automaticRegistration', 'voterID'],
+    turnout:['compulsoryVoting', 'electionHoliday', 'mailVotingLimits'],
+    count:['rankedChoiceExpansion', 'boundaryCommission', 'electionObservers'],
+    money:['campaignFinanceLimits', 'foreignDonationBan', 'speechDeregulation',
+           'partyFunding', 'allocatedAirtime'],
+    offices:['termLimitsStrict', 'primaryReform'],
+    /* the two that reach the model by a road of their own, from before S17n */
+    other:['referendums', 'recallElections', 'lobbyingBan']
+  },
+  Federalism: {
+    pressure:['federalPreemption', 'commandeeringAct', 'nationalStandards', 'internalMarket',
+              'stateReceivership', 'capitalDistrict', 'capitalRelocation', 'stateSovereignty',
+              'mandateBan', 'homeRuleCharters', 'federalLandTransfer', 'interstateCompacts',
+              'localReferendums', 'governorsCouncil', 'stateEmergencyPowers',
+              'territorialStatehood', 'stateGuardCompact', 'secessionProcedure',
+              'federalGrants', 'stateRevenueSharing', 'regionalDevelopment',
+              'fiscalEqualisation', 'municipalFinance', 'antitrustAg'],
+    money:['federalGrants', 'stateRevenueSharing', 'regionalDevelopment', 'municipalFinance',
+           'fiscalEqualisation', 'stateReceivership', 'commandeeringAct']
+  }
+};
+function v17BookReach(cat) {
+  var wired = {}, k;
+  for (k in V17_BOOK_WIRING[cat]) V17_BOOK_WIRING[cat][k].forEach(function (id) { wired[id] = true; });
+  var all = Object.keys(POL).filter(function (id) { return POL[id].cat === cat; });
+  return { total:all.length, wired:all.filter(function (id) { return wired[id]; }).length,
+    missing:all.filter(function (id) { return !wired[id]; }) };
 }
 
 /* ---------- boot ---------- */

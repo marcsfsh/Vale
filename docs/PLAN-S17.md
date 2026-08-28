@@ -1168,7 +1168,7 @@ above, both deliberate and both stated here rather than done quietly.
    changes are to what a PLAYER can do, and `roads.js` and `playtest.js` are
    where its coverage lives.
 
-**s17n — the book means what it says, I** (L). Elections book wired:
+**s17n — the book means what it says, I** (L). **STATUS: DONE.** Elections book wired:
 rankedChoiceExpansion → allocateSeats; compulsoryVoting → turnout :10508;
 boundaryCommission → st.gerry; termLimitsStrict → execTermBarred; the
 five party-money statutes → the purses + s17j campaign spend. Federalism
@@ -1177,6 +1177,39 @@ the Articles of Separation finally touch secession. Pattern:
 Authority/Security's every-statute-reaches-securityState shape. Harness:
 one per-statute "adopting it moves the mechanism" assertion each — the
 book's permanent lie-detector; pacing A/B.
+
+*What landing it found.* All forty-eight statutes in the two books now move
+the mechanism their own card names, and the assertion drives every one of them
+to its top rung and reads that mechanism before and after. Five notes:
+
+1. **`franchiseLevel` cannot carry more than three states**, because it is an
+   index into each bloc's own `fr` array — so the six register statutes that
+   make enrolling harder or easier without changing the roll's legal shape move
+   a term of their own, scaled by that bloc's `fr[2] - fr[0]`. That spread is
+   the file's existing statement of how much a bloc's participation depends on
+   how open the roll is (students swing .63 of their weight on it, retirees
+   swing the other way), so the scaling was already authored — it just had
+   nothing reading it in this direction.
+2. **A ranked ballot is not an entry in `st.electoral`.** It is a rule about
+   whose second choice counts, and what it does is transfer to whoever is least
+   disliked — the centre of the compass. Modelling it as a sixth "system" would
+   have been wrong; it is a term beside the system.
+3. **Allotted airtime levels from both ends and therefore does nothing on a
+   level board**, which is correct and which the first probe could not see:
+   `supportTargets` normalises, so a floor applied equally to seven parties
+   normalises straight back out. The probe has to give one party the two
+   dailies it bought.
+4. **Two poisons found two weak halves of my own assertion.** Equalisation was
+   tested by "the poor state rises", which a statute that simply added to every
+   state would also pass — it now asserts the rich state PAYS and the disparity
+   closes (60 to 36). And Primary Elections has two halves (it forces every
+   party's nominations open AND shuts the party rule that could close them),
+   joined into one string, so either half could carry the other; the driver
+   compares component-wise now.
+5. **Pacing: excluding VALE0404, years governing is unchanged to the number on
+   all three tiers.** That seed alone supplies the whole aggregate (epic 40 →
+   72, standard 29 → 13) and has been the volatile one for three slices
+   running. Crises +4 on epic, achievements −2 and −3 on the two longer tiers.
 
 **s17o — the book means what it says, II** (L, splittable). Remaining
 books swept, one commit per book; wire where the S17 systems give a
