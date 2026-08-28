@@ -65,10 +65,25 @@ designed PRs with a status line each, the architecture decisions and the risk
 list. Nothing about this program lived in conversation; every ruling and
 finding is in that file.
 
-**What is still open after S18a, and flagged rather than done:** constitutional
-**acts** still refuse an opposition player (the gate is at `actCost`'s handler).
-The owner's ruling names bills and constitutional articles, so acts were left
-government-only deliberately and are named here rather than changed quietly.
+**What is still open after S18a, and flagged rather than done:**
+
+1. Constitutional **acts** still refuse an opposition player. The owner's ruling
+   names bills and constitutional articles, so acts were left government-only
+   deliberately and are named here rather than changed quietly.
+2. **One half of S17r's `deck-folds` focus arm proves nothing, and S18a found it
+   without repairing it.** The arm makes two claims: that the S17r restore puts
+   the reader back on their control, and that focus landing OUTSIDE the view
+   (the sheet an End Session raises) does not clear the key. Poisoning the
+   restore itself reddens all three tiers, so the first claim is proved.
+   Poisoning the SECOND -- making `focusin` clear `UI.focusKey` whenever focus
+   lands outside the view, which is the exact defect the code's comment says it
+   exists to prevent -- changes nothing, at any tier, because `hideSheet`
+   restores `UI.lastFocus` on its own and the arm reads where focus ended up
+   rather than who put it there. The probe drives far enough for something else
+   to do the job, which is `CLAUDE.md`'s own rule. S18a settled the queue and
+   removed the arm's flakiness and stopped there; making the second claim
+   testable means taking `hideSheet` out of the path, and that belongs to a
+   slice that owns the assertion.
 
 The owner played the game and named the shape it is missing: **three modes of
 play** — opposition, junior partner, ruling party — which the model gates

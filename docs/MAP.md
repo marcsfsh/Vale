@@ -1328,6 +1328,16 @@ touched, and five surfaces in front of that dialog still refused.
   button by real clicks from the bench.
 - **Still government-only and flagged, not changed:** constitutional **acts**.
   The owner's ruling names bills and articles.
+- **And one harness finding, recorded rather than repaired.** S17r's
+  `deck-folds` arm reads the sheet an End Session left up, which S17r had
+  already learned at the arm below it can be replaced mid-drain -- so it
+  reddened about one run in ten at the phone and tablet tiers. The queue is
+  settled and a sheet raised when the session left none, and six consecutive
+  runs pass. Poisoning the S17r restore itself still reddens all three tiers,
+  so the arm's first claim holds; poisoning its SECOND claim (focus landing
+  outside the view clearing the key) changes nothing, because `hideSheet`
+  restores `UI.lastFocus` by itself and the arm reads where focus ended up
+  rather than who put it there. `docs/STATE.md` carries it as an open item.
 
 ## The long deck folds, and focus survives (S17r)
 
