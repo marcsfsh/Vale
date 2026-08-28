@@ -13272,7 +13272,7 @@ var V17_REACT = {
     { l:'Demand the powers be temporary', s:'Whatever they take now, put a date on it.',
       e:{ mood:{ prof:6, youth:5, tech:4 }, sal:{ liberty:6 }, rel:-4 } } ] },
   foreign:{ name:'the crisis abroad', verbs:[
-    { l:'Back them at the water’s edge', s:'Politics stops where the frontier begins, and everyone sees you say so.',
+    { l:'Back them at the water\'s edge', s:'Politics stops where the frontier begins, and everyone sees you say so.',
       e:{ rel:9, mood:{ veterans:5, seniors:4, prof:3 } } },
     { l:'Ask what was promised, and to whom', s:'The despatches, the undertakings, the things not put to the House.',
       e:{ rel:-7, sal:{ integrity:6 }, mood:{ prof:5, tech:3 } } },
@@ -13323,7 +13323,7 @@ var V17_REACT = {
     { l:'Put the staff in front of the committee', s:'The people who do the work, saying what it is like.',
       e:{ mood:{ labour:7, prof:4 }, rel:-6, sal:{ health:6 } } } ] },
   party:{ name:'the internal quarrel', verbs:[
-    { l:'Say nothing about another party’s war', s:'Silence, and the appearance of a grown-up.',
+    { l:'Say nothing about another party\'s war', s:'Silence, and the appearance of a grown-up.',
       e:{ mood:{ prof:4, seniors:3 }, mach:.02 } },
     { l:'Offer the losing side a home', s:'A quiet word, a safe seat, and a defection in a month.',
       e:{ mach:.06, relOthers:-5, mood:{ tech:2 } } },
@@ -14106,8 +14106,8 @@ function actionCard(a) {
     tags.push(modeAllows(S, actionNeed(a))
       ? '<span class="tag down">Not available</span>'
       : '<span class="tag down">' + (actionNeed(a) === 'leading'
-          ? (inPower(S) ? 'The head of government’s' : 'The government’s')
-          : 'The government’s') + '</span>');
+          ? (inPower(S) ? 'The head of government\'s' : 'The government\'s')
+          : 'The government\'s') + '</span>');
   }
   var opts = a.opts || [{ label: a.verb || 'Do it' }];
   var btns = opts.map(function (o, i) {
@@ -16126,7 +16126,7 @@ function pv5CommitteeAction(cid,action,billId){
   var onBill=action==='hearing'||action==='draft';
   if(onBill?!(inPower(S)||(b&&b.owner==='player')):!inPower(S)){
     flash(onBill?'A committee works a bill for the government or for the member who laid it, and this is neither.'
-                :'The committee’s own affairs are funded by the government of the day.');return;
+                :'The committee\'s own affairs are funded by the government of the day.');return;
   }
   var purse=inPower(S)?null:myPurse();
   if(action==='hearing'){
@@ -16170,7 +16170,7 @@ function pv5InterestAction(id,action){
    cohesion past 100 -- measured 103 in three clicks -- which then put the
    walkout threshold further away than the card's meter could show. */
 function pv5CoalitionAction(pid,action){
-  if(!leads(S)){flash('The coalition agreement is the head of government’s to keep.');return;}
+  if(!leads(S)){flash('The coalition agreement is the head of government\'s to keep.');return;}
   var d=S.coalitionDeals[pid];if(!d)return;
   if(action==='council'){
     if(!pv5Spend(3,2,'Coalition council with '+PARTY[pid].short))return;d.satisfaction=c100(d.satisfaction+12);d.councils++;d.lastCouncil=S.turn;shiftPartyRel(S,pid,7);S.v5Stats.coalitionCouncils++;logIt(S,'A coalition council was held with the '+PARTY[pid].short+'.');
@@ -33846,7 +33846,7 @@ function v17Walkout(st, pid, d) {
 function v17CanRenegotiate(st, pid) {
   var d = (st.coalitionDeals || {})[pid];
   if (!d || !d.terms) return 'There is no agreement with them to reopen.';
-  if (!leads(st)) return 'The coalition agreement is the head of government’s to keep.';
+  if (!leads(st)) return 'The coalition agreement is the head of government\'s to keep.';
   if (v17Broken(st, pid) >= V17_PATIENCE) {
     return 'They will not reopen it. The agreement already records ' +
       v8Plural(v17Broken(st, pid), 'broken promise') + ', and a fourth conversation is not what they want.';
@@ -34049,7 +34049,7 @@ function v17CanSetPrimaries(st) {
   var c = v17CycleStage(st);
   if (c.stage === 'none') return 'No executive election is scheduled.';
   if (c.stage === 'general' || c.stage === 'primaries') {
-    return 'The season is under way — ' + (c.stage === 'general' ? 'the general campaign is running'
+    return 'The season is under way: ' + (c.stage === 'general' ? 'the general campaign is running'
       : 'the primaries are running') + ', ' + v8Plural(c.away, 'session') + ' from the vote. ' +
       'A party does not change how it picks its candidates halfway through picking them. ' +
       'Ask again at the ballot, and the answer governs the season after it.';
@@ -35608,7 +35608,7 @@ function v17CaretakerTick(st) {
 var V17_CARE_BARS = {
   policy:'A caretaker government does not legislate. There is no majority in the Assembly to carry it and no minister with a mandate to lay it.',
   fiscal:'The framework a caretaker inherits is the framework it keeps. Setting a new one is for a government the house has invested.',
-  treaty:'A caretaker signs nothing in the country’s name that will outlast it.',
+  treaty:'A caretaker signs nothing in the country\'s name that will outlast it.',
   programme:'A programme is a mandate written down, and a caretaker has none.',
   order:'A caretaker issues no orders but those the emergency itself requires.'
 };
@@ -35851,7 +35851,7 @@ function v17ResolvePrimaries(st) {
   var mine = r.offices.map(function (o) {
     var e = r.field[o][playParty(st)];
     return e ? DEPTS[o].name + ': ' + e.winner + ', ' + (e.by === 'the membership'
-      ? e.share + ' per cent of the membership' + (e.outsider ? ', and not the largest caucus’s candidate' : '')
+      ? e.share + ' per cent of the membership' + (e.outsider ? ', and not the largest caucus\'s candidate' : '')
       : 'named by the leadership') : null;
   }).filter(Boolean);
   if (mine.length) {
@@ -35907,7 +35907,7 @@ function v17BackCandidate(office, name) {
   var r = S.execRace;
   if (!r || r.stage !== 'primaries') { flash('The primaries are not open.'); return; }
   var me = playParty(S), e = r.field[office] && r.field[office][me];
-  if (!e || !e.open) { flash('Your party’s nominations are the leadership’s. There is no primary to spend in.'); return; }
+  if (!e || !e.open) { flash('Your party\'s nominations are the leadership\'s. There is no primary to spend in.'); return; }
   if (!e.runners.some(function (c) { return c.name === name; })) { flash('They are not in this primary.'); return; }
   if (!pv5Spend(3, 5, 'Back ' + name, myPurse())) return;
   r.push = r.push || {};
@@ -36024,7 +36024,7 @@ function v17RacePanel() {
       primary = '<div class="redline"><b>You are running ' + esc(mine.winner) + '</b>, ' +
         (mine.by === 'the membership'
           ? 'chosen by the membership with ' + (mine.share || 0) + ' per cent against ' + v8Plural(mine.beat || 0, 'other') +
-            (mine.outsider ? ', and not the largest caucus’s candidate' : '')
+            (mine.outsider ? ', and not the largest caucus\'s candidate' : '')
           : 'named by the leadership') + '.</div>';
     }
     return '<article class="card"><div class="bill-title"><h3>' + esc(DEPTS[o].name) + '</h3>' +
@@ -36038,7 +36038,7 @@ function v17RacePanel() {
   return '<div class="panel"><h2>The Executive Season</h2>' +
     '<p class="note">' + esc(stage) + ' The country votes in ' + v8Plural(Math.max(0, away), 'session') +
     ', for ' + esc(r.offices.map(function (o) { return DEPTS[o].name; }).join(' and ')) +
-    ' together — both offices of the pair run in parallel, and the offices are held for eight years.</p>' +
+    ' together. Both offices of the pair run in parallel, and the offices are held for eight years.</p>' +
     '<div class="cards">' + cards + '</div></div>';
 }
 
@@ -36072,7 +36072,7 @@ var V17_AI_COST_FLOOR = 12;
 function v17FloorWhy(st, actor, b, verb) {
   if (!b) return 'No such bill.';
   if (['support', 'oppose', 'pressure'].indexOf(verb) < 0) return 'No such line.';
-  if (b.sponsor === actor) return 'That is your own party’s bill.';
+  if (b.sponsor === actor) return 'That is your own party\'s bill.';
   if (b.stage === 'assent' || b.stage === 'done' || b.stage === 'referendum') {
     return 'It is past the floor. There is nothing left to say about it there.';
   }
@@ -36315,7 +36315,7 @@ var V17_CONFLICTS = [
   { a:{ kind:'article', id:'artQuadrennial' }, b:{ kind:'article', id:'artAnnualAssembly' },
     why:'The Assembly cannot be renewed every fourth year and not before, and also every year. Carried together their terms AVERAGED, and the country went to the polls every third year under two articles that named neither.' },
   { a:{ kind:'article', id:'artMartialBar' }, b:{ kind:'article', id:'artArmedForcesBar' },
-    why:'They are the same rule in two sets of words — the armed forces shall not be employed against the people of Vale — and carrying both wrote the prohibition into the document twice and took the reach off the emergency twice for it.' },
+    why:'They are the same rule in two sets of words. The armed forces shall not be employed against the people of Vale, and carrying both wrote that prohibition into the document twice and took the reach off the emergency twice for it.' },
   /* AND ACROSS KINDS, which is where the sharpest one is: an ordinary act,
      needing nothing but half the Assembly, silently reversed an ENTRENCHED
      article the country had carried at a referendum. The article's record

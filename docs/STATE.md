@@ -4,15 +4,17 @@ Update this file in the last commit of every PR.
 
 ## Current slice
 
-**S17 — Three ways to play, and the republic plays back** is **open**, and it
-**absorbs the whole remaining half of S16** (the court, the street, playing
-from opposition, the deck fold, contrast and the thumb, the prose close) by the
-owner's ruling. **Its plan is `docs/PLAN-S17.md` — read that file top to bottom
-before any S17 work.** It is the program's anchor: the owner's verbatim brief,
-twelve binding rulings, three research reports with file:line anchors, twenty
-designed PRs (s17a–s17t), the architecture decisions and the risk list. Nothing
-about this program lives in conversation; every ruling and finding is in that
-file.
+**S17 — Three ways to play, and the republic plays back** is **CLOSED**, and
+with it the whole remaining half of S16 (the court, the street, playing from
+opposition, the deck fold, contrast and the thumb, the prose close), which the
+owner ruled into this one program. **All twenty PRs shipped, s17a through
+s17t.** Its plan is `docs/PLAN-S17.md`: the owner's verbatim brief, twelve
+binding rulings, three research reports with file:line anchors, the twenty
+designed PRs with a status line each, the architecture decisions and the risk
+list. Nothing about this program lived in conversation; every ruling and
+finding is in that file.
+
+**Nothing is open. The next slice is yours to name.**
 
 The owner played the game and named the shape it is missing: **three modes of
 play** — opposition, junior partner, ruling party — which the model gates
@@ -25,13 +27,78 @@ statute book, the constitution and the order book whose implementations are not
 
 **S16a–S16f2 are merged and all six of the owner's S16 requirements are done.**
 
-**Landed so far: s17a–s17s.** Next: **s17t — the prose pass and the close**,
-which is the last slice of the program.
+### What the two programs cost and what they left
 
-**One thing waits on you.** `docs/CONFLICTS.md` is the conflict table ruling 11
-asked for — what s17m shipped without waiting, what needs your ruling with a
-proposed semantic per pair, and thirteen pairs checked and cleared as
-compatible. Nothing there blocks s17n.
+```
+                         before S17     after S17t
+checks/run.js              11 checks      11 checks
+tools/roads.js            162 roads      184 roads
+tools/playtest.js          ~52 steps      67 steps
+tools/contrast.js               —        6 assertions, 3 tiers (new in S17s)
+vale.html                   3.32 MB       3.57 MB
+```
+
+Every slice shipped the assertion that reddens without it, and every one of
+those assertions was poison-proofed on a scratch copy before its PR closed.
+**Across s17k–s17t alone that is 118 poison reverts**, and the ones that did
+NOT redden are the reason several slices found a second defect: a probe that
+calls the function it is testing proves the function, not the wiring.
+
+**The turn loop came through flat.** The plan's third risk was wrapper ordering
+across twenty PRs, budgeting one new `tickTurn` wrapper for the program.
+`tickTurn` gained **zero**, `endTurn` gained zero, and `render` gained one
+(S17r, adjudicated, deliberately outermost). Every tick S17 added went inside
+an existing body.
+
+### The pacing A/B against the build before s17a
+
+Six seeds, three lengths, `tools/pacing.js`, S16f2 against S17t. Four numbers
+moved and one did not.
+
+```
+                       before S17        after S17t
+events per session     1.5 – 2.0         1.1 – 1.3
+elections won          2 – 6             2 in every seed and length
+wars (epic)            30 – 44           5 – 29
+crises per 10 sessions 0.4 – 1.0         0.6 – 1.2
+records at the close   14 – 27 %         16 – 27 %
+```
+
+**The events figure is the mode system, read from the wrong chair.** The
+harness plays first-choice-always and loses government early, so most of its
+sessions are opposition sessions — and since S17c a national event in
+opposition resolves to the AI government and arrives as news rather than as a
+decision to answer. That is ruling 7 working exactly as the owner wrote it.
+The number counts decisions the harness was asked for, and it is not a measure
+of what a player holding government sees.
+
+**Wars fell because S17o wired the books that decide them.** Twelve Foreign
+statutes reached no capital at all and eighteen of twenty-four Defence statutes
+reached neither the army nor a war; arms control and the near-sphere doctrine
+now move `warTick`'s risk in the directions their cards claim. A harness that
+raises statutes first-choice-always lowers the risk, and it does.
+
+**Elections narrowing to two is the one worth your eye.** Before S17 the same
+harness won between two and six; it now wins two in every seed at every length.
+The gate S17b closed is the honest cause: an opposition player can no longer
+reach the eleven government instruments that used to leak, and the harness
+never campaigns deliberately, so nothing pulls it back into office. It is the
+slice the owner asked for doing its job, and it also makes the unattended arc
+narrower. **The record rate at the close is unchanged**, so the game is not
+giving a player less; it is giving this harness fewer ways to stumble into
+government.
+
+**Three things wait on you, none of them blocking.**
+
+1. `docs/CONFLICTS.md` is the conflict table ruling 11 asked for: what s17m
+   shipped without waiting, what needs your ruling with a proposed semantic per
+   pair, and thirteen pairs checked and cleared as compatible.
+2. `tools/seats.js` still reports the **LP/SD and SD/FP pairs collapsing under
+   colour-vision simulation** (ΔE 7.2 and 8.7 in deuteranopia against 24.7 and
+   49.1 in normal vision). The party palette is yours; S17s deliberately did
+   not touch it.
+3. **The pacing retune** from S8 is still unanswered, and is recorded further
+   down this file.
 
 ### S17a — the seven defects
 

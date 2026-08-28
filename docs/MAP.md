@@ -1221,6 +1221,25 @@ churns is a bit over one expected collision, so `roads.js`'s *no two officials
 share a name* had been a coin flip since S10a. A name already held is drawn
 again, up to ten times.
 
+## What S17 did to the turn loop (S17t)
+
+The program's own structural rule was that S17 would install **one** new
+`tickTurn` wrapper and no later PR would add another, because `v16RedLineTick`
+is the last wrapper and ordering is what breaks. Measured across the whole
+program, against the build before s17a:
+
+```
+tickTurn   6 wrappers before, 6 after   (+0; the plan budgeted one)
+endTurn    1 before, 1 after            (+0)
+render     4 before, 5 after            (+1, S17r, adjudicated)
+```
+
+Every S17 tick addition went **inside an existing body** rather than adding a
+layer: `v17CourtTick` and `v17StreetTick` are two lines in `endTurn` beside
+`courtReview` and `extraReview`, and the S17r fold-and-focus pass is the one
+new wrapper, on `render`, and it is outermost on purpose so its DOM pass runs
+after every earlier one.
+
 ## Contrast and the thumb (S17s)
 
 `tools/contrast.js` measures the rendered page rather than the stylesheet: a

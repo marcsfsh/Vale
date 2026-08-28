@@ -7,6 +7,17 @@ file top to bottom. When implementation begins, this file is committed to the
 repo as `docs/PLAN-S17.md` in the program's first commit, and `docs/STATE.md`
 points at it.**
 
+Status: **PROGRAM CLOSED.** All twenty PRs shipped, s17a through s17t, each
+with the assertion that reddens without it and each poison-proofed on a scratch
+copy. `docs/STATE.md` carries the close: what the two programs cost, the
+wrapper count (tickTurn +0 against a budget of one), and the six-seed pacing
+A/B against the build before s17a. Three things wait on the owner and none of
+them blocks anything: the conflict table in `docs/CONFLICTS.md`, the two party
+pairs that collapse under colour-vision simulation, and the S8 pacing retune.
+
+The original status line follows, unchanged, because a plan's own record of
+what it intended is worth more than a plan edited to match what happened.
+
 Status: PLAN COMPLETE — twelve owner rulings recorded, three research
 reports anchored, twenty PRs designed (§Plan). Awaiting plan approval.
 On approval: s17a begins, and its first commit adds this file to the repo
