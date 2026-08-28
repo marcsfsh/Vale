@@ -91,6 +91,24 @@ before touching the file.
   government's machinery from a private member's bill, and the line read
   `inPower(S) || b.owner === 'player'`, which GRANTS it. A comment asserting
   what a line does is not a reading of the line.
+- **EVERY GATE IN THIS HARNESS CALLS A FUNCTION AND A PLAYER PRESSES A
+  BUTTON.** That gap is why five separate slices shipped the same defect and
+  why the harness was green through all of them. S17b graded fourteen region
+  handlers by chair and never touched the three emitters, so the Federation
+  tab drew 128 enabled controls from the bench that did nothing but flash a
+  refusal — exactly as unrestricted as the owner said it looked. S18a withheld
+  urgent procedure at the card and at `billAction` and left the identical flag
+  settable free at the drafting sheet, one click earlier and worth more than
+  the whole chair penalty it sat under. S12 taught `policyWhy` to say
+  "Requires X." and no card could reach it, so 37 statutes rendered lit,
+  priced and forecast buttons the handler refuses. `no control lies, in any
+  chair` walks all fifteen pages from all three chairs and presses everything
+  enabled: an enabled control that moves nothing and only flashes is a lie,
+  and a shut control with no title is the same dead end read backwards. And
+  it carries a CONTENT arm, because collapsing the button and the handler onto
+  one predicate makes them agree even when both are wrong — consistency is not
+  correctness, and the first poison run proved the consistency half alone
+  green on a build with the rule deleted.
 - **An assertion that compares two things, one of which is derived from the
   other, proves nothing.** S17e's mirror check compared `redLine` with
   `terms.redLines[0]` as seeded — but the list is *built from* the scalar, so
@@ -312,7 +330,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **185 content assertions**, the largest harness here: the
+- `tools/roads.js` — **186 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

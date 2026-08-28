@@ -1264,6 +1264,64 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## No control lies, in any chair (S18b)
+
+The audit in `docs/AUDIT-S17.md` found the same defect in five slices and
+S18a had just committed it again: **a rule enforced on one surface and not on
+its siblings.** The harness could not see any of it, because every gate in it
+CALLS A FUNCTION and a player PRESSES A BUTTON.
+
+- **`v18DraftWhy(st, id, dir)`** (last chunk) is the whole answer to "why can
+  I not draft this", in the order `changePolicy` used to ask it: the
+  prerequisite, the once-a-session rule, a bill already on the paper, the
+  constitution, the private members' cap, the caretaker bar. `changePolicy`,
+  the card's two buttons and the dossier's two all read it, and the buttons
+  carry the sentence in their title. BOTH directions are asked, because
+  `needs:` bites only upward: a repeal to nothing is open where an extension
+  is not.
+  - It closes the S12 gap: `policyWhy` has been able to say "Requires X."
+    since S12 and no card could reach it, because the card asked `policyWhy`
+    only when `policyOpen` was false and `policyOpen` never asked about
+    `needs`. Measured: 37 lit, priced, forecast buttons the handler refuses.
+  - And the caretaker gap: on session one of the Hung Assembly start,
+    `v17Barred` refused every draft behind 493 of 505 lit buttons.
+- **The dossier draws its buttons shut rather than withholding them.** The
+  deepest reading surface the game has used to emit nothing at all when the
+  statute could not be laid, so the sheet that explains a statute could not
+  explain why you may not lay it.
+- **The department tag asks the player's question.** `policyCard` still asked
+  `holdsDept` — whether the GOVERNMENT holds the office — for a sentence
+  addressed to the player, which is the owner's original bug still shipping on
+  a different page: 149 statutes sit at an office the government holds and the
+  player does not, and every one of them was marked green and un-opposed while
+  the same card charged 1.55.
+- **The drafting sheet obeys the rule the card announces.** S18a withheld
+  urgent procedure at the card and at `billAction` and left the identical
+  `urgent` flag settable free at the sheet, worth +5 in the Assembly and a
+  second stage a session against a whole chair penalty of 2.6. A negotiated
+  text stays open to every chair: narrowing your own bill is what `amend`
+  already is.
+- **The three Federation emitters ask what the handlers ask.** `rb()`, `gb()`
+  and the V9 splice computed `ok` from cooldown, capital and treasury only, so
+  an opposition player saw 138 enabled controls of which 128 flashed a
+  refusal. Two gates were also on the wrong side of the table's own rule:
+  `inspect` carried `money:3` at `'gov'` while `compact` at `money:4` is
+  `'leading'`, and `assemblySeat` — declared `money:0`, writing only campaign
+  targets and party machine — was shut hardest of the fourteen on a stated
+  rationale about spending the federal purse. It is `'any'` now, pays from the
+  party purse, and logs as the party act it is.
+- **The exec card prints the multiplier in every chair**, because S18a made a
+  private member's bill priced by the same `deptFactor` and the card still
+  said "Out of power there is no measure to price".
+- Assertion: **`no control lies, in any chair`**. It walks all fifteen pages
+  from all three chairs and presses every enabled statute, region, governor,
+  article and drafting control on a fresh board: an enabled control that moves
+  nothing and only flashes is a lie, a shut control with no title is the same
+  dead end backwards. It carries a CONTENT arm as well, because one predicate
+  serving both the button and the handler makes them agree even when both are
+  wrong — the first poison run proved the consistency half green on a build
+  with the rule deleted.
+
 ## The floor is open to every chair (S18a)
 
 **S17b's PR says it opened the floor to an opposition player, and the owner
