@@ -9676,7 +9676,11 @@ function seedOpeningInbox(st) {
 
    ONE TABLE, read by the producer, the button and the handler. */
 var V18_PAPER_NEED = {
-  coalition_review:'leading', senate_conference:'leading', coalition_demand:'leading',
+  /* `coalition_review` and `senate_conference` are seeded for a JUNIOR too,
+     deliberately, by S17b's own branch in `seedOpeningInbox`: signing a
+     coalition procedure with the party that leads, and attending a conference
+     between the houses, are both things a partner does. They are 'gov'. */
+  coalition_review:'gov', senate_conference:'gov', coalition_demand:'leading',
   confidence_threat:'leading', governors_conference:'leading',
   cross_party:'any', faction_demand:'any', party_demand:'any',
   street_demand:'gov', opposition_conference:'any', government_offer:'any'

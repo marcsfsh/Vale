@@ -8027,7 +8027,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     var drafts = Array.prototype.slice.call(document.querySelectorAll('#view [data-pol]'));
     R.caretaker = { barred: !!care, buttons: drafts.length,
       lit: drafts.filter(function (x) { return !x.disabled; }).length,
-      told: drafts.filter(function (x) { return /caretaker/i.test(x.getAttribute('title') || ''); }).length };
+      /* SOME reason, not THE caretaker reason: `v18DraftWhy` answers with the
+         most specific one it has, so a statute whose prerequisite is unmet
+         says "Requires X." there and is right to. */
+      told: drafts.filter(function (x) { return (x.getAttribute('title') || '').trim().length > 0; }).length,
+      saysCare: drafts.filter(function (x) { return /caretaker/i.test(x.getAttribute('title') || ''); }).length };
     /* and the tag on the same page speaks from the player's chair */
     R.deptTag = { mine: 0, theirs: 0, wrong: 0 };
     POLICIES.forEach(function (p) {
@@ -8065,7 +8069,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   const firstDead = seats3.map(c => honest.chairs[c].dead[0]).filter(Boolean)[0] || '';
   const firstMute = seats3.map(c => honest.chairs[c].muteShut[0]).filter(Boolean)[0] || '';
   const contentOk = honest.needs.total > 0 && honest.needs.lit === 0 && honest.needs.told === honest.needs.total &&
-    honest.caretaker.barred && honest.caretaker.lit === 0 && honest.caretaker.told === honest.caretaker.buttons &&
+    honest.caretaker.barred && honest.caretaker.lit === 0 &&
+    honest.caretaker.told === honest.caretaker.buttons && honest.caretaker.saysCare > 0 &&
     honest.deptTag.wrong > 0 && honest.deptTagSample === true &&
     honest.sheet.opened && honest.sheet.urgent === false && /private member/.test(honest.sheet.clean);
   say(deadTotal === 0 && muteTotal === 0 && contentOk, 'no control lies, in any chair',
@@ -8086,7 +8091,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${honest.needs.lit} render lit and ${honest.needs.told} carry "Requires" in the title, where the card could ` +
     `not reach that sentence at all since S12 · on session one of the Hung Assembly start -- the owner's own ` +
     `screen -- the caretaker bar refuses every draft (${honest.caretaker.barred}) and ` +
-    `${honest.caretaker.lit} of ${honest.caretaker.buttons} buttons render lit, where 493 did · the department ` +
+    `${honest.caretaker.lit} of ${honest.caretaker.buttons} buttons render lit, where 493 did, with a reason on all ` +
+    `${honest.caretaker.told} of them and the caretaker's own sentence on ${honest.caretaker.saysCare} · the department ` +
     `tag on the same page asks the PLAYER'S question: ${honest.deptTag.wrong} statutes sit at an office the ` +
     `government holds and the player does not, and the card marks one "(opposed)" ` +
     `(${honest.deptTagSample}) where it used to mark it green · and the drafting sheet offers a private member ` +
@@ -8111,11 +8117,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* drive real sessions and record what each chair is ASKED */
     function run(chair, n) {
       seat(chair);
+      /* the opening seed runs inside `v6NewGame`, before the chair is pinned,
+         so its two papers would be counted once per session they sit unread */
+      S.inbox = [];
       const kinds = {}, senders = {};
       for (var i = 0; i < n; i++) {
         S.capital = 400;
         try { endTurn(); } catch (e) { R.err = String(e).slice(0, 80); }
         UI.queue = []; UI.busy = false;
+        /* RE-PIN THE CHAIR. Ballots fall inside 26 sessions and move the
+           player between chairs, so a run that seats once and drives on is
+           tallying two or three chairs under one name -- which is how six
+           head-of-government papers appeared in the opposition column. */
+        if (chair === 'opposition') { S.ruling = 'fp'; S.coalition = ['fp', 'sd']; }
+        if (chair === 'junior')     { S.ruling = 'fp'; S.coalition = ['fp', 'lp']; }
+        if (chair === 'leading')    { S.ruling = 'lp'; S.coalition = ['lp', 'sd']; }
         (S.inbox || []).forEach(function (it) {
           kinds[it.type] = (kinds[it.type] || 0) + 1;
           /* `faction_demand` carries the player's own party by design -- a
@@ -8127,7 +8143,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           }
         });
       }
-      return { kinds: kinds, fromSelf: senders.self || 0 };
+      /* asserting one NAMED type appear in office is brittle: `politicsTick`
+         returns at the first branch that fires, so a coalition demand
+         pre-empts the governors most sessions. What must be true is that no
+         paper belonging to the head of government reaches a chair that does
+         not lead. */
+      var leadOnly = Object.keys(kinds).filter(function (t) {
+        return V18_PAPER_NEED[t] === 'leading';
+      }).reduce(function (n, t) { return n + kinds[t]; }, 0);
+      return { kinds: kinds, fromSelf: senders.self || 0, leadOnly: leadOnly,
+        total: Object.keys(kinds).reduce(function (n, t) { return n + kinds[t]; }, 0) };
     }
     R.opp = run('opposition', 26);
     R.jun = run('junior', 26);
@@ -8147,7 +8172,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     try { respondInbox(S.inbox[S.inbox.length - 1].id, 'compact'); } finally { flash = fb; }
     R.oldPaper.moved = Math.round((S.crown - crown0) * 100) / 100;
     R.oldPaper.spent = Math.round((cap0 - S.capital) * 100) / 100;
-    R.oldPaper.refused = said.join(' ').slice(0, 40);
+    R.oldPaper.refused = said.join(' ').slice(0, 90);
     /* AND THE DESPATCH BOX. Question Time asked `inPower`, so a junior was
        handed the government's brief with the senior partner's leader named in
        the question. */
@@ -8165,12 +8190,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     return R;
   });
   const inboxesOk =
-    !inboxes.opp.kinds.governors_conference && !inboxes.opp.kinds.coalition_demand &&
-    !inboxes.opp.kinds.confidence_threat &&
-    !inboxes.jun.kinds.coalition_demand && !inboxes.jun.kinds.confidence_threat &&
+    inboxes.opp.leadOnly === 0 && inboxes.jun.leadOnly === 0 && inboxes.gov.leadOnly > 0 &&
+    inboxes.opp.total > 0 && inboxes.jun.total > 0 &&
     inboxes.jun.fromSelf === 0 && inboxes.opp.fromSelf === 0 &&
-    (inboxes.gov.kinds.coalition_demand || inboxes.gov.kinds.confidence_threat ||
-     inboxes.gov.kinds.governors_conference) &&
     inboxes.oldPaper.drawn && inboxes.oldPaper.shut && inboxes.oldPaper.moved === 0 &&
     inboxes.oldPaper.spent === 0 && /opposition/.test(inboxes.oldPaper.refused) &&
     inboxes.qt.leading.answering && !inboxes.qt.leading.yours &&
@@ -8181,9 +8203,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     'charged for by expireInbox, drawn on the landing page -- asked nothing about the chair at all. A real click ' +
     'from the bench on "The Fifty Governors Call for a Conference" moved the national State-governments indicator ' +
     'by +13, and one of its three answers is "send the responsible minister" to a player who has no minister. ' +
-    'Driven 26 sessions from each chair, the governors now write to a government (' +
-    (inboxes.gov.kinds.governors_conference || 0) + ' in office against ' +
-    (inboxes.opp.kinds.governors_conference || 0) + ' from the bench) \u00b7 AND THE COALITION PAPERS HAD THE ' +
+    'Driven 26 sessions from each chair: the post that belongs to a head of government reaches one, ' +
+    inboxes.gov.leadOnly + ' papers, and reaches nobody else -- ' + inboxes.opp.leadOnly + ' from the bench and ' +
+    inboxes.jun.leadOnly + ' as a junior, out of the ' + inboxes.opp.total + ' and ' + inboxes.jun.total +
+    ' papers those chairs do get, because what is asserted is which post arrives and not whether any does ' +
+    '\u00b7 AND THE COALITION PAPERS HAD THE ' +
     'MIRROR DEFECT: gated on inPower, which includes a junior, and computing the partner as everyone in the ' +
     'coalition who is not the ruling party -- which in a two-party coalition IS the player -- so a junior partner ' +
     'received demands and confidence threats from their own benches. Papers written by the player\'s own party to ' +
