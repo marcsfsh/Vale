@@ -1311,9 +1311,12 @@ touched, and five surfaces in front of that dialog still refused.
   happens, so a party with the seats and no office could take a bill off the
   paper. It is `outright(S) && inPower(S)` at the card and at the handler.
 - **And the money is the party's.** `billAction` spent `S.treasury` whatever
-  chair the player sat in; out of power a wrapper refunds the exchequer and
-  charges `partySpend` instead, refusing first when the purse cannot meet it.
-  This is S17a's committee-panel fix arriving at the next lever along.
+  chair the player sat in, so an opposition party leaned on a sponsor for 5 out
+  of the national accounts. The pot is chosen on one line beside the price
+  table (`from = inPower(S) ? null : playParty(S)`) rather than in a wrapper,
+  which would have to carry its own copy of the prices and go stale the first
+  time one of them moved. This is S17a's committee-panel fix arriving at the
+  next lever along, on the seam `pv5Spend` and `campaignYes` already use.
 - Assertion: `the floor is open to every chair` in `tools/roads.js`, eight
   arms, twelve poison reverts each reddening it alone. Playtest step
   `opposition-floor` drives the card button and then the drafting sheet's own

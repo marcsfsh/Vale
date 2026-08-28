@@ -9457,9 +9457,24 @@ function billAction(id, action) {
     pressure:3, amendIt:4, delayIt:5, talkOut:4, kill:8, pressOffice:3, override:6 };
   var monies = { bargain:8, pressure:5, amendIt:4, pressOffice:6 };
   var c = cst(costs[action] || 0), m = monies[action] || 0;
-  if (S.capital < c || (m && S.treasury < m)) { flash('The resources are not available.'); return; }
+  /* S18a: AND THE MONEY COMES FROM WHOEVER IS ACTING. This line read
+     `S.treasury` whatever chair the player sat in, so an opposition party
+     leaned on a sponsor for 5 out of the national accounts -- the defect S17a
+     fixed at the committee panel, arriving at the next lever along, and the
+     same seam `pv5Spend`'s purse argument and `campaignYes` already use. It is
+     asked here rather than in a wrapper because a wrapper would have to carry
+     its own copy of the prices above and would go stale the first time one of
+     them moved. */
+  var from = inPower(S) ? null : playParty(S);
+  var have = from ? partyPurse(S, from) : S.treasury;
+  if (S.capital < c || (m && have < m)) {
+    flash(from ? 'The ' + PARTY[from].short + ' cannot meet it out of its own funds.'
+      : 'The resources are not available.');
+    return;
+  }
   captureUndo('Work on ' + b.title);
-  S.capital -= c; if (m) S.treasury -= m;
+  S.capital -= c;
+  if (m) { if (from) partySpend(S, from, m); else S.treasury -= m; }
   if (action === 'whip') { b.whip += 10; b.notes.push('Government whips deployed'); S.unity = c100((S.unity || 60) - 2); }
   if (action === 'bargain') { b.upperDeal += 12; b.concessions++; b.notes.push('Cross-bench bargain'); S.ind.corruption = c100(S.ind.corruption + 1); }
   if (action === 'amend') { b.whip += 4; b.upperDeal += 7; b.concessions++; b.notes.push('Government amendment accepted'); }
@@ -37500,31 +37515,6 @@ function v18FloorShut(st) {
   }
   return null;
 }
-
-/* AND THE MONEY COMES FROM THE PARTY, NOT THE EXCHEQUER. `billAction` spent
-   `S.treasury` whatever chair the player sat in, so an opposition party bought
-   a Senate bargain for 8 out of the national accounts -- measured, the
-   treasury fell and the party purse was untouched. This is the defect S17a
-   fixed at the committee panel arriving at the next lever along; `pv5Spend`
-   is the same helper that fix used, and out of government it is handed the
-   party's own purse. */
-var v18BillActionBase = billAction;
-billAction = function (id, action) {
-  if (inPower(S)) return v18BillActionBase(id, action);
-  var monies = { bargain:8, pressure:5, amendIt:4, pressOffice:6 };
-  var m = monies[action] || 0;
-  if (m && partyPurse(S, playParty(S)) < m) {
-    flash('The ' + PARTY[playParty(S)].short + ' cannot meet it out of its own funds.');
-    return;
-  }
-  var t0 = S.treasury;
-  var out = v18BillActionBase(id, action);
-  /* the base spent the exchequer; put it back and take it from the purse the
-     act actually belongs to */
-  var spent = t0 - S.treasury;
-  if (spent > 0) { S.treasury = t0; partySpend(S, playParty(S), spent); }
-  return out;
-};
 
 /* ---------- boot ---------- */
 (function () {

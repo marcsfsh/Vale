@@ -50,7 +50,10 @@ in the button's title rather than leaving a dead control with no reason on it.
 Twelve poison reverts, one per layer, and each reddens
 `the floor is open to every chair` in `tools/roads.js` on its own. The
 `playtest.js` step `opposition-floor` drives the whole thing by real clicks
-from the bench.
+from the bench. The six-seed pacing A/B against the build before this slice is
+**byte-identical** across all three lengths: every branch S18a adds takes the
+in-power path for a harness that plays as the government, which is what the
+identical report says out loud.
 
 **S17 — Three ways to play, and the republic plays back** is **CLOSED**, and
 with it the whole remaining half of S16 (the court, the street, playing from
