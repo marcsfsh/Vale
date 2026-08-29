@@ -8864,9 +8864,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     const vals = V16_AI_DECK.map(c => +v19Outcome(S, 'cup', c).toFixed(4));
     R.sim = { distinct:new Set(vals).size, of:vals.length,
       spread:+(Math.max.apply(null, vals) - Math.min.apply(null, vals)).toFixed(4) };
-    /* the left and the right must not read the same card the same way */
-    R.sim.disagree = V16_AI_DECK.filter(c =>
-      (v19Outcome(S, 'rsf', c) > 0) !== (v19Outcome(S, 'pnl', c) > 0)).length;
+    /* AND THE READING IS THE PARTY'S OWN. The first version of this arm asked
+       whether two parties disagreed about the SIGN of a card, which is not the
+       question: `court` raises whichever bloc the party courting it belongs
+       to, so the left and the right both gain by it and SHOULD. What decides
+       behaviour is whether they RANK the options differently -- a simulator
+       that handed every party the same favourite would be scoring the board
+       and not the party. */
+    R.sim.best = {};
+    ['rsf', 'pnl', 'cup', 'fp'].forEach(q => {
+      let top = null, topV = -Infinity;
+      V16_AI_DECK.forEach(c => {
+        const v = v19Outcome(S, q, c);
+        if (v > topV) { topV = v; top = c.id; }
+      });
+      R.sim.best[q] = top;
+    });
+    R.sim.distinctBest = new Set(Object.keys(R.sim.best).map(k => R.sim.best[k])).size;
     /* and thinking about a thing does not change the thing: `rand()` resolves
        `RNG_ON || S`, so a rehearsal must spend the CLONE's dice */
     const keep = { rng:S.rngState, cap:S.capital, pol:JSON.stringify(S.pol),
@@ -8929,7 +8943,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     think.hold.rate < .25 && think.hold.samples > 100 &&
     think.retire.changed &&
     think.panel.column && think.panel.aims > 0 && think.panel.pct && think.panel.instinctSaysSo &&
-    think.sim.distinct >= 7 && think.sim.spread > .05 && think.sim.disagree > 0 &&
+    think.sim.distinct >= 7 && think.sim.spread > .05 && think.sim.distinctBest >= 2 &&
     think.sim.untouched && think.sim.flagged &&
     think.floor.sharp.n > 0 && think.floor.sharp.against === think.floor.sharp.n &&
     think.floor.dumb.n > think.floor.sharp.n &&
@@ -8954,8 +8968,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `sandbox and the objective function that were in the file from S17 and wired to one decision: the reading ` +
     `separates ${think.sim.distinct} of ${think.sim.of} cards across a spread of ${think.sim.spread} where the ` +
     `first version separated two, because it scored the country and not the party and nine of the ten cards ` +
-    `move nothing the country notices; the left and the right disagree about the sign of ` +
-    `${think.sim.disagree} of them; and the rehearsal leaves the campaign exactly where it was ` +
+    `move nothing the country notices; four parties of different politics come out with ` +
+    `${think.sim.distinctBest} different favourites between them ` +
+    `(${Object.keys(think.sim.best).map(k => k + ' ' + think.sim.best[k]).join(', ')}), which is the question ` +
+    `-- an earlier arm asked whether they disagreed about a card's SIGN and they rightly do not, because ` +
+    `\`court\` raises whichever bloc the party courting it belongs to; and the rehearsal leaves the campaign exactly where it was ` +
     `(${think.sim.untouched}) with the flag up while it happens (${think.sim.flagged}), or an instrument that ` +
     `wraps \`run\` counts every rehearsal as an initiative · AND IT COUNTS THE FLOOR: over eighty sessions on ` +
     `one seed the level that does not think made ${think.floor.dumb.n} moves of which ` +
