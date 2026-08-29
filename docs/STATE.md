@@ -14,7 +14,36 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S18e — The AI actually acts** is **OPEN**. S18a through S18d are merged
+**S19a — The parties think** is **OPEN**, and it exists because the owner read
+S18e's merge note and said no:
+
+> "So the AI is done? I really want the game's parties to have a seriously
+> robust, very sophisticated ai with lots of logic and capabilities"
+
+They were right twice. S18e fixed WHEN a party acts and left the decision a
+coin flip -- `open[Math.floor(rand() * open.length)]` at what is now
+vale.html:34350 -- with nothing in the model saying what a party was TRYING to
+do. And the first answer I proposed, one goal and a hand-written worth table,
+was itself too shallow: the owner said so, and the file already contained a
+working simulator I had ignored.
+
+**`docs/PLAN-S19.md` is the program's anchor** and holds the two rulings. R1:
+AI sophistication gets its OWN difficulty setting, independent of the existing
+scale. R2: the Parties page states the aim and the reasoning.
+
+Three of the seven reasoning layers are built: goals held across sessions,
+deliberation by rehearsal against a party-facing objective, and floor
+arithmetic that acts only when a vote is going against the party. Still to
+come: opponent modelling, bargaining between parties, temperament, and
+reaction between scheduled turns. `docs/MAP.md` carries the section.
+
+**Six times in this slice the measurement corrected the design.** The full
+list is in MAP.md; the sharpest is that three poisons stayed GREEN because the
+arms read the machinery's internals rather than its effect, and one of them
+read `againstMe` straight from the picker, so a build hard-coding that field
+true passed while behaving no differently.
+
+**S18e — The AI actually acts** shipped as PR #91. S18a through S18d are merged
 (PRs #87, #88, #89, #90).
 
 S18e closes the first of the two claims `docs/AUDIT-S17.md` found did not
