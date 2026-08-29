@@ -9968,7 +9968,14 @@ function politicsTick(st) {
   /* S18c: the governors write to the government. Its three answers commit
      federal money, offer an intergovernmental compact and send "the
      responsible minister" -- none of which an opposition party has. */
-  if (leads(st) && rand() < .35) {
+  /* S18c: THE ROLL IS SPENT IN EVERY CHAIR. Putting the chair test in front
+     of `rand()` means an opposition session no longer consumes it, which
+     re-phases the whole seeded stream from that point on -- measured, the
+     six-seed pacing arc moved on every row for that reason alone. The dice
+     are the campaign's identity; a gate decides what happens, never how many
+     numbers are drawn. */
+  var v18Governors = rand() < .35;
+  if (v18Governors && leads(st)) {
     addInbox(st, { type:'governors_conference', from:null, title:'The Fifty Governors Call for a Conference',
       body:'They want grants, a clearer division of powers and an answer from the government rather than another departmental circular.' });
     return;
@@ -30888,9 +30895,16 @@ var V11_ROUTES = {
   plebiscite: { id:'plebiscite', name:'the country',   sessions:1,
                 note:'One session, decided on the country, and open whether or not there are elections.' }
 };
+/* S18d: A STRUCK ARTICLE IS OUT OF THE DOCUMENT. `v17StrikeComply` writes
+   `.repealed = true` and exactly one function in three megabytes read it
+   (`v11ConEffects`), so a court strike left a phantom: `v11Adopted` still said
+   yes, which meant the article still printed as in force on the constitution
+   page, still blocked its conflicting partner, could never be laid again, and
+   kept whatever its `apply()` had seated. The court struck it and the document
+   did not notice. */
 function v11Adopted(st, id) {
   var c = st.v11 && st.v11.con;
-  return !!(c && c.arts && c.arts[id]);
+  return !!(c && c.arts && c.arts[id] && !c.arts[id].repealed);
 }
 function v11ConCount(st) {
   var c = st.v11 && st.v11.con;
@@ -31205,6 +31219,36 @@ function v11ConTick(st) {
     }
     c.pending = c.pending.filter(function (x) { return x !== p; });
     if (v.ok) {
+      /* S18d: THE DOCUMENT IS CHECKED AT THE MOMENT IT CHANGES, not only when
+         a paper is laid. Lay time is one road in; a save written before this
+         rule, and the custom start editor, are two more. An article that
+         carries into a document its partner already occupies does not enter
+         it -- and it is said out loud, because a vote that carried and
+         changed nothing is exactly the silence this file bans. */
+      /* against what is IN THE DOCUMENT, not against what is merely before
+         the country: if both of a pair carry in one session, the first to be
+         counted enters and the second does not. Asking about pending here
+         would fail BOTH, and an article that had the votes would be lost to
+         a partner that did not. */
+      var clash = null;
+      if (!p.repeal && typeof v17ConflictsOf === 'function') {
+        v17ConflictsOf('article', a.id).forEach(function (o) {
+          if (clash) return;
+          var inDoc = o.kind === 'article'
+            ? (typeof v11Adopted === 'function' && v11Adopted(st, o.id))
+            : (typeof v17InForce === 'function' && v17InForce(st, o.kind, o.id));
+          if (inDoc) clash = v17CardName(o.kind, o.id) + ' stands. ' + o.why;
+        });
+      }
+      if (clash) {
+        c.failed[a.id] = st.turn;
+        logIt(st, a.name + ' carried at ' + Math.round(v.margin) +
+          ' per cent and did not enter the constitution: ' + clash);
+        chronicle(st, a.name + ' carried and was found inconsistent with the document.');
+        addNews(st, 'The Constitution', a.name + ' carried and did not enter the document',
+          clash, 'warn');
+        return;
+      }
       if (p.repeal) v11RepealArticle(st, a, Math.round(v.margin));
       else v11AdoptArticle(st, a, Math.round(v.margin));
       if (p.route === 'plebiscite') chronicle(st, 'The country voted on ' + a.name + ' and carried it.');
@@ -34469,7 +34513,26 @@ function v16CustomClean(raw) {
   var out = v16CustomBlank(), lost = 0;
   if (!raw || typeof raw !== 'object') return { blob:out, lost:-1 };
   if (raw.form && FORMS[raw.form]) out.form = raw.form;
-  (raw.articles || []).forEach(function (id) { if (V11_ART[id]) out.articles.push(id); else lost++; });
+  /* S18d: THE EDITOR WAS A COMPLETE BYPASS. It validated article ids against
+     `V11_ART` and nothing else, and the picker is eighty unconstrained boxes,
+     so every absurdity the conflict table exists to stop was reachable from a
+     fresh game: the Secession Bar beside the Secession Right at autonomy 20,
+     three bench articles seating seventeen justices, four emergency articles
+     netting +5. The cleaner is the validation layer in this file -- the UI
+     never is -- and it holds the same table the buttons hold. A conflicting
+     article is DROPPED and COUNTED, so the start screen says how many the
+     document could not carry rather than quietly seating them. */
+  (raw.articles || []).forEach(function (id) {
+    if (!V11_ART[id]) { lost++; return; }
+    var clash = false;
+    if (typeof v17ConflictsOf === 'function') {
+      v17ConflictsOf('article', id).forEach(function (o) {
+        if (o.kind === 'article' && out.articles.indexOf(o.id) >= 0) clash = true;
+      });
+    }
+    if (clash) { lost++; return; }
+    out.articles.push(id);
+  });
   for (var p in (raw.pol || {})) {
     if (!POL[p]) { lost++; continue; }
     out.pol[p] = clamp(Math.round(raw.pol[p]), 0, POL[p].max);
@@ -36534,6 +36597,18 @@ var V17_CONFLICTS = [
     why:'The vote cannot belong to every adult citizen and to no property, and also be weighed by the assessment.' },
   { a:{ kind:'article', id:'artNoPropertyTest' }, b:{ kind:'article', id:'artWeightedRoll' },
     why:'No test of property can be required of an elector while the roll is weighed by one.' },
+  /* S18d: THE THREE PAIRS THE AUDIT DROVE AND FOUND STILL CO-ADOPTABLE.
+     `docs/CONFLICTS.md` proposed all three and marked them awaiting a ruling;
+     each is a mechanical contradiction rather than a matter of taste, which
+     is the line ruling 11 draws between what ships and what waits. */
+  { a:{ kind:'article', id:'artFixedBench' }, b:{ kind:'article', id:'artConstitutionalBench' },
+    why:'The bench cannot be fixed at its number and be enlarged by the same document. Measured, the pair took it to thirteen with the Fixed Bench standing.' },
+  { a:{ kind:'article', id:'artStateOfSiege' }, b:{ kind:'article', id:'artHabeas' },
+    why:'No one may be held without charge under a state of siege and be produced before a judge within the day. One of the two is the law.' },
+  { a:{ kind:'article', id:'artJudicialReview' }, b:{ kind:'article', id:'artCourtStripping' },
+    why:'A court that may strike a statute down cannot be a court the legislature may put a statute beyond.' },
+  { a:{ kind:'article', id:'artJudicialReview' }, b:{ kind:'act', id:'courtStripping' },
+    why:'A court that may strike a statute down cannot be a court an Act has put a statute beyond.' },
   { a:{ kind:'article', id:'artBicameral' }, b:{ kind:'article', id:'artAbolishUpper' },
     why:'No bill can need the assent of both houses in a legislature that has one.' },
   /* Found while fixing the Elected Senate above, and made live BY that fix:
@@ -36557,7 +36632,19 @@ var V17_CONFLICTS = [
   { a:{ kind:'article', id:'artUniversalFranchise' }, b:{ kind:'act', id:'wealthFranchise' },
     why:'The Act weights the vote by assessed property. The Article, entrenched and carried by the country, says the vote belongs to no property at all.' },
   { a:{ kind:'article', id:'artNoPropertyTest' }, b:{ kind:'act', id:'wealthFranchise' },
-    why:'The Act is a test of property. The Article forbids one.' }
+    why:'The Act is a test of property. The Article forbids one.' },
+  /* S18d: AND THE SAME IDEA IN THE STATUTE BOOK, which is the book the
+     owner's sentence names first and the one the table had never reached.
+     The two pairs above stop the ACT of the same name; the Property
+     Qualification is the identical rule as a statute, priced at 12 and
+     needing nothing but a majority, so an entrenched article carried at a
+     referendum stood on the page while a statute weighed the roll under it.
+     A mechanical contradiction of exactly the family the owner has already
+     ruled on, so it ships beside them rather than waiting. */
+  { a:{ kind:'article', id:'artUniversalFranchise' }, b:{ kind:'policy', id:'propertyFranchise' },
+    why:'The statute weighs the federal roll by assessed property. The Article, entrenched and carried by the country, gives the vote to no property at all.' },
+  { a:{ kind:'article', id:'artNoPropertyTest' }, b:{ kind:'policy', id:'propertyFranchise' },
+    why:'The statute is a test of property, printed as a floor on the roll. The Article forbids one.' }
 ];
 
 /* THE INDEX, BOTH WAYS ROUND, built once from the table. */
@@ -36578,8 +36665,33 @@ function v17ConflictsOf(kind, id) { return v17ConflictIndex()[kind + ':' + id] |
 /* WHETHER THE OTHER THING STANDS. An article stands if it is adopted and not
    repealed; an act stands if its own `done` says so, which is the test the
    act's own card uses. A read, and only a read. */
+/* S18b/c's audit found this answering only half the question. `v17InForce`
+   asked whether the partner had ALREADY CARRIED, and the only article call
+   site is `v11CanPropose` at LAY time, so two conflicting articles could both
+   be pending at once -- and the constitution page invites exactly that, in its
+   own words: "3 articles may be laid at a time." Driven by clicks alone on a
+   fresh campaign, the Quadrennial and the Annual Assembly articles were both
+   laid in one session, both carried at turn 3, and the page printed "the
+   Assembly is renewed every 3 years" -- the owner's original complaint,
+   reproduced with the conflict table installed. A partner BEFORE THE COUNTRY
+   is as much in the way as one in the document. */
 function v17InForce(st, kind, id) {
-  if (kind === 'article') return typeof v11Adopted === 'function' && v11Adopted(st, id);
+  if (kind === 'article') {
+    if (typeof v11Adopted === 'function' && v11Adopted(st, id)) return true;
+    return typeof v11PendingOf === 'function' && !!v11PendingOf(st, id);
+  }
+  /* S18d: THE STATUTE BOOK, which is the book the owner's sentence names
+     first and the one the table had never reached. This branch and the call
+     site in `v18DraftWhy` -- which since S18b is the one predicate the
+     handler, the card's two buttons and the dossier's two all read -- exist
+     because the table now DECLARES a statute pair. Branches for the measure,
+     the order and the treaty were written in this same slice and taken back
+     out: a poison run removed all three and reddened nothing, because no pair
+     names one, and a knob nothing in the game can turn is decoration. A kind
+     is added here when a ruled pair names it -- `docs/CONFLICTS.md` holds the
+     proposals -- and `the document says one thing at a time` fails if the
+     table ever names a kind this function cannot answer. */
+  if (kind === 'policy') return (st.pol && st.pol[id] > 0);
   if (kind === 'act') {
     var act = ACTS.filter(function (x) { return x.id === id; })[0];
     if (!act) return false;
@@ -36592,6 +36704,7 @@ function v17InForce(st, kind, id) {
 }
 function v17CardName(kind, id) {
   if (kind === 'article') return (V11_ART[id] || {}).name || id;
+  if (kind === 'policy') return (POL[id] || {}).name || id;
   if (kind === 'act') {
     var act = ACTS.filter(function (x) { return x.id === id; })[0];
     return act ? act.name : id;
@@ -36603,10 +36716,20 @@ function v17ConflictWhy(st, kind, id) {
   var list = v17ConflictsOf(kind, id);
   for (var i = 0; i < list.length; i++) {
     if (!v17InForce(st, list[i].kind, list[i].id)) continue;
-    return v17CardName(list[i].kind, list[i].id) + ' stands. ' + list[i].why +
-      (list[i].kind === 'article'
-        ? ' Repeal it first if the country has changed its mind.'
-        : ' It has to go before this can.');
+    /* S18d: a partner that is only PENDING is in the way for a different
+       reason, and saying "stands" of an article nobody has voted on yet is a
+       card that lies about the document. */
+    var pending = list[i].kind === 'article' && typeof v11Adopted === 'function' &&
+      !v11Adopted(st, list[i].id);
+    return v17CardName(list[i].kind, list[i].id) +
+      (pending ? ' is before the country. ' : ' stands. ') + list[i].why +
+      (pending
+        ? ' One of the two, not both: withdraw it or let it be decided first.'
+        : (list[i].kind === 'article'
+          ? ' Repeal it first if the country has changed its mind.'
+          : list[i].kind === 'policy'
+            ? ' Step it back down to nothing first.'
+            : ' It has to go before this can.'));
   }
   return null;
 }
@@ -37236,7 +37359,15 @@ function v17StrikeComply(st, r) {
     logIt(st, r.name + ' was held unlawful and ceased to have effect.');
   } else if (r.kind === 'article') {
     var c = v11Con(st);
-    if (c.arts[r.id]) { c.arts[r.id].repealed = true; }
+    if (c.arts[r.id]) {
+      c.arts[r.id].repealed = true;
+      /* and the article's own undo runs, as it does on a repeal carried at a
+         ballot: a strike that leaves the justices its apply() seated is a
+         court order that changed the page and not the country */
+      var struck = V11_ART[r.id];
+      if (struck && typeof struck.repeal === 'function') { try { struck.repeal(st); } catch (e) {} }
+      var oi = c.order.indexOf(r.id); if (oi >= 0) c.order.splice(oi, 1);
+    }
     logIt(st, r.name + ' was struck out of the constitution as irreconcilable with what stands beside it.');
   }
   st.ind.liberties = c100(st.ind.liberties + 3);
@@ -37709,6 +37840,13 @@ function v18DraftWhy(st, id, dir) {
      does not offer a road into a sheet that closes on arrival */
   if (typeof activeBillFor === 'function' && activeBillFor(st, id)) {
     return 'A bill on that measure is already before Parliament.';
+  }
+  /* S18d: AND THE STATUTE BOOK, which is the book the owner's sentence names
+     first and the one the conflict table never reached. Only on the way UP: a
+     repeal is how a country changes its mind, and it is the road the refusal
+     points at. */
+  if (dir > 0 && typeof v17ConflictWhy === 'function') {
+    var pClash = v17ConflictWhy(st, 'policy', id); if (pClash) return pClash;
   }
   if (!policyOpen(st, p)) return policyWhy(st, p) || 'That measure has no place under this constitution.';
   var floor = (typeof v18FloorShut === 'function') ? v18FloorShut(st) : null;

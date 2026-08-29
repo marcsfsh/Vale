@@ -1264,6 +1264,63 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The document says one thing at a time (S18d)
+
+S17m built the conflict table and the audit in `docs/AUDIT-S17.md` drove it
+and found the owner's original complaint reproduced with the table installed:
+the two term articles both carried in one session and the page printed "the
+Assembly is renewed every 3 years". **The table was right and there were
+three roads round it.**
+
+- **The document is checked at the moment it CHANGES**, in `v11ConTick`, and
+  not only at lay time. The constitution page invites three articles at a
+  time in its own words, so a player lays both of a pair in one session, both
+  carry, and neither call site ever fires. `v17InForce` also answers yes for
+  a partner that is merely PENDING, so laying the second is refused while the
+  first is before the country -- and the refusal says "is before the country",
+  because saying "stands" of an article nobody has voted on is a card that
+  lies about the document. The adoption check asks about the DOCUMENT only:
+  asking about pending there would fail both, and an article with the votes
+  would be lost to a partner that did not have them.
+- **A vote that carried and changed nothing is said out loud** -- log,
+  chronicle and a news item naming what it was inconsistent with.
+- **The start editor is held to the same table.** `v16CustomClean` checked
+  article ids against `V11_ART` and nothing else, so every absurdity here was
+  reachable on turn one from eighty unconstrained boxes. A conflicting article
+  is dropped and COUNTED, so the screen says how many the document could not
+  carry. The cleaner is the validation layer in this file; the UI never is.
+- **A struck article is out of the document.** `v17StrikeComply` wrote
+  `.repealed` and exactly one function in three megabytes read it, so a court
+  strike left a phantom: it printed as in force, blocked its partner, could
+  never be laid again, and kept the justices its `apply()` had seated. It now
+  runs the article's own `repeal()` and leaves `c.order`.
+- **Six new pairs**, four from the audit and two reaching the statute book --
+  the Property Qualification is the Act to Weight the Franchise written as a
+  statute, so an entrenched article stood on the page while a statute weighed
+  the roll under it. `docs/CONFLICTS.md` carries all seventeen.
+- **Three knobs that came back out.** Call sites for a measure, an order and
+  a treaty were written in this slice with `v17InForce` branches to match, and
+  a poison run removed all three and reddened nothing: the table names
+  articles, acts and now statutes, so nothing in the game could turn them.
+  The assertion derives the kinds the table NAMES and asks the primitive about
+  each with the thing in force, which is the guard a hand-kept list cannot
+  have -- declare a pair naming a kind `v17InForce` cannot answer and it fails
+  rather than the block quietly never firing.
+- Assertion `the document says one thing at a time`, and **three mechanics
+  that shipped without one**: the editor's drop, the strike, and the statute
+  call site all survived their poisons GREEN on the first run. Arms (k), (l)
+  and (m) read them now, the last through a real `changePolicy` click.
+- **The arc does not move.** Six seeds, three lengths, S18d against a build
+  with its behaviour reverted to S17m's and everything else held: byte
+  identical. Every row that moves against `main` moves for S18C's roll hoist,
+  which `main` does not carry -- 9.61 to 9.22 crises, 9.94 to 9.50 wars, 9.33
+  to 9.17 records, elections 2.00 either way, and all 18 runs reaching their
+  end year on both. **The first revert build was broken and proved nothing**:
+  it spliced lines out of the S17m chunk, so every later chunk went
+  unevaluated and the run died on `V17_BURN is not defined` a thousand lines
+  earlier. A crash reads as a difference. Neutralise a table entry by
+  RENAMING its ids in place, never by cutting the entry out.
+
 ## The papers know which chair you sit in (S18c)
 
 S17c routed all 174 turn events by office so an opposition player decides

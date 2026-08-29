@@ -6686,11 +6686,43 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     V17_CONFLICTS.forEach(function (p) {
       [p.a, p.b].forEach(function (c) {
         var ok = c.kind === 'article' ? !!V11_ART[c.id]
-          : c.kind === 'act' ? ACTS.some(function (x) { return x.id === c.id; }) : false;
+          : c.kind === 'act' ? ACTS.some(function (x) { return x.id === c.id; })
+          : c.kind === 'policy' ? !!POL[c.id] : false;
         if (!ok) R.unresolved.push(c.kind + ':' + c.id);
       });
     });
     R.pairs = V17_CONFLICTS.length;
+
+    /* S18d: AND THE PRIMITIVE ANSWERS EVERY KIND THE TABLE NAMES. Three
+       branches of `v17InForce` were written in this slice for kinds no pair
+       names -- a measure, an order, a treaty -- and a poison run took all
+       three out without reddening anything, because nothing in the game could
+       turn them. They came out. This is the guard a hand-kept list cannot
+       have: declare a pair naming a kind the primitive cannot answer, or
+       whose card it cannot name, and the assertion fails rather than the
+       block quietly never firing. */
+    R.kinds = [];
+    R.kindGaps = [];
+    V17_CONFLICTS.forEach(function (p) {
+      [p.a, p.b].forEach(function (c) {
+        if (R.kinds.indexOf(c.kind) < 0) R.kinds.push(c.kind);
+      });
+    });
+    R.kinds.forEach(function (k) {
+      /* a kind the primitive cannot answer reads false for everything, which
+         is indistinguishable from "not in force" and is exactly how a dead
+         branch hides; so ask it of a state that HOLDS the thing */
+      var probe = fresh('lp'), one = V17_CONFLICTS.filter(function (p) {
+        return p.a.kind === k || p.b.kind === k;
+      })[0];
+      var side = one.a.kind === k ? one.a : one.b;
+      if (k === 'article') v11Con(S).arts[side.id] = { laid:1, by:'lp' };
+      else if (k === 'policy') S.pol[side.id] = 1;
+      else if (k === 'act') S.acts[side.id] = true;
+      else { R.kindGaps.push(k + ': the probe cannot put it in force'); return; }
+      if (!v17InForce(S, k, side.id)) R.kindGaps.push(k + ': v17InForce says no with it in force');
+      if (v17CardName(k, side.id) === side.id) R.kindGaps.push(k + ': v17CardName has no card for it');
+    });
 
     /* (b) AND EVERY PAIR REFUSES IN BOTH DIRECTIONS. A block declared one way
        round is a one-way door, which is the failure the central table exists
@@ -6709,6 +6741,55 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         var w = v11CanPropose(S, art, false, art.referendum ? 'plebiscite' : 'assembly');
         if (!(w && /stands\./.test(w))) R.oneWay.push(d[0].id + '->' + d[1].id + ': ' + String(w));
       });
+    });
+
+    /* S18d: AND THE ROAD ROUND THE SIDE. Everything above ADOPTS the first
+       article straight into `c.arts` and then asks about the second, which is
+       true and irrelevant: the constitution page invites three at a time, so
+       a player LAYS both in one session and neither is adopted when the other
+       is laid. Driven by clicks alone the pair both carried and the page
+       printed the three-year term -- the owner's original complaint,
+       reproduced with the table installed. This arm lays rather than adopts. */
+    R.pendingBlocks = [];
+    R.bothCarried = [];
+    R.neitherCarried = [];
+    V17_CONFLICTS.filter(function (p) {
+      return p.a.kind === 'article' && p.b.kind === 'article';
+    }).forEach(function (p) {
+      var A = V11_ART[p.a.id], B = V11_ART[p.b.id];
+      if (!A || !B) return;
+      var c = fresh('lp');
+      adopt(c, 'artPlebiscite'); adopt(c, 'artSuspensiveVeto');
+      S.capital = 900;
+      var rA = A.referendum ? 'plebiscite' : 'assembly';
+      var rB = B.referendum ? 'plebiscite' : 'assembly';
+      if (v11CanPropose(S, A, false, rA)) return;
+      v11ProposeArticle(p.a.id, false, rA);
+      if (!v11PendingOf(S, p.a.id)) return;
+      /* the partner must now be refused while the first is merely PENDING */
+      var w = v11CanPropose(S, B, false, rB);
+      if (!w) R.pendingBlocks.push(p.a.id + ' pending did not block ' + p.b.id);
+      /* and if a save from before this rule holds both, the second to be
+         counted does not enter the document */
+      var con = v11Con(S);
+      con.pending.push({ id:p.b.id, repeal:false, laid:S.turn, due:S.turn, route:rB, by:'lp' });
+      /* BOTH HAVE TO CARRY ON THE NUMBERS, or the pair is separated by a lost
+         vote and the arm proves nothing about the rule -- which is what the
+         `adoption` poison found: it stayed green because the second article
+         was failing its division, not the document. `v11ArtVerdict` reads
+         `p.campaign` at 4.5 a point, so a large one puts both over any
+         threshold and leaves the document as the only thing that can refuse. */
+      con.pending.forEach(function (x) { x.due = S.turn; x.campaign = 40; });
+      for (var t = 0; t < 5 && v11Con(S).pending.length; t++) {
+        S.capital = 900; S.turn++; try { v11ConTick(S); } catch (e) {}
+      }
+      var gotA = v11Adopted(S, p.a.id), gotB = v11Adopted(S, p.b.id);
+      if (gotA && gotB) R.bothCarried.push(p.a.id + ' + ' + p.b.id);
+      /* and EXACTLY ONE of a pair that both carried on the numbers is in the
+         document: neither entering would mean the guard refusing the first as
+         well as the second, which is a different defect wearing the same
+         green light. */
+      if (!gotA && !gotB) R.neitherCarried.push(p.a.id + ' + ' + p.b.id);
     });
 
     /* (c) THE ABSURDITY THE OWNER NAMED. Forbidding secession and guaranteeing
@@ -6827,10 +6908,106 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     v10OrdersTick(S);
     R.measures.crownMoved = S.crown !== 50;
     R.measures.armyMoved = S.armyLoyalty !== 50;
+
+    /* (k) AND THE EDITOR IS HELD TO THE SAME TABLE. The start screen is
+       eighty unconstrained boxes whose article ids were checked against
+       `V11_ART` and nothing else, so every absurdity above was reachable on
+       turn one without laying a paper. The cleaner is this file's validation
+       layer -- the UI never is -- so a conflicting article is DROPPED and
+       COUNTED, and the screen says how many the document could not carry. */
+    fresh('lp');
+    var ePair = V17_CONFLICTS.filter(function (x) {
+      return x.a.kind === 'article' && x.b.kind === 'article';
+    })[0];
+    var eBad = v16CustomClean({ articles:[ePair.a.id, ePair.b.id] });
+    R.editor = { pair:ePair.a.id + ' + ' + ePair.b.id, kept:eBad.blob.articles.length,
+      lost:eBad.lost, keptFirst:eBad.blob.articles[0] === ePair.a.id };
+    /* and a pair the table says nothing about is kept WHOLE, or "it drops one
+       of two" would read the same on an editor that dropped every second
+       article it was given. Derived from the table rather than named, so a
+       later declaration cannot quietly make this pair a conflicting one. */
+    var eIds = Object.keys(V11_ART), eOk = null;
+    for (var ei = 0; ei < eIds.length && !eOk; ei++) {
+      for (var ej = ei + 1; ej < eIds.length && !eOk; ej++) {
+        var eClash = v17ConflictsOf('article', eIds[ei]).some(function (o) {
+          return o.kind === 'article' && o.id === eIds[ej];
+        });
+        if (!eClash) eOk = [eIds[ei], eIds[ej]];
+      }
+    }
+    var eGood = v16CustomClean({ articles:eOk });
+    R.editor.innocent = eOk.join(' + ');
+    R.editor.innocentKept = eGood.blob.articles.length === 2 && eGood.lost === 0;
+
+    /* (l) AND A STRUCK ARTICLE IS OUT OF THE DOCUMENT. `v17StrikeComply` set
+       `.repealed` and exactly one function in three megabytes read it, so the
+       court struck an article and `v11Adopted` went on saying yes: it printed
+       as in force on the constitution page, went on blocking its partner,
+       could never be laid again, and kept whatever its `apply()` had seated.
+       The court changed the page and not the country. Three separate
+       mechanics, read three ways -- the document, the undo and the order. */
+    var c9 = fresh('lp');
+    v11AdoptArticle(S, V11_ART.artFixedBench, 70);
+    var benchFixed = S.court.justices.length;
+    v11AdoptArticle(S, V11_ART.artConstitutionalBench, 70);
+    R.strike = { benchFixed:benchFixed, seated:S.court.justices.length,
+      adopted:v11Adopted(S, 'artConstitutionalBench'),
+      inOrder:c9.order.indexOf('artConstitutionalBench') >= 0 };
+    /* through the court's own docket, not a case object built here: a pair
+       the table declares IS what the court hears since S17p */
+    var sCase = v17Docket(S).filter(function (d) {
+      return d.kind === 'article' && d.id === 'artConstitutionalBench';
+    })[0];
+    R.strike.onDocket = !!sCase;
+    /* GUARDED: a poisoned build can leave the docket empty, and a probe that
+       throws aborts the harness instead of failing one assertion */
+    if (sCase) v17StrikeComply(S, sCase);
+    R.strike.stillAdopted = v11Adopted(S, 'artConstitutionalBench');
+    R.strike.stillInOrder = c9.order.indexOf('artConstitutionalBench') >= 0;
+    R.strike.benchAfter = S.court.justices.length;
+    /* and the page agrees: a repeal of what the court has already taken out is
+       refused because it is not there, where before it was open */
+    R.strike.repealShut = /not in the document/.test(String(
+      v11CanPropose(S, V11_ART.artConstitutionalBench, true, 'assembly') || ''));
+
+    /* (m) AND THE STATUTE BOOK, both ways round. The two franchise pairs stop
+       the ACT; the Property Qualification is the identical rule as a statute,
+       priced at 12 and needing nothing but a majority, so an entrenched
+       article carried at a referendum stood on the page while a statute
+       weighed the roll under it. Read through `policyWhyClosed`, which is
+       what the card and the button both ask, and driven by a real step. */
+    fresh('lp');
+    S.capital = 900;
+    var pOpenBefore = !v18DraftWhy(S, 'propertyFranchise', 1);
+    v11AdoptArticle(S, V11_ART.artUniversalFranchise, 70);
+    R.statute = { openBefore:pOpenBefore,
+      shut:String(v18DraftWhy(S, 'propertyFranchise', 1) || '') };
+    /* and a real click, through the handler the button calls, leaves the rung
+       where it was -- the refusal is worth nothing if `changePolicy` steps it
+       anyway, which is the defect this program opened on */
+    var pWas = S.pol.propertyFranchise || 0, fb2 = flash;
+    flash = function () {};
+    try { changePolicy('propertyFranchise', 1); } catch (e) {} finally { flash = fb2; }
+    R.statute.stillAt = (S.pol.propertyFranchise || 0) === pWas;
+    /* and the other way round: the statute standing refuses the article,
+       because a block declared one way is a one-way door */
+    var c10 = fresh('lp');
+    adopt(c10, 'artPlebiscite'); adopt(c10, 'artSuspensiveVeto');
+    S.pol.propertyFranchise = 1; S.capital = 900;
+    R.statute.articleShut = /Property Qualification stands\./.test(String(
+      v11CanPropose(S, V11_ART.artUniversalFranchise, false,
+        V11_ART.artUniversalFranchise.referendum ? 'plebiscite' : 'assembly') || ''));
+    /* and stepping the statute back down to nothing opens it again, which is
+       the road the refusal points at */
+    S.pol.propertyFranchise = 0;
+    R.statute.articleOpen = v11CanPropose(S, V11_ART.artUniversalFranchise, false,
+      V11_ART.artUniversalFranchise.referendum ? 'plebiscite' : 'assembly') === null;
     return R;
   });
   const truthOk =
     truth.unresolved.length === 0 && truth.pairs >= 11 && truth.oneWay.length === 0 &&
+    truth.pendingBlocks.length === 0 && truth.bothCarried.length === 0 &&
+    truth.neitherCarried.length === 0 &&
     truth.secession.bar === 6 && truth.secession.both === 20 && truth.secession.refused &&
     truth.repeal.blocked && truth.repeal.legacyBoth && truth.repeal.repealOpen &&
     truth.act.conditionsMet && /entrenched/.test(truth.act.refused) &&
@@ -6841,10 +7018,28 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /Article of the Plebiscite/.test(truth.roads.plebisciteShut) && truth.roads.plebisciteOpen &&
     truth.roads.conventionShut && truth.roads.sitsNot &&
     truth.measures.writers >= 10 && truth.measures.portfolios > 0 && truth.measures.delivery.moved &&
-    truth.measures.crownMoved && truth.measures.armyMoved;
+    truth.measures.crownMoved && truth.measures.armyMoved &&
+    truth.editor.kept === 1 && truth.editor.lost === 1 && truth.editor.keptFirst &&
+    truth.editor.innocentKept && truth.kindGaps.length === 0 &&
+    truth.strike.adopted && truth.strike.inOrder && truth.strike.onDocket &&
+    truth.strike.seated > truth.strike.benchFixed && !truth.strike.stillAdopted &&
+    !truth.strike.stillInOrder && truth.strike.benchAfter === truth.strike.benchFixed &&
+    truth.strike.repealShut &&
+    truth.statute.openBefore && /Article of the Universal Franchise stands\./.test(truth.statute.shut) &&
+    truth.statute.stillAt && truth.statute.articleShut && truth.statute.articleOpen;
   say(truthOk, 'the document says one thing at a time',
     `${truth.pairs} DECLARED CONFLICTS, every one naming a real card (${truth.unresolved.length} unresolved) and ` +
     `every article pair refusing in BOTH directions (${truth.oneWay.length} one-way) -- there was no ` +
+    `· AND LAID RATHER THAN ADOPTED, which is the road the table did not close: everything above writes the ` +
+    `first article straight into the document and then asks about the second, and the constitution page ` +
+    `invites three AT A TIME, so a player lays both in one session and neither is adopted when the other is ` +
+    `laid. Driven by clicks alone the two term articles both carried and the page printed "the Assembly is ` +
+    `renewed every 3 years" -- the owner's original complaint, reproduced with the table installed. A partner ` +
+    `merely BEFORE THE COUNTRY now blocks (${truth.pendingBlocks.length} that do not), and a save that holds ` +
+    `both from before this rule sees the second refused at the moment the document changes ` +
+    `(${truth.bothCarried.length} pairs still carry together, and ${truth.neitherCarried.length} where NEITHER ` +
+    `entered, which would mean the guard refusing the first as well as the second -- both are forced over the ` +
+    `threshold on the numbers, so the document is the only thing left that can refuse) ` +
     `mutual-exclusion primitive in three megabytes, and \`needs:\` only ever said what a card REQUIRED · ` +
     `FORBIDDING SECESSION AND GUARANTEEING IT both stood, and because the modifiers ADD the pair reached ` +
     `${truth.secession.both} of separatism against ${truth.secession.bar} for the bar alone; the second is ` +
@@ -6865,7 +7060,27 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `convention sits without its clause (${truth.roads.conventionShut}) · and the ${truth.measures.writers} ` +
     `measures writing delivery, crown and army finally reach the model (${truth.measures.delivery.moved}, ` +
     `${truth.measures.crownMoved}, ${truth.measures.armyMoved}), where the orders' identically-named fields ` +
-    `have been read since S10e and the measures stopped one wrapper short`);
+    `have been read since S10e and the measures stopped one wrapper short · AND THE START EDITOR IS HELD TO ` +
+    `THE SAME TABLE, where it checked article ids against the registry and nothing else and every absurdity ` +
+    `above was reachable on turn one without laying a paper: given ${truth.editor.pair} it seats ` +
+    `${truth.editor.kept} and counts ${truth.editor.lost} the document could not carry, keeping the first ` +
+    `(${truth.editor.keptFirst}), and given ${truth.editor.innocent}, which the table says nothing about, it ` +
+    `seats both (${truth.editor.innocentKept}) -- or an editor that dropped every second article it was ` +
+    `handed would read the same · A STRUCK ARTICLE IS OUT OF THE DOCUMENT, where the court set \`.repealed\` ` +
+    `and one function in three megabytes read it, so it printed as in force, blocked its partner and kept its ` +
+    `justices: the Constitutional Bench took the court from ${truth.strike.benchFixed} to ` +
+    `${truth.strike.seated}, the court's own docket heard it (${truth.strike.onDocket}), and complying puts ` +
+    `it out of the document (${!truth.strike.stillAdopted}), out of the order (${!truth.strike.stillInOrder}) ` +
+    `and the bench back to ${truth.strike.benchAfter} · AND THE STATUTE BOOK, which is the book the owner's ` +
+    `sentence names first and the one the table had never reached: the Property Qualification is open on a ` +
+    `bare board (${truth.statute.openBefore}) and shut under the entrenched article ` +
+    `("${truth.statute.shut.slice(0, 56)}"), a real step leaves the rung where it was ` +
+    `(${truth.statute.stillAt}), and it refuses the other way round too -- the article cannot be laid over a ` +
+    `statute that stands (${truth.statute.articleShut}) and can the moment it comes down ` +
+    `(${truth.statute.articleOpen}) · the table names ${truth.kinds.length} kinds and the primitive answers ` +
+    `every one of them (${truth.kindGaps.length} it cannot), which is why the measure, order and treaty ` +
+    `branches written in this slice came back out: a poison run took all three away and reddened nothing, ` +
+    `because no pair named one and a knob nothing in the game can turn is decoration`);
 
   /* ================================================================
      S17n — THE BOOK MEANS WHAT IT SAYS, I

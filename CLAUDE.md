@@ -318,6 +318,18 @@ before touching the file.
   Anything a blob can carry is reachable without ever passing a control, so the
   cleaner holds the line, and it holds it against the same table the controls
   are drawn from. One list, offered and accepted.
+- **THE POISON LIST COMES FROM THE DIFF, NOT FROM THE ASSERTION.** Writing one
+  poison per thing the assertion mentions proves the assertion and says nothing
+  about the slice: S18d changed six things, six poisons were written from the
+  assertion's own words, and three of the six changes had no arm at all — the
+  custom start's conflict drop, the struck article leaving the document, and
+  the statute book's call into the table were each written, shipped and never
+  read by the harness. All three showed GREEN, which is exactly what a covered
+  mechanic looks like. Enumerate the slice's changed lines, write one poison
+  per change, and a change with nothing to poison is a change with no
+  assertion. The same run then answers the other half: a change whose poison
+  cannot redden anything is a knob nothing in the game can turn, and three of
+  S18d's call sites came back out on that reading.
 - **Never set `fill` on a bare `text` selector in a chart's stylesheet.** A CSS
   fill beats an SVG presentation attribute and silently greys out every label
   the chart colours by attribute.

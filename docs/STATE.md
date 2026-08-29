@@ -14,7 +14,39 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S18a — The floor is open to every chair** is **OPEN**, and it exists because
+**S18d — Mutual exclusion actually excludes** is **OPEN**. S18a, S18b and S18c
+are merged (PRs #87, #88, #89).
+
+S18d closes the second of the two claims `docs/AUDIT-S17.md` found did not
+survive ordinary play. S17m built the conflict table correctly and there were
+three roads round it: the check ran at LAY time only, so a player laid both of
+a pair in one session and both carried and the page printed the three-year
+assembly the owner complained about; the start editor validated article ids
+against the registry and nothing else, so every absurdity was reachable on
+turn one; and a struck article kept printing as in force because the court
+wrote a flag one function read. Six new pairs, two of them reaching the
+statute book for the first time. `docs/MAP.md` carries the section and
+`docs/CONFLICTS.md` the seventeen pairs.
+
+**The poison run found three mechanics with no assertion and three knobs
+nothing could turn**, which is now a rule in `CLAUDE.md`: the poison list
+comes from the diff, not from the assertion. Six poisons were written from the
+assertion's own words and three of S18d's six changes had no arm at all, all
+three showing green. The same run showed the measure, order and treaty call
+sites written in this slice could not redden anything, because the table names
+articles, acts and statutes and nothing else, so all three came back out.
+
+**The pacing arc does not move for S18d.** Six seeds, three lengths, against a
+build with the slice's behaviour reverted to S17m's and everything else held:
+byte identical. The branch does move against `main`, on every row, and that is
+S18c's governors-roll hoist, which `main` does not carry -- the roll used to be
+drawn only in the leading chair, so an opposition session re-phased the whole
+seeded stream from that point on. Crises 9.61 to 9.22, wars 9.94 to 9.50,
+records 9.33 to 9.17, elections 2.00 either way, all 18 runs reaching their end
+year on both sides.
+
+**S18a — The floor is open to every chair** shipped as PR #87, and it exists
+because
 the owner played the shipped build and could not do the thing S17b's PR says
 it fixed:
 
@@ -128,7 +160,7 @@ statute book, the constitution and the order book whose implementations are not
 ```
                          before S17     after S17t
 checks/run.js              11 checks      11 checks
-tools/roads.js            162 roads      184 roads (185 with S18a)
+tools/roads.js            162 roads      184 roads (187 through S18d)
 tools/playtest.js          ~52 steps      67 steps (68 with S18a)
 tools/contrast.js               —        6 assertions, 3 tiers (new in S17s)
 vale.html                   3.32 MB       3.57 MB
