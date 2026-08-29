@@ -6686,11 +6686,43 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     V17_CONFLICTS.forEach(function (p) {
       [p.a, p.b].forEach(function (c) {
         var ok = c.kind === 'article' ? !!V11_ART[c.id]
-          : c.kind === 'act' ? ACTS.some(function (x) { return x.id === c.id; }) : false;
+          : c.kind === 'act' ? ACTS.some(function (x) { return x.id === c.id; })
+          : c.kind === 'policy' ? !!POL[c.id] : false;
         if (!ok) R.unresolved.push(c.kind + ':' + c.id);
       });
     });
     R.pairs = V17_CONFLICTS.length;
+
+    /* S18d: AND THE PRIMITIVE ANSWERS EVERY KIND THE TABLE NAMES. Three
+       branches of `v17InForce` were written in this slice for kinds no pair
+       names -- a measure, an order, a treaty -- and a poison run took all
+       three out without reddening anything, because nothing in the game could
+       turn them. They came out. This is the guard a hand-kept list cannot
+       have: declare a pair naming a kind the primitive cannot answer, or
+       whose card it cannot name, and the assertion fails rather than the
+       block quietly never firing. */
+    R.kinds = [];
+    R.kindGaps = [];
+    V17_CONFLICTS.forEach(function (p) {
+      [p.a, p.b].forEach(function (c) {
+        if (R.kinds.indexOf(c.kind) < 0) R.kinds.push(c.kind);
+      });
+    });
+    R.kinds.forEach(function (k) {
+      /* a kind the primitive cannot answer reads false for everything, which
+         is indistinguishable from "not in force" and is exactly how a dead
+         branch hides; so ask it of a state that HOLDS the thing */
+      var probe = fresh('lp'), one = V17_CONFLICTS.filter(function (p) {
+        return p.a.kind === k || p.b.kind === k;
+      })[0];
+      var side = one.a.kind === k ? one.a : one.b;
+      if (k === 'article') v11Con(S).arts[side.id] = { laid:1, by:'lp' };
+      else if (k === 'policy') S.pol[side.id] = 1;
+      else if (k === 'act') S.acts[side.id] = true;
+      else { R.kindGaps.push(k + ': the probe cannot put it in force'); return; }
+      if (!v17InForce(S, k, side.id)) R.kindGaps.push(k + ': v17InForce says no with it in force');
+      if (v17CardName(k, side.id) === side.id) R.kindGaps.push(k + ': v17CardName has no card for it');
+    });
 
     /* (b) AND EVERY PAIR REFUSES IN BOTH DIRECTIONS. A block declared one way
        round is a one-way door, which is the failure the central table exists
@@ -6876,6 +6908,100 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     v10OrdersTick(S);
     R.measures.crownMoved = S.crown !== 50;
     R.measures.armyMoved = S.armyLoyalty !== 50;
+
+    /* (k) AND THE EDITOR IS HELD TO THE SAME TABLE. The start screen is
+       eighty unconstrained boxes whose article ids were checked against
+       `V11_ART` and nothing else, so every absurdity above was reachable on
+       turn one without laying a paper. The cleaner is this file's validation
+       layer -- the UI never is -- so a conflicting article is DROPPED and
+       COUNTED, and the screen says how many the document could not carry. */
+    fresh('lp');
+    var ePair = V17_CONFLICTS.filter(function (x) {
+      return x.a.kind === 'article' && x.b.kind === 'article';
+    })[0];
+    var eBad = v16CustomClean({ articles:[ePair.a.id, ePair.b.id] });
+    R.editor = { pair:ePair.a.id + ' + ' + ePair.b.id, kept:eBad.blob.articles.length,
+      lost:eBad.lost, keptFirst:eBad.blob.articles[0] === ePair.a.id };
+    /* and a pair the table says nothing about is kept WHOLE, or "it drops one
+       of two" would read the same on an editor that dropped every second
+       article it was given. Derived from the table rather than named, so a
+       later declaration cannot quietly make this pair a conflicting one. */
+    var eIds = Object.keys(V11_ART), eOk = null;
+    for (var ei = 0; ei < eIds.length && !eOk; ei++) {
+      for (var ej = ei + 1; ej < eIds.length && !eOk; ej++) {
+        var eClash = v17ConflictsOf('article', eIds[ei]).some(function (o) {
+          return o.kind === 'article' && o.id === eIds[ej];
+        });
+        if (!eClash) eOk = [eIds[ei], eIds[ej]];
+      }
+    }
+    var eGood = v16CustomClean({ articles:eOk });
+    R.editor.innocent = eOk.join(' + ');
+    R.editor.innocentKept = eGood.blob.articles.length === 2 && eGood.lost === 0;
+
+    /* (l) AND A STRUCK ARTICLE IS OUT OF THE DOCUMENT. `v17StrikeComply` set
+       `.repealed` and exactly one function in three megabytes read it, so the
+       court struck an article and `v11Adopted` went on saying yes: it printed
+       as in force on the constitution page, went on blocking its partner,
+       could never be laid again, and kept whatever its `apply()` had seated.
+       The court changed the page and not the country. Three separate
+       mechanics, read three ways -- the document, the undo and the order. */
+    var c9 = fresh('lp');
+    v11AdoptArticle(S, V11_ART.artFixedBench, 70);
+    var benchFixed = S.court.justices.length;
+    v11AdoptArticle(S, V11_ART.artConstitutionalBench, 70);
+    R.strike = { benchFixed:benchFixed, seated:S.court.justices.length,
+      adopted:v11Adopted(S, 'artConstitutionalBench'),
+      inOrder:c9.order.indexOf('artConstitutionalBench') >= 0 };
+    /* through the court's own docket, not a case object built here: a pair
+       the table declares IS what the court hears since S17p */
+    var sCase = v17Docket(S).filter(function (d) {
+      return d.kind === 'article' && d.id === 'artConstitutionalBench';
+    })[0];
+    R.strike.onDocket = !!sCase;
+    /* GUARDED: a poisoned build can leave the docket empty, and a probe that
+       throws aborts the harness instead of failing one assertion */
+    if (sCase) v17StrikeComply(S, sCase);
+    R.strike.stillAdopted = v11Adopted(S, 'artConstitutionalBench');
+    R.strike.stillInOrder = c9.order.indexOf('artConstitutionalBench') >= 0;
+    R.strike.benchAfter = S.court.justices.length;
+    /* and the page agrees: a repeal of what the court has already taken out is
+       refused because it is not there, where before it was open */
+    R.strike.repealShut = /not in the document/.test(String(
+      v11CanPropose(S, V11_ART.artConstitutionalBench, true, 'assembly') || ''));
+
+    /* (m) AND THE STATUTE BOOK, both ways round. The two franchise pairs stop
+       the ACT; the Property Qualification is the identical rule as a statute,
+       priced at 12 and needing nothing but a majority, so an entrenched
+       article carried at a referendum stood on the page while a statute
+       weighed the roll under it. Read through `policyWhyClosed`, which is
+       what the card and the button both ask, and driven by a real step. */
+    fresh('lp');
+    S.capital = 900;
+    var pOpenBefore = !v18DraftWhy(S, 'propertyFranchise', 1);
+    v11AdoptArticle(S, V11_ART.artUniversalFranchise, 70);
+    R.statute = { openBefore:pOpenBefore,
+      shut:String(v18DraftWhy(S, 'propertyFranchise', 1) || '') };
+    /* and a real click, through the handler the button calls, leaves the rung
+       where it was -- the refusal is worth nothing if `changePolicy` steps it
+       anyway, which is the defect this program opened on */
+    var pWas = S.pol.propertyFranchise || 0, fb2 = flash;
+    flash = function () {};
+    try { changePolicy('propertyFranchise', 1); } catch (e) {} finally { flash = fb2; }
+    R.statute.stillAt = (S.pol.propertyFranchise || 0) === pWas;
+    /* and the other way round: the statute standing refuses the article,
+       because a block declared one way is a one-way door */
+    var c10 = fresh('lp');
+    adopt(c10, 'artPlebiscite'); adopt(c10, 'artSuspensiveVeto');
+    S.pol.propertyFranchise = 1; S.capital = 900;
+    R.statute.articleShut = /Property Qualification stands\./.test(String(
+      v11CanPropose(S, V11_ART.artUniversalFranchise, false,
+        V11_ART.artUniversalFranchise.referendum ? 'plebiscite' : 'assembly') || ''));
+    /* and stepping the statute back down to nothing opens it again, which is
+       the road the refusal points at */
+    S.pol.propertyFranchise = 0;
+    R.statute.articleOpen = v11CanPropose(S, V11_ART.artUniversalFranchise, false,
+      V11_ART.artUniversalFranchise.referendum ? 'plebiscite' : 'assembly') === null;
     return R;
   });
   const truthOk =
@@ -6892,7 +7018,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /Article of the Plebiscite/.test(truth.roads.plebisciteShut) && truth.roads.plebisciteOpen &&
     truth.roads.conventionShut && truth.roads.sitsNot &&
     truth.measures.writers >= 10 && truth.measures.portfolios > 0 && truth.measures.delivery.moved &&
-    truth.measures.crownMoved && truth.measures.armyMoved;
+    truth.measures.crownMoved && truth.measures.armyMoved &&
+    truth.editor.kept === 1 && truth.editor.lost === 1 && truth.editor.keptFirst &&
+    truth.editor.innocentKept && truth.kindGaps.length === 0 &&
+    truth.strike.adopted && truth.strike.inOrder && truth.strike.onDocket &&
+    truth.strike.seated > truth.strike.benchFixed && !truth.strike.stillAdopted &&
+    !truth.strike.stillInOrder && truth.strike.benchAfter === truth.strike.benchFixed &&
+    truth.strike.repealShut &&
+    truth.statute.openBefore && /Article of the Universal Franchise stands\./.test(truth.statute.shut) &&
+    truth.statute.stillAt && truth.statute.articleShut && truth.statute.articleOpen;
   say(truthOk, 'the document says one thing at a time',
     `${truth.pairs} DECLARED CONFLICTS, every one naming a real card (${truth.unresolved.length} unresolved) and ` +
     `every article pair refusing in BOTH directions (${truth.oneWay.length} one-way) -- there was no ` +
@@ -6926,7 +7060,27 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `convention sits without its clause (${truth.roads.conventionShut}) · and the ${truth.measures.writers} ` +
     `measures writing delivery, crown and army finally reach the model (${truth.measures.delivery.moved}, ` +
     `${truth.measures.crownMoved}, ${truth.measures.armyMoved}), where the orders' identically-named fields ` +
-    `have been read since S10e and the measures stopped one wrapper short`);
+    `have been read since S10e and the measures stopped one wrapper short · AND THE START EDITOR IS HELD TO ` +
+    `THE SAME TABLE, where it checked article ids against the registry and nothing else and every absurdity ` +
+    `above was reachable on turn one without laying a paper: given ${truth.editor.pair} it seats ` +
+    `${truth.editor.kept} and counts ${truth.editor.lost} the document could not carry, keeping the first ` +
+    `(${truth.editor.keptFirst}), and given ${truth.editor.innocent}, which the table says nothing about, it ` +
+    `seats both (${truth.editor.innocentKept}) -- or an editor that dropped every second article it was ` +
+    `handed would read the same · A STRUCK ARTICLE IS OUT OF THE DOCUMENT, where the court set \`.repealed\` ` +
+    `and one function in three megabytes read it, so it printed as in force, blocked its partner and kept its ` +
+    `justices: the Constitutional Bench took the court from ${truth.strike.benchFixed} to ` +
+    `${truth.strike.seated}, the court's own docket heard it (${truth.strike.onDocket}), and complying puts ` +
+    `it out of the document (${!truth.strike.stillAdopted}), out of the order (${!truth.strike.stillInOrder}) ` +
+    `and the bench back to ${truth.strike.benchAfter} · AND THE STATUTE BOOK, which is the book the owner's ` +
+    `sentence names first and the one the table had never reached: the Property Qualification is open on a ` +
+    `bare board (${truth.statute.openBefore}) and shut under the entrenched article ` +
+    `("${truth.statute.shut.slice(0, 56)}"), a real step leaves the rung where it was ` +
+    `(${truth.statute.stillAt}), and it refuses the other way round too -- the article cannot be laid over a ` +
+    `statute that stands (${truth.statute.articleShut}) and can the moment it comes down ` +
+    `(${truth.statute.articleOpen}) · the table names ${truth.kinds.length} kinds and the primitive answers ` +
+    `every one of them (${truth.kindGaps.length} it cannot), which is why the measure, order and treaty ` +
+    `branches written in this slice came back out: a poison run took all three away and reddened nothing, ` +
+    `because no pair named one and a knob nothing in the game can turn is decoration`);
 
   /* ================================================================
      S17n — THE BOOK MEANS WHAT IT SAYS, I

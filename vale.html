@@ -7620,11 +7620,6 @@ function extraWhy(st, m) {
   if (m.needs && !(st.pol[m.needs] > 0)) {
     return 'Requires ' + (POL[m.needs] ? POL[m.needs].name : m.needs) + '. A measure cannot outrun its own statute book.';
   }
-  /* S18d: the conflict table had four call sites in three megabytes and none
-     of them was a measure, an order, a treaty or a statute. */
-  if (typeof v17ConflictWhy === 'function') {
-    var mClash = v17ConflictWhy(st, 'measure', m.id); if (mClash) return mClash;
-  }
   if (m.forms && m.forms.indexOf(st.form) < 0) {
     return 'Only under the ' + m.forms.map(function (f) { return FORMS[f] ? FORMS[f].name : f; }).join(' or the ') + '.';
   }
@@ -17571,10 +17566,6 @@ function v6TreatyWhy(st, pid, kind) {
      do; this is only the door that should never have been open. */
   if (!inPower(st)) return 'The Foreign Office answers to the government, and you are not it.';
   if (typeof v17Barred === 'function' && v17Barred(st, 'treaty')) return v17Barred(st, 'treaty');
-  /* S18d: and so does the Foreign Office */
-  if (typeof v17ConflictWhy === 'function') {
-    var tClash = v17ConflictWhy(st, 'treaty', kind); if (tClash) return tClash;
-  }
   if (st.war && st.war.power === pid) return 'The two countries are at war.';
   if (v6TreatyExcluded(st, pid, kind)) return 'They are in the Alliance. Neither may open a war on the other already.';
   if (v6HasTreaty(st, pid, kind)) return 'Already in force.';
@@ -28311,10 +28302,6 @@ function v10OrderOpen(st, o, target, actor) {
   if (st.exec[o.dept] !== actor && !(actor === playParty(st) && holdsDept(st, o.dept))) {
     return DEPTS[o.dept].name + ' is in other hands.';
   }
-  /* S18d: and the order book asks the conflict table too */
-  if (typeof v17ConflictWhy === 'function') {
-    var oClash = v17ConflictWhy(st, 'order', o.id); if (oClash) return oClash;
-  }
   /* S15: "In the session before a general ballot this executive signs nothing
      new." It now signs nothing new. */
   if (v10OrderMods(st).book.preBallot && electionsOn(st) && nextBallot(st.turn) - st.turn <= 1) {
@@ -36645,7 +36632,19 @@ var V17_CONFLICTS = [
   { a:{ kind:'article', id:'artUniversalFranchise' }, b:{ kind:'act', id:'wealthFranchise' },
     why:'The Act weights the vote by assessed property. The Article, entrenched and carried by the country, says the vote belongs to no property at all.' },
   { a:{ kind:'article', id:'artNoPropertyTest' }, b:{ kind:'act', id:'wealthFranchise' },
-    why:'The Act is a test of property. The Article forbids one.' }
+    why:'The Act is a test of property. The Article forbids one.' },
+  /* S18d: AND THE SAME IDEA IN THE STATUTE BOOK, which is the book the
+     owner's sentence names first and the one the table had never reached.
+     The two pairs above stop the ACT of the same name; the Property
+     Qualification is the identical rule as a statute, priced at 12 and
+     needing nothing but a majority, so an entrenched article carried at a
+     referendum stood on the page while a statute weighed the roll under it.
+     A mechanical contradiction of exactly the family the owner has already
+     ruled on, so it ships beside them rather than waiting. */
+  { a:{ kind:'article', id:'artUniversalFranchise' }, b:{ kind:'policy', id:'propertyFranchise' },
+    why:'The statute weighs the federal roll by assessed property. The Article, entrenched and carried by the country, gives the vote to no property at all.' },
+  { a:{ kind:'article', id:'artNoPropertyTest' }, b:{ kind:'policy', id:'propertyFranchise' },
+    why:'The statute is a test of property, printed as a floor on the roll. The Article forbids one.' }
 ];
 
 /* THE INDEX, BOTH WAYS ROUND, built once from the table. */
@@ -36681,14 +36680,18 @@ function v17InForce(st, kind, id) {
     if (typeof v11Adopted === 'function' && v11Adopted(st, id)) return true;
     return typeof v11PendingOf === 'function' && !!v11PendingOf(st, id);
   }
-  /* S18d: the primitive answers every kind an instrument can be, so a pair
-     the owner declares in any book is enforced without a second mechanism.
-     WHAT pairs exist is content and stays the owner's: `docs/CONFLICTS.md`
-     holds the proposals, and only mechanical contradictions ship unruled. */
+  /* S18d: THE STATUTE BOOK, which is the book the owner's sentence names
+     first and the one the table had never reached. This branch and the call
+     site in `v18DraftWhy` -- which since S18b is the one predicate the
+     handler, the card's two buttons and the dossier's two all read -- exist
+     because the table now DECLARES a statute pair. Branches for the measure,
+     the order and the treaty were written in this same slice and taken back
+     out: a poison run removed all three and reddened nothing, because no pair
+     names one, and a knob nothing in the game can turn is decoration. A kind
+     is added here when a ruled pair names it -- `docs/CONFLICTS.md` holds the
+     proposals -- and `the document says one thing at a time` fails if the
+     table ever names a kind this function cannot answer. */
   if (kind === 'policy') return (st.pol && st.pol[id] > 0);
-  if (kind === 'measure') return st.extra && (st.extra[id] === 'upheld' || st.extra[id] === 'pending');
-  if (kind === 'order') return typeof v10Orders === 'function' && !!v10Orders(st)[id];
-  if (kind === 'treaty') return !!(st.v6 && st.v6.treaties && st.v6.treaties[id]);
   if (kind === 'act') {
     var act = ACTS.filter(function (x) { return x.id === id; })[0];
     if (!act) return false;
@@ -36701,6 +36704,7 @@ function v17InForce(st, kind, id) {
 }
 function v17CardName(kind, id) {
   if (kind === 'article') return (V11_ART[id] || {}).name || id;
+  if (kind === 'policy') return (POL[id] || {}).name || id;
   if (kind === 'act') {
     var act = ACTS.filter(function (x) { return x.id === id; })[0];
     return act ? act.name : id;
@@ -36723,7 +36727,9 @@ function v17ConflictWhy(st, kind, id) {
         ? ' One of the two, not both: withdraw it or let it be decided first.'
         : (list[i].kind === 'article'
           ? ' Repeal it first if the country has changed its mind.'
-          : ' It has to go before this can.'));
+          : list[i].kind === 'policy'
+            ? ' Step it back down to nothing first.'
+            : ' It has to go before this can.'));
   }
   return null;
 }
