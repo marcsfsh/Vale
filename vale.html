@@ -429,14 +429,14 @@ var DEPTS = {
 };
 
 var V19_LEVELS = [
-  { id:'instinct', name:'By instinct', sharp:0,
+  { id:'instinct', name:'By instinct', sharp:0, sim:0,
     note:'They act from where they stand and what they can afford, and pick among their options at random. This is how the parties behaved before they could think.' },
-  { id:'purposeful', name:'Purposeful', sharp:1.4,
+  { id:'purposeful', name:'Purposeful', sharp:1.4, sim:0,
     note:'Each party carries an aim and leans toward it, while still doing the ordinary work of a party.' },
-  { id:'shrewd', name:'Shrewd', sharp:2.8,
-    note:'They pursue an aim with most of what they do, and drop one that has become impossible rather than pushing at it.' },
-  { id:'ruthless', name:'Ruthless', sharp:5,
-    note:'They play to win. Nearly everything a party does serves what it is after, and it will spend its last money on the session that decides it.' }
+  { id:'shrewd', name:'Shrewd', sharp:2.8, sim:1,
+    note:'Each party works out what its options would actually do to the country it wants, and takes the one that gets it there.' },
+  { id:'ruthless', name:'Ruthless', sharp:5, sim:1.9,
+    note:'They play to win. Every option is weighed by what it would leave behind, and a party will spend its last money on the session that decides its aim.' }
 ];
 var V19_DEFAULT_LEVEL = 'purposeful';
 var DIFFS = {
@@ -34220,6 +34220,98 @@ function v19GoalProgress(st, pid) {
    for the goal, what it is worth in itself where the party stands, and what
    the money says. The scale is deliberately about 0..2 so the sharpness below
    has something to bite on. */
+/* ---------- DELIBERATION ----------
+   THE MACHINERY FOR THIS WAS ALREADY IN THE FILE AND WAS USED ONCE.
+   `v6Sandbox` clones the state and stubs the nine globals that would render or
+   save, and `v17Utility` scores a state from a NAMED party's values -- its own
+   blocs weighted by its own affinities, liberties weighted by where it sits on
+   the authority axis, poverty weighted by where it sits on the economic one.
+   Together they are a working "what would happen, and would I like it". They
+   were wired to exactly one thing: the ruling party's crisis-card choice at
+   `v17AiDecide`. Every other decision in the game was a table or a draw.
+
+   `v19Try` is `v6Sandbox` taking a STATE rather than reading the global, so a
+   probe driving a detached board deliberates the same way the game does --
+   a simulator that only works on `S` would make the harness measure something
+   the player never runs. Setting `S` to the clone matters twice over: the
+   cards read the global, and `rand()` resolves `RNG_ON || S`, so a simulated
+   action spends the CLONE's dice and leaves the campaign's stream exactly
+   where it was. Thinking about a thing must not change the thing.
+
+   Measured at 0.97ms a card on a 78KB state, so the five candidates a party
+   weighs cost about five milliseconds against a session that costs eight. */
+/* Raised while a card is being rehearsed rather than played. The game reads it
+   so a simulated action writes no letter to anybody's inbox, and the harness
+   reads it because an instrument that wraps `run` would otherwise count every
+   rehearsal as an initiative -- measured, that made a party look five times as
+   busy at the levels that think. */
+var V19_SIMULATING = false;
+function v19Try(st, fn) {
+  var clone;
+  try { clone = JSON.parse(JSON.stringify(st)); } catch (e) { return null; }
+  if (clone.v11) { delete clone.v11.hist; delete clone.v11.histT; }
+  var real = S, rr = render, ss = showSheet, hs = hideSheet, tt = toast, ff = flash;
+  var rnd0 = Math.random, sv = saveAutosave, cu = captureUndo, seed = 48271;
+  S = clone;
+  var wasSim = V19_SIMULATING; V19_SIMULATING = true;
+  render = function () {}; showSheet = function () {}; hideSheet = function () {};
+  toast = function () {}; flash = function () {};
+  Math.random = function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+  saveAutosave = function () {}; captureUndo = function () {};
+  try { fn(clone); } catch (e) { }
+  finally {
+    S = real; render = rr; showSheet = ss; hideSheet = hs; toast = tt; flash = ff;
+    Math.random = rnd0; saveAutosave = sv; captureUndo = cu;
+    V19_SIMULATING = wasSim;
+  }
+  return clone;
+}
+/* What this card would leave behind, in this party's own terms. The answer is
+   a DIFFERENCE rather than a level, because a level would say the same thing
+   about every card on a good board and about every card on a bad one. */
+/* WHAT A PARTY IS SCORED ON. `v17Utility` answers "is this the country I
+   want", which is the right question for a crisis card and only half of one
+   for a party's own initiative: it reads the national indicators and the bloc
+   moods and NOT ONE of the things a party does for itself. Measured, nine of
+   the ten cards in the deck moved it by exactly nought -- `organise` writes
+   `st.machine`, `campaign` writes `st.funding`, `platform` writes `st.push`,
+   `pact` writes `st.aiPacts`, and the objective function reads none of them,
+   so simulating them was a rehearsal that always came back the same. Only
+   `court` scored, because blocs are the one thing both sides touch.
+
+   So the party's own standing is added to the country's condition, and
+   `v17Utility` is left exactly as it was -- `v17AiDecide` has read it since
+   S17 and a crisis choice is a different question from an initiative. */
+function v19Standing(st, pid) {
+  var u = 0;
+  try { u = v17Utility(st, pid); } catch (e) { u = 0; }
+  /* the weights sit beside `v17Utility`'s own, which sum indicators in the
+     tens: a party trading its whole organisation for a point of the economy
+     would be as wrong as one that never looked up from itself */
+  u += (typeof v17Share === 'function' ? v17Share(st, pid) : 0) * 60;
+  u += ((st.machine || {})[pid] || 0) * 25;
+  u += Math.min(20, ((st.purse || {})[pid] || 0) / 100) * 1.2;
+  if (pid === st.ruling) u += 18;
+  else if ((st.coalition || []).indexOf(pid) >= 0) u += 9;
+  for (var o in (st.exec || {})) if (st.exec[o] === pid) u += 9;
+  return u;
+}
+function v19Outcome(st, pid, card) {
+  if (typeof v17Utility !== 'function' || typeof card.run !== 'function') return 0;
+  var before, after, out;
+  try { before = v19Standing(st, pid); } catch (e) { return 0; }
+  out = v19Try(st, function (clone) { card.run(clone, pid); });
+  if (!out) return 0;
+  try { after = v19Standing(out, pid); } catch (e) { return 0; }
+  var d = after - before;
+  if (!isFinite(d)) return 0;
+  /* `v17Utility` is a sum of indicator terms in the tens, so a single card
+     moves it by a few points at most. Squashed to about -1..1 so it sits
+     beside the goal term rather than swamping it -- a party that only ever
+     did the thing with the best immediate reading would have no aims at all,
+     which is the state this program started from wearing the other hat. */
+  return Math.max(-1, Math.min(1, d / 12));
+}
 function v19Score(st, pid, card, goal) {
   var s = .5;
   if (goal) {
@@ -34235,6 +34327,13 @@ function v19Score(st, pid, card, goal) {
   /* and money it cannot spare is a reason to do the cheap thing */
   var cost = V16_AI_COST[card.id] || 0, purse = partyPurse(st, pid);
   if (cost > 0 && purse < cost * 2.2) s -= .22;
+  /* AND WHAT IT WOULD ACTUALLY DO. Above `shrewd` the party stops taking the
+     table's word for what a card is worth and works out what the card would
+     leave behind, in its own terms. This is the difference between a party
+     that has preferences and a party that reasons about consequences, and it
+     is what the two upper rungs of the setting buy. */
+  var sim = v19LevelOf(st).sim || 0;
+  if (sim > 0) s += sim * v19Outcome(st, pid, card);
   return s;
 }
 /* The pick. A weighted draw over `exp(sharp * score)`, which at sharp 0 gives
