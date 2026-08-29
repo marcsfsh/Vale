@@ -37138,20 +37138,99 @@ function v17AiOrderFor(st, pid) {
   });
   return best;
 }
+/* S19a — COUNT THE FLOOR BEFORE YOU ACT.
+
+   This picked THE BILL FURTHEST FROM WHERE THE PARTY STANDS, which is a
+   preference and not a strategy: it spends the same money on a bill at 80 per
+   cent that is going to carry whatever anybody says, and on one at 20 that is
+   going to fail, as on the one bill in the chamber that is close enough for a
+   party of its size to decide. `billForecast` has been in the file since v1
+   and `BILL_BARS` says what each stage needs; nothing on the AI's side had
+   ever read either.
+
+   A party's move on a bill is worth something when three things are true at
+   once: the division is CLOSE, the party CARES which way it goes, and it has
+   the weight to move it. `v19Pivot` is that product, and the verb follows
+   from which side needs the help -- back what you want when it is failing,
+   block what you fear when it is carrying, and lean on the sponsors when it
+   is neither. That last case is why `pressure` survives: a bill you are
+   indifferent to is a bill whose sponsor owes you something. */
+/* What a floor move has to be worth before it is worth twelve of the party's
+   money. Set from the measured spread: a bill going the wrong way for a party
+   of ordinary size and ordinary feeling scores about .19, one going the right
+   way about .02. */
+var V19_FLOOR_BAR = .06;
+function v19Bar(st, bill) {
+  var b = (typeof BILL_BARS === 'object' && BILL_BARS) ? BILL_BARS[bill.stage] : undefined;
+  return b === undefined ? 50 : b;
+}
+function v19Pivot(st, pid, bill) {
+  var f, sup;
+  try { f = billForecast(st, bill); sup = partyBillSupport(st, pid, bill); }
+  catch (e) { return null; }
+  if (!f) return null;
+  var bar = v19Bar(st, bill);
+  /* WHAT THE MEASUREMENT SAID, against what I first wrote here. Driven over
+     eighty sessions, 63 of 67 live bills sat within one division's noise of
+     the bar -- median margin 5.6 points, ninth decile 11.2. A bill that is not
+     close does not stay on the floor long enough to be found there, so
+     "pick the close vote" is a distinction this game does not contain and the
+     closeness term multiplies by about one every time. It is kept only for
+     the case it does decide: a bill failing by forty points is not savable by
+     anybody, and a party that spends on it is not thinking either.
+
+     THE TERM THAT DOES THE WORK IS WHICH WAY THE BILL IS GOING. A bill headed
+     where the party wants it needs nothing from that party; the money is worth
+     spending only against the arithmetic. My first rule sent a disliked bill
+     that was ALREADY FAILING to `pressure`, and measured, that was 286 of 335
+     candidates -- a party paying to lean on sponsors whose bill was going down
+     without it. */
+  var margin = Math.abs(f.lower - bar);
+  var close = Math.max(0, 1 - margin / (2.6 * ((BILL_NOISE && BILL_NOISE[bill.stage]) || 13)));
+  var care = Math.abs(sup - 50) / 50;
+  var weight = (typeof v17Share === 'function' ? v17Share(st, pid) : .1);
+  var wantPass = sup >= 50, willPass = f.lower >= bar;
+  var againstMe = wantPass !== willPass;
+  /* and where the party is indifferent, leaning on the sponsor is still worth
+     something: a bill you do not care about is a sponsor who owes you one */
+  var verb = againstMe ? (wantPass ? 'support' : 'oppose') : 'pressure';
+  return { bill:bill, verb:verb,
+    pivot:(againstMe ? 1 : .12) * close * care * (.4 + weight),
+    againstMe:againstMe, forecast:Math.round(f.lower), bar:bar, support:Math.round(sup) };
+}
 function v17AiFloorFor(st, pid) {
   var live = (st.bills || []).filter(function (b) {
     return !v17FloorWhy(st, pid, b, 'oppose');
   });
   if (!live.length) return null;
-  /* the bill furthest from where this party stands, and whether it likes it */
-  var pick = null, worst = 0;
+  /* Below `shrewd` a party still goes at whatever it likes least, because a
+     party that does not think does not count. */
+  if (!v19LevelOf(st).sim) {
+    var pick = null, worst = 0;
+    live.forEach(function (b) {
+      var p = POL[b.policy]; if (!p) return;
+      var d = dist2(polPos(p), ppos(st, pid)) * (b.dir > 0 ? 1 : -1);
+      if (!pick || Math.abs(d) > Math.abs(worst)) { worst = d; pick = b; }
+    });
+    if (!pick) return null;
+    return { bill:pick, verb:worst > .45 ? 'oppose' : (worst < -.15 ? 'support' : 'pressure') };
+  }
+  var best = null;
   live.forEach(function (b) {
-    var p = POL[b.policy]; if (!p) return;
-    var d = dist2(polPos(p), ppos(st, pid)) * (b.dir > 0 ? 1 : -1);
-    if (!pick || Math.abs(d) > Math.abs(worst)) { worst = d; pick = b; }
+    if (!POL[b.policy]) return;
+    var v = v19Pivot(st, pid, b);
+    if (v && (!best || v.pivot > best.pivot)) best = v;
   });
-  if (!pick) return null;
-  return { bill:pick, verb:worst > .45 ? 'oppose' : (worst < -.15 ? 'support' : 'pressure') };
+  /* AND IF NOTHING ON THE FLOOR NEEDS THIS PARTY, IT DOES SOMETHING ELSE.
+     Measured before this line: a thinking party made 13 of 17 floor moves on
+     bills already going its way -- it had correctly worked out that no vote
+     needed it and then spent twelve of its money saying so anyway, because
+     the card was open and something had to be picked. Returning nothing
+     closes the card for the session, `can` goes false, and the party spends
+     the session on one of the other nine things it could be doing. The bar is
+     set below what a bill going the wrong way scores and above what one going
+     the right way does, which is the gap the two multipliers open. */
+  return (best && best.pivot >= V19_FLOOR_BAR) ? best : null;
 }
 
 /* ============================================================
