@@ -318,6 +318,19 @@ before touching the file.
   Anything a blob can carry is reachable without ever passing a control, so the
   cleaner holds the line, and it holds it against the same table the controls
   are drawn from. One list, offered and accepted.
+- **PINNING THE DICE AFTER `newGame` DOES NOT PIN THE REPUBLIC `newGame` BUILT.**
+  `mintSeed` reads `Date.now()` deliberately — the one thing that must not be
+  seeded is the choice of seed — so a probe that sets `S.rngState` on the way
+  out of `v6NewGame` fixes the stream from that point and fixes nothing about
+  the board it was rolled into: different leaders, different purses, different
+  figures every run. S18e's assertion counts initiatives, which depend on all
+  three, and it failed one run in three of an unchanged build. `SEED_OVERRIDE`
+  is the instrument, and `newGame` consumes it, so it is set before every call.
+  The sharp part is what the flake did to the reasoning: a term I had argued
+  was decoration measured as live twice, and both answers were noise — had it
+  landed the other way the slice would have shipped a knob nothing can turn
+  with a sentence on the panel advertising it. **A poison result taken on an
+  unpinned probe is not a result**, including the ones that came back red.
 - **THE POISON LIST COMES FROM THE DIFF, NOT FROM THE ASSERTION.** Writing one
   poison per thing the assertion mentions proves the assertion and says nothing
   about the slice: S18d changed six things, six poisons were written from the
