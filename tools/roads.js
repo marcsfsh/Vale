@@ -8925,11 +8925,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
               (k.worth[b.id] || .25) - (k.worth[a.id] || .25));
             goalRanks.push(by.indexOf(pick) / (open.length - 1));
           }
-          if (v19LevelOf(st).sim) {
-            const scored = open.map(c => ({ c:c, v:v19Outcome(st, pid, c) }))
-              .sort((a, b) => b.v - a.v).map(x => x.c);
-            simRanks.push(scored.indexOf(pick) / (open.length - 1));
-          }
+          /* TAKEN AT EVERY LEVEL, not only where simulation is on. Collecting
+             it only where it applies made the arm unable to separate the two
+             components: the goal term and the rehearsal term mostly agree --
+             a card that serves the aim usually improves the party's standing
+             too -- so a build with simulation switched OFF still chose cards
+             that ranked well by it, and the poison stayed green. The claim is
+             a CONTRAST between the level that rehearses and the level that
+             does not, on the same seed. */
+          const scored = open.map(c => ({ c:c, v:v19Outcome(st, pid, c) }))
+            .sort((a, b) => b.v - a.v).map(x => x.c);
+          simRanks.push(scored.indexOf(pick) / (open.length - 1));
         }
         return pick;
       };
@@ -9001,7 +9007,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     think.sim.distinct >= 7 && think.sim.spread > .05 && think.sim.distinctBest >= 2 &&
     think.sim.untouched && think.sim.flagged &&
     think.steer.purposeful.goal !== null && think.steer.purposeful.goal < .42 &&
-    think.steer.shrewd.sim !== null && think.steer.shrewd.sim < .42 &&
+    think.steer.shrewd.sim !== null && think.steer.purposeful.sim !== null &&
+    think.steer.shrewd.sim < think.steer.purposeful.sim - .05 &&
     think.steer.purposeful.goalN > 20 && think.steer.shrewd.simN > 20 &&
     think.floor.sharp.n > 0 && think.floor.sharp.against === think.floor.sharp.n &&
     think.floor.dumb.n > think.floor.sharp.n &&
@@ -9035,8 +9042,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `wraps \`run\` counts every rehearsal as an initiative · AND BOTH OF THEM STEER THE CHOICE, which is a ` +
     `different claim from either being computable: over sixty sessions the card a party actually picks sits at ` +
     `rank ${think.steer.purposeful.goal} of its goal's own order across ${think.steer.purposeful.goalN} picks, ` +
-    `and at ${think.steer.shrewd.sim} of the rehearsal's order across ${think.steer.shrewd.simN}, where a ` +
-    `chooser ignoring them would sit at .5 · AND IT COUNTS THE FLOOR: over eighty sessions on ` +
+    `where a chooser ignoring it would sit at .5; and by the rehearsal's own order the level that rehearses ` +
+    `picks at ${think.steer.shrewd.sim} against ${think.steer.purposeful.sim} for the level that does not, on ` +
+    `the same seed -- read at one level alone that comparison passed with simulation switched off, because a ` +
+    `card serving the aim usually improves the party's standing anyway · AND IT COUNTS THE FLOOR: over eighty sessions on ` +
     `one seed the level that does not think made ${think.floor.dumb.n} moves of which ` +
     `${think.floor.dumb.against} were on a bill going against it, and the level that does made ` +
     `${think.floor.sharp.n} of which ${think.floor.sharp.against} were -- a bill headed where a party wants it ` +

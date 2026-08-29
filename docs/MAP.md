@@ -1264,6 +1264,67 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## A party is after something (S19a)
+
+The owner, on being told S18e had shipped: *"So the AI is done? I really want
+the game's parties to have a seriously robust, very sophisticated ai with lots
+of logic and capabilities."* No. S18e fixed WHEN a party acts. The decision
+itself was one line -- `open[Math.floor(rand() * open.length)]`, equal
+probability over whatever the posture and the purse allowed -- and nothing in
+the model said what a party was TRYING to do.
+
+**Two owner rulings govern this program** and are recorded in
+`docs/PLAN-S19.md`. R1: AI sophistication gets its OWN difficulty setting,
+independent of `st.diff`, which goes on governing the economy and the events.
+R2: the Parties page states each party's aim and why it did what it did.
+
+- **Seven goals, built out of what the party already is.** `PARTY[pid].wants`
+  has been authored since v5 and `aff` says which blocs are its people. Carry
+  a statute to the rung the party wants, take a great office, get into
+  government, bring a named party out of it, win a bloc, build the
+  organisation, carry an article. The goal lives in `v16Ai(st)[pid]`, which
+  already saves, loads and backfills; it is KEPT until reached, dead or stale,
+  measured at a 7% change rate over 174 party-sessions.
+- **`v19LevelOf` is R1's scale and its floor is the shipped game EXACTLY.** At
+  `instinct` the sharpness is nought, every weight in `v19Choose` is 1, and
+  the pick is the uniform draw the game shipped with -- proved against the old
+  line's own arithmetic over 400 trials across every open-set size, 0 apart.
+  The table lives beside `DIFFS` and not with the AI code, because the start
+  screen and `newGame` both name it and both are evaluated 25,000 lines
+  earlier; declaring it with the AI threw `V19_LEVELS is not defined` on boot.
+- **`v19Try` and `v19Standing` are deliberation.** `v6Sandbox` and
+  `v17Utility` were in the file from S17 and wired to ONE decision, the ruling
+  party's crisis card. `v19Try` is that sandbox taking a state rather than the
+  global. Setting `S` to the clone matters twice: the cards read the global,
+  and `rand()` resolves `RNG_ON || S`, so a rehearsal spends the CLONE's dice.
+  **`v17Utility` alone was blind to nine of the ten cards** -- it reads
+  national indicators and bloc moods, and `organise` writes `st.machine`,
+  `campaign` writes `st.funding`, `platform` writes `st.push`. `v19Standing`
+  adds the party's own share, organisation, money, offices and place in
+  government. `v17Utility` is untouched, because a crisis choice is a
+  different question.
+- **`V19_SIMULATING` tells a rehearsal from the thing.** Without it an
+  instrument that wraps `run` counts every rehearsal as an initiative, which
+  made a party look five times as busy at the levels that think.
+- **`v19Pivot` counts the floor.** `v17AiFloorFor` picked the bill FURTHEST
+  from where the party stood, which is a preference and not a strategy.
+  Measured, 63 of 67 live bills sit within one division's noise of the bar, so
+  "pick the close vote" is a distinction this game does not contain. **The
+  term that works is which way the bill is going**: a bill headed where a
+  party wants it needs nothing from that party. `V19_FLOOR_BAR` closes the
+  card when nothing on the floor needs it. Over eighty sessions on one seed,
+  the level that does not think made 14 moves of which 0 were against the
+  arithmetic; the level that does made 3 of which 3 were.
+- Assertion `a party is after something`, and **six times the measurement
+  corrected the design rather than confirming it**: a worth table written
+  beside a working simulator; an objective blind to nine of ten cards; an
+  instrument counting rehearsals; "the close vote" describing a state the game
+  never produces; a differentiation arm asking whether the left and the right
+  disagree about a card's SIGN, which they rightly do not, where the question
+  is whether they RANK differently; and three arms measuring the machinery's
+  internals rather than its effect, one of which read `againstMe` straight
+  from the picker and so passed on a build that hard-coded it true.
+
 ## A party moves when it has a reason to (S18e)
 
 `docs/AUDIT-S17.md` measured 125 AI initiatives at HEAD against 126 pre-S17
