@@ -33904,7 +33904,12 @@ function v16PactPartner(st, pid) {
    sooner; poach its money and it goes quiet; call an election and the whole
    board wakes up. */
 var V18_TEMPO = {
-  ballot:  1.8,   /* a ballot within two sessions: everybody campaigns */
+  /* A BALLOT TERM WAS WRITTEN HERE AND TAKEN BACK OUT. "Everybody campaigns
+     into an election" reads well and could not do anything: a ballot is a fact
+     about the STATE, not about a party, so every live party got the same
+     multiplier and `v18TempoOdds` divided it straight back out. Its poison
+     changed nothing, which is what a knob nothing in the game can turn looks
+     like. A term belongs here only if it can tell two parties apart. */
   rich:    1.35,  /* money in hand and something to spend it on */
   broke:    .35,  /* under the cheapest card in the deck, so mostly refused anyway */
   grudge:  1.5,   /* holds something against somebody, at the attack bar */
@@ -33914,8 +33919,6 @@ var V18_TEMPO = {
 };
 function v18Tempo(st, pid) {
   var w = 1, ai = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
-  var toBallot = (typeof pv5SessionsToBallot === 'function') ? pv5SessionsToBallot(st) : null;
-  if (toBallot !== null && toBallot <= 2) w *= V18_TEMPO.ballot;
   var purse = (typeof partyPurse === 'function') ? partyPurse(st, pid) : 0;
   if (purse >= 120) w *= V18_TEMPO.rich;
   else if (purse < V16_AI_COST.demand) w *= V18_TEMPO.broke;
@@ -34517,8 +34520,6 @@ function v16AiPanel() {
       '<td class="num">' + Math.round(100 * v18TempoOdds(S, p.id)) + '%</td>' +
       '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') + '</td></tr>';
   }).join('');
-  var ballotSoon = (typeof pv5SessionsToBallot === 'function') && pv5SessionsToBallot(S) !== null &&
-    pv5SessionsToBallot(S) <= 2;
   return '<div class="panel"><h2>What the Others Are Doing</h2>' +
     '<div class="tablewrap"><table><thead><tr><th>Party</th><th>This session</th><th class="num">Their money</th><th class="num">Initiatives &middot; spent</th><th class="num">Odds of moving</th><th>Toward you</th></tr></thead><tbody>' +
     rows + '</tbody></table></div>' +
@@ -34528,7 +34529,6 @@ function v16AiPanel() {
     'where it stands rather than from a table. Who moves in a given session is not shared out evenly: a ' +
     'party with money in hand, a grievance to answer, a government to run or a seat to win back moves ' +
     'sooner, and a party with none of those waits.' +
-    (ballotSoon ? ' A ballot is close, so all of them are working.' : '') +
     ' A party that has been attacked, poached or dropped remembers it, and so does a party another party has gone after.</p></div>';
 }
 /* Everybody in public life, for the name draw above. Guarded at every step:
