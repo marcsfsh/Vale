@@ -36,6 +36,15 @@ three showing green. The same run showed the measure, order and treaty call
 sites written in this slice could not redden anything, because the table names
 articles, acts and statutes and nothing else, so all three came back out.
 
+**The pacing arc does not move for S18d.** Six seeds, three lengths, against a
+build with the slice's behaviour reverted to S17m's and everything else held:
+byte identical. The branch does move against `main`, on every row, and that is
+S18c's governors-roll hoist, which `main` does not carry -- the roll used to be
+drawn only in the leading chair, so an opposition session re-phased the whole
+seeded stream from that point on. Crises 9.61 to 9.22, wars 9.94 to 9.50,
+records 9.33 to 9.17, elections 2.00 either way, all 18 runs reaching their end
+year on both sides.
+
 **S18a — The floor is open to every chair** shipped as PR #87, and it exists
 because
 the owner played the shipped build and could not do the thing S17b's PR says

@@ -1310,6 +1310,16 @@ three roads round it.**
   that shipped without one**: the editor's drop, the strike, and the statute
   call site all survived their poisons GREEN on the first run. Arms (k), (l)
   and (m) read them now, the last through a real `changePolicy` click.
+- **The arc does not move.** Six seeds, three lengths, S18d against a build
+  with its behaviour reverted to S17m's and everything else held: byte
+  identical. Every row that moves against `main` moves for S18C's roll hoist,
+  which `main` does not carry -- 9.61 to 9.22 crises, 9.94 to 9.50 wars, 9.33
+  to 9.17 records, elections 2.00 either way, and all 18 runs reaching their
+  end year on both. **The first revert build was broken and proved nothing**:
+  it spliced lines out of the S17m chunk, so every later chunk went
+  unevaluated and the run died on `V17_BURN is not defined` a thousand lines
+  earlier. A crash reads as a difference. Neutralise a table entry by
+  RENAMING its ids in place, never by cutting the entry out.
 
 ## The papers know which chair you sit in (S18c)
 
