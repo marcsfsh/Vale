@@ -40,6 +40,37 @@ have to repeal first — which is a road the constitution already has.
 
 10 and 11 are the cross-kind cases, and they are the sharpest in the set.
 
+## What S18d added, on the same footing
+
+Six more, all **BLOCK**, and all of them mechanical rather than a matter of
+taste. Four were driven and found still co-adoptable by the audit in
+`docs/AUDIT-S17.md`; two reach the statute book, which is the book your
+sentence named first and the one the table had never touched.
+
+| # | A | B | Why one makes the other false |
+|---|---|---|---|
+| 12 | Fixed Bench | Constitutional Bench | Proposed below as SUPERSEDE and shipped as BLOCK, because BLOCK is what the code has. Measured, the pair took the court to thirteen with the Fixed Bench standing. |
+| 13 | State of Siege | Habeas | Proposed below. "Held without charge under a state of siege" against "produced before a judge within the day". One of the two is the law. |
+| 14 | Judicial Review | Withdrawn Jurisdiction | Proposed below. A court whose word binds every officer cannot be a court the Assembly may put a matter beyond. |
+| 15 | Judicial Review | **Act** to Strip the Court of Jurisdiction | The same, cross-kind, and the same shape as 10. |
+| 16 | Universal Franchise *(entrenched)* | **Statute:** Property Qualification | The identical rule as the Act in row 10, written as a statute: priced at 12, needing nothing but a majority. An entrenched article carried at a referendum stood on the page while a statute weighed the roll under it. |
+| 17 | No Property Test | **Statute:** Property Qualification | The statute is a test of property, printed as a floor on the roll. The article forbids one. |
+
+**Rows 12, 13 and 14 were sitting under "waits on your ruling" below and ship
+as BLOCK anyway.** Each is a printed contradiction rather than a balance
+question, and leaving them unwired left the absurdities the audit measured
+reachable in ordinary play. Reverse any of them and it comes straight back
+out; row 12 becomes SUPERSEDE the moment you approve that semantic, which is
+still unwritten for the reason given below.
+
+Rows 16 and 17 are the first pairs in the table naming a **statute**. That
+cost one branch in the primitive and one call site in `v18DraftWhy`. Branches
+for a measure, an order and a treaty were written in the same slice and taken
+back out: no pair named one, so a poison run removed all three and reddened
+nothing, and a knob nothing in the game can turn is decoration. Approve a pair
+naming one and the branch arrives with it -- and the assertion now fails if a
+pair ever names a kind the primitive cannot answer, so it cannot be forgotten.
+
 ---
 
 ## What waits on your ruling
@@ -101,6 +132,18 @@ file's history is a long list of exactly that mistake. The cards still print
 it, because `v17ConflictsOf` reads the same array.
 
 Adding a row is one line. `v17ConflictWhy(st, kind, id)` is called from
-`v11CanPropose` (articles) and `doAct` (acts), and `roads.js` asserts that
-every declared id names a real card and that every pair refuses **in both
-directions**.
+`v11CanPropose` (articles), `doAct` (acts) and `v18DraftWhy` (statutes), and
+`roads.js` asserts that every declared id names a real card and that every
+pair refuses **in both directions**.
+
+S18d added three more things it asks, because the first version of the table
+could be got round in three ways. **The document is checked at the moment it
+changes**, not only at lay time: the constitution page invites three articles
+at a time, so a player laid both of a pair in one session and both carried,
+and the term article printed the three-year assembly you complained about with
+the table installed. **The start editor is held to the same table**: it
+checked article ids against the registry and nothing else, so every absurdity
+here was reachable on turn one without laying a paper. And **a struck article
+is out of the document**: the court wrote a flag one function read, so it went
+on printing as in force, went on blocking its partner and kept the justices it
+had seated.
