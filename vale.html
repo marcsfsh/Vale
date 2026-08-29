@@ -33606,6 +33606,10 @@ var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22, 
    BALANCE IS THE OWNER'S: these two numbers are the dials. */
 var V16_AI_ORGANISE = .030;
 var V16_AI_ATTACK = .018;
+/* What being attacked is worth as a memory. Under the ordinary attack bar of
+   35, so one attack does not turn a party -- two do, and they have to land
+   inside the .6-a-session cooling. */
+var V18_ATTACK_RESENT = 21;
 /* HOW OFTEN A PARTY MOVES. This is the dial, and it was found by sweeping
    rather than chosen: no single card is the lever (each was swept out in turn
    and none of them recovered the arc), and neither the machine gain nor the
@@ -33656,13 +33660,39 @@ function v16Resent(st, pid, against, n) {
 /* What a party is trying to do this session. Circumstance, not temperament:
    a party in government defends, a party losing seats moderates, a party with
    a grudge and no office attacks, a small party with money organises. */
+/* S18e: ONE PREDICATE, read by the posture and by the card's own refusal, so
+   the two cannot drift apart. A party is restive when it sits in the
+   government it is angry with -- angry at the party that leads it, above a bar
+   set higher than the ordinary attack bar because a ministry is a reason to
+   put up with more. The head of government is never restive against itself. */
+var V18_RESTIVE = 55;
+function v18Restive(st, pid) {
+  var co = st.coalition || [st.ruling];
+  if (pid === st.ruling || co.indexOf(pid) < 0) return false;
+  return v16Grudge(st, pid, st.ruling) >= V18_RESTIVE;
+}
 function v16Posture(st, pid) {
   var co = st.coalition || [st.ruling];
   var seats = st.seats[pid] || 0, share = seats / Math.max(1, CFG.seats);
   var trend = (v16Ai(st)[pid].lastSeats === undefined) ? 0 : seats - v16Ai(st)[pid].lastSeats;
   var me = playParty(st);
   if (pid === st.ruling) return 'govern';
-  if (co.indexOf(pid) >= 0) return 'partner';
+  /* S18e — A PARTNER THAT HAS HAD ENOUGH. `partner` was returned before any
+     grudge was read, and the `attack` card's own `can` refused a coalition
+     member as well, so a party sitting in the player's ministry could hold a
+     grudge of a hundred and never once move against them. Driven forty
+     sessions with the grudge topped up every session: ZERO attacks from
+     inside the government, against FIVE from the same party on the same seed
+     with the same grudge sitting outside it. Two guards, one outcome, and
+     neither of them alone was the reason -- so they come off together.
+
+     The bar is higher than the ordinary one at 35, because sitting in a
+     ministry is a reason to put up with more, and it is measured against the
+     HEAD OF GOVERNMENT rather than against anybody: a partner turning on the
+     party it serves under is the thing this posture is about. Leaving is
+     already built -- S17g's red lines walk a partner out. This is the party
+     that stays in the room and works against you inside it. */
+  if (co.indexOf(pid) >= 0) return v18Restive(st, pid) ? 'restive' : 'partner';
   if (v16Grudge(st, pid, me) >= 35 || v16Grudge(st, pid, st.ruling) >= 35) return 'attack';
   if (trend < 0 && share < .18) return 'moderate';
   if (share >= .22) return 'consolidate';
@@ -33688,7 +33718,7 @@ var V16_AI_DECK = [
       v16Ai(st)[pid].spent = (v16Ai(st)[pid].spent || 0) + V16_AI_COST.campaign;
       return 'The ' + PARTY[pid].short + ' took the campaign into the country early.';
     } },
-  { id:'court', post:['moderate', 'consolidate', 'hold', 'partner', 'organise'],
+  { id:'court', post:['moderate', 'consolidate', 'hold', 'partner', 'restive', 'organise'],
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.court; },
     run:function (st, pid) {
       v16AiPay(st, pid, V16_AI_COST.court);
@@ -33698,8 +33728,17 @@ var V16_AI_DECK = [
       st.blocs[best] = c100((st.blocs[best] || 50) + 2.6);
       return 'The ' + PARTY[pid].short + ' spent the season courting ' + (BLOC[best] ? BLOC[best].name.toLowerCase() : best) + '.';
     } },
-  { id:'attack', post:['attack', 'consolidate', 'moderate', 'hold'],
-    can:function (st, pid) { return pid !== st.ruling && (st.coalition || []).indexOf(pid) < 0 && partyPurse(st, pid) >= V16_AI_COST.attack; },
+  { id:'attack', post:['attack', 'consolidate', 'moderate', 'hold', 'restive'],
+    /* S18e: the coalition test reads the SAME predicate the posture reads. It
+       refused every member of the government, which was the second of the two
+       guards that kept a partner from ever answering the player -- and either
+       one alone left the outcome unchanged, so they had to come off together
+       and they have to be poisoned together. */
+    can:function (st, pid) {
+      if (pid === st.ruling) return false;
+      if ((st.coalition || []).indexOf(pid) >= 0 && !v18Restive(st, pid)) return false;
+      return partyPurse(st, pid) >= V16_AI_COST.attack;
+    },
     run:function (st, pid) {
       v16AiPay(st, pid, V16_AI_COST.attack);
       /* S17k: THE TARGET WAS `st.ruling`, ALWAYS. So a party could carry a
@@ -33718,9 +33757,23 @@ var V16_AI_DECK = [
       st.machine[pid] = clamp((st.machine[pid] || 0) + V16_AI_ATTACK, -.8, 1);
       shiftPartyRel(st, pid, -3);
       if (t === playParty(st)) st.unity = c100((st.unity === undefined ? 60 : st.unity) - 1.2);
+      /* S18e: AND THE TARGET REMEMBERS IT. The deck's own hostile verb moved
+         the machine, the party relations and the unity and wrote no memory at
+         all, so after sixty measured sessions with twelve attacks played there
+         were ZERO grudges held by one party against another -- every entry in
+         the ledger was against the player. A party could be attacked every
+         four sessions for a whole campaign and never answer, because it had
+         nothing to answer about. The only AI-to-AI channel in three megabytes
+         was `v17FloorCore`'s pressure. Now an attack makes the grudge that
+         picks the next one, which is what a feud is. Against the PLAYER it is
+         already the player's own verbs that write the memory, so this is the
+         engines' half of a surface that only ever had one. */
+      if (typeof v16Resent === 'function' && t !== playParty(st)) {
+        v16Resent(st, t, pid, V18_ATTACK_RESENT);
+      }
       return 'The ' + PARTY[pid].short + ' ran a month of committees and press against the ' + PARTY[t].short + '.';
     } },
-  { id:'platform', post:['moderate', 'consolidate', 'attack'],
+  { id:'platform', post:['moderate', 'consolidate', 'attack', 'restive'],
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.platform; },
     run:function (st, pid) {
       v16AiPay(st, pid, V16_AI_COST.platform);
@@ -33781,7 +33834,7 @@ var V16_AI_DECK = [
       v16AiPay(st, pid, V17_AI_COST_ORDER);
       return 'The ' + PARTY[pid].short + ' signed ' + v10OrderTitle(V10_ORDER[o.id], o.target) + '.';
     } },
-  { id:'floor', post:['attack', 'partner', 'consolidate', 'moderate', 'hold', 'organise'],
+  { id:'floor', post:['attack', 'partner', 'restive', 'consolidate', 'moderate', 'hold', 'organise'],
     can:function (st, pid) {
       return partyPurse(st, pid) >= V17_AI_COST_FLOOR && !!v17AiFloorFor(st, pid);
     },
@@ -33794,7 +33847,7 @@ var V16_AI_DECK = [
         (f.verb === 'support' ? 'came out for ' : f.verb === 'oppose' ? 'came out against ' : 'leaned on the sponsors of ') +
         f.bill.title + '.';
     } },
-  { id:'demand', post:['partner', 'attack', 'hold'],
+  { id:'demand', post:['partner', 'restive', 'attack', 'hold'],
     can:function (st, pid) { return pid !== st.ruling && partyPurse(st, pid) >= V16_AI_COST.demand && !!partyDemandPolicy(st, pid); },
     run:function (st, pid) {
       var d = partyDemandPolicy(st, pid); if (!d) return null;
@@ -33825,17 +33878,93 @@ function v16PactPartner(st, pid) {
   });
   return best;
 }
-/* One initiative a session per party, and a cooldown per card so a party does
-   not do the same thing twice running. The die picks among what the posture
-   allows and the money reaches, which keeps a party in character without
-   making it a metronome -- the same reason `partyDemandPolicy` draws rather
-   than sorting. */
+/* S18e — WHEN A PARTY MOVES, AND WHY IT IS THAT SESSION.
+
+   The comment above this line said "One initiative a session per party" and so
+   did the Parties page. The gate said `(st.turn + hash) % 4`. Driven sixty
+   sessions on a pinned seed from all three chairs, the result was the same
+   every time and it is the whole finding: SIX PARTIES, FIFTEEN INITIATIVES
+   EACH, in sixty sessions -- 90 of 360 party-sessions, 25.0 per cent, from
+   the leading chair, the junior chair and the bench alike. A party sitting on
+   a purse of 11 and a party sitting on 195 acted exactly as often. A party
+   the player had just attacked acted exactly as often. A party two sessions
+   from a ballot acted exactly as often. Nothing that happened in the republic
+   changed when anybody did anything.
+
+   THE BUDGET IS NOT THE DEFECT AND IS NOT TOUCHED. `V16_AI_CADENCE` was found
+   by sweeping `tools/pacing.js` over six seeds and its own comment says what
+   moving it costs: six parties each doing something every session took the
+   harness from 5.5 elections won to 1.2. So the mean is HELD -- `v18TempoOdds`
+   normalises the weights so the expected number of parties acting in a session
+   is what the modulus gave, and the dial stays the owner's. What changes is
+   WHICH party, and WHEN: the same number of initiatives, spent where the
+   situation calls for them.
+
+   Every term is something the player can cause. Attack a party and it answers
+   sooner; poach its money and it goes quiet; call an election and the whole
+   board wakes up. */
+var V18_TEMPO = {
+  /* A BALLOT TERM WAS WRITTEN HERE AND TAKEN BACK OUT. "Everybody campaigns
+     into an election" reads well and could not do anything: a ballot is a fact
+     about the STATE, not about a party, so every live party got the same
+     multiplier and `v18TempoOdds` divided it straight back out. Its poison
+     changed nothing, which is what a knob nothing in the game can turn looks
+     like. A term belongs here only if it can tell two parties apart. */
+  rich:    1.35,  /* money in hand and something to spend it on */
+  broke:    .35,  /* under the cheapest card in the deck, so mostly refused anyway */
+  grudge:  1.5,   /* holds something against somebody, at the attack bar */
+  govern:  1.3,   /* a government has business every session */
+  losing:  1.3,   /* seats went down at the last count */
+  min:      .25, max: 4
+};
+function v18Tempo(st, pid) {
+  var w = 1, ai = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
+  var purse = (typeof partyPurse === 'function') ? partyPurse(st, pid) : 0;
+  if (purse >= 120) w *= V18_TEMPO.rich;
+  else if (purse < V16_AI_COST.demand) w *= V18_TEMPO.broke;
+  var worst = 0;
+  if (ai && ai.grudge) for (var k in ai.grudge) if (ai.grudge[k] > worst) worst = ai.grudge[k];
+  if (worst >= 35) w *= V18_TEMPO.grudge;
+  if (pid === st.ruling) w *= V18_TEMPO.govern;
+  /* `lastSeats` is written at the end of every `v16AiTurn`, so this is the
+     move since the last session rather than since the last ballot -- which is
+     what a party notices. It is undefined on the first session of a campaign
+     and that reads as no change, not as a loss. */
+  if (ai && ai.lastSeats !== undefined && (st.seats[pid] || 0) < ai.lastSeats) w *= V18_TEMPO.losing;
+  return clamp(w, V18_TEMPO.min, V18_TEMPO.max);
+}
+/* The weight turned into this session's odds, normalised against everybody
+   else's, so the EXPECTED number of parties acting is what the flat modulus
+   gave. A party clamped at 1 can hold the sum a little under budget, which is
+   the honest direction to miss in: it means one party wanted the whole
+   session and the others went without. */
+function v18TempoOdds(st, pid) {
+  var live = PARTIES.filter(function (q) {
+    return q.id !== playParty(st) && !st.banned[q.id];
+  });
+  if (!live.length) return 0;
+  var sum = 0;
+  live.forEach(function (q) { sum += v18Tempo(st, q.id); });
+  if (sum <= 0) return 0;
+  var budget = live.length / V16_AI_CADENCE;
+  return clamp(v18Tempo(st, pid) * budget / sum, 0, 1);
+}
+/* A cooldown per card so a party does not do the same thing twice running.
+   The die picks among what the posture allows and the money reaches, which
+   keeps a party in character without making it a metronome -- the same reason
+   `partyDemandPolicy` draws rather than sorting. */
 function v16AiTurn(st) {
   var ai = v16Ai(st), me = playParty(st), lines = [];
   PARTIES.forEach(function (p) {
+    /* THE DIE IS DRAWN FOR EVERY PARTY EVERY SESSION, BEFORE ANY TEST. A gate
+       in front of `rand()` decides how many numbers come off the stream, not
+       just what happens, and S18c measured what that costs: the six-seed
+       pacing arc moved on every row because one chair stopped consuming one
+       roll. The player's own party and a banned one draw and discard. */
+    var roll = rand();
     if (p.id === me || st.banned[p.id]) return;
     var a = ai[p.id];
-    if ((st.turn + v15Hash(p.id)) % V16_AI_CADENCE) return;
+    if (roll >= v18TempoOdds(st, p.id)) return;
     var post = v16Posture(st, p.id);
     a.posture = post;
     var open = V16_AI_DECK.filter(function (c) {
@@ -34382,13 +34511,25 @@ function v16AiPanel() {
       '<td>' + esc(V16_POSTURE_SAY[a.posture] || a.posture) + '</td>' +
       '<td class="num">' + Math.round(partyPurse(S, p.id)) + '</td>' +
       '<td class="num">' + a.acts + ' &middot; ' + fmc(-(a.spent || 0)) + '</td>' +
+      /* S18e: THE ODDS THIS PARTY MOVES THIS SESSION, read from the same
+         function the gate reads. The panel used to print one sentence for
+         everybody -- "each of them takes one initiative a session" -- while
+         the gate gave every party exactly one in four whatever its situation,
+         so the column that told the player who was about to move did not
+         exist and the sentence that stood in for it was wrong by four times. */
+      '<td class="num">' + Math.round(100 * v18TempoOdds(S, p.id)) + '%</td>' +
       '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') + '</td></tr>';
   }).join('');
   return '<div class="panel"><h2>What the Others Are Doing</h2>' +
-    '<div class="tablewrap"><table><thead><tr><th>Party</th><th>This session</th><th class="num">Their money</th><th class="num">Initiatives &middot; spent</th><th>Toward you</th></tr></thead><tbody>' +
+    '<div class="tablewrap"><table><thead><tr><th>Party</th><th>This session</th><th class="num">Their money</th><th class="num">Initiatives &middot; spent</th><th class="num">Odds of moving</th><th>Toward you</th></tr></thead><tbody>' +
     rows + '</tbody></table></div>' +
     (S.aiLast && S.aiLast.length ? '<ul class="tight">' + S.aiLast.slice(0, 4).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '') +
-    '<p class="note">Each of them takes one initiative a session, paid for out of its own money, and what it chooses comes from where it stands rather than from a table. A party that has been attacked, poached or dropped remembers it.</p></div>';
+    '<p class="note">They take about ' + (PARTIES.length - 1) + ' initiatives between them every ' +
+    V16_AI_CADENCE + ' sessions, paid for out of their own money, and what each one chooses comes from ' +
+    'where it stands rather than from a table. Who moves in a given session is not shared out evenly: a ' +
+    'party with money in hand, a grievance to answer, a government to run or a seat to win back moves ' +
+    'sooner, and a party with none of those waits.' +
+    ' A party that has been attacked, poached or dropped remembers it, and so does a party another party has gone after.</p></div>';
 }
 /* Everybody in public life, for the name draw above. Guarded at every step:
    `makeName` is called during `newGame` before any of these exist. */
@@ -34406,6 +34547,7 @@ function v16NameHeld(name, st) {
 }
 var V16_POSTURE_SAY = {
   govern:'Governing', partner:'In the ministry with you', attack:'Coming after the government',
+  restive:'In the ministry and working against you',
   moderate:'Moving toward the middle', consolidate:'Holding what it has',
   organise:'Building the organisation', hold:'Waiting'
 };
@@ -36532,6 +36674,9 @@ var V17_BURN = {
   consolidate: .82,
   govern:      .70,
   partner:     .66,
+  /* a partner working against the government it sits in saves for what that
+     costs, the way an attacking party outside it does */
+  restive:     .52,
   attack:      .52,
   moderate:    .42,
   hold:        .38

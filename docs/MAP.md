@@ -1264,6 +1264,59 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## A party moves when it has a reason to (S18e)
+
+`docs/AUDIT-S17.md` measured 125 AI initiatives at HEAD against 126 pre-S17
+and concluded S17 had added no AI activity. It had not gone far enough. The
+rate was not merely unchanged, it was a CONSTANT: sixty sessions, five seeds,
+three chairs, and the same table every time -- **six parties, fifteen
+initiatives each**, 90 of 360 party-sessions, 25.0 per cent. A party on a
+purse of 11 and a party on 195 acted equally often. So did a party the player
+had just attacked. `(st.turn + v15Hash(p.id)) % 4` is not a draw.
+
+- **The budget is the owner's dial and is untouched.** `V16_AI_CADENCE`'s own
+  comment records what moving it costs -- six parties acting every session took
+  the harness from 5.5 elections won to 1.2 -- so `v18TempoOdds` normalises the
+  weights against each other and the expected number of parties moving in a
+  session is exactly what the modulus gave. Measured, the board's odds sum to
+  1.5 every session and never move; five seeds of sixty sessions come in at
+  89.2 against 90. **What changed is which party and when**: the per-party
+  spread was 15-15 on every seed and is 9-21 now.
+- **Every term is something the player can cause**: money in hand, a grievance
+  at the attack bar, a government to run, a seat lost since last session.
+- **A BALLOT TERM WAS WRITTEN AND TAKEN BACK OUT.** "Everybody campaigns into
+  an election" reads well and could not do anything: a ballot is a fact about
+  the STATE, so every live party got the same multiplier and the normalisation
+  divided it straight back out. A term belongs in that table only if it can
+  tell two parties apart.
+- **The die is drawn for every party every session, before any test**, the
+  player's own and a banned one included, and they discard. A gate in front of
+  `rand()` decides how many numbers come off the stream, which is the S18c
+  lesson; the assertion bans the whole board and counts the draws.
+- **`v18Restive` is one predicate read by the posture AND by the card's own
+  refusal.** `v16Posture` returned `partner` before it read any grudge, and
+  `attack`'s `can` refused every member of the government, so a party in the
+  player's ministry could hold a grudge of a hundred and never move. Driven:
+  **0 attacks from inside the government against 5 from the same party, same
+  seed, same grudge, outside it.** The bar is 55 rather than the ordinary 35,
+  because a ministry is a reason to put up with more. Leaving is already built
+  (S17g's red lines); this is the party that stays in the room.
+- **The deck's own hostile verb now writes the memory it makes.** `attack`
+  moved the machine, the relations and the unity and called `v16Resent` never,
+  so sixty sessions and twelve attacks left every entry in the ledger pointing
+  at the player -- the only AI-to-AI channel in three megabytes was
+  `v17FloorCore`'s pressure.
+- **The panel prints per-party odds** instead of one sentence claiming each of
+  them moves every session, which the gate denied four times over.
+- Assertion `a party moves when it has a reason to`, seven arms, and **three
+  faults in the instruments before any in the game**: the memory arm counted
+  grudges three other paths also write and passed under its own poison; the
+  `the-others-on-the-page` playtest step REQUIRED the false sentence, so fixing
+  the lie turned the build red; and the assertion pinned `rngState` after
+  `newGame` had already built the board from a `Date.now()` seed, so it failed
+  one run in three of an unchanged build. **`SEED_OVERRIDE` pins the republic;
+  setting `rngState` afterwards pins only the dice.**
+
 ## The document says one thing at a time (S18d)
 
 S17m built the conflict table and the audit in `docs/AUDIT-S17.md` drove it

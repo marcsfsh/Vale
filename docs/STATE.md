@@ -14,8 +14,36 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S18d — Mutual exclusion actually excludes** is **OPEN**. S18a, S18b and S18c
-are merged (PRs #87, #88, #89).
+**S18e — The AI actually acts** is **OPEN**. S18a through S18d are merged
+(PRs #87, #88, #89, #90).
+
+S18e closes the first of the two claims `docs/AUDIT-S17.md` found did not
+survive ordinary play. The audit measured 125 AI initiatives at HEAD against
+126 pre-S17; the truth was worse, because the rate was a CONSTANT. Six
+parties, fifteen initiatives each, over sixty sessions, on five seeds, from
+all three chairs. `(st.turn + hash) % 4` is not a draw, so nothing that
+happened in the republic changed when anybody did anything.
+
+The owner's swept budget is untouched: `v18TempoOdds` normalises the weights
+so the board's odds sum to what the modulus gave, measured at 1.5 a session
+and never moving, and five seeds of sixty sessions come in at 89.2 against 90.
+What changed is which party and when, with the spread going from 15-15 to
+9-21. A partner in the player's own ministry can now act on a grudge, where
+two guards between them made that impossible. The deck's own hostile verb
+writes the memory it makes. `docs/MAP.md` carries the section.
+
+**Three faults in the instruments, none in the game, and one of them nearly
+cost a wrong ruling.** The memory arm counted grudges that three other paths
+also write and passed under its own poison. The `the-others-on-the-page`
+playtest step required the panel to keep saying the sentence the gate denied,
+so fixing the lie turned the build red. And the assertion pinned `rngState`
+after `newGame` had already built the board from a `Date.now()` seed, so it
+failed one run in three of an unchanged build — which voided every poison
+result taken before the fix, including eleven that were red. That flake also
+gave two contradictory answers about a ballot term I had reasoned was
+decoration; with the probe pinned it reddens nothing, and it is out.
+
+**S18d — Mutual exclusion actually excludes** shipped as PR #90.
 
 S18d closes the second of the two claims `docs/AUDIT-S17.md` found did not
 survive ordinary play. S17m built the conflict table correctly and there were

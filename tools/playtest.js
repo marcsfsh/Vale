@@ -1563,20 +1563,33 @@ async function run() {
       if (panel) {
         const t = panel.textContent;
         out.rows = panel.querySelectorAll('tbody tr').length;
-        out.saysPosture = /Governing|Waiting|Building the organisation|Holding what it has|Moving toward the middle|Coming after the government|In the ministry with you/.test(t);
+        out.saysPosture = /Governing|Waiting|Building the organisation|Holding what it has|Moving toward the middle|Coming after the government|In the ministry with you|In the ministry and working against you/.test(t);
         out.saysMoney = /\d/.test(t);
         out.saysMemory = /Nothing on file|A grievance on file|They have not forgotten/.test(t);
-        out.saysHow = /one initiative a session/.test(t);
+        /* S18e: this step used to require the sentence "one initiative a
+           session", which was the panel telling the player something the gate
+           denied four times over -- the step was locking the lie in. It asks
+           for the true statement now, and for the column that says WHICH party
+           is about to move, which is the thing a player actually wants off
+           this panel and which did not exist. */
+        out.saysHow = /initiatives between them every \d+ sessions/.test(t) &&
+          !/one initiative a session/.test(t);
+        out.saysOdds = /Odds of moving/.test(t) &&
+          panel.querySelectorAll('tbody tr td:nth-child(5)').length === 6 &&
+          [...panel.querySelectorAll('tbody tr td:nth-child(5)')].every(td => /^\d+%$/.test(td.textContent));
       }
       UI.tab = keep.tab; render();
       return out;
     });
     step('the-others-on-the-page',
       sixp.built && sixp.found && sixp.rows === 6 && sixp.saysPosture && sixp.saysMoney &&
-      sixp.saysMemory && sixp.saysHow,
+      sixp.saysMemory && sixp.saysHow && sixp.saysOdds,
       `the Parties page carries what the other six are doing: ${sixp.rows} rows, each naming the posture ` +
-      `(${sixp.saysPosture}), the money it has left and what it has spent (${sixp.saysMoney}), and what it holds ` +
-      `against the player (${sixp.saysMemory}), with the rule stated on the panel (${sixp.saysHow})` +
+      `(${sixp.saysPosture}), the money it has left and what it has spent (${sixp.saysMoney}), what it holds ` +
+      `against the player (${sixp.saysMemory}), and THE ODDS IT MOVES THIS SESSION as a per-party figure ` +
+      `(${sixp.saysOdds}) -- where the panel used to print one sentence for all six saying each of them moves ` +
+      `every session, and the gate gave every one of them one session in four whatever its situation ` +
+      `(${sixp.saysHow})` +
       (sixp.built ? '' : ' -- THIS BUILD HAS NO INITIATIVE DECK'));
 
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
