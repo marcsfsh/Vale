@@ -8588,21 +8588,56 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.restive.fromInside = attacksBy(R.partnerId, true);
     R.restive.fromOutside = attacksBy(R.partnerId, false);
 
-    /* (e) AND THE TARGET REMEMBERS IT. Sixty sessions with the player out of
-       the way of the fallback target, counting grudges one party holds against
-       another. Read the LEDGER through the game's own accessor after real
-       sessions, not the call. */
+    /* (e) AND THE TARGET REMEMBERS IT.
+
+       THE FIRST VERSION OF THIS ARM STAYED GREEN UNDER ITS OWN POISON, and the
+       fault was the arm. It drove sixty sessions as an opposition player and
+       counted every grudge one party held against another -- but three other
+       paths write exactly that shape: `v17FloorCore`'s pressure, a coalition
+       breach and a walkout, and the last two name `st.ruling`, who is an AI
+       whenever the player is not the government. So it measured "AI-to-AI
+       grudges exist", which was true before this slice and after it. A probe
+       that drives far enough for something else to do the job proves the
+       something else.
+
+       It asks about ONE PAIR now, either side of one real attack: the party
+       the card chooses, and what it holds against the party that chose it. */
+    fresh(424242, 'pnl');
+    const A = PARTIES.map(p => p.id).filter(x => x !== playParty(S) && x !== S.ruling)[0];
+    const B = PARTIES.map(p => p.id).filter(x => x !== playParty(S) && x !== A)[0];
+    /* make B the attacker's worst, so the card's own target selection picks it
+       rather than falling back to the government -- and read the target the
+       card actually chose rather than assuming it */
+    v16Resent(S, A, B, 80);
+    S.purse = S.purse || {}; S.purse[A] = 900;
+    R.memory = { attacker:A, meantTarget:B, before:Math.round(v16Grudge(S, B, A)) };
+    const atkCard = V16_AI_DECK.filter(c => c.id === 'attack')[0];
+    let chosen = null;
+    const relBase = shiftPartyRel;
+    /* capture whom it went at, from the line it writes, without touching the
+       body: the run returns the sentence naming both parties */
+    const line = atkCard.run(S, A);
+    PARTIES.forEach(p => { if (p.id !== A && line && line.indexOf(PARTY[p.id].short) >= 0) chosen = p.id; });
+    shiftPartyRel = relBase;
+    R.memory.chosen = chosen;
+    R.memory.after = Math.round(v16Grudge(S, chosen || B, A));
+    R.memory.rose = R.memory.after > R.memory.before;
+    /* and the player is NOT given a grudge object by this road: the player's
+       own memory of being attacked is the player's, and writing one here would
+       be a second ledger for one fact */
+    fresh(424242);
+    v16Resent(S, A, playParty(S), 80);
+    S.purse = S.purse || {}; S.purse[A] = 900;
+    const beforePlayer = JSON.stringify((v16Ai(S)[playParty(S)] || {}).grudge || {});
+    atkCard.run(S, A);
+    R.memory.playerLedgerUntouched =
+      JSON.stringify((v16Ai(S)[playParty(S)] || {}).grudge || {}) === beforePlayer;
+
+    /* and it still has to happen in play, not only when called: sixty real
+       sessions must play the card at all, or the arm above proves a function
+       nothing reaches */
     const tally = counting(() => { fresh(424242, 'pnl'); drive(60); });
     R.attacksPlayed = tally.byCard.attack || 0;
-    let aiToAi = 0, worst = 0;
-    PARTIES.forEach(p => {
-      const g = (v16Ai(S)[p.id] || {}).grudge || {};
-      for (const k in g) {
-        if (k !== playParty(S) && k !== p.id) { aiToAi++; if (g[k] > worst) worst = g[k]; }
-      }
-    });
-    R.aiToAi = aiToAi;
-    R.aiToAiWorst = Math.round(worst);
 
     /* (g) AND THE DIE IS DRAWN BEFORE THE SKIP. A gate in front of `rand()`
        decides how many numbers come off the stream, not just what happens, and
@@ -8655,7 +8690,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     ai.restive.predicate && ai.restive.posture === 'restive' && ai.restive.cardOpens &&
     ai.restive.contentRefused &&
     ai.restive.fromInside > 0 && ai.restive.fromOutside > 0 &&
-    ai.attacksPlayed > 0 && ai.aiToAi > 0 &&
+    ai.attacksPlayed > 0 && ai.memory.rose && ai.memory.chosen &&
+    ai.memory.playerLedgerUntouched &&
     ai.panel.hasColumn && !ai.panel.saysOneASession && ai.panel.printsAnOdds &&
     ai.panel.matchesModel && ai.dice.drawnBeforeTheSkip;
   say(aiOk, 'a party moves when it has a reason to',
@@ -8673,9 +8709,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `same seed made ${ai.restive.fromInside} attacks from inside the ministry where it makes ` +
     `${ai.restive.fromOutside} from outside it -- and a CONTENT partner is still refused ` +
     `(${ai.restive.contentRefused}), or the guard would be gone rather than conditional · AND THE TARGET ` +
-    `REMEMBERS IT: ${ai.attacksPlayed} attacks over sixty sessions leave ${ai.aiToAi} grudges held by one party ` +
-    `against another, highest ${ai.aiToAiWorst}, where the deck's own hostile verb wrote no memory at all and ` +
-    `every entry in the ledger was against the player · and the panel prints the odds it actually has ` +
+    `REMEMBERS IT, asked of ONE PAIR either side of one real attack -- the ${ai.memory.attacker} went at the ` +
+    `${ai.memory.chosen} and what the ${ai.memory.chosen} holds against them went ${ai.memory.before} to ` +
+    `${ai.memory.after} -- where the deck's own hostile verb moved the machine, the relations and the unity and ` +
+    `wrote no memory at all, so sixty sessions and twelve attacks left every entry in the ledger pointing at the ` +
+    `player; the card is still played in real sessions (${ai.attacksPlayed} in sixty) and the player's own ` +
+    `ledger is not written from this road (${ai.memory.playerLedgerUntouched}) · and the panel prints the odds it actually has ` +
     `(${ai.panel.shown.join('%, ')}%) instead of telling the player each of them moves every session · and the ` +
     `die is drawn BEFORE the skip, for every party including the player's own and a banned one, so the gate ` +
     `decides what happens and never how many numbers come off the stream: with the whole board banned and not ` +
