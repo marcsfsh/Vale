@@ -9653,6 +9653,46 @@ function seedOpeningInbox(st) {
   }
 }
 
+/* ==========================================================
+   S18c — THE SECOND DECISION SURFACE
+   ==========================================================
+   S17c routed the 174 turn events by office so an opposition player decides
+   nothing that is not theirs, and the audit found the political papers going
+   round the back of it: `politicsTick` produces them, `expireInbox` charges
+   for ignoring them, they render on the landing page every session, and
+   NOTHING asked which chair the player sits in. Measured from the bench:
+   "The Fifty Governors Call for a Conference" arrives ungated, and a real
+   click on "Offer a new intergovernmental compact" moved the national
+   State-governments indicator by +13 -- while "Send the responsible
+   minister" was offered to a player who has no minister.
+
+   And the coalition papers had the mirror defect. `politicsTick` gated them
+   on `inPower`, which includes a junior partner, and computed the partner as
+   `st.coalition.filter(p => p !== st.ruling)` -- which in a two-party
+   coalition IS the player. So a junior partner received 68 demands and 16
+   confidence threats from their OWN party, addressed to them as though they
+   led the government. `seedOpeningInbox` has had a hand-written junior branch
+   since S17b; the running producer was never taught the same thing.
+
+   ONE TABLE, read by the producer, the button and the handler. */
+var V18_PAPER_NEED = {
+  /* `coalition_review` and `senate_conference` are seeded for a JUNIOR too,
+     deliberately, by S17b's own branch in `seedOpeningInbox`: signing a
+     coalition procedure with the party that leads, and attending a conference
+     between the houses, are both things a partner does. They are 'gov'. */
+  coalition_review:'gov', senate_conference:'gov', coalition_demand:'leading',
+  confidence_threat:'leading', governors_conference:'leading',
+  cross_party:'any', faction_demand:'any', party_demand:'any',
+  street_demand:'gov', opposition_conference:'any', government_offer:'any'
+};
+/* A paper already in an old save is still answerable -- discarding one
+   silently is the worst failure this file knows -- so an unknown type is
+   open, and the gate speaks in the same voice every other refusal uses. */
+function v18PaperWhy(st, it) {
+  var need = it && V18_PAPER_NEED[it.type];
+  if (!need || need === 'any') return null;
+  return (typeof modeWhy === 'function') ? modeWhy(st, need) : null;
+}
 function inboxChoices(it) {
   if (it.type === 'coalition_review') return [
     { id:'formal', label:'Sign a formal coalition procedure', cost:4, tip:'Partner relations rise; negotiated bills improve.' },
@@ -9727,6 +9767,8 @@ function inboxChoices(it) {
 function respondInbox(id, choice) {
   var it = S.inbox.filter(function (x) { return x.id === id; })[0]; if (!it) return;
   var opt = inboxChoices(it).filter(function (x) { return x.id === choice; })[0]; if (!opt) return;
+  var paperWhy = (typeof v18PaperWhy === 'function') ? v18PaperWhy(S, it) : null;
+  if (paperWhy) { flash(paperWhy); return; }
   var c = cst(opt.cost || 0), m = opt.money || 0;
   if (S.capital < c || (m && S.treasury < m)) { flash('The resources are not available.'); return; }
   captureUndo('Answer ' + it.title);
@@ -9895,9 +9937,13 @@ function politicsTick(st) {
   if (typeof v17FederalMoneyTick === 'function') v17FederalMoneyTick(st);
   expireInbox(st);
   if (st.inbox.length >= 4 || (st.turn + st.inboxSeq) % 2) return;
-  var coalition = (st.coalition || []).filter(function (p) { return p !== st.ruling; });
+  /* S18c: NEVER THE PLAYER'S OWN PARTY. This read `p !== st.ruling`, which in
+     a two-party coalition leaves exactly the player when the player is the
+     junior -- so the demands and the confidence threats came from their own
+     benches, addressed to them as head of a government they do not head. */
+  var coalition = (st.coalition || []).filter(function (p) { return p !== st.ruling && p !== playParty(st); });
   var lowFaction = (st.factions[playParty(st)] || []).slice().sort(function (a, b) { return a.loyalty - b.loyalty; })[0];
-  if (inPower(st) && coalition.length) {
+  if (leads(st) && coalition.length) {
     var partner = coalition.slice().sort(function (a, b) { return st.partyRel[a] - st.partyRel[b]; })[0];
     if (st.partyRel[partner] < 27) {
       addInbox(st, { type:'confidence_threat', from:partner, title:PARTY[partner].short + ' Threatens the Coalition',
@@ -9919,7 +9965,10 @@ function politicsTick(st) {
       title:lowFaction.name + ' Passes a Resolution', body:'The caucus demands ' + lowFaction.demand + ' and wants the leadership on record before conference.' });
     return;
   }
-  if (rand() < .35) {
+  /* S18c: the governors write to the government. Its three answers commit
+     federal money, offer an intergovernmental compact and send "the
+     responsible minister" -- none of which an opposition party has. */
+  if (leads(st) && rand() < .35) {
     addInbox(st, { type:'governors_conference', from:null, title:'The Fifty Governors Call for a Conference',
       body:'They want grants, a clearer division of powers and an answer from the government rather than another departmental circular.' });
     return;
@@ -13894,8 +13943,10 @@ function politicalInboxPanel(limit) {
   var body = items.map(function (it) {
     var sender = it.from && PARTY[it.from] ? PARTY[it.from].name : 'Federal Council';
     var choices = inboxChoices(it).map(function (o) {
-      var c = cst(o.cost || 0), m = o.money || 0, ok = S.capital >= c && (!m || S.treasury >= m);
-      return '<button class="btn ghost" data-inbox="' + it.id + '" data-answer="' + o.id + '"' + (ok ? '' : ' disabled') + ' title="' + esc(o.tip || '') + '">' + esc(o.label) +
+      var c = cst(o.cost || 0), m = o.money || 0;
+      var pw = (typeof v18PaperWhy === 'function') ? v18PaperWhy(S, it) : null;
+      var ok = !pw && S.capital >= c && (!m || S.treasury >= m);
+      return '<button class="btn ghost" data-inbox="' + it.id + '" data-answer="' + o.id + '"' + (ok ? '' : ' disabled') + ' title="' + esc(pw || o.tip || '') + '">' + esc(o.label) +
         (c || m ? ' <span class="c">' + (c ? c + ' cap' : '') + (c && m ? ', ' : '') + (m ? fmc(m) : '') + '</span>' : '') + '</button>';
     }).join('');
     return '<article class="inbox-card"><div class="eyebrow">From ' + esc(sender) + '</div><h3>' + esc(it.title) + '</h3><p>' + esc(it.body) + '</p>' +
@@ -21864,7 +21915,7 @@ function v8EnsureQuestion(st) {
   q.turn = st.turn; q.pending = false; q.result = null; q.bill = null; q.work = null;
   if (!st.uiPrefs || st.uiPrefs.questionTime === false) return;
   if (st.over || !lowerSits(st) || !FORMS[st.form].elections) return;
-  var power = inPower(st), me = playParty(st);
+  var power = (typeof v18QtAnswers === 'function') ? v18QtAnswers(st) : inPower(st), me = playParty(st);
   var scandal = st.scandals.filter(function (x) { return x.status === 'active'; }).sort(function (a, b) { return b.heat - a.heat; })[0];
   var issue = topIssues(st, 1)[0];
   var weakBill = v8WeakBills(st)[0];
@@ -21940,11 +21991,20 @@ function v8Question(id) {
   logIt(S, 'Question Time: ' + label.toLowerCase() + '.');
   render();
 }
+/* S18c: WHO IS AT THE DESPATCH BOX. Question Time asked `inPower`, the
+   COALITION test, so a junior partner was handed the government's brief to
+   answer -- measured, a Social Democrat junior answering a question about the
+   national debt, the CHANCELLOR's brief, with the question naming the Federal
+   Party's leader as the one who should take the date. Indistinguishable from
+   the head of government, where the owner's rule is that a junior "functions
+   similarly to opposition" on the per-session decisions. The party that leads
+   the government answers for it; everyone else asks. */
+function v18QtAnswers(st) { return leads(st || S); }
 function v8QuestionPanel() {
   var v = S.v8, q = v.qt; v8EnsureQuestion(S);
   if (!S.uiPrefs || S.uiPrefs.questionTime === false || q.turn !== S.turn) return '';
   if (!q.pending) return q.result ? '<div class="panel"><h2>Question Time</h2><div class="qt-done"><b>' + esc(q.result.label) + '</b>' + esc(q.result.text) + '</div></div>' : '';
-  var power = inPower(S), issue = ISSUE[q.issue] || topIssues(S, 1)[0], asker = leaderOf(S, q.asker);
+  var power = (typeof v18QtAnswers === 'function') ? v18QtAnswers(S) : inPower(S), issue = ISSUE[q.issue] || topIssues(S, 1)[0], asker = leaderOf(S, q.asker);
   var who = power ? esc(asker.name + ', ' + PARTY[q.asker].short + ', asks') : 'The question is yours';
   var btns = [];
   function qb(id, label, cost, title) { btns.push('<button class="btn' + (btns.length ? ' ghost' : '') + '" data-v8act="qt" data-id="' + id + '" title="' + esc(title) + '">' + label + (cost ? ' <span class="c">' + cst(cost) + '</span>' : '') + '</button>'); }
@@ -22745,7 +22805,7 @@ showElection = function (r) {
    ========================================================== */
 function v8CloseChecklist(st) {
   var out = [], v = st.v8; if (!v) return out;
-  var power = inPower(st);
+  var power = (typeof v18QtAnswers === 'function') ? v18QtAnswers(st) : inPower(st);
   if (v.qt.pending && v.qt.turn === st.turn && st.uiPrefs.questionTime !== false) out.push({ c:power ? 'warn' : '', t:power ? 'Question Time has not been taken. A junior minister will read the brief.' : 'Your Question Time slot is unused.' });
   var income = capitalIncome(st), cap = capCap(st);
   if (st.capital + income > cap + .5) out.push({ c:'warn', t:'Capital ' + Math.round(st.capital) + ' against a cap of ' + cap + ': ' + Math.round(st.capital + income - cap) + ' of the coming income will be lost.' });
@@ -28914,7 +28974,7 @@ v8EnsureQuestion = function (st) {
   var v = st.v8; if (!v) return;
   var q = v.qt;
   if (!q.pending || q.v10 === st.turn) return;
-  var side = inPower(st) ? 'power' : 'opposition';
+  var side = ((typeof v18QtAnswers === 'function') ? v18QtAnswers(st) : inPower(st)) ? 'power' : 'opposition';
   var ctx = v10QtContext(st);
   var pool = V10_QT.filter(function (it) { return it.side === side && ctx.subjects.indexOf(it.subject) >= 0; });
   if (!pool.length) return;
@@ -28946,7 +29006,7 @@ v8Question = function (id) {
   if (q && q.opts) {
     var pickd = q.opts.filter(function (o) { return o.id === id; })[0];
     if (pickd) {
-      var mapped = V10_QT_TONE[inPower(S) ? 'power' : 'opposition'][pickd.tone] || id;
+      var mapped = V10_QT_TONE[((typeof v18QtAnswers === 'function') ? v18QtAnswers(S) : inPower(S)) ? 'power' : 'opposition'][pickd.tone] || id;
       if (mapped === 'resign' && !q.scandal) mapped = 'harry';
       var line = pickd.result, label = pickd.label;
       v10QuestionBase(mapped);
