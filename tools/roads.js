@@ -8435,6 +8435,252 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     'named in the question. The party that leads answers (' + inboxes.qt.leading.answering + '); a junior asks (' +
     inboxes.qt.junior.yours + '), like the opposition (' + inboxes.qt.opposition.yours + ')');
 
+  /* ================================================================
+     S18e — THE AI ACTS WHEN IT HAS A REASON TO
+     ================================================================
+     `docs/AUDIT-S17.md` measured 125 AI initiatives at HEAD against 126 on the
+     pre-S17 build and concluded S17 had added no AI activity at all. It had
+     not gone far enough: the rate was not merely unchanged, it was a CONSTANT.
+     Sixty sessions, five seeds, three chairs -- six parties, fifteen
+     initiatives each, every time, because `(st.turn + hash) % 4` is not a
+     draw. This assertion asks the two halves separately, because they pull
+     against each other: the budget must be HELD (it is the owner's dial, swept
+     over six seeds, and its own comment records that moving it costs the
+     harness four elections in five) while the SPREAD must open. */
+  const ai = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, me) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', me || 'lp'), false);
+      S.rngState = seed;
+      return S;
+    }
+    function drive(n) {
+      for (let t = 0; t < n; t++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { return e.message; }
+        UI.queue = []; UI.busy = false;
+      }
+      return null;
+    }
+    /* count through the deck's own `run`, restored after every arm: an
+       instrument left installed changes the next arm's measurement */
+    function counting(fn) {
+      const saved = V16_AI_DECK.map(c => c.run);
+      const tally = { total:0, byParty:{}, byCard:{} };
+      V16_AI_DECK.forEach((c, i) => {
+        c.run = function (st, pid) {
+          tally.total++;
+          tally.byParty[pid] = (tally.byParty[pid] || 0) + 1;
+          tally.byCard[c.id] = (tally.byCard[c.id] || 0) + 1;
+          return saved[i].call(this, st, pid);
+        };
+      });
+      try { fn(); } finally { V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; }); }
+      return tally;
+    }
+
+    /* (a) THE BUDGET IS HELD. The odds of the whole board are normalised
+       against each other, so the expected number of parties moving in a
+       session is exactly what the modulus gave. Read the SUM, not the outcome:
+       a run that happens to come in at 90 proves nothing about the rule. */
+    fresh(20260829);
+    R.oddsSum = []; R.live = 0;
+    for (let t = 0; t < 12; t++) {
+      const live = PARTIES.filter(q => q.id !== playParty(S) && !S.banned[q.id]);
+      R.live = live.length;
+      let s = 0; live.forEach(q => { s += v18TempoOdds(S, q.id); });
+      R.oddsSum.push(+s.toFixed(4));
+      UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { break; }
+      UI.queue = []; UI.busy = false;
+    }
+    R.budget = +(R.live / V16_AI_CADENCE).toFixed(4);
+    R.budgetHeld = R.oddsSum.every(x => Math.abs(x - R.budget) < 1e-6);
+
+    /* (b) AND THE SPREAD OPENS. Five seeds, sixty sessions each. Under the
+       modulus every party took exactly the same number on every seed; the
+       assertion is that they no longer do, and that the TOTAL still sits
+       around the budget. Both halves, or "more spread" would pass on a build
+       that simply let everybody act every session. */
+    const totals = [], spreads = [];
+    [20260829, 771144, 424242, 999331, 5150].forEach(sd => {
+      const tally = counting(() => { fresh(sd); drive(60); });
+      const vals = PARTIES.map(p => tally.byParty[p.id] || 0)
+        .filter((v, i) => PARTIES[i].id !== 'lp');
+      totals.push(tally.total);
+      spreads.push(Math.max.apply(null, vals) - Math.min.apply(null, vals));
+    });
+    R.totals = totals;
+    R.spreads = spreads;
+    R.meanTotal = +(totals.reduce((a, c) => a + c, 0) / totals.length).toFixed(1);
+    R.expected = 60 * R.budget;
+    /* the mean sits within a tenth of the budget; a single seed can and does
+       land 5 either side, which is what a draw looks like and a modulus does
+       not */
+    R.totalHeld = Math.abs(R.meanTotal - R.expected) <= R.expected * .10;
+    R.spreadOpen = spreads.every(s => s >= 4);
+
+    /* (c) AND CIRCUMSTANCE IS WHAT MOVES IT. Change ONE thing about one party
+       on an otherwise identical board and read its odds either side. A test
+       that only says "the odds differ between parties" would pass on a build
+       that keyed them to the party id. */
+    R.terms = {};
+    const P = 'cup';
+    function oddsWith(mut) {
+      fresh(4242);
+      /* out of the coalition, so the coalition branch is not what moves it */
+      S.coalition = [S.ruling];
+      if (mut) mut();
+      return +v18TempoOdds(S, P).toFixed(5);
+    }
+    const flat = oddsWith(null);
+    R.terms.flat = flat;
+    R.terms.rich = oddsWith(() => { S.purse = S.purse || {}; S.purse[P] = 900; });
+    R.terms.broke = oddsWith(() => { S.purse = S.purse || {}; S.purse[P] = 0; });
+    R.terms.angry = oddsWith(() => { v16Resent(S, P, S.ruling, 90); });
+    R.terms.losing = oddsWith(() => { v16Ai(S)[P].lastSeats = (S.seats[P] || 0) + 40; });
+    R.termsMove = R.terms.rich > flat && R.terms.broke < flat &&
+      R.terms.angry > flat && R.terms.losing > flat;
+
+    /* (d) A PARTNER THAT HAS HAD ENOUGH. The same party, the same seed, the
+       same grudge, inside the government and outside it. Without the control
+       arm "it attacked" would pass on a build where every party attacks. */
+    function attacksBy(pid, inside) {
+      let n = 0;
+      const saved = V16_AI_DECK.map(c => c.run);
+      const atk = V16_AI_DECK.filter(c => c.id === 'attack')[0];
+      const base = atk.run;
+      atk.run = function (st, who) { if (who === pid) n++; return base.call(this, st, who); };
+      try {
+        fresh(771144);
+        if (!inside) S.coalition = [S.ruling];
+        for (let t = 0; t < 40; t++) {
+          /* topped up every session, because grudges cool by .6 and a probe
+             that lets it decay measures the decay */
+          v16Resent(S, pid, S.ruling, 100);
+          S.purse = S.purse || {}; S.purse[pid] = Math.max(S.purse[pid] || 0, 400);
+          UI.queue = []; UI.busy = false;
+          try { endTurn(); } catch (e) { break; }
+          UI.queue = []; UI.busy = false;
+        }
+      } finally { V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; }); }
+      return n;
+    }
+    fresh(771144);
+    R.partnerId = (S.coalition || []).filter(x => x !== S.ruling && x !== playParty(S))[0] || 'rsf';
+    R.restive = {};
+    fresh(771144);
+    v16Resent(S, R.partnerId, S.ruling, 100);
+    R.restive.predicate = !!v18Restive(S, R.partnerId);
+    R.restive.posture = v16Posture(S, R.partnerId);
+    R.restive.cardOpens = (function () {
+      S.purse = S.purse || {}; S.purse[R.partnerId] = 900;
+      const c = V16_AI_DECK.filter(x => x.id === 'attack')[0];
+      try { return !!c.can(S, R.partnerId); } catch (e) { return false; }
+    })();
+    /* and a CONTENT partner is still refused, or the guard would be gone
+       rather than conditional */
+    fresh(771144);
+    R.restive.contentRefused = (function () {
+      S.purse = S.purse || {}; S.purse[R.partnerId] = 900;
+      const c = V16_AI_DECK.filter(x => x.id === 'attack')[0];
+      return v16Posture(S, R.partnerId) === 'partner' && !c.can(S, R.partnerId);
+    })();
+    R.restive.fromInside = attacksBy(R.partnerId, true);
+    R.restive.fromOutside = attacksBy(R.partnerId, false);
+
+    /* (e) AND THE TARGET REMEMBERS IT. Sixty sessions with the player out of
+       the way of the fallback target, counting grudges one party holds against
+       another. Read the LEDGER through the game's own accessor after real
+       sessions, not the call. */
+    const tally = counting(() => { fresh(424242, 'pnl'); drive(60); });
+    R.attacksPlayed = tally.byCard.attack || 0;
+    let aiToAi = 0, worst = 0;
+    PARTIES.forEach(p => {
+      const g = (v16Ai(S)[p.id] || {}).grudge || {};
+      for (const k in g) {
+        if (k !== playParty(S) && k !== p.id) { aiToAi++; if (g[k] > worst) worst = g[k]; }
+      }
+    });
+    R.aiToAi = aiToAi;
+    R.aiToAiWorst = Math.round(worst);
+
+    /* (g) AND THE DIE IS DRAWN BEFORE THE SKIP. A gate in front of `rand()`
+       decides how many numbers come off the stream, not just what happens, and
+       S18c measured what that costs -- the six-seed pacing arc moved on every
+       row because one chair stopped consuming one roll. So the gate draws for
+       EVERY party, the player's own and a banned one included, and they
+       discard. Measured by counting the draws with the whole board banned,
+       when not one party can possibly act. */
+    fresh(20260829);
+    R.dice = {};
+    (function () {
+      const rb = rand;
+      let n = 0;
+      rand = function () { n++; return rb(); };
+      try {
+        PARTIES.forEach(p => { S.banned[p.id] = true; });
+        n = 0; v16AiTurn(S);
+        R.dice.allBanned = n;
+        PARTIES.forEach(p => { delete S.banned[p.id]; });
+        n = 0; v16AiTurn(S);
+        R.dice.noneBanned = n;
+      } finally { rand = rb; }
+    })();
+    R.dice.parties = PARTIES.length;
+    /* exactly one apiece when nobody can act, and never fewer when they can */
+    R.dice.drawnBeforeTheSkip =
+      R.dice.allBanned === PARTIES.length && R.dice.noneBanned >= PARTIES.length;
+
+    /* (f) AND THE PANEL SAYS THE ODDS IT HAS. The note claimed one initiative
+       a session for everybody while the gate gave one in four; the column that
+       would have told the player who was about to move did not exist. */
+    fresh(20260829);
+    const panel = v16AiPanel();
+    R.panel = {
+      hasColumn: /Odds of moving/.test(panel),
+      saysOneASession: /takes one initiative a session/.test(panel),
+      printsAnOdds: /<td class="num">\d+%<\/td>/.test(panel)
+    };
+    const shown = (panel.match(/<td class="num">(\d+)%<\/td>/g) || [])
+      .map(x => Number(x.replace(/\D/g, '')));
+    R.panel.shown = shown;
+    R.panel.matchesModel = shown.length > 0 && shown.every((v, i) => {
+      const live = PARTIES.filter(q => q.id !== playParty(S) && !S.banned[q.id]);
+      return live[i] && Math.abs(v - Math.round(100 * v18TempoOdds(S, live[i].id))) < 1;
+    });
+    return R;
+  });
+  const aiOk =
+    ai.budgetHeld && ai.totalHeld && ai.spreadOpen && ai.termsMove &&
+    ai.restive.predicate && ai.restive.posture === 'restive' && ai.restive.cardOpens &&
+    ai.restive.contentRefused &&
+    ai.restive.fromInside > 0 && ai.restive.fromOutside > 0 &&
+    ai.attacksPlayed > 0 && ai.aiToAi > 0 &&
+    ai.panel.hasColumn && !ai.panel.saysOneASession && ai.panel.printsAnOdds &&
+    ai.panel.matchesModel && ai.dice.drawnBeforeTheSkip;
+  say(aiOk, 'a party moves when it has a reason to',
+    `SIX PARTIES, FIFTEEN INITIATIVES EACH, ON EVERY SEED. That was the shipped build measured over sixty ` +
+    `sessions from all three chairs: ${'`'}(st.turn + hash) % 4${'`'} is not a draw, so a party on a purse of 11 and a ` +
+    `party on 195 acted equally often, and so did a party the player had just attacked. THE BUDGET IS THE ` +
+    `OWNER'S DIAL and is untouched -- the per-session odds of the whole board sum to ${ai.budget} every session ` +
+    `(${ai.budgetHeld}), which is what the modulus gave, and five seeds of sixty sessions come in at ` +
+    `${ai.totals.join(', ')} against an expected ${ai.expected} · WHAT CHANGED IS WHICH PARTY AND WHEN: the ` +
+    `per-party spread was 0 on every seed and is now ${ai.spreads.join(', ')} · and CIRCUMSTANCE is what moves ` +
+    `it, one thing at a time on one board -- money in hand ${ai.terms.rich} against ${ai.terms.flat} flat, ` +
+    `broke ${ai.terms.broke}, a grievance ${ai.terms.angry}, seats lost ${ai.terms.losing} · A PARTNER THAT HAS ` +
+    `HAD ENOUGH: the posture returned partner before it read any grudge and the attack card's own can refused ` +
+    `every member of the government, two guards for one outcome, so the same party with the same grudge on the ` +
+    `same seed made ${ai.restive.fromInside} attacks from inside the ministry where it makes ` +
+    `${ai.restive.fromOutside} from outside it -- and a CONTENT partner is still refused ` +
+    `(${ai.restive.contentRefused}), or the guard would be gone rather than conditional · AND THE TARGET ` +
+    `REMEMBERS IT: ${ai.attacksPlayed} attacks over sixty sessions leave ${ai.aiToAi} grudges held by one party ` +
+    `against another, highest ${ai.aiToAiWorst}, where the deck's own hostile verb wrote no memory at all and ` +
+    `every entry in the ledger was against the player · and the panel prints the odds it actually has ` +
+    `(${ai.panel.shown.join('%, ')}%) instead of telling the player each of them moves every session · and the ` +
+    `die is drawn BEFORE the skip, for every party including the player's own and a banned one, so the gate ` +
+    `decides what happens and never how many numbers come off the stream: with the whole board banned and not ` +
+    `one party able to act it still draws ${ai.dice.allBanned} for ${ai.dice.parties} parties`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
