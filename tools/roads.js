@@ -8729,6 +8729,170 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `decides what happens and never how many numbers come off the stream: with the whole board banned and not ` +
     `one party able to act it still draws ${ai.dice.allBanned} for ${ai.dice.parties} parties`);
 
+  /* ================================================================
+     S19a — THE PARTIES THINK
+     ================================================================
+     S18e fixed WHEN a party acts and left the decision a coin flip:
+     `open[Math.floor(rand() * open.length)]`, equal probability over whatever
+     the posture and the purse allowed. This asks three things that pull
+     against each other, because any one alone would pass on a build that is
+     wrong in a different way: the goals must be REACHED BY THE DECK (a goal
+     no card serves is the decoration this file punishes hardest), the levels
+     must DIFFER IN PLAY (or the owner's separate setting is a knob nothing
+     turns), and `instinct` must be EXACTLY the old uniform draw (or the
+     scale's floor is an approximation of the shipped game rather than the
+     shipped game). */
+  const think = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level, me) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', me || 'lp'), false);
+      S.aiLevel = level; S.rngState = seed;
+      return S;
+    }
+    function counting(fn) {
+      const saved = V16_AI_DECK.map(c => c.run);
+      const t = { acts:0, withGoal:0, byCard:{}, byGoal:{} };
+      V16_AI_DECK.forEach((c, i) => {
+        c.run = function (st, pid) {
+          t.acts++;
+          t.byCard[c.id] = (t.byCard[c.id] || 0) + 1;
+          const g = v16Ai(st)[pid] && v16Ai(st)[pid].goal;
+          if (g) { t.withGoal++; t.byGoal[g.kind] = (t.byGoal[g.kind] || 0) + 1; }
+          return saved[i].call(this, st, pid);
+        };
+      });
+      try { fn(); } finally { V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; }); }
+      return t;
+    }
+    function drive(n) {
+      for (let i = 0; i < n; i++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { return e.message; }
+        UI.queue = []; UI.busy = false;
+      }
+      return null;
+    }
+
+    /* (a) EVERY GOAL IS REACHED BY THE DECK. Its `worth` table names the cards
+       that serve it, and a goal whose best card is not in the deck is an aim
+       nothing can advance. Derived from the deck rather than counted, so a
+       card renamed in a later slice reddens here. */
+    const deckIds = V16_AI_DECK.map(c => c.id);
+    R.goalGaps = [];
+    V19_GOALS.forEach(g => {
+      const named = Object.keys(g.worth || {});
+      if (!named.length) { R.goalGaps.push(g.id + ': no cards named'); return; }
+      const ghost = named.filter(k => deckIds.indexOf(k) < 0);
+      if (ghost.length) R.goalGaps.push(g.id + ': names cards the deck has not -- ' + ghost.join(','));
+      /* and the one it leans on hardest has to exist */
+      let best = null, bestW = 0;
+      named.forEach(k => { if (g.worth[k] > bestW) { bestW = g.worth[k]; best = k; } });
+      if (deckIds.indexOf(best) < 0) R.goalGaps.push(g.id + ': its first card ' + best + ' is not in the deck');
+    });
+    R.goalCount = V19_GOALS.length;
+
+    /* (b) INSTINCT IS THE SHIPPED GAME, EXACTLY. At sharpness nought every
+       weight is 1, so `v19Choose` must return what a uniform draw returns for
+       the same die. Compared against the arithmetic the old line used, over
+       every open-set size the deck can produce. */
+    fresh(4242, 'instinct');
+    R.instinct = { sharp:v19LevelOf(S).sharp, mismatches:0, tried:0 };
+    for (let n = 1; n <= V16_AI_DECK.length; n++) {
+      const open = V16_AI_DECK.slice(0, n);
+      for (let k = 0; k < 40; k++) {
+        const before = S.rngState;
+        const got = v19Choose(S, 'cup', open, null);
+        S.rngState = before;
+        const want = open[Math.floor(rand() * open.length)];
+        R.instinct.tried++;
+        if (got !== want) R.instinct.mismatches++;
+      }
+    }
+
+    /* (c) AND THE LEVELS DIFFER IN PLAY. Sixty real sessions at each, same
+       seed and same board, counting how many initiatives were taken with a
+       goal behind them. Reading the goal COUNT rather than the card mix,
+       because a card mix can differ by chance and this cannot. */
+    R.byLevel = {};
+    ['instinct', 'purposeful', 'shrewd', 'ruthless'].forEach(lv => {
+      const t = counting(() => { fresh(20260829, lv); drive(60); });
+      R.byLevel[lv] = { acts:t.acts, withGoal:t.withGoal, goals:Object.keys(t.byGoal).length };
+    });
+
+    /* (d) A GOAL IS KEPT, NOT RE-PICKED EVERY SESSION. A party that changes
+       its mind every turn has no aim, which is the state this slice found. */
+    fresh(771144, 'shrewd');
+    const held = {};
+    let switches = 0, samples = 0;
+    for (let t = 0; t < 30; t++) {
+      PARTIES.forEach(q => {
+        if (q.id === playParty(S)) return;
+        const g = v16Ai(S)[q.id] && v16Ai(S)[q.id].goal;
+        const key = g ? g.kind + ':' + g.ref : 'none';
+        if (held[q.id] !== undefined) { samples++; if (held[q.id] !== key) switches++; }
+        held[q.id] = key;
+      });
+      UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { break; }
+      UI.queue = []; UI.busy = false;
+    }
+    R.hold = { samples:samples, switches:switches,
+      rate:samples ? +(switches / samples).toFixed(3) : 1 };
+
+    /* (e) AND A GOAL THAT IS REACHED IS PUT DOWN. Drive one to its end and
+       read that the party takes a different one -- without this a goal could
+       be "kept" by never being achievable. */
+    fresh(5150, 'shrewd');
+    const P = PARTIES.map(q => q.id).filter(x => x !== playParty(S))[0];
+    v16Ai(S)[P].goal = { kind:'build', ref:'machine', want:.05, from:0, since:S.turn };
+    S.machine[P] = .9;
+    const before = JSON.stringify(v16Ai(S)[P].goal);
+    const after = v19Goal(S, P);
+    R.retire = { before:before, after:after ? after.kind + ':' + after.ref : null,
+      changed:!!after && JSON.stringify(after) !== before };
+
+    /* (f) AND THE PANEL SAYS IT. R2: the aim, how far along, and what the
+       party did last with the aim it served. */
+    fresh(20260829, 'shrewd'); drive(8);
+    const panel = v16AiPanel();
+    R.panel = {
+      column:/What they are after/.test(panel),
+      aims:(panel.match(/Carrying |Repealing |Taking the |Getting into|Bringing down|Winning over|Building the/g) || []).length,
+      pct:/<span class="muted">\d+%<\/span>/.test(panel)
+    };
+    fresh(20260829, 'instinct'); drive(4);
+    R.panel.instinctSaysSo = /Acting on instinct/.test(v16AiPanel());
+    return R;
+  });
+  const thinkOk =
+    think.goalGaps.length === 0 && think.goalCount >= 6 &&
+    think.instinct.sharp === 0 && think.instinct.mismatches === 0 && think.instinct.tried > 200 &&
+    think.byLevel.instinct.withGoal === 0 &&
+    think.byLevel.purposeful.withGoal === think.byLevel.purposeful.acts &&
+    think.byLevel.shrewd.withGoal === think.byLevel.shrewd.acts &&
+    think.byLevel.ruthless.withGoal === think.byLevel.ruthless.acts &&
+    think.byLevel.shrewd.goals >= 4 &&
+    think.hold.rate < .25 && think.hold.samples > 100 &&
+    think.retire.changed &&
+    think.panel.column && think.panel.aims > 0 && think.panel.pct && think.panel.instinctSaysSo;
+  say(thinkOk, 'a party is after something',
+    `THE DECISION WAS A COIN FLIP: \`open[Math.floor(rand() * open.length)]\`, equal probability over whatever the ` +
+    `posture and the purse left, with nothing in the model saying what a party was TRYING to do. There are ` +
+    `${think.goalCount} goals now, each built from what the party already is -- its authored \`wants\` and its bloc ` +
+    `affinities -- and every one of them is reached by cards the deck actually carries ` +
+    `(${think.goalGaps.length} that are not) · THE FLOOR OF THE SCALE IS THE SHIPPED GAME, not an approximation ` +
+    `of it: at \`instinct\` the sharpness is ${think.instinct.sharp}, every weight is equal, and \`v19Choose\` ` +
+    `returned what the old uniform line returns on the same die in ${think.instinct.tried} trials across every ` +
+    `open-set size the deck can make (${think.instinct.mismatches} apart) · AND THE LEVELS DIFFER IN PLAY over ` +
+    `sixty real sessions each: instinct ${think.byLevel.instinct.acts} initiatives and ` +
+    `${think.byLevel.instinct.withGoal} with an aim behind them, against ` +
+    `${think.byLevel.shrewd.withGoal} of ${think.byLevel.shrewd.acts} at shrewd over ` +
+    `${think.byLevel.shrewd.goals} kinds of aim · A GOAL IS KEPT rather than re-picked, changing on ` +
+    `${Math.round(think.hold.rate * 100)}% of ${think.hold.samples} party-sessions, and one that is REACHED is ` +
+    `put down for another (${think.retire.after}) · and the panel states it (${think.panel.column}), with how far ` +
+    `along (${think.panel.pct}), and says plainly when a party is acting on instinct ` +
+    `(${think.panel.instinctSaysSo})`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
