@@ -9023,6 +9023,16 @@ function draftBillDialog(id, dir) {
   var fc = { clean:{lower:0,upper:0}, negotiated:{lower:5,upper:11}, urgent:{lower:5,upper:-6} };
   var preview = billForecast(S,{policy:id,dir:dir,sponsor:playParty(S),owner:'player',strategy:'clean',whip:0,upperDeal:0,committee:0,concessions:0,confidence:false,urgent:false,playerPosition:'support'});
   var verb = dir > 0 ? (lv ? 'extend' : 'enact') : (next ? 'reduce' : 'repeal');
+  /* S18b: AND THE SHEET OBEYS THE RULE THE CARD ANNOUNCES. S18a withheld the
+     whip, the Senate deal, the confidence motion and urgent procedure from a
+     private member's bill at the card and at `billAction`, and left the
+     identical `urgent` flag settable here, free, one click earlier -- worth
+     +5 in the Assembly and a second stage a session, against a whole measured
+     chair penalty of 2.6. A government pays 6 capital for the timetable at
+     the card; nobody gets it for nothing at the sheet. A negotiated text
+     stays open to every chair: narrowing your own bill to win support is what
+     `amend` already is, and it is not a government instrument. */
+  var v18Gov = inPower(S);
   /* the same row-delta the card offers, restated where the money is spent */
   var draftDelta = [];
   polStepTags(draftDelta, p, lv, next, 'Rung ' + lv + ' to ' + next);
@@ -9035,9 +9045,12 @@ function draftBillDialog(id, dir) {
     '<div><b>Public issue</b><span style="font-size:13px">' + esc(issueForPolicy(p).name) + '</span></div></div>' +
     '<div class="subhead">What this bill changes</div><div class="tagline" data-draft-delta="1">' + draftDelta.join('') + '</div>' +
     '<div class="choices">' +
-    '<button class="choice" data-draft="clean">Introduce a clean government bill<small>The clearest policy and the least room for bargaining. Normal support in both houses.</small></button>' +
+    '<button class="choice" data-draft="clean">Introduce a clean ' + (v18Gov ? 'government bill' : 'private member\'s bill') +
+      '<small>The clearest policy and the least room for bargaining. Normal support in both houses.</small></button>' +
     '<button class="choice" data-draft="negotiated">Publish a negotiated text<small>Assembly +' + fc.negotiated.lower + ', Senate +' + fc.negotiated.upper + '. The final settlement carries one concession.</small></button>' +
-    '<button class="choice" data-draft="urgent">Invoke urgent procedure<small>Assembly +' + fc.urgent.lower + ', Senate ' + fc.urgent.upper + '. It may clear committee and reach a division in one session.</small></button>' +
+    (v18Gov
+      ? '<button class="choice" data-draft="urgent">Invoke urgent procedure<small>Assembly +' + fc.urgent.lower + ', Senate ' + fc.urgent.upper + '. It may clear committee and reach a division in one session.</small></button>'
+      : '<button class="choice" disabled title="The timetable is the government\'s. A private member\'s bill takes its turn.">Invoke urgent procedure<small>The timetable belongs to whoever commands the House. A private member\'s bill waits its turn on the paper.</small></button>') +
     '<button class="choice" data-close="1">Return to the policy book</button></div>', function (node) {
       node.querySelectorAll('[data-draft]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -9954,10 +9967,22 @@ function factionAction(pid, idx, action) {
    government's call. In opposition none of it is yours, and the party-scoped
    verbs (a challenger, a campaign, the leader on a platform) are untouched
    because those were always party business. */
-var V17_REGION_NEED = { visit:'gov', inspect:'gov', townhall:'gov',
+/* S18b: TWO OF THESE WERE ON THE WRONG SIDE OF THE RULE THE COMMENT STATES.
+   `inspect` carries money:3 and was 'gov', while `compact` at money:4 is
+   'leading' -- so a junior partner spent $300B of the exchequer on a federal
+   inspection, eight times a session, under a table whose own sentence says
+   committing federal money is the head of government's call. And
+   `assemblySeat` was shut hardest of all fourteen on the stated grounds that
+   it "spends the federal purse on a region exactly as a grant does": it is
+   declared money:0 and its body writes `S.campaign.targets` and `S.machine`,
+   which is party organisers and party machine -- the same category as
+   `campaign`, `challenge` and `stump`, all of which are 'any'. It is the one
+   instrument on the tab that is genuinely opposition work and it was the one
+   instrument an opposition party could not touch. */
+var V17_REGION_NEED = { visit:'gov', inspect:'leading', townhall:'gov',
   grant:'leading', compact:'leading', taskforce:'leading', zone:'leading', relief:'leading',
   corridor:'leading', retrain:'leading', charterTalks:'leading', equalise:'leading',
-  reTrade:'leading', assemblySeat:'leading' };
+  reTrade:'leading', assemblySeat:'any' };
 function regionAction(id, action) {
   var whyR = modeWhy(S, V17_REGION_NEED[action] || 'gov'); if (whyR) { flash(whyR); return; }
   var r = REGION[id], q = S.regions[id]; if (!r || !q) return;
@@ -11752,21 +11777,16 @@ function changePolicy(id, dir) {
   var p = POL[id], lv = S.pol[id] || 0;
   var next = lv + dir;
   if (next < 0 || next > p.max) return;
-  if (p.needs && next > 0 && !S.pol[p.needs]) { flash('Requires ' + POL[p.needs].name + '.'); return; }
-  if (S.changed[id]) { flash('That measure has already been before Parliament this session.'); return; }
-  if (!policyOpen(S, p)) { flash(policyWhy(S, p) || 'That measure has no place under this constitution.'); return; }
   /* S18a: THE REFUSAL THAT STOOD IN FRONT OF THE DOOR. S17b opened
      `draftBillDialog` to every chair, with the private members' rule written
      into it -- and left this line here, in the only function that calls it.
-     The dialog was reachable by nothing, and the owner, playing the shipped
-     build, could not lay a bill from opposition. One rule, asked once, at
-     every site that asks it. */
-  var v18shut = (typeof v18FloorShut === 'function') ? v18FloorShut(S) : null;
-  if (v18shut) { flash(v18shut); return; }
-  /* S17q: a caretaker and a general strike are two facts about the same
-     government, asked on one line. */
-  var care = (typeof v17Barred === 'function') ? v17Barred(S, 'policy') : null;
-  if (care) { flash(care); return; }
+     S18b: and the five refusals that used to stand here in a row were the
+     handler's alone. `policyWhy` has been able to say "Requires X." since S12
+     and no card could reach it; `v17Barred` refused every draft on session
+     one of the Hung Assembly start behind 493 lit buttons. One question,
+     `v18DraftWhy`, asked here and at every button that leads here. */
+  var why = (typeof v18DraftWhy === 'function') ? v18DraftWhy(S, id, dir) : null;
+  if (why) { flash(why); return; }
   var cost = policyCost(id, dir);
   if (S.capital < cost) { flash('Not enough political capital.'); return; }
   draftBillDialog(id, dir);
@@ -14255,8 +14275,11 @@ function policyCard(p) {
     var lv = S.pol[p.id] || 0;
     /* S18a: a dead control with no reason on it is the worst of both. The
        button is drawn from the same predicate the handler refuses on, and
-       carries the refusal as its title when it is shut. */
-    var v18Shut = (typeof v18FloorShut === 'function') ? v18FloorShut(S) : null;
+       carries the refusal as its title when it is shut.
+       S18b: and BOTH directions are asked, because `needs:` bites only on the
+       way up -- a repeal to nothing is open where an extension is not. */
+    var v18Shut = (typeof v18DraftWhy === 'function') ? v18DraftWhy(S, p.id, 1) : null;
+    var v18ShutDn = (typeof v18DraftWhy === 'function') ? v18DraftWhy(S, p.id, -1) : null;
     /* S12: a statute the page lists but the model will not open yet. The card
        still shows what it would do, because that is the point of listing it,
        and it says in one line what would have to change first. */
@@ -14266,8 +14289,17 @@ function policyCard(p) {
     var tags = [];
     var issue = issueForPolicy(p);
     tags.push('<span class="tag">' + esc(issue.name) + ' salience ' + Math.round(S.salience[issue.id]) + '</span>');
-    if (p.dept) tags.push('<span class="tag ' + (holdsDept(S, p.dept) ? 'up' : 'down') + '">' +
-      esc(DEPTS[p.dept].name) + (holdsDept(S, p.dept) ? '' : ' (opposed)') + '</span>');
+    /* S18b: THE OWNER'S ORIGINAL BUG, STILL ON THIS PAGE. S17a fixed the
+       exec card and left this line asking `holdsDept` -- whether the
+       GOVERNMENT holds the office -- for a sentence addressed to the player.
+       On session one of the Hung Assembly start that marked 132 cards green
+       for the caretaker's own offices and 104 red and "(opposed)" for the
+       player's own party's, inverted against the .78/1.55 the same card
+       charges. `officeMine` is the player's side of it and `deptFactor`
+       already reads it. */
+    if (p.dept) { var v18Mine = (typeof officeMine === 'function') ? officeMine(S, p.dept) : holdsDept(S, p.dept);
+      tags.push('<span class="tag ' + (v18Mine ? 'up' : 'down') + '">' +
+        esc(DEPTS[p.dept].name) + (v18Mine ? '' : ' (opposed)') + '</span>'); }
     var pp = polPos(p);
     if (Math.abs(pp.a) > .25) tags.push('<span class="tag">' + (pp.a > 0 ? 'Authority +' : 'Liberty ') + pp.a.toFixed(2) + '</span>');
     /* The first tagline is the STANDING law: what this statute is doing at
@@ -14312,7 +14344,7 @@ function policyCard(p) {
       '<div class="tagline">' + moods.join('') + '</div>' +
       '<div class="btnrow">' +
       (lv < p.max ? '<button class="btn" data-pol="' + p.id + '" data-dir="1"' + ((blocked || v18Shut || S.capital < upCost) ? ' disabled' : '') + (v18Shut ? ' title="' + esc(v18Shut) + '"' : '') + '>Draft ' + (lv === 0 ? 'bill' : 'extension') + ' <span class="c">' + upCost + '</span></button>' : '') +
-      (lv > 0 ? '<button class="btn ghost" data-pol="' + p.id + '" data-dir="-1"' + ((blocked || v18Shut || S.capital < dnCost) ? ' disabled' : '') + (v18Shut ? ' title="' + esc(v18Shut) + '"' : '') + '>Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + dnCost + '</span></button>' : '') +
+      (lv > 0 ? '<button class="btn ghost" data-pol="' + p.id + '" data-dir="-1"' + ((blocked || v18ShutDn || S.capital < dnCost) ? ' disabled' : '') + (v18ShutDn ? ' title="' + esc(v18ShutDn) + '"' : '') + '>Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + dnCost + '</span></button>' : '') +
       '</div></div>';
 }
 
@@ -14432,11 +14464,17 @@ function viewFederation() {
   REGIONS.forEach(function (r) { var q=S.regions[r.id]; federal += q.federal*r.pop; prosperity += q.prosperity*r.pop; services += q.services*r.pop; order += q.order*r.pop; pop += r.pop; });
   var cards = REGIONS.map(function (r) {
     var q = S.regions[r.id], lead = regionLeadingParty(r);
+    /* S18b: AND THE BUTTON ASKS WHAT THE HANDLER ASKS. S17b graded the
+       handlers by chair and never touched the three emitters, so from
+       opposition the tab still drew 138 enabled controls of which 128 did
+       nothing but flash a refusal -- which is exactly as unrestricted as the
+       owner said the tab looked when they reported it. */
     function rb(action,label,cost,money) {
       var key=r.id+':'+action, last=S.regionCooldown[key], wait=last === undefined ? 0 : Math.max(0,2-(S.turn-last));
-      var ok=!wait && S.capital>=cst(cost) && (!money || S.treasury>=money);
+      var mode=(typeof modeWhy==='function')?modeWhy(S,V17_REGION_NEED[action]||'gov'):null;
+      var ok=!mode && !wait && S.capital>=cst(cost) && (!money || S.treasury>=money);
       return '<button class="btn ghost" data-region="'+r.id+'" data-region-action="'+action+'"'+(ok?'':' disabled')+
-        ' title="'+(wait?'Available next session':'Act directly in this region')+'">'+label+' <span class="c">'+cst(cost)+(money?', '+fmc(money):'')+'</span></button>';
+        ' title="'+esc(mode||(wait?'Available next session':'Act directly in this region'))+'">'+label+' <span class="c">'+cst(cost)+(money?', '+fmc(money):'')+'</span></button>';
     }
     return '<article class="card region-card"><div class="bill-title"><h3>'+esc(r.name)+'</h3><span class="bill-no">'+r.pop+'% of Vale</span></div><p class="desc">'+esc(r.character)+'</p>'+
       '<div class="region-kpis"><div class="mini-kpi"><b>Prosperity</b><span class="'+(q.prosperity<40?'neg':'')+'">'+Math.round(q.prosperity)+'</span></div>'+
@@ -14723,9 +14761,16 @@ function viewExec() {
     var holdTag = inPower(S)
       ? (ours ? 'In the government' : 'Held against you')
       : (ours ? 'Your party holds it' : (inGov ? 'The government holds it' : 'Held by ' + esc(p.short)));
+    /* S18b: AND THE PRICE IS PRINTED IN EVERY CHAIR NOW. The comment above
+       says "out of power there is no measure to price", which was true when
+       S17a wrote it and stopped being true the day S18a opened the floor: a
+       private member's bill is priced by the same `deptFactor`, a measured
+       two-fold swing on the player's own capital, and the card said nothing
+       about it. */
     var worthTag = inPower(S)
       ? 'Measures ' + pct + '% ' + (fac < 1 ? 'cheaper' : 'dearer')
-      : (ours ? 'Its bills come to you' : 'No call on it');
+      : (ours ? 'Its bills come to you, and cost you ' + pct + '% less'
+              : 'No call on it, and its bills cost you ' + pct + '% more');
     var posts = CABINET[k].map(function (r) {
       var filled = cabQuality(S, r[0]);
       return '<span class="tag ' + (filled ? 'up' : '') + '">' + esc(r[1].replace(/^(Secretary of |Minister of )/, '')) +
@@ -19351,8 +19396,22 @@ function v6GovStrip(r) {
        other four are acts of the federal government. */
     var fromParty = ['challenge', 'campaign', 'stump'].indexOf(action) >= 0;
     var have = fromParty ? partyPurse(S, playParty(S)) : S.treasury;
-    var ok = !disabled && S.capital >= cst(cost) && (!money || have >= money);
-    return '<button class="btn ghost" data-governor="' + r.id + '" data-governor-action="' + action + '"' + (ok ? '' : ' disabled') + '>' + label + ' <span class="c">' + cst(cost) + (money ? ', ' + fmc(money) : '') + '</span></button>';
+    /* S18b: keyed to the table the handler reads. The one governor button
+       that did consult standing consulted the wrong predicate -- `override`
+       was passed `!inPower(S)` while V17_GOV_NEED.override is 'leading', so a
+       junior partner was shown eight enabled Override buttons that refuse. */
+    var mode = (typeof modeWhy === 'function') ? modeWhy(S, V17_GOV_NEED[action] || 'gov') : null;
+    var ok = !mode && !disabled && S.capital >= cst(cost) && (!money || have >= money);
+    /* S18b: AND A SHUT CONTROL SAYS WHY. Six of these went out disabled with
+       nothing on them at all, which is the same dead end as an enabled button
+       that refuses, read from the other side: the player cannot press it and
+       cannot be told what would change that. */
+    var why = mode || (disabled ? 'Not available on this governor at present.'
+      : (S.capital < cst(cost) ? 'Not enough political capital.'
+        : ((money && have < money) ? (fromParty ? 'The ' + PARTY[playParty(S)].short + ' cannot meet it out of its own funds.'
+          : 'The resources are not available.') : '')));
+    return '<button class="btn ghost" data-governor="' + r.id + '" data-governor-action="' + action + '"' + (ok ? '' : ' disabled') +
+      (ok ? '' : ' title="' + esc(why) + '"') + '>' + label + ' <span class="c">' + cst(cost) + (money ? ', ' + fmc(money) : '') + '</span></button>';
   }
   /* Was a forward search for a turn matching the old modular test, giving up
      after eight — so for the four regions that could never match, the printed
@@ -23437,8 +23496,11 @@ viewFederation = function () {
     end += '</button>'.length;
     var btns = Object.keys(V9_REGION_ACTS).map(function (k) {
       var spec = V9_REGION_ACTS[k], key = r.id + ':' + k, last = S.regionCooldown[key], wait = last === undefined ? 0 : Math.max(0, 2 - (S.turn - last));
-      var ok = !wait && S.capital >= cst(spec.cost) && (!spec.money || S.treasury >= spec.money);
-      return '<button class="btn ghost" data-region="' + r.id + '" data-region-action="' + k + '"' + (ok ? '' : ' disabled') + ' title="' + esc(wait ? 'Available next session' : spec.title) + '">' + esc(spec.label) + ' <span class="c">' + cst(spec.cost) + (spec.money ? ', ' + fmc(spec.money) : '') + '</span></button>';
+      /* S18b: the third emitter, asking the same table as the other two */
+      var mode = (typeof modeWhy === 'function') ? modeWhy(S, V17_REGION_NEED[k] || 'gov') : null;
+      var pays = (V17_REGION_NEED[k] === 'any') ? partyPurse(S, playParty(S)) : S.treasury;
+      var ok = !mode && !wait && S.capital >= cst(spec.cost) && (!spec.money || pays >= spec.money);
+      return '<button class="btn ghost" data-region="' + r.id + '" data-region-action="' + k + '"' + (ok ? '' : ' disabled') + ' title="' + esc(mode || (wait ? 'Available next session' : spec.title)) + '">' + esc(spec.label) + ' <span class="c">' + cst(spec.cost) + (spec.money ? ', ' + fmc(spec.money) : '') + '</span></button>';
     }).join('');
     html = html.slice(0, end) + btns + html.slice(end);
   });
@@ -23622,7 +23684,8 @@ function v9Dossier(id) {
      player, they were never emitted -- the sheet the game offers as its
      considered view of a statute simply had no door on it. Same predicate
      as the card and the handler. */
-  var v18DossierShut = (typeof v18FloorShut === 'function') ? v18FloorShut(S) : null;
+  var v18DossierShut = (typeof v18DraftWhy === 'function') ? v18DraftWhy(S, id, 1) : null;
+  var v18DossierShutDn = (typeof v18DraftWhy === 'function') ? v18DraftWhy(S, id, -1) : null;
   var nowM = polMoodAt(p, lv), nextM = lv < p.max ? polMoodDelta(p, lv, lv + 1) : {};
   var blocs = BLOCS.map(function (b) {
     var m = nowM[b.id] || 0, nx = nextM[b.id] || 0;
@@ -23663,8 +23726,12 @@ function v9Dossier(id) {
     '<div class="subhead">Paired measures</div>' + syn +
     (hist ? '<div class="subhead">History</div><div class="tscroll"><table><thead><tr><th>Year</th><th>Bill</th><th>Sponsor</th><th>Result</th></tr></thead><tbody>' + hist + '</tbody></table></div>' : '') +
     '<div class="btnrow">' +
-    (lv < p.max && !v18DossierShut && policyOpen(S, p) && !S.changed[id] && !live ? '<button class="btn" data-v9dossier-draft="' + id + '" data-dir="1">Draft ' + (lv ? 'extension' : 'bill') + ' <span class="c">' + policyCost(id, 1) + '</span></button>' : '') +
-    (lv > 0 && !v18DossierShut && !S.changed[id] && !live ? '<button class="btn ghost" data-v9dossier-draft="' + id + '" data-dir="-1">Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + policyCost(id, -1) + '</span></button>' : '') +
+    /* S18b: DRAWN AND DISABLED, NOT WITHHELD. The deepest reading surface
+       the game has used to emit no button at all when it could not be
+       used, so the sheet that explains a statute could not explain why
+       you may not lay it. */
+    (lv < p.max ? '<button class="btn" data-v9dossier-draft="' + id + '" data-dir="1"' + (v18DossierShut ? ' disabled title="' + esc(v18DossierShut) + '"' : '') + '>Draft ' + (lv ? 'extension' : 'bill') + ' <span class="c">' + policyCost(id, 1) + '</span></button>' : '') +
+    (lv > 0 ? '<button class="btn ghost" data-v9dossier-draft="' + id + '" data-dir="-1"' + (v18DossierShutDn ? ' disabled title="' + esc(v18DossierShutDn) + '"' : '') + '>Draft ' + (lv === 1 ? 'repeal' : 'reduction') + ' <span class="c">' + policyCost(id, -1) + '</span></button>' : '') +
     '<button class="btn ghost" data-close>Close</button></div>';
   showSheet(html, function (sh) {
     sh.querySelectorAll('[data-v9dossier-draft]').forEach(function (b) {
@@ -30510,7 +30577,11 @@ regionAction = function (id, action) {
      second rule of their own. They were `inPower`; they are the head of
      government's, like every other federal programme in a state. */
   var whyX = modeWhy(S, V17_REGION_NEED[action] || 'leading'); if (whyX) { flash(whyX); return; }
-  if (!pv5Spend(spec.cost, spec.money, spec.label + ' in ' + r.name)) return;
+  /* S18b: and `assemblySeat` pays out of the party's own money, because it is
+     the party's own act -- the comment above was written about five federal
+     programmes and applied to a sixth that is candidates and agents. */
+  if (!pv5Spend(spec.cost, spec.money, spec.label + ' in ' + r.name,
+      V17_REGION_NEED[action] === 'any' ? myPurse() : null)) return;
   S.regionCooldown[key] = S.turn;
   var me = playParty(S);
   if (action === 'corridor') {
@@ -30548,7 +30619,15 @@ regionAction = function (id, action) {
     q.attention = (q.attention || 0) + 1;
     S.machine[me] = clamp((S.machine[me] || 0) + .02, -.8, 1);
   }
-  logIt(S, 'The federal government opened a ' + spec.label.toLowerCase() + ' in ' + r.name + '.');
+  /* S18b: FIVE OF THESE SIX ARE THE GOVERNMENT'S AND ONE IS THE PARTY'S, and
+     one line said "the federal government" for all of them -- and said it a
+     second time for the three arms above that had already logged their own
+     sentence. */
+  if (action === 'assemblySeat') {
+    logIt(S, 'The ' + PARTY[me].short + ' began organising in ' + r.name + ': candidates, agents and a presence between ballots.');
+  } else if (['charterTalks', 'equalise', 'reTrade'].indexOf(action) < 0) {
+    logIt(S, 'The federal government opened a ' + spec.label.toLowerCase() + ' in ' + r.name + '.');
+  }
   render();
 };
 
@@ -37535,6 +37614,46 @@ function v18FloorShut(st) {
     return 'Private members\' time is short: your party already has a bill before the House.';
   }
   return null;
+}
+
+/* ==========================================================
+   S18b — THE CONTROLS TELL THE TRUTH
+   ==========================================================
+   An audit of the whole S17 program against the owner's brief found the same
+   defect in five places, and S18a had just committed it again: A RULE ENFORCED
+   ON ONE SURFACE AND NOT ON ITS SIBLINGS. The handler refuses and the button
+   is drawn live, or the card is right and the sheet one click later is wrong.
+   Measured on a fresh default board in the ruling chair: 37 statutes carry an
+   unmet `needs:` and render an ENABLED, PRICED, FORECAST Draft button, and
+   neither the card nor the dossier ever says the word "Requires" -- because
+   `policyWhy` has answered `needs` since S12 and the card asks it only when
+   `policyOpen` is false, and `policyOpen` never asks about `needs`. On session
+   one of the Hung Assembly start, 493 of 505 draft buttons render enabled
+   while `v17Barred` refuses every one of them.
+
+   `v18DraftWhy` is the whole answer to "why can I not draft this", in the same
+   order `changePolicy` asked it, returning the sentence the player should see.
+   The handler, the card's two buttons and the dossier's two all read it, and
+   the buttons carry it in their title. Capital stays out of it: the button
+   prints its own price. */
+function v18DraftWhy(st, id, dir) {
+  st = st || S;
+  var p = POL[id]; if (!p) return null;
+  var lv = st.pol[id] || 0, next = lv + dir;
+  if (next < 0 || next > p.max) return null;
+  if (p.needs && next > 0 && !st.pol[p.needs]) {
+    return 'Requires ' + (POL[p.needs] ? POL[p.needs].name : p.needs) + '.';
+  }
+  if (st.changed[id]) return 'That measure has already been before Parliament this session.';
+  /* the dialog's own refusal, asked where the button is drawn so the card
+     does not offer a road into a sheet that closes on arrival */
+  if (typeof activeBillFor === 'function' && activeBillFor(st, id)) {
+    return 'A bill on that measure is already before Parliament.';
+  }
+  if (!policyOpen(st, p)) return policyWhy(st, p) || 'That measure has no place under this constitution.';
+  var floor = (typeof v18FloorShut === 'function') ? v18FloorShut(st) : null;
+  if (floor) return floor;
+  return (typeof v17Barred === 'function') ? v17Barred(st, 'policy') : null;
 }
 
 /* ---------- boot ---------- */

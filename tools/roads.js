@@ -7809,8 +7809,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.dossier = { open: !!document.querySelector('#modal [data-v9dossier-draft]') };
     try { hideSheet(); } catch (e) {}
     sponsorBill(S, dossierId, 1, 'player', 'clean', true);
-    v9Dossier(openStatute()[0].id);
-    R.dossier.capped = !document.querySelector('#modal [data-v9dossier-draft]');
+    /* a DIFFERENT statute, or the refusal would be "a bill on that measure is
+       already before Parliament" rather than the private members' cap */
+    v9Dossier(openStatute().filter(function (x) { return x.id !== dossierId; })[0].id);
+    /* S18b: DRAWN AND DISABLED, NOT WITHHELD. It used to emit nothing, so the
+       sheet that explains a statute could not explain why you may not lay it. */
+    var db = document.querySelector('#modal [data-v9dossier-draft]');
+    R.dossier.capped = !!db && !!db.disabled &&
+      /already has a bill before the House/.test(db.getAttribute('title') || '');
     try { hideSheet(); } catch (e) {}
     seat('fp'); UI.tab = 'policy'; render();
     R.rec = { opp: !!document.querySelector('#view details.rec') };
@@ -7909,8 +7915,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `sponsor from the bench costs the purse ${floor.oppMoney.purse} and the exchequer ${floor.oppMoney.treasury}, ` +
     `where the same click in government costs the exchequer ${floor.govMoney.treasury} and the purse ` +
     `${floor.govMoney.purse} · THE OTHER TWO DOORS ON THE SAME PAGE went the same way: the dossier's draft ` +
-    `buttons were never emitted from the bench rather than disabled (${floor.dossier.open} now, and shut on the ` +
-    `cap at ${floor.dossier.capped}), and "Worth drafting now" -- a reading of the statute book against your own ` +
+    `buttons were never emitted from the bench rather than disabled (${floor.dossier.open} now, and drawn shut with ` +
+    `the reason on them when the cap bites at ${floor.dossier.capped}), and "Worth drafting now" -- a reading of the ` +
+    `statute book against your own ` +
     `platform, which is no government instrument -- was hidden wholesale from the chair that most needs it ` +
     `(${floor.rec.opp} from opposition, ${floor.rec.gov} in government) · A FLOOR VERB REFUSED COSTS NOTHING: ` +
     `\`v17FloorCore\` returns a refusal string and neither call site read it, so support, oppose and press on a ` +
@@ -7927,6 +7934,163 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `is off the card (${!floor.kill.onCard}), refused at the handler (${floor.kill.refused}) and the bill is ` +
     `still on the paper (${floor.kill.stillOnPaper}); the same majority in government keeps it ` +
     `(${floor.kill.govOnCard})`);
+
+  /* ================================================================
+     S18b — NO CONTROL LIES, IN ANY CHAIR
+     ================================================================
+     THE ASSERTION THIS REPO DID NOT HAVE, and the reason five separate
+     slices shipped the same defect. Every gate in this harness CALLS A
+     FUNCTION, and a player PRESSES A BUTTON. So S17b could grade fourteen
+     region handlers by chair and never touch the three emitters; S18a could
+     withhold urgent procedure at the card and leave it free at the sheet;
+     S12 could teach `policyWhy` to say "Requires X." and leave 37 buttons
+     lit that no card could explain.
+     This walks every page in every chair, presses every enabled control that
+     spends nothing it cannot get back, and asks the only question that
+     catches the whole family: DID PRESSING IT DO ANYTHING? An enabled
+     control that only flashes a refusal is a lie, and a disabled control
+     with no title is a dead end. */
+  const honest = await page.evaluate(() => {
+    const R = { chairs: {} };
+    /* the surfaces where a refusal is a REFUSAL rather than a cost or a
+       cooldown: these are the ones a chair gate reaches */
+    const SEL = '[data-pol],[data-region-action],[data-governor-action],[data-art],[data-draft]';
+    function seat(chair) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.rngState = 8181; S.capital = 900; S.treasury = 9000;
+      if (chair === 'opposition') { S.ruling = 'fp'; S.coalition = ['fp', 'sd']; }
+      if (chair === 'junior')     { S.ruling = 'fp'; S.coalition = ['fp', 'lp']; }
+      if (chair === 'leading')    { S.ruling = 'lp'; S.coalition = ['lp']; }
+      if (S.purse) S.purse[playParty(S)] = 400;
+    }
+    ['opposition', 'junior', 'leading'].forEach(function (chair) {
+      seat(chair);
+      const out = { standing: standing(S), enabled: 0, dead: [], muteShut: [] };
+      TABS.map(function (t) { return t.id; }).forEach(function (tab) {
+        UI.tab = tab; render();
+        const all = Array.prototype.slice.call(document.querySelectorAll('#view ' + SEL));
+        all.forEach(function (el, i) {
+          const label = ((el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 24)) || el.getAttribute('data-pol') || '?';
+          if (el.disabled) {
+            /* shut is fine; shut with nothing on it is a dead end */
+            if (!(el.getAttribute('title') || '').trim()) out.muteShut.push(tab + '/' + label);
+            return;
+          }
+          out.enabled++;
+          /* press it on a FRESH board every time, so one click cannot pay for
+             the next and a cooldown cannot masquerade as a refusal */
+          const before = JSON.stringify([S.pol, S.bills.length, S.regions, S.capital,
+            S.treasury, v11Con(S).pending.length, S.regionCooldown]);
+          const said = [];
+          const fb = flash; flash = function (m) { said.push(m); };
+          let threw = null;
+          try { el.click(); } catch (e) { threw = String(e && e.message || e); } finally { flash = fb; }
+          try { hideSheet(); } catch (e) {}
+          const sheetOpened = document.getElementById('modal') && !document.getElementById('modal').hidden;
+          const after = JSON.stringify([S.pol, S.bills.length, S.regions, S.capital,
+            S.treasury, v11Con(S).pending.length, S.regionCooldown]);
+          /* an enabled control that moved nothing, opened nothing and spoke a
+             refusal is the shape this assertion exists to catch */
+          if (before === after && !sheetOpened && said.length && !threw) {
+            out.dead.push(tab + '/' + label + ' -> "' + said[0].slice(0, 40) + '"');
+          }
+          /* re-seat only when the click actually moved something: a fresh
+             board per control costs a newGame and a render each, and the
+             overwhelming majority of presses change nothing */
+          if (before !== after || sheetOpened) { seat(chair); }
+          UI.tab = tab; render();
+        });
+      });
+      R.chairs[chair] = out;
+    });
+    /* AND THE CONTENT, NOT ONLY THE CONSISTENCY. The check above asks whether
+       the button and the handler agree, and one predicate serving both makes
+       them agree even when both are wrong. These ask what the answers must
+       actually BE, so a poison that unwires the rule reddens here even though
+       the card and the handler still say the same thing as each other. */
+    seat('leading');
+    R.needs = { total: 0, lit: 0, told: 0 };
+    UI.tab = 'policy'; render();
+    POLICIES.forEach(function (p) {
+      if (!p.needs || (S.pol[p.needs] || 0) > 0 || !policyOpen(S, p)) return;
+      R.needs.total++;
+      var el = document.querySelector('#view [data-pol="' + p.id + '"][data-dir="1"]');
+      if (!el) return;
+      if (!el.disabled) R.needs.lit++;
+      if (/Requires /.test(el.getAttribute('title') || '')) R.needs.told++;
+    });
+    /* the owner's own screen: session one of the Hung Assembly start */
+    S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
+    S.rngState = 8181; S.capital = 400;
+    UI.tab = 'policy'; render();
+    var care = (typeof v17Barred === 'function') ? v17Barred(S, 'policy') : null;
+    var drafts = Array.prototype.slice.call(document.querySelectorAll('#view [data-pol]'));
+    R.caretaker = { barred: !!care, buttons: drafts.length,
+      lit: drafts.filter(function (x) { return !x.disabled; }).length,
+      told: drafts.filter(function (x) { return /caretaker/i.test(x.getAttribute('title') || ''); }).length };
+    /* and the tag on the same page speaks from the player's chair */
+    R.deptTag = { mine: 0, theirs: 0, wrong: 0 };
+    POLICIES.forEach(function (p) {
+      if (!p.dept) return;
+      var mine = officeMine(S, p.dept), gov = holdsDept(S, p.dept);
+      if (mine) R.deptTag.mine++; else R.deptTag.theirs++;
+      if (gov && !mine) R.deptTag.wrong++;
+    });
+    var lit = document.querySelector('#view [data-pol][data-dir="1"]:not([disabled])');
+    R.deptTagSample = null;
+    var anyDept = POLICIES.filter(function (p) { return p.dept && holdsDept(S, p.dept) && !officeMine(S, p.dept); })[0];
+    if (anyDept) {
+      var card = document.querySelector('#view [data-pol="' + anyDept.id + '"]');
+      var art = card && card.closest ? card.closest('.card') : null;
+      R.deptTagSample = art ? /\(opposed\)/.test(art.textContent) : null;
+    }
+    /* and the drafting sheet obeys the rule the card announces */
+    seat('opposition');
+    UI.tab = 'policy'; render();
+    var up = document.querySelector('#view [data-pol][data-dir="1"]:not([disabled])');
+    R.sheet = { opened: false, urgent: null, clean: '' };
+    if (up) {
+      up.click();
+      R.sheet.opened = !document.getElementById('modal').hidden;
+      var urg = document.querySelector('#modal [data-draft="urgent"]');
+      R.sheet.urgent = !!urg;
+      R.sheet.clean = (document.querySelector('#modal [data-draft="clean"]') || { textContent:'' }).textContent.slice(0, 40);
+      try { hideSheet(); } catch (e) {}
+    }
+    return R;
+  });
+  const seats3 = ['opposition', 'junior', 'leading'];
+  const deadTotal = seats3.reduce((n, c) => n + honest.chairs[c].dead.length, 0);
+  const muteTotal = seats3.reduce((n, c) => n + honest.chairs[c].muteShut.length, 0);
+  const firstDead = seats3.map(c => honest.chairs[c].dead[0]).filter(Boolean)[0] || '';
+  const firstMute = seats3.map(c => honest.chairs[c].muteShut[0]).filter(Boolean)[0] || '';
+  const contentOk = honest.needs.total > 0 && honest.needs.lit === 0 && honest.needs.told === honest.needs.total &&
+    honest.caretaker.barred && honest.caretaker.lit === 0 && honest.caretaker.told === honest.caretaker.buttons &&
+    honest.deptTag.wrong > 0 && honest.deptTagSample === true &&
+    honest.sheet.opened && honest.sheet.urgent === false && /private member/.test(honest.sheet.clean);
+  say(deadTotal === 0 && muteTotal === 0 && contentOk, 'no control lies, in any chair',
+    `EVERY GATE IN THIS HARNESS CALLS A FUNCTION AND A PLAYER PRESSES A BUTTON, which is how five separate ` +
+    `slices shipped the same defect: S17b graded fourteen region handlers by chair and never touched the three ` +
+    `emitters (128 enabled-but-dead controls from the bench), S18a withheld urgent procedure at the card and ` +
+    `left it free at the drafting sheet one click earlier, and S12 taught \`policyWhy\` to say "Requires X." ` +
+    `while 37 statutes rendered lit, priced and forecast buttons no card could explain · this walks all fifteen ` +
+    `pages from all three chairs, presses every enabled statute, region, governor, article and drafting control ` +
+    `on a FRESH board each time, and asks the one question that catches the family: did pressing it do ` +
+    `anything · ${honest.chairs.opposition.enabled} live controls in opposition, ` +
+    `${honest.chairs.junior.enabled} as a junior partner, ${honest.chairs.leading.enabled} in government, and ` +
+    `${deadTotal} of them move nothing and only flash a refusal${firstDead ? ' (' + firstDead + ')' : ''} · and ` +
+    `${muteTotal} shut controls carry no reason at all${firstMute ? ' (' + firstMute + ')' : ''}, which is the ` +
+    `dead end this file bans in the other direction: a control the player cannot press and cannot be told why · AND ` +
+    `THE CONTENT, not only the consistency, because one predicate serving both the button and the handler makes ` +
+    `them agree even when both are wrong: of ${honest.needs.total} statutes whose prerequisite is unmet, ` +
+    `${honest.needs.lit} render lit and ${honest.needs.told} carry "Requires" in the title, where the card could ` +
+    `not reach that sentence at all since S12 · on session one of the Hung Assembly start -- the owner's own ` +
+    `screen -- the caretaker bar refuses every draft (${honest.caretaker.barred}) and ` +
+    `${honest.caretaker.lit} of ${honest.caretaker.buttons} buttons render lit, where 493 did · the department ` +
+    `tag on the same page asks the PLAYER'S question: ${honest.deptTag.wrong} statutes sit at an office the ` +
+    `government holds and the player does not, and the card marks one "(opposed)" ` +
+    `(${honest.deptTagSample}) where it used to mark it green · and the drafting sheet offers a private member ` +
+    `no urgent procedure (${honest.sheet.urgent}) and calls the bill what it is ("${honest.sheet.clean.trim()}")`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
