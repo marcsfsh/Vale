@@ -8899,6 +8899,47 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     try { v19Outcome(S, 'cup', fc); } finally { fc.run = fb; }
     R.sim.flagged = sawFlag && !V19_SIMULATING;
 
+    /* (g2) AND THE GOAL AND THE REHEARSAL STEER THE CHOICE. Three poisons
+       stayed GREEN on the first run and all three were this arm's fault: it
+       measured the machinery's internals rather than its effect. Zeroing the
+       goal term in `v19Score` changed nothing it read; switching simulation
+       off entirely changed nothing it read. `v19Outcome` discriminating when
+       CALLED is not the same claim as a party choosing differently because
+       of it.
+
+       So the choice itself is watched. For every real pick, the chosen card's
+       rank among the open set is taken by the component under test, and
+       normalised so 0 is the component's favourite and 1 its least. A
+       component that steers pulls the mean below the middle; one the chooser
+       ignores leaves it at .5, which is what a uniform draw over that set
+       gives. */
+    function steering(level) {
+      const base = v19Choose;
+      const goalRanks = [], simRanks = [];
+      v19Choose = function (st, pid, open, goal) {
+        const pick = base(st, pid, open, goal);
+        if (pick && open.length > 1 && !V19_SIMULATING) {
+          const k = goal ? v19GoalKind(goal.kind) : null;
+          if (k && k.worth) {
+            const by = open.slice().sort((a, b) =>
+              (k.worth[b.id] || .25) - (k.worth[a.id] || .25));
+            goalRanks.push(by.indexOf(pick) / (open.length - 1));
+          }
+          if (v19LevelOf(st).sim) {
+            const scored = open.map(c => ({ c:c, v:v19Outcome(st, pid, c) }))
+              .sort((a, b) => b.v - a.v).map(x => x.c);
+            simRanks.push(scored.indexOf(pick) / (open.length - 1));
+          }
+        }
+        return pick;
+      };
+      try { fresh(20260829, level); drive(60); } finally { v19Choose = base; }
+      const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+      return { goal:goalRanks.length ? +mean(goalRanks).toFixed(3) : null, goalN:goalRanks.length,
+        sim:simRanks.length ? +mean(simRanks).toFixed(3) : null, simN:simRanks.length };
+    }
+    R.steer = { purposeful:steering('purposeful'), shrewd:steering('shrewd') };
+
     /* (h) AND IT COUNTS THE FLOOR. A party that acts on a bill already going
        its way has worked out that no vote needs it and spent the money
        anyway. Driven eighty sessions at two levels on one seed: the level
@@ -8910,7 +8951,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       card.run = function (st, pid) {
         if (!V19_SIMULATING) {
           const f = v17AiFloorFor(st, pid);
-          if (f) { n++; if (f.againstMe) against++; }
+          /* RECOMPUTED, NOT READ. Trusting the `againstMe` the picker reports
+             is comparing a thing with something derived from it: a build that
+             hard-codes the flag true passed this arm while behaving no
+             differently, which is exactly the tautology this file's rules
+             name. The forecast and the party's own support are asked again
+             here, from the game's own functions. */
+          if (f && f.bill) {
+            n++;
+            let fc = null, sup = null;
+            try { fc = billForecast(st, f.bill); sup = partyBillSupport(st, pid, f.bill); } catch (e) {}
+            if (fc && sup !== null) {
+              const wants = sup >= 50, will = fc.lower >= v19Bar(st, f.bill);
+              if (wants !== will) against++;
+            }
+          }
         }
         return base.call(this, st, pid);
       };
@@ -8945,6 +9000,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     think.panel.column && think.panel.aims > 0 && think.panel.pct && think.panel.instinctSaysSo &&
     think.sim.distinct >= 7 && think.sim.spread > .05 && think.sim.distinctBest >= 2 &&
     think.sim.untouched && think.sim.flagged &&
+    think.steer.purposeful.goal !== null && think.steer.purposeful.goal < .42 &&
+    think.steer.shrewd.sim !== null && think.steer.shrewd.sim < .42 &&
+    think.steer.purposeful.goalN > 20 && think.steer.shrewd.simN > 20 &&
     think.floor.sharp.n > 0 && think.floor.sharp.against === think.floor.sharp.n &&
     think.floor.dumb.n > think.floor.sharp.n &&
     think.floor.dumb.against < think.floor.dumb.n;
@@ -8974,7 +9032,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `-- an earlier arm asked whether they disagreed about a card's SIGN and they rightly do not, because ` +
     `\`court\` raises whichever bloc the party courting it belongs to; and the rehearsal leaves the campaign exactly where it was ` +
     `(${think.sim.untouched}) with the flag up while it happens (${think.sim.flagged}), or an instrument that ` +
-    `wraps \`run\` counts every rehearsal as an initiative · AND IT COUNTS THE FLOOR: over eighty sessions on ` +
+    `wraps \`run\` counts every rehearsal as an initiative · AND BOTH OF THEM STEER THE CHOICE, which is a ` +
+    `different claim from either being computable: over sixty sessions the card a party actually picks sits at ` +
+    `rank ${think.steer.purposeful.goal} of its goal's own order across ${think.steer.purposeful.goalN} picks, ` +
+    `and at ${think.steer.shrewd.sim} of the rehearsal's order across ${think.steer.shrewd.simN}, where a ` +
+    `chooser ignoring them would sit at .5 · AND IT COUNTS THE FLOOR: over eighty sessions on ` +
     `one seed the level that does not think made ${think.floor.dumb.n} moves of which ` +
     `${think.floor.dumb.against} were on a bill going against it, and the level that does made ` +
     `${think.floor.sharp.n} of which ${think.floor.sharp.against} were -- a bill headed where a party wants it ` +
