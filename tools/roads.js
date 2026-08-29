@@ -8449,7 +8449,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      harness four elections in five) while the SPREAD must open. */
   const ai = await page.evaluate(() => {
     const R = {};
+    /* PINNING `rngState` AFTER `newGame` DOES NOT PIN THE REPUBLIC `newGame`
+       BUILT. `mintSeed` reads `Date.now()` deliberately -- the one thing that
+       must not be seeded is the choice of seed -- so every call built a
+       different board, with different leaders, purses and figures, and only
+       the dice FROM THAT POINT were fixed. This assertion counts initiatives,
+       which depend on the board, so it failed on one run in three of the SAME
+       build. `SEED_OVERRIDE` is the instrument: it pins the republic, and
+       `newGame` consumes it, so it is set before every call. */
     function fresh(seed, me) {
+      SEED_OVERRIDE = seed;
       S = enrichState(v6NewGame('normal', 'v6default', 'epic', me || 'lp'), false);
       S.rngState = seed;
       return S;
