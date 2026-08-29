@@ -8851,6 +8851,60 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.retire = { before:before, after:after ? after.kind + ':' + after.ref : null,
       changed:!!after && JSON.stringify(after) !== before };
 
+    /* (g) IT WORKS OUT WHAT AN OPTION WOULD DO. `v6Sandbox` and `v17Utility`
+       were in the file from S17 and wired to one decision; above `shrewd` a
+       party rehearses each card and scores what it would leave behind. Three
+       things asked separately, because the first version passed two of them
+       while being useless: the reading must DISCRIMINATE between cards, the
+       rehearsal must not touch the CAMPAIGN, and two parties of opposite
+       politics must not agree about everything. */
+    fresh(4242, 'shrewd');
+    drive(12);
+    S.purse = S.purse || {}; S.purse.cup = 900;
+    const vals = V16_AI_DECK.map(c => +v19Outcome(S, 'cup', c).toFixed(4));
+    R.sim = { distinct:new Set(vals).size, of:vals.length,
+      spread:+(Math.max.apply(null, vals) - Math.min.apply(null, vals)).toFixed(4) };
+    /* the left and the right must not read the same card the same way */
+    R.sim.disagree = V16_AI_DECK.filter(c =>
+      (v19Outcome(S, 'rsf', c) > 0) !== (v19Outcome(S, 'pnl', c) > 0)).length;
+    /* and thinking about a thing does not change the thing: `rand()` resolves
+       `RNG_ON || S`, so a rehearsal must spend the CLONE's dice */
+    const keep = { rng:S.rngState, cap:S.capital, pol:JSON.stringify(S.pol),
+      purse:JSON.stringify(S.purse), blocs:JSON.stringify(S.blocs),
+      machine:JSON.stringify(S.machine) };
+    V16_AI_DECK.forEach(c => { v19Outcome(S, 'cup', c); v19Outcome(S, 'fp', c); });
+    R.sim.untouched = S.rngState === keep.rng && S.capital === keep.cap &&
+      JSON.stringify(S.pol) === keep.pol && JSON.stringify(S.purse) === keep.purse &&
+      JSON.stringify(S.blocs) === keep.blocs && JSON.stringify(S.machine) === keep.machine;
+    /* and the flag is raised while it happens, or an instrument that wraps
+       `run` counts every rehearsal as an initiative -- measured, that made a
+       party look five times as busy at the levels that think */
+    let sawFlag = false;
+    const fc = V16_AI_DECK.filter(c => c.id === 'court')[0], fb = fc.run;
+    fc.run = function (st, pid) { if (V19_SIMULATING) sawFlag = true; return fb.call(this, st, pid); };
+    try { v19Outcome(S, 'cup', fc); } finally { fc.run = fb; }
+    R.sim.flagged = sawFlag && !V19_SIMULATING;
+
+    /* (h) AND IT COUNTS THE FLOOR. A party that acts on a bill already going
+       its way has worked out that no vote needs it and spent the money
+       anyway. Driven eighty sessions at two levels on one seed: the level
+       that does not think acts on whatever it likes least, the one that does
+       acts only against the arithmetic. */
+    function floorRun(lv) {
+      const card = V16_AI_DECK.filter(c => c.id === 'floor')[0], base = card.run;
+      let n = 0, against = 0;
+      card.run = function (st, pid) {
+        if (!V19_SIMULATING) {
+          const f = v17AiFloorFor(st, pid);
+          if (f) { n++; if (f.againstMe) against++; }
+        }
+        return base.call(this, st, pid);
+      };
+      try { fresh(20260829, lv); drive(80); } finally { card.run = base; }
+      return { n:n, against:against };
+    }
+    R.floor = { dumb:floorRun('purposeful'), sharp:floorRun('shrewd') };
+
     /* (f) AND THE PANEL SAYS IT. R2: the aim, how far along, and what the
        party did last with the aim it served. */
     fresh(20260829, 'shrewd'); drive(8);
@@ -8874,7 +8928,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     think.byLevel.shrewd.goals >= 4 &&
     think.hold.rate < .25 && think.hold.samples > 100 &&
     think.retire.changed &&
-    think.panel.column && think.panel.aims > 0 && think.panel.pct && think.panel.instinctSaysSo;
+    think.panel.column && think.panel.aims > 0 && think.panel.pct && think.panel.instinctSaysSo &&
+    think.sim.distinct >= 7 && think.sim.spread > .05 && think.sim.disagree > 0 &&
+    think.sim.untouched && think.sim.flagged &&
+    think.floor.sharp.n > 0 && think.floor.sharp.against === think.floor.sharp.n &&
+    think.floor.dumb.n > think.floor.sharp.n &&
+    think.floor.dumb.against < think.floor.dumb.n;
   say(thinkOk, 'a party is after something',
     `THE DECISION WAS A COIN FLIP: \`open[Math.floor(rand() * open.length)]\`, equal probability over whatever the ` +
     `posture and the purse left, with nothing in the model saying what a party was TRYING to do. There are ` +
@@ -8891,7 +8950,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${Math.round(think.hold.rate * 100)}% of ${think.hold.samples} party-sessions, and one that is REACHED is ` +
     `put down for another (${think.retire.after}) · and the panel states it (${think.panel.column}), with how far ` +
     `along (${think.panel.pct}), and says plainly when a party is acting on instinct ` +
-    `(${think.panel.instinctSaysSo})`);
+    `(${think.panel.instinctSaysSo}) · AND ABOVE SHREWD IT WORKS OUT WHAT AN OPTION WOULD DO, through the ` +
+    `sandbox and the objective function that were in the file from S17 and wired to one decision: the reading ` +
+    `separates ${think.sim.distinct} of ${think.sim.of} cards across a spread of ${think.sim.spread} where the ` +
+    `first version separated two, because it scored the country and not the party and nine of the ten cards ` +
+    `move nothing the country notices; the left and the right disagree about the sign of ` +
+    `${think.sim.disagree} of them; and the rehearsal leaves the campaign exactly where it was ` +
+    `(${think.sim.untouched}) with the flag up while it happens (${think.sim.flagged}), or an instrument that ` +
+    `wraps \`run\` counts every rehearsal as an initiative · AND IT COUNTS THE FLOOR: over eighty sessions on ` +
+    `one seed the level that does not think made ${think.floor.dumb.n} moves of which ` +
+    `${think.floor.dumb.against} were on a bill going against it, and the level that does made ` +
+    `${think.floor.sharp.n} of which ${think.floor.sharp.against} were -- a bill headed where a party wants it ` +
+    `needs nothing from that party, and the money goes on the other nine things instead`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
