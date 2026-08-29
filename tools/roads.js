@@ -6720,6 +6720,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        reproduced with the table installed. This arm lays rather than adopts. */
     R.pendingBlocks = [];
     R.bothCarried = [];
+    R.neitherCarried = [];
     V17_CONFLICTS.filter(function (p) {
       return p.a.kind === 'article' && p.b.kind === 'article';
     }).forEach(function (p) {
@@ -6740,13 +6741,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          counted does not enter the document */
       var con = v11Con(S);
       con.pending.push({ id:p.b.id, repeal:false, laid:S.turn, due:S.turn, route:rB, by:'lp' });
-      con.pending.forEach(function (x) { x.due = S.turn; });
-      for (var t = 0; t < 4 && v11Con(S).pending.length; t++) {
+      /* BOTH HAVE TO CARRY ON THE NUMBERS, or the pair is separated by a lost
+         vote and the arm proves nothing about the rule -- which is what the
+         `adoption` poison found: it stayed green because the second article
+         was failing its division, not the document. `v11ArtVerdict` reads
+         `p.campaign` at 4.5 a point, so a large one puts both over any
+         threshold and leaves the document as the only thing that can refuse. */
+      con.pending.forEach(function (x) { x.due = S.turn; x.campaign = 40; });
+      for (var t = 0; t < 5 && v11Con(S).pending.length; t++) {
         S.capital = 900; S.turn++; try { v11ConTick(S); } catch (e) {}
       }
-      if (v11Adopted(S, p.a.id) && v11Adopted(S, p.b.id)) {
-        R.bothCarried.push(p.a.id + ' + ' + p.b.id);
-      }
+      var gotA = v11Adopted(S, p.a.id), gotB = v11Adopted(S, p.b.id);
+      if (gotA && gotB) R.bothCarried.push(p.a.id + ' + ' + p.b.id);
+      /* and EXACTLY ONE of a pair that both carried on the numbers is in the
+         document: neither entering would mean the guard refusing the first as
+         well as the second, which is a different defect wearing the same
+         green light. */
+      if (!gotA && !gotB) R.neitherCarried.push(p.a.id + ' + ' + p.b.id);
     });
 
     /* (c) THE ABSURDITY THE OWNER NAMED. Forbidding secession and guaranteeing
@@ -6870,6 +6881,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   const truthOk =
     truth.unresolved.length === 0 && truth.pairs >= 11 && truth.oneWay.length === 0 &&
     truth.pendingBlocks.length === 0 && truth.bothCarried.length === 0 &&
+    truth.neitherCarried.length === 0 &&
     truth.secession.bar === 6 && truth.secession.both === 20 && truth.secession.refused &&
     truth.repeal.blocked && truth.repeal.legacyBoth && truth.repeal.repealOpen &&
     truth.act.conditionsMet && /entrenched/.test(truth.act.refused) &&
@@ -6891,7 +6903,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `renewed every 3 years" -- the owner's original complaint, reproduced with the table installed. A partner ` +
     `merely BEFORE THE COUNTRY now blocks (${truth.pendingBlocks.length} that do not), and a save that holds ` +
     `both from before this rule sees the second refused at the moment the document changes ` +
-    `(${truth.bothCarried.length} pairs still carry together) ` +
+    `(${truth.bothCarried.length} pairs still carry together, and ${truth.neitherCarried.length} where NEITHER ` +
+    `entered, which would mean the guard refusing the first as well as the second -- both are forced over the ` +
+    `threshold on the numbers, so the document is the only thing left that can refuse) ` +
     `mutual-exclusion primitive in three megabytes, and \`needs:\` only ever said what a card REQUIRED · ` +
     `FORBIDDING SECESSION AND GUARANTEEING IT both stood, and because the modifiers ADD the pair reached ` +
     `${truth.secession.both} of separatism against ${truth.secession.bar} for the bar alone; the second is ` +
