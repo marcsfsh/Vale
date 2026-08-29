@@ -6711,6 +6711,44 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       });
     });
 
+    /* S18d: AND THE ROAD ROUND THE SIDE. Everything above ADOPTS the first
+       article straight into `c.arts` and then asks about the second, which is
+       true and irrelevant: the constitution page invites three at a time, so
+       a player LAYS both in one session and neither is adopted when the other
+       is laid. Driven by clicks alone the pair both carried and the page
+       printed the three-year term -- the owner's original complaint,
+       reproduced with the table installed. This arm lays rather than adopts. */
+    R.pendingBlocks = [];
+    R.bothCarried = [];
+    V17_CONFLICTS.filter(function (p) {
+      return p.a.kind === 'article' && p.b.kind === 'article';
+    }).forEach(function (p) {
+      var A = V11_ART[p.a.id], B = V11_ART[p.b.id];
+      if (!A || !B) return;
+      var c = fresh('lp');
+      adopt(c, 'artPlebiscite'); adopt(c, 'artSuspensiveVeto');
+      S.capital = 900;
+      var rA = A.referendum ? 'plebiscite' : 'assembly';
+      var rB = B.referendum ? 'plebiscite' : 'assembly';
+      if (v11CanPropose(S, A, false, rA)) return;
+      v11ProposeArticle(p.a.id, false, rA);
+      if (!v11PendingOf(S, p.a.id)) return;
+      /* the partner must now be refused while the first is merely PENDING */
+      var w = v11CanPropose(S, B, false, rB);
+      if (!w) R.pendingBlocks.push(p.a.id + ' pending did not block ' + p.b.id);
+      /* and if a save from before this rule holds both, the second to be
+         counted does not enter the document */
+      var con = v11Con(S);
+      con.pending.push({ id:p.b.id, repeal:false, laid:S.turn, due:S.turn, route:rB, by:'lp' });
+      con.pending.forEach(function (x) { x.due = S.turn; });
+      for (var t = 0; t < 4 && v11Con(S).pending.length; t++) {
+        S.capital = 900; S.turn++; try { v11ConTick(S); } catch (e) {}
+      }
+      if (v11Adopted(S, p.a.id) && v11Adopted(S, p.b.id)) {
+        R.bothCarried.push(p.a.id + ' + ' + p.b.id);
+      }
+    });
+
     /* (c) THE ABSURDITY THE OWNER NAMED. Forbidding secession and guaranteeing
        it both stood, and because the modifiers ADD it produced MORE
        separatism than either one alone. */
@@ -6831,6 +6869,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   });
   const truthOk =
     truth.unresolved.length === 0 && truth.pairs >= 11 && truth.oneWay.length === 0 &&
+    truth.pendingBlocks.length === 0 && truth.bothCarried.length === 0 &&
     truth.secession.bar === 6 && truth.secession.both === 20 && truth.secession.refused &&
     truth.repeal.blocked && truth.repeal.legacyBoth && truth.repeal.repealOpen &&
     truth.act.conditionsMet && /entrenched/.test(truth.act.refused) &&
@@ -6845,6 +6884,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(truthOk, 'the document says one thing at a time',
     `${truth.pairs} DECLARED CONFLICTS, every one naming a real card (${truth.unresolved.length} unresolved) and ` +
     `every article pair refusing in BOTH directions (${truth.oneWay.length} one-way) -- there was no ` +
+    `· AND LAID RATHER THAN ADOPTED, which is the road the table did not close: everything above writes the ` +
+    `first article straight into the document and then asks about the second, and the constitution page ` +
+    `invites three AT A TIME, so a player lays both in one session and neither is adopted when the other is ` +
+    `laid. Driven by clicks alone the two term articles both carried and the page printed "the Assembly is ` +
+    `renewed every 3 years" -- the owner's original complaint, reproduced with the table installed. A partner ` +
+    `merely BEFORE THE COUNTRY now blocks (${truth.pendingBlocks.length} that do not), and a save that holds ` +
+    `both from before this rule sees the second refused at the moment the document changes ` +
+    `(${truth.bothCarried.length} pairs still carry together) ` +
     `mutual-exclusion primitive in three megabytes, and \`needs:\` only ever said what a card REQUIRED · ` +
     `FORBIDDING SECESSION AND GUARANTEEING IT both stood, and because the modifiers ADD the pair reached ` +
     `${truth.secession.both} of separatism against ${truth.secession.bar} for the bar alone; the second is ` +
