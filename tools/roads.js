@@ -8916,9 +8916,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     function steering(level) {
       const base = v19Choose;
       const goalRanks = [], simRanks = [];
+      /* CAPPED, because this arm nearly made the harness unusable. Ranking a
+         pick by the rehearsal's order means simulating every open card, and
+         each rehearsal deep-clones a 78KB state: unbounded over sixty sessions
+         at two levels that is several thousand clones a run, and a stack of
+         runs took the box to 14GB of 16 and a load of 40. Forty samples a
+         level is well past what the claim needs -- it asks for more than
+         twenty -- and costs a fortieth of the time. */
+      const CAP = 40;
       v19Choose = function (st, pid, open, goal) {
         const pick = base(st, pid, open, goal);
-        if (pick && open.length > 1 && !V19_SIMULATING) {
+        if (pick && open.length > 1 && !V19_SIMULATING && simRanks.length < CAP) {
           const k = goal ? v19GoalKind(goal.kind) : null;
           if (k && k.worth) {
             const by = open.slice().sort((a, b) =>
