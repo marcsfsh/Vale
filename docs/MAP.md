@@ -1264,6 +1264,94 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## A party knows who is in its way (S19b)
+
+S19a gave every party an aim and a way to weigh its own cards against it, and
+left each of them alone on the board. Nothing asked what the OTHERS were
+after, so six parties pursued six aims in parallel, and a party whose goal was
+being taken off it by a rival had no way to find out. Two channels carry the
+answer, and the second is the one a player watches: WHICH card a party plays,
+and WHOM it plays it at. `attack` picked its target from the grudge ledger
+alone and fell back to the government; `v16PactPartner` picked the nearest
+party by ideological distance. Neither asked what the other party wanted.
+
+- **A READ MUST NOT CREATE, and here that is not a nicety.** `v19Goal` ADOPTS
+  when a party has no aim, and adopting calls `rand()`. One party asking about
+  another through that door would seed the other party's goal and take numbers
+  off the stream outside the cadence, re-phasing every later draw in the
+  campaign -- S18c's lesson standing in a new doorway. `v19GoalSeen` returns
+  what is stored and writes nothing, and the assertion asks the question of
+  BOTH doors in one state, because "the accessor is safe" means nothing
+  without the contrast that the other one is not.
+- **THE ALLY HALF WAS WRITTEN, MEASURED AND DELETED.** The design had parties
+  finding each other as well as blocking each other: an alignment term in the
+  score, a `friend` weight on every card, and a pact that went to whoever
+  wanted the same thing rather than to whoever stood nearest. The only clause
+  that could produce a positive rivalry is two parties carrying the same
+  statute the same way, and over **ten seeds of sixty sessions, 25,200 party
+  pairs, it fired zero times** -- in either direction. It is reachable in
+  principle (lp/rsf and pnl/tvc share three policies each in their authored
+  `wants`) and unreachable in play, because `carry` targets the biggest GAP
+  and two parties almost never have one statute as their largest gap at the
+  same moment. On top of that only 23 of 1,800 party-sessions had two pact
+  candidates at all, with a median distance of .05 between the best two. So
+  `v19Rival` reports a foe and no friend, there is no `friend` weight, and
+  `v16PactPartner` is the shipped line unchanged.
+- **THE LAYER IS BOUGHT AT `shrewd`, AND THE MEASUREMENT IS WHY.** It first
+  read at `purposeful` too, at .6, and the note on the rung said so. Driven
+  over eight seeds of a hundred sessions the reading did nothing there and one
+  arm of it ran BACKWARDS: `attack` went on 12.5% of the boards where it was
+  open and a rival was present, against 21.5% where it was open and none was.
+  At `ruthless` the same two readings are 26.6% and 15.1%. The cause is
+  `sharp`, not `read` -- at a sharpness of 1.4 the draw over
+  `exp(sharp * score)` is flat enough that a term worth .23 moves almost
+  nothing, and at 5 the same term decides the pick. `purposeful` is left as
+  S19a shipped it, exactly, and the six-seed pacing A/B is byte-identical
+  because of it.
+- **The relation is asserted symmetric where it claims to be and asymmetric
+  where it claims that.** Three clauses key on `mine.ref === theirs.ref` and
+  are symmetric by construction (the contested bloc, the contested office, the
+  seat at one table). `oust` is asymmetric by nature and is read from the
+  TARGET's side only, because `oust` is itself adopted FROM the grudge ledger
+  the attack picker already consults -- a party's own hostility is in that
+  ledger, and what it could not see is somebody else's plan for it. Both
+  properties are in the assertion, because the first version of S17m's
+  conflict check passed on a table that only worked one way round.
+- **The constant is set from the distribution, not by eye, and the assertion
+  re-measures it rather than reading it off itself.** Grudges present at an
+  attack decision run p50 0, p90 14, p99 43.6, max 74.6 -- mostly nothing,
+  because most parties hold nothing against most parties. A live rivalry runs
+  .45 to .85, so `V19_RIVAL_PUSH` at 20 scores 9 to 17: above the ninetieth
+  percentile of the grievances it competes with and below the ninety-ninth.
+  An intention outweighs an ordinary grudge and loses to a real one. At 26 it
+  outweighed everything and the ledger S18e built stopped deciding anything.
+- **"The strongest rival" is a distinction this game does not produce**, and
+  the measurement is in the code so the next reader does not spend a slice on
+  it: of 3,600 party-sessions, 300 had one rival and 142 had two or more, and
+  the number with two of DIFFERENT magnitudes was nought. Every multi-rival
+  board is two parties trying to enter the same government, which is one
+  clause reading .45 twice. That is why the poison that reports the weakest
+  rival instead of the strongest comes back green, and it is an answer rather
+  than a missing arm.
+- Assertion `a party knows who is in its way`, eight arms, and **seventeen
+  poisons written from the diff rather than from the assertion, sixteen of
+  which redden it**. The one that stays green is the tie-break above.
+  **Three faults in the probe before any in the game**, which is this
+  program's running score: the panel arm read `a.why` as a snapshot once at
+  the end, where it is overwritten by every later initiative, so a signal
+  present on about a tenth of party-sessions came out at nought on a correct
+  build; the chooser arm's first statistic was the share of picks going to a
+  card with ANY weight, which saturates at 94% because eight of the ten cards
+  carry one; and its control was `instinct`, where `v19Goal` returns null, so
+  no party has an aim, no aim means no rivalry, and the control read n=0.
+- **And one arm was missing until the poison run said so.** Every other arm
+  calls a function -- scoring two cards by hand, running the attack card,
+  reading a record -- and none of them goes through `v19Choose`. Forcing an
+  empty board into the chooser left all eight green while every real pick in
+  the game lost the term. The arm that catches it reads the rate a card is
+  taken GIVEN IT WAS OPEN, which takes the posture and the purse out of the
+  reading, and it is the only clause that poison reddens.
+
 ## A party is after something (S19a)
 
 The owner, on being told S18e had shipped: *"So the AI is done? I really want

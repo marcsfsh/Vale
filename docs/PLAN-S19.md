@@ -176,22 +176,34 @@ v16AiTurn(st)                     the session loop, one pass per party
 
 ## Slices
 
-**S19b — What the others are doing (opponent modelling).** OPEN, next.
-A party reads what the other parties are after and lets it change what it
-does and whom it does it to. Two channels, because the second is where the
-player sees it:
-- WHICH card, through a threat/alignment term in `v19Score`;
-- WHOM the card targets. `attack` currently picks by grudge alone and falls
-  back to `st.ruling` (vale.html:33780); `pact` picks the nearest party by
-  `dist2` and excludes a grudge over 20 (`v16PactPartner`, vale.html:33898).
-  Neither reads what the other party is trying to do.
-Gated above `purposeful`, so the setting buys a fourth thing. `v19GoalSeen`
-is the reading accessor the third rule above demands. Symmetry is asserted
-both ways round, per the one-way-door rule.
+**S19b — A party knows who is in its way (opponent modelling).** SHIPPED.
+A party reads the standing aims of the others and answers the one in its way,
+in WHICH card it plays (`V19_RIVAL_WORTH` through a term in `v19Score`) and in
+WHOM it plays it at (the `attack` target picker, added to the grudge rather
+than replacing it). `v19GoalSeen` is the reading accessor the third rule above
+demands; `v19Rivalry` holds the four clauses; `v19Rival` summarises the board
+once a party-session. Bought at `shrewd` and above.
 
-**S19c — Bargaining between parties.** Depends on S19b: an offer without a
-model of the other side is a coin flip with more steps. `st.aiPacts` is the
-only standing agreement in the model and it is a single field with no terms.
+Three findings the measurement forced, recorded because they are the reusable
+part:
+- **The ally half does not exist in this game.** The only clause that can
+  produce a positive rivalry is two parties carrying the same statute the same
+  way, and it fired 0 times in 25,200 party pairs. The alignment term, the
+  `friend` weights and the pact reordering were all deleted. Any later slice
+  tempted to build cooperation between parties has to build the CHANNEL first;
+  the goals as they stand cannot collide constructively.
+- **A term needs `sharp` to bite, so a new competence rung is not free.** Read
+  at `purposeful` (sharp 1.4) the rival term moved nothing and one reading of
+  it ran backwards; at `ruthless` (sharp 5) it decides picks. A layer added to
+  `v19Score` belongs where the sharpness can carry it.
+- **Two rivals of different sizes never occur**, so any future term that ranks
+  rivals against each other is ranking a set of size one.
+
+**S19c — Bargaining between parties.** Depends on a CHANNEL that does not yet
+exist: see the first finding above. `st.aiPacts` is the only standing
+agreement in the model, a single field with no terms, and the goals as
+authored cannot align. Before writing an offer, build something two parties
+can both want.
 
 **S19d — Temperament.** Per-party character shaping the weights, held across
 a campaign. Cheapest of the four and orthogonal to the others; it is placed
