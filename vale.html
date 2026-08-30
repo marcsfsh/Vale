@@ -428,6 +428,17 @@ var DEPTS = {
   vchan: { name:'Vice Chancellor', brief:'Education, health, labour and social welfare' }
 };
 
+var V19_LEVELS = [
+  { id:'instinct', name:'By instinct', sharp:0, sim:0,
+    note:'They act from where they stand and what they can afford, and pick among their options at random. This is how the parties behaved before they could think.' },
+  { id:'purposeful', name:'Purposeful', sharp:1.4, sim:0,
+    note:'Each party carries an aim and leans toward it, while still doing the ordinary work of a party.' },
+  { id:'shrewd', name:'Shrewd', sharp:2.8, sim:1,
+    note:'Each party works out what its options would actually do to the country it wants, and takes the one that gets it there.' },
+  { id:'ruthless', name:'Ruthless', sharp:5, sim:1.9,
+    note:'They play to win. Every option is weighed by what it would leave behind, and a party will spend its last money on the session that decides its aim.' }
+];
+var V19_DEFAULT_LEVEL = 'purposeful';
 var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
@@ -8352,6 +8363,15 @@ function newGame(diff) {
   return rollFor(dice, function () {
     var st = {
       diff: d.key,
+      /* S19a, R1: the AI's own difficulty, independent of `diff` above and
+         riding the save like it. NULL rather than the default constant: this
+         literal is evaluated in an early chunk and `V19_DEFAULT_LEVEL` is
+         declared in a later one, so naming it here threw `is not defined` on
+         the boot state before any game existed. `v19LevelOf` is the single
+         place the default is resolved, which is where it belongs anyway --
+         a save written before this field, and one written with no choice
+         made, then answer the same way. */
+      aiLevel: (UI.setup && UI.setup.aiLevel) || null,
       // The campaign's dice. `seed` is what the player is shown and can write
       // down; `rngState` is the live position in that stream and moves every
       // roll. Both ride the save, so a resumed campaign resumes mid-stream.
@@ -19764,6 +19784,10 @@ var startScreen = function () {
   var scenarios = V6_SCENARIOS.map(function (x) { return '<button class="scenario-pick" data-setup-scenario="' + x.id + '" aria-pressed="' + (s.scenario === x.id) + '"><em>' + esc(x.tag) + '</em><b>' + esc(x.name) + '</b><small>' + esc(x.blurb) + '</small></button>'; }).join('');
   var lengths = Object.keys(V6_LENGTHS).map(function (k) { var L = V6_LENGTHS[k]; return '<button data-setup-length="' + k + '" aria-pressed="' + (s.length === k) + '"><b>' + esc(L.name) + '</b><small>' + esc(L.note) + '</small></button>'; }).join('');
   var diffs = V6_DIFF_ORDER.map(function (k) { var d = DIFFS[k]; return '<button data-setup-diff="' + k + '" aria-pressed="' + (s.diff === k) + '"><b>' + esc(d.name) + ': ' + esc(d.tag) + '</b><small>' + esc(d.blurb) + '</small></button>'; }).join('');
+  /* S19a, R1: the AI's own scale, chosen apart from the difficulty above.
+     The owner's ruling: "Add a separate AI difficulty setting. The main
+     difficulty is for non-AI mechanics." */
+  var aiLevels = V19_LEVELS.map(function (l) { return '<button data-setup-ai="' + l.id + '" aria-pressed="' + ((s.aiLevel || V19_DEFAULT_LEVEL) === l.id) + '"><b>' + esc(l.name) + '</b><small>' + esc(l.note) + '</small></button>'; }).join('');
   var html = '<div class="kicker">Republic of Vale, 2024</div><h2 id="sheetTitle">Take a Party and the Years That Follow</h2>' +
     (UI.saveReadError ? '<p class="note" data-save-warning="1" style="color:var(--bad)">A stored save could not be read (' + esc(UI.saveReadError) + '). It has been left untouched, and will be copied aside before this session writes anything' + (auto ? '; an older save is offered below.' : '.') + '</p>' : '') +
     (UI.seedMinted ? '<p class="note" data-seed-warning="1" style="color:var(--brass)">That save was written before campaigns carried a seed. It will load, and it is reproducible from here on, but its earlier turns cannot be replayed.</p>' : '') +
@@ -19781,9 +19805,13 @@ var startScreen = function () {
     '<p class="note setup-guide">The opening sets the board you inherit: who holds the seats, what is already in crisis, and how much room the government has before it has done anything at all.</p>' +
     '<div class="scenario-grid">' + scenarios + '</div>' +
     '<details class="setup-more"' + (s.more ? ' open' : '') + '><summary><b>3 · Length, difficulty and house rules</b>' +
-    '<small>' + esc((V6_LENGTHS[s.length] || V6_LENGTHS.epic).name + ' · ' + DIFFS[s.diff].name) + '</small></summary>' +
+    '<small>' + esc((V6_LENGTHS[s.length] || V6_LENGTHS.epic).name + ' · ' + DIFFS[s.diff].name + ' · ' +
+      ((V19_LEVELS.filter(function (l) { return l.id === (s.aiLevel || V19_DEFAULT_LEVEL); })[0] || V19_LEVELS[1]).name + ' parties')) + '</small></summary>' +
     '<div class="subhead">How long the period runs</div><div class="setup-row">' + lengths + '</div>' +
     '<div class="subhead">How hard</div><div class="setup-row">' + diffs + '</div>' +
+    '<div class="subhead">How the other parties play</div>' +
+    '<p class="note setup-guide">Set apart from the difficulty above, which governs the economy, the events and the descent. This one decides only how the six parties you are not think.</p>' +
+    '<div class="setup-row">' + aiLevels + '</div>' +
     /* The house-rules block from the later chunk lands here, on this slot. */
     '<div data-setup-advanced="1"></div></details>' +
     '<div class="setup-summary"><span>Leading the <b>' + esc(PARTY[s.party].name) + '</b></span><span>Opening: <b>' + esc(sc.name) + '</b></span><span>Until <b>' + (CFG.startYear + (V6_LENGTHS[s.length] || V6_LENGTHS.epic).years) + '</b></span><span><b>' + esc(DIFFS[s.diff].name) + '</b></span>' +
@@ -19798,6 +19826,7 @@ var startScreen = function () {
     node.querySelectorAll('[data-setup-scenario]').forEach(function (b) { b.addEventListener('click', function () { s.scenario = b.getAttribute('data-setup-scenario'); redraw(); }); });
     node.querySelectorAll('[data-setup-length]').forEach(function (b) { b.addEventListener('click', function () { s.length = b.getAttribute('data-setup-length'); redraw(); }); });
     node.querySelectorAll('[data-setup-diff]').forEach(function (b) { b.addEventListener('click', function () { s.diff = b.getAttribute('data-setup-diff'); redraw(); }); });
+    node.querySelectorAll('[data-setup-ai]').forEach(function (b) { b.addEventListener('click', function () { s.aiLevel = b.getAttribute('data-setup-ai'); redraw(); }); });
     // redraw() rebuilds the sheet on every setup choice, so an opened
     // disclosure has to be remembered or it snaps shut under the reader.
     var more = node.querySelector('.setup-more');
@@ -33878,6 +33907,452 @@ function v16PactPartner(st, pid) {
   });
   return best;
 }
+/* ============================================================
+   S19a — THE PARTIES THINK
+   ============================================================
+   The owner, on being told S18e had shipped: *"So the AI is done? I really
+   want the game's parties to have a seriously robust, very sophisticated ai
+   with lots of logic and capabilities."*
+
+   S18e fixed WHEN a party acts. It left the decision itself where it had
+   always been: `open[Math.floor(rand() * open.length)]` -- filter the deck by
+   posture, filter by what the purse reaches, then take one of what is left
+   with EQUAL PROBABILITY. There was no evaluation, no preference and no
+   comparison of what would help. And nothing in the model said what a party
+   was TRYING to do, so nothing carried from one session to the next: measured
+   from the bench, forty sessions produce 2.70 log lines a session about other
+   parties and not one of them has anything to do with the line before it.
+
+   Two things are added here and they are the whole slice.
+
+   A GOAL, drawn from what the party already is. `PARTY[pid].wants` has been
+   authored since v5 -- a map of statute to the rung that party would like it
+   at -- and `aff` says which blocs are its people. The goals below are built
+   out of those and out of the board; none of them invents a new notion of
+   what a party cares about, because a second notion of wanting would drift
+   from the first, and this file's history is a list of exactly that.
+
+   A CHOOSER that scores. Every open card is worth something toward the goal
+   and something in itself; the pick is a weighted draw over those scores. The
+   sharpness of the draw is the AI difficulty setting (R1), and at the bottom
+   level it is ZERO, which makes the weights equal and reproduces the coin
+   flip exactly -- so the setting has a floor that is the old behaviour and a
+   ceiling that is a party playing to win.
+
+   ONE DIE PER DECISION, as before: the draw is over weights, and changing the
+   weights never changes how many numbers come off the stream. */
+
+/* R1: THE AI'S OWN DIFFICULTY, INDEPENDENT OF `st.diff`. The owner's ruling:
+   "Add a separate AI difficulty setting. The main difficulty is for non-AI
+   mechanics." So nothing here reads `st.diff`, and the existing scale goes on
+   governing the economy, the events and the descent exactly as it did. */
+/* `V19_LEVELS` and `V19_DEFAULT_LEVEL` are declared beside `DIFFS` in the
+   opening chunk rather than here, because the start screen and `newGame` both
+   name them and both are evaluated long before this one: naming them here
+   threw `is not defined` on the boot state, before any game existed. The
+   table is difficulty data and sits with the other difficulty data. */
+function v19LevelOf(st) {
+  st = st || S;
+  var id = st && st.aiLevel;
+  var lv = V19_LEVELS.filter(function (l) { return l.id === id; })[0];
+  /* A save written before this setting existed has no field, and the default
+     is the middle rather than the old behaviour on purpose: `instinct` is
+     what the game did and is offered as a choice, not imposed on a campaign
+     whose owner never made one. */
+  return lv || V19_LEVELS.filter(function (l) { return l.id === V19_DEFAULT_LEVEL; })[0];
+}
+function v19Thinks(st) { return v19LevelOf(st).sharp > 0; }
+
+/* ---------- THE GOALS ----------
+   Each one names something the party is working toward, and each one reaches
+   a mechanism that already exists. A goal whose progress no card can move is
+   the decoration this file punishes hardest, so `worth` below is the list of
+   cards that serve it and `roads.js` asserts every goal has at least one. */
+var V19_GOALS = [
+  {
+    id:'carry',
+    /* the statute this party most wants moved, from its own authored `wants`
+       -- the same table `partyDemandPolicy` and `pv5TopWants` read, so a
+       party's aim and its demands are the same appetite rather than two */
+    fits:function (st, pid) { return 1.15; },
+    target:function (st, pid) {
+      var w = (PARTY[pid] || {}).wants || {}, best = null, bestGap = 0;
+      for (var id in w) {
+        if (!POL[id]) continue;
+        var lv = st.pol[id] || 0, tg = Math.min(w[id], POL[id].max);
+        var gap = Math.abs(tg - lv);
+        if (gap > bestGap) { bestGap = gap; best = { ref:id, want:tg, dir:tg > lv ? 1 : -1 }; }
+      }
+      return best;
+    },
+    done:function (st, pid, g) {
+      var lv = st.pol[g.ref] || 0;
+      return g.dir > 0 ? lv >= g.want : lv <= g.want;
+    },
+    dead:function (st, pid, g) { return !POL[g.ref] || !policyOpen(st, POL[g.ref]); },
+    progress:function (st, pid, g) {
+      var lv = st.pol[g.ref] || 0, from = g.from === undefined ? lv : g.from;
+      var span = Math.abs(g.want - from);
+      return span <= 0 ? 1 : clamp(Math.abs(lv - from) / span, 0, 1);
+    },
+    say:function (st, pid, g) {
+      return (g.dir > 0 ? 'Carrying ' : 'Repealing ') + (POL[g.ref] ? POL[g.ref].name : g.ref);
+    },
+    worth:{ demand:1, floor:.8, article:.2, campaign:.35, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2 }
+  },
+  {
+    id:'office',
+    /* a great office it does not hold. Reaches `st.exec` through the exec
+       contest, and the campaign and organise cards are what buy a party the
+       vote share the contest reads. */
+    fits:function (st, pid) {
+      var held = 0;
+      for (var o in st.exec) if (st.exec[o] === pid) held++;
+      return held >= 2 ? 0 : (v17Share(st, pid) > .10 ? 1 : .3);
+    },
+    target:function (st, pid) {
+      var free = [];
+      for (var o in DEPTS) if (st.exec[o] !== pid) free.push(o);
+      if (!free.length) return null;
+      return { ref:free[Math.floor(rand() * free.length)] };
+    },
+    done:function (st, pid, g) { return st.exec[g.ref] === pid; },
+    dead:function (st, pid, g) { return !DEPTS[g.ref]; },
+    progress:function (st, pid, g) { return clamp(v17Share(st, pid) * 2, 0, .95); },
+    say:function (st, pid, g) { return 'Taking the ' + (DEPTS[g.ref] ? DEPTS[g.ref].name : g.ref); },
+    worth:{ campaign:1, organise:.85, court:.7, platform:.5, attack:.45, article:.2, demand:.25, floor:.2, order:.3, pact:.6 }
+  },
+  {
+    id:'enter',
+    /* into the government, from outside it. The vote model is the road: seats
+       and organisation are what a formateur counts. */
+    fits:function (st, pid) {
+      return (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0) ? 0 : 1.1;
+    },
+    target:function (st, pid) { return { ref:st.ruling }; },
+    done:function (st, pid) { return (st.coalition || []).indexOf(pid) >= 0; },
+    dead:function (st, pid) { return false; },
+    progress:function (st, pid) { return clamp(v17Share(st, pid) * 2.4, 0, .95); },
+    say:function (st, pid) { return 'Getting into the government'; },
+    worth:{ organise:1, campaign:.9, court:.75, platform:.8, pact:.7, demand:.5, floor:.35, article:.2, attack:.15, order:.2 }
+  },
+  {
+    id:'oust',
+    /* a named party out of the government. The one goal that points at
+       somebody, and the grudge ledger is what picks the name. */
+    fits:function (st, pid) {
+      if (pid === st.ruling) return 0;
+      var worst = 0;
+      PARTIES.forEach(function (q) {
+        if (q.id === pid) return;
+        var g = v16Grudge(st, pid, q.id);
+        if (g > worst) worst = g;
+      });
+      return worst >= 25 ? 1.4 : 0;
+    },
+    target:function (st, pid) {
+      var t = null, worst = 0;
+      PARTIES.forEach(function (q) {
+        if (q.id === pid || st.banned[q.id]) return;
+        var g = v16Grudge(st, pid, q.id);
+        if (g > worst) { worst = g; t = q.id; }
+      });
+      return t ? { ref:t } : null;
+    },
+    done:function (st, pid, g) {
+      return g.ref !== st.ruling && (st.coalition || []).indexOf(g.ref) < 0;
+    },
+    dead:function (st, pid, g) {
+      return !PARTY[g.ref] || st.banned[g.ref] || v16Grudge(st, pid, g.ref) < 8;
+    },
+    progress:function (st, pid, g) { return clamp(1 - v17Share(st, g.ref) * 2.5, 0, .95); },
+    say:function (st, pid, g) {
+      return 'Bringing down the ' + (PARTY[g.ref] ? PARTY[g.ref].short : g.ref);
+    },
+    worth:{ attack:1, floor:.8, campaign:.7, pact:.65, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2 }
+  },
+  {
+    id:'ground',
+    /* the bloc this party is closest to and has least of. `st.blocs` is what
+       the ballot reads, and the court card is the only thing that moves it. */
+    fits:function (st, pid) { return .9; },
+    target:function (st, pid) {
+      var aff = (PARTY[pid] || {}).aff || {}, best = null, bestScore = -99;
+      BLOCS.forEach(function (b) {
+        var a = aff[b.id] || 0;
+        if (a <= .2) return;
+        var have = (st.blocs && st.blocs[b.id] !== undefined) ? st.blocs[b.id] : 50;
+        var score = a * (100 - have);
+        if (score > bestScore) { bestScore = score; best = { ref:b.id, want:Math.min(92, Math.round(have + 14)) }; }
+      });
+      return best;
+    },
+    done:function (st, pid, g) { return (st.blocs[g.ref] || 0) >= g.want; },
+    dead:function (st, pid, g) { return !BLOCS.filter(function (b) { return b.id === g.ref; })[0]; },
+    progress:function (st, pid, g) {
+      var from = g.from === undefined ? 0 : g.from, have = st.blocs[g.ref] || 0;
+      var span = Math.max(1, g.want - from);
+      return clamp((have - from) / span, 0, 1);
+    },
+    say:function (st, pid, g) {
+      var b = BLOCS.filter(function (x) { return x.id === g.ref; })[0];
+      return 'Winning over ' + (b ? b.name.toLowerCase() : g.ref);
+    },
+    worth:{ court:1, platform:.75, campaign:.6, organise:.5, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2 }
+  },
+  {
+    id:'build',
+    /* the organisation. The largest seat lever in the file per S15h, and the
+       goal a small party takes when nothing else is within reach. */
+    fits:function (st, pid) { return (st.machine[pid] || 0) < .45 ? 1 : .35; },
+    target:function (st, pid) {
+      return { ref:'machine', want:Math.min(.92, (st.machine[pid] || 0) + .22) };
+    },
+    done:function (st, pid, g) { return (st.machine[pid] || 0) >= g.want; },
+    dead:function (st, pid) { return false; },
+    progress:function (st, pid, g) {
+      var from = g.from === undefined ? 0 : g.from, have = st.machine[pid] || 0;
+      var span = Math.max(.01, g.want - from);
+      return clamp((have - from) / span, 0, 1);
+    },
+    say:function (st, pid) { return 'Building the party organisation'; },
+    worth:{ organise:1, campaign:.5, court:.45, platform:.3, demand:.25, floor:.2, article:.15, attack:.2, order:.2, pact:.3 }
+  },
+  {
+    id:'charter',
+    /* a constitutional article. Reaches `v17ArticleCore` through the article
+       card, which S17k opened to engines. */
+    fits:function (st, pid) { return v17Share(st, pid) >= .12 ? .8 : 0; },
+    target:function (st, pid) {
+      if (typeof v17AiArticleFor !== 'function') return null;
+      var a = null;
+      try { a = v17AiArticleFor(st, pid); } catch (e) { a = null; }
+      return a && a.id ? { ref:a.id } : null;
+    },
+    done:function (st, pid, g) {
+      return typeof v11Adopted === 'function' && v11Adopted(st, g.ref);
+    },
+    dead:function (st, pid, g) { return !V11_ART[g.ref]; },
+    progress:function (st, pid, g) {
+      return (typeof v11PendingOf === 'function' && v11PendingOf(st, g.ref)) ? .6 : .1;
+    },
+    say:function (st, pid, g) {
+      return 'Carrying the ' + (V11_ART[g.ref] ? V11_ART[g.ref].name.replace(/^Article of the /, 'Article of the ') : g.ref);
+    },
+    worth:{ article:1, floor:.5, campaign:.4, organise:.4, court:.35, demand:.3, platform:.3, attack:.2, order:.25, pact:.3 }
+  }
+];
+function v19GoalKind(id) {
+  return V19_GOALS.filter(function (g) { return g.id === id; })[0] || null;
+}
+/* WHAT A PARTY IS AFTER. Chosen once and kept until it is reached, becomes
+   impossible, or goes stale -- a party that changes its mind every session
+   has no aim, which is the state this slice found. */
+var V19_GOAL_STALE = 14;
+function v19Goal(st, pid) {
+  if (!v19Thinks(st)) return null;
+  var a = v16Ai(st)[pid];
+  if (!a) return null;
+  var g = a.goal;
+  if (g) {
+    var k = v19GoalKind(g.kind);
+    if (!k) { a.goal = null; g = null; }
+    else {
+      var over = false;
+      try { over = k.done(st, pid, g) || k.dead(st, pid, g); } catch (e) { over = true; }
+      if (over || st.turn - (g.since || 0) > V19_GOAL_STALE) { a.goal = null; g = null; }
+    }
+  }
+  if (!g) g = v19AdoptGoal(st, pid);
+  return g;
+}
+function v19AdoptGoal(st, pid) {
+  var a = v16Ai(st)[pid];
+  if (!a) return null;
+  var pool = [], tot = 0;
+  V19_GOALS.forEach(function (k) {
+    var w = 0;
+    try { w = k.fits(st, pid) || 0; } catch (e) { w = 0; }
+    if (w <= 0) return;
+    var t = null;
+    try { t = k.target(st, pid); } catch (e) { t = null; }
+    if (!t) return;
+    /* a goal already reached is not an aim */
+    var g = { kind:k.id, ref:t.ref, want:t.want, dir:t.dir, since:st.turn };
+    var already = false;
+    try { already = k.done(st, pid, g); } catch (e) { already = true; }
+    if (already) return;
+    pool.push({ k:k, g:g, w:w });
+    tot += w;
+  });
+  if (!pool.length || tot <= 0) { a.goal = null; return null; }
+  var roll = rand() * tot, pick = pool[pool.length - 1];
+  for (var i = 0; i < pool.length; i++) { roll -= pool[i].w; if (roll <= 0) { pick = pool[i]; break; } }
+  /* where it started, so progress is measured from the party's own baseline
+     rather than from nought -- a goal adopted at 60 of a bloc is not 60 per
+     cent done the moment it is taken */
+  var from = null;
+  if (pick.g.kind === 'carry') from = st.pol[pick.g.ref] || 0;
+  else if (pick.g.kind === 'ground') from = st.blocs[pick.g.ref] || 0;
+  else if (pick.g.kind === 'build') from = st.machine[pid] || 0;
+  if (from !== null) pick.g.from = from;
+  a.goal = pick.g;
+  return pick.g;
+}
+/* R2: WHAT IT IS AFTER, IN ITS OWN WORDS. */
+function v19GoalSay(st, pid) {
+  var g = v16Ai(st)[pid] && v16Ai(st)[pid].goal;
+  if (!g) return null;
+  var k = v19GoalKind(g.kind);
+  if (!k) return null;
+  try { return k.say(st, pid, g); } catch (e) { return null; }
+}
+function v19GoalProgress(st, pid) {
+  var g = v16Ai(st)[pid] && v16Ai(st)[pid].goal;
+  if (!g) return null;
+  var k = v19GoalKind(g.kind);
+  if (!k) return null;
+  try { return clamp(k.progress(st, pid, g), 0, 1); } catch (e) { return null; }
+}
+
+/* ---------- THE CHOOSER ----------
+   What a card is worth to this party this session. Three terms: what it does
+   for the goal, what it is worth in itself where the party stands, and what
+   the money says. The scale is deliberately about 0..2 so the sharpness below
+   has something to bite on. */
+/* ---------- DELIBERATION ----------
+   THE MACHINERY FOR THIS WAS ALREADY IN THE FILE AND WAS USED ONCE.
+   `v6Sandbox` clones the state and stubs the nine globals that would render or
+   save, and `v17Utility` scores a state from a NAMED party's values -- its own
+   blocs weighted by its own affinities, liberties weighted by where it sits on
+   the authority axis, poverty weighted by where it sits on the economic one.
+   Together they are a working "what would happen, and would I like it". They
+   were wired to exactly one thing: the ruling party's crisis-card choice at
+   `v17AiDecide`. Every other decision in the game was a table or a draw.
+
+   `v19Try` is `v6Sandbox` taking a STATE rather than reading the global, so a
+   probe driving a detached board deliberates the same way the game does --
+   a simulator that only works on `S` would make the harness measure something
+   the player never runs. Setting `S` to the clone matters twice over: the
+   cards read the global, and `rand()` resolves `RNG_ON || S`, so a simulated
+   action spends the CLONE's dice and leaves the campaign's stream exactly
+   where it was. Thinking about a thing must not change the thing.
+
+   Measured at 0.97ms a card on a 78KB state, so the five candidates a party
+   weighs cost about five milliseconds against a session that costs eight. */
+/* Raised while a card is being rehearsed rather than played. The game reads it
+   so a simulated action writes no letter to anybody's inbox, and the harness
+   reads it because an instrument that wraps `run` would otherwise count every
+   rehearsal as an initiative -- measured, that made a party look five times as
+   busy at the levels that think. */
+var V19_SIMULATING = false;
+function v19Try(st, fn) {
+  var clone;
+  try { clone = JSON.parse(JSON.stringify(st)); } catch (e) { return null; }
+  if (clone.v11) { delete clone.v11.hist; delete clone.v11.histT; }
+  var real = S, rr = render, ss = showSheet, hs = hideSheet, tt = toast, ff = flash;
+  var rnd0 = Math.random, sv = saveAutosave, cu = captureUndo, seed = 48271;
+  S = clone;
+  var wasSim = V19_SIMULATING; V19_SIMULATING = true;
+  render = function () {}; showSheet = function () {}; hideSheet = function () {};
+  toast = function () {}; flash = function () {};
+  Math.random = function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+  saveAutosave = function () {}; captureUndo = function () {};
+  try { fn(clone); } catch (e) { }
+  finally {
+    S = real; render = rr; showSheet = ss; hideSheet = hs; toast = tt; flash = ff;
+    Math.random = rnd0; saveAutosave = sv; captureUndo = cu;
+    V19_SIMULATING = wasSim;
+  }
+  return clone;
+}
+/* What this card would leave behind, in this party's own terms. The answer is
+   a DIFFERENCE rather than a level, because a level would say the same thing
+   about every card on a good board and about every card on a bad one. */
+/* WHAT A PARTY IS SCORED ON. `v17Utility` answers "is this the country I
+   want", which is the right question for a crisis card and only half of one
+   for a party's own initiative: it reads the national indicators and the bloc
+   moods and NOT ONE of the things a party does for itself. Measured, nine of
+   the ten cards in the deck moved it by exactly nought -- `organise` writes
+   `st.machine`, `campaign` writes `st.funding`, `platform` writes `st.push`,
+   `pact` writes `st.aiPacts`, and the objective function reads none of them,
+   so simulating them was a rehearsal that always came back the same. Only
+   `court` scored, because blocs are the one thing both sides touch.
+
+   So the party's own standing is added to the country's condition, and
+   `v17Utility` is left exactly as it was -- `v17AiDecide` has read it since
+   S17 and a crisis choice is a different question from an initiative. */
+function v19Standing(st, pid) {
+  var u = 0;
+  try { u = v17Utility(st, pid); } catch (e) { u = 0; }
+  /* the weights sit beside `v17Utility`'s own, which sum indicators in the
+     tens: a party trading its whole organisation for a point of the economy
+     would be as wrong as one that never looked up from itself */
+  u += (typeof v17Share === 'function' ? v17Share(st, pid) : 0) * 60;
+  u += ((st.machine || {})[pid] || 0) * 25;
+  u += Math.min(20, ((st.purse || {})[pid] || 0) / 100) * 1.2;
+  if (pid === st.ruling) u += 18;
+  else if ((st.coalition || []).indexOf(pid) >= 0) u += 9;
+  for (var o in (st.exec || {})) if (st.exec[o] === pid) u += 9;
+  return u;
+}
+function v19Outcome(st, pid, card) {
+  if (typeof v17Utility !== 'function' || typeof card.run !== 'function') return 0;
+  var before, after, out;
+  try { before = v19Standing(st, pid); } catch (e) { return 0; }
+  out = v19Try(st, function (clone) { card.run(clone, pid); });
+  if (!out) return 0;
+  try { after = v19Standing(out, pid); } catch (e) { return 0; }
+  var d = after - before;
+  if (!isFinite(d)) return 0;
+  /* `v17Utility` is a sum of indicator terms in the tens, so a single card
+     moves it by a few points at most. Squashed to about -1..1 so it sits
+     beside the goal term rather than swamping it -- a party that only ever
+     did the thing with the best immediate reading would have no aims at all,
+     which is the state this program started from wearing the other hat. */
+  return Math.max(-1, Math.min(1, d / 12));
+}
+function v19Score(st, pid, card, goal) {
+  var s = .5;
+  if (goal) {
+    var k = v19GoalKind(goal.kind);
+    var w = (k && k.worth && k.worth[card.id] !== undefined) ? k.worth[card.id] : .25;
+    s += w;
+  }
+  /* a card it has just played is worth less than one it has not, so a party
+     with an aim still varies what it does toward it */
+  var a = v16Ai(st)[pid];
+  var since = st.turn - (a && a.last && a.last[card.id] !== undefined ? a.last[card.id] : -99);
+  if (since < 8) s -= .18;
+  /* and money it cannot spare is a reason to do the cheap thing */
+  var cost = V16_AI_COST[card.id] || 0, purse = partyPurse(st, pid);
+  if (cost > 0 && purse < cost * 2.2) s -= .22;
+  /* AND WHAT IT WOULD ACTUALLY DO. Above `shrewd` the party stops taking the
+     table's word for what a card is worth and works out what the card would
+     leave behind, in its own terms. This is the difference between a party
+     that has preferences and a party that reasons about consequences, and it
+     is what the two upper rungs of the setting buy. */
+  var sim = v19LevelOf(st).sim || 0;
+  if (sim > 0) s += sim * v19Outcome(st, pid, card);
+  return s;
+}
+/* The pick. A weighted draw over `exp(sharp * score)`, which at sharp 0 gives
+   every open card the same weight and reproduces the uniform pick the game
+   shipped with -- that is what makes `instinct` the old behaviour exactly
+   rather than approximately. ONE die, whatever the level. */
+function v19Choose(st, pid, open, goal) {
+  if (!open.length) return null;
+  var sharp = v19LevelOf(st).sharp, wts = [], tot = 0;
+  for (var i = 0; i < open.length; i++) {
+    var w = sharp <= 0 ? 1 : Math.exp(sharp * v19Score(st, pid, open[i], goal));
+    if (!isFinite(w) || w <= 0) w = 1e-6;
+    wts.push(w); tot += w;
+  }
+  var roll = rand() * tot;
+  for (i = 0; i < open.length; i++) { roll -= wts[i]; if (roll <= 0) return open[i]; }
+  return open[open.length - 1];
+}
+
 /* S18e — WHEN A PARTY MOVES, AND WHY IT IS THAT SESSION.
 
    The comment above this line said "One initiative a session per party" and so
@@ -33973,11 +34448,25 @@ function v16AiTurn(st) {
       try { return c.can(st, p.id); } catch (e) { return false; }
     });
     if (!open.length) return;
-    var pick = open[Math.floor(rand() * open.length)];
+    /* S19a: THE DECISION WAS A COIN FLIP. `open[Math.floor(rand() * open.length)]`
+       took one of whatever remained with equal probability -- no evaluation of
+       what would help, no preference, no comparison. The goal is what the
+       party is working toward and `v19Choose` weighs each card against it,
+       with the sharpness of the weighing coming from the AI setting. At the
+       bottom level the sharpness is nought, every weight is equal, and this
+       is the same uniform draw it always was. One die either way. */
+    var goal = v19Goal(st, p.id);
+    var pick = v19Choose(st, p.id, open, goal);
+    if (!pick) return;
     var line = null;
     try { line = pick.run(st, p.id); } catch (e) { line = null; }
     if (line) {
       a.last[pick.id] = st.turn; a.acts++;
+      /* R2: WHY THIS, THIS SESSION. The panel says what the party did and what
+         it was for, so a reader can follow a party across a campaign instead
+         of reading a list of unrelated events. */
+      a.why = { card:pick.id, goal:goal ? goal.kind : null,
+        aim:goal ? v19GoalSay(st, p.id) : null, turn:st.turn, line:line };
       lines.push(line);
     }
   });
@@ -34518,12 +35007,34 @@ function v16AiPanel() {
          so the column that told the player who was about to move did not
          exist and the sentence that stood in for it was wrong by four times. */
       '<td class="num">' + Math.round(100 * v18TempoOdds(S, p.id)) + '%</td>' +
+      /* R2: WHAT IT IS AFTER, AND HOW FAR IT HAS GOT. The owner's ruling was
+         to state the aim and the reasoning, so the board reads like a
+         diplomacy screen rather than a list of things that happened. */
+      '<td>' + (function () {
+        var aim = v19GoalSay(S, p.id);
+        if (!aim) return '<span class="muted">Acting on instinct</span>';
+        var pr = v19GoalProgress(S, p.id);
+        return esc(aim) + (pr === null ? '' :
+          ' <span class="muted">' + Math.round(pr * 100) + '%</span>');
+      })() + '</td>' +
       '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') + '</td></tr>';
   }).join('');
+  /* and what each of them did last, with what it was for */
+  var whys = PARTIES.filter(function (p) { return p.id !== me && !S.banned[p.id]; })
+    .map(function (p) { return { p:p, w:(ai[p.id] || {}).why }; })
+    .filter(function (r) { return r.w && r.w.line; })
+    .sort(function (a, b) { return (b.w.turn || 0) - (a.w.turn || 0); })
+    .slice(0, 4)
+    .map(function (r) {
+      return '<li>' + esc(r.w.line) +
+        (r.w.aim ? ' <span class="muted">' + esc(r.w.aim.charAt(0).toLowerCase() + r.w.aim.slice(1)) + '</span>' : '') +
+        '</li>';
+    }).join('');
   return '<div class="panel"><h2>What the Others Are Doing</h2>' +
-    '<div class="tablewrap"><table><thead><tr><th>Party</th><th>This session</th><th class="num">Their money</th><th class="num">Initiatives &middot; spent</th><th class="num">Odds of moving</th><th>Toward you</th></tr></thead><tbody>' +
+    '<div class="tablewrap"><table><thead><tr><th>Party</th><th>This session</th><th class="num">Their money</th><th class="num">Initiatives &middot; spent</th><th class="num">Odds of moving</th><th>What they are after</th><th>Toward you</th></tr></thead><tbody>' +
     rows + '</tbody></table></div>' +
-    (S.aiLast && S.aiLast.length ? '<ul class="tight">' + S.aiLast.slice(0, 4).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '') +
+    (whys ? '<ul class="tight">' + whys + '</ul>'
+          : (S.aiLast && S.aiLast.length ? '<ul class="tight">' + S.aiLast.slice(0, 4).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '')) +
     '<p class="note">They take about ' + (PARTIES.length - 1) + ' initiatives between them every ' +
     V16_AI_CADENCE + ' sessions, paid for out of their own money, and what each one chooses comes from ' +
     'where it stands rather than from a table. Who moves in a given session is not shared out evenly: a ' +
@@ -36627,20 +37138,99 @@ function v17AiOrderFor(st, pid) {
   });
   return best;
 }
+/* S19a — COUNT THE FLOOR BEFORE YOU ACT.
+
+   This picked THE BILL FURTHEST FROM WHERE THE PARTY STANDS, which is a
+   preference and not a strategy: it spends the same money on a bill at 80 per
+   cent that is going to carry whatever anybody says, and on one at 20 that is
+   going to fail, as on the one bill in the chamber that is close enough for a
+   party of its size to decide. `billForecast` has been in the file since v1
+   and `BILL_BARS` says what each stage needs; nothing on the AI's side had
+   ever read either.
+
+   A party's move on a bill is worth something when three things are true at
+   once: the division is CLOSE, the party CARES which way it goes, and it has
+   the weight to move it. `v19Pivot` is that product, and the verb follows
+   from which side needs the help -- back what you want when it is failing,
+   block what you fear when it is carrying, and lean on the sponsors when it
+   is neither. That last case is why `pressure` survives: a bill you are
+   indifferent to is a bill whose sponsor owes you something. */
+/* What a floor move has to be worth before it is worth twelve of the party's
+   money. Set from the measured spread: a bill going the wrong way for a party
+   of ordinary size and ordinary feeling scores about .19, one going the right
+   way about .02. */
+var V19_FLOOR_BAR = .06;
+function v19Bar(st, bill) {
+  var b = (typeof BILL_BARS === 'object' && BILL_BARS) ? BILL_BARS[bill.stage] : undefined;
+  return b === undefined ? 50 : b;
+}
+function v19Pivot(st, pid, bill) {
+  var f, sup;
+  try { f = billForecast(st, bill); sup = partyBillSupport(st, pid, bill); }
+  catch (e) { return null; }
+  if (!f) return null;
+  var bar = v19Bar(st, bill);
+  /* WHAT THE MEASUREMENT SAID, against what I first wrote here. Driven over
+     eighty sessions, 63 of 67 live bills sat within one division's noise of
+     the bar -- median margin 5.6 points, ninth decile 11.2. A bill that is not
+     close does not stay on the floor long enough to be found there, so
+     "pick the close vote" is a distinction this game does not contain and the
+     closeness term multiplies by about one every time. It is kept only for
+     the case it does decide: a bill failing by forty points is not savable by
+     anybody, and a party that spends on it is not thinking either.
+
+     THE TERM THAT DOES THE WORK IS WHICH WAY THE BILL IS GOING. A bill headed
+     where the party wants it needs nothing from that party; the money is worth
+     spending only against the arithmetic. My first rule sent a disliked bill
+     that was ALREADY FAILING to `pressure`, and measured, that was 286 of 335
+     candidates -- a party paying to lean on sponsors whose bill was going down
+     without it. */
+  var margin = Math.abs(f.lower - bar);
+  var close = Math.max(0, 1 - margin / (2.6 * ((BILL_NOISE && BILL_NOISE[bill.stage]) || 13)));
+  var care = Math.abs(sup - 50) / 50;
+  var weight = (typeof v17Share === 'function' ? v17Share(st, pid) : .1);
+  var wantPass = sup >= 50, willPass = f.lower >= bar;
+  var againstMe = wantPass !== willPass;
+  /* and where the party is indifferent, leaning on the sponsor is still worth
+     something: a bill you do not care about is a sponsor who owes you one */
+  var verb = againstMe ? (wantPass ? 'support' : 'oppose') : 'pressure';
+  return { bill:bill, verb:verb,
+    pivot:(againstMe ? 1 : .12) * close * care * (.4 + weight),
+    againstMe:againstMe, forecast:Math.round(f.lower), bar:bar, support:Math.round(sup) };
+}
 function v17AiFloorFor(st, pid) {
   var live = (st.bills || []).filter(function (b) {
     return !v17FloorWhy(st, pid, b, 'oppose');
   });
   if (!live.length) return null;
-  /* the bill furthest from where this party stands, and whether it likes it */
-  var pick = null, worst = 0;
+  /* Below `shrewd` a party still goes at whatever it likes least, because a
+     party that does not think does not count. */
+  if (!v19LevelOf(st).sim) {
+    var pick = null, worst = 0;
+    live.forEach(function (b) {
+      var p = POL[b.policy]; if (!p) return;
+      var d = dist2(polPos(p), ppos(st, pid)) * (b.dir > 0 ? 1 : -1);
+      if (!pick || Math.abs(d) > Math.abs(worst)) { worst = d; pick = b; }
+    });
+    if (!pick) return null;
+    return { bill:pick, verb:worst > .45 ? 'oppose' : (worst < -.15 ? 'support' : 'pressure') };
+  }
+  var best = null;
   live.forEach(function (b) {
-    var p = POL[b.policy]; if (!p) return;
-    var d = dist2(polPos(p), ppos(st, pid)) * (b.dir > 0 ? 1 : -1);
-    if (!pick || Math.abs(d) > Math.abs(worst)) { worst = d; pick = b; }
+    if (!POL[b.policy]) return;
+    var v = v19Pivot(st, pid, b);
+    if (v && (!best || v.pivot > best.pivot)) best = v;
   });
-  if (!pick) return null;
-  return { bill:pick, verb:worst > .45 ? 'oppose' : (worst < -.15 ? 'support' : 'pressure') };
+  /* AND IF NOTHING ON THE FLOOR NEEDS THIS PARTY, IT DOES SOMETHING ELSE.
+     Measured before this line: a thinking party made 13 of 17 floor moves on
+     bills already going its way -- it had correctly worked out that no vote
+     needed it and then spent twelve of its money saying so anyway, because
+     the card was open and something had to be picked. Returning nothing
+     closes the card for the session, `can` goes false, and the party spends
+     the session on one of the other nine things it could be doing. The bar is
+     set below what a bill going the wrong way scores and above what one going
+     the right way does, which is the gap the two multipliers open. */
+  return (best && best.pivot >= V19_FLOOR_BAR) ? best : null;
 }
 
 /* ============================================================
