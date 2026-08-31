@@ -1264,6 +1264,77 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The parties have characters (S19e)
+
+`v16Posture`'s own comment says it: *"Circumstance, not temperament."* Every
+party reads the same board the same way, and measured over eight seeds of a
+hundred sessions, that is how they behaved. **Four of the six shared a
+favourite card** (`court`), four shared a dominant posture (`hold`), and they
+acted between 181 and 221 times and spent between 5,216 and 6,996. A player
+could tell them apart by what they BELIEVE, because `wants` and `aff` have
+been authored since v5, and by nothing at all that they DID.
+
+- **The character is authored beside the beliefs, in the same table, and drawn
+  from the blurb each party already carries.** The RSF was an armed movement
+  until 1931 and leans combative; the FP has been standing since 1799 and is
+  "pragmatic on everything else", so it deals and it waits. Three leanings over
+  the deck and one patience. Every card belongs to exactly one leaning and
+  `roads.js` fails if one arrives without an axis, or if an axis names a card
+  the deck has not -- the guard a hand-kept list cannot have, and the same one
+  `V19_RIVAL_WORTH` carries.
+- **THE FAVOURITE CARD IS THE WRONG INSTRUMENT AND WAS TRIED FIRST.** Swept
+  over five weights, the number of distinct favourites among six parties went
+  from two to three and stopped, at every weight from .3 to 1.6. `court` sits
+  high in most goal `worth` tables and is open in nearly every posture, so a
+  leaning worth at most .36 cannot take the argmax off it, and reading the
+  argmax says the mechanism failed when it had not. What a leaning does is
+  shift the SHARE: isolated as an in-process A/B, **all six parties raise the
+  proportion of what they do that falls on their own axis**, by a mean of
+  .063 -- the RSF's combative share from .098 to .151, the FP's dealing from
+  .157 to .272, the TVC's organising from .538 to .655.
+- **AND THE PATIENCE REACHES THE CLOCK, which is the sharpest reading in the
+  slice.** How long a party carries an aim whose progress never moved -- the
+  quantity S19d's idle bar decides -- tracks its authored patience at a
+  correlation of **.979**, against **-.18** on the same run with the patience
+  flattened to one. The RSF and the PNL put a dead aim down after 12.6 and
+  13.2 sessions; the FP and the CUP carry it 21.9 and 20.2.
+- **It shapes HOW a party pursues its aim and does not override the aim.** The
+  leaning's ceiling in `v19Score` is .36 against the goal table's 1.0, and the
+  assertion reads both ceilings rather than trusting the sentence.
+- **Gated on `v19Thinks`, so `instinct` is the shipped game exactly**, which is
+  what R1 asks of everything added to that function. The page says what kind
+  of party it is only where the model reads it: printing "deals rather than
+  fights" while the game hands every party the same uniform draw would be a
+  card that lies, and the assertion checks the sentence is present at `shrewd`
+  and absent at `instinct`.
+- **The prose is DERIVED from the numbers rather than authored beside them.**
+  A temperament the owner retunes says the new thing without anybody
+  remembering to edit a sentence, which is S17r's stale-list defect in the one
+  place it would be least visible.
+- Assertion `the parties have characters`, seven arms, **eleven poisons from
+  the diff**.
+- **The pacing arc does not move, and asking properly corrected the two slices
+  before it.** Six seeds, three lengths: crises per ten sessions
+  0.93 / 0.88 / 0.82 → 0.80 / 0.85 / 0.81, elections exactly unchanged at
+  0.40 / 0.20 / 0.10, all 36 runs reaching their end year — every delta inside
+  one build's own seed-to-seed spread. The figures S19c and S19d published
+  were the first three rows of a per-seed table, which is one seed; corrected
+  across six, no slice in this program has moved the arc, and `pacing.js` now
+  prints the mean and the spread so the next reader cannot make the same
+  reading. The corrections stand marked in place in `docs/STATE.md`.
+
+**AND TWO EARLIER ARMS WERE RESHAPED, both for the same reason, both about
+what a claim should be made OF.** S19a's simulator arm asked whether four
+parties of different politics have different FAVOURITES by the rehearsal's
+order; that depends on the board twelve driven sessions in, and S19e changed
+what those twelve sessions contain without touching `v19Outcome` at all. It
+compares the whole ORDERING now, pair by pair, which is what its own comment
+always said the question was. And S19b's chooser arm asserted an absolute
+lift, which every later slice dilutes by adding another term to the same
+softmax -- S19e took it from .044 to .036 with the rivalry term untouched. It
+asserts the SHAPE now: the term acts on boards that have a rival and not on
+boards that do not, at better than three to one.
+
 ## A party votes its own manifesto (S19d)
 
 S19c gave the engines a bill and named what it did not fix: 747 were laid and
@@ -1427,13 +1498,21 @@ countdown to a silent reset.
   game answers yes to for a reason older than this slice; a sample of 39
   against a floor of 40, fixed by widening the sample rather than lowering the
   floor; and the two S19b arms above.
-- **THE PACING ARC MOVES AND IT IS THE OWNER'S TO RULE.** Six seeds, three
-  lengths, against the build S19b shipped: crises per ten sessions go 1.0 /
-  1.0 / 0.9 to 0.8 / 0.7 / 0.7 for short, standard and epic. Elections per ten
-  are unchanged at 0.4 / 0.2 / 0.1, records at the close are 20/23/23% against
-  18/25/23%, and all eighteen runs reach their end year on both sides. An
-  eleventh card and a seventh adoptable goal change what the republic spends
-  its sessions on; `docs/AGREEMENT.md` says the balance is not mine to settle.
+- **THE PACING ARC DOES NOT MOVE — and the sentence that used to stand here,
+  saying it did, was one seed.** Six seeds, three lengths, against the build
+  S19b shipped: crises per ten sessions go 0.83 / 0.88 / 0.82 to
+  0.90 / 0.92 / 0.81, elections unchanged at 0.40 / 0.20 / 0.10, records at the
+  close 17.4/23.5/23.1% to 17.8/22.0/23.9%, all eighteen runs reaching their
+  end year on both sides. Every delta is inside one build's own seed-to-seed
+  spread. The figure published at the time — *1.0 / 1.0 / 0.9 to 0.8 / 0.7 /
+  0.7*, read as a fall the owner had to rule on — was the first three rows of a
+  table that prints one row per (length, seed) and no mean: the three lengths
+  of seed `5EED1234`. S19e found it, corrected S19c and S19d together, and
+  taught `tools/pacing.js` to print the six-seed mean with the spread beside
+  it. **A tool that makes the wrong number the easiest one to read will have
+  it quoted**, however plainly the rule is written down elsewhere — S16a's
+  *a pacing figure from one seed cannot tell a balance change from a reshuffle*
+  was on the page for three slices while all three ignored it.
 
 ## A party knows who is in its way (S19b)
 

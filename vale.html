@@ -645,6 +645,58 @@ var BILL_STAGES = ['committee','assembly','senate','assent'];
    reaches 42: a manifesto colours a vote the way a line does, and neither of
    them decides one on its own. Swept over eight seeds -- the figure and what
    each value does to the two bars is in `docs/MAP.md`. */
+/* ---------- TEMPERAMENT (S19e) ----------
+   `v16Posture`'s own comment says it: "Circumstance, not temperament." Every
+   party reads the same board the same way, and measured over eight seeds of a
+   hundred sessions that is exactly how they behave -- FOUR OF THE SIX SHARE A
+   FAVOURITE CARD (`court`), four share a dominant posture (`hold`), the six
+   act between 181 and 221 times and spend between 5,216 and 6,996. A player
+   can tell them apart by what they BELIEVE, because `wants` and `aff` are
+   authored, and not by anything they DO.
+
+   So the character is authored beside the beliefs, in the same table, drawn
+   from the blurb each party already carries: the RSF was an armed movement
+   until 1931 and the FP has been pragmatic since 1799. Three leanings over
+   the deck and one patience, and every card in the deck belongs to exactly
+   one leaning -- `roads.js` fails if one arrives without an axis, which is
+   the guard a hand-kept list cannot have.
+
+   It is gated on `v19Thinks` like every other competence term, so `instinct`
+   is the shipped game exactly, which is what R1 asks of anything added here. */
+var V19_TEMPER_AXIS = {
+  attack:'combative', article:'combative', bill:'combative',
+  organise:'organiser', campaign:'organiser', court:'organiser', platform:'organiser',
+  pact:'dealer', demand:'dealer', order:'dealer', floor:'dealer'
+};
+var V19_TEMPER = .6;
+/* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
+   numbers rather than written twice, so a temperament the owner retunes says
+   the new thing without anybody remembering to edit a sentence -- which is
+   S17r's stale-list defect in the one place it would be least visible. */
+var V19_TEMPER_SAY = {
+  combative:['picks its fights and takes them', 'goes at whoever is in the way'],
+  organiser:['builds before it fights', 'works the country rather than the chamber'],
+  dealer:['deals rather than fights', 'would rather arrange it than win it']
+};
+function v19TemperSay(pid) {
+  var t = v19Temper(pid);
+  var ax = ['combative', 'organiser', 'dealer'].sort(function (a, b) { return t[b] - t[a]; });
+  var lead = V19_TEMPER_SAY[ax[0]];
+  if (!lead) return null;
+  /* the second half is the patience, and only when it is worth saying: a
+     party sitting near 1 has nothing to report about how long it waits */
+  var pt = t.patient || 1;
+  var wait = pt >= 1.3 ? ', and waits' : (pt <= .8 ? ', and does not wait' : '');
+  /* which of the two phrasings depends on how far ahead the leading axis is,
+     so a party with a strong lean reads more strongly than one that is merely
+     tilted */
+  var edge = t[ax[0]] - t[ax[1]];
+  return lead[edge >= .2 ? 1 : 0] + wait;
+}
+function v19Temper(pid) {
+  var t = (PARTY[pid] || {}).temper;
+  return t || { combative:.33, organiser:.34, dealer:.33, patient:1 };
+}
 var V19_MANIFESTO = 15;
 var BILL_BARS  = { committee:43, assembly:50, council:50, senate:50, decree:50 };
 var BILL_NOISE = { committee:14, assembly:13, council:13, senate:13, decree:13 };
@@ -658,37 +710,44 @@ var PARTIES = [
     auth:-0.3,
     blurb:'Far left populist socialists. Armed movement until 1931, in the legislature ever since.',
     aff:{ labour:.9, youth:.75, prof:.15, seniors:.1, smallbiz:-.3, faith:-.4, veterans:-.5, tech:-1 },
-    wants:{ wealthTax:4, unionRights:4, universalHealthcare:4, minimumWage:4, techAntitrust:4, defenceBudget:0 } },
+    wants:{ wealthTax:4, unionRights:4, universalHealthcare:4, minimumWage:4, techAntitrust:4, defenceBudget:0 },
+    temper:{ combative:.60, organiser:.30, dealer:.10, patient:.7 } },
   { id:'lp', name:'Labor Party', short:'LP', color:'#FF0000', order:1,
     auth:-0.12,
     blurb:'The party of the unions since 1870. Workers rights, the welfare state, public services.',
     aff:{ labour:1, youth:.5, seniors:.45, prof:.3, faith:.15, smallbiz:-.15, tech:-.7, veterans:-.1 },
-    wants:{ minimumWage:3, unionRights:3, universalHealthcare:4, socialSecurity:4, jobTraining:3, tradeAgreements:0 } },
+    wants:{ minimumWage:3, unionRights:3, universalHealthcare:4, socialSecurity:4, jobTraining:3, tradeAgreements:0 },
+    temper:{ combative:.20, organiser:.60, dealer:.20, patient:1.4 } },
   { id:'sd', name:'Social Democrats', short:'SD', color:'#FFA097', order:2,
     auth:-0.38,
     blurb:'Centre left. Progressive policy on a free market footing, strongest among salaried graduates.',
     aff:{ prof:1, youth:.55, labour:.4, tech:.3, seniors:.2, smallbiz:-.1, faith:-.3, veterans:-.15 },
-    wants:{ renewables:4, publicSchools:4, universalHealthcare:3, campaignFinanceLimits:4, carbonTax:3, privacyLaw:4 } },
+    wants:{ renewables:4, publicSchools:4, universalHealthcare:3, campaignFinanceLimits:4, carbonTax:3, privacyLaw:4 },
+    temper:{ combative:.10, organiser:.40, dealer:.50, patient:1.2 } },
   { id:'fp', name:'Federal Party', short:'FP', color:'#FFFB00', order:3,
     auth:-0.62,
     blurb:'Founded 1799 and still standing. Secular, constitutionalist, pragmatic on everything else.',
     aff:{ prof:.6, smallbiz:.5, tech:.45, seniors:.3, labour:.15, faith:.1, veterans:.2, youth:.15 },
-    wants:{ balancedBudgetRule:4, lobbyingBan:4, tradeAgreements:3, researchFunding:3, federalGrants:3 } },
+    wants:{ balancedBudgetRule:4, lobbyingBan:4, tradeAgreements:3, researchFunding:3, federalGrants:3 },
+    temper:{ combative:.10, organiser:.30, dealer:.60, patient:1.5 } },
   { id:'cup', name:'Conservative Union Party', short:'CUP', color:'#03F2FF', order:4,
     auth:0.12,
     blurb:'Founded 1829 by the propertied classes. Deregulation, tax cuts, private sector growth.',
     aff:{ tech:.7, smallbiz:.75, seniors:.5, veterans:.5, prof:.25, faith:.35, labour:-.5, youth:-.3 },
-    wants:{ corporateTax:0, incomeTax:1, oilAndGas:4, tradeAgreements:4, unionRights:0, balancedBudgetRule:4 } },
+    wants:{ corporateTax:0, incomeTax:1, oilAndGas:4, tradeAgreements:4, unionRights:0, balancedBudgetRule:4 },
+    temper:{ combative:.20, organiser:.40, dealer:.40, patient:1.3 } },
   { id:'tvc', name:'Traditional Values Coalition', short:'TVC', color:'#00ABEF', order:5,
     auth:0.48,
     blurb:'Founded 1973. Social conservatism, religious liberty and a balanced budget.',
     aff:{ faith:1, smallbiz:.6, veterans:.65, seniors:.55, tech:.1, prof:-.2, youth:-.6, labour:-.35 },
-    wants:{ schoolChoice:4, policeFunding:4, borderSecurity:4, immigrationVisas:0, sentencingReform:0, defenceBudget:2 } },
+    wants:{ schoolChoice:4, policeFunding:4, borderSecurity:4, immigrationVisas:0, sentencingReform:0, defenceBudget:2 },
+    temper:{ combative:.25, organiser:.50, dealer:.25, patient:1.1 } },
   { id:'pnl', name:'Patriot Nationalist League', short:'PNL', color:'#1551FF', order:6,
     auth:0.86,
     blurb:'Founded 2002. Ultranationalist populism, immigration control and economic nationalism.',
     aff:{ veterans:.9, smallbiz:.7, faith:.7, seniors:.45, labour:.1, tech:-.2, prof:-.55, youth:-.7 },
-    wants:{ borderSecurity:4, tariffs:4, defenceBudget:4, immigrationVisas:0, foreignAid:0, surveillance:3 } }
+    wants:{ borderSecurity:4, tariffs:4, defenceBudget:4, immigrationVisas:0, foreignAid:0, surveillance:3 },
+    temper:{ combative:.55, organiser:.30, dealer:.15, patient:.8 } }
 ];
 
 var PARTY = {}; PARTIES.forEach(function (p) { PARTY[p.id] = p; });
@@ -34397,9 +34456,14 @@ function v19Goal(st, pid) {
         if (g.best === undefined || pr > g.best + .004) { g.best = pr; g.moved = st.turn; }
         else if (g.moved === undefined) g.moved = g.since || st.turn;
       } else if (g.moved === undefined) g.moved = g.since || st.turn;
+      /* AND HOW LONG THIS PARTY WILL WAIT. The FP has been standing since
+         1799 and the PNL since 2002, and the stall window is where that
+         shows: a patient party carries a slow aim past the point an impatient
+         one has already put it down. */
+      var idleBar = V19_GOAL_IDLE * (v19Thinks(st) ? (v19Temper(pid).patient || 1) : 1);
       var idle = st.turn - (g.moved === undefined ? (g.since || st.turn) : g.moved);
       var age = st.turn - (g.since || 0);
-      if (over || idle > V19_GOAL_IDLE || age > V19_GOAL_CAP) {
+      if (over || idle > idleBar || age > V19_GOAL_CAP) {
         /* WHY it ended, for the page. A goal that simply vanished and was
            replaced is the "list of unrelated events" defect at the length of a
            campaign rather than a session. */
@@ -34730,6 +34794,13 @@ function v19Score(st, pid, card, goal, rival) {
      uniform draw the game shipped with -- the scale's floor stays the shipped
      game exactly rather than approximately, which is what R1 asks of every
      term added to this function. */
+  /* AND WHAT KIND OF PARTY THIS IS. The leaning is a preference over the
+     deck and nothing else: it does not change what a card DOES, what it
+     costs, or whether the party may play it. */
+  if (v19Thinks(st)) {
+    var ax = V19_TEMPER_AXIS[card.id];
+    if (ax) s += V19_TEMPER * (v19Temper(pid)[ax] || 0);
+  }
   var read = v19LevelOf(st).read || 0;
   if (read > 0) {
     if (rival === undefined || rival === null) rival = v19Rival(st, pid);
@@ -34843,6 +34914,12 @@ function v16AiTurn(st) {
     var roll = rand();
     if (p.id === me || st.banned[p.id]) return;
     var a = ai[p.id];
+    /* S19f: A PARTY ANSWERING A FRESH GRIEVANCE ACTS NOW AND PAYS FOR IT.
+       The order matters and is the whole of the budget guarantee: the tempo
+       test comes FIRST, so a debt is only ever repaid out of a session the
+       party would actually have used. Repaying it out of a session it was
+       going to sit out anyway would cost it nothing and the total would
+       drift up. */
     if (roll >= v18TempoOdds(st, p.id)) return;
     var post = v16Posture(st, p.id);
     a.posture = post;
@@ -34861,6 +34938,7 @@ function v16AiTurn(st) {
        is the same uniform draw it always was. One die either way. */
     var goal = v19Goal(st, p.id);
     /* S19b: read the board ONCE for this party, then weigh every open card
+       against the same reading.
        against the same reading. */
     var rival = v19Rival(st, p.id);
     var pick = v19Choose(st, p.id, open, goal, rival);
@@ -35449,7 +35527,13 @@ function v16AiPanel() {
         }
         return out;
       })() + '</td>' +
-      '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') + '</td></tr>';
+      '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') +
+        /* S19e: AND WHAT KIND OF PARTY IT IS. Only where the parties can act
+           on character at all -- below `purposeful` the leaning is not read,
+           and a page saying a party deals rather than fights while the model
+           gives every party the same draw is a card that lies. */
+        (v19Thinks(S) && v19TemperSay(p.id) ? '<div class="muted">' + esc(v19TemperSay(p.id)) + '</div>' : '') +
+        '</td></tr>';
   }).join('');
   /* and what each of them did last, with what it was for */
   var whys = PARTIES.filter(function (p) { return p.id !== me && !S.banned[p.id]; })
