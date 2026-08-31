@@ -1264,6 +1264,98 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## A party can reach what it is after (S19c)
+
+S19a asserted that every goal is SERVED BY THE DECK -- its `worth` table names
+cards that exist. That is a structural question, and the play-level one was
+never asked: is the aim ever ADOPTED, and is it ever REACHED? Driven over
+twelve seeds of 120 sessions, **501 aims were adopted, 8 were reached and 421
+timed out at the stale clock**. The figure on the Parties page was mostly a
+countdown to a silent reset.
+
+- **`charter` had never once been adoptable, in any campaign, on any seed.**
+  `v17AiArticleFor` returns an article id and `charter.target` read `.id` off
+  the string, so the guard was falsy and `v19AdoptGoal` dropped the goal from
+  the pool on every pass: the gate opened on 6,028 party-sessions and the
+  target came back null on 6,028. `v17AiOrderFor` beside it DOES return an
+  object, which is how the two came to be read the same way. One of seven
+  authored goals, with its prose, its weight and its ten-card `worth` table,
+  that no campaign could hold. It is adopted 858 times over the same run now.
+- **NO ENGINE IN THREE MEGABYTES COULD LAY A BILL.** 0 in 8,640
+  party-sessions. The deck's three instrument cards reach the floor, the
+  constitution and the order book, and `floor` can only lean on a bill that
+  already exists -- so `carry`, the most adopted aim, depended on the player
+  happening to have laid one on the exact statute the party wanted. The `bill`
+  card calls `sponsorBill`, the same function the player's own Draft button
+  reaches, under the rules S18a wrote for a private member. **The party that
+  wants the statute is the one that lays it**: holding a `carry` aim it takes
+  the card on 48% of the boards where it is open against 14% for a party after
+  something else.
+- **`free` IS TRUE AND THAT IS THE WHOLE POINT.** `sponsorBill` charges
+  `st.capital` unless told otherwise, and `st.capital` is the PLAYER'S. An
+  engine laying bills out of the reader's purse would be S16e's borrowed-paper
+  defect in a new place and it would be invisible -- the player would simply
+  be poorer. The party pays from its own purse and the arm reads the player's
+  capital either side of the card's own run.
+- **THE RULE IS ON THE FILTER AND ON THE LIVE PATH, and they are poisoned
+  together.** `can` builds the open set and `run` fires later in the same
+  pass; driven, the card ran four times in twenty for a party holding a bill
+  by the time it got there, because `sponsorBill` with `owner:'opposition'`
+  and no sponsor id attributes to the largest opposition party. Dropping
+  either guard alone changes nothing, which is the belt-and-braces signature
+  and not a dead guard.
+- **A `v18FloorShut` CALL STOOD IN `can` AND ITS OWN POISON TOOK IT OUT.** It
+  reads like the one predicate every floor surface shares -- S18a made it
+  exactly that -- and it asks about `playParty(st)`. Calling it here refused
+  an engine's bill because THE READER already had one before the House.
+  Removing it reddened nothing, which is what a guard answering the wrong
+  question looks like from outside. "The player has a bill" and "this party
+  has one" are different questions, the same way `holdsDept` and `officeMine`
+  are.
+- **`carry` AIMED AT A GAP OF FOUR, EVERY TIME.** It takes the biggest gap in
+  the party's own `wants`, a statute has four rungs, and measured across
+  twelve seeds the gap was 4 on every single adoption -- mean 4, max 4 --
+  against an instrument that moves one. `build` and `ground` beside it already
+  aim at a step from where the party stands (`machine + .22`, `have + 14`),
+  which is this file's convention for a goal that can be reached. It aims at
+  the next rung now, and moving the statute that rung closes it.
+- **THE AIM IS REACHABLE AND THE BILL STILL DOES NOT CARRY, and that is the
+  next slice, named rather than hidden.** 747 engine bills were laid and 5
+  moved a statute: they die at committee (369) and on the assembly floor
+  (358). A private member's bill from an opposition party with no whip, no
+  deal and no allies is voted down, which is the model behaving correctly.
+  `carry` completions are still 0.
+- **S19b's THREE PROBES WERE RE-DERIVED, NOT RE-TUNED.** A seventh adoptable
+  goal changes the population every one of S19b's rivalry clauses keys on, and
+  three of its arms were reading a distribution the `charter` bug had shaped.
+  The contested-bloc sample fell from 16 boards to 3, so the chooser's second
+  component is `organise` (+.142 on 119 boards) rather than `court` (+.047 on
+  118), chosen by measuring all eleven cards rather than by keeping the one
+  that was there first. The scale arm read ONE seed and that was a lottery on
+  the shipped build too -- seed 90210 produces no foe board at all -- so it
+  reads four. And the panel arm shared one loop between its tally and its page
+  check, so a build that put the sentence up at session one scored 4 acts
+  against a floor of 30 and failed for being right quickly.
+  **`V19_RIVAL_PUSH` did NOT move**: on the corrected build with a four-seed
+  sample the grudges run p90 3.2 and p99 32.4 against a rivalry worth 9.0, so
+  the relationship the constant exists for still holds and there was nothing
+  to re-derive. `attack`'s lift is BETTER than on the shipped build, .151
+  against .086.
+- Assertion `a party can reach what it is after`, eight arms. **Eleven poisons
+  from the diff, nine redden it**; the two that stay green are the
+  belt-and-braces pair above. **Four faults in the probe before any in the
+  game**: an arm that asked whether a party ever HOLDS two bills, which the
+  game answers yes to for a reason older than this slice; a sample of 39
+  against a floor of 40, fixed by widening the sample rather than lowering the
+  floor; and the two S19b arms above.
+- **THE PACING ARC MOVES AND IT IS THE OWNER'S TO RULE.** Six seeds, three
+  lengths, against the build S19b shipped: crises per ten sessions go 1.0 /
+  1.0 / 0.9 to 0.8 / 0.7 / 0.7 for short, standard and epic. Elections per ten
+  are unchanged at 0.4 / 0.2 / 0.1, records at the close are 20/23/23% against
+  18/25/23%, and all eighteen runs reach their end year on both sides. An
+  eleventh card and a seventh adoptable goal change what the republic spends
+  its sessions on; `docs/AGREEMENT.md` says the balance is not mine to settle.
+
 ## A party knows who is in its way (S19b)
 
 S19a gave every party an aim and a way to weigh its own cards against it, and
