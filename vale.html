@@ -639,6 +639,13 @@ var BILL_STAGES = ['committee','assembly','senate','assent'];
    advanceBills, so nothing outside that function could ask whether a bill was
    SAFE -- which is the question the two-session path turns on. Changing a
    number here changes the division and the answer together. */
+/* WHAT A PARTY'S OWN PLATFORM IS WORTH IN A DIVISION, on the same
+   hundred-point scale as the rest of `partyBillSupport`. Set beside the
+   declared line at 16 and under the party's own ideological position, which
+   reaches 42: a manifesto colours a vote the way a line does, and neither of
+   them decides one on its own. Swept over eight seeds -- the figure and what
+   each value does to the two bars is in `docs/MAP.md`. */
+var V19_MANIFESTO = 15;
 var BILL_BARS  = { committee:43, assembly:50, council:50, senate:50, decree:50 };
 var BILL_NOISE = { committee:14, assembly:13, council:13, senate:13, decree:13 };
 var BILL_STAGE_NAMES = { committee:'Committee', assembly:'Assembly', senate:'Senate', assent:'Assent', council:'Council', decree:'Decree', passed:'Law', failed:'Failed', withdrawn:'Withdrawn', killed:'Killed' };
@@ -8878,6 +8885,29 @@ function billTitle(policy, dir) {
   return p.name + (dir > 0 ? ' Bill' : ' Repeal Bill');
 }
 
+/* ============================================================
+   S19d -- A PARTY VOTES ITS OWN MANIFESTO
+   ============================================================
+   `PARTY[pid].wants` has been authored since v5. It picks what a party
+   demands (`partyDemandPolicy`), what it puts on its own dossier
+   (`pv5TopWants`), what it works toward (`carry`, S19a) and what it lays
+   before the House (the `bill` card, S19c). It did NOT decide how the party
+   VOTED, and `partyBillSupport` reads position, the coalition, relations, the
+   cordon, the faction average, declared lines and the grudge instead.
+
+   Measured over eight seeds of a hundred sessions: 4,350 party votes at
+   committee and on the floor, of which 575 were cast on a statute the voting
+   party's OWN table names. **416 of those agreed with the bill's direction
+   and 10 opposed it**, and the formula was blind to every one. 53% of bills
+   before the House have at least one party whose manifesto wants exactly what
+   the bill does.
+
+   That is the alignment this program spent two slices looking for. S19b found
+   that two parties never hold colliding GOALS -- 0 in 25,200 pairs on the same
+   statute, 0 common enemies in 9,000 -- and concluded there was no channel.
+   The channel was never in the goals. It is in the manifestos, which overlap
+   by construction (lp/rsf and pnl/tvc share three statutes each), and a bill
+   is the thing that makes the overlap matter. */
 function partyBillSupport(st, pid, bill) {
   var p = POL[bill.policy], pp = polPos(p), pos = ppos(st, pid);
   var target = bill.dir > 0 ? pp : { e:-pp.e * .72, a:-pp.a * .72 };
@@ -8910,6 +8940,20 @@ function partyBillSupport(st, pid, bill) {
     score += bill.playerPosition === 'support' ? 24 : -28;
   }
   if (bill.lines && bill.lines[pid]) score += bill.lines[pid] === 'support' ? 16 : -18;
+  /* S19d: AND WHAT THIS PARTY'S OWN TABLE SAYS ABOUT THIS STATUTE. Weighted
+     beside a declared line rather than above it: a line is a thing the party
+     did this session and the manifesto is a thing it has always believed, and
+     the two should be able to pull against each other. The sponsor is skipped
+     because sponsoring IS the position, which is the double-count S18a found
+     when `playerPosition` and the sponsor bonus both fired. */
+  if (bill.sponsor !== pid) {
+    var mw = (PARTY[pid] || {}).wants || {}, mt = mw[bill.policy];
+    if (mt !== undefined && POL[bill.policy]) {
+      var mlv = st.pol[bill.policy] || 0, mtg = Math.min(mt, POL[bill.policy].max);
+      var mdir = mtg > mlv ? 1 : (mtg < mlv ? -1 : 0);
+      if (mdir) score += mdir === bill.dir ? V19_MANIFESTO : -V19_MANIFESTO;
+    }
+  }
   /* S17l: AND WHAT THE SPONSOR DID TO THEM LAST TIME. A grudge had exactly two
      consumers -- which posture a party adopts and whom it will make a pact
      with -- and neither of them was a vote, so a party that had been split,
@@ -33732,6 +33776,55 @@ function v16Posture(st, pid) {
    and what it does -- and every one of them writes a channel the vote model
    already reads, so an initiative is felt at the next ballot rather than being
    a line in the log. */
+/* WHICH OF ITS OWN STATUTES A PARTY LAYS. `partyDemandPolicy` picks the
+   BIGGEST GAP and is left alone, because three other things read it -- the
+   demand card, the dossier and `pv5TopWants` -- and S17k's lesson is that a
+   shared body right for a new caller can be wrong for the old ones.
+
+   The gap is the right question for a DEMAND, which is a letter asking the
+   government to act. It is the wrong one for a BILL, which has to survive a
+   division: measured at every real bill decision, the statute the gap picked
+   forecast 36.6 on the floor where the best of the 4.3 it could have picked
+   forecast 40.0, a mean of 3.5 points thrown away and 9.9 at the ninth decile.
+
+   The forecast is read through `billForecast` on a throwaway bill rather than
+   re-derived, so this asks the chamber the same question the chamber will be
+   asked, and the answer already contains every other party's manifesto
+   through the term S19d adds to `partyBillSupport`. That is what makes this
+   "lay the one your neighbours also want" rather than "lay the popular one".
+
+   IT DOES NOT MAKE A PARTY WIN ALONE, and the measurement says so plainly:
+   the BEST statute available to a party averages 40.0 against an assembly bar
+   of 50 and tops out at 47.3. A sixteen-per-cent party cannot carry a bill on
+   its own account whatever it picks, which is correct. It can carry one that
+   others come out for. */
+var V19_BILL_LOOK = 5;
+function v19BillFor(st, pid) {
+  var w = (PARTY[pid] || {}).wants || {}, pool = [];
+  for (var id in w) {
+    if (!POL[id] || !policyOpen(st, POL[id]) || activeBillFor(st, id)) continue;
+    var lv = st.pol[id] || 0, tg = Math.min(w[id], POL[id].max);
+    var dir = tg > lv ? 1 : (tg < lv ? -1 : 0);
+    if (!dir) continue;
+    pool.push({ policy:id, dir:dir, gap:Math.abs(tg - lv) });
+  }
+  if (!pool.length) return null;
+  /* the gap still decides who is in the running, so a party stays in
+     character; the chamber decides which of them it is */
+  pool.sort(function (a, b) { return b.gap - a.gap; });
+  var top = pool.slice(0, V19_BILL_LOOK), best = null, bestF = -1;
+  top.forEach(function (o) {
+    var probe = { id:'v19probe', policy:o.policy, dir:o.dir, owner:'opposition', sponsor:pid,
+      title:'', introduced:st.turn, stage:'assembly', strategy:'clean', whip:0, upperDeal:0,
+      committee:0, concessions:0, confidence:false, urgent:false, playerPosition:null,
+      notes:[], cost:0 };
+    var f = null;
+    try { f = billForecast(st, probe); } catch (e) { f = null; }
+    var v = f ? f.lower : 0;
+    if (v > bestF) { bestF = v; best = o; }
+  });
+  return best || top[0];
+}
 var V16_AI_DECK = [
   { id:'organise', post:['organise', 'consolidate', 'hold', 'partner'],
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.organise; },
@@ -33937,7 +34030,7 @@ var V16_AI_DECK = [
          nothing -- and on `run` because the two fire at different points of
          the same pass. */
       if (typeof v17PrivateBillsOf === 'function' && v17PrivateBillsOf(st, pid).length >= 1) return false;
-      return !!partyDemandPolicy(st, pid);
+      return !!v19BillFor(st, pid);
     },
     run:function (st, pid) {
       /* THE RULE IS RE-ASKED HERE, ON THE LIVE PATH. `can` builds the open set
@@ -33949,7 +34042,7 @@ var V16_AI_DECK = [
          belongs on the function that lays it, not only on the filter that
          offered it. */
       if (typeof v17PrivateBillsOf === 'function' && v17PrivateBillsOf(st, pid).length >= 1) return null;
-      var d = partyDemandPolicy(st, pid); if (!d) return null;
+      var d = v19BillFor(st, pid); if (!d) return null;
       var b = sponsorBill(st, d.policy, d.dir, 'opposition', 'clean', true, pid, true);
       if (!b) return null;
       v16AiPay(st, pid, V16_AI_COST.bill);
@@ -34265,7 +34358,25 @@ function v19GoalKind(id) {
 /* WHAT A PARTY IS AFTER. Chosen once and kept until it is reached, becomes
    impossible, or goes stale -- a party that changes its mind every session
    has no aim, which is the state this slice found. */
-var V19_GOAL_STALE = 14;
+/* S19d: THE CLOCK COUNTED THE WRONG THING, AND ITS OWN NUMBER SAID SO.
+   `V19_GOAL_STALE` was a flat fourteen sessions of ELAPSED TIME, and measured
+   over eight seeds of 120 sessions it retired 284 aims and let 8 through. The
+   two readings that settle it: `build`, the goal that completes most often,
+   takes a mean of **23.7 sessions** and as many as 44 -- so the window was
+   shorter than the work it was for, which is the counter-read-after-it-is-
+   spent defect in a different hat. And `carry` sits at **0.0 progress** for
+   the whole fourteen, at either clock, because an opposition bill does not
+   carry (see below). One goal was being cut off while it was working and
+   another was being held while it did nothing, by the same number.
+
+   So the clock measures PROGRESS instead of age. A goal is kept while it is
+   moving and retired when it has stopped, which is also what the Parties page
+   needs: a party's aim has a through-line, and an aim that is abandoned was
+   abandoned for a reason the page can state. `V19_GOAL_CAP` is a backstop so
+   nothing runs for ever, set well above `build`'s longest observed run. */
+var V19_GOAL_IDLE = 11;
+var V19_GOAL_CAP = 60;
+var V19_GOAL_STALE = 14;   /* the old flat clock, kept for the save it rides in */
 function v19Goal(st, pid) {
   if (!v19Thinks(st)) return null;
   var a = v16Ai(st)[pid];
@@ -34277,7 +34388,26 @@ function v19Goal(st, pid) {
     else {
       var over = false;
       try { over = k.done(st, pid, g) || k.dead(st, pid, g); } catch (e) { over = true; }
-      if (over || st.turn - (g.since || 0) > V19_GOAL_STALE) { a.goal = null; g = null; }
+      /* where it has got to, read through the kind's own `progress` so the
+         clock and the figure on the page can never disagree */
+      var pr = null;
+      try { pr = k.progress(st, pid, g); } catch (e) { pr = null; }
+      if (pr !== null && isFinite(pr)) {
+        pr = clamp(pr, 0, 1);
+        if (g.best === undefined || pr > g.best + .004) { g.best = pr; g.moved = st.turn; }
+        else if (g.moved === undefined) g.moved = g.since || st.turn;
+      } else if (g.moved === undefined) g.moved = g.since || st.turn;
+      var idle = st.turn - (g.moved === undefined ? (g.since || st.turn) : g.moved);
+      var age = st.turn - (g.since || 0);
+      if (over || idle > V19_GOAL_IDLE || age > V19_GOAL_CAP) {
+        /* WHY it ended, for the page. A goal that simply vanished and was
+           replaced is the "list of unrelated events" defect at the length of a
+           campaign rather than a session. */
+        a.lastGoal = { kind:g.kind, ref:g.ref, best:g.best || 0, since:g.since, until:st.turn,
+          why:over ? (function () { var d = false; try { d = k.done(st, pid, g); } catch (e) {} return d ? 'done' : 'gone'; })()
+            : (age > V19_GOAL_CAP ? 'given up' : 'stalled') };
+        a.goal = null; g = null;
+      }
     }
   }
   if (!g) g = v19AdoptGoal(st, pid);
@@ -35295,8 +35425,29 @@ function v16AiPanel() {
         var aim = v19GoalSay(S, p.id);
         if (!aim) return '<span class="muted">Acting on instinct</span>';
         var pr = v19GoalProgress(S, p.id);
-        return esc(aim) + (pr === null ? '' :
+        var out = esc(aim) + (pr === null ? '' :
           ' <span class="muted">' + Math.round(pr * 100) + '%</span>');
+        /* S19d: AND WHAT BECAME OF THE LAST ONE. An aim used to vanish and be
+           replaced with nothing said, which is the "list of unrelated events"
+           defect at the length of a campaign rather than a session: a reader
+           watching a party work toward something for fifteen sessions saw the
+           column change and had no way to know whether it had been reached,
+           lost, or quietly given up on. The clock records why it ended and
+           this says it. */
+        var lg = (v16Ai(S)[p.id] || {}).lastGoal;
+        if (lg && lg.until !== undefined && S.turn - lg.until <= 6) {
+          var k = v19GoalKind(lg.kind);
+          var was = k && k.short ? k.short : (lg.kind === 'carry' ? 'a statute' :
+            lg.kind === 'office' ? 'an office' : lg.kind === 'enter' ? 'a seat in government' :
+            lg.kind === 'oust' ? 'bringing a party down' : lg.kind === 'ground' ? 'a bloc' :
+            lg.kind === 'build' ? 'the organisation' : 'an article');
+          out += '<div class="muted">' + (lg.why === 'done' ? 'Reached what it wanted from ' + esc(was) :
+            lg.why === 'gone' ? 'Gave up on ' + esc(was) + ': it is out of reach' :
+            lg.why === 'given up' ? 'Put ' + esc(was) + ' down after a long try' :
+            'Put ' + esc(was) + ' down: it was going nowhere') +
+            ' <span class="muted">(' + Math.round((lg.best || 0) * 100) + '% of the way)</span></div>';
+        }
+        return out;
       })() + '</td>' +
       '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') + '</td></tr>';
   }).join('');

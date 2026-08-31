@@ -213,14 +213,28 @@ elections unchanged), which `docs/AGREEMENT.md` makes the owner's call; and
 three of S19b's probes had to be re-derived because a seventh adoptable goal
 changes the population its clauses key on.
 
-**S19d — Getting a bill through.** The work `carry` is now waiting on, and the
-bargaining slice arrives inside it rather than beside it. An opposition party
-with no whip, no deal and no allies loses at committee or on the floor, so the
-question "how do two parties help each other" finally has a concrete thing to
-be about: a division that one party cannot win alone. Note what the earlier
-measurements rule out as a starting point -- two parties never share an aim (0
-in 25,200 pairs on the same statute, 0 common enemies in 9,000) -- so the
-channel has to be built on the division in front of them, not on their goals.
+**S19d — A party votes its own manifesto.** SHIPPED. `partyBillSupport` reads
+the voting party's authored table, the bill card lays the statute the chamber
+can pass rather than the one furthest away, and the goal clock measures
+progress instead of age. `docs/MAP.md` carries the section and the numbers.
+
+It also SETTLES the bargaining question this plan has carried since S19b, and
+the answer is that the channel exists and the outcome does not. Manifestos
+overlap where goals never do (416 agreeing votes against 10 opposing), so
+parties can and now do vote together. But an opposition bill still cannot
+carry: eight points of available lift against a thirteen-point bar, with the
+third of those points measured as the ceiling of every willing supporter
+coming out on every bill. Nothing short of giving an engine party the whip or
+the government's machinery changes that, and neither belongs in this program.
+
+**What is left open, and it is a finding rather than a slice.** Four of the
+seven goals are never reached: `carry` by the arithmetic above, `enter`
+because a coalition never grew in 720 sessions, `office` because no engine
+card reaches `st.exec`, `oust` because a government changed once in 1,440.
+Only `ground`, `build` and `charter` have roads. Whether an engine party
+should be able to enter a government, take an office or bring one down is a
+question about the REPUBLIC rather than about the AI, and it is the owner's
+to open.
 
 **S19e — Temperament.** Per-party character shaping the weights, held across a
 campaign. Orthogonal to the rest, and placed after the bill work so that what

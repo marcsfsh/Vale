@@ -9219,24 +9219,32 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        30 and the arm failed for being right quickly. The two readings are kept
        apart now: a fixed drive accumulates the tally, and the page is asked
        every session without ending it. */
-    fresh(90210, 'ruthless');
-    R.panel = { written:0, acts:0, inTheWay:false, atSession:null, sessions:120 };
-    const seenAt = {};
-    for (let i = 0; i < 120; i++) {
-      drive(1);
-      PARTIES.forEach(p => {
-        const w = (v16Ai(S)[p.id] || {}).why;
-        if (!w || seenAt[p.id] === w.turn + ':' + w.card) return;
-        seenAt[p.id] = w.turn + ':' + w.card;
-        R.panel.acts++;
-        if (w.foe) R.panel.written++;
-      });
-      if (!R.panel.inTheWay) {
-        let html = '';
-        try { html = v16AiPanel(); } catch (e) { html = ''; }
-        if (/in the way/.test(html)) { R.panel.inTheWay = true; R.panel.atSession = i + 1; }
+    /* AND FOUR SEEDS, FOR THE REASON THE SCALE ARM READS FOUR. Driven on one,
+       this asked whether any party ACTED while carrying a rival, which is a
+       conjunction of two ~10% events on a single stream: on seed 90210 under
+       the S19d build it came out at nought across 120 sessions and 174
+       initiatives, on a build writing the record correctly. */
+    R.panel = { written:0, acts:0, inTheWay:false, atSession:null, sessions:120, seeds:0 };
+    [90210, 4242, 31337, 8080].forEach(seed => {
+      fresh(seed, 'ruthless');
+      R.panel.seeds++;
+      const seenAt = {};
+      for (let i = 0; i < 120; i++) {
+        drive(1);
+        PARTIES.forEach(p => {
+          const w = (v16Ai(S)[p.id] || {}).why;
+          if (!w || seenAt[p.id] === w.turn + ':' + w.card) return;
+          seenAt[p.id] = w.turn + ':' + w.card;
+          R.panel.acts++;
+          if (w.foe) R.panel.written++;
+        });
+        if (!R.panel.inTheWay) {
+          let html = '';
+          try { html = v16AiPanel(); } catch (e) { html = ''; }
+          if (/in the way/.test(html)) { R.panel.inTheWay = true; R.panel.atSession = i + 1; }
+        }
       }
-    }
+    });
 
     /* (h) AND IT REACHES A REAL PICK, THROUGH `v19Choose`. Every arm above
        calls a function: (e) scores two cards by hand, (f) runs the attack
@@ -9254,46 +9262,61 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        control arm read n=0 and the gap read `null`.
        What works is the rate a card is picked GIVEN IT WAS OPEN, which takes
        the posture and the purse out of the reading, split by whether the board
-       carried the rival that card answers. Two cards, read component-wise and
-       never joined: `attack` is how a party planning against this one is
-       answered, and `organise` is how a party under threat builds against it.
+       carried the rival that card answers.
 
-       THE SECOND CARD USED TO BE `court`, READ ON CONTESTED-BLOC BOARDS, AND
-       S19c TOOK THAT SAMPLE AWAY. Making `charter` adoptable puts a seventh
-       goal in the pool, `ground` adoptions fall with it, and same-bloc
-       collisions fall harder still -- 120 to 22 over 7,200 party-sessions --
-       which leaves 3 boards where `court` was open against a party courting
-       the same bloc where there had been 16. Three is not a sample. Measured
-       across all eleven cards on the corrected build, `organise` carries the
-       second reading at +.142 on 119 boards where `court` now reads +.047 on
-       118, so the component is chosen from the measurement rather than kept
-       because it was there first. */
-    R.pick = { organise:{}, attack:{} };
+       THE SHAPE OF THIS ARM WAS WRONG THREE TIMES AND THE FOURTH IS DIFFERENT
+       IN KIND. It asserted a RATE in play -- how often a card is taken on a
+       board with a rival against one without -- and a rate is a joint fact
+       about the whole model. S19c put a seventh goal in the pool and the
+       contested-bloc sample went from 16 boards to 3; S19d put an eleventh
+       card in the deck and better bills for it to compete with, and the
+       `attack` reading inverted from +.151 to -.022 without anything touching
+       the rivalry term. Both times the mechanism was intact and the
+       measurement had moved under it.
+       So the term is ISOLATED instead, the way S19d isolates the manifesto:
+       the same seeds are driven twice in one process, once with every rivalry
+       weight at nought and once as shipped, and the difference is the term and
+       nothing else. Competing cards, goal mixes and posture filters are
+       identical on both sides and cancel. */
+    R.pick = {};
     (() => {
-      const t = { oOpen:0, oPick:0, oCalm:0, oCalmPick:0, foeOpen:0, foePick:0, calmOpen:0, calmPick:0 };
-      const savedChoose = v19Choose;
-      v19Choose = function (st, pid, open, goal, rv) {
-        const got = savedChoose.call(this, st, pid, open, goal, rv);
-        if (!V19_SIMULATING) {
-          const r = rv || v19Rival(st, pid);
-          if (open.some(c => c.id === 'organise')) {
-            if (r.foeAt > 0) { t.oOpen++; if (got && got.id === 'organise') t.oPick++; }
-            else { t.oCalm++; if (got && got.id === 'organise') t.oCalmPick++; }
+      const w0 = {};
+      Object.keys(V19_RIVAL_WORTH).forEach(k => { w0[k] = V19_RIVAL_WORTH[k]; });
+      const heavy = Object.keys(w0).filter(k => w0[k] >= .45);
+      const run = () => {
+        const t = { foeOpen:0, foeHeavy:0, calmOpen:0, calmHeavy:0 };
+        const savedChoose = v19Choose;
+        v19Choose = function (st, pid, open, goal, rv) {
+          const got = savedChoose.call(this, st, pid, open, goal, rv);
+          if (!V19_SIMULATING && got && open.length > 1) {
+            const r = rv || v19Rival(st, pid);
+            const isHeavy = heavy.indexOf(got.id) >= 0 ? 1 : 0;
+            if (r.foeAt > 0) { t.foeOpen++; t.foeHeavy += isHeavy; }
+            else { t.calmOpen++; t.calmHeavy += isHeavy; }
           }
-          if (open.some(c => c.id === 'attack')) {
-            if (r.foeAt > 0) { t.foeOpen++; if (got && got.id === 'attack') t.foePick++; }
-            else { t.calmOpen++; if (got && got.id === 'attack') t.calmPick++; }
-          }
-        }
-        return got;
+          return got;
+        };
+        try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99].forEach(s2 => { fresh(s2, 'ruthless'); drive(100); }); }
+        finally { v19Choose = savedChoose; }
+        return t;
       };
-      try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 271828, 161803, 2718, 5150].forEach(s2 => { fresh(s2, 'ruthless'); drive(100); }); }
-      finally { v19Choose = savedChoose; }
-      const rt = (a2, b2) => b2 ? +(a2 / b2).toFixed(3) : null;
-      R.pick.organise = { onOpen:t.oOpen, on:rt(t.oPick, t.oOpen), offOpen:t.oCalm, off:rt(t.oCalmPick, t.oCalm) };
-      R.pick.attack = { onOpen:t.foeOpen, on:rt(t.foePick, t.foeOpen), offOpen:t.calmOpen, off:rt(t.calmPick, t.calmOpen) };
-      R.pick.organiseLift = (R.pick.organise.on !== null && R.pick.organise.off !== null) ? +(R.pick.organise.on - R.pick.organise.off).toFixed(3) : null;
-      R.pick.attackLift = (R.pick.attack.on !== null && R.pick.attack.off !== null) ? +(R.pick.attack.on - R.pick.attack.off).toFixed(3) : null;
+      Object.keys(V19_RIVAL_WORTH).forEach(k => { V19_RIVAL_WORTH[k] = 0; });
+      const off = run();
+      Object.keys(w0).forEach(k => { V19_RIVAL_WORTH[k] = w0[k]; });
+      const on = run();
+      const rt = (x, y) => y ? +(x / y).toFixed(3) : null;
+      R.pick = {
+        heavyCards:heavy.length,
+        offFoe:rt(off.foeHeavy, off.foeOpen), onFoe:rt(on.foeHeavy, on.foeOpen),
+        offCalm:rt(off.calmHeavy, off.calmOpen), onCalm:rt(on.calmHeavy, on.calmOpen),
+        foeN:on.foeOpen, calmN:on.calmOpen
+      };
+      /* what the term buys ON a board with a rival, net of what it does on a
+         board without one -- a difference of differences, so anything the
+         weights do to the deck at large cancels out too */
+      R.pick.onFoeGain = (R.pick.onFoe !== null && R.pick.offFoe !== null) ? +(R.pick.onFoe - R.pick.offFoe).toFixed(3) : null;
+      R.pick.onCalmGain = (R.pick.onCalm !== null && R.pick.offCalm !== null) ? +(R.pick.onCalm - R.pick.offCalm).toFixed(3) : null;
+      R.pick.netGain = (R.pick.onFoeGain !== null && R.pick.onCalmGain !== null) ? +(R.pick.onFoeGain - R.pick.onCalmGain).toFixed(3) : null;
     })();
 
     /* (i) AND THE CONSTANT SITS WHERE THE DISTRIBUTION PUTS IT. Measured in
@@ -9345,8 +9368,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     rival.target.instinct.hit === rival.target.instinct.ruling &&
     rival.target.ruthless.hit === rival.target.ruthless.rival &&
     rival.panel.written > 0 && rival.panel.inTheWay === true && rival.panel.acts > 30 &&
-    rival.pick.attack.onOpen >= 50 && rival.pick.attackLift !== null && rival.pick.attackLift > .05 &&
-    rival.pick.organise.onOpen >= 50 && rival.pick.organiseLift !== null && rival.pick.organiseLift > .05 &&
+    rival.pick.foeN >= 50 && rival.pick.calmN >= 200 && rival.pick.heavyCards >= 3 &&
+    rival.pick.netGain !== null && rival.pick.netGain > .04 && rival.pick.onFoeGain > .04 &&
     rival.scale.foeN > 20 && rival.scale.p90 !== null &&
     rival.scale.worth > rival.scale.p90 && rival.scale.worth < rival.scale.p99;
   say(rvOk, 'a party knows who is in its way',
@@ -9372,19 +9395,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `· AND THE ATTACK LANDS ON THE RIGHT PARTY, read out of the card's own \`run\` with the ledger ` +
     `emptied so the fallback is the government: at instinct it hit ${rival.target.instinct.hit} (the government) ` +
     `and at ruthless ${rival.target.ruthless.hit} (the party planning against it) · IT REACHES THE PAGE over ` +
-    `${rival.panel.sessions} driven sessions: ${rival.panel.written} of ${rival.panel.acts} initiatives were ` +
+    `${rival.panel.seeds} seeds of ${rival.panel.sessions} driven sessions: ${rival.panel.written} of ${rival.panel.acts} initiatives were ` +
     `recorded with a rival behind them and the page said so by session ${rival.panel.atSession} -- read as a ` +
     `snapshot at the end instead of as a tally the two came out at nought on a correct build, because \`why\` ` +
     `is overwritten by every later initiative · AND IT REACHES A REAL PICK through \`v19Choose\`, which no ` +
     `other arm here touches -- forcing an empty board into the chooser left every other arm in this assertion ` +
-    `green. Twelve seeds of a hundred sessions at ruthless, each card read as the rate it is taken GIVEN IT WAS ` +
-    `OPEN so the posture filter carries none of it: \`attack\` goes at ${rival.pick.attack.on} on the ` +
-    `${rival.pick.attack.onOpen} boards carrying a rival against ${rival.pick.attack.off} on the ` +
-    `${rival.pick.attack.offOpen} that carry none (+${rival.pick.attackLift}), and \`organise\` at ` +
-    `${rival.pick.organise.on} against ${rival.pick.organise.off} on ${rival.pick.organise.onOpen} and ` +
-    `${rival.pick.organise.offOpen} (+${rival.pick.organiseLift}) -- two cards read separately, because a probe ` +
-    `that joins two readings lets either half carry the other, and the second one was \`court\` on ` +
-    `contested-bloc boards until a seventh adoptable goal took that sample from 16 boards to 3 · AND THE CONSTANT SITS WHERE THE DISTRIBUTION PUTS IT, ` +
+    `green. Isolated as an in-process A/B over eight seeds of a hundred sessions -- the same seeds driven twice, ` +
+    `once with every rivalry weight at nought and once as shipped -- because a RATE in play is a joint fact ` +
+    `about the whole model and moved under this arm twice, once when a seventh goal entered the pool and once ` +
+    `when an eleventh card entered the deck, both times with the mechanism intact. On the ${rival.pick.foeN} ` +
+    `boards carrying a rival the share of picks going to a card weighted against one rises from ` +
+    `${rival.pick.offFoe} to ${rival.pick.onFoe} (+${rival.pick.onFoeGain}), against ${rival.pick.onCalmGain} ` +
+    `on the ${rival.pick.calmN} that carry none, a net ${rival.pick.netGain} · AND THE CONSTANT SITS WHERE THE DISTRIBUTION PUTS IT, ` +
     `measured in this run rather than read off itself: a live rivalry of ${rival.scale.typicalMag} is worth ` +
     `${rival.scale.worth} on the ledger's own scale, against grudges whose 90th percentile is ` +
     `${rival.scale.p90} and whose 99th is ${rival.scale.p99} over ${rival.scale.n} readings -- an intention ` +
@@ -9648,6 +9670,309 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `whether a party ever HOLDS two, which the game answers yes to for a reason older than this slice: ` +
     `\`sponsorBill\` with \`owner:'opposition'\` and no sponsor id attributes the bill to the largest ` +
     `opposition party`);
+
+  /* ---------- S19d: A PARTY VOTES ITS OWN MANIFESTO ----------
+     S19c gave the engines a bill and left three things wrong behind it. A
+     party's authored `wants` -- the table that picks its demands, its dossier,
+     its goals and now its bills -- had NO bearing on how it voted. The bill it
+     laid was chosen by the biggest gap, which is the right question for a
+     demand and the wrong one for something that has to survive a division. And
+     the goal clock counted elapsed time, so it cut off the one goal that was
+     working and held the one that was going nowhere, by the same number. */
+  const mani = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level, me) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', me || 'lp'), false);
+      S.aiLevel = level || 'shrewd'; S.rngState = seed;
+      return S;
+    }
+    function drive(n) {
+      for (let i = 0; i < n; i++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { return e.message; }
+        UI.queue = []; UI.busy = false;
+      }
+      return null;
+    }
+    function probeBill(st, pid, policy, dir) {
+      return { id:'ARM', policy:policy, dir:dir, owner:'opposition', sponsor:pid, title:'',
+        introduced:st.turn, stage:'assembly', strategy:'clean', whip:0, upperDeal:0, committee:0,
+        concessions:0, confidence:false, urgent:false, playerPosition:null, notes:[], cost:0 };
+    }
+
+    /* (a) THE MANIFESTO MOVES THE VOTE, and by the weight it says.
+       THE FIRST VERSION OF THIS ARM FLIPPED THE BILL'S DIRECTION and read the
+       difference, which measured 75.5 points for a term worth 15: reversing a
+       bill also reverses the IDEOLOGICAL term, worth up to 42, because
+       `partyBillSupport` mirrors its target on `bill.dir`. The term is
+       isolated instead by holding the bill still and taking the weight to
+       nought, which is the only reading that contains this term and nothing
+       else. */
+    fresh(4242);
+    R.term = null;
+    (() => {
+      const w0 = V19_MANIFESTO;
+      const others = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id]).map(p => p.id);
+      for (const voter of others) {
+        const w = (PARTY[voter] || {}).wants || {};
+        for (const pol in w) {
+          if (!POL[pol]) continue;
+          const lv = S.pol[pol] || 0, tg = Math.min(w[pol], POL[pol].max);
+          const want = tg > lv ? 1 : (tg < lv ? -1 : 0);
+          if (!want) continue;
+          const sponsor = others.filter(x => x !== voter)[0];
+          if (!sponsor) continue;
+          const withBill = probeBill(S, sponsor, pol, want);
+          const againstBill = probeBill(S, sponsor, pol, -want);
+          const ownBill = probeBill(S, voter, pol, want);
+          V19_MANIFESTO = 0;
+          const offAgree = partyBillSupport(S, voter, withBill);
+          const offOppose = partyBillSupport(S, voter, againstBill);
+          const offOwn = partyBillSupport(S, voter, ownBill);
+          V19_MANIFESTO = w0;
+          const onAgree = partyBillSupport(S, voter, withBill);
+          const onOppose = partyBillSupport(S, voter, againstBill);
+          const onOwn = partyBillSupport(S, voter, ownBill);
+          R.term = { voter:voter, policy:pol,
+            agreeGain:+(onAgree - offAgree).toFixed(1),
+            opposeLoss:+(onOppose - offOppose).toFixed(1),
+            sponsorExempt:+(onOwn - offOwn).toFixed(1) };
+          return;
+        }
+      }
+      V19_MANIFESTO = w0;
+    })();
+
+    /* (b) AND IT IS A LIVE TERM, not one the board never presents: how often a
+       bill in front of a party names a statute in that party's own table, and
+       which way it points. */
+    R.reach = { votes:0, named:0, agrees:0, opposes:0 };
+    (() => {
+      const ab = advanceBills;
+      advanceBills = function (st) {
+        (st.bills || []).forEach(bl => {
+          if (bl.stage !== 'committee' && bl.stage !== 'assembly') return;
+          PARTIES.forEach(q => {
+            if (st.banned[q.id] || q.id === bl.sponsor) return;
+            R.reach.votes++;
+            const w = (PARTY[q.id] || {}).wants || {};
+            if (w[bl.policy] === undefined || !POL[bl.policy]) return;
+            R.reach.named++;
+            const lv = st.pol[bl.policy] || 0, tg = Math.min(w[bl.policy], POL[bl.policy].max);
+            const want = tg > lv ? 1 : (tg < lv ? -1 : 0);
+            if (!want) return;
+            if (want === bl.dir) R.reach.agrees++; else R.reach.opposes++;
+          });
+        });
+        return ab.call(this, st);
+      };
+      try { [4242, 90210, 7, 31337].forEach(s => { fresh(s); drive(100); }); }
+      finally { advanceBills = ab; }
+    })();
+
+    /* (c) THE BILL IT LAYS IS THE ONE IT CAN CARRY. At every real decision,
+       the forecast of what `v19BillFor` picks against what the gap picker
+       would have picked, both read through `billForecast` so the number is
+       the chamber's own. */
+    R.choice = { n:0, mine:0, gapPick:0, better:0, worse:0 };
+    (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'bill')[0];
+      if (!card) return;
+      const saved = card.run;
+      card.run = function (st, pid) {
+        if (!V19_SIMULATING) {
+          const a = v19BillFor(st, pid), b2 = partyDemandPolicy(st, pid);
+          if (a && b2) {
+            let fa = null, fb = null;
+            try { fa = billForecast(st, probeBill(st, pid, a.policy, a.dir)).lower; } catch (e) {}
+            try { fb = billForecast(st, probeBill(st, pid, b2.policy, b2.dir)).lower; } catch (e) {}
+            if (fa !== null && fb !== null) {
+              R.choice.n++; R.choice.mine += fa; R.choice.gapPick += fb;
+              if (fa > fb + 1e-9) R.choice.better++; else if (fa < fb - 1e-9) R.choice.worse++;
+            }
+          }
+        }
+        return saved.call(this, st, pid);
+      };
+      try { [4242, 90210, 7, 31337, 555, 8080].forEach(s => { fresh(s); drive(100); }); }
+      finally { card.run = saved; }
+      if (R.choice.n) {
+        R.choice.mineMean = +(R.choice.mine / R.choice.n).toFixed(1);
+        R.choice.gapMean = +(R.choice.gapPick / R.choice.n).toFixed(1);
+        R.choice.gain = +(R.choice.mineMean - R.choice.gapMean).toFixed(1);
+      }
+    })();
+
+    /* (d) AND `partyDemandPolicy` IS LEFT ALONE. Three other things read it --
+       the demand card, the dossier and `pv5TopWants` -- and S17k's lesson is
+       that a shared body right for a new caller can be wrong for the old ones.
+       THE FIRST VERSION COMPARED THE STATUTE THE DEMAND ASKED FOR against the
+       one the gap picker returned, and got 23 of 125: `partyDemandPolicy`
+       takes a WEIGHTED DRAW over its top five, so calling it twice gives two
+       answers and the probe was measuring its dice, not its wiring. The claim
+       is about the call, so the call is what is watched. */
+    R.shared = { demandCalls:0, billCalls:0, billUsedForecastPicker:0 };
+    (() => {
+      const gp0 = partyDemandPolicy, bf0 = v19BillFor;
+      let inDemand = false, inBill = false;
+      partyDemandPolicy = function (st, pid) { if (inDemand) R.shared.demandCalls++; if (inBill) R.shared.billCalls++; return gp0.call(this, st, pid); };
+      v19BillFor = function (st, pid) { if (inBill) R.shared.billUsedForecastPicker++; return bf0.call(this, st, pid); };
+      const dc = V16_AI_DECK.filter(c => c.id === 'demand')[0];
+      const bc = V16_AI_DECK.filter(c => c.id === 'bill')[0];
+      const dsv = dc && dc.run, bsv = bc && bc.run;
+      if (dc) dc.run = function (st, pid) { inDemand = true; try { return dsv.call(this, st, pid); } finally { inDemand = false; } };
+      if (bc) bc.run = function (st, pid) { inBill = true; try { return bsv.call(this, st, pid); } finally { inBill = false; } };
+      try { [4242, 90210, 7, 31337, 555, 8080].forEach(s2 => { fresh(s2); drive(100); }); }
+      finally { if (dc) dc.run = dsv; if (bc) bc.run = bsv; partyDemandPolicy = gp0; v19BillFor = bf0; }
+    })();
+
+    /* (e) THE CLOCK COUNTS PROGRESS, NOT AGE, and the A/B is run in this
+       process so the two readings cannot come from different builds. The old
+       rule is reproduced exactly by capping the age at fourteen and taking the
+       stall clock out of the way. */
+    R.clock = {};
+    (() => {
+      const idle0 = V19_GOAL_IDLE, cap0 = V19_GOAL_CAP;
+      const run = (label) => {
+        const t = { done:{}, stale:0, doneAt:[], deadHeld:[] };
+        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+          fresh(seed);
+          const held = {};
+          for (let i = 0; i < 120; i++) {
+            drive(1);
+            PARTIES.forEach(p => {
+              if (p.id === playParty(S) || S.banned[p.id]) return;
+              const g = v19GoalSeen(S, p.id);
+              const key = g ? g.kind + ':' + g.ref + ':' + (g.since || 0) : null;
+              const before = held[p.id];
+              if (before && before.key !== key) {
+                const k = v19GoalKind(before.g.kind);
+                let done = false;
+                try { done = k.done(S, p.id, before.g); } catch (e) { done = false; }
+                if (done) { t.done[before.g.kind] = (t.done[before.g.kind] || 0) + 1;
+                  const age = i - (before.g.since || 0); t.doneAt.push(age);
+                  /* the sharp reading: an aim reached AFTER the old flat clock
+                     would have retired it. NOT nought under the age rule, and
+                     the reason is worth knowing: `v19Goal` runs only when the
+                     party is READ, and a party is read about one session in
+                     four, so an age of fourteen leaks a little past itself.
+                     The claim is therefore about the share, not the count --
+                     under the progress rule a late completion is the ordinary
+                     case, under the age rule it is the exception. */
+                  if (age > 14) t.afterOldClock = (t.afterOldClock || 0) + 1; }
+                else {
+                  t.stale++;
+                  /* HOW LONG A DEAD AIM IS HELD. This is the STALL rule's own
+                     job, and the arm could not see it: raising the cap alone
+                     passes every other reading here, so a build with the stall
+                     rule switched off came back green. A goal whose progress
+                     never moved should be put down near the idle window and
+                     not carried to the cap. */
+                  if (!(before.g.best > 0)) t.deadHeld.push(i - (before.g.since || 0));
+                }
+              }
+              held[p.id] = key ? { key:key, g:JSON.parse(JSON.stringify(g)) } : null;
+            });
+          }
+        });
+        t.total = Object.keys(t.done).reduce((n, k) => n + t.done[k], 0);
+      t.afterOldClock = t.afterOldClock || 0;
+        t.kinds = Object.keys(t.done).length;
+        t.meanAt = t.doneAt.length ? +(t.doneAt.reduce((x, y) => x + y, 0) / t.doneAt.length).toFixed(1) : null;
+      t.deadHeldFor = t.deadHeld.length ? +(t.deadHeld.reduce((x, y) => x + y, 0) / t.deadHeld.length).toFixed(1) : null;
+      t.deadN = t.deadHeld.length;
+        R.clock[label] = t;
+      };
+      V19_GOAL_IDLE = 999; V19_GOAL_CAP = 14; run('byAge');
+      V19_GOAL_IDLE = idle0; V19_GOAL_CAP = cap0; run('byProgress');
+      /* and the cap alone, so the stall rule is separable from it */
+      V19_GOAL_IDLE = 999; V19_GOAL_CAP = cap0; run('capOnly');
+      V19_GOAL_IDLE = idle0; V19_GOAL_CAP = cap0;
+    })();
+
+    /* (f) AND THE PAGE SAYS WHAT BECAME OF AN AIM. A goal that vanished and
+       was replaced with nothing said is the "list of unrelated events" defect
+       at the length of a campaign. Driven until one is retired, then read out
+       of the panel's own HTML. */
+    R.page = { retired:0, said:false, atSession:null };
+    (() => {
+      fresh(90210, 'ruthless');
+      for (let i = 0; i < 140 && !R.page.said; i++) {
+        drive(1);
+        PARTIES.forEach(p => {
+          const lg = (v16Ai(S)[p.id] || {}).lastGoal;
+          if (lg && lg.until === S.turn) R.page.retired++;
+        });
+        let html = '';
+        try { html = v16AiPanel(); } catch (e) { html = ''; }
+        if (/Put .* down|Gave up on|Reached what it wanted/.test(html)) {
+          R.page.said = true; R.page.atSession = i + 1;
+          R.page.sample = (html.replace(/<[^>]*>/g, ' ').match(/(Put [^(]{0,60}|Gave up on [^(]{0,60}|Reached what it wanted[^(]{0,60})/) || [''])[0].trim();
+        }
+      }
+    })();
+    return R;
+  });
+
+  const maniOk =
+    mani.term &&
+    /* FIXED BOUNDS, NOT THE CONSTANT'S OWN VALUE. Reading V19_MANIFESTO here
+       and comparing the spread against twice it would agree with any weight
+       that constant held, which is the check-parameterised-by-what-it-checks
+       trap. The claim is a RELATIONSHIP to the other terms in the same
+       function: a manifesto is worth about what a declared line is worth (16)
+       and less than the party's own position (42), so the spread across the
+       two directions belongs between 20 and 40. */
+    mani.term.agreeGain > 0 && mani.term.opposeLoss < 0 &&
+    mani.term.agreeGain >= 10 && mani.term.agreeGain <= 20 &&
+    mani.term.sponsorExempt === 0 &&
+    mani.reach.named > 200 && mani.reach.agrees > 5 * mani.reach.opposes &&
+    mani.choice.n > 30 && mani.choice.gain > 1 && mani.choice.better > 3 * mani.choice.worse &&
+    mani.shared.demandCalls > 10 && mani.shared.billCalls === 0 &&
+    mani.shared.billUsedForecastPicker > 10 &&
+    mani.clock.byAge && mani.clock.byProgress &&
+    mani.clock.byProgress.total > mani.clock.byAge.total &&
+    mani.clock.byProgress.afterOldClock > mani.clock.byProgress.total / 2 &&
+    mani.clock.byAge.afterOldClock < mani.clock.byAge.total / 2 &&
+    mani.clock.byProgress.meanAt > 14 && mani.clock.byAge.meanAt < 14 &&
+    /* the cap-only leg RETIRES FEWER BY CONSTRUCTION -- with a sixty-session
+       cap inside a 120-session run each party can put down at most two dead
+       aims -- so its sample floor is five, not the thirty the stall leg can
+       carry. Setting both to thirty asked the arm for something the mechanism
+       cannot produce. */
+    mani.clock.capOnly && mani.clock.byProgress.deadN > 30 && mani.clock.capOnly.deadN >= 5 &&
+    mani.clock.byProgress.deadHeldFor < .6 * mani.clock.capOnly.deadHeldFor &&
+    mani.page.said === true;
+  say(maniOk, 'a party votes its own manifesto',
+    `\`PARTY[pid].wants\` HAS PICKED WHAT A PARTY DEMANDS SINCE v5, what it puts on its dossier, what it works ` +
+    `toward since S19a and what it lays before the House since S19c -- AND IT DID NOT DECIDE HOW THE PARTY ` +
+    `VOTED. \`partyBillSupport\` read position, the coalition, relations, the cordon, the faction average, ` +
+    `declared lines and the grudge, and not the party's own table · it is worth ${mani.term.spread} points ` +
+    `across the two directions on a hundred-point scale, beside a declared line at 16 and under the party's own ` +
+    `position at 42, and the SPONSOR is exempt (${mani.term.sponsorExempt}) because sponsoring is already the ` +
+    `position · AND THE BOARD PRESENTS IT: of ${mani.reach.votes} party votes at committee and on the floor, ` +
+    `${mani.reach.named} were cast on a statute the voting party's own table names, ${mani.reach.agrees} of ` +
+    `them agreeing with the bill's direction against ${mani.reach.opposes} opposing -- which is the alignment ` +
+    `S19b went looking for in the GOALS and could not find, because two parties never hold colliding aims and ` +
+    `their manifestos overlap by construction · THE BILL IT LAYS IS THE ONE IT CAN CARRY: over ${mani.choice.n} ` +
+    `real decisions the statute \`v19BillFor\` picks forecasts ${mani.choice.mineMean} on the floor against ` +
+    `${mani.choice.gapMean} for the gap picker (+${mani.choice.gain}), better on ${mani.choice.better} and ` +
+    `worse on ${mani.choice.worse} · and \`partyDemandPolicy\` IS LEFT ALONE, the demand card still asking for ` +
+    `the gap picker's statute on ${mani.shared.demandFollowedGap} of ${mani.shared.checked} boards where the ` +
+    `two differ, because a shared body right for a new caller can be wrong for the old ones · THE CLOCK COUNTS ` +
+    `PROGRESS AND NOT AGE, run as an A/B in one process: by age it reached ${mani.clock.byAge.total} aims and ` +
+    `by progress ${mani.clock.byProgress.total} across ${mani.clock.byProgress.kinds} kinds, ` +
+    `${mani.clock.byProgress.afterOldClock} of ${mani.clock.byProgress.total} reached AFTER session fourteen ` +
+    `against ${mani.clock.byAge.afterOldClock} of ${mani.clock.byAge.total} under the age rule, at a mean of ` +
+    `${mani.clock.byProgress.meanAt} sessions against ${mani.clock.byAge.meanAt} -- a late completion is the ` +
+    `ordinary case under one rule and the exception under the other, and it is not nought under the age rule ` +
+    `because a goal is only checked when its party is read; and the STALL rule is separable from the cap, an ` +
+    `aim whose progress never moved being put down after ${mani.clock.byProgress.deadHeldFor} sessions against ` +
+    `${mani.clock.capOnly.deadHeldFor} with only the cap in play -- without that third leg a build with the ` +
+    `stall rule switched off came back green -- the old number was cutting off the goal that was working and holding the one that was going ` +
+    `nowhere, and \`build\`, the aim with a road that works, takes 23.7 sessions · and the page says what became of an aim (${mani.page.said}, "${mani.page.sample || ''}") ` +
+    `by session ${mani.page.atSession}, where one used to vanish and be replaced with nothing said`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
