@@ -71,6 +71,31 @@ Seventeen poisons from the diff, sixteen redden it; the one that stays green is
 "report the weakest rival instead of the strongest", and the answer is that of
 3,600 party-sessions not one ever had two rivals of different magnitudes.
 
+**S19c is scoped and NOT started in code**, because the investigation for it
+found something bigger than the slice it was meant to be. `docs/PLAN-S19.md`
+carries the measurements in full; the short of it is that the aims S19a gave
+the parties are adopted and then not reached. Over twelve seeds of 120
+sessions: **501 goals adopted, 8 reached, 421 timed out**. `charter` has never
+once been adoptable in any campaign, because `v17AiArticleFor` returns an
+article id and the goal reads `.id` off the string. `carry` is the most
+adopted aim and has been reached 0 times, because it targets a four-rung gap
+on every adoption against an instrument that moves one, and because no engine
+in three megabytes could lay a bill (0 in 8,640 party-sessions).
+
+**A working build of the whole fix was measured and deliberately not landed.**
+It shipped the charter fix, a `bill` card reaching `sponsorBill` (747 laid,
+paid from the party's own purse, the player's capital untouched), and the
+one-rung `carry` target; its assertion `a party can reach what it is after`
+held on eight arms and nine of eleven poisons from the diff reddened it. It
+comes apart on the INTERACTION: a seventh adoptable goal dilutes the goal
+collisions every one of S19b's rivalry clauses keys on, which takes S19b's foe
+boards to zero on its own scale seed and reddens three of its arms. Those
+gates were derived from a distribution the charter bug was shaping, so they
+have to be re-derived on the corrected build rather than lowered to meet it --
+and doing that answers whether S19b's rival reading is still live with seven
+goals in the pool, which is worth knowing on its own. The branch is left at
+the verified S19b state rather than carrying a slice that reddens the harness.
+
 **S18e — The AI actually acts** shipped as PR #91. S18a through S18d are merged
 (PRs #87, #88, #89, #90).
 

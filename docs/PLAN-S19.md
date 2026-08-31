@@ -199,11 +199,69 @@ part:
 - **Two rivals of different sizes never occur**, so any future term that ranks
   rivals against each other is ranking a set of size one.
 
-**S19c — Bargaining between parties.** Depends on a CHANNEL that does not yet
-exist: see the first finding above. `st.aiPacts` is the only standing
-agreement in the model, a single field with no terms, and the goals as
-authored cannot align. Before writing an offer, build something two parties
-can both want.
+**S19c — The aims are reachable.** OPEN, next, and it displaces the
+bargaining slice that stood here. Bargaining was blocked on a channel that
+does not exist (see the first finding above), and looking for one turned up
+something worse: THE AIMS THEMSELVES ARE NOT REACHED. Measured over twelve
+seeds of 120 sessions, 1,440 sessions in all:
+
+- **501 goals adopted, 8 reached, 421 timed out at the stale clock.** The
+  Parties page shows a progress figure that is mostly a countdown to a silent
+  reset. S19a asserted that every goal is SERVED BY THE DECK -- a structural
+  question about the `worth` tables -- and never asked the play-level one.
+- **`charter` has never once been adoptable, in any campaign, on any seed.**
+  `v17AiArticleFor` returns an article id; `charter.target` reads `.id` off
+  the string, so the guard is falsy and `v19AdoptGoal` drops it from the pool
+  every pass. Its gate opened on 6,028 party-sessions and its target returned
+  null on 6,028. `v17AiOrderFor` beside it DOES return an object, which is how
+  the two came to be read the same way. One line:
+  `return (typeof a === 'string' && a) ? { ref:a } : (a && a.id ? { ref:a.id } : null);`
+- **`carry` is the most adopted aim (136) and has been reached 0 times**, with
+  mean progress at retirement of .004 and a ninetieth percentile of exactly
+  nought. Two causes, both measured. Its target takes the BIGGEST gap in the
+  party's `wants`, which is 4 rungs on every single adoption (mean 4, max 4),
+  against an instrument that moves one; `build` and `ground` already aim at a
+  step from where the party stands, which is this file's own convention. And
+  NO ENGINE COULD LAY A BILL: 0 in 8,640 party-sessions. The deck's three
+  instrument cards reach the floor, the constitution and the order book, and
+  `floor` can only lean on a bill that already exists.
+- **An engine's bill does not carry either.** With a `bill` card added and
+  measured, 747 were laid and 5 moved a statute: they die at committee (369)
+  and on the assembly floor (358). A private member's bill from an opposition
+  party with no whip, no deal and no allies is voted down, which is the model
+  behaving correctly and is the real work behind `carry`.
+
+**THE TRAP THIS SLICE MUST BUDGET FOR, and the reason it was not landed in
+one pass.** Fixing `charter` makes a SEVENTH goal adoptable where six were
+competing, and every one of S19b's rivalry clauses keys on two parties holding
+COLLIDING goals. Driven, the corrected build takes S19b's foe boards to zero
+on its own scale seed and reddens three of its arms
+(`pick.attackLift`, `pick.court.onOpen`, `scale.foeN`). Those gates were
+derived from a distribution a bug was shaping, so they have to be RE-DERIVED
+on the corrected build rather than lowered to meet it -- and re-deriving them
+answers a question worth asking on its own: with seven goals in the pool
+instead of six, is the rival reading still live at a rate that matters, or did
+S19b's mechanism depend on the missing goal? Budget a measurement pass for
+that before touching the gates.
+
+Adding a `bill` card compounds it: an eleventh card dilutes the whole deck,
+and it also made S19a's goal-steering arm worse (purposeful 0.401 to 0.499)
+until the card's `worth` was lowered in the six tables where laying a bill does
+little -- at which point steering came out BETTER than before (0.33 / 0.255
+against 0.401 / 0.261). Set that weight from what the card does for each aim,
+not by eye. `roads.js` also carries a per-card `moved` chain that falls through
+to `false` for a card it does not know, so an eleventh card reddens
+`the six that are not yours act` until it is named there and the deck count
+goes 10 to 11.
+
+**S19d — Bargaining between parties.** After S19c, and only if S19c gives it a
+channel. `st.aiPacts` is the only standing agreement in the model, a single
+field with no terms; two parties never share an aim (0 in 25,200 pairs on the
+same statute, 0 common enemies in 9,000); and the one shared SITUATION that
+does occur is 85 pairs of two parties both outside a government that averages
+2.96 seats. Note that a coalition never grew in 720 driven sessions and 9 of 9
+watched pairs never got in, so `enter` may be closer to unreachable than
+S19b's `seat` clause assumes.
 
 **S19d — Temperament.** Per-party character shaping the weights, held across
 a campaign. Cheapest of the four and orthogonal to the others; it is placed
