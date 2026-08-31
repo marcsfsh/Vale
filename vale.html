@@ -33624,7 +33624,7 @@ viewWorld = function () {
    party out of government runs at forty to sixty in hand: a card at fifty-eight
    never fired once in sixty measured sessions and a pact at fifty-four never
    formed at all. The two dear ones came down and the deck now empties. */
-var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22, pact:34, demand:16 };
+var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22, pact:34, demand:16, bill:38 };
 /* WHAT AN INITIATIVE IS WORTH. Set by sweeping `tools/pacing.js` over six
    seeds, not by taste: the machine is the single largest seat lever in the
    file (S15h measured the party organisation at its ceiling as +154 Assembly
@@ -33892,6 +33892,69 @@ var V16_AI_DECK = [
         (f.verb === 'support' ? 'came out for ' : f.verb === 'oppose' ? 'came out against ' : 'leaned on the sponsors of ') +
         f.bill.title + '.';
     } },
+  /* S19c -- THE ROAD THE `carry` GOAL DID NOT HAVE.
+
+     `carry` is the most adopted of the seven aims (136 of 501 over twelve
+     seeds of 120 sessions) and it had NEVER ONCE BEEN REACHED: mean progress
+     at the moment it was retired was .004 and its ninetieth percentile was
+     exactly nought. The reason is that a statute moves when a bill carries,
+     and NO AI PARTY HAD EVER LAID A BILL -- 0 in 8,640 party-sessions. The
+     deck's three instrument cards reach the floor, the constitution and the
+     order book; `floor` can only lean on a bill that already exists, so the
+     whole goal depended on the player happening to have laid one on the exact
+     statute the party wanted.
+
+     It calls `sponsorBill`, which is the same function the player's own Draft
+     button reaches, and it is bound by the rules S18a wrote for a private
+     member: one bill at a time, and THE PARTY'S OWN PURSE PAYS. `free` is
+     true because the third argument from the end charges `st.capital`, which
+     is the PLAYER'S capital -- an engine laying a bill out of the player's
+     purse would be S16e's borrowed-paper defect wearing a new coat. The owner
+     is `opposition`, a value the file already carries and already handles,
+     rather than a new one that every `b.owner` branch would fall through. */
+  { id:'bill', post:['attack', 'restive', 'consolidate', 'moderate', 'organise', 'hold'],
+    can:function (st, pid) {
+      /* the government has its own machinery and does not need the floor */
+      if (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.bill) return false;
+      /* ONE BILL AT A TIME, ASKED ABOUT THIS PARTY BY NAME. `v17PrivateBillsOf`
+         takes the actor, which is the question a gate deciding who may lay
+         one has to ask.
+         A CALL TO `v18FloorShut` STOOD HERE AND WAS TAKEN OUT BY ITS OWN
+         POISON. It reads like the one predicate every floor surface shares --
+         S18a made it exactly that -- but it asks about `playParty(st)`: it is
+         the PLAYER's private members' rule, and calling it here refused an
+         engine's bill because THE READER already had one before the House.
+         Deleting it changed nothing any arm could see, which is what a guard
+         answering the wrong question looks like from the outside. "The
+         government holds it" and "this party holds it" are different
+         questions, and so are "the player has a bill" and "this party has
+         one".
+         THE RULE IS ASKED HERE AND AGAIN IN `run`, and the two have to be
+         poisoned together: dropping either alone changes nothing, because the
+         other still holds. It is on `can` so the card is not OFFERED -- a card
+         in the open set that returns null spends the party's whole session on
+         nothing -- and on `run` because the two fire at different points of
+         the same pass. */
+      if (typeof v17PrivateBillsOf === 'function' && v17PrivateBillsOf(st, pid).length >= 1) return false;
+      return !!partyDemandPolicy(st, pid);
+    },
+    run:function (st, pid) {
+      /* THE RULE IS RE-ASKED HERE, ON THE LIVE PATH. `can` builds the open set
+         and `run` fires later in the same pass, and driven, the card ran four
+         times in twenty for a party that was holding one by the time it got
+         there -- a bill can be attributed to a party between the two, because
+         `sponsorBill` with `owner:'opposition'` and no sponsor id gives it to
+         the largest opposition party. A guard that decides who may lay a bill
+         belongs on the function that lays it, not only on the filter that
+         offered it. */
+      if (typeof v17PrivateBillsOf === 'function' && v17PrivateBillsOf(st, pid).length >= 1) return null;
+      var d = partyDemandPolicy(st, pid); if (!d) return null;
+      var b = sponsorBill(st, d.policy, d.dir, 'opposition', 'clean', true, pid, true);
+      if (!b) return null;
+      v16AiPay(st, pid, V16_AI_COST.bill);
+      return 'The ' + PARTY[pid].short + ' put the ' + b.title + ' on the order paper.';
+    } },
   { id:'demand', post:['partner', 'restive', 'attack', 'hold'],
     can:function (st, pid) { return pid !== st.ruling && partyPurse(st, pid) >= V16_AI_COST.demand && !!partyDemandPolicy(st, pid); },
     run:function (st, pid) {
@@ -34005,12 +34068,27 @@ var V19_GOALS = [
        party's aim and its demands are the same appetite rather than two */
     fits:function (st, pid) { return 1.15; },
     target:function (st, pid) {
+      /* S19c: THIS AIMED AT THE FULL AUTHORED WANT AND THAT IS FOUR RUNGS
+         AWAY, EVERY TIME. It takes the BIGGEST gap in the party's table, a
+         statute has four rungs, and measured across twelve seeds the gap it
+         picked was 4 on every single adoption -- mean 4, max 4. A bill moves
+         a statute ONE rung, so the aim needed four carried bills inside a
+         fourteen-session clock and was reached 0 times in 136 adoptions.
+         `build` and `ground` beside it already aim at a STEP from where the
+         party stands (`machine + .22`, `have + 14`), which is this file's own
+         convention for a goal that can be reached; `carry` was the one that
+         reached for the ceiling. The statute it cares about most is still the
+         one it picks -- what changes is that the aim is the next rung of it. */
       var w = (PARTY[pid] || {}).wants || {}, best = null, bestGap = 0;
       for (var id in w) {
         if (!POL[id]) continue;
         var lv = st.pol[id] || 0, tg = Math.min(w[id], POL[id].max);
         var gap = Math.abs(tg - lv);
-        if (gap > bestGap) { bestGap = gap; best = { ref:id, want:tg, dir:tg > lv ? 1 : -1 }; }
+        if (gap > bestGap) {
+          bestGap = gap;
+          var dir = tg > lv ? 1 : -1;
+          best = { ref:id, want:lv + dir, dir:dir };
+        }
       }
       return best;
     },
@@ -34027,7 +34105,7 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return (g.dir > 0 ? 'Carrying ' : 'Repealing ') + (POL[g.ref] ? POL[g.ref].name : g.ref);
     },
-    worth:{ demand:1, floor:.8, article:.2, campaign:.35, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2 }
+    worth:{ bill:1, demand:.9, floor:.8, article:.2, campaign:.35, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2 }
   },
   {
     id:'office',
@@ -34049,7 +34127,7 @@ var V19_GOALS = [
     dead:function (st, pid, g) { return !DEPTS[g.ref]; },
     progress:function (st, pid, g) { return clamp(v17Share(st, pid) * 2, 0, .95); },
     say:function (st, pid, g) { return 'Taking the ' + (DEPTS[g.ref] ? DEPTS[g.ref].name : g.ref); },
-    worth:{ campaign:1, organise:.85, court:.7, platform:.5, attack:.45, article:.2, demand:.25, floor:.2, order:.3, pact:.6 }
+    worth:{ campaign:1, organise:.85, court:.7, platform:.5, attack:.45, bill:.15, article:.2, demand:.25, floor:.2, order:.3, pact:.6 }
   },
   {
     id:'enter',
@@ -34063,7 +34141,7 @@ var V19_GOALS = [
     dead:function (st, pid) { return false; },
     progress:function (st, pid) { return clamp(v17Share(st, pid) * 2.4, 0, .95); },
     say:function (st, pid) { return 'Getting into the government'; },
-    worth:{ organise:1, campaign:.9, court:.75, platform:.8, pact:.7, demand:.5, floor:.35, article:.2, attack:.15, order:.2 }
+    worth:{ organise:1, campaign:.9, court:.75, platform:.8, pact:.7, demand:.5, bill:.2, floor:.35, article:.2, attack:.15, order:.2 }
   },
   {
     id:'oust',
@@ -34098,7 +34176,7 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return 'Bringing down the ' + (PARTY[g.ref] ? PARTY[g.ref].short : g.ref);
     },
-    worth:{ attack:1, floor:.8, campaign:.7, pact:.65, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2 }
+    worth:{ attack:1, floor:.8, campaign:.7, pact:.65, bill:.25, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2 }
   },
   {
     id:'ground',
@@ -34127,7 +34205,7 @@ var V19_GOALS = [
       var b = BLOCS.filter(function (x) { return x.id === g.ref; })[0];
       return 'Winning over ' + (b ? b.name.toLowerCase() : g.ref);
     },
-    worth:{ court:1, platform:.75, campaign:.6, organise:.5, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2 }
+    worth:{ court:1, platform:.75, campaign:.6, organise:.5, bill:.2, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2 }
   },
   {
     id:'build',
@@ -34145,7 +34223,7 @@ var V19_GOALS = [
       return clamp((have - from) / span, 0, 1);
     },
     say:function (st, pid) { return 'Building the party organisation'; },
-    worth:{ organise:1, campaign:.5, court:.45, platform:.3, demand:.25, floor:.2, article:.15, attack:.2, order:.2, pact:.3 }
+    worth:{ organise:1, campaign:.5, court:.45, platform:.3, demand:.25, bill:.12, floor:.2, article:.15, attack:.2, order:.2, pact:.3 }
   },
   {
     id:'charter',
@@ -34156,7 +34234,17 @@ var V19_GOALS = [
       if (typeof v17AiArticleFor !== 'function') return null;
       var a = null;
       try { a = v17AiArticleFor(st, pid); } catch (e) { a = null; }
-      return a && a.id ? { ref:a.id } : null;
+      /* S19c: THIS READ `a.id` AND `v17AiArticleFor` RETURNS THE ID ITSELF.
+         A string has no `.id`, so the guard was falsy every time and
+         `v19AdoptGoal` dropped the goal from the pool on every pass. Measured
+         before the fix: the gate opened on 6,028 party-sessions and the
+         target came back null on 6,028 of them, so `charter` was adopted
+         ZERO times in 1,440 sessions across twelve seeds -- one of the seven
+         authored goals, with its prose, its weight and its `worth` table,
+         which no campaign has ever been able to hold. `v17AiOrderFor` beside
+         it DOES return an object, which is how the two came to be read the
+         same way. */
+      return (typeof a === 'string' && a) ? { ref:a } : (a && a.id ? { ref:a.id } : null);
     },
     done:function (st, pid, g) {
       return typeof v11Adopted === 'function' && v11Adopted(st, g.ref);
@@ -34168,7 +34256,7 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return 'Carrying the ' + (V11_ART[g.ref] ? V11_ART[g.ref].name.replace(/^Article of the /, 'Article of the ') : g.ref);
     },
-    worth:{ article:1, floor:.5, campaign:.4, organise:.4, court:.35, demand:.3, platform:.3, attack:.2, order:.25, pact:.3 }
+    worth:{ article:1, floor:.5, campaign:.4, organise:.4, court:.35, bill:.2, demand:.3, platform:.3, attack:.2, order:.25, pact:.3 }
   }
 ];
 function v19GoalKind(id) {
@@ -34383,7 +34471,8 @@ var V19_RIVAL_WORTH = {
   article:  .20,
   order:    .15,
   floor:    .55,
-  demand:   .35
+  demand:   .35,
+  bill:     .50   /* a rival's statute is contested on the order paper */
 };
 
 /* ---------- THE CHOOSER ----------

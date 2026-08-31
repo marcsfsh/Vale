@@ -4186,7 +4186,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         inbox:S.inbox.length, pacts:Object.keys(S.aiPacts || {}).length,
         pending:(v11Con(S).pending || []).length,
         orders:Object.keys(v10Orders(S)).length,
-        lines:S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0)
+        lines:S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0),
+        bills:S.bills.length
       };
       if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
       const line = c.run(S, pid);
@@ -4201,6 +4202,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         : c.id === 'article' ? (v11Con(S).pending || []).length > before.pending
         : c.id === 'order' ? Object.keys(v10Orders(S)).length > before.orders
         : c.id === 'floor' ? S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0) > before.lines
+        /* S19c: the deck's eleventh card. The chain falls through to `false`
+           for a card it does not know, which is why adding one reddens here
+           until somebody says what it is supposed to move -- the guard a
+           per-card list can have and a count cannot. */
+        : c.id === 'bill' ? S.bills.length > before.bills
         : false;
       const paid = partyPurse(S, pid) < before.purse;
       cardWorks[c.id] = !!(line && moved && paid);
@@ -4258,7 +4264,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      never touch -- an article, an order and a line on a bill -- and the claim
      is unchanged: EVERY card, given a state where it can play, does what it
      says and is paid for out of that party's own money. */
-  say(six.built && six.deck === 10 && six.cardWorks === 10 && six.cardFails.length === 0 && six.actedAll &&
+  say(six.built && six.deck === 11 && six.cardWorks === 11 && six.cardFails.length === 0 && six.actedAll &&
       six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
       six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
       six.redLineBites && six.partnerLeaves,
@@ -9206,12 +9212,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        Two readings, kept apart: how often the record is WRITTEN with a rival
        over a long run, and whether the page SAYS so. Joining them into one
        would let either half carry the other, which is S17n's mistake. */
+    /* THE SECOND VERSION OF THIS ARM BROKE ITS OWN TALLY. It stopped the loop
+       at the first session the page said the sentence, and the tally of how
+       often the record is WRITTEN rode in the same loop -- so on a build where
+       the page said it at session one, `acts` came out at 4 against a floor of
+       30 and the arm failed for being right quickly. The two readings are kept
+       apart now: a fixed drive accumulates the tally, and the page is asked
+       every session without ending it. */
     fresh(90210, 'ruthless');
-    R.panel = { written:0, acts:0, inTheWay:false, atSession:null, sessions:0 };
+    R.panel = { written:0, acts:0, inTheWay:false, atSession:null, sessions:120 };
     const seenAt = {};
-    for (let i = 0; i < 200 && !R.panel.inTheWay; i++) {
+    for (let i = 0; i < 120; i++) {
       drive(1);
-      R.panel.sessions = i + 1;
       PARTIES.forEach(p => {
         const w = (v16Ai(S)[p.id] || {}).why;
         if (!w || seenAt[p.id] === w.turn + ':' + w.card) return;
@@ -9219,9 +9231,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         R.panel.acts++;
         if (w.foe) R.panel.written++;
       });
-      let html = '';
-      try { html = v16AiPanel(); } catch (e) { html = ''; }
-      if (/in the way/.test(html)) { R.panel.inTheWay = true; R.panel.atSession = i + 1; }
+      if (!R.panel.inTheWay) {
+        let html = '';
+        try { html = v16AiPanel(); } catch (e) { html = ''; }
+        if (/in the way/.test(html)) { R.panel.inTheWay = true; R.panel.atSession = i + 1; }
+      }
     }
 
     /* (h) AND IT REACHES A REAL PICK, THROUGH `v19Choose`. Every arm above
@@ -9241,24 +9255,30 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        What works is the rate a card is picked GIVEN IT WAS OPEN, which takes
        the posture and the purse out of the reading, split by whether the board
        carried the rival that card answers. Two cards, read component-wise and
-       never joined: `court` is how a contested bloc is contested, and `attack`
-       is how a party planning against this one is answered. */
-    R.pick = { court:{}, attack:{} };
+       never joined: `attack` is how a party planning against this one is
+       answered, and `organise` is how a party under threat builds against it.
+
+       THE SECOND CARD USED TO BE `court`, READ ON CONTESTED-BLOC BOARDS, AND
+       S19c TOOK THAT SAMPLE AWAY. Making `charter` adoptable puts a seventh
+       goal in the pool, `ground` adoptions fall with it, and same-bloc
+       collisions fall harder still -- 120 to 22 over 7,200 party-sessions --
+       which leaves 3 boards where `court` was open against a party courting
+       the same bloc where there had been 16. Three is not a sample. Measured
+       across all eleven cards on the corrected build, `organise` carries the
+       second reading at +.142 on 119 boards where `court` now reads +.047 on
+       118, so the component is chosen from the measurement rather than kept
+       because it was there first. */
+    R.pick = { organise:{}, attack:{} };
     (() => {
-      const t = { blocOpen:0, blocPick:0, elseOpen:0, elsePick:0, foeOpen:0, foePick:0, calmOpen:0, calmPick:0 };
+      const t = { oOpen:0, oPick:0, oCalm:0, oCalmPick:0, foeOpen:0, foePick:0, calmOpen:0, calmPick:0 };
       const savedChoose = v19Choose;
       v19Choose = function (st, pid, open, goal, rv) {
         const got = savedChoose.call(this, st, pid, open, goal, rv);
         if (!V19_SIMULATING) {
           const r = rv || v19Rival(st, pid);
-          let blocFoe = false;
-          if (r.foe) {
-            const m = v19GoalSeen(st, pid), th = v19GoalSeen(st, r.foe);
-            blocFoe = !!(m && th && m.kind === 'ground' && th.kind === 'ground' && m.ref === th.ref);
-          }
-          if (open.some(c => c.id === 'court')) {
-            if (blocFoe) { t.blocOpen++; if (got && got.id === 'court') t.blocPick++; }
-            else { t.elseOpen++; if (got && got.id === 'court') t.elsePick++; }
+          if (open.some(c => c.id === 'organise')) {
+            if (r.foeAt > 0) { t.oOpen++; if (got && got.id === 'organise') t.oPick++; }
+            else { t.oCalm++; if (got && got.id === 'organise') t.oCalmPick++; }
           }
           if (open.some(c => c.id === 'attack')) {
             if (r.foeAt > 0) { t.foeOpen++; if (got && got.id === 'attack') t.foePick++; }
@@ -9267,12 +9287,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         }
         return got;
       };
-      try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 271828, 161803, 2718, 5150].forEach(s => { fresh(s, 'ruthless'); drive(100); }); }
+      try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 271828, 161803, 2718, 5150].forEach(s2 => { fresh(s2, 'ruthless'); drive(100); }); }
       finally { v19Choose = savedChoose; }
       const rt = (a2, b2) => b2 ? +(a2 / b2).toFixed(3) : null;
-      R.pick.court = { onOpen:t.blocOpen, on:rt(t.blocPick, t.blocOpen), offOpen:t.elseOpen, off:rt(t.elsePick, t.elseOpen) };
+      R.pick.organise = { onOpen:t.oOpen, on:rt(t.oPick, t.oOpen), offOpen:t.oCalm, off:rt(t.oCalmPick, t.oCalm) };
       R.pick.attack = { onOpen:t.foeOpen, on:rt(t.foePick, t.foeOpen), offOpen:t.calmOpen, off:rt(t.calmPick, t.calmOpen) };
-      R.pick.courtLift = (R.pick.court.on !== null && R.pick.court.off !== null) ? +(R.pick.court.on - R.pick.court.off).toFixed(3) : null;
+      R.pick.organiseLift = (R.pick.organise.on !== null && R.pick.organise.off !== null) ? +(R.pick.organise.on - R.pick.organise.off).toFixed(3) : null;
       R.pick.attackLift = (R.pick.attack.on !== null && R.pick.attack.off !== null) ? +(R.pick.attack.on - R.pick.attack.off).toFixed(3) : null;
     })();
 
@@ -9281,8 +9301,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        the number it is checking agrees with any value that number holds. The
        claim is a relationship -- an intention outweighs an ordinary grievance
        and loses to a real one -- so both ends are asserted. */
+    /* FOUR SEEDS, NOT ONE, AND THE SHIPPED BUILD IS WHY. Read on a single
+       seed this was a lottery: over twelve seeds of the build S19b shipped,
+       one of them (90210) produces NO foe board at all, and sixty sessions of
+       31337 produces none either on the corrected build where a hundred
+       produces eighteen. A gate whose sample can be empty on a CORRECT build
+       is a flake waiting to be mistaken for a defect. */
     const gr = [], mags = [];
-    fresh(31337, 'shrewd');
     const savedTurn = v16AiTurn;
     v16AiTurn = function (st) {
       PARTIES.forEach(p => {
@@ -9293,7 +9318,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       });
       return savedTurn.call(this, st);
     };
-    drive(60);
+    [31337, 4242, 90210, 555].forEach(s2 => { fresh(s2, 'shrewd'); drive(60); });
     v16AiTurn = savedTurn;
     const at = (arr, p) => { if (!arr.length) return null; const s = arr.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
     const typical = mags.length ? at(mags, .5) : 0;
@@ -9321,8 +9346,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     rival.target.ruthless.hit === rival.target.ruthless.rival &&
     rival.panel.written > 0 && rival.panel.inTheWay === true && rival.panel.acts > 30 &&
     rival.pick.attack.onOpen >= 50 && rival.pick.attackLift !== null && rival.pick.attackLift > .05 &&
-    rival.pick.court.onOpen >= 12 && rival.pick.courtLift !== null && rival.pick.courtLift > .1 &&
-    rival.scale.foeN > 0 && rival.scale.p90 !== null &&
+    rival.pick.organise.onOpen >= 50 && rival.pick.organiseLift !== null && rival.pick.organiseLift > .05 &&
+    rival.scale.foeN > 20 && rival.scale.p90 !== null &&
     rival.scale.worth > rival.scale.p90 && rival.scale.worth < rival.scale.p99;
   say(rvOk, 'a party knows who is in its way',
     `S19a GAVE EVERY PARTY AN AIM AND LEFT IT ALONE ON THE BOARD: nothing asked what the OTHERS were after, so ` +
@@ -9355,14 +9380,274 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `green. Twelve seeds of a hundred sessions at ruthless, each card read as the rate it is taken GIVEN IT WAS ` +
     `OPEN so the posture filter carries none of it: \`attack\` goes at ${rival.pick.attack.on} on the ` +
     `${rival.pick.attack.onOpen} boards carrying a rival against ${rival.pick.attack.off} on the ` +
-    `${rival.pick.attack.offOpen} that carry none (+${rival.pick.attackLift}), and \`court\` at ` +
-    `${rival.pick.court.on} on the ${rival.pick.court.onOpen} boards where another party is courting the same ` +
-    `bloc against ${rival.pick.court.off} elsewhere (+${rival.pick.courtLift}) -- two cards read separately, ` +
-    `because a probe that joins two readings lets either half carry the other · AND THE CONSTANT SITS WHERE THE DISTRIBUTION PUTS IT, ` +
+    `${rival.pick.attack.offOpen} that carry none (+${rival.pick.attackLift}), and \`organise\` at ` +
+    `${rival.pick.organise.on} against ${rival.pick.organise.off} on ${rival.pick.organise.onOpen} and ` +
+    `${rival.pick.organise.offOpen} (+${rival.pick.organiseLift}) -- two cards read separately, because a probe ` +
+    `that joins two readings lets either half carry the other, and the second one was \`court\` on ` +
+    `contested-bloc boards until a seventh adoptable goal took that sample from 16 boards to 3 · AND THE CONSTANT SITS WHERE THE DISTRIBUTION PUTS IT, ` +
     `measured in this run rather than read off itself: a live rivalry of ${rival.scale.typicalMag} is worth ` +
     `${rival.scale.worth} on the ledger's own scale, against grudges whose 90th percentile is ` +
     `${rival.scale.p90} and whose 99th is ${rival.scale.p99} over ${rival.scale.n} readings -- an intention ` +
     `outweighs an ordinary grievance and loses to a real one`);
+
+  /* ---------- S19c: THE AIMS ARE REACHABLE ----------
+     S19a asserted that every goal is SERVED BY THE DECK -- its `worth` table
+     names cards that exist. That is a structural question, and the play-level
+     one was never asked: is the aim ever ADOPTED, and can it be REACHED?
+     Driven, the answers were bad. Of 501 goals adopted over twelve seeds of
+     120 sessions, 8 were reached and 421 timed out; `charter` was adopted
+     ZERO times in any campaign; and `carry`, the most adopted of the seven,
+     was reached 0 times in 136 adoptions with a mean progress at retirement
+     of .004. Three defects behind it, and this asks about each separately. */
+  const reach = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level, me) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', me || 'lp'), false);
+      S.aiLevel = level || 'shrewd'; S.rngState = seed;
+      return S;
+    }
+    function drive(n) {
+      for (let i = 0; i < n; i++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { return e.message; }
+        UI.queue = []; UI.busy = false;
+      }
+      return null;
+    }
+
+    /* (a) EVERY AUTHORED GOAL IS ADOPTED BY SOMEBODY IN A REAL CAMPAIGN.
+       Derived from V19_GOALS rather than counted against a number, so a goal
+       a later slice adds is covered the moment it exists. This is the guard
+       that was missing: `charter` passed S19a's structural arm -- its `worth`
+       table names ten real cards -- while `v19AdoptGoal` dropped it from the
+       pool on every pass, because `v17AiArticleFor` returns an article id and
+       `charter.target` read `.id` off the string. */
+    R.adopted = {};
+    R.capitalSpentByAI = 0;
+    R.billsLaid = 0; R.billSponsors = {}; R.billOwners = {}; R.privateCounted = 0;
+    R.carryGaps = []; R.govLaid = 0;
+    (() => {
+      const seen = {};
+      [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+        fresh(seed);
+        for (let t = 0; t < 100; t++) {
+          const capBefore = S.capital;
+          const billsBefore = {}; (S.bills || []).forEach(b => { billsBefore[b.id] = true; });
+          UI.queue = []; UI.busy = false;
+          try { endTurn(); } catch (e) { break; }
+          UI.queue = []; UI.busy = false;
+          PARTIES.forEach(p => {
+            if (p.id === playParty(S) || S.banned[p.id]) return;
+            const g = v19GoalSeen(S, p.id);
+            if (!g) return;
+            const key = p.id + ':' + g.kind + ':' + g.ref + ':' + (g.since || 0);
+            if (seen[key]) return;
+            seen[key] = 1;
+            R.adopted[g.kind] = (R.adopted[g.kind] || 0) + 1;
+            if (g.kind === 'carry') R.carryGaps.push(Math.abs((g.want || 0) - (g.from === undefined ? 0 : g.from)));
+          });
+          (S.bills || []).forEach(b => {
+            if (billsBefore[b.id]) return;
+            if (b.sponsor === playParty(S)) return;
+            if (b.owner === 'government' || b.owner === 'coalition') { R.govLaid++; return; }
+            R.billsLaid++;
+            R.billSponsors[b.sponsor] = (R.billSponsors[b.sponsor] || 0) + 1;
+            R.billOwners[b.owner] = (R.billOwners[b.owner] || 0) + 1;
+            if (typeof v17PrivateBillsOf === 'function' && v17PrivateBillsOf(S, b.sponsor).length >= 1) R.privateCounted++;
+          });
+          /* THE PLAYER'S CAPITAL IS NOT THE ENGINES' TO SPEND. `sponsorBill`
+             charges `st.capital` unless `free`, and `st.capital` is the
+             PLAYER's. An engine laying a bill out of it would be S16e's
+             borrowed-paper defect in a new place, and it would be invisible:
+             the player would simply be poorer. */
+          if (S.capital > capBefore) R.capitalGained = true;
+        }
+      });
+      R.goalKinds = V19_GOALS.map(g => g.id);
+      R.neverAdopted = R.goalKinds.filter(k => !R.adopted[k]);
+    })();
+
+    /* (b) THE PLAYER'S CAPITAL IS UNTOUCHED BY AN ENGINE'S BILL, asked by
+       running the card itself on a pinned board and reading the number
+       either side, rather than by trusting the flag at the call site. */
+    fresh(4242);
+    const bc = V16_AI_DECK.filter(c => c.id === 'bill')[0];
+    R.hasCard = !!bc;
+    if (bc) {
+      const q = PARTIES.filter(p => p.id !== playParty(S) && p.id !== S.ruling &&
+        (S.coalition || []).indexOf(p.id) < 0 && !S.banned[p.id]);
+      const who = q.length ? q[0].id : null;
+      R.cardParty = who;
+      if (who) {
+        (v16Ai(S)[who] || {}).spent = 0;
+        S.purse = S.purse || {}; S.purse[who] = 400;
+        const cap0 = S.capital, purse0 = partyPurse(S, who), n0 = (S.bills || []).length;
+        let line = null;
+        try { line = bc.run(S, who); } catch (e) { line = null; }
+        R.ranCard = { laid:(S.bills || []).length - n0, capitalMoved:S.capital - cap0,
+          purseMoved:+(purse0 - partyPurse(S, who)).toFixed(1), said:!!line };
+      }
+      /* (c) AND THE GOVERNMENT IS REFUSED IT: a party with the machinery of
+         state does not need the private members' floor, and the card says so
+         through `can` rather than through a refusal after the click. */
+      fresh(4242);
+      R.canRuling = bc.can(S, S.ruling);
+      const partner = (S.coalition || []).filter(id => id !== S.ruling)[0];
+      R.canPartner = partner ? bc.can(S, partner) : null;
+    }
+
+    /* (d) `charter` RESOLVES TO A REAL ARTICLE. The selector returns an id
+       and the goal has to carry that id, not `undefined` read off a string. */
+    fresh(90210);
+    R.charter = { fits:0, target:0, realArticle:0 };
+    const ck = v19GoalKind('charter');
+    PARTIES.forEach(p => {
+      if (p.id === playParty(S) || S.banned[p.id]) return;
+      let f = 0, t = null;
+      try { f = ck.fits(S, p.id) || 0; } catch (e) { f = 0; }
+      if (f <= 0) return;
+      R.charter.fits++;
+      try { t = ck.target(S, p.id); } catch (e) { t = null; }
+      if (t && t.ref) { R.charter.target++; if (typeof V11_ART === 'object' && V11_ART[t.ref]) R.charter.realArticle++; }
+    });
+
+    /* (e) AND A `carry` AIM IS ONE RUNG FROM WHERE THE STATUTE STOOD, so it
+       is reachable by the instrument that serves it. It aimed at the full
+       authored want, which the measurement found was FOUR rungs on every
+       adoption, against a bill that moves one. Driven both ways: the aim as
+       adopted, and whether a single rung actually closes it. */
+    fresh(31337);
+    R.rung = { checked:0, oneRung:0, closes:null };
+    const anyCarry = (() => {
+      for (let i = 0; i < 40; i++) {
+        drive(1);
+        const hit = PARTIES.filter(p => {
+          if (p.id === playParty(S) || S.banned[p.id]) return false;
+          const g = v19GoalSeen(S, p.id);
+          return g && g.kind === 'carry' && POL[g.ref];
+        })[0];
+        if (hit) return hit.id;
+      }
+      return null;
+    })();
+    if (anyCarry) {
+      const g = v19GoalSeen(S, anyCarry);
+      R.rung.checked = 1;
+      R.rung.oneRung = Math.abs(g.want - (g.from === undefined ? 0 : g.from)) === 1 ? 1 : 0;
+      R.rung.gap = Math.abs(g.want - (g.from === undefined ? 0 : g.from));
+      /* move the statute one rung the way the party wants it and ask the
+         goal's own predicate, through `v19Goal`, whether it is now over */
+      S.pol[g.ref] = (S.pol[g.ref] || 0) + g.dir;
+      let over = false;
+      try { over = v19GoalKind('carry').done(S, anyCarry, g); } catch (e) { over = false; }
+      R.rung.closes = over;
+    }
+    /* (f) AND THE CARD NEVER LAYS A SECOND ONE. The one-at-a-time rule fires
+       often -- measured, it refuses on 1,001 party-sessions -- and nothing
+       asked about it until its poison came back green.
+       THE FIRST VERSION OF THIS ARM ASKED WHETHER A PARTY EVER HOLDS TWO AND
+       THAT IS A DIFFERENT QUESTION, which the game answers yes to for a
+       reason that predates this slice: `sponsorBill` called with
+       `owner:'opposition'` and NO `sponsorId` attributes the bill to the
+       largest opposition party, so a party that laid its own can be handed a
+       second by another path. Measured at 6 party-sessions in 1,080. The
+       claim here is about the CARD, so it is read at the moment the card
+       runs: the party it lays for held none. */
+    R.laidWhenHolding = 0; R.cardRuns = 0;
+    (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'bill')[0];
+      if (!card) return;
+      const saved = card.run;
+      card.run = function (st, pid) {
+        const held = (typeof v17PrivateBillsOf === 'function') ? v17PrivateBillsOf(st, pid).length : 0;
+        const n0 = (st.bills || []).length;
+        const out = saved.call(this, st, pid);
+        /* counted on what it DID, not on what it was asked: a run that was
+           refused on the live path laid nothing and is not a breach */
+        if (!V19_SIMULATING) {
+          R.cardRuns++;
+          if ((st.bills || []).length > n0 && held >= 1) R.laidWhenHolding++;
+        }
+        return out;
+      };
+      try { [4242, 90210, 7, 31337, 555].forEach(seed => { fresh(seed); drive(60); }); }
+      finally { card.run = saved; }
+    })();
+    /* (g) AND THE PARTY THAT WANTS THE STATUTE IS THE ONE THAT LAYS THE BILL.
+       The `worth` tables say `carry` leans on this card hardest, and nothing
+       asked whether that reaches a real pick until the poison setting the
+       weight to nought came back green. Read as the rate the card is taken
+       GIVEN IT WAS OPEN, split by whether the party holding the pick is after
+       a statute -- the posture and the purse carry none of it that way. */
+    R.steer = { carryOpen:0, carryPick:0, otherOpen:0, otherPick:0 };
+    (() => {
+      const sc = v19Choose;
+      v19Choose = function (st, pid, open, goal, rv) {
+        const got = sc.call(this, st, pid, open, goal, rv);
+        if (!V19_SIMULATING && open.some(c => c.id === 'bill')) {
+          const k = (goal && goal.kind === 'carry') ? 'carry' : 'other';
+          R.steer[k + 'Open']++;
+          if (got && got.id === 'bill') R.steer[k + 'Pick']++;
+        }
+        return got;
+      };
+      /* ten seeds rather than six: at six the carry-held sample came in at 39
+         against a floor of 40, and moving the floor down to meet the sample
+         is how a gate stops testing anything. */
+      try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 271828, 161803].forEach(seed => { fresh(seed); drive(100); }); }
+      finally { v19Choose = sc; }
+      const rt = (a, b2) => b2 ? +(a / b2).toFixed(3) : null;
+      R.steer.carryRate = rt(R.steer.carryPick, R.steer.carryOpen);
+      R.steer.otherRate = rt(R.steer.otherPick, R.steer.otherOpen);
+      R.steer.lift = (R.steer.carryRate !== null && R.steer.otherRate !== null)
+        ? +(R.steer.carryRate - R.steer.otherRate).toFixed(3) : null;
+    })();
+    return R;
+  });
+
+  const reachOk =
+    reach.neverAdopted.length === 0 && reach.goalKinds.length >= 7 &&
+    reach.hasCard === true && reach.billsLaid > 20 &&
+    Object.keys(reach.billSponsors).length >= 2 &&
+    reach.ranCard && reach.ranCard.laid === 1 && reach.ranCard.capitalMoved === 0 &&
+    reach.ranCard.purseMoved > 0 && reach.ranCard.said === true &&
+    reach.canRuling === false && reach.canPartner === false &&
+    reach.charter.fits > 0 && reach.charter.target === reach.charter.fits &&
+    reach.charter.realArticle === reach.charter.target &&
+    reach.rung.checked === 1 && reach.rung.oneRung === 1 && reach.rung.closes === true &&
+    reach.carryGaps.length > 10 && reach.carryGaps.every(g => g === 1) &&
+    reach.cardRuns > 20 && reach.laidWhenHolding === 0 &&
+    reach.steer.carryOpen >= 40 && reach.steer.otherOpen >= 100 &&
+    reach.steer.lift !== null && reach.steer.lift > .15;
+  say(reachOk, 'a party can reach what it is after',
+    `S19a ASKED WHETHER THE DECK SERVES EACH GOAL and never whether the goal is REACHED. Driven, 501 aims were ` +
+    `adopted over twelve seeds of 120 sessions, 8 were reached and 421 timed out · \`charter\` WAS ADOPTED ZERO ` +
+    `TIMES IN ANY CAMPAIGN: its gate opened on 6,028 party-sessions and its target came back null on 6,028 of ` +
+    `them, because \`v17AiArticleFor\` returns an article id and the goal read \`.id\` off the string -- it now ` +
+    `resolves on ${reach.charter.target} of ${reach.charter.fits} openings and every one names an article the ` +
+    `document carries (${reach.charter.realArticle}); all ${reach.goalKinds.length} authored goals are adopted ` +
+    `in play (${reach.neverAdopted.length} that are not), which is the arm the structural one could not be · ` +
+    `AND A PARTY CAN NOW PUT A BILL ON THE ORDER PAPER, which no engine could do in three megabytes: 0 laid in ` +
+    `8,640 party-sessions before this slice, ${reach.billsLaid} here from ` +
+    `${Object.keys(reach.billSponsors).length} different parties, through \`sponsorBill\` -- the same function ` +
+    `the player's own Draft button reaches -- and counted as a private member's bill by the file's own test ` +
+    `(${reach.privateCounted}) · IT IS PAID FOR OUT OF THE PARTY'S PURSE AND NOT THE PLAYER'S CAPITAL, read ` +
+    `either side of the card's own run: ${reach.ranCard.laid} bill laid, the purse down ` +
+    `${reach.ranCard.purseMoved} and the player's capital moved by ${reach.ranCard.capitalMoved} -- ` +
+    `\`sponsorBill\` charges \`st.capital\` unless \`free\`, and \`st.capital\` is the reader's · and the ` +
+    `government is refused the card at \`can\` rather than after the click, for the head of government ` +
+    `(${reach.canRuling}) and for a partner in the ministry (${reach.canPartner}) · AND \`carry\` AIMS AT A RUNG ` +
+    `IT CAN REACH: it took the biggest gap in the party's own table, which measured 4 on every adoption against ` +
+    `an instrument that moves one, so it was reached 0 times in 136 adoptions -- every one of the ` +
+    `${reach.carryGaps.length} aims adopted here is one rung from where the statute stood, and moving the ` +
+    `statute that one rung closes it (${reach.rung.closes}), which is the convention \`build\` and \`ground\` ` +
+    `already followed · AND THE CARD NEVER LAYS A SECOND: over three driven campaigns it ran ${reach.cardRuns} ` +
+    `times and the party it laid for was already holding one on ${reach.laidWhenHolding} of them -- nothing ` +
+    `asked about that rule until its poison came back green, and the first version of this arm asked instead ` +
+    `whether a party ever HOLDS two, which the game answers yes to for a reason older than this slice: ` +
+    `\`sponsorBill\` with \`owner:'opposition'\` and no sponsor id attributes the bill to the largest ` +
+    `opposition party`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
