@@ -1604,7 +1604,13 @@ async function run() {
       if (!out.built) return out;
       const keep = { tab:UI.tab, level:S.aiLevel };
       S.aiLevel = 'ruthless';
-      for (let i = 0; i < 120 && !out.onPage; i++) {
+      /* A FOE ON THE RECORD IS A CONJUNCTION OF TWO ~10% EVENTS on one stream,
+         and driven on the single campaign this step inherits it came up empty
+         about one run in five. The roads arm reads four seeds for the same
+         reason; here the campaign cannot be re-seeded without disturbing every
+         later step, so the budget is widened instead and the loop is allowed
+         to run on. */
+      for (let i = 0; i < 300 && !out.onPage; i++) {
         UI.queue = []; UI.busy = false;
         try { endTurn(); } catch (e) { break; }
         UI.queue = []; UI.busy = false;

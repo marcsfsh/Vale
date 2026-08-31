@@ -8877,16 +8877,34 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        behaviour is whether they RANK the options differently -- a simulator
        that handed every party the same favourite would be scoring the board
        and not the party. */
-    R.sim.best = {};
+    /* READ AS THE ARGMAX FIRST, AND THAT WAS THE WRONG INSTRUMENT. Whether
+       four parties share a FAVOURITE depends on the board twelve driven
+       sessions in, not on whether the simulator tells them apart: S19e changed
+       what those twelve sessions contain and all four came out on `court`,
+       with `v19Outcome` -- which does not read a temperament -- untouched. The
+       claim is that they RANK the deck differently, so the whole ordering is
+       what is compared, pair by pair. */
+    R.sim.best = {}; R.sim.order = {};
     ['rsf', 'pnl', 'cup', 'fp'].forEach(q => {
-      let top = null, topV = -Infinity;
-      V16_AI_DECK.forEach(c => {
-        const v = v19Outcome(S, q, c);
-        if (v > topV) { topV = v; top = c.id; }
-      });
-      R.sim.best[q] = top;
+      const scored = V16_AI_DECK.map(c => ({ id:c.id, v:v19Outcome(S, q, c) }))
+        .sort((a, b2) => b2.v - a.v);
+      R.sim.order[q] = scored.map(x => x.id).join('>');
+      R.sim.best[q] = scored[0].id;
     });
     R.sim.distinctBest = new Set(Object.keys(R.sim.best).map(k => R.sim.best[k])).size;
+    R.sim.distinctOrders = new Set(Object.keys(R.sim.order).map(k => R.sim.order[k])).size;
+    /* and how far apart the two most different of them are, in places moved */
+    R.sim.orderSpread = (() => {
+      const ks = Object.keys(R.sim.order), lists = {};
+      ks.forEach(k => { lists[k] = R.sim.order[k].split('>'); });
+      let worst = 0;
+      for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) {
+        const a = lists[ks[i]], b2 = lists[ks[j]];
+        let d = 0; a.forEach((id, ix) => { d += Math.abs(ix - b2.indexOf(id)); });
+        if (d > worst) worst = d;
+      }
+      return worst;
+    })();
     /* and thinking about a thing does not change the thing: `rand()` resolves
        `RNG_ON || S`, so a rehearsal must spend the CLONE's dice */
     const keep = { rng:S.rngState, cap:S.capital, pol:JSON.stringify(S.pol),
@@ -9018,7 +9036,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     think.hold.rate < .25 && think.hold.samples > 100 &&
     think.retire.changed &&
     think.panel.column && think.panel.aims > 0 && think.panel.pct && think.panel.instinctSaysSo &&
-    think.sim.distinct >= 7 && think.sim.spread > .05 && think.sim.distinctBest >= 2 &&
+    think.sim.distinct >= 7 && think.sim.spread > .05 &&
+    think.sim.distinctOrders >= 3 && think.sim.orderSpread >= 6 &&
     think.sim.untouched && think.sim.flagged &&
     think.steer.purposeful.goal !== null && think.steer.purposeful.goal < .42 &&
     think.steer.shrewd.sim !== null && think.steer.purposeful.sim !== null &&
@@ -9048,8 +9067,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `separates ${think.sim.distinct} of ${think.sim.of} cards across a spread of ${think.sim.spread} where the ` +
     `first version separated two, because it scored the country and not the party and nine of the ten cards ` +
     `move nothing the country notices; four parties of different politics come out with ` +
-    `${think.sim.distinctBest} different favourites between them ` +
-    `(${Object.keys(think.sim.best).map(k => k + ' ' + think.sim.best[k]).join(', ')}), which is the question ` +
+    `${think.sim.distinctOrders} different ORDERINGS of the deck between them, the two furthest apart by ` +
+    `${think.sim.orderSpread} places (favourites: ${Object.keys(think.sim.best).map(k => k + ' ' + think.sim.best[k]).join(', ')}) -- ` +
+    `read as the favourite alone this depended on the board twelve driven sessions in rather than on the ` +
+    `simulator, and S19e moved it without touching \`v19Outcome\` at all; which is the question ` +
     `-- an earlier arm asked whether they disagreed about a card's SIGN and they rightly do not, because ` +
     `\`court\` raises whichever bloc the party courting it belongs to; and the rehearsal leaves the campaign exactly where it was ` +
     `(${think.sim.untouched}) with the flag up while it happens (${think.sim.flagged}), or an instrument that ` +
@@ -9369,7 +9390,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     rival.target.ruthless.hit === rival.target.ruthless.rival &&
     rival.panel.written > 0 && rival.panel.inTheWay === true && rival.panel.acts > 30 &&
     rival.pick.foeN >= 50 && rival.pick.calmN >= 200 && rival.pick.heavyCards >= 3 &&
-    rival.pick.netGain !== null && rival.pick.netGain > .04 && rival.pick.onFoeGain > .04 &&
+    /* A SHAPE CLAIM, NOT A MAGNITUDE. The absolute lift is shared out among
+       every term in `v19Score`, so each slice that adds one dilutes it: S19e's
+       temperament took this from .044 to .036 with the rivalry term untouched.
+       What the term must do is act on the boards that HAVE a rival and not on
+       the ones that do not, and that ratio is what is asserted. */
+    rival.pick.onFoeGain > .02 && rival.pick.onFoeGain > 3 * Math.abs(rival.pick.onCalmGain) &&
     rival.scale.foeN > 20 && rival.scale.p90 !== null &&
     rival.scale.worth > rival.scale.p90 && rival.scale.worth < rival.scale.p99;
   say(rvOk, 'a party knows who is in its way',
@@ -9974,6 +10000,214 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `nowhere, and \`build\`, the aim with a road that works, takes 23.7 sessions · and the page says what became of an aim (${mani.page.said}, "${mani.page.sample || ''}") ` +
     `by session ${mani.page.atSession}, where one used to vanish and be replaced with nothing said`);
 
+  /* ---------- S19e: THE PARTIES HAVE CHARACTERS ----------
+     `v16Posture`'s own comment says it -- "Circumstance, not temperament" --
+     and measured, that is exactly how the six behaved: FOUR OF SIX shared a
+     favourite card, four shared a dominant posture, and they acted between 181
+     and 221 times and spent between 5,216 and 6,996. A player could tell them
+     apart by what they BELIEVE, because `wants` and `aff` are authored, and by
+     nothing they DID. */
+  const temp = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'shrewd'; S.rngState = seed;
+      return S;
+    }
+    function drive(n) {
+      for (let i = 0; i < n; i++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { return e.message; }
+        UI.queue = []; UI.busy = false;
+      }
+      return null;
+    }
+    const AX = ['combative', 'organiser', 'dealer'];
+
+    /* (a) TWO COVERED SURFACES, both derived rather than counted. Every party
+       carries a temperament and every card in the deck belongs to exactly one
+       leaning, so a party or a card a later slice adds reddens here instead of
+       silently scoring nought. */
+    R.partiesWithout = PARTIES.filter(p => !(PARTY[p.id] || {}).temper).map(p => p.id);
+    R.cardsWithoutAxis = V16_AI_DECK.map(c => c.id).filter(id => !V19_TEMPER_AXIS[id]);
+    R.ghostAxis = Object.keys(V19_TEMPER_AXIS).filter(id => V16_AI_DECK.every(c => c.id !== id));
+    R.badAxis = Object.keys(V19_TEMPER_AXIS).filter(id => AX.indexOf(V19_TEMPER_AXIS[id]) < 0);
+    R.parties = PARTIES.length;
+
+    /* (b) AND THE CHARACTERS DIFFER FROM EACH OTHER. A table where every party
+       carries the same numbers passes (a) and is worth nothing. */
+    R.distinctLeads = (() => {
+      const seen = {};
+      PARTIES.forEach(p => {
+        const t = (PARTY[p.id] || {}).temper; if (!t) return;
+        seen[AX.slice().sort((x, y) => t[y] - t[x])[0]] = 1;
+      });
+      return Object.keys(seen).length;
+    })();
+    R.patienceSpread = (() => {
+      const v = PARTIES.map(p => ((PARTY[p.id] || {}).temper || {}).patient).filter(x => x !== undefined);
+      return v.length ? +(Math.max(...v) - Math.min(...v)).toFixed(2) : 0;
+    })();
+
+    /* (c) THE LEANING REACHES THE CARDS, isolated as an in-process A/B: the
+       same seeds driven twice, once with the weight at nought. The FAVOURITE
+       CARD is the wrong instrument and was tried first -- it moved from two
+       distinct favourites to three and stopped, because `court` is in most
+       goal tables at high worth and available in nearly every posture, so a
+       leaning worth at most .36 cannot take the argmax off it. What the
+       leaning does is shift the SHARE, and every party's own axis is where it
+       shows. */
+    R.lean = (() => {
+      const w0 = V19_TEMPER;
+      const run = () => {
+        const t = {}; PARTIES.forEach(p => { t[p.id] = { n:0, ax:{ combative:0, organiser:0, dealer:0 } }; });
+        const saved = V16_AI_DECK.map(c => c.run);
+        V16_AI_DECK.forEach((c, i) => {
+          c.run = function (st, pid) {
+            if (!V19_SIMULATING && t[pid]) { const a = V19_TEMPER_AXIS[c.id]; if (a) { t[pid].ax[a]++; t[pid].n++; } }
+            return saved[i].call(this, st, pid);
+          };
+        });
+        try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99].forEach(s => { fresh(s); drive(100); }); }
+        finally { V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; }); }
+        const out = {};
+        Object.keys(t).forEach(k => {
+          if (!t[k].n) return;
+          const tm = v19Temper(k), top = AX.slice().sort((x, y) => tm[y] - tm[x])[0];
+          out[k] = +(t[k].ax[top] / t[k].n).toFixed(3);
+        });
+        return out;
+      };
+      V19_TEMPER = 0; const off = run();
+      V19_TEMPER = w0; const on = run();
+      const rows = {}; let up = 0, n = 0, sum = 0;
+      Object.keys(on).forEach(k => {
+        if (off[k] === undefined) return;
+        const lift = +(on[k] - off[k]).toFixed(3);
+        rows[k] = { off:off[k], on:on[k], lift:lift };
+        n++; sum += lift; if (lift > 0) up++;
+      });
+      return { rows:rows, parties:n, rose:up, meanLift:n ? +(sum / n).toFixed(3) : null };
+    })();
+
+    /* (d) AND THE PATIENCE REACHES THE CLOCK. The quantity the idle bar
+       decides is how long a DEAD aim is carried -- one whose progress never
+       moved -- which is the same reading S19d used to separate the stall rule
+       from its backstop. The claim is a CORRELATION with the authored number,
+       and it is checked against the same run with the patience flattened,
+       because a spread on its own could come from anything. */
+    R.patience = (() => {
+      const keep = {};
+      const carried = (flat) => {
+        PARTIES.forEach(p => { keep[p.id] = PARTY[p.id].temper;
+          if (flat) PARTY[p.id].temper = Object.assign({}, keep[p.id], { patient:1 }); });
+        const held = {}; PARTIES.forEach(p => { held[p.id] = []; });
+        [4242, 90210, 7, 31337, 555, 8080, 1234, 99].forEach(seed => {
+          fresh(seed); const cur = {};
+          for (let i = 0; i < 120; i++) {
+            drive(1);
+            PARTIES.forEach(p => {
+              if (p.id === playParty(S) || S.banned[p.id]) return;
+              const g = v19GoalSeen(S, p.id);
+              const key = g ? g.kind + ':' + g.ref + ':' + (g.since || 0) : null;
+              const b4 = cur[p.id];
+              if (b4 && b4.key !== key && !(b4.g.best > 0)) held[p.id].push(i - (b4.g.since || 0));
+              cur[p.id] = key ? { key:key, g:JSON.parse(JSON.stringify(g)) } : null;
+            });
+          }
+        });
+        PARTIES.forEach(p => { PARTY[p.id].temper = keep[p.id]; });
+        const out = {};
+        Object.keys(held).forEach(k => { if (held[k].length >= 3) out[k] = +(held[k].reduce((a, c) => a + c, 0) / held[k].length).toFixed(1); });
+        return out;
+      };
+      const on = carried(false), off = carried(true);
+      const corr = (xs, ys) => {
+        const n = xs.length; if (n < 4) return null;
+        const mx = xs.reduce((a, c) => a + c, 0) / n, my = ys.reduce((a, c) => a + c, 0) / n;
+        let num = 0, dx = 0, dy = 0;
+        for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); dx += (xs[i] - mx) ** 2; dy += (ys[i] - my) ** 2; }
+        return (dx && dy) ? +(num / Math.sqrt(dx * dy)).toFixed(3) : null;
+      };
+      const ks = Object.keys(on).filter(k => off[k] !== undefined);
+      const pats = ks.map(k => v19Temper(k).patient);
+      return { n:ks.length, rows:ks.map(k => ({ p:k, patient:v19Temper(k).patient, held:on[k], flat:off[k] })),
+        corrOn:corr(pats, ks.map(k => on[k])), corrFlat:corr(pats, ks.map(k => off[k])) };
+    })();
+
+    /* (e) IT SHAPES HOW A PARTY PURSUES ITS AIM AND DOES NOT OVERRIDE THE AIM.
+       Read as the two terms' own ceilings in `v19Score`: the leaning's largest
+       possible contribution against the goal table's. */
+    R.subordinate = (() => {
+      let maxAx = 0;
+      PARTIES.forEach(p => { const t = (PARTY[p.id] || {}).temper || {};
+        AX.forEach(a => { if ((t[a] || 0) > maxAx) maxAx = t[a]; }); });
+      let maxGoal = 0;
+      V19_GOALS.forEach(g => Object.keys(g.worth || {}).forEach(k => { if (g.worth[k] > maxGoal) maxGoal = g.worth[k]; }));
+      return { temperCeiling:+(V19_TEMPER * maxAx).toFixed(3), goalCeiling:maxGoal };
+    })();
+
+    /* (f) AND `instinct` IS THE SHIPPED GAME. The term is gated on
+       `v19Thinks`, so at the floor of the scale it contributes nothing --
+       asked by scoring one card of each leaning for a party whose table
+       favours one of them, at both levels. */
+    R.floor = (() => {
+      const pick = PARTIES.filter(p => (PARTY[p.id] || {}).temper)[0];
+      if (!pick) return null;
+      const comb = V16_AI_DECK.filter(c => V19_TEMPER_AXIS[c.id] === 'combative')[0];
+      const deal = V16_AI_DECK.filter(c => V19_TEMPER_AXIS[c.id] === 'dealer')[0];
+      if (!comb || !deal) return null;
+      const at = (lvl) => { fresh(4242, lvl); return +(v19Score(S, pick.id, comb, null) - v19Score(S, pick.id, deal, null)).toFixed(4); };
+      const w0 = V19_TEMPER;
+      const iOn = at('instinct'), sOn = at('shrewd');
+      V19_TEMPER = 0;
+      const iOff = at('instinct'), sOff = at('shrewd');
+      V19_TEMPER = w0;
+      return { instinctMoved:+(iOn - iOff).toFixed(4), shrewdMoved:+(sOn - sOff).toFixed(4) };
+    })();
+
+    /* (g) AND THE PAGE SAYS IT, out of the panel's own HTML, and says it only
+       where the model reads it. */
+    R.page = { atShrewd:false, atInstinct:false };
+    fresh(4242, 'shrewd'); drive(3);
+    try { R.page.atShrewd = /builds before it fights|deals rather than fights|picks its fights|goes at whoever|works the country|would rather arrange/.test(v16AiPanel()); } catch (e) {}
+    fresh(4242, 'instinct'); drive(3);
+    try { R.page.atInstinct = /builds before it fights|deals rather than fights|picks its fights|goes at whoever|works the country|would rather arrange/.test(v16AiPanel()); } catch (e) {}
+    return R;
+  });
+
+  const tempOk =
+    temp.partiesWithout.length === 0 && temp.cardsWithoutAxis.length === 0 &&
+    temp.ghostAxis.length === 0 && temp.badAxis.length === 0 && temp.parties >= 7 &&
+    temp.distinctLeads >= 3 && temp.patienceSpread >= .5 &&
+    temp.lean.parties >= 5 && temp.lean.rose === temp.lean.parties && temp.lean.meanLift > .03 &&
+    temp.patience.n >= 5 && temp.patience.corrOn !== null &&
+    temp.patience.corrOn > .8 && Math.abs(temp.patience.corrFlat) < .5 &&
+    temp.subordinate.temperCeiling < temp.subordinate.goalCeiling / 2 &&
+    temp.floor && temp.floor.instinctMoved === 0 && Math.abs(temp.floor.shrewdMoved) > .1 &&
+    temp.page.atShrewd === true && temp.page.atInstinct === false;
+  say(tempOk, 'the parties have characters',
+    `\`v16Posture\`'S OWN COMMENT SAYS "CIRCUMSTANCE, NOT TEMPERAMENT" and measured that is how the six ` +
+    `behaved: four of six shared a favourite card, four shared a dominant posture, and they acted between 181 ` +
+    `and 221 times and spent between 5,216 and 6,996 -- tellable apart by what they BELIEVE, since \`wants\` ` +
+    `and \`aff\` are authored, and by nothing they did · a character is authored beside the beliefs for all ` +
+    `${temp.parties} parties (${temp.partiesWithout.length} without one) across ${temp.distinctLeads} different ` +
+    `leanings and a patience spread of ${temp.patienceSpread}, and every card in the deck belongs to exactly ` +
+    `one leaning (${temp.cardsWithoutAxis.length} without, ${temp.ghostAxis.length} naming a card the deck has ` +
+    `not) · THE LEANING REACHES THE CARDS, isolated as an in-process A/B over eight seeds: ${temp.lean.rose} of ` +
+    `${temp.lean.parties} parties raise the share of what they do that falls on their OWN axis, by a mean of ` +
+    `${temp.lean.meanLift} (${Object.keys(temp.lean.rows).map(k => k + ' ' + temp.lean.rows[k].off + '→' + temp.lean.rows[k].on).join(', ')}) ` +
+    `-- read as the FAVOURITE CARD first, which moved from two distinct favourites to three and stopped, ` +
+    `because \`court\` sits high in most goal tables and is open in nearly every posture and a leaning worth ` +
+    `.36 cannot take the argmax off it · AND THE PATIENCE REACHES THE CLOCK: how long a party carries an aim ` +
+    `whose progress never moved tracks its authored patience at ${temp.patience.corrOn} across ` +
+    `${temp.patience.n} parties, against ${temp.patience.corrFlat} on the same run with the patience ` +
+    `flattened to one · IT SHAPES HOW A PARTY PURSUES ITS AIM AND DOES NOT OVERRIDE IT, the leaning's ceiling ` +
+    `in \`v19Score\` being ${temp.subordinate.temperCeiling} against the goal table's ` +
+    `${temp.subordinate.goalCeiling} · \`instinct\` IS UNTOUCHED (${temp.floor.instinctMoved} where shrewd ` +
+    `moves ${temp.floor.shrewdMoved}) · and the page says what kind of party it is where the model reads it ` +
+    `(${temp.page.atShrewd}) and not where it does not (${temp.page.atInstinct})`);
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

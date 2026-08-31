@@ -198,6 +198,50 @@ async function campaign(browser, lengthKey, seedText) {
       Math.round(f.achievements / f.achievementsTotal * 100) + '%');
   }
 
+  /* THE ROW ABOVE IS ONE SEED, AND THE MEAN IS THE ONLY THING WORTH QUOTING.
+     The table prints a row per (length, seed) and for years the figure that
+     reached the docs was read off the FIRST three rows, because they are the
+     three lengths and they are at the top. That is one seed. S16a already
+     ruled on it — "a pacing figure from one seed cannot tell a balance change
+     from a reshuffle" — and every S19 slice made the mistake again anyway:
+     read one seed, S19c takes crises 1.0/1.0/0.9 to 0.8/0.7/0.7 and S19d
+     hands most of it back; read six, the same two builds go 0.83/0.88/0.83 to
+     0.90/0.92/0.83 and nothing has moved. So the tool prints the mean itself,
+     next to the spread that says whether the mean means anything: when the
+     before-and-after gap is inside one build's own seed-to-seed spread, the
+     honest report is that the arc did not move. A number a reader has to
+     compute by hand is a number the next reader will re-pick by eye. */
+  const byLen = new Map();
+  for (const r of rows) {
+    if (!byLen.has(r.key)) byLen.set(r.key, []);
+    byLen.get(r.key).push(r);
+  }
+  const seeds = new Set(rows.map(r => r.seed)).size;
+  console.log('\n' + (seeds === 1
+    ? 'ONE SEED — NOT QUOTABLE AS AN ARC. Re-run with VALE_SEEDS to compare builds'
+    : 'The same table across all ' + seeds + ' seeds — QUOTE THIS ONE, not a row above') + '\n');
+  console.log('length    seeds  crises/10 (mean)  spread      elections/10  events/session  records');
+  for (const [key, rs] of byLen) {
+    const per = (r, n) => n / r.sessions * 10;
+    const cr = rs.map(r => per(r, r.final.arcs));
+    const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+    console.log(
+      key.padEnd(10) + String(rs.length).padEnd(7) +
+      mean(cr).toFixed(2).padEnd(18) +
+      (Math.min(...cr).toFixed(1) + '–' + Math.max(...cr).toFixed(1)).padEnd(12) +
+      mean(rs.map(r => per(r, r.final.elections))).toFixed(2).padEnd(14) +
+      mean(rs.map(r => r.final.events / r.sessions)).toFixed(2).padEnd(16) +
+      mean(rs.map(r => r.final.achievements / r.final.achievementsTotal * 100)).toFixed(1) + '%');
+  }
+  console.log(seeds > 1
+    ? '\n  A before/after gap smaller than one build\'s own spread is a reshuffle,\n' +
+      '  not a balance change. Say so rather than quoting the difference.'
+    : '\n  VALE_SEEDS is unset, so this is the default single seed and the spread\n' +
+      '  column is empty by construction. One seed cannot tell a balance change\n' +
+      '  from a reshuffle (S16a), and on the six S19 ran, crises per ten sessions\n' +
+      '  span 0.60 to 1.20 on ONE build. Before quoting an arc:\n' +
+      '    VALE_SEEDS=5EED1234,A11CE,B0B,C4T,D0G,E1F node tools/pacing.js');
+
   /* The counters behind the length-gated records. A record that short misses
      because a counter never moved is a different problem from one it misses
      because the threshold is too high, and only these numbers tell them apart:

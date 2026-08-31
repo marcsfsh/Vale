@@ -219,6 +219,27 @@ before touching the file.
   assertion set `st.unrest = 80` by hand. Before a number gates anything,
   measure the distribution of what it gates on IN PLAY, and put the measurement
   in the assertion's own words so the next reader cannot re-pick it by eye.
+- **A TOOL THAT PRINTS PER-SEED ROWS AND NO MEAN WILL HAVE ITS FIRST ROW
+  QUOTED AS THE SUMMARY.** `tools/pacing.js` printed one row per (length,
+  seed), so the top three rows are the three lengths of one seed and read
+  exactly like a summary — and three consecutive S19 slices published them as
+  the six-seed arc. Read one seed, S19c takes crises per ten sessions from
+  1.0/1.0/0.9 to 0.8/0.7/0.7 and S19d hands most of it back, a movement the
+  notes twice called the owner's to rule on; read six, the same builds go
+  0.83/0.88/0.82 → 0.90/0.92/0.81 → 0.93/0.88/0.82, every delta inside one
+  build's own spread, and **no slice in the program moved the arc at all**.
+  S16a had already ruled that *a pacing figure from one seed cannot tell a
+  balance change from a reshuffle* — the ruling was on the page the whole
+  time and lost to the shape of the output every time — and `VALE_SEEDS`
+  defaults to ONE seed, so the obvious invocation cannot answer the question
+  it is being asked. So the fix went into the tool, not the docs: it prints
+  the mean with the spread beside it, labelled as the row to quote, and when
+  it has one seed it says it is not quotable and gives the six-seed command.
+  Where a harness reports per-run figures,
+  make the aggregate the easiest thing to read, and treat a before/after gap
+  smaller than one build's seed-to-seed spread as a reshuffle rather than a
+  result. This is `st.court.size` inverted — there, a number nothing read; here,
+  a number read that was never the one meant.
 - **The instrument the answer has to use decides the deadline.** The same slice
   gave a demand three sessions and the only way to meet one is a bill: laying
   is one, the floor is a second, and since S15d the statute does not move until

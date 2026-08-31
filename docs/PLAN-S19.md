@@ -209,7 +209,9 @@ moved a statute, dying at committee (369) and on the assembly floor (358).
 
 Two things it cost, both recorded rather than absorbed: the pacing arc moves
 (crises per ten sessions 1.0/1.0/0.9 to 0.8/0.7/0.7 across the three lengths,
-elections unchanged), which `docs/AGREEMENT.md` makes the owner's call; and
+elections unchanged), which `docs/AGREEMENT.md` makes the owner's call
+[**corrected in S19e: that is one seed. Six-seed means are 0.83/0.88/0.82 to
+0.90/0.92/0.81 — inside the spread, no move, nothing to rule on**]; and
 three of S19b's probes had to be re-derived because a seventh adoptable goal
 changes the population its clauses key on.
 
@@ -236,9 +238,18 @@ should be able to enter a government, take an office or bring one down is a
 question about the REPUBLIC rather than about the AI, and it is the owner's
 to open.
 
-**S19e — Temperament.** Per-party character shaping the weights, held across a
-campaign. Orthogonal to the rest, and placed after the bill work so that what
-it modifies includes the opponent terms and the floor.
+**S19e — The parties have characters.** SHIPPED. Three leanings over the deck
+and one patience, authored per party from its own blurb, reaching `v19Score`
+and S19d's idle bar. The leaning moves every party's own-axis share (+.063
+mean, isolated as an A/B) and the patience predicts how long a dead aim is
+carried at a correlation of .979 against -.18 flattened. `docs/MAP.md` carries
+the section.
+
+The reusable part: **the argmax is the wrong instrument for a preference
+term.** Distinct favourites went two to three and stopped at every weight
+swept, because one card sits high in most goal tables and is open in nearly
+every posture. A leaning shifts shares, so shares are what a later slice
+should measure.
 
 **S19f — Reaction between scheduled turns.** Held to last deliberately. It
 touches `V16_AI_CADENCE`, the dial the owner swept, and `v18TempoOdds`
