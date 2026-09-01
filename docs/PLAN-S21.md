@@ -304,7 +304,12 @@ max the same number, exactly minus the card's own price tag. On the new build,
 one does (`bill`, which always lays the statute its own table names, so every
 instance of it is a good one).
 
-**Two things the poison run caught that the assertion had not:**
+**Poison run: 22 red of 24, and the two greens are adjudicated.** Putting the
+three S17 names back as literals with the SAME values is a pure refactor, and
+restoring the flat ruling/office terms genuinely changes nothing because they
+cancel — which is the proof they were dead rather than a weakness in the arm.
+
+**Three things the poison run caught that the assertion had not:**
 
 - **A leg that computes is not a leg that is read.** The first version asserted
   `v16CheapestCard()` equals the table's minimum and nothing else — and putting
@@ -317,6 +322,12 @@ instance of it is a good one).
   six terms are also read ONE AT A TIME, by making the change the card would
   make and asking `v19Flight` either side — the driven leg says the terms reach
   real rehearsals, the unit leg says which is which.
+- **A term read against nought instead of against its own pair.** The unit leg
+  asked whether declaring a position AGAINST a bill scores negative. It does
+  not, and should not: both of its cases put the same bill on the paper, so
+  both carry that bill's docket value (1.5 for, 0.78 against). What the line
+  term decides is which is worth more. Asking for a negative was the probe
+  reading the bill's worth and calling it the line's.
 
 ### S21d — The agreement bites  ·  Coalition 1 of 4  ·  3 improvements, 1 new
 
