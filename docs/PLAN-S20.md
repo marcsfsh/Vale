@@ -241,14 +241,23 @@ point — this slice's own defect, surviving in the place it was least visible.
   now, costs the stream nothing, and scales with what the player does (.33
   passive, .62 busy, .90 hostile). The whip count reads the division that
   decides the bill, where it had its own arithmetic and disagreed by 210 seats.
-- **S20f — Intent survives circumstance, and the engine's surface.** OPEN. The
-  posture filter deletes the aim's best card on 27% of goal-sessions; lifting
-  that measured 28.1% → 32.9% of actions landing on the aim's best card and
-  perturbed five S18/S19 arms, so it was taken out of S20e to be judged on its
-  own. Beyond it the audit's largest finding is still open: **the engine's
-  decision surface is 11 cards with no target choice, 2.1% of the player's**,
-  and no engine can enter a government, take an office, dissolve or call a
-  referendum -- two of the seven S19 goals are about exactly that.
+- **S20f — The AI arms were measured on too few seeds.** SHIPPED. Seven probes
+  went from six or eight seeds to fourteen, and with `vale.html` byte-identical
+  to what shipped, TWO arms failed: S19e's *"all six parties raise their own
+  axis by a mean of .063"* is 6/6 at .045 on eight seeds, 5/6 at .020 on
+  fourteen and **4/6 at .014 on twenty-four**, and S19b's chooser lift is 2.08
+  to one where it claimed better than three. Both shapes hold; both strengths
+  were small-sample readings. Corrected in the gates, in the messages and in
+  `docs/MAP.md`. The posture-filter change was measured out and recorded rather
+  than shipped.
+
+- **STILL OPEN, and it is the largest thing the audit found.** The engine's
+  decision surface is **11 cards with no target choice -- 2.1% of the player's
+  pressable options** -- and no engine can enter a government, take an office,
+  dissolve, or call a referendum, while two of the seven S19 goals are about
+  exactly that. S20a-f fixed the chamber the AI plays in, the cost of the board,
+  the difficulty it plays under and its model of the player; what it can DO is
+  the remaining half of the owner's 8-10/10 and is a program of its own.
 
 ## The instrument rule this program inherits
 

@@ -19,24 +19,43 @@ because the owner played a full epic campaign to turn 133 and sent the save.
 `docs/PLAN-S20.md` is the program anchor: the brief, the measured evidence, the
 six-way audit and the rulings.
 
-**S20a — The division is counted** is the current branch. The owner reported
-that bills pass without a majority, that a united party ought to oppose as a
-bloc, and that the Assembly's votes are not being counted. All three were one
-defect and they were right: `billForecast` returned a seat-weighted mean of
-propensities, so a party at 45 handed the bill 45% of its seats rather than
-voting against it, and eleven modifiers were then added AFTER normalisation.
-Parties holding 912 of 1,304 seats could oppose a bill and the old arithmetic
-said 56.5 and passed it; the count says 594 ayes to 710 noes and it fails.
-`st.unity` was written in about fifty places and read by the voting path in
-none. And on `easy` six hard floors sat above the bars they were compared with,
-so no bill could fail at any stage and no office could decline to sign -- which
-is also why the owner's 133-session save contains zero referendums.
+**S20 has shipped six slices: S20a-f.** `docs/PLAN-S20.md` is the anchor and
+`docs/MAP.md` carries a section for each.
 
-Verification: checks 11/11, roads **195/195**, playtest, determinism 8/8,
-contrast. **Thirteen poisons from the diff, all thirteen redden**; four only
-after the arm was given a reading it did not have. Five S19 arms were reshaped
-and S19f's reaction was found dead at the grudge clamp -- `docs/MAP.md` carries
-both stories.
+- **S20a — the division is counted.** Passage was a seat-weighted mean of
+  propensities with eleven modifiers added after normalisation, so a party at 45
+  handed a bill 45% of its seats instead of voting against it. Parties holding
+  912 of 1,304 seats could oppose a bill and the old arithmetic passed it at
+  56.5; the count says 594 ayes to 710 noes. `st.unity` was written in ~50
+  places and read by the voting path in none. And on easy six floors sat above
+  the bars they were compared with, so no bill could fail and no office could
+  decline to sign.
+- **S20b — a position can be pressed home.** Three verbs per position, scoped to
+  your benches, the other parties bar the sponsor, and both. From the bench the
+  anti-bill kit went from -5.3 Assembly points to 25.2.
+- **S20c — the party board has a tempo.** `poach` was 60.2% of every click in
+  the owner's 132-session campaign and none of the 23 party verbs had a cooldown
+  or an escalating price. All 57 do now, derived from each verb's own weight.
+- **S20d — easy is a cakewalk, not a coronation.** The income formula was dead
+  (the floor was 3x what the tier could earn and paid on 100% of sessions), the
+  street was arithmetically impossible (capped at 20 against a bar of 22), and
+  the incumbency term ran elections at 1.8x normal's rhythm.
+- **S20e — the engine plays the player.** The opponent model named the human
+  **0 times in 2,160 rival reads**, because every clause compared two goals and
+  the player has none. And the whip count now reads the division that decides
+  the bill.
+- **S20f — the AI arms were measured on too few seeds.** Two S19 claims did not
+  survive a wider sample and were corrected in place.
+
+**WHAT IS STILL OPEN, and it is the largest thing the audit found:** the
+engine's decision surface is 11 cards with no target choice -- 2.1% of the
+player's -- and no engine can enter a government, take an office, dissolve or
+call a referendum. S20 fixed the chamber the AI plays in, the cost of the board,
+the difficulty and its model of the player; what an engine can DO is the
+remaining half of the owner's 8-10/10.
+
+Verification across the program: checks 11/11, roads **199/199**, playtest,
+determinism 8/8, contrast at three tiers.
 
 **S19 — The parties think** is **COMPLETE** as of S19f. It exists because the
 owner read S18e's merge note and said no:

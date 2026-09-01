@@ -1264,6 +1264,51 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The AI arms were measured on too few seeds (S20f)
+
+This program has now found the same defect three times, in three different
+harnesses, and the third time it was found by looking for it.
+
+`tools/pacing.js` printed a row per (length, seed) and no mean, so three S19
+slices published one seed as the six-seed arc (S19e). `roads.js`'s AI arms ran
+on **eight seeds**, and two of them assert an effect size read off that sample.
+Widened to fourteen -- with `vale.html` byte-identical to what shipped -- both
+FAIL.
+
+- **The temperament's reach was the clearest.** S19e's headline is *"all six
+  parties raise the proportion of what they do that falls on their own axis, by
+  a mean of .063"*. Swept over the same unchanged mechanism: **6 of 6 at .045
+  on eight seeds, 5 of 6 at .020 on fourteen, 4 of 6 at .014 on twenty-four.**
+  An effect that shrinks monotonically as the sample grows is a lucky sample,
+  not an effect of that size. The leaning does reach the cards -- it is a term
+  in `v19Score` and the poison for it reddens -- but its behavioural footprint
+  is about a fifth of what was published.
+- **S19b's chooser lift went the same way.** "Better than three to one" was
+  eight seeds; at fourteen it is **+.052 on boards carrying a rival against
+  +.025 on those that do not, 2.08 to one.** The SHAPE of the claim survives
+  and its strength did not.
+- **The patience half of S19e is untouched and is where that slice's evidence
+  lives**: a paired per-party lift correlating **.955** with the authored
+  patience over the same widened run, on lifts averaging 3.65 sessions.
+- Seven probes went from six or eight seeds to fourteen. Both gates now assert
+  what the wider sample supports, and both messages carry the sweep so the next
+  reader cannot re-pick the number by eye.
+
+**AND ONE CHANGE WAS MEASURED OUT ALONG THE WAY.** Letting a party's aim keep
+its best card past the posture filter -- which deletes it on 27% of
+goal-sessions -- was drafted, measured at a real but modest gain (the AI plays
+its aim's best card on 32.9% of actions against 28.1%), and dropped: it
+re-phases every campaign and costs two further S18/S19 arms for that. The
+design concern it raised was itself checked and found unfounded -- a furious
+coalition partner still attacks on 46.1% of its actions with the change against
+47.5% without, where the arm that failed had a sample of ONE. It is recorded
+here rather than shipped.
+
+**The lesson, stated once for the three places it has now appeared:** a harness
+that reports a rate is reporting a sample, and the smallest sample that passes
+is the one that will be published. Where an arm asserts an effect SIZE, sweep
+the sample before believing it, and put the sweep in the arm's own words.
+
 ## The engine plays the player (S20e)
 
 Every clause of `v19Rivalry` compares two GOALS, and the player has no entry in
@@ -1645,10 +1690,15 @@ been authored since v5, and by nothing at all that they DID.
   high in most goal `worth` tables and is open in nearly every posture, so a
   leaning worth at most .36 cannot take the argmax off it, and reading the
   argmax says the mechanism failed when it had not. What a leaning does is
-  shift the SHARE: isolated as an in-process A/B, **all six parties raise the
-  proportion of what they do that falls on their own axis**, by a mean of
-  .063 -- the RSF's combative share from .098 to .151, the FP's dealing from
-  .157 to .272, the TVC's organising from .538 to .655.
+  shift the SHARE: isolated as an in-process A/B, all six parties raise the
+  proportion of what they do that falls on their own axis, by a mean of .063.
+  **[CORRECTED IN S20f: THAT WAS EIGHT SEEDS AND IT DOES NOT SURVIVE MORE.**
+  Swept over the same unchanged mechanism the effect shrinks monotonically with
+  the sample -- 6 of 6 at .045 on eight seeds, 5 of 6 at .020 on fourteen, 4 of
+  6 at .014 on twenty-four -- which is the signature of a lucky sample rather
+  than of an effect of that size. The leaning reaches the cards and its
+  behavioural footprint is about .014, not .063. The patience half below is
+  strong and stable and is where this slice's real evidence lives.]
 - **AND THE PATIENCE REACHES THE CLOCK, which is the sharpest reading in the
   slice.** How long a party carries an aim whose progress never moved -- the
   quantity S19d's idle bar decides -- tracks its authored patience at a
@@ -1690,7 +1740,10 @@ always said the question was. And S19b's chooser arm asserted an absolute
 lift, which every later slice dilutes by adding another term to the same
 softmax -- S19e took it from .044 to .036 with the rivalry term untouched. It
 asserts the SHAPE now: the term acts on boards that have a rival and not on
-boards that do not, at better than three to one.
+boards that do not, at better than three to one. **[CORRECTED IN S20f: three to
+one was eight seeds. At fourteen the same mechanism reads +.052 on boards
+carrying a rival against +.025 on those that do not -- 2.08 to one. The shape
+holds; the strength was a small-sample reading.]**
 
 ## A party votes its own manifesto (S19d)
 
