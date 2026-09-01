@@ -9794,24 +9794,43 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          forecasting far below the alternative stays off the paper however
          solemnly it was promised. */
       const hopeless = (() => {
-        const bad = Object.keys((PARTY[pid] || {}).wants || {}).filter(id => {
-          if (!POL[id] || gw[id] !== undefined || !policyOpen(S, POL[id])) return false;
-          if ((S.pol[id] || 0) >= POL[id].max) return false;
+        /* READ AGAINST THE THUMB, NOT AGAINST AN ABSOLUTE BAR. The first
+           version wanted a statute forecasting under 25 and found none on
+           this board, so the claim went unmeasured -- and the claim is not
+           "a hopeless bill", it is that the thumb is FINITE. A promise
+           whose forecast sits more than `V21_PROMISE_PULL` below what the
+           government would otherwise lay must stay off the paper. */
+        const fc = (id, dir) => {
           let f = null;
-          try { f = billForecast(S, v21Probe(S, S.ruling, id, 1)); } catch (e) { f = null; }
-          return f && f.lower < 25;
-        })[0];
-        if (!bad) return { ran:false };
+          try { f = billForecast(S, v21Probe(S, S.ruling, id, dir || 1)); } catch (e) { f = null; }
+          return f ? f.lower : null;
+        };
+        let alt = -1;
+        Object.keys(gw).forEach(id => {
+          if (!POL[id] || !policyOpen(S, POL[id])) return;
+          const v = fc(id, 1); if (v !== null && v > alt) alt = v;
+        });
+        let worst = null, worstV = 1e9;
+        Object.keys((PARTY[pid] || {}).wants || {}).forEach(id => {
+          if (!POL[id] || gw[id] !== undefined || !policyOpen(S, POL[id])) return;
+          if ((S.pol[id] || 0) >= POL[id].max) return;
+          const v = fc(id, 1);
+          if (v !== null && v < worstV) { worstV = v; worst = id; }
+        });
+        if (!worst || alt < 0) return { ran:false, why:'no pair to compare' };
+        const deficit = +(alt - worstV).toFixed(1);
+        if (deficit <= V21_PROMISE_PULL) {
+          return { ran:false, why:'no promise on this board sits below the thumb',
+            deficit:deficit, pull:V21_PROMISE_PULL };
+        }
         S.bills = [];
-        d.terms.concessions = [v21Concede(S, bad)];
+        d.terms.concessions = [v21Concede(S, worst)];
         if (S.turn % 2) S.turn += 1;
         aiGovern(S);
         const b = S.bills.filter(x => x.owner === 'government')[0];
-        let f0 = null;
-        try { f0 = billForecast(S, v21Probe(S, S.ruling, bad, 1)); } catch (e) { f0 = null; }
-        return { ran:true, ref:bad, laid:b ? b.policy : null,
-          forecast: f0 ? +f0.lower.toFixed(1) : null,
-          refused: !b || b.policy !== bad };
+        return { ran:true, ref:worst, laid:b ? b.policy : null,
+          forecast:+worstV.toFixed(1), best:+alt.toFixed(1), deficit:deficit,
+          pull:V21_PROMISE_PULL, refused: !b || b.policy !== worst };
       })();
       return { ran:true, ref:ref, without:without, withIt:withIt,
         laysThePromise: withIt === ref, differs: without !== withIt,
@@ -9971,9 +9990,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `\`v19BillFor\` uses, carrying the thumb \`V20_AIM_BILL\` already puts on a publicly named aim -- AND IT IS ` +
     `A PREFERENCE AND NOT AN OVERRIDE, which the equality alone cannot say and whose poison proved it: with the ` +
     `thumb at 9,999 the government lays the promise every time and that clause is still true. Asked about a ` +
-    `promise the CHAMBER would throw out (${bites.reaches.hopeless.ref}, forecasting ` +
-    `${bites.reaches.hopeless.forecast}) it lays ${bites.reaches.hopeless.laid} instead ` +
-    `(${bites.reaches.hopeless.refused}) · AND A DUE OF NOUGHT IS A DATE: \`if (c.due && ...)\` read 0 as no ` +
+    `promise sitting further below what the government would otherwise lay than the thumb is worth ` +
+    `(${bites.reaches.hopeless.ref} forecasts ${bites.reaches.hopeless.forecast} against ` +
+    `${bites.reaches.hopeless.best}, a deficit of ${bites.reaches.hopeless.deficit} against a thumb of ` +
+    `${bites.reaches.hopeless.pull}) it lays ${bites.reaches.hopeless.laid} instead ` +
+    `(${bites.reaches.hopeless.refused}) -- read against the THUMB and not against an absolute bar, because ` +
+    `the claim is not "a hopeless bill" but that the thumb is FINITE · AND A DUE OF NOUGHT IS A DATE: ` +
+    `\`if (c.due && ...)\` read 0 as no ` +
     `date at all, so a promise due on the session before the first could never be late -- the \`|| 0\` family, ` +
     `where a falsy value and an absent one are treated as the same fact. Found by a probe that set one by ` +
     `accident, asserted here on purpose (${bites.zero.late}) · AND THE FAMILY IS DECLARED BEFORE ITS CALLER ` +
