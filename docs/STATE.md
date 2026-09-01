@@ -71,6 +71,67 @@ Seventeen poisons from the diff, sixteen redden it; the one that stays green is
 "report the weakest rival instead of the strongest", and the answer is that of
 3,600 party-sessions not one ever had two rivals of different magnitudes.
 
+**S19c — A party can reach what it is after** is on the branch.
+
+S19a asserted that every goal is served by the deck, which is a structural
+question about the `worth` tables, and never asked the play-level one. Driven
+over twelve seeds of 120 sessions: **501 aims adopted, 8 reached, 421 timed
+out**. The figure on the Parties page was mostly a countdown to a silent
+reset.
+
+Three causes, each fixed and each measured. **`charter` had never once been
+adoptable in any campaign**, because `v17AiArticleFor` returns an article id
+and the goal read `.id` off the string; its gate opened on 6,028
+party-sessions and its target returned null on 6,028, and it is adopted 858
+times now. **No engine in three megabytes could lay a bill** (0 in 8,640
+party-sessions), so `carry` depended on the player happening to have laid one
+on the exact statute the party wanted; the `bill` card reaches `sponsorBill`,
+the same function the player's Draft button calls, and a party holding a
+`carry` aim takes it on 48% of the boards where it is open against 14% for a
+party after something else. And **`carry` aimed at a four-rung gap on every
+single adoption** against an instrument that moves one; it aims at the next
+rung now, which is the convention `build` and `ground` already followed.
+
+**Named rather than hidden: the bill still does not carry.** 747 engine bills
+were laid and 5 moved a statute. They die at committee (369) and on the
+assembly floor (358), because a private member's bill from an opposition party
+with no whip, no deal and no allies is voted down. `carry` completions are
+still 0, and getting a bill through is the next slice.
+
+**S19b's three probes were re-derived, not re-tuned.** A seventh adoptable goal
+changes the population its rivalry clauses key on. The contested-bloc sample
+fell from 16 boards to 3, so the chooser's second component is `organise`
+(+.142 on 119 boards) rather than `court` (+.047 on 118), picked by measuring
+all eleven cards. The scale arm read one seed, which was a lottery on the
+shipped build too (seed 90210 produces no foe board at all), and reads four
+now. The panel arm shared a loop between its tally and its page check, so a
+build that put the sentence up at session one scored 4 acts against a floor of
+30 and failed for being right quickly. **`V19_RIVAL_PUSH` did not move**: the
+relationship it exists for still holds (grudges p90 3.2, p99 32.4, rivalry
+worth 9.0), and `attack`'s lift is better than on the shipped build, .151
+against .086.
+
+**THE PACING ARC MOVES AND IT IS THE OWNER'S TO RULE.** Six seeds, three
+lengths, against the build S19b shipped: crises per ten sessions go 1.0 / 1.0
+/ 0.9 to **0.8 / 0.7 / 0.7** for short, standard and epic. Elections per ten
+are unchanged at 0.4 / 0.2 / 0.1, records at the close read 20/23/23% against
+18/25/23%, and all eighteen runs reach their end year on both sides.
+`docs/AGREEMENT.md` says the balance is not mine to settle, so it is reported
+rather than absorbed.
+
+**One flake observed and not reproduced.** The playtest step `order-book`
+failed once on `bends the target exactly`, and then passed four consecutive
+runs on this build and four on the build before it. The step inherits whatever
+state the preceding steps leave and pins nothing, which is the shape a flake
+takes; it is recorded here rather than quieted, because altering another
+slice's assertion to silence something I cannot reproduce would be worse than
+naming it.
+
+Verification: checks 11/11, roads **191/191**, playtest, determinism 8/8,
+contrast and thumb at three tiers. Eleven poisons from the S19c diff, nine
+redden it (the two green are a belt-and-braces pair, each inert alone); S19b's
+seventeen re-run against the rewritten arms, sixteen redden it.
+
 **S18e — The AI actually acts** shipped as PR #91. S18a through S18d are merged
 (PRs #87, #88, #89, #90).
 

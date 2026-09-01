@@ -199,17 +199,34 @@ part:
 - **Two rivals of different sizes never occur**, so any future term that ranks
   rivals against each other is ranking a set of size one.
 
-**S19c — Bargaining between parties.** Depends on a CHANNEL that does not yet
-exist: see the first finding above. `st.aiPacts` is the only standing
-agreement in the model, a single field with no terms, and the goals as
-authored cannot align. Before writing an offer, build something two parties
-can both want.
+**S19c — A party can reach what it is after.** SHIPPED. The charter target
+reads the id it is given, an eleventh deck card lays a private member's bill
+through `sponsorBill`, and `carry` aims at the next rung rather than the
+ceiling. `docs/MAP.md` carries the section and the numbers.
 
-**S19d — Temperament.** Per-party character shaping the weights, held across
-a campaign. Cheapest of the four and orthogonal to the others; it is placed
-after S19b so that what it modifies includes the opponent terms.
+What it did NOT fix, measured: an engine's bill does not carry. 747 laid, 5
+moved a statute, dying at committee (369) and on the assembly floor (358).
 
-**S19e — Reaction between scheduled turns.** Held to last deliberately. It
+Two things it cost, both recorded rather than absorbed: the pacing arc moves
+(crises per ten sessions 1.0/1.0/0.9 to 0.8/0.7/0.7 across the three lengths,
+elections unchanged), which `docs/AGREEMENT.md` makes the owner's call; and
+three of S19b's probes had to be re-derived because a seventh adoptable goal
+changes the population its clauses key on.
+
+**S19d — Getting a bill through.** The work `carry` is now waiting on, and the
+bargaining slice arrives inside it rather than beside it. An opposition party
+with no whip, no deal and no allies loses at committee or on the floor, so the
+question "how do two parties help each other" finally has a concrete thing to
+be about: a division that one party cannot win alone. Note what the earlier
+measurements rule out as a starting point -- two parties never share an aim (0
+in 25,200 pairs on the same statute, 0 common enemies in 9,000) -- so the
+channel has to be built on the division in front of them, not on their goals.
+
+**S19e — Temperament.** Per-party character shaping the weights, held across a
+campaign. Orthogonal to the rest, and placed after the bill work so that what
+it modifies includes the opponent terms and the floor.
+
+**S19f — Reaction between scheduled turns.** Held to last deliberately. It
 touches `V16_AI_CADENCE`, the dial the owner swept, and `v18TempoOdds`
 normalises against a total that dial sets. The S18e comment records what
 moving it costs: six parties acting every session took the harness from 5.5
