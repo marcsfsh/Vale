@@ -461,7 +461,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     S.coalition = [me]; setSeats(.60);
     out.atOutright = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
 
-    /* 4. a declared line is worth what the party declaring it is worth */
+    /* 4. a declared line is worth what the party declaring it is worth.
+       THE MEMORY IS ZEROED AND PUT BACK, because this arm claims to isolate
+       the LINE and `partyBillSupport` reads the voter's regard for the sponsor
+       beside it. Every arm above this one drives sessions, so the parties
+       arrive here carrying whatever they made of each other -- which mattered
+       for the first time when S21a let that store hold credit as well as
+       grievance, and read .120 per point of chamber against .467 on a clean
+       board. Measured on a clean state the two builds agree to three figures,
+       so what moved was the probe's starting position and not the mechanism. */
+    const memKeep = {};
+    PARTIES.forEach(p => {
+      const a0 = v16Ai(S)[p.id];
+      memKeep[p.id] = JSON.parse(JSON.stringify(a0.grudge || {}));
+      a0.grudge = {};
+    });
     const delta = frac => {
       setSeats(frac);
       b.playerPosition = null; const a = billForecast(S, b).lower;
@@ -470,6 +484,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return Math.round((a - c) * 10) / 10;
     };
     out.d05 = delta(.05); out.d50 = delta(.50); out.d90 = delta(.90);
+    PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = memKeep[p.id]; });
 
     /* 5. the handler refuses the kill, not only the renderer */
     setSeats(.30); S.coalition = [me, donor];
@@ -9911,7 +9926,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const idle0 = V19_GOAL_IDLE, cap0 = V19_GOAL_CAP;
       const run = (label) => {
         const t = { done:{}, stale:0, doneAt:[], deadHeld:[] };
-        [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613].forEach(seed => {
+        /* S21a widened this from twelve seeds to fourteen, matching every other
+           AI arm since S20f. At twelve, `byProgress.afterOldClock` cleared its
+           own bar by HALF AN AIM on the shipped build (18 of 35) -- a strict
+           inequality against half a sample of 35 -- and a downstream change to
+           `partyBillSupport` moved it to exactly half. Measured separately at
+           fourteen seeds the underlying quantity moves the OTHER way (goals
+           reached 76 to 91, `carry` 4 to 12), so the twelve-seed reading was
+           sampling, which is S20f's lesson arriving in the largest block. */
+        [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415].forEach(seed => {
           fresh(seed);
           const held = {};
           for (let i = 0; i < 120; i++) {
@@ -12094,17 +12117,35 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const spon = PARTIES.filter(p => p.id !== me && p.id !== who && !S.banned[p.id])[0];
       if (!spon) return { ran:false };
       const pol = Object.keys(POL)[0];
+      /* `assemblyVote` IS PINNED, WHICH IS THE WHOLE ARM. `assentFavour` reads
+         `line * w + merits * (1 - w)`, and `merits` falls back to
+         `billForecast(...).lower` -- which runs `partyBillSupport`, which S21a
+         also taught to read the regard. Without a fixed `merits` this arm
+         measured BOTH readers at once, and its two poisons (put `line` back to
+         the player's scalar, and ask the sponsor about the holder instead of
+         the holder about the sponsor) both came back GREEN, carried by the
+         forecast. Two terms behind one number is the tautology family this
+         file's history is a list of. */
       const bill = { id:'s21aA', policy:pol, dir:1, sponsor:spon.id, owner:'opposition',
         strategy:'clean', whip:0, upperDeal:0, committee:0, concessions:0, confidence:false,
-        urgent:false, stage:'assent', assentOffice:d, notes:[], lines:{} };
+        urgent:false, stage:'assent', assentOffice:d, assemblyVote:52, notes:[], lines:{} };
       const a = v16Ai(S)[who];
       a.grudge[spon.id] = 90;                 /* the holder loathes the sponsor */
       let cold = 0; try { cold = assentFavour(S, bill); } catch (e) {}
       a.grudge[spon.id] = -90;                /* and owes them */
       let warm = 0; try { warm = assentFavour(S, bill); } catch (e) {}
       delete a.grudge[spon.id];
+      /* AND IT IS THE HOLDER'S VIEW OF THE SPONSOR, not the sponsor's of the
+         holder. Seeding the other direction must NOT move it. */
+      let flat = 0; try { flat = assentFavour(S, bill); } catch (e) {}   /* both at nought */
+      const b2 = v16Ai(S)[spon.id];
+      b2.grudge[who] = -90;
+      let mirror = 0; try { mirror = assentFavour(S, bill); } catch (e) {}
+      delete b2.grudge[who];
       return { ran:true, office:d, holder:who, sponsor:spon.id,
-        cold:+cold.toFixed(2), warm:+warm.toFixed(2), moves: warm > cold + 1e-9 };
+        cold:+cold.toFixed(2), warm:+warm.toFixed(2), moves: warm > cold + 1e-9,
+        flat:+flat.toFixed(2), mirror:+mirror.toFixed(2),
+        directional: Math.abs(mirror - flat) < 1e-9 };
     })();
 
     /* (e) A PACT IS WRITTEN ON BOTH SIDES AND POOLED ONCE. The card wrote the
@@ -12114,43 +12155,78 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.pact = (() => {
       fresh(90210); for (let i = 0; i < 6; i++) step();
       const me = playParty(S);
-      const two = PARTIES.filter(p => p.id !== me && !S.banned[p.id]).slice(0, 2).map(p => p.id);
-      if (two.length < 2) return { ran:false };
-      S.aiPacts = {};
-      S.aiPacts[two[0]] = { with:two[1], since:S.turn };
-      S.aiPacts[two[1]] = { with:two[0], since:S.turn };
-      const base = {}; PARTIES.forEach(p => { base[p.id] = 10; });
-      const b0 = ballot(S);
-      S.aiPacts = {};
-      S.aiPacts[two[0]] = { with:two[1], since:S.turn };
-      const b1 = ballot(S);
-      S.aiPacts = {};
-      const gainTwo = (b0[two[0]] || 0) + (b0[two[1]] || 0);
-      const gainOne = (b1[two[0]] || 0) + (b1[two[1]] || 0);
-      /* the deck card writes both sides and remembers on both sides */
-      fresh(90210); for (let i = 0; i < 6; i++) step();
       const card = V16_AI_DECK.filter(c => c.id === 'pact')[0];
-      let sides = null, remembered = null;
-      /* a party the picker will actually answer for. The first eligible one
-         had no partner within the radius, and a probe that reads null and
-         calls it a failure is measuring its own choice of party. */
       S.aiPacts = {};
       const q = PARTIES.filter(p => p.id !== me && p.id !== S.ruling &&
         (S.coalition || []).indexOf(p.id) < 0 && !S.banned[p.id] &&
         !!v16PactPartner(S, p.id))[0];
-      if (card && q) {
-        S.aiPacts = {}; S.purse = S.purse || {}; S.purse[q.id] = 400;
-        let line = null; try { line = card.run(S, q.id); } catch (e) {}
-        const o = (S.aiPacts[q.id] || {}).with;
-        if (o) {
-          sides = !!(S.aiPacts[o] && S.aiPacts[o].with === q.id);
-          remembered = v21Regard(S, o, q.id) > 0 && v21Regard(S, q.id, o) > 0;
-        }
+      if (!card || !q) return { ran:false };
+      S.purse = S.purse || {}; S.purse[q.id] = 400;
+      PARTIES.forEach(x => { delete v16Ai(S)[q.id].grudge[x.id]; });
+      let line = null; try { line = card.run(S, q.id); } catch (e) {}
+      const o = (S.aiPacts[q.id] || {}).with;
+      const out = { ran:true, partner:o || null,
+        bothRemember: !!o && v21Regard(S, o, q.id) > 0 && v21Regard(S, q.id, o) > 0 };
+      /* WRITING THE SECOND `st.aiPacts` KEY IS NOT PART OF THIS SLICE and the
+         arm says so, because `v16PactPartner` refuses any party that appears
+         in the map: two keys lock BOTH parties out of future pacts where one
+         locked the proposer, which halves the card's availability. Bisected,
+         that single line took S19b's rivalry lift from +.026 to +.004 and
+         inverted it. It belongs in the slice that owns open-set changes. */
+      out.oneKeyOnly = !!o && !S.aiPacts[o];
+      S.aiPacts = {};
+      return out;
+    })();
+
+    /* (e2) AND A PACT GOES TO SOMEBODY YOU HAVE REASON TO TRUST. The picker
+       took the ideologically nearest eligible party, so one that had stood
+       down for you twice and one you had never dealt with were the same
+       candidate. Credit pulls the ranking without widening the radius, so a
+       party outside .62 still cannot be reached. */
+    R.picker = (() => {
+      /* THE BOARD IS SEARCHED, NOT ASSUMED. This needs a party the picker
+         answers for AND a second eligible neighbour for credit to move it to,
+         and whether one exists is a fact about the compass on that seed. Two
+         earlier versions of this arm took the first eligible party on one seed
+         and read `null`, which is the probe choosing badly rather than the
+         mechanism failing. */
+      let me = null, q = null, flat = null, seedUsed = null;
+      [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+        if (q) return;
+        fresh(sd); for (let i = 0; i < 8; i++) step();
         S.aiPacts = {};
-      }
-      return { ran:true, pooledBoth:+gainTwo.toFixed(4), pooledOne:+gainOne.toFixed(4),
-        onceNotTwice: Math.abs(gainTwo - gainOne) < 1e-6,
-        writesBothSides:sides, bothRemember:remembered };
+        const m2 = playParty(S);
+        PARTIES.forEach(p => {
+          if (q || p.id === m2 || p.id === S.ruling || S.banned[p.id]) return;
+          if ((S.coalition || []).indexOf(p.id) >= 0) return;
+          const a0 = v16Ai(S)[p.id];
+          PARTIES.forEach(x => { delete a0.grudge[x.id]; });
+          const f = v16PactPartner(S, p.id);
+          if (!f) return;
+          const alt = PARTIES.filter(x => x.id !== p.id && x.id !== m2 && x.id !== f &&
+            x.id !== S.ruling && (S.coalition || []).indexOf(x.id) < 0 && !S.banned[x.id] &&
+            dist2(ppos(S, p.id), ppos(S, x.id)) < .62);
+          if (alt.length) { q = p; flat = f; me = m2; seedUsed = sd; }
+        });
+      });
+      if (!q) return { ran:false, searched:6 };
+      const a = v16Ai(S)[q.id];
+      /* an eligible party that is NOT the flat pick, brought forward by credit */
+      const rivals = PARTIES.filter(p => p.id !== q.id && p.id !== me && p.id !== flat &&
+        p.id !== S.ruling && (S.coalition || []).indexOf(p.id) < 0 && !S.banned[p.id] &&
+        dist2(ppos(S, q.id), ppos(S, p.id)) < .62).map(p => p.id);
+      if (!flat || !rivals.length) return { ran:false, flat:flat };
+      a.grudge[rivals[0]] = -100;
+      const bought = v16PactPartner(S, q.id);
+      /* and the radius did NOT widen: a party outside it stays out however
+         much it is owed */
+      const far = PARTIES.filter(p => p.id !== q.id && p.id !== me &&
+        dist2(ppos(S, q.id), ppos(S, p.id)) >= .62 && !S.banned[p.id])[0];
+      let stillOut = null;
+      if (far) { a.grudge[far.id] = -100; stillOut = v16PactPartner(S, q.id) !== far.id; }
+      PARTIES.forEach(p => { delete a.grudge[p.id]; });
+      return { ran:true, seed:seedUsed, party:q.id, flat:flat, bought:bought,
+        creditMoves: bought === rivals[0] && bought !== flat, radiusHolds:stillOut };
     })();
 
     /* (f) ANGER COOLS FASTER THAN CREDIT KEEPS, which is the whole argument for
@@ -12205,6 +12281,33 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         negatives: ids.filter(id => (V17_MEMORY[id].self || 0) < 0).length };
     })();
 
+    /* (g2) AND THE PAGE SAYS SO. The Parties card's memory column read
+       "Nothing on file" for a party that had been in your coalition, taken
+       your money and been let off a cordon, because the store could not hold a
+       favour. A mechanic the player cannot perceive reads as randomness, and
+       both halves are the one signed number so the sentence cannot disagree
+       with what the chamber reads. */
+    R.page = (() => {
+      fresh(4242); for (let i = 0; i < 8; i++) step();
+      const me = playParty(S);
+      const q = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0];
+      if (!q) return { ran:false };
+      const a = v16Ai(S)[q.id];
+      const read = () => { let h = ''; try { h = v16AiPanel(); } catch (e) { h = ''; } return h; };
+      a.grudge[me] = 0;
+      const flat = read();
+      a.grudge[me] = -60;
+      const owed = read();
+      a.grudge[me] = 60;
+      const angry = read();
+      a.grudge[me] = 0;
+      return { ran:true,
+        flatSaysNothing: /Nothing on file/.test(flat),
+        owedSaysFavour: /owe you|favour on file/i.test(owed),
+        angrySaysGrievance: /not forgotten|grievance on file/i.test(angry),
+        owedIsNotFlat: owed !== flat };
+    })();
+
     /* (h) AND IT COSTS THE STREAM NOTHING. `v21Regard` is a lookup, and it is
        read inside `partyBillSupport`, which the forecast calls for every party
        on every division -- if it rolled, every seeded campaign would re-phase. */
@@ -12230,8 +12333,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     regard.sponsor.ran === true && regard.sponsor.distinct === regard.sponsor.of &&
     regard.sponsor.spread > 8 && regard.sponsor.monotone === true &&
     regard.assent.ran === true && regard.assent.moves === true &&
-    regard.pact.ran === true && regard.pact.onceNotTwice === true &&
-    regard.pact.writesBothSides === true && regard.pact.bothRemember === true &&
+    regard.assent.directional === true &&
+    regard.picker.ran === true && regard.picker.creditMoves === true &&
+    regard.picker.radiusHolds !== false &&
+    regard.page.ran === true && regard.page.flatSaysNothing === true &&
+    regard.page.owedSaysFavour === true && regard.page.angrySaysGrievance === true &&
+    regard.pact.ran === true && regard.pact.bothRemember === true &&
+    regard.pact.oneKeyOnly === true &&
     regard.cool.ran === true && regard.cool.creditKeepsLonger === true &&
     regard.cover.ghosts.length === 0 && regard.cover.defectIsCredit === true &&
     regard.cover.negatives >= 12 &&
@@ -12255,11 +12363,22 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `a build that read the sign backwards reddens here · ASSENT ASKS THE HOLDER ABOUT THE SPONSOR, where ` +
     `it read the PLAYER's relationship with the office holder and decided 768 engine-to-engine bills with ` +
     `it, refusing 88.2%: the same office rates the same bill ${regard.assent.cold} from a sponsor it ` +
-    `loathes and ${regard.assent.warm} from one it owes, and driven the signing rate goes .065 to .111 ` +
-    `with refusal 88.2% to 83.8% · A PACT IS WRITTEN ON BOTH SIDES (${regard.pact.writesBothSides}) and ` +
-    `both parties remember it (${regard.pact.bothRemember}), where only the proposer's key was written and ` +
-    `\`V17_MEMORY.pact\` reached nobody -- and it is POOLED ONCE not twice (${regard.pact.onceNotTwice}), ` +
-    `because the ballot walks the keys and two keys would pay 12% where the card promises 6% · anger ` +
+    `loathes and ${regard.assent.warm} from one it owes -- and it is the HOLDER's view of the SPONSOR, so ` +
+    `seeding the other direction leaves it at ${regard.assent.mirror} against a neutral ${regard.assent.flat} ` +
+    `· \`assemblyVote\` is pinned in that arm, because \`merits\` otherwise falls back to the forecast, ` +
+    `which S21a also taught to read the regard: unpinned, BOTH of that arm's poisons came back green, ` +
+    `carried by the second reader · driven, the signing rate goes .065 to .111 ` +
+    `with refusal 88.2% to 83.8% · A PACT GOES TO SOMEBODY YOU HAVE REASON TO TRUST -- the picker took the ` +
+    `nearest eligible party, so one that had stood down for you twice and one you had never dealt with ` +
+    `were the same candidate; credit moves it from ${regard.picker.flat} to ${regard.picker.bought} without ` +
+    `widening the radius (a party outside .62 stays out: ${regard.picker.radiusHolds}) · AND BOTH PARTIES ` +
+    `REMEMBER A PACT (${regard.pact.bothRemember}), where the card never called the memory at all and ` +
+    `\`V17_MEMORY\`'s \`pact: -10\` -- the one authored weight for the only cooperative verb in the deck -- ` +
+    `reached nobody · WRITING THE SECOND \`st.aiPacts\` KEY IS DELIBERATELY NOT IN THIS SLICE ` +
+    `(${regard.pact.oneKeyOnly}): \`v16PactPartner\` refuses any party in the map, so two keys lock BOTH ` +
+    `parties out of future pacts where one locked the proposer, and bisected, that single line took S19b's ` +
+    `rivalry lift from +.026 on boards carrying a rival to +.004 and inverted it against the +.024 on boards ` +
+    `carrying none -- an open-set change in a foundation slice, which the plan sequences last · anger ` +
     `cools at ${regard.cool.angerPerSession} a session and credit keeps at ${regard.cool.creditPerSession}, ` +
     `so twenty sessions leave ${regard.cool.angerAfter20} of an injury and ${regard.cool.creditAfter20} of a ` +
     `favour of the same size -- measured as a per-session delta with the pair re-seeded each time, because ` +
@@ -12268,7 +12387,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `PARTY IT ENRICHES: the verb hands its target seats taken from the largest parties, and the ` +
     `beneficiary took +18 while the five who lost the members took +2 each; it is ` +
     `${regard.cover.defectSign} now · every one of the ${regard.cover.entries} weights names a verb that ` +
-    `exists (${regard.cover.ghosts.length} ghosts), which is the guard S16e's \`radicalise\` needed · and ` +
+    `exists (${regard.cover.ghosts.length} ghosts), which is the guard S16e's \`radicalise\` needed · AND THE ` +
+    `PAGE SAYS SO: the memory column read "Nothing on file" for a party that had been in your coalition, ` +
+    `taken your money and been let off a cordon, and now names a favour (${regard.page.owedSaysFavour}) as ` +
+    `well as a grievance (${regard.page.angrySaysGrievance}) off the one signed number · and ` +
     `it costs the stream ${regard.stream.rolls} rolls, because \`partyBillSupport\` is called for every ` +
     `party on every division and a read that rolled would re-phase every seeded campaign`);
 

@@ -34548,14 +34548,25 @@ var V16_AI_DECK = [
       st.aiPacts = st.aiPacts || {};
       st.aiPacts[pid] = { with:o, since:st.turn };
       shiftPartyRel(st, pid, -2);
-      /* S21a: A PACT IS AN AGREEMENT AND IT IS WRITTEN ON BOTH SIDES. The
-         refusal above reads `st.aiPacts[o.id] || st.aiPacts[pid]`, so it
-         already treats the arrangement as mutual -- and only the proposer's
-         key was ever written, which made a one-way door: the party stood down
-         for and never recorded standing down, and `V17_MEMORY`'s `pact: -10`
-         reached nobody at all because the card never called the memory. Both
-         keys now, and both parties remember it. */
-      st.aiPacts[o] = { with:pid, since:st.turn };
+      /* S21a: AND BOTH PARTIES REMEMBER IT. `V17_MEMORY`'s `pact: -10` reached
+         nobody at all, because the card never called the memory -- the one
+         authored weight for the only cooperative verb in the deck was dead.
+
+         WRITING THE SECOND `st.aiPacts` KEY WAS PART OF THIS AND HAS BEEN
+         TAKEN BACK OUT, deferred to the slice that owns open-set changes. The
+         intent was right: the refusal above reads
+         `st.aiPacts[o.id] || st.aiPacts[pid]`, so the arrangement is already
+         treated as mutual, and a party that has been stood down FOR should not
+         be free to pact with somebody else the same session. But that refusal
+         is what makes the key an OPEN-SET change: with both keys written, both
+         parties are locked out of future pacts where only the proposer was,
+         which halves the card's availability across the board. Bisected, that
+         one line -- and nothing else in this slice -- takes S19b's rivalry lift
+         from +.026 on the boards carrying a rival to +.004, and inverts it
+         against the +.024 on boards carrying none. `docs/PLAN-S21.md` sequences
+         open-set movers last for exactly this reason: every measured rate in
+         S19b, S19c, S19f and S20g has an open-set denominator, and a
+         foundation slice is the wrong place to move one. */
       if (typeof v16Resent === 'function') {
         var w = (V17_MEMORY.pact || {}).self || -10;
         v16Resent(st, o, pid, w);
@@ -35500,10 +35511,15 @@ function v18Tempo(st, pid) {
   if (purse >= 120) w *= V18_TEMPO.rich;
   else if (purse < V16_AI_COST.demand) w *= V18_TEMPO.broke;
   var worst = 0;
-  /* S21a: through the accessor. Reading the store raw was correct only while
-     the store could not go below nought; with a signed store this asked
-     "is this party's warmest friendship greater than its worst grudge". */
-  if (ai && ai.grudge) for (var k in ai.grudge) { var gk = v16Grudge(st, pid, k); if (gk > worst) worst = gk; }
+  /* S21a: THIS RAW READ IS SAFE AND WAS LEFT ALONE. It was routed through
+     `v16Grudge` and the change came back GREEN on its own poison, which for a
+     change means either a missing arm or a dead body -- and this one is dead
+     by construction: `worst` starts at nought and only rises, so a stored
+     credit (now negative) can never become the maximum whichever way it is
+     read. Equivalent, therefore deleted rather than shipped, on the same
+     reading that took out S20g's shortlist block. A later reader who changes
+     the initialiser above must route this through the accessor. */
+  if (ai && ai.grudge) for (var k in ai.grudge) if (ai.grudge[k] > worst) worst = ai.grudge[k];
   if (worst >= 35) w *= V18_TEMPO.grudge;
   if (pid === st.ruling) w *= V18_TEMPO.govern;
   /* `lastSeats` is written at the end of every `v16AiTurn`, so this is the
@@ -35674,12 +35690,6 @@ ballot = function (st) {
   for (var pid in st.aiPacts) {
     var o = st.aiPacts[pid].with;
     if (!res[pid] || !res[o]) continue;
-    /* S21a: ONCE PER PACT, NOT ONCE PER SIGNATORY. The card now writes both
-       sides -- a pact only one party recorded was a one-way door -- and this
-       loop walks the keys, so an agreement both parties hold would be pooled
-       twice and pay 12% where the card promises 6%. The pair is processed by
-       whichever id sorts first; a legacy save with one key still pools once. */
-    if (st.aiPacts[o] && st.aiPacts[o].with === pid && o < pid) continue;
     var pool = (res[pid] + res[o]) * .06;
     res[pid] += pool * .5; res[o] += pool * .5;
   }
