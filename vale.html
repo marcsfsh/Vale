@@ -9416,6 +9416,24 @@ function enactBill(st, bill) {
      is kept or broken. The emitter decides what it meant; nothing here knows
      what a concession is. */
   if (typeof v17DealEvent === 'function') v17DealEvent(st, 'move', bill.policy, bill.sponsor, bill.title);
+  /* S21b: AND EVERY PARTY WHOSE OWN TABLE NAMES THIS STATUTE HAS A VIEW. The
+     book moving is the government's most frequent act and nobody remembered
+     any of it: a government could spend a campaign driving a party's dearest
+     statute the wrong way and that party regarded it exactly as before.
+     Read from `PARTY[pid].wants`, which is the same table the demand card,
+     the dossier, `v19BillFor` and the `carry` aim all read, so a party minds
+     about the thing it has always said it minds about. */
+  if (typeof v21Answer === 'function') {
+    PARTIES.forEach(function (q) {
+      if (q.id === st.ruling || st.banned[q.id]) return;
+      var w = (PARTY[q.id] || {}).wants || {}, tg = w[bill.policy];
+      if (tg === undefined) return;
+      var was = Math.abs(Math.min(tg, p.max) - before);
+      var now = Math.abs(Math.min(tg, p.max) - st.pol[bill.policy]);
+      if (now > was) v21Answer(st, 'statuteAgainst', q.id);
+      else if (now < was) v21Answer(st, 'statuteFor', q.id);
+    });
+  }
   if (bill.policy === 'suffrageMale' && st.pol[bill.policy] === 0) st.pol.womensSuffrage = 0;
   if (p.mood) mood(st, polMoodDelta(p, before, st.pol[bill.policy],
     .5 * Math.max(.55, 1 - bill.concessions * .12) * (bill.staged ? .5 : 1)));
@@ -9640,6 +9658,13 @@ function assentEvent(st, id) {
 function failBill(st, bill, chamber, vote) {
   archiveBill(st, bill, 'failed', 'Defeated in the ' + chamber + ', ' + vote.toFixed(0) + '% in favour');
   st.legacy.billsFailed++;
+  /* S21b: AND THE PARTY THAT LAID IT MINDS. 143 engine-sponsored bills were
+     archived in 300 measured sessions and none of them carried; the sponsor
+     took a four-point knock to its relationship with the PLAYER and nothing
+     at all against the government that beat it. */
+  if (typeof v21Answer === 'function' && bill.sponsor && bill.sponsor !== st.ruling) {
+    v21Answer(st, 'billDown', bill.sponsor);
+  }
   if (bill.confidence) {
     st.unity = c100((st.unity || 60) - (st.doctrine === 'operator' ? 8 : 14));
     st.capital = clamp(st.capital - 5, -5, capCap(st));
@@ -10229,6 +10254,15 @@ function respondInbox(id, choice) {
   render(); toast('Political paper answered.');
 }
 
+/* S21b: WHAT SILENCE IS WORTH. This was 14, and the median DELIBERATE
+   provocation the game delivers -- an audit, a poach, a split, measured across
+   463 rises in S19f's own arm -- is 13.4. So ignoring a letter weighed exactly
+   as much as going after a party on purpose, which is the wrong ordering: it
+   is worth more than declining to their face, and less than an attack. Eleven
+   keeps it above `V19_REACT_RISE` (10), so silence still earns an answer.
+   Declared here rather than beside the other reaction constants because those
+   live in a later script chunk than `expireInbox`. */
+var V21_IGNORED_LETTER = 11;
 function expireInbox(st) {
   st.inbox.slice().forEach(function (it) {
     /* A paper says "Reply by <the date of session `deadline`>", so it has to be
@@ -10260,7 +10294,26 @@ function expireInbox(st) {
       /* S17l: silence from the government IS the answer, and the party that
          wrote carries it. It is worth more than declining to their face,
          which is the point of writing at all. */
-      if (it.from && typeof v16Resent === 'function') v16Resent(st, it.from, playParty(st), 14);
+      if (it.from && typeof v16Resent === 'function') {
+        v16Resent(st, it.from, playParty(st), V21_IGNORED_LETTER);
+        /* S21b: AND THE STAMP IS DATED FOR A READER THAT HAS ALREADY GONE BY.
+           `v19React` runs inside `tickTurn`; `expireInbox` runs later in the
+           same session inside `politicsTick`, and `S.turn += 1` comes after
+           both. So the stamp `v16Resent` just wrote says `st.turn`, and the
+           next time the reader looks the session is `st.turn + 1` and the
+           stamp is one behind -- permanently. Measured, the ignored letter is
+           63% of every grievance a party takes against the player and it
+           produced ZERO reactions: ten stamps, no answers.
+
+           Re-dating it here rather than moving either call is the smaller
+           change: the two functions are ordered for reasons that have nothing
+           to do with this, and a paper the government ignored is a provocation
+           the party discovers at the START of the session it answers in. */
+        var ra = v16Ai(st)[it.from];
+        if (ra && ra.provokedAt && ra.provokedAt[playParty(st)] === st.turn) {
+          ra.provokedAt[playParty(st)] = st.turn + 1;
+        }
+      }
     }
     if (it.type === 'faction_demand') {
       var f = v17Caucus(st, playParty(st), it); if (f) f.loyalty = c100(f.loyalty - 9);
@@ -11924,6 +11977,14 @@ function execContest(st, res) {
     });
     PARTIES.forEach(function (p) { r[p.id] = t ? r[p.id] / t : 0; });
     var w = rcvWinner(r);
+    /* S21b: AND LOSING AN OFFICE IS SOMETHING TO REMEMBER. Measured, offices
+       turn over at 25.6% and the party that lost one carried nothing away
+       from it: `execRemember` records the CANDIDATES so a person can stand
+       again, and nothing recorded what the party made of the result. */
+    var heldBy = st.exec[office];
+    if (typeof v21Answer === 'function' && heldBy && heldBy !== w) {
+      v21Answer(st, 'officeLost', heldBy);
+    }
     execRes[office] = w;
     st.exec[office] = w;
     var seated = execSeat(st, office, w, noms[w].winner);
@@ -12056,6 +12117,12 @@ function runElection(st, early) {
   if ((st.coalition || []).length > 1) st.legacy.coalitionsBuilt++;
   addNews(st, early ? 'Snap Election' : 'Federal Ballot', 'The ' + PARTY[lead].short + ' emerge as the largest party',
     'The chamber moved ' + Math.round(swing / 2) + ' seats in aggregate and a new coalition arithmetic now applies.', lead === playParty(st) ? 'good' : 'watch');
+  /* S21b: AND THE LARGEST PARTY LEFT OUT OF THE GOVERNMENT MINDS. The night's
+     sharpest outcome is a party that won and does not govern -- the formation
+     panel says so in as many words -- and it wrote nothing into anybody's
+     memory. `seen` is non-zero here alone: a freeze-out is an argument about
+     the republic and the rest of the room was watching. */
+  if (typeof v21Answer === 'function' && lead !== st.ruling) v21Answer(st, 'frozenOut', lead);
   /* S17f: `lead` is who won the night and `gov` is who ended up governing.
      They are the same in most counts and the difference is the whole point of
      a formation, so `changed` asks about the GOVERNMENT -- a night that
@@ -34687,6 +34754,35 @@ var V16_AI_DECK = [
     run:function (st, pid) {
       var d = partyDemandPolicy(st, pid); if (!d) return null;
       v16AiPay(st, pid, V16_AI_COST.demand);
+      /* S21b: A LETTER TO THE GOVERNMENT GOES TO THE GOVERNMENT. This posted
+         to the player's inbox whatever chair they were in, so a player on the
+         opposition benches received letters addressed to "the government" and
+         answered for a cabinet they were not in -- and when an engine held
+         office nobody answered at all, because the model has no inbox.
+         The engine government answers on the same terms the player is offered:
+         it carries the measure when the statute is one it can live with, and
+         refuses otherwise, and a refusal is remembered against it. */
+      if (st.ruling !== playParty(st)) {
+        var gov = st.ruling;
+        var lv = st.pol[d.policy] || 0;
+        var gw = (PARTY[gov] || {}).wants || {}, want = gw[d.policy];
+        var moves = want !== undefined &&
+          (want > lv ? d.dir > 0 : want < lv ? d.dir < 0 : false);
+        if (moves && partyPurse(st, gov) >= V16_AI_COST.bill) {
+          sponsorBill(st, d.policy, d.dir, 'government', 'negotiated', true);
+          v16AiPay(st, gov, V16_AI_COST.bill);
+          if (typeof v16Resent === 'function') v16Resent(st, pid, gov, -18);
+          logIt(st, 'The ' + PARTY[gov].short + ' government took up what the ' + PARTY[pid].short +
+            ' asked for on ' + POL[d.policy].name + '.');
+          return 'The ' + PARTY[pid].short + ' put ' + POL[d.policy].name +
+            ' to the government, and it was taken up.';
+        }
+        if (typeof v21Answer === 'function') v21Answer(st, 'demandRefused', pid);
+        logIt(st, 'The ' + PARTY[gov].short + ' government would not take up what the ' +
+          PARTY[pid].short + ' asked for on ' + POL[d.policy].name + '.');
+        return 'The ' + PARTY[pid].short + ' put ' + POL[d.policy].name +
+          ' to the government, and were refused.';
+      }
       /* S17l: `type:'party_demand'`, and no `faction` index. This was posted
          as a `faction_demand` with `faction:0` -- the caucus paper's shape --
          so the answer reached into the PLAYER's own first caucus and moved
@@ -34888,24 +34984,40 @@ var V19_GOALS = [
     id:'oust',
     /* a named party out of the government. The one goal that points at
        somebody, and the grudge ledger is what picks the name. */
+    /* S21b: ALL THREE PREDICATES NOW ASK ONE QUESTION, AND IT IS ABOUT THE
+       GOVERNMENT. They used to ask three different ones. `fits` wanted a
+       grudge of 25 against ANYBODY; `target` picked the argmax grudge with no
+       reference to who governs; `done` wanted that party out of government.
+       So the aim was adopted about a party that was already in opposition --
+       which it was on 808 of the 880 boards that passed `fits`, measured over
+       3,618 party-sessions -- and `v19AdoptGoal` drops a goal already done.
+       Net: `oust` was held 4 times in 720 sessions.
+
+       Now the pool is the government and its partners, so a party can only
+       aim at somebody it could actually bring down, and reaching it means
+       exactly what the name says. `g.gov` is stamped at adoption so a party
+       that gets what it wanted by a route it did not take -- the ballot, a
+       walkout, a motion -- still reads as done rather than switching target
+       under its own aim. */
     fits:function (st, pid) {
       if (pid === st.ruling) return 0;
+      var inGov = (st.coalition || [st.ruling]).filter(function (q) { return q !== pid; });
       var worst = 0;
-      PARTIES.forEach(function (q) {
-        if (q.id === pid) return;
-        var g = v16Grudge(st, pid, q.id);
+      inGov.forEach(function (q) {
+        if (st.banned[q]) return;
+        var g = v16Grudge(st, pid, q);
         if (g > worst) worst = g;
       });
-      return worst >= 25 ? 1.4 : 0;
+      return worst >= V21_OUST_BAR ? 1.4 : 0;
     },
     target:function (st, pid) {
       var t = null, worst = 0;
-      PARTIES.forEach(function (q) {
-        if (q.id === pid || st.banned[q.id]) return;
-        var g = v16Grudge(st, pid, q.id);
-        if (g > worst) { worst = g; t = q.id; }
+      (st.coalition || [st.ruling]).forEach(function (q) {
+        if (q === pid || st.banned[q]) return;
+        var g = v16Grudge(st, pid, q);
+        if (g > worst) { worst = g; t = q; }
       });
-      return t ? { ref:t } : null;
+      return t ? { ref:t, gov:st.ruling } : null;
     },
     done:function (st, pid, g) {
       return g.ref !== st.ruling && (st.coalition || []).indexOf(g.ref) < 0;
@@ -36087,6 +36199,105 @@ tickTurn = function (st) {
    ELSE in the room. Anything a party can do to another party has a weight, so
    a thirty-fifth verb that arrives without one fails `roads.js` rather than
    being quietly forgotten the way these thirty were. */
+/* ==========================================================
+   S21b — WHAT A PARTY HOLDS AGAINST A GOVERNMENT.
+
+   `V17_MEMORY` is the memory of the PLAYER'S BUTTONS. Every one of its
+   thirty-four weights is written by the `doAction` wrapper, so a party can
+   only ever remember something a human pressed. Nothing that happens in the
+   ordinary course of governing is remembered by anybody: a statute carried
+   away from a party's own table, a bill of theirs voted down, an office lost,
+   a demand refused, a freeze-out at the formation. Measured, 394 of 3,729
+   ledger entries point at a party in government -- and `attack.can` forbids
+   the government from attacking, so the government remembers every attacker
+   and NOBODY ACCUMULATES A GRUDGE AGAINST IT.
+
+   That is why `oust` -- the one aim that names an enemy -- is unreachable.
+   Its `fits` wants a grudge of 25 and its `done` wants that party out of
+   government, and measured over 3,618 non-ruling party-sessions the argmax
+   grudge was outside government on 808 of the 880 boards that passed `fits`.
+   The party you hate is already in opposition, because nothing makes you hate
+   the people in power.
+
+   `V21_POLITICS` is the other half of `V17_MEMORY`: things the REPUBLIC does,
+   written by `v21Answer`. It is covered in both directions -- `roads.js` fails
+   if a kind arrives without a weight or a weight names a kind nothing raises
+   -- which is the guard a hand-kept list cannot have and the one S16e's
+   `radicalise` needed.
+   ========================================================== */
+/* THE WEIGHTS ARE SET AGAINST THE RATE EACH CHANNEL FIRES AT, not by eye. The
+   first draft used the same magnitudes as `V17_MEMORY`'s button weights and
+   that was the wrong comparison: a player presses `poach` when they choose to,
+   and these fire on their own. Against a cooling of .6 a session per pair the
+   table ran away -- measured, it took the grudge a party holds against a
+   government to a 90th percentile of 61.7 with the clamp reached, acceptance
+   at the formation table from 71.7% to 25.8%, and 110 of 360 elections to a
+   caretaker because nobody would sit with anybody.
+
+   AND THE RATES ARE NOT WHAT THEY LOOK LIKE, which the poison run is where I
+   found out. Over 720 driven sessions the firings are `billDown` 342,
+   `demandRefused` 149, `officeLost` 83, `statuteFor` 42, `frozenOut` 32 and
+   `statuteAgainst` **18** -- so the bill channel dominates the distribution
+   and the statute channel barely touches it. Raising `statuteAgainst` from 3
+   to 9 moves the 90th percentile by 0.7 and changes no formation outcome at
+   all, which is why that poison comes back green and why the comment it was
+   written against was wrong.
+
+   The statute figure is low BECAUSE THE PROBE'S PLAYER IS IDLE: `enactBill`
+   fires when a bill passes, engine bills mostly do not, and the owner's own
+   132-session save carries 1,063 laws. In a played campaign this is the
+   frequent channel, which is why it holds the smallest weight even though the
+   passive measurement would tolerate more. `roads.js` measures the resulting
+   distribution and the formation outcomes together, because this table's whole
+   risk is being right in kind and wrong in degree. */
+var V21_POLITICS = {
+  /* the government moved a statute this party's own table names, away from it.
+     Fires ~3x a session across the board, so the smallest weight in the table. */
+  statuteAgainst: { self:3,  seen:0 },
+  /* a bill this party sponsored was voted down */
+  billDown:       { self:4,  seen:0 },
+  /* an office it held was lost at the contest -- once every four sessions at most */
+  officeLost:     { self:8,  seen:0 },
+  /* a demand it put to the government was refused to its face */
+  demandRefused:  { self:6,  seen:0 },
+  /* the largest party, left out of the government that formed. Once an
+     election, and the sharpest thing a night can do to a party. */
+  frozenOut:      { self:12, seen:2 },
+  /* and the other way: the government carried something it wanted */
+  statuteFor:     { self:-3, seen:0 },
+};
+/* WHO A PARTY BLAMES. The government is the head of it, and the partners are
+   in the room: a junior partner takes a share, because sitting in a cabinet
+   that did the thing is not the same as opposing it and is not the same as
+   having done it. */
+var V21_PARTNER_SHARE = .45;
+/* What a party must hold against a government before it sets out to bring it
+   down. It was 25 against ANYBODY, on a distribution whose 90th percentile is
+   5.6 and whose 99th is 36.2 -- so the bar itself was reachable, and what made
+   the aim unreachable was asking about the wrong party. With the pool narrowed
+   to the government and its partners the bar is measured afresh in `roads.js`
+   against the grudges that actually accumulate against a government now that
+   S21b writes them, and it stays where S19 put it until that measurement says
+   otherwise. */
+var V21_OUST_BAR = 25;
+function v21Answer(st, kind, target, w) {
+  if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return;
+  if (typeof V19_SIMULATING !== 'undefined' && V19_SIMULATING) return;
+  var m = V21_POLITICS[kind]; if (!m || !target || st.banned[target]) return;
+  var gov = st.ruling; if (!gov || target === gov) return;
+  var scale = (w === undefined || w === null) ? 1 : w;
+  v16Resent(st, target, gov, m.self * scale);
+  (st.coalition || []).forEach(function (q) {
+    if (q === gov || q === target) return;
+    v16Resent(st, target, q, m.self * scale * V21_PARTNER_SHARE);
+  });
+  if (m.seen) {
+    PARTIES.forEach(function (q) {
+      if (q.id === target || q.id === gov || st.banned[q.id]) return;
+      v16Resent(st, q.id, gov, m.seen * scale);
+    });
+  }
+}
 var V17_MEMORY = {
   /* what is done TO them (self), and what the rest of the room makes of it
      (seen) -- an attack on one party's existence is an argument about the
