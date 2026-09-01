@@ -11558,11 +11558,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        ABOVE the ambient median and BELOW the deliberate one. That is a
        stronger statement than the single median it replaces. */
     R.bar = (() => {
-      const deliberate = [], ambient = [], falls = [];
-      let inPolitics = 0;
+      /* THREE POPULATIONS SINCE S21d, WHERE S21b FOUND TWO. The rises against
+         a player were once all from a verb somebody pressed; S21b added the
+         AMBIENT kind that arrives from governing; and S21d adds a third, the
+         COALITION AGREEMENT'S breaches, which reach `v16Resent` directly at
+         `hit.cost + 1` -- 9 for a promise to leave a statute alone and 12 for
+         a red line. Those sit ASTRIDE a bar of 10, and pooling them with the
+         player's buttons took the share clearing it from .902 to .733 while
+         nothing about the buttons changed. A bound written about one
+         population is not a bound on three, so the source is recorded. */
+      const deliberate = [], ambient = [], breach = [];
+      const falls = [], credits = [];
+      let inPolitics = 0, inDeal = 0;
       const bAns = (typeof v21Answer === 'function') ? v21Answer : null;
       if (bAns) v21Answer = function (st, kind, target, w) {
         inPolitics++; try { return bAns.call(this, st, kind, target, w); } finally { inPolitics--; }
+      };
+      const bScan = (typeof v17DealScan === 'function') ? v17DealScan : null;
+      if (bScan) v17DealScan = function () {
+        inDeal++; try { return bScan.apply(this, arguments); } finally { inDeal--; }
       };
       const bRes = v16Resent;
       v16Resent = function (st, pid, against, n) {
@@ -11570,8 +11584,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         const before = (v16Ai(st)[pid].grudge[against] || 0);
         const out = bRes.call(this, st, pid, against, n);
         const after = (v16Ai(st)[pid].grudge[against] || 0);
-        if (against === me2 && after > before && !V19_SIMULATING) {
-          (inPolitics > 0 ? ambient : deliberate).push(after - before);
+        if (against === me2 && !V19_SIMULATING) {
+          if (after > before) {
+            (inDeal > 0 ? breach : inPolitics > 0 ? ambient : deliberate).push(after - before);
+          } else if (after < before) {
+            /* A CREDIT IS NOT THE PASSAGE OF TIME, and the sampled fall below
+               cannot tell them apart -- which is why `maxFall` climbed past
+               the bar on a build that did not touch the cooling: S21a's
+               `statuteFor` and a kept promise both write a NEGATIVE
+               resentment, and the sampler read them as a session's cooling. */
+            credits.push(before - after);
+          }
         }
         return out;
       };
@@ -11580,26 +11603,36 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           fresh(seed);
           const me = playParty(S), last = {};
           for (let i = 0; i < 120; i++) {
+            const creditsBefore = credits.length;
             drive(1);
+            const anyCredit = credits.length > creditsBefore;
             PARTIES.forEach(q => {
               if (q.id === me || S.banned[q.id]) return;
               const g = v16Grudge(S, q.id, me), l = last[q.id] === undefined ? 0 : last[q.id];
-              if (g < l) falls.push(l - g);
+              /* only a session in which NOTHING wrote a credit is a reading of
+                 what time alone does */
+              if (g < l && !anyCredit) falls.push(l - g);
               last[q.id] = g;
             });
           }
         });
-      } finally { v16Resent = bRes; if (bAns) v21Answer = bAns; }
+      } finally {
+        v16Resent = bRes; if (bAns) v21Answer = bAns; if (bScan) v17DealScan = bScan;
+      }
       const m = a => a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null;
       const med = a => { const t = a.slice().sort((x, y) => x - y);
         return t.length ? +t[Math.floor(t.length / 2)].toFixed(1) : null; };
-      const all = deliberate.concat(ambient);
+      const all = deliberate.concat(ambient).concat(breach);
       const clears = deliberate.filter(r => r >= V19_REACT_RISE).length;
       return { rises:all.length, deliberateN:deliberate.length, ambientN:ambient.length,
+        breachN:breach.length, breachMedian:med(breach),
+        breachClearShare: breach.length ? +(breach.filter(r => r >= V19_REACT_RISE).length / breach.length).toFixed(3) : null,
         medianRise:med(deliberate), ambientMedian:med(ambient), pooledMedian:med(all),
         minRise: deliberate.length ? +Math.min.apply(null, deliberate).toFixed(1) : null,
         meanRise:m(deliberate), meanFall:m(falls),
         maxFall: falls.length ? +Math.max.apply(null, falls).toFixed(2) : null,
+        creditsN:credits.length,
+        maxCredit: credits.length ? +Math.max.apply(null, credits).toFixed(2) : null,
         clears:clears, clearShare: deliberate.length ? +(clears / deliberate.length).toFixed(3) : null,
         ambientClearShare: ambient.length ? +(ambient.filter(r => r >= V19_REACT_RISE).length / ambient.length).toFixed(3) : null,
         bar:V19_REACT_RISE };
