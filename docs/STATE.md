@@ -26,14 +26,25 @@ architecture imposes on anything added to it. R1: AI sophistication gets its
 OWN difficulty setting, independent of the existing scale. R2: the Parties
 page states the aim and the reasoning. Both shipped in S19a.
 
-**Four of the seven reasoning layers are built.** S19a (PR #92) gave goals held
-across sessions, deliberation by rehearsal against a party-facing objective,
-and floor arithmetic that acts only when a vote is going against the party.
-S19b adds opponent modelling. Still to come: bargaining between parties,
-temperament, and reaction between scheduled turns. `docs/MAP.md` carries a
-section for each.
+**ALL SEVEN REASONING LAYERS ARE BUILT AND S19 IS COMPLETE.** S19a (PR #92)
+gave goals held across sessions, deliberation by rehearsal against a
+party-facing objective, and floor arithmetic that acts only when a vote is
+going against the party. S19b added opponent modelling; S19c made the aims
+reachable; S19d gave each party its own manifesto in the division lobby and
+settled the bargaining question as a finding — the channel exists, the outcome
+does not, and nothing short of handing an engine party the government's
+machinery changes it; S19e gave them characters; S19f let them answer without
+waiting for the season. `docs/MAP.md` carries a section for each.
 
-**S19b — A party knows who is in its way** is the current branch.
+**What is left open is a finding rather than a slice.** Four of the seven goals
+are never reached — `carry` by the floor's arithmetic, `enter` because a
+coalition never grew in 720 sessions, `office` because no engine card reaches
+`st.exec`, `oust` because a government changed once in 1,440. Whether an engine
+party should be able to enter a government, take an office or bring one down is
+a question about the REPUBLIC rather than about the AI, and it is the owner's
+to open.
+
+**S19f — A party does not wait for the season** is the current branch.
 
 S19a left every party alone on the board: nothing asked what the OTHERS were
 after, so six parties pursued six aims in parallel and a party whose goal was
@@ -70,6 +81,77 @@ left all eight green while every real pick in the game lost the term.
 Seventeen poisons from the diff, sixteen redden it; the one that stays green is
 "report the weakest rival instead of the strongest", and the answer is that of
 3,600 party-sessions not one ever had two rivals of different magnitudes.
+
+**S19f — A party does not wait for the season** is on the branch.
+
+S18e made the tempo READ the grudge, so a provoked party moves sooner in
+expectation. Driven, that still left a long wait: the player hands a party a
+real grievance and it takes SOME initiative a mean of **2.5 sessions** later,
+as late as **9** -- four other things the player has done since, so the answer
+reads as weather rather than as a reply. `v19React` runs in `endTurn`, sees a
+RISE in grievance clear a bar, and stamps the session; a party so stamped acts
+without waiting for its tempo roll and reads the provoker as its rival, so what
+it does is aimed rather than merely prompt. The lag becomes **0.25**.
+
+**THE OWNER'S DIAL IS BORROWED FROM AND NEVER ADDED TO** -- `V16_AI_CADENCE`'s
+own comment records that six parties acting every session took the harness from
+5.5 elections won to 1.2 -- so an answer is a go BORROWED, and the next session
+the party would have used pays it back.
+
+**AND THE TOTAL WAS THE WRONG INSTRUMENT FOR CHECKING THAT, WHICH COST THREE
+BUILDS.** Charged on every answer the total read 3 to 8 per cent below the
+reaction-off build, and three separate placements of the same unconditional
+charge -- at the tempo gate, after the open-set test, against a pick about to
+run -- moved it not at all: every one asked WHERE to book the debt and none
+asked WHETHER one was owed. Measured **per seed**, the total runs **-7.9% to
++19.7%** across ten, so every reading that drove those rewrites was a single
+sample from a band twenty points wide. This is the same lesson as the pacing
+correction above, in a different harness, found the same way and within the
+hour.
+
+**So the ledger is asserted and the total is only reported**: 154 borrowed, 154
+repaid, none outstanding, none borrowed at all with the reaction off. **And the
+charge has to be EARNED, which the ledger alone cannot say** -- `answering`
+skips the tempo test but it does not follow the test would have refused, and
+S18e made the tempo read the grudge, so a freshly provoked party has RAISED
+odds and the unearned charges are exactly what the mechanism produces. Of 226
+reactions only **154 are charged (.681)**, against **.987** charging
+unconditionally.
+
+**Three faults found by poisons written from the diff.** `borrows === repays +
+outstanding` is an IDENTITY -- delete the repayment and it still holds, 154 ===
+0 + 154 -- so the gate now asserts the debt is PAID. `a.react = null` was a
+dead line, the stamp being read as `=== st.turn` and so expiring on its own;
+deleted rather than shipped. And the bar's own sentence claimed ten sat "below
+every real provocation", true across the four seeds it was measured on and
+false across ten, where the smallest rise is 1.8 and 21 of 288 sit under the
+bar -- what survives is the GAP between a session's cooling (never more than
+0.6) and the provocation the game delivers (13.4), never the absence of
+anything below.
+
+**And S19e's own arm had to be isolated properly.** An in-process A/B holds
+everything else, and a later slice is everything else: run with this reaction
+live, the unchanged temper measured 5 of 6 parties at .028 instead of 6 of 6 at
+.063 and the arm failed. It holds the reaction off on both sides now and reads
+exactly what it read at S19e. Its twin: the patience control was gated at
+|r| < .5, loose enough that the un-held reading of .421 passed, which made the
+isolation a line whose removal changed nothing -- at .3 the control asserts
+what it is for.
+
+**The pacing arc does not move, measured the corrected way.** Six seeds, three
+lengths, S19e against S19f: crises per ten sessions **0.80 / 0.85 / 0.81 →
+0.83 / 0.83 / 0.81**, elections exactly unchanged at 0.40 / 0.20 / 0.10,
+records at the close 19.3/22.3/23.1% → 18.2/23.5/24.6%, all 36 runs reaching
+their end year. Every delta is far inside one build's own seed-to-seed spread
+(short runs 0.6 to 1.0 on a single build), so the arc did not move. Read the
+old way -- the first seed's three rows -- this same pair reads
+**0.8 / 1.0 / 0.8 → 0.8 / 0.9 / 0.7**, a fall on two of the three lengths that
+the six-seed means say is not there. The instrument fix earned itself back
+inside one slice.
+
+Verification: checks 11/11, roads **194/194**, playtest, determinism 8/8,
+contrast at three tiers. **Fourteen poisons from the S19f diff, all fourteen
+redden it**; a fifteenth came back green and its subject was deleted.
 
 **S19e — The parties have characters** is on the branch.
 

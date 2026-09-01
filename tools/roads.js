@@ -10060,6 +10060,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        shows. */
     R.lean = (() => {
       const w0 = V19_TEMPER;
+      /* AND THE A/B HOLDS EVERYTHING ELSE, WHICH INCLUDES THE S19f REACTION.
+         An answering party has its rival reading OVERRIDDEN to the provoker at
+         `V19_RIVAL.aimed`, deliberately, so on those picks another mechanism is
+         in charge of the axis and the temper is not what is being read. Left
+         running, it took this measurement from six parties of six rising at a
+         mean of .063 to five of six at .028 -- the temper undiluted either
+         time, but measured on a population a later slice had taken a share of.
+         The isolation is the whole point of an in-process A/B; the reaction is
+         "everything else" and it is held on BOTH sides. On the build S19e
+         shipped this changes nothing, there being no reaction to hold. */
+      const bar0 = V19_REACT_RISE;
       const run = () => {
         const t = {}; PARTIES.forEach(p => { t[p.id] = { n:0, ax:{ combative:0, organiser:0, dealer:0 } }; });
         const saved = V16_AI_DECK.map(c => c.run);
@@ -10079,8 +10090,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         });
         return out;
       };
-      V19_TEMPER = 0; const off = run();
-      V19_TEMPER = w0; const on = run();
+      V19_REACT_RISE = 9999;
+      let off, on;
+      try {
+        V19_TEMPER = 0; off = run();
+        V19_TEMPER = w0; on = run();
+      } finally { V19_TEMPER = w0; V19_REACT_RISE = bar0; }
       const rows = {}; let up = 0, n = 0, sum = 0;
       Object.keys(on).forEach(k => {
         if (off[k] === undefined) return;
@@ -10122,7 +10137,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         Object.keys(held).forEach(k => { if (held[k].length >= 3) out[k] = +(held[k].reduce((a, c) => a + c, 0) / held[k].length).toFixed(1); });
         return out;
       };
-      const on = carried(false), off = carried(true);
+      /* the same hold as the leaning's A/B above, and for the same reason: the
+         S19f reaction changes WHICH sessions a party acts in, which is what
+         moves an aim's progress, which is the quantity the idle bar reads. Run
+         with it live, the flattened control drifted from -.18 to .421 -- a
+         correlation of .42 on six points being noise either way, but noise the
+         isolation is supposed to have removed. */
+      const bar0 = V19_REACT_RISE;
+      V19_REACT_RISE = 9999;
+      let on, off;
+      try { on = carried(false); off = carried(true); }
+      finally { V19_REACT_RISE = bar0; PARTIES.forEach(p => { if (keep[p.id]) PARTY[p.id].temper = keep[p.id]; }); }
       const corr = (xs, ys) => {
         const n = xs.length; if (n < 4) return null;
         const mx = xs.reduce((a, c) => a + c, 0) / n, my = ys.reduce((a, c) => a + c, 0) / n;
@@ -10183,7 +10208,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     temp.distinctLeads >= 3 && temp.patienceSpread >= .5 &&
     temp.lean.parties >= 5 && temp.lean.rose === temp.lean.parties && temp.lean.meanLift > .03 &&
     temp.patience.n >= 5 && temp.patience.corrOn !== null &&
-    temp.patience.corrOn > .8 && Math.abs(temp.patience.corrFlat) < .5 &&
+    /* the flattened control is held to .3 rather than .5 BECAUSE ITS POISON
+       CAME BACK GREEN AT .5. With the patience flattened there should be no
+       relationship left to find, and .5 on six points tolerates most of one:
+       the S19f reaction running through the A/B took this reading from -.18 to
+       .421 and the arm never noticed, which made the isolation that removes it
+       a line whose deletion changed nothing. At .3 the control asserts what it
+       is for and the hold is load-bearing. */
+    temp.patience.corrOn > .8 && Math.abs(temp.patience.corrFlat) < .3 &&
     temp.subordinate.temperCeiling < temp.subordinate.goalCeiling / 2 &&
     temp.floor && temp.floor.instinctMoved === 0 && Math.abs(temp.floor.shrewdMoved) > .1 &&
     temp.page.atShrewd === true && temp.page.atInstinct === false;
@@ -10208,6 +10240,327 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${temp.subordinate.goalCeiling} · \`instinct\` IS UNTOUCHED (${temp.floor.instinctMoved} where shrewd ` +
     `moves ${temp.floor.shrewdMoved}) · and the page says what kind of party it is where the model reads it ` +
     `(${temp.page.atShrewd}) and not where it does not (${temp.page.atInstinct})`);
+
+  /* ---------- S19f: A PARTY DOES NOT WAIT FOR THE SEASON ----------
+     S18e made the tempo READ the grudge, so a provoked party moves sooner in
+     expectation. Measured, that still left a long wait: the player hands a
+     party a real grievance and it takes SOME initiative a mean of 3 sessions
+     later, as late as 10. By then the player has done four other things and
+     the answer reads as weather rather than as a reply.
+
+     THE OWNER'S BUDGET IS THE FIRST THING THIS HAS TO PROVE, and WHAT is
+     provable about it took the whole slice to work out. `V16_AI_CADENCE`'s own
+     comment records what raising the total costs -- six parties acting every
+     session took the harness from 5.5 elections won to 1.2 -- so a party that
+     answers at once does not get a free go, it BORROWS one and the next
+     session it would have used is spent paying it back.
+
+     THE TOTAL IS THE WRONG INSTRUMENT FOR THAT AND THREE BUILDS WERE SPENT ON
+     IT. Charged on every answer the total read 3 to 8 per cent BELOW the
+     reaction-off build, and three separate placements of the same
+     unconditional charge moved it not at all -- every one of them asked WHERE
+     to book the debt and none asked WHETHER one was owed. Then the total was
+     measured per seed, and it runs from -7.9% to +19.7% across ten of them:
+     every reading that had driven those three rewrites was a single sample
+     from a band twenty points wide, and could never have settled anything.
+     (Which is this session's pacing lesson a second time, in a different
+     harness, found the same way.)
+
+     SO THE LEDGER IS ASSERTED AND THE TOTAL IS ONLY REPORTED. Every borrow is
+     repaid: `owed` rises once per initiative actually bought and falls once
+     per session skipped, and nothing is left outstanding at the end of a
+     campaign. That is exact, it is the same on every seed, and it is what
+     "the budget is held" can honestly mean in a system where acting in a
+     different session changes the board the tempo odds are then read from.
+
+     AND THE LEDGER ALONE DOES NOT COVER THE CLAUSE THAT MATTERS. Charging
+     every answer balances just as neatly -- 225 borrows, 225 repays -- so a
+     second reading asks what SHARE of answers were charged at all. `answering`
+     skips the tempo test; it does not follow that the test would have refused,
+     and S18e made the tempo READ the grudge, so a freshly provoked party has
+     RAISED odds and is often going to act in that session anyway. An answer it
+     would have got for nothing must cost nothing. Measured: 226 reactions,
+     154 charges, so **a third of answers are free** -- against .987 on a build
+     with `!passed` removed, which is the poison this reading exists for. */
+  const answr = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'shrewd'; S.rngState = seed;
+      return S;
+    }
+    function drive(n) {
+      for (let i = 0; i < n; i++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { return e.message; }
+        UI.queue = []; UI.busy = false;
+      }
+      return null;
+    }
+    const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99];
+
+    /* (a) THE LEDGER BALANCES, THE CHARGE IS EARNED, and the total is reported
+       beside its own spread rather than asserted. */
+    R.budget = (() => {
+      const bar0 = V19_REACT_RISE;
+      let reacts = 0;
+      const lg = logIt;
+      logIt = function (st, txt) {
+        if (typeof txt === 'string' && /did not wait for the season/.test(txt)) reacts++;
+        return lg.apply(this, arguments);
+      };
+      const one = (seed) => {
+        fresh(seed);
+        const me = playParty(S), prev = {};
+        let borrows = 0, repays = 0;
+        for (let i = 0; i < 120; i++) {
+          if (i % 4 === 0) PARTIES.forEach(q => { if (q.id !== me && !S.banned[q.id]) v16Resent(S, q.id, me, 20); });
+          drive(1);
+          const ai = v16Ai(S);
+          PARTIES.forEach(q => {
+            const a = ai[q.id]; if (!a) return;
+            const now = a.owed || 0, was = prev[q.id] || 0;
+            if (now > was) borrows += now - was; else if (now < was) repays += was - now;
+            prev[q.id] = now;
+          });
+        }
+        const ai = v16Ai(S);
+        let acts = 0, out = 0;
+        PARTIES.forEach(q => { const a = ai[q.id]; if (!a) return; acts += (a.acts || 0); out += (a.owed || 0); });
+        return { acts:acts, borrows:borrows, repays:repays, out:out };
+      };
+      const rows = [];
+      let onB = 0, onR = 0, onO = 0, offB = 0, offActs = 0, onActs = 0;
+      try {
+        SEEDS.forEach(seed => {
+          V19_REACT_RISE = 9999; const off = one(seed);
+          V19_REACT_RISE = bar0;  const on  = one(seed);
+          onB += on.borrows; onR += on.repays; onO += on.out; offB += off.borrows;
+          offActs += off.acts; onActs += on.acts;
+          rows.push(off.acts ? +((on.acts - off.acts) / off.acts).toFixed(4) : 0);
+        });
+      } finally { logIt = lg; V19_REACT_RISE = bar0; }
+      const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+      return { borrows:onB, repays:onR, outstanding:onO, offBorrows:offB,
+        /* `borrows === repays + outstanding` IS AN IDENTITY AND WAS THE FIRST
+           VERSION OF THIS GATE. `outstanding` is definitionally what has been
+           borrowed and not yet repaid, so deleting the repayment line entirely
+           leaves 154 === 0 + 154 and the arm GREEN -- which is exactly what
+           its poison reported. What has to be asserted is that the debt is
+           PAID: repayments actually happen, and nothing is left owing at the
+           end of a campaign. */
+        balances: onB > 0 && onR > 0 && onO === 0 && onB === onR + onO,
+        idleOff: offB === 0,
+        reacts:reacts, chargedShare: reacts ? +(onB / reacts).toFixed(3) : null,
+        offActs:offActs, onActs:onActs,
+        driftMean:+mean(rows).toFixed(4), driftLo:Math.min.apply(null, rows), driftHi:Math.max.apply(null, rows) };
+    })();
+
+    /* (b) AND THE DIE IS STILL DRAWN FOR EVERY PARTY EVERY SESSION. S18c
+       measured what a gate in front of `rand()` costs: one chair consuming one
+       roll fewer re-phased the whole seeded campaign. THE FIRST VERSION
+       COMPARED `rngState` after forty sessions with the reaction on and off
+       and asked them to match. They do not and should not -- a party acting in
+       a different session plays different cards and different cards consume
+       different numbers. What S18c's rule says is that the GATE draws one roll
+       per party per session before any test, so that is what is counted. */
+    R.stream = (() => {
+      let inTurn = false, rolls = 0, sessions = 0;
+      const r0 = rand, t0 = v16AiTurn;
+      rand = function () { if (inTurn) rolls++; return r0.apply(this, arguments); };
+      v16AiTurn = function (st) { inTurn = true; sessions++; try { return t0.call(this, st); } finally { inTurn = false; } };
+      try {
+        fresh(4242);
+        const me = playParty(S);
+        for (let i = 0; i < 40; i++) {
+          if (i % 3 === 0) PARTIES.forEach(q => { if (q.id !== me && !S.banned[q.id]) v16Resent(S, q.id, me, 20); });
+          drive(1);
+        }
+      } finally { rand = r0; v16AiTurn = t0; }
+      return { sessions:sessions, rolls:rolls, parties:PARTIES.length,
+        perSession:sessions ? +(rolls / sessions).toFixed(2) : null,
+        atLeastOnePerParty:sessions ? rolls >= sessions * PARTIES.length : false };
+    })();
+
+    /* (c) THE WAIT IS GONE, read through the game's own path. */
+    R.lag = (() => {
+      const bar0 = V19_REACT_RISE;
+      const run = () => {
+        const lags = []; let never = 0;
+        SEEDS.forEach(seed => {
+          fresh(seed); drive(20);
+          const me = playParty(S);
+          const target = PARTIES.filter(q => q.id !== me && !S.banned[q.id] && q.id !== S.ruling)[0];
+          if (!target) return;
+          v16Resent(S, target.id, me, 60);
+          let acted = null;
+          const saved = V16_AI_DECK.map(c => c.run);
+          V16_AI_DECK.forEach((c, i) => {
+            c.run = function (st, pid) {
+              if (!V19_SIMULATING && pid === target.id && acted === null) acted = st.turn;
+              return saved[i].call(this, st, pid);
+            };
+          });
+          const t0 = S.turn;
+          for (let i = 0; i < 20 && acted === null; i++) drive(1);
+          V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; });
+          if (acted === null) never++; else lags.push(acted - t0);
+        });
+        const m = lags.length ? +(lags.reduce((a, c) => a + c, 0) / lags.length).toFixed(2) : null;
+        return { n:lags.length, mean:m, max:lags.length ? Math.max.apply(null, lags) : null, never:never };
+      };
+      V19_REACT_RISE = 9999; const off = run();
+      V19_REACT_RISE = bar0; const on = run();
+      return { off:off, on:on };
+    })();
+
+    /* (d) AND WHAT IT DOES IS AIMED AT THE PARTY THAT PROVOKED IT. Isolated as
+       an in-process A/B over hundreds of provocations, because fifteen decided
+       nothing: the first reading took one provocation a seed and came back
+       +.066 on n=15, which is not a result. */
+    R.aim = (() => {
+      const w0 = {}; Object.keys(V19_RIVAL_WORTH).forEach(k => { w0[k] = V19_RIVAL_WORTH[k]; });
+      const heavy = Object.keys(w0).filter(k => w0[k] >= .45);
+      const run = () => {
+        const t = { n:0, heavy:0, attack:0 };
+        SEEDS.slice(0, 6).forEach(seed => {
+          fresh(seed);
+          const me = playParty(S), answering = {};
+          const sc = v19Choose;
+          v19Choose = function (st, pid, open, goal, rv) {
+            const got = sc.call(this, st, pid, open, goal, rv);
+            if (!V19_SIMULATING && answering[pid] === st.turn) {
+              t.n++;
+              if (got) { if (heavy.indexOf(got.id) >= 0) t.heavy++; if (got.id === 'attack') t.attack++; }
+            }
+            return got;
+          };
+          try {
+            for (let i = 0; i < 120; i++) {
+              if (i % 4 === 0) PARTIES.forEach(q => { if (q.id !== me && !S.banned[q.id]) { v16Resent(S, q.id, me, 20); answering[q.id] = S.turn; } });
+              drive(1);
+            }
+          } finally { v19Choose = sc; }
+        });
+        return { n:t.n, share:t.n ? +(t.heavy / t.n).toFixed(3) : null, attack:t.attack };
+      };
+      Object.keys(V19_RIVAL_WORTH).forEach(k => { V19_RIVAL_WORTH[k] = 0; });
+      const flat = run();
+      Object.keys(w0).forEach(k => { V19_RIVAL_WORTH[k] = w0[k]; });
+      const aimed = run();
+      return { aimed:aimed, flat:flat, lift:(aimed.share !== null && flat.share !== null) ? +(aimed.share - flat.share).toFixed(3) : null };
+    })();
+
+    /* (e) THE BAR IS WHERE THE DISTRIBUTION PUTS IT, re-measured here rather
+       than read off itself -- S17q's rule, that a threshold picked by eye is a
+       mechanic that never fires. */
+    R.bar = (() => {
+      const rises = [], falls = [];
+      SEEDS.forEach(seed => {
+        fresh(seed);
+        const me = playParty(S), last = {};
+        for (let i = 0; i < 120; i++) {
+          drive(1);
+          PARTIES.forEach(q => {
+            if (q.id === me || S.banned[q.id]) return;
+            const g = v16Grudge(S, q.id, me), l = last[q.id] === undefined ? 0 : last[q.id];
+            if (g > l) rises.push(g - l); else if (g < l) falls.push(l - g);
+            last[q.id] = g;
+          });
+        }
+      });
+      const m = a => a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null;
+      const sorted = rises.slice().sort((x, y) => x - y);
+      const clears = rises.filter(r => r >= V19_REACT_RISE).length;
+      return { rises:rises.length, minRise:rises.length ? +Math.min.apply(null, rises).toFixed(1) : null,
+        medianRise: sorted.length ? +sorted[Math.floor(sorted.length / 2)].toFixed(1) : null,
+        meanRise:m(rises), meanFall:m(falls),
+        maxFall: falls.length ? +Math.max.apply(null, falls).toFixed(2) : null,
+        clears:clears, clearShare: rises.length ? +(clears / rises.length).toFixed(3) : null,
+        bar:V19_REACT_RISE };
+    })();
+
+    /* (f) AND `instinct` IS UNTOUCHED: the reaction is gated on `v19Thinks`. */
+    R.floor = (() => {
+      const at = (lvl) => {
+        fresh(4242, lvl); drive(20);
+        const me = playParty(S);
+        const target = PARTIES.filter(q => q.id !== me && !S.banned[q.id])[0];
+        if (!target) return null;
+        v16Resent(S, target.id, me, 60);
+        v19React(S);
+        return (v16Ai(S)[target.id] || {}).react || null;
+      };
+      return { instinct:at('instinct'), shrewd:at('shrewd') !== null };
+    })();
+
+    /* (g) and the player is told, in words that match what happens -- the
+       first draft said the party ANSWERED and the card it then played was
+       `attack` twice in eleven, `demand` four times and `platform` three. */
+    R.said = (() => {
+      fresh(90210); drive(20);
+      const me = playParty(S);
+      const before = (S.log || []).length;
+      PARTIES.forEach(q => { if (q.id !== me && !S.banned[q.id]) v16Resent(S, q.id, me, 30); });
+      drive(1);
+      /* `logIt` UNSHIFTS, so the new entries are at the FRONT. Read off the
+         end this found nothing on a build writing the line correctly. */
+      const added = (S.log || []).length - before;
+      const lines = (S.log || []).slice(0, Math.max(added, 8)).map(x => typeof x === 'string' ? x : (x && x.text) || '');
+      return { found:lines.some(l => /did not wait for the season/.test(l)),
+        promisesRiposte:lines.some(l => /answered at once/.test(l)) };
+    })();
+    return R;
+  });
+
+  const answrOk =
+    answr.budget.borrows > 40 && answr.budget.balances === true && answr.budget.idleOff === true &&
+    answr.budget.reacts > 100 && answr.budget.chargedShare < .85 &&
+    answr.stream.sessions > 30 && answr.stream.atLeastOnePerParty === true &&
+    answr.lag.on.n >= 6 && answr.lag.off.n >= 6 &&
+    answr.lag.on.mean < .5 && answr.lag.on.mean * 3 < answr.lag.off.mean &&
+    answr.lag.off.mean > 1 && answr.lag.off.max >= 4 &&
+    answr.aim.aimed.n > 300 && answr.aim.flat.n > 300 &&
+    answr.aim.lift > .03 && answr.aim.aimed.attack > 1.2 * answr.aim.flat.attack &&
+    answr.bar.rises > 150 && answr.bar.maxFall < answr.bar.bar &&
+    answr.bar.bar < answr.bar.medianRise && answr.bar.clearShare > .85 &&
+    answr.floor.instinct === null && answr.floor.shrewd === true &&
+    answr.said.found === true && answr.said.promisesRiposte === false;
+  say(answrOk, 'a party does not wait for the season',
+    `S18e MADE THE TEMPO READ THE GRUDGE and a provoked party still waited: driven, it took some initiative a ` +
+    `mean of ${answr.lag.off.mean} sessions after the provocation and as late as ${answr.lag.off.max}, which ` +
+    `is four other things the player has done since · it answers in the session now (${answr.lag.on.mean}) · ` +
+    `AND THE OWNER'S BUDGET IS HELD AS A LEDGER, not as a total: ${answr.budget.borrows} initiatives borrowed ` +
+    `and ${answr.budget.repays} paid back with ${answr.budget.outstanding} outstanding, and ` +
+    `${answr.budget.offBorrows} borrowed at all with the reaction switched off · THE CHARGE IS EARNED, which ` +
+    `the ledger alone cannot say because charging EVERY answer balances just as neatly: of ` +
+    `${answr.budget.reacts} reactions only ${answr.budget.borrows} were charged ` +
+    `(${answr.budget.chargedShare}), the rest being sessions the party's own tempo would have granted anyway ` +
+    `-- an answer it would have got for nothing costs nothing, and on a build charging unconditionally that ` +
+    `share is .987 · THE TOTAL IS REPORTED AND NOT ASSERTED: ${answr.budget.onActs} initiatives against ` +
+    `${answr.budget.offActs}, a mean drift of ${answr.budget.driftMean} across eight seeds whose OWN spread ` +
+    `runs ${answr.budget.driftLo} to ${answr.budget.driftHi} -- three builds were rewritten chasing single ` +
+    `samples from that band before it was measured per seed · THE DIE IS STILL DRAWN FOR EVERY PARTY EVERY ` +
+    `SESSION (${answr.stream.rolls} rolls over ${answr.stream.sessions} sessions, ` +
+    `${answr.stream.perSession} a session for ${answr.stream.parties} parties), because S18c measured that ` +
+    `one chair consuming one roll fewer re-phases the whole seeded campaign · WHAT IT DOES IS AIMED: over ` +
+    `${answr.aim.aimed.n} provocations the share going to a card weighted against a rival is ` +
+    `${answr.aim.aimed.share} against ${answr.aim.flat.share} with that reading flattened, and \`attack\` ` +
+    `${answr.aim.aimed.attack} against ${answr.aim.flat.attack} -- read on fifteen provocations first, which ` +
+    `came back +.066 and decided nothing · THE BAR IS WHERE THE DISTRIBUTION PUTS IT, re-measured in this ` +
+    `run and NOT as it was first written down: ${answr.bar.rises} rises in grievance against the player, ` +
+    `median ${answr.bar.medianRise} and mean ${answr.bar.meanRise}, against a cooling that never exceeds ` +
+    `${answr.bar.maxFall} in a session -- so ${answr.bar.bar} sits an order of magnitude above the passage of ` +
+    `time and below the provocation the game actually delivers, and ${answr.bar.clears} of ` +
+    `${answr.bar.rises} rises clear it (${answr.bar.clearShare}) · THE FIRST VERSION OF THIS SENTENCE SAID ` +
+    `"below every real provocation" AND WAS A CARD THAT LIES: read over four seeds the smallest rise was 8.4 ` +
+    `and over ten it is ${answr.bar.minRise}, because beneath the discrete act there is a continuum of small ` +
+    `accumulations the bar is meant to ignore -- what is true is the gap between a session's cooling and a ` +
+    `provocation, not the absence of anything below · \`instinct\` is untouched ` +
+    `(${answr.floor.instinct}) · and the log says what happens rather than promising a riposte the party may ` +
+    `not make (${answr.said.found}/${answr.said.promisesRiposte})`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
