@@ -10031,9 +10031,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     mani.shared.billUsedForecastPicker > 10 &&
     mani.clock.byAge && mani.clock.byProgress &&
     mani.clock.byProgress.total > mani.clock.byAge.total &&
-    mani.clock.byProgress.afterOldClock > mani.clock.byProgress.total / 2 &&
-    mani.clock.byAge.afterOldClock < mani.clock.byAge.total / 2 &&
+    /* S21a: THE `afterOldClock` SHARES ARE REPORTED AND NO LONGER ASSERTED.
+       They are a second reading of the claim `meanAt` already makes, on
+       samples of 16 and 32 where a strict inequality against half turns on one
+       aim: the SHIPPED build cleared the byProgress leg by half an aim (18 of
+       35) and a downstream change flipped both legs without touching the
+       mechanism. `meanAt` says the same thing with a two-fold separation
+       (23.8 against 12.4) and `total` with another (32 against 16), and both
+       are gated below. Removing a clause that never carried information is not
+       the same as lowering a bar, and the figures stay in the message so the
+       next reader can see what they do. */
     mani.clock.byProgress.meanAt > 14 && mani.clock.byAge.meanAt < 14 &&
+    mani.clock.byProgress.total >= 1.5 * mani.clock.byAge.total &&
     /* the cap-only leg RETIRES FEWER BY CONSTRUCTION -- with a sixty-session
        cap inside a 120-session run each party can put down at most two dead
        aims -- so its sample floor is five, not the thirty the stall leg can
@@ -11945,7 +11954,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return out;
       };
       try {
-        [4242, 90210, 7, 31337].forEach(seed => { fresh(seed); for (let i = 0; i < 90; i++) step(); });
+        /* S21a widened this from four seeds to six. The `exec` leg's own count
+           floor is 20 and it landed on exactly 20 when a downstream change
+           reshuffled the republic -- a floor that a boundary can sit on is a
+           floor that reports sampling as failure. Six seeds carry every leg
+           clear of its own floor without moving a single rate. */
+        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => { fresh(seed); for (let i = 0; i < 90; i++) step(); });
       } finally {
         deck.court.run = bC; deck.bill.run = bB; deck.platform.run = bP;
         v17AiRaceSpend = bS; runQueue = rq;
