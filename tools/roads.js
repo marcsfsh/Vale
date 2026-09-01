@@ -11634,6 +11634,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         creditsN:credits.length,
         maxCredit: credits.length ? +Math.max.apply(null, credits).toFixed(2) : null,
         clears:clears, clearShare: deliberate.length ? +(clears / deliberate.length).toFixed(3) : null,
+        /* AND THE DELIBERATE POPULATION HAS A CONTINUUM IN IT TOO, which this
+           arm has said in words since S20a -- "beneath the discrete act there
+           is a continuum of small accumulations the bar is meant to ignore" --
+           and never separated. `minRise` reads 0.2. So the share is reported
+           for the whole population and ASSERTED for the discrete half. */
+        actsN: deliberate.filter(r => r >= 1).length,
+        actsClearShare: (() => { const a = deliberate.filter(r => r >= 1);
+          return a.length ? +(a.filter(r => r >= V19_REACT_RISE).length / a.length).toFixed(3) : null; })(),
+        driblesN: deliberate.filter(r => r < 1).length,
         ambientClearShare: ambient.length ? +(ambient.filter(r => r >= V19_REACT_RISE).length / ambient.length).toFixed(3) : null,
         bar:V19_REACT_RISE };
     })();
