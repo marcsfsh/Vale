@@ -9785,15 +9785,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return b ? b.policy : null;
       };
       const without = run(false), withIt = run(true);
-      /* AND IT IS A PREFERENCE, NOT AN OVERRIDE -- which the equality above
-         cannot say, and its poison proved it: with the thumb set to 9,999 the
-         government lays the promise every time and `laysThePromise` is still
-         true. So the same board is asked about a promise the CHAMBER would
-         throw out. `V21_PROMISE_PULL` is 12 forecast points, the thumb
-         `V20_AIM_BILL` already puts on a publicly named aim, so a statute
-         forecasting far below the alternative stays off the paper however
-         solemnly it was promised. */
-      const hopeless = (() => {
+      const probeBoard = (pid, d) => {
         /* READ AGAINST THE THUMB, NOT AGAINST AN ABSOLUTE BAR. The first
            version wanted a statute forecasting under 25 and found none on
            this board, so the claim went unmeasured -- and the claim is not
@@ -9806,13 +9798,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           return f ? f.lower : null;
         };
         let alt = -1;
-        Object.keys(gw).forEach(id => {
+        Object.keys((PARTY[S.ruling] || {}).wants || {}).forEach(id => {
           if (!POL[id] || !policyOpen(S, POL[id])) return;
           const v = fc(id, 1); if (v !== null && v > alt) alt = v;
         });
         let worst = null, worstV = 1e9;
         Object.keys((PARTY[pid] || {}).wants || {}).forEach(id => {
-          if (!POL[id] || gw[id] !== undefined || !policyOpen(S, POL[id])) return;
+          if (!POL[id] || ((PARTY[S.ruling] || {}).wants || {})[id] !== undefined || !policyOpen(S, POL[id])) return;
           if ((S.pol[id] || 0) >= POL[id].max) return;
           const v = fc(id, 1);
           if (v !== null && v < worstV) { worstV = v; worst = id; }
@@ -9820,7 +9812,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         if (!worst || alt < 0) return { ran:false, why:'no pair to compare' };
         const deficit = +(alt - worstV).toFixed(1);
         if (deficit <= V21_PROMISE_PULL) {
-          return { ran:false, why:'no promise on this board sits below the thumb',
+          return { ran:false, why:'this board has no promise below the thumb',
             deficit:deficit, pull:V21_PROMISE_PULL };
         }
         S.bills = [];
@@ -9831,7 +9823,36 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return { ran:true, ref:worst, laid:b ? b.policy : null,
           forecast:+worstV.toFixed(1), best:+alt.toFixed(1), deficit:deficit,
           pull:V21_PROMISE_PULL, refused: !b || b.policy !== worst };
-      })();
+      };
+      /* the deficit exceeds the thumb on 32% of promise-boards -- measured,
+         715 of them over eight seeds -- so the leg SEARCHES for one rather
+         than assuming this board is it. The first version asked seed 4242
+         alone, found a deficit of 8.8, and could not run. */
+      const hunt = () => {
+        for (let s = 0; s < SEEDS.length; s++) {
+          fresh(SEEDS[s]);
+          for (let i = 0; i < 30; i++) {
+            step();
+            if (!S.ruling || S.ruling === playParty(S)) continue;
+            const par = (S.coalition || []).filter(x => x !== S.ruling && x !== playParty(S))[0];
+            if (!par) continue;
+            const dd = (S.coalitionDeals || {})[par];
+            if (!dd || !dd.terms) continue;
+            const got = probeBoard(par, dd);
+            if (got.ran) return got;
+          }
+        }
+        return { ran:false, why:'no board in the sweep put a promise below the thumb' };
+      };
+      /* AND IT IS A PREFERENCE, NOT AN OVERRIDE -- which the equality above
+         cannot say, and its poison proved it: with the thumb set to 9,999 the
+         government lays the promise every time and `laysThePromise` is still
+         true. So the same board is asked about a promise the CHAMBER would
+         throw out. `V21_PROMISE_PULL` is 12 forecast points, the thumb
+         `V20_AIM_BILL` already puts on a publicly named aim, so a statute
+         forecasting far below the alternative stays off the paper however
+         solemnly it was promised. */
+      const hopeless = hunt();
       return { ran:true, ref:ref, without:without, withIt:withIt,
         laysThePromise: withIt === ref, differs: without !== withIt,
         governmentDoesNotWantIt: gw[ref] === undefined, hopeless:hopeless };
