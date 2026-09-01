@@ -71,6 +71,79 @@ Seventeen poisons from the diff, sixteen redden it; the one that stays green is
 "report the weakest rival instead of the strongest", and the answer is that of
 3,600 party-sessions not one ever had two rivals of different magnitudes.
 
+**S19d — A party votes its own manifesto** is on the branch.
+
+S19c named what it did not fix: 747 engine bills laid and 5 moved a statute.
+The work behind that turned up three things wrong rather than one.
+
+**`PARTY[pid].wants` did not decide how a party voted.** The table has picked
+what a party demands since v5, what its dossier shows, what it works toward
+since S19a and what it lays before the House since S19c, and
+`partyBillSupport` read everything except it. Of 4,350 party votes at
+committee and on the floor, 575 were cast on a statute the voting party's own
+table names, **416 agreeing with the bill's direction against 10 opposing**,
+and the formula was blind to all of them. **That is the alignment the program
+spent two slices hunting**: S19b proved two parties never hold colliding
+GOALS, and the channel was never in the goals -- manifestos overlap by
+construction, and 53% of bills have a party whose table wants what the bill
+does.
+
+**The bill a party laid was picked by the wrong question.** The gap picker is
+right for a demand and wrong for something that must survive a division:
+measured at every real decision it forecast 36.6 on the floor where the best
+available forecast 40.0. `v19BillFor` reads `billForecast` on a throwaway
+bill, so the answer already contains every other party's manifesto.
+`partyDemandPolicy` is untouched, and the assertion watches the CALL rather
+than the statute, because the gap picker draws at random over its top five.
+
+**The goal clock counted elapsed time and its own numbers said so.** It
+retired 284 aims to let 8 through. `build`, the goal that completes most,
+takes a mean of 23.7 sessions against a 14-session window; `carry` sits at 0.0
+progress for the whole of it. One aim was cut off while it worked and another
+held while it did nothing, by the same number. The clock measures progress
+now: completions go 8 to 13 in a one-process A/B, the ones reached after
+session fourteen go 2 to 11, and a dead aim is put down after 16.8 sessions
+against 61.9 with only the backstop in play. **And the page says what became
+of an aim** instead of silently swapping it.
+
+**WHAT IT DELIBERATELY DID NOT DO, measured three ways.** An opposition bill
+still does not carry and the arithmetic says it cannot. From a starting
+forecast of 36.6 the assembly bar is 13 points away; the manifesto term is
+worth about 2, the better statute 3.5, and **if every party that would support
+a bill actually came out for it, on every bill, that is 2.47 more** across 301
+measured votes. Eight against thirteen. A sixteen-per-cent party with no whip
+and at most two sympathisers does not carry legislation, and that is the model
+being right. `carry` completions remain 0.
+
+**Four of the seven goals are never reached and the reasons differ.** `carry`
+is the arithmetic above; `enter` needs a coalition to grow and one never did
+in 720 sessions; `office` needs `st.exec` to change and no engine card reaches
+it; `oust` needs a government to fall and one changed once in 1,440 sessions.
+Only `ground`, `build` and `charter` have working roads. That is a finding
+about what an engine party can DO in this republic, and it is the brief for
+whatever follows S19.
+
+**S19b's chooser arm was rebuilt a fourth time, and differently in kind.** It
+asserted a RATE in play, which is a joint fact about the whole model: S19c's
+seventh goal took its contested-bloc sample from 16 boards to 3, and S19d's
+eleventh card inverted its `attack` reading from +.151 to -.022 with the
+rivalry term untouched. It now isolates the term as an in-process A/B -- the
+same eight seeds driven twice, once with every rivalry weight at nought --
+so competing cards, goal mixes and posture filters are identical on both sides
+and cancel. Its panel arm reads four seeds for the reason the scale arm does.
+
+**THE PACING ARC, cumulative across the three slices.** Crises per ten
+sessions were 1.0 / 1.0 / 0.9 at S19b and are **0.6 / 0.8 / 0.9** now: S19c
+took them down and S19d gave the two longer lengths most of it back. Elections
+are unchanged throughout at 0.4 / 0.2 / 0.1, records at the close read
+20/23/23%, and all 36 runs across both comparisons reach their end year.
+`docs/AGREEMENT.md` makes the balance the owner's to rule.
+
+Verification: checks 11/11, roads **192/192**, playtest, determinism 8/8,
+contrast at three tiers. Fourteen poisons from the S19d diff, all fourteen
+redden it after the one that stayed green was traced to a missing arm -- the
+clock A/B could not separate the stall rule from its backstop.
+
 **S19c — A party can reach what it is after** is on the branch.
 
 S19a asserted that every goal is served by the deck, which is a structural

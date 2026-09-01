@@ -1264,6 +1264,85 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## A party votes its own manifesto (S19d)
+
+S19c gave the engines a bill and named what it did not fix: 747 were laid and
+5 moved a statute. This is the work behind that, and it turned up three things
+wrong rather than one.
+
+- **`PARTY[pid].wants` DID NOT DECIDE HOW A PARTY VOTED.** The table has been
+  authored since v5. It picks what a party demands (`partyDemandPolicy`), what
+  its dossier shows (`pv5TopWants`), what it works toward (S19a's `carry`) and
+  what it lays before the House (S19c's `bill` card). `partyBillSupport` read
+  position, the coalition, relations, the cordon, the faction average,
+  declared lines and the grudge, and **not the party's own platform**.
+  Measured over eight seeds of a hundred sessions: of 4,350 party votes at
+  committee and on the floor, 575 were cast on a statute the voting party's
+  own table names, **416 of them agreeing with the bill's direction against 10
+  opposing**, and every one of them was invisible to the formula.
+- **THAT IS THE ALIGNMENT THE PROGRAM SPENT TWO SLICES LOOKING FOR.** S19b
+  measured that two parties never hold colliding goals -- 0 in 25,200 pairs on
+  the same statute, 0 common enemies in 9,000 -- and concluded there was no
+  channel for cooperation. The channel was never in the goals. `carry` picks
+  the biggest gap and two parties almost never have one statute as their
+  largest gap at once; their MANIFESTOS, though, overlap by construction
+  (lp/rsf and pnl/tvc share three statutes each), and a bill is the thing that
+  makes the overlap matter. 53% of bills before the House have at least one
+  party whose table wants exactly what the bill does.
+- **THE BILL A PARTY LAID WAS CHOSEN BY THE WRONG QUESTION.** It used
+  `partyDemandPolicy`, which takes the biggest gap. That is right for a
+  DEMAND, which is a letter asking the government to act, and wrong for
+  something that has to survive a division: measured at every real decision,
+  the gap picker's statute forecast **36.6** on the floor where the best of the
+  4.3 available forecast **40.0**. `v19BillFor` reads the forecast through
+  `billForecast` on a throwaway bill, so it asks the chamber the same question
+  the chamber will be asked -- and that answer already contains every other
+  party's manifesto through the term above, which is what makes it "lay the one
+  your neighbours also want" rather than "lay the popular one".
+  **`partyDemandPolicy` is untouched**: three other things read it, and S17k's
+  lesson is that a shared body right for a new caller can be wrong for the old
+  ones. The assertion watches the CALL rather than the statute, because the
+  gap picker takes a weighted draw over its top five and comparing what it
+  returns measures its dice.
+- **THE GOAL CLOCK COUNTED THE WRONG THING AND ITS OWN NUMBERS SAID SO.**
+  `V19_GOAL_STALE` was fourteen sessions of elapsed time and it retired 284
+  aims to let 8 through. Two readings settle it: `build`, the goal that
+  completes most often, takes a mean of **23.7 sessions** and as many as 44, so
+  the window was shorter than the work it was for; and `carry` sits at **0.0
+  progress** for the whole fourteen at any clock. One goal was cut off while it
+  was working and another held while it did nothing, by the same number. The
+  clock measures PROGRESS now: kept while it moves, put down when it stops
+  (`V19_GOAL_IDLE`), with `V19_GOAL_CAP` as a backstop above `build`'s longest
+  observed run. Driven as an A/B in one process, completions go 8 to 13 and the
+  ones reached after session fourteen go 2 to 11, while a dead aim is put down
+  after 16.8 sessions against 61.9 with only the cap in play.
+- **AND THE PAGE SAYS WHAT BECAME OF AN AIM.** It used to vanish and be
+  replaced with nothing said, which is the "list of unrelated events" defect at
+  the length of a campaign rather than a session: a reader watching a party
+  work at something for fifteen sessions saw the column change and could not
+  tell whether it had been reached, lost or quietly dropped. The clock records
+  why, and the column says so with how far it got.
+
+**WHAT THIS SLICE DELIBERATELY DID NOT DO, measured three ways.** An
+opposition private member's bill still does not carry, and the arithmetic says
+it cannot. The gap at the assembly bar is about 13 points from a starting
+forecast of 36.6. The manifesto term is worth about 2 points on the mean, the
+better statute about 3.5, and **if every party that `v19Pivot` says would
+support a bill actually came out for it -- on every bill -- that is worth 2.47
+more, with a maximum of 5.7 across 301 measured votes**. Eight points against
+thirteen. A sixteen-per-cent party with no whip, no government machinery and
+at most two sympathisers does not carry legislation, and that is the model
+being right rather than broken. `carry` completions remain 0.
+
+**FOUR OF THE SEVEN GOALS ARE NEVER REACHED, and the reasons are not the
+same.** `carry` is the arithmetic above. `enter` needs a coalition to grow and
+one never did in 720 driven sessions, with 9 of 9 watched pairs never getting
+in. `office` needs `st.exec` to change and no engine card reaches it. `oust`
+needs a government to fall and governments changed once in 1,440 sessions.
+Only `ground`, `build` and `charter` have roads that work. That is a finding
+about what an engine party can DO in this republic, not about the aims, and it
+is the brief for whatever comes after S19.
+
 ## A party can reach what it is after (S19c)
 
 S19a asserted that every goal is SERVED BY THE DECK -- its `worth` table names
