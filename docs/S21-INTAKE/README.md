@@ -18,6 +18,7 @@ driven sessions. This directory is what the code says.
 | `legislative.md` | how engines behave in the chamber |
 | `coalition.md` | formation, the agreement, and life between elections |
 | `executive-elections.md` | offices and ballots |
+| `instruments.md` | articles, orders and the court |
 | `society-foreign.md` | blocs, interests, the street, movements, foreign powers |
 | `experience.md` | what playing against this actually feels like |
 | `harness.md` | every assertion S21 must not break, with its numeric gates |
@@ -89,6 +90,31 @@ treaties, sanctions, interests or movements. In 300 sessions: 5 street demands
 and 0 carried, 0 strikes (peak pressure 50.2 against a bar of 58), movements
 peaking at 27.3 against their own threshold of 55, and 58 of 60 interest
 demands ignored **at no cost at all**.
+
+**The court has never sat.** `v17Docket` was empty in **720 of 720** sessions
+and `v17CourtTick` raised a ruling zero times. Its first arm needs a
+liberties-guaranteeing article and a liberties-costing order standing at the
+same moment; 9 of 81 articles qualify, all entrenched, none any party's
+nearest. Forced by hand the machinery works on the first tick, so the
+preconditions are the whole defect. The bench beside it is a die roll —
+`courtWith` collapses sixteen justices to a count.
+
+**Both instrument pickers are arbitrary, and neither reads the party's aim.**
+`v17AiArticleFor` picks the nearest article on the compass, giving an identical
+choice per party on all six seeds at turn 1 and 21 distinct articles of 81 ever
+laid; its `var want = PARTY[pid].wants` is never read. `v17AiOrderFor` returns
+the **first open order in source order** — 66 of 90 never signed — and hands
+`REGIONS[0].id` to slots typed `target:'power'`, so 14 of 98 live signings were
+proclamations against a state whose effect is silently swallowed. `charter` is
+the one goal whose named target never reaches its verb.
+
+**Three player-side gates read the wrong party, and two are exploitable.**
+`v11ArtSupport` awards its +20 sponsorship bonus to `playParty` rather than the
+article's actual sponsor — poisoned and confirmed, 95.01 falling to 64.01 when
+repointed. `v11ConTick` docks the *player's* capital for engine failures. And
+the pending panel's Withdraw button carries no owner test at all: a player can
+delete any engine's article for 3 unity, and revoke any engine's order the same
+way.
 
 **And the tempo is zero-sum.** `v18TempoOdds` normalises a shared budget, so
 the whole opposition acts 1.42 times a session however angry it is; provoking
