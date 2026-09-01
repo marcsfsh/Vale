@@ -36429,7 +36429,13 @@ function v16RedLineTick(st) {
          book a second -- `expireInbox` and the street taught this file that
          when two mechanisms hold the same date, one owns the outcome. The
          breach is the ledger's, and the paper (S21f) will report it. */
-      if (c.due && st.turn >= c.due && !c.late) {
+      /* `typeof === 'number'` AND NOT TRUTHINESS. `c.due` of 0 is a real date
+         -- the session before the first -- and `if (c.due && ...)` reads it as
+         no date at all, so a promise due then could never be late. The probe
+         that found this set a due of 0 by accident and the clause went
+         silently past it, which is the `|| 0` family in a new place: a falsy
+         value and an absent one are not the same fact. */
+      if (typeof c.due === 'number' && st.turn >= c.due && !c.late) {
         c.late = true;
         v17Ledger(st, pid, { kind:'broken', ref:c.ref, why:'the session they were promised it by',
           cost:V17_BREACH.refrain });

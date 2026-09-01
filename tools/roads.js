@@ -9676,8 +9676,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        what makes this one own its outcome. */
     R.clock = (() => {
       fresh(4242);
-      for (let i = 0; i < 40 && !partnerOf(); i++) step();
-      const pid = partnerOf(); if (!pid) return { ran:false };
+      /* AT LEAST A FEW SESSIONS IN, whatever the formation does. The first
+         version drove `while (!partnerOf())` and a partner existed on turn
+         ONE, so the probe set a due of `turn - 1` = 0 -- and 0 is falsy, so
+         the game's own clause read it as no date at all. That found a real
+         defect in the slice (`typeof c.due === 'number'` now, not
+         truthiness), and it is also a probe that has to stand its clock
+         somewhere a date can exist. */
+      for (let i = 0; i < 40 && (!partnerOf() || S.turn < 5); i++) step();
+      const pid = partnerOf(); if (!pid || S.turn < 5) return { ran:false, why:'no partner past turn five' };
       const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false };
       const c = (d.terms.concessions || []).filter(x => x.kind === 'adopt' && !x.met)[0];
       if (!c) return { ran:false };
@@ -9701,13 +9708,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       }
       if (v21Met(S, pid, c)) return { ran:false, why:'could not stand the book short of the rung' };
       const before = v17Broken(S, pid), sat0 = d.satisfaction;
+      const snap = () => ({ due:c.due, turn:S.turn, met:c.met, late:c.late,
+        kind:c.kind, inTerms:(d.terms.concessions || []).indexOf(c) });
+      const pre = snap();
       v16RedLineTick(S);
-      const after1 = v17Broken(S, pid);
+      const after1 = v17Broken(S, pid), post = snap();
       v16RedLineTick(S); v16RedLineTick(S);
       const after3 = v17Broken(S, pid);
       return { ran:true, before:before, afterOne:after1, afterThree:after3,
         booksOne: after1 === before + 1, booksOnlyOne: after3 === after1,
-        costsCohesion: d.satisfaction < sat0, marked: c.late === true };
+        costsCohesion: d.satisfaction < sat0, marked: c.late === true,
+        pre:pre, post:post,
+        entries:(d.ledger || []).slice(-3).map(e => e.kind + ':' + e.ref + ':' + e.why) };
     })();
 
     /* (d) AND THE GOVERNMENT REACHES FOR IT. Making the rung reachable is
