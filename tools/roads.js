@@ -11204,6 +11204,95 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `nothing (${press.refused.pullUnchanged}), where S18a found three floor verbs taking the money for a ` +
     `refusal`);
 
+  /* ---------- S20c: THE PARTY BOARD HAS A TEMPO ----------
+     The owner's save is one verb pressed 411 times: `poach` is 60.2% of every
+     click in a 132-session campaign, and poach + organise + cabinet + gerry
+     are 84.5% of it, while the other forty-four verbs used share 106 clicks.
+     Six opposition parties ended on 1 to 12 seats against the player's 1,260,
+     every machine at its -0.8 clamp.
+
+     THE REASON IS NOT THAT POACH IS STRONG, IT IS THAT NOTHING STOPPED IT.
+     Sixty-eight actions in this file carry a cooldown and nine an escalating
+     price; of the per-party political verbs, NOT ONE had either. */
+  const tempo = await page.evaluate(() => {
+    SEED_OVERRIDE = 4242;
+    S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+    S.rngState = 4242;
+    const me = playParty(S);
+    const foe = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+    const list = partyActions(foe) || [];
+    const own = partyActions(me) || [];
+    const all = list.concat(own);
+    const rows = all.map(a => ({ id:a.id, cost:a.cost || 0, cool:a.cool, esc:a.esc, derived:a.tempoDerived === true }));
+
+    /* (a) COVERAGE, not a hand-kept list: every verb on the board is paced. */
+    const noCool = rows.filter(r => !(r.cool > 0)).map(r => r.id);
+    const noEsc = rows.filter(r => !(r.esc > 1)).map(r => r.id);
+
+    /* (b) AND THE TEMPO IS DERIVED FROM THE VERB'S OWN WEIGHT. Two verbs of
+       equal price rest equally, and a dearer verb rests longer -- which is
+       what makes a verb a later slice adds paced the moment it exists. A
+       table of names would be S17r's stale-list defect. */
+    /* consistency is asked of the DERIVED verbs only: one that names its own
+       cooldown has chosen a tempo, which is different from never being given
+       one, and the coverage reading above is what catches the latter. */
+    const der = rows.filter(r => r.derived);
+    const byCost = {};
+    der.forEach(r => { (byCost[r.cost] = byCost[r.cost] || []).push(r); });
+    const inconsistent = Object.keys(byCost).filter(c => {
+      const g = byCost[c];
+      return g.some(r => r.cool !== g[0].cool || r.esc !== g[0].esc);
+    });
+    const costs = Object.keys(byCost).map(Number).sort((a, b) => a - b);
+    const monotonic = costs.every((c, i) => i === 0 || byCost[c][0].cool >= byCost[costs[i - 1]][0].cool);
+
+    /* (c) POACH ITSELF: what pressing it again and again now costs. */
+    const p = list.filter(a => a.id === 'poach')[0];
+    let curve = null, rest = null;
+    if (p) {
+      curve = [];
+      for (let u = 0; u < 12; u++) { S.uses[actionKey(p)] = u; curve.push(actionCost(p)); }
+      S.uses[actionKey(p)] = 0;
+      /* and it cannot be pressed in consecutive sessions */
+      S.cooldown[actionKey(p)] = S.turn;
+      rest = { readyNow: actionReady(p), wait: actionWait(p) };
+      delete S.cooldown[actionKey(p)];
+    }
+    return { verbs:rows.length, derived:der.length, noCool:noCool, noEsc:noEsc,
+      inconsistent:inconsistent, monotonic:monotonic,
+      poach: p ? { cost:p.cost, cool:p.cool, esc:p.esc, curve:curve, rest:rest } : null,
+      /* the owner pressed it 411 times over 132 sessions across six parties;
+         with a rest of `cool` the arithmetic ceiling is this */
+      ceilingPerParty: p ? Math.floor(132 / p.cool) : null };
+  });
+
+  const tempoOk =
+    tempo.verbs > 20 && tempo.noCool.length === 0 && tempo.noEsc.length === 0 &&
+    tempo.inconsistent.length === 0 && tempo.monotonic === true &&
+    tempo.poach && tempo.poach.cool >= 3 && tempo.poach.esc > 1.1 &&
+    tempo.poach.curve[11] > tempo.poach.curve[0] * 4 &&
+    tempo.poach.rest.readyNow === false && tempo.poach.rest.wait > 0 &&
+    tempo.ceilingPerParty * 6 < 411;
+  say(tempoOk, 'the party board has a tempo',
+    `THE OWNER'S SAVE IS ONE VERB PRESSED 411 TIMES -- \`poach\` is 60.2% of every click in a 132-session ` +
+    `campaign, and four verbs are 84.5% of it, while the other forty-four used share 106 clicks between them; ` +
+    `six opposition parties ended on 1 to 12 seats against the player's 1,260, every machine at its clamp · ` +
+    `THE REASON IS NOT THAT POACH IS STRONG, IT IS THAT NOTHING STOPPED IT: sixty-eight actions in this file ` +
+    `carry a cooldown and nine an escalating price, and of the per-party political verbs NOT ONE had either ` +
+    `· all ${tempo.verbs} of them do now (${tempo.noCool.length} without a rest, ${tempo.noEsc.length} ` +
+    `without a rising price), ${tempo.derived} of them paced by the derivation and the rest having named a ` +
+    `tempo of their own · AND THE TEMPO IS DERIVED FROM THE VERB'S OWN WEIGHT rather than listed by ` +
+    `name, which is the difference between pacing the board and pacing the verbs somebody remembered: two ` +
+    `verbs of equal price rest equally (${tempo.inconsistent.length} disagreeing) and a dearer verb rests ` +
+    `longer (${tempo.monotonic}), so a verb a later slice adds is paced the moment it exists -- ` +
+    `\`v7DefaultCollapsed\` is what a table of names becomes after eleven slices · POACH now rests ` +
+    `${tempo.poach.cool} sessions between presses at one party (ready the session after: ` +
+    `${tempo.poach.rest.readyNow}, ${tempo.poach.rest.wait} to wait) and costs ` +
+    `${tempo.poach.curve.join(', ')} as it is used again -- so the arithmetic ceiling over a 132-session ` +
+    `campaign is ${tempo.ceilingPerParty} per party, ${tempo.ceilingPerParty * 6} in all against the 411 the ` +
+    `owner actually pressed, and the twelfth costs ${tempo.poach.curve[11]} where the first cost ` +
+    `${tempo.poach.curve[0]}`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

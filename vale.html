@@ -13227,8 +13227,50 @@ list.push({ id:'reselect', name:'Change your own leader', cost:9, kind:'internal
      party action uniformly, out of the PARTY's purse: a party action is party
      business by definition, which is why the whole list is stamped here
      rather than two hundred buttons being re-pointed one at a time. */
-  list.forEach(function (a) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.purse = 'party'; });
+  /* ---------- S20c: THE PARTY BOARD HAS A TEMPO ----------
+     The owner's save is one verb pressed 411 times. `poach` accounts for
+     **60.2% of every click in a 132-session campaign** -- 683 clicks in total,
+     of which poach 411, organise 67, cabinet 51 and gerry 48 make 84.5%, and
+     the other forty-four verbs share 106 between them. Six opposition parties
+     ended on 1 to 12 seats each against the player's 1,260, and every one of
+     their machines sat at the -0.8 clamp.
+
+     THE REASON IS NOT THAT POACH IS STRONG. It is that nothing stopped it.
+     Sixty-eight actions in this file carry a `cool:` cooldown and nine carry
+     an `esc:` escalating price -- and of the twenty-three per-party political
+     verbs, `poach`, `audit`, `debate`, `discredit`, `split`, `absorb`,
+     `blackmail`, `cutFunding`, `prosecute` and the rest, **not one had
+     either**. `poach` cost a flat 8, its only precondition was that the target
+     was not banned, and it could be pressed at all six parties every session
+     for a hundred and thirty-two sessions.
+
+     AND THE TEMPO IS DERIVED, NOT LISTED. A table naming the verbs to pace
+     would be S17r's stale-list defect exactly: eleven slices added panels
+     without touching `v7DefaultCollapsed`, and the same would happen here the
+     first time a slice adds a twenty-fourth verb. It is taken from the verb's
+     OWN weight instead -- a dearer verb is a heavier intervention and rests
+     longer -- so a verb that does not exist yet is paced the moment it does
+     and nobody has to remember. A verb that names its own `cool` or `esc`
+     keeps it. */
+  list.forEach(function (a) {
+    a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.purse = 'party';
+    v20PaceParty(a);
+  });
   return list;
+}
+/* the derivation itself, shared by BOTH places a party verb is stamped -- the
+   list above and the v9 own-party verbs, which are finished in a second
+   `forEach` further down the file. Writing it out twice is how the second one
+   ends up unpaced, which is exactly what the first run of this slice's own
+   assertion reported: nine verbs with no rest and no rising price. A verb that
+   names its own `cool` or `esc` keeps it and is marked as not derived, so the
+   assertion can tell "chose its own tempo" from "was never given one". */
+function v20PaceParty(a) {
+  var w = a.cost || 0, derived = true;
+  if (a.cool === undefined) a.cool = 2 + Math.floor(w / 4); else derived = false;
+  if (a.esc === undefined) a.esc = +(1.10 + w / 100).toFixed(3); else derived = false;
+  a.tempoDerived = derived;
+  return a;
 }
 
 function actionKey(a) { return a.scope || a.id; }
@@ -23820,7 +23862,7 @@ partyActions = function (pid) {
       can:function () { return partyPurse(S, pid) >= 3; },
       run:function () { var b = v9WorstBloc(S), m = {}; m[b] = 6; mood(S, m); logIt(S, 'The ' + p.short + ' held a listening exercise among ' + BLOC[b].name.toLowerCase() + '.'); } });
   }
-  list.forEach(function (a) { if (/^v9/.test(a.id) && !a.scope) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.purse = 'party'; } });
+  list.forEach(function (a) { if (/^v9/.test(a.id) && !a.scope) { a.scope = 'party:' + pid + ':' + a.id; a.pay = true; a.purse = 'party'; v20PaceParty(a); } });
   /* S17l: WHO IT IS BEING DONE TO. S16e's memory wrapper read `a.pid` to find
      the party that had just been poached, split or banned -- and NOTHING in
      three megabytes ever wrote `a.pid`, so the target was null every time and

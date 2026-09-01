@@ -220,8 +220,13 @@ point — this slice's own defect, surviving in the place it was least visible.
   points and the verbs a further 15.3, against the -5.3 the whole kit managed
   before. Assertion `a position can be pressed home`, seven arms, **twelve
   poisons from the diff, all twelve redden**.
-- **S20c — The party board has a tempo.** Cooldowns, escalating prices and
-  closable preconditions across the 23 per-party verbs, `poach` first.
+- **S20c — The party board has a tempo.** SHIPPED. All 57 party verbs carry a
+  cooldown and an escalating price, derived from the verb's own weight rather
+  than listed by name, so a verb a later slice adds is paced the moment it
+  exists. Poach rests four sessions per party and its twelfth press costs six
+  times the first: the ceiling over a 132-session campaign is 198 against the
+  411 the owner pressed. Assertion `the party board has a tempo`, **five
+  poisons from the diff, all five redden**.
 - **S20d — Easy is a cakewalk, not a coronation.** What the setting means after
   R2, measured against the arc the harness plays.
 - **S20e onward — The AI pass.** Scoped by the audit; the gap is what an engine

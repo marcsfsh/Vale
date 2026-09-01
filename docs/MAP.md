@@ -1264,6 +1264,45 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The party board has a tempo (S20c)
+
+The owner's save is one verb pressed 411 times. `poach` is **60.2% of every
+click in a 132-session campaign** -- 683 clicks in all, of which poach 411,
+organise 67, cabinet 51 and gerry 48 make 84.5%, and the other forty-four verbs
+used share 106 between them. Six opposition parties finished on 1 to 12 seats
+against the player's 1,260, every machine pinned at the -0.8 clamp.
+
+**The reason is not that poach is strong. It is that nothing stopped it.**
+Sixty-eight actions in this file carry a `cool:` cooldown and nine an `esc:`
+escalating price. Of the per-party political verbs -- `poach`, `audit`,
+`debate`, `discredit`, `split`, `absorb`, `blackmail`, `cutFunding`,
+`prosecute` and the rest -- **not one had either**. It cost a flat 8, its only
+precondition was that the target was not banned, and it could be pressed at all
+six parties every session for a hundred and thirty-two sessions.
+
+- **All 57 party verbs are paced now**, and the tempo is **derived from the
+  verb's own weight** rather than listed by name: a dearer verb is a heavier
+  intervention and rests longer. That is the difference between pacing the
+  board and pacing the verbs somebody remembered -- `v7DefaultCollapsed` is
+  what a table of names becomes after eleven slices add panels to it. A verb a
+  later slice adds is paced the moment it exists.
+- **A verb that names its own `cool` or `esc` keeps it**, and is marked as not
+  derived, so the assertion can tell "chose its own tempo" from "was never
+  given one". That distinction is load-bearing: the first run of this slice's
+  own arm reported **nine verbs with no rest and no rising price**, because the
+  v9 own-party verbs are finished in a SECOND `forEach` further down the file
+  and the derivation had been written out only once. It is a shared function
+  now, called from both.
+- **Poach rests four sessions between presses at one party** and costs 8, 9,
+  11, 13, 16, 18, 22, 25, 30, 35, 42, 49 as it is used again. The arithmetic
+  ceiling over a 132-session campaign is 33 per party, 198 in all, against the
+  411 the owner actually pressed -- and the twelfth costs six times the first.
+- **The AI board is untouched.** `partyActions` is the player's surface; every
+  caller is a render path or the memory-coverage check. The engines pace
+  themselves through `v18TempoOdds`.
+- Assertion `the party board has a tempo`, five readings, **five poisons from
+  the diff, all five redden**.
+
 ## A position can be pressed home (S20b)
 
 The owner: *"there needs to be more ways to both negatively and positively
