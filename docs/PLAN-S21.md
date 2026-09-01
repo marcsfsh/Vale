@@ -144,7 +144,7 @@ population.
 
 Full item detail, scores and adjudications are in `docs/S21-DESIGN/JUDGE.md`.
 
-### S21a — The regard, signed  ·  1 improvement, 1 new
+### S21a — The regard, signed  ·  SHIPPED  ·  1 improvement, 1 new
 
 The foundation; nine later items read it. `v16Resent`'s clamp opens to
 (-100, 100), `v16Grudge` gains `Math.max(0, .)`, and `v21Regard(st, a, b)` is
@@ -160,6 +160,36 @@ resent the player).
 Pins: a sponsor swap across seven parties produces at least three distinct
 scores for one voter, against the measured one; the assent refusal rate falls
 from 88.2% into a measured band, driven.
+
+**Delivered.** Assertion `a party can be owed, and remembers it`, nine arms,
+**eighteen poisons from the diff, all eighteen redden**. Five distinct sponsor
+scores across 19.2 points, monotone in the regard. Assent signing .065 to
+.111, refusal 88.2% to 83.8%. Goals reached 76 to 91 across fourteen seeds,
+`carry` 4 to 12. Harness 201/201.
+
+**One item was measured out and deferred.** Writing the pact's second
+`st.aiPacts` key is correct in intent -- `v16PactPartner` already treats the
+arrangement as mutual -- but that same refusal makes it an OPEN-SET change:
+two keys lock both parties out of future pacts where one locked the proposer.
+Bisected, that single line took S19b's rivalry lift from +.026 on boards
+carrying a rival to +.004 and inverted it against the +.024 on boards carrying
+none. It goes in the slice that owns open-set changes, per the ordering rule
+above. Both parties still remember the pact.
+
+**Four harness casualties, none worked around.** The manifesto clock leg went
+from twelve seeds to fourteen and its `afterOldClock` shares became reported
+figures rather than assertions -- they are a second reading of a claim
+`meanAt` makes with a two-fold separation, on samples of 16 and 32 where a
+strict inequality against half turns on one aim, and the SHIPPED build cleared
+one of them by half an aim. S20g's driven leg went from four seeds to six
+after its own count floor landed on exactly 20. And two probes were reading
+state they claimed to isolate from: the assent arm now pins `assemblyVote`
+(unpinned, both its poisons came back green carried by the forecast, which
+this slice also taught to read the regard), and the declared-line arm now
+measures on a fresh republic rather than the one four hundred assertions above
+have been driving -- it read .120 per point of chamber against .467 on a clean
+board, all three readings compressed by the same 3.9x, which is saturation and
+not a broken mechanism.
 
 ### S21b — What a party holds against a government  ·  2 improvements, 1 new
 
