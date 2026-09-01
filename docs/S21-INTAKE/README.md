@@ -1,6 +1,6 @@
 # S21 intake — the AI as it stands, read in full
 
-Eleven independent readers, one per subsystem, each working to `BRIEF.md`:
+Twelve independent readers, one per subsystem, each working to `BRIEF.md`:
 every claim anchored to a line number, every field checked for a reader before
 being called live, and most of them driving their own measurements rather than
 reasoning from the code alone. Roughly 200 findings.
@@ -20,6 +20,7 @@ driven sessions. This directory is what the code says.
 | `executive-elections.md` | offices and ballots |
 | `instruments.md` | articles, orders and the court |
 | `society-foreign.md` | blocs, interests, the street, movements, foreign powers |
+| `surfaces.md` | what the player can see and do about the AI |
 | `experience.md` | what playing against this actually feels like |
 | `harness.md` | every assertion S21 must not break, with its numeric gates |
 
@@ -115,6 +116,14 @@ repointed. `v11ConTick` docks the *player's* capital for engine failures. And
 the pending panel's Withdraw button carries no owner test at all: a player can
 delete any engine's article for 3 unity, and revoke any engine's order the same
 way.
+
+**The engine's actions barely reach the player.** `bill.lines` is written by
+the `floor` card on 69 plays and rendered nowhere -- ten occurrences in the
+file, zero renderers -- while `MAP.md` calls it "printable on the card". The
+order record's `by:actor` has no reader anywhere, and the pending-article card
+never names who laid it. The Parties table's posture column is stale on 25.6%
+of rows, because it is written only when a party acts. Measured across 119
+sessions, 5.1% of the sentences an engine emits name the player at all.
 
 **And the tempo is zero-sum.** `v18TempoOdds` normalises a shared budget, so
 the whole opposition acts 1.42 times a session however angry it is; provoking
