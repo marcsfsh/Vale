@@ -23074,11 +23074,27 @@ v7Risks = function (st) {
 /* ==========================================================
    WHIP COUNTS ON EVERY BILL
    ========================================================== */
+/* S20e: THE WHIP COUNT READS THE DIVISION THAT DECIDES THE BILL. This computed
+   its own aye total -- `partyBillSupport/100 * seats`, the mean-of-propensities
+   arithmetic S20a replaced -- and the audit that opened S20 found the sharpest
+   form of the defect here: `Math.floor(total/2+1)` appears exactly ONCE in
+   three megabytes, and it is in this display. The card rendered "499 of 1305 ·
+   499 / 653 needed" beside a forecast of 68.2, and the game decided the bill
+   with the 68.2. Two functions computing the same numerator is how that stayed
+   hidden for as long as it did.
+   After S20a the two would have disagreed in a NEW way -- this one knows
+   nothing of party discipline or of anything S20b's verbs persuade -- so it
+   asks `billDivision` instead. One surface, one rule: what the fold shows is
+   now the count that is actually taken. */
 function v8WhipCount(b) {
-  var senate = b.stage === 'senate' && upperOn(S), seats = senate ? S.upper.seats : S.seats, total = 0, ayes = 0;
+  var senate = b.stage === 'senate' && upperOn(S), seats = senate ? S.upper.seats : S.seats;
+  var div = billDivision(S, b, senate ? 'upper' : 'lower');
+  var byId = {}; div.blocs.forEach(function (x) { byId[x.pid] = x; });
+  var total = div.seats, ayes = div.ayes;
   var rows = PARTIES.slice().sort(function (x, y) { return (seats[y.id] || 0) - (seats[x.id] || 0); }).map(function (p) {
     var n = seats[p.id] || 0; if (!n) return '';
-    var sup = clamp(partyBillSupport(S, p.id, b) / 100, 0, 1), yes = n * sup; total += n; ayes += yes;
+    var row = byId[p.id] || { ayes:0 };
+    var yes = row.ayes, sup = n ? clamp(yes / n, 0, 1) : 0;
     return '<div class="whip-row"><span class="wp"><span class="dot" style="background:' + p.color + '"></span>' + esc(p.short) + '</span><span class="wbar"><i style="width:' + Math.round(sup * 100) + '%;background:' + p.color + '"></i></span><span class="wn">' + Math.round(yes) + ' of ' + n + '</span></div>';
   }).join('');
   if (!total) return '';
@@ -34886,6 +34902,14 @@ var V19_RIVAL_PUSH = 20;
    note says, is the card that lies -- so `purposeful` is left as S19a shipped
    it, exactly, and the reading starts where the rehearsal starts. */
 var V19_RIVAL = { aimed:.85, sameBloc:.7, sameOffice:.8, seat:.45 };
+/* S20e: where the human enters the opponent model. The bar is what separates a
+   player who has done something to this party from one who has merely governed
+   near it -- measured, a single ordinary party verb moves a grudge by 6 to 14
+   and the median provocation is 13.4, so 18 is "more than one deliberate act".
+   The slope carries it to the ceiling `V19_RIVAL.aimed` at a grudge of about
+   60, which is a campaign of them. */
+var V19_HUMAN_BAR = 18;
+var V19_HUMAN_SLOPE = .02;
 function v19Rivalry(st, pid, other) {
   if (!other || other === pid) return 0;
   var mine = v19GoalSeen(st, pid), theirs = v19GoalSeen(st, other), r = 0;
@@ -34893,6 +34917,47 @@ function v19Rivalry(st, pid, other) {
      one out of government has given this one no grievance at all, so before
      S19b there was no road from that plan to the party it was about. */
   if (theirs && theirs.kind === 'oust' && theirs.ref === pid) r -= V19_RIVAL.aimed;
+  /* ---------- S20e: THE PLAYER IS A PARTY TOO ----------
+     Every clause in this function compares two GOALS, and the player has no
+     entry in `st.ai` and therefore no goal -- so `theirs` is null for the
+     human, the function returned before reaching a single clause, and the
+     opponent model could not name them. Measured over 2,160 rival reads, the
+     human was named **zero times**. Six engine parties spent a hundred and
+     thirty-two sessions modelling each other while the person actually taking
+     their seats was not in the model at all, which is most of the owner's
+     "1 of 10": an opponent that cannot see you is not an opponent.
+
+     THE PLAYER'S AIM IS READ FROM WHAT THEY HAVE DONE, not from a goal they
+     do not have. Two sources, both already written and already read
+     elsewhere, because a new field for this would be a field with one writer:
+     the GRUDGE this party holds against them -- which `doAction`'s memory
+     wrapper has been filling from every party verb since S17l -- and the
+     STRUCTURAL facts of who holds what. A party that has been poached four
+     hundred times knows perfectly well who its opponent is; nothing was
+     asking it. */
+  if (other === playParty(st)) {
+    var g = 0;
+    try { g = v16Grudge(st, pid, other); } catch (e) { g = 0; }
+    /* the grudge is a memory of specific acts and it is what makes the human
+       legible: bounded at the same ceiling a declared plan is worth, so being
+       hunted by a player is as serious as being named in another party's plan
+       and no more. */
+    if (g >= V19_HUMAN_BAR) r -= Math.min(V19_RIVAL.aimed, (g - V19_HUMAN_BAR) * V19_HUMAN_SLOPE);
+    if (mine) {
+      /* and the same three conflicts the engines have with each other, asked
+         of the player through the offices and the government they hold */
+      var co = st.coalition || [st.ruling];
+      if (mine.kind === 'enter' && co.indexOf(other) >= 0) r -= V19_RIVAL.seat;
+      if (mine.kind === 'oust' && (mine.ref === other || st.ruling === other)) r -= V19_RIVAL.aimed;
+      /* `st.exec[dept]` holds a PARTY id -- that is what `holdsDept` asks of
+         it -- so the office is compared directly. An invented `partyOf` stood
+         here for one edit and would have thrown the first time a party held an
+         `office` aim, which the static checks cannot see because they compile
+         the file and never call it. */
+      if (mine.kind === 'office' && st.exec && st.exec[mine.ref] === other) r -= V19_RIVAL.sameOffice;
+    }
+    return r;
+  }
   if (!mine || !theirs) return r;
   /* A CLAUSE FOR THE SAME STATUTE WAS WRITTEN HERE AND MEASURED OUT. Two
      parties carrying one policy the same way was the design's only source of
