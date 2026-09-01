@@ -1264,6 +1264,56 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The engine plays the player (S20e)
+
+Every clause of `v19Rivalry` compares two GOALS, and the player has no entry in
+`st.ai` and therefore no goal -- so the function returned before reaching a
+single clause and the opponent model could not name the human. Measured over
+**2,160 rival reads on the shipped build: named zero times.** Six engine
+parties spent a hundred and thirty-two sessions modelling each other while the
+person actually taking their seats was not in the model at all. That is most of
+the owner's "1 of 10": an opponent that cannot see you is not an opponent.
+
+- **The player's aim is read from what they have DONE**, not from a goal they
+  do not have: the GRUDGE that `doAction`'s memory wrapper has been filling
+  from every party verb since S17l, and the STRUCTURAL facts of who governs and
+  who holds which office. No new field -- a field with one writer is what this
+  file punishes hardest, and a party poached four hundred times already knows
+  who its opponent is.
+- **How often scales with what the player does.** A player who does nothing is
+  still named on **.326** of reads, because whoever governs is everyone's
+  obstacle; one who acts every eighth session on **.622**; one who acts every
+  other session on **.900**.
+- **Bounded at what a declared plan is worth.** Being hunted by a player is as
+  serious as being named in another party's plan and no more, so the human does
+  not simply erase S19b's inter-party rivalries -- and `namedAny` rises from
+  174 to 901, so this ADDS rivalries rather than replacing them.
+- **THE STRUCTURAL HALF IS READ SEPARATELY, with the grudge at nought**, because
+  its poison came back green while the grudge carried the reading on its own. A
+  term covered by another term is a term with no assertion.
+- **And it costs the stream nothing** (0 rolls): it reads through `v19GoalSeen`
+  and a grudge lookup, never `v19Goal`, which ADOPTS and adopting rolls. S18c
+  measured that one chair consuming one roll fewer re-phases a whole campaign.
+- **AND THE WHIP COUNT IS NOW THE COUNT THAT IS TAKEN.** The audit found the
+  sharpest form of S20a's defect here: `Math.floor(total / 2 + 1)` appears
+  **exactly once in three megabytes and it is in that display**. The card
+  rendered *"499 of 1305 · 499 / 653 needed"* beside a forecast of 68.2, and the
+  game decided the bill with the 68.2. `v8WhipCount` computed its own aye total
+  with the old mean-of-propensities arithmetic, which after S20a would have
+  disagreed in a NEW way -- it knows nothing of party discipline or of anything
+  S20b's verbs persuade. Measured on one bill with both in place: the card said
+  **510 and the division counted 300**. It reads `billDivision` now.
+- Assertion `the engine plays the player`, five readings, **seven poisons from
+  the diff, all seven redden** -- two only after the reading they were aimed at
+  was separated from the one covering it.
+
+**AND ONE CHANGE WAS TAKEN BACK OUT OF THIS SLICE.** A second fix -- letting a
+party's aim keep its best card past the posture filter, which deletes it on 27%
+of goal-sessions -- measured a real but modest gain (the AI plays its aim's best
+card on 32.9% of actions against 28.1%) and perturbed **five** S18/S19 arms by
+re-phasing every campaign. One idea per slice: it is S20f's, where it can be
+judged on its own evidence rather than smuggled in beside a larger result.
+
 ## Easy is a cakewalk, not a coronation (S20d)
 
 The owner: *"very easy mode should not make it so that it is incredibly easy to

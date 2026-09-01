@@ -235,8 +235,20 @@ point — this slice's own defect, surviving in the place it was least visible.
   normal's rhythm, and engine purses no longer sit on their ceiling. A drafted
   floor on `restive` was **measured out and deleted** when its poison came back
   green. `VALE_DIFF` lets a harness select a tier for the first time.
-- **S20e onward — The AI pass.** Scoped by the audit; the gap is what an engine
-  party can DO, not how it chooses.
+- **S20e — The engine plays the player.** SHIPPED. The opponent model could not
+  name the human -- 0 of 2,160 rival reads -- because every clause compared two
+  goals and the player has none. It reads the grudge and the structural facts
+  now, costs the stream nothing, and scales with what the player does (.33
+  passive, .62 busy, .90 hostile). The whip count reads the division that
+  decides the bill, where it had its own arithmetic and disagreed by 210 seats.
+- **S20f — Intent survives circumstance, and the engine's surface.** OPEN. The
+  posture filter deletes the aim's best card on 27% of goal-sessions; lifting
+  that measured 28.1% → 32.9% of actions landing on the aim's best card and
+  perturbed five S18/S19 arms, so it was taken out of S20e to be judged on its
+  own. Beyond it the audit's largest finding is still open: **the engine's
+  decision surface is 11 cards with no target choice, 2.1% of the player's**,
+  and no engine can enter a government, take an office, dissolve or call a
+  referendum -- two of the seven S19 goals are about exactly that.
 
 ## The instrument rule this program inherits
 

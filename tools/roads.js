@@ -11457,6 +11457,171 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `all seven at the 2,000 ceiling · and THE CARD DOES NOT LIE: the blurb promised "two houses that pass ` +
     `whatever you send them", which S20a made false (${cake.blurb.lies})`);
 
+  /* ---------- S20e: THE ENGINE PLAYS THE PLAYER ----------
+     Every clause of `v19Rivalry` compares two GOALS, and the player has no
+     entry in `st.ai` and therefore no goal -- so the function returned before
+     reaching a single clause and the opponent model could not name the human.
+     Measured over 2,160 rival reads on the shipped build: named **zero
+     times**. Six engine parties spent a hundred and thirty-two sessions
+     modelling each other while the person taking their seats was not in the
+     model at all. That is most of the owner's "1 of 10": an opponent that
+     cannot see you is not an opponent. */
+  const sees = await page.evaluate(() => {
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) {} UI.queue = []; UI.busy = false; }
+    const R = {};
+
+    /* (a) THE HUMAN IS NAMED, AND HOW OFTEN SCALES WITH WHAT THEY HAVE DONE.
+       `agg` is how often the player does something to every party. */
+    const sweep = (agg) => {
+      let reads = 0, human = 0, any = 0;
+      [4242, 90210, 7, 31337].forEach(seed => {
+        fresh(seed);
+        const me = playParty(S);
+        for (let i = 0; i < 50; i++) {
+          if (agg && i % agg === 0) PARTIES.forEach(q => { if (q.id !== me && !S.banned[q.id]) v16Resent(S, q.id, me, 7); });
+          step();
+          PARTIES.forEach(q => {
+            if (q.id === me || S.banned[q.id]) return;
+            reads++;
+            let rv = { foe:null };
+            try { rv = v19Rival(S, q.id); } catch (e) {}
+            if (rv.foe) any++;
+            if (rv.foe === me) human++;
+          });
+        }
+      });
+      return { reads:reads, any:any, human:human, share:+(human / Math.max(1, reads)).toFixed(3) };
+    };
+    R.passive = sweep(0);
+    R.busy = sweep(8);
+    R.hostile = sweep(2);
+
+    /* (b) AND IT IS THE GRUDGE THAT CARRIES IT -- a party that has been done
+       something to names the player, one that has not does not. Read on one
+       board with one thing changed, which is the only reading that contains
+       this term and nothing else. */
+    R.term = (() => {
+      fresh(4242);
+      for (let i = 0; i < 12; i++) step();
+      const me = playParty(S);
+      const q = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      const a = v16Ai(S)[q];
+      const before = v19Rivalry(S, q, me);
+      a.grudge[me] = 0;
+      const cold = v19Rivalry(S, q, me);
+      a.grudge[me] = 80;
+      const hot = v19Rivalry(S, q, me);
+      a.grudge[me] = 0;
+      /* AND THE STRUCTURAL HALF, READ WITH THE GRUDGE AT NOUGHT so only it can
+         speak. Removing one of the three conflict clauses left the arm green
+         while the grudge carried the reading on its own -- a term covered by
+         another term is a term with no assertion. A party that wants into a
+         government the player is in regards the player as its obstacle even
+         if the player has never touched it. */
+      const gsub = (() => {
+        a.grudge[me] = 0;
+        S.ruling = me; S.coalition = [me];
+        const g0 = v19GoalSeen(S, q);
+        const before2 = v19Rivalry(S, q, me);
+        const ai = v16Ai(S)[q];
+        ai.goal = { kind:'enter', ref:me, since:S.turn, best:0 };
+        const withAim = v19Rivalry(S, q, me);
+        ai.goal = g0 || null;
+        return { flat:+before2.toFixed(3), withEnterAim:+withAim.toFixed(3),
+          structuralSpeaks: withAim < before2 - 1e-9 };
+      })();
+      a.grudge[me] = 0;
+      return { before:+before.toFixed(3), cold:+cold.toFixed(3), hot:+hot.toFixed(3),
+        grudgeCarries: hot < cold, bounded: hot >= -V19_RIVAL.aimed - 1e-9,
+        structural:gsub };
+    })();
+
+    /* (c) AND IT COSTS THE STREAM NOTHING. S18c: a gate in front of `rand()`
+       decides how many numbers come off it, and the opponent model is read
+       once per party per session -- if asking about the human rolled, every
+       seeded campaign would re-phase. `v19GoalSeen` is the reading accessor
+       and `v16Grudge` is a lookup; neither draws. */
+    R.stream = (() => {
+      fresh(4242);
+      for (let i = 0; i < 8; i++) step();
+      const me = playParty(S);
+      let rolls = 0;
+      const r0 = rand;
+      rand = function () { rolls++; return r0.apply(this, arguments); };
+      try { PARTIES.forEach(q => { if (q.id !== me) { try { v19Rival(S, q.id); } catch (e) {} } }); }
+      finally { rand = r0; }
+      return { rolls:rolls, free: rolls === 0 };
+    })();
+
+    /* (d) AND THE WHIP COUNT IS THE COUNT THAT IS TAKEN. `Math.floor(total/2+1)`
+       appears exactly once in three megabytes and it is in that display: the
+       card rendered "499 of 1305 · 499 / 653 needed" beside a forecast of 68.2
+       and the game decided the bill with the 68.2. */
+    R.whip = (() => {
+      fresh(4242);
+      for (let i = 0; i < 4; i++) step();
+      const me = playParty(S);
+      const opp = PARTIES.filter(p => p.id !== me && !S.banned[p.id] && S.seats[p.id] > 0)[0];
+      const pol = Object.keys(POL)[0];
+      const b = { id:'s20e', title:'Probe', policy:pol, dir:1, sponsor:opp.id, owner:'opposition',
+        strategy:'clean', whip:0, upperDeal:0, committee:0, concessions:0, confidence:false,
+        urgent:false, stage:'assembly', notes:[], lines:{} };
+      /* AND THE TWO ARITHMETICS ARE MADE TO DIVERGE, because on a quiet board
+         they happen to agree and the poison that put the old one back came
+         home green. `bill.pull` is S20b's persuasion, which the old
+         `partyBillSupport/100 * seats` knows nothing about; a disciplined
+         party carried across fifty by it is exactly where a mean of
+         propensities and a count of a lobby part company. */
+      b.pull = {};
+      PARTIES.forEach(p => { if (S.seats[p.id] > 0) b.pull[p.id] = p.id === me ? 40 : -35; });
+      (S.factions[me] || []).forEach(f => { f.loyalty = 95; });
+      S.bills = [b];
+      const div = billDivision(S, b, 'lower');
+      let html = ''; try { html = v8WhipCount(b); } catch (e) { html = ''; }
+      const m = html.match(/Assembly (\d+) of (\d+)/);
+      const shown = m ? Number(m[1]) : null, total = m ? Number(m[2]) : null;
+      return { shown:shown, counted:Math.round(div.ayes), total:total, seats:div.seats,
+        agrees: shown !== null && Math.abs(shown - div.ayes) < 1.5 && total === div.seats };
+    })();
+    return R;
+  });
+
+  const seesOk =
+    sees.passive.reads > 800 && sees.passive.human > sees.passive.reads * .15 &&
+    sees.busy.human > sees.passive.human && sees.hostile.human > sees.busy.human &&
+    sees.term.grudgeCarries === true && sees.term.bounded === true &&
+    sees.term.cold > sees.term.hot &&
+    sees.term.structural.structuralSpeaks === true &&
+    sees.stream.free === true &&
+    sees.whip.agrees === true;
+  say(seesOk, 'the engine plays the player',
+    `THE OPPONENT MODEL COULD NOT SEE THE HUMAN. Every clause of \`v19Rivalry\` compares two GOALS and the ` +
+    `player has no entry in \`st.ai\`, so the function returned before reaching one of them: over 2,160 rival ` +
+    `reads on the shipped build the human was named ZERO times, while six engines modelled each other for a ` +
+    `hundred and thirty-two sessions and the person taking their seats was not in the model · THE PLAYER'S AIM ` +
+    `IS READ FROM WHAT THEY HAVE DONE, through the grudge \`doAction\`'s memory wrapper has been filling since ` +
+    `S17l and the structural facts of who holds what -- no new field, because a field with one writer is what ` +
+    `this file punishes hardest · a player who does nothing is still named on ${sees.passive.share} of reads, ` +
+    `because whoever governs is everyone's obstacle; one who acts every eighth session on ${sees.busy.share}; ` +
+    `one who acts every other session on ${sees.hostile.share} · AND IT IS THE GRUDGE THAT CARRIES IT, read on ` +
+    `one board with one thing changed: the same party rates the same player ${sees.term.cold} with nothing ` +
+    `done to it and ${sees.term.hot} at a grudge of 80, bounded by what a declared plan is worth so that being ` +
+    `hunted by a player is as serious as being named in another party's plan and no more, AND THE STRUCTURAL ` +
+    `HALF SPEAKS WITH THE GRUDGE AT NOUGHT (${sees.term.structural.flat} to ` +
+    `${sees.term.structural.withEnterAim} when the party wants into a government the player is in), which is ` +
+    `read separately because a term covered by another term is a term with no assertion · AND IT COSTS THE ` +
+    `STREAM NOTHING (${sees.stream.rolls} rolls), because it reads through \`v19GoalSeen\` and a grudge ` +
+    `lookup: S18c measured that one chair consuming one roll fewer re-phases a whole seeded campaign · and ` +
+    `THE WHIP COUNT IS NOW THE COUNT THAT IS TAKEN (${sees.whip.shown} of ${sees.whip.total} shown against ` +
+    `${sees.whip.counted} of ${sees.whip.seats} counted), where \`Math.floor(total/2+1)\` appears exactly ONCE ` +
+    `in three megabytes and it is in that display -- the card rendered "499 of 1305 · 499 / 653 needed" beside ` +
+    `a forecast of 68.2 and the game decided the bill with the 68.2`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
