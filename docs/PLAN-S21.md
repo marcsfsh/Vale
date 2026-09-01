@@ -432,6 +432,27 @@ recomputed live.
 Named casualties: `a plurality is not a government` and `a caretaker holds
 office`, both re-derived. `form.pure.noDice` stays green — nothing here rolls.
 
+**MEASURED BEFORE BUILDING** (six seeds, 120 sessions, 377 formations, 2,623
+accept decisions):
+
+- **Every offer is identical in shape: 3 concessions, ONE distinct value.**
+  Generosity is a real gap, not decoration — there is no variation to speak of
+  today.
+- **The decision is close where it matters.** Accept share .333; the accepted
+  median clears by +14 and the refused median misses by −18, and **1,455 of
+  2,623 refusals sit within twenty points**. A term worth ~10 flips real
+  decisions, so the reservation reading `v21Regard` is live.
+- **641 refusals are `far`** — structurally unbridgeable, and generosity
+  correctly cannot buy them.
+- **The posture term fires on 1,228 decisions (31%).** The plan says drop it.
+  Deleting a +16 term that frequent, against 1,455 refusals within twenty
+  points, is a LARGE balance move in the accepting direction — the same shape
+  as the S21d drag. It is measured before and after, not assumed.
+- **A second formateur is tried on 59 of 377 formations, and the max tried is
+  seven.** So `V17_FORM_MAX` is not inert: cutting it to 3 removes rounds that
+  currently succeed, and S21d's caretaker regression is the warning. Measured
+  against the caretaker episode count before it ships, or it does not ship.
+
 ### S21f — One exit, and the partner speaks  ·  Coalition 3 of 4  ·  1 improvement, 3 new
 
 `v21Leave(st, pid, why, actor)` replaces four disagreeing exits; it books one
