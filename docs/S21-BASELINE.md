@@ -142,6 +142,41 @@ about the state, not a relationship anybody has to keep. That is the owner's
 `shiftPartyRel` is called 2,164 times at a mean magnitude of 4.71 — the
 relationship number moves constantly and almost nothing reads the movement.
 
+### The agreement can be broken and cannot be kept
+
+S17g wrote a real agreement: `adopt` concessions the government will honour,
+`refrain` concessions it will leave alone, and red lines. Breaches cost
+cohesion, kept promises credit it (`V17_KEPT = 7`), and the walkout counts
+broken promises against a partner's patience.
+
+Measured over the same 720 sessions:
+
+| | |
+|---|---|
+| Ledger entries written | **40** |
+| Of those, `broken` | **40** |
+| Of those, `kept` | **0** |
+| `v17Walkout` evaluated | 49 times |
+| Partners who actually left | 3 |
+| Partner cohesion | min 20, median 38, p90 48.1, max 76 |
+
+Zero credits in 720 sessions, and the reason is in the two arms. A breach fires
+on **any** move of a red line in the wrong direction, or **any** touch of a
+`refrain` statute. A credit fires only when `v17Off(st, pid, ref) <= 0.001` —
+the statute has to reach the partner's want **exactly** — and only on the
+`move` event that closes it. The concessions are drawn from
+`pv5TopWants(pid, st, 4).slice(0, 2)`, which are by construction the partner's
+two **largest** gaps, so honouring one takes several carried bills and the
+check has to catch the last of them.
+
+`V17_KEPT` has never been awarded. A partner can only ever be disappointed.
+
+And the offer's content is not read at all where it is decided: `v17Accept`'s
+value is `38 - d*38 - grudge*.32 + share*46 + concessions.length*5 + (offices ?
+9 : 0)`. `concessions.length` is **always 3**, so that term is a constant +15,
+and `redLines` does not appear in the value at all. Which statutes are on the
+table changes nothing about whether the party sits down.
+
 `st.partyRel` across 5,040 samples: min 0, p10 5.9, median 33.5, p90 75.0,
 max 75.9. It is one number per party pair and it is the whole relationship.
 
