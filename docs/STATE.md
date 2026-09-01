@@ -47,7 +47,7 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped two slices: S21a–b.**
+**S21 has shipped four slices: S21a–d.**
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -78,7 +78,32 @@ The four rulings a cold session most needs:
   because there was no political memory — nobody ever refused, because nobody
   held anything against anybody.
 
-**WHAT IS OPEN:** ten slices, S21c–S21l, in the order `PLAN-S21.md` sets.
+- **S21c — the rehearsal can see what a card did.** `v19Outcome` clones the
+  board, plays a card and reads `v19Standing` either side — and over 889
+  rehearsals **nine of the eleven cards returned a single constant**, exactly
+  minus the card's own price tag. A party clever enough to rehearse concluded
+  that laying a bill was worse than doing nothing. Three of `v19Standing`'s
+  five components, including its largest weight, cancelled on all 889 because
+  no card moves a seat or enters a cabinet in one ply. And an engine had three
+  doors to the order paper that disagreed: `instinct` lays a bill forecasting
+  39.2, above it the same government lays one forecasting 53.2.
+- **S21d — the agreement bites.** Measured first: **0 coalition promises kept,
+  19 broken, over 394 partner-sessions** — never once, in any campaign. Every
+  `adopt` concession asked for a gap of exactly four, because all three mint
+  sites take the party's BIGGEST gaps, while a bill moves one rung and
+  `activeBillFor` blocks a second on the same statute. That is S19c's `carry`
+  defect sitting in the coalition agreement, unnoticed for four slices because
+  nothing had measured the agreement. A promise asks for a rung now, carries a
+  date (`due` was literally `null` at all three mint sites), and the government
+  reaches for it. Kept 0 → 18.
+
+  **A regression this slice caused and fixed:** `V21_BROKEN_DRAG` was set to 6
+  by mirroring `v17WalkFloor`'s six-per-promise rise — but the floor RISES as
+  the target FALLS, so they close at twelve, and at three broken promises both
+  land on 30. Every partner three promises deep walked out by construction, and
+  sessions with no government went from 3 in 720 to 103. Swept and set to 3.
+
+**WHAT IS OPEN:** eight slices, S21e–S21l, in the order `PLAN-S21.md` sets.
 S21e (table negotiation) and S21f–h (one exit, a government that can fall, the
 junior partner) are the coalition overhaul the brief names.
 
