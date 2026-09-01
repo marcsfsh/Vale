@@ -14,6 +14,30 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
+**S20 — The chamber, the cost, and the opposition** is **OPEN**, and it exists
+because the owner played a full epic campaign to turn 133 and sent the save.
+`docs/PLAN-S20.md` is the program anchor: the brief, the measured evidence, the
+six-way audit and the rulings.
+
+**S20a — The division is counted** is the current branch. The owner reported
+that bills pass without a majority, that a united party ought to oppose as a
+bloc, and that the Assembly's votes are not being counted. All three were one
+defect and they were right: `billForecast` returned a seat-weighted mean of
+propensities, so a party at 45 handed the bill 45% of its seats rather than
+voting against it, and eleven modifiers were then added AFTER normalisation.
+Parties holding 912 of 1,304 seats could oppose a bill and the old arithmetic
+said 56.5 and passed it; the count says 594 ayes to 710 noes and it fails.
+`st.unity` was written in about fifty places and read by the voting path in
+none. And on `easy` six hard floors sat above the bars they were compared with,
+so no bill could fail at any stage and no office could decline to sign -- which
+is also why the owner's 133-session save contains zero referendums.
+
+Verification: checks 11/11, roads **195/195**, playtest, determinism 8/8,
+contrast. **Thirteen poisons from the diff, all thirteen redden**; four only
+after the arm was given a reading it did not have. Five S19 arms were reshaped
+and S19f's reaction was found dead at the grudge clamp -- `docs/MAP.md` carries
+both stories.
+
 **S19 — The parties think** is **COMPLETE** as of S19f. It exists because the
 owner read S18e's merge note and said no:
 
