@@ -227,8 +227,14 @@ point — this slice's own defect, surviving in the place it was least visible.
   times the first: the ceiling over a 132-session campaign is 198 against the
   411 the owner pressed. Assertion `the party board has a tempo`, **five
   poisons from the diff, all five redden**.
-- **S20d — Easy is a cakewalk, not a coronation.** What the setting means after
-  R2, measured against the arc the harness plays.
+- **S20d — Easy is a cakewalk, not a coronation.** SHIPPED. The income formula
+  is alive (the floor was 3x what the tier could earn and paid on 100% of
+  sessions; now mean 98 with a floor that binds 7.2% of the time), the street
+  is reachable (it was capped at 20 against a bar of 22 -- impossible, not
+  merely hard), the incumbency term is cut and easy's elections now run at
+  normal's rhythm, and engine purses no longer sit on their ceiling. A drafted
+  floor on `restive` was **measured out and deleted** when its poison came back
+  green. `VALE_DIFF` lets a harness select a tier for the first time.
 - **S20e onward — The AI pass.** Scoped by the audit; the gap is what an engine
   party can DO, not how it chooses.
 

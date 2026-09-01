@@ -6,6 +6,7 @@
  *   node tools/pacing.js              all three lengths, one seed
  *   node tools/pacing.js short        one length
  *   VALE_SEEDS=A1B2C3D4,5EED1234 node tools/pacing.js
+ *   VALE_DIFF=easy node tools/pacing.js       one difficulty tier
  *
  * The ruling on pacing was "player-chosen, both real": every length option
  * should deliver a complete arc, not just a truncated version of the longest
@@ -28,6 +29,7 @@ const ROOT = path.join(__dirname, '..');
 const URL = 'file://' + (process.env.VALE_FILE || path.join(ROOT, 'vale.html'));
 const SEEDS = (process.env.VALE_SEEDS || '5EED1234').split(',').filter(Boolean);
 const ONLY = process.argv[2];
+const DIFF = process.env.VALE_DIFF || '';
 const LENGTHS = ['short', 'standard', 'epic'].filter(k => !ONLY || k === ONLY);
 const CAP = Number(process.env.VALE_CAP || 230);   // sessions, a runaway guard (epic is 200)
 
@@ -131,6 +133,17 @@ async function campaign(browser, lengthKey, seedText) {
   await page.evaluate(() => { const d = document.querySelector('.setup-more'); if (d) d.open = true; });
   await page.waitForTimeout(80);
   await page.click('[data-setup-length="' + lengthKey + '"]');
+  /* S20d: AND THE DIFFICULTY, which no harness could select until now. The
+     audit that opened S20 found that `roads.js` deliberately switches away
+     from `easy` and this tool could not choose one at all -- so the tier the
+     owner actually plays, and the tier whose six overrides made the chamber a
+     formality, was the one nothing measured. `VALE_DIFF=easy node
+     tools/pacing.js` reads it. */
+  if (DIFF) {
+    await page.waitForTimeout(60);
+    await page.click('[data-setup-diff="' + DIFF + '"]');
+    await page.waitForTimeout(80);
+  }
   await page.waitForTimeout(140);
   await page.evaluate(() => { const d = document.querySelector('.setup-more'); if (d) d.open = true; });
   await page.click('[data-setup-begin]');
@@ -217,6 +230,7 @@ async function campaign(browser, lengthKey, seedText) {
     byLen.get(r.key).push(r);
   }
   const seeds = new Set(rows.map(r => r.seed)).size;
+  console.log('\n  difficulty: ' + (DIFF || 'normal (default)'));
   console.log('\n' + (seeds === 1
     ? 'ONE SEED — NOT QUOTABLE AS AN ARC. Re-run with VALE_SEEDS to compare builds'
     : 'The same table across all ' + seeds + ' seeds — QUOTE THIS ONE, not a row above') + '\n');
