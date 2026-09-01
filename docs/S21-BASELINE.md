@@ -118,6 +118,30 @@ Nine government changes in 360 elections. One partnership lasting 103
 consecutive sessions. The minority-government path, which is the most
 interesting branch in the rotation, **never once fired**.
 
+### And between elections, a government is a constant
+
+Separating formation-time changes from everything else:
+
+| | |
+|---|---|
+| Coalition changes AT a formation | 42 |
+| Coalition changes BETWEEN elections | **3 in 720 sessions** |
+| `coalition_demand` papers raised | **2** |
+| `confidence_threat` papers raised | **1** |
+| `coalition_review` papers raised | 12 |
+| Agreement `quit` events | 3 |
+
+For scale, the same 720 sessions raised 762 `party_demand` papers and 411
+`cross_party` papers. The inbox is busy. It is the coalition that is silent.
+
+A partner asks the player for something **twice per 720 sessions** and
+threatens the government **once**. Once a government is formed it is a fact
+about the state, not a relationship anybody has to keep. That is the owner's
+"flat, uninteresting and unengaging", stated as a rate.
+
+`shiftPartyRel` is called 2,164 times at a mean magnitude of 4.71 — the
+relationship number moves constantly and almost nothing reads the movement.
+
 `st.partyRel` across 5,040 samples: min 0, p10 5.9, median 33.5, p90 75.0,
 max 75.9. It is one number per party pair and it is the whole relationship.
 
@@ -137,6 +161,25 @@ being helped.
 
 180 contests, 46 office changes (**25.6%**). The offices change hands. What an
 engine does with one once it holds it is the open question.
+
+## How far ahead the engine thinks: one move
+
+`v19Score` is the whole decision. Its terms, at `ruthless`:
+
+| term | what it reads | weight |
+|---|---|---|
+| goal `worth` | the aim's table over the 11 cards | 0.12 to 1.0 |
+| recency | a card played in the last 8 sessions | −0.18 |
+| purse | cost against 2.2x the purse | −0.22 |
+| `v19Outcome` | **one-ply simulation** | ±1.9 (sim 1.9) |
+| temperament | the party's own leaning | ±V19_TEMPER |
+| rivalry | who is in the way | up to 1.8 |
+
+`v19Outcome` clones the state, runs the card, and reads `v19Standing` before
+and after. That is one move deep with **no opponent reply, no second card, and
+no session after this one**. Nothing anywhere models what the player will do
+next, and no party has a plan that spans sessions beyond holding a single goal
+it abandons 86% of the time.
 
 ## What these numbers say the programme is
 
