@@ -9017,13 +9017,44 @@ function billTitle(policy, dir) {
    The channel was never in the goals. It is in the manifestos, which overlap
    by construction (lp/rsf and pnl/tvc share three statutes each), and a bill
    is the thing that makes the overlap matter. */
+/* S21d: WHERE A PARTNER'S VOTE TURNS. Declared here rather than beside the
+   other S21d constants, which live in a later script chunk than this function
+   -- the same reason `V21_IGNORED_LETTER` sits beside `expireInbox`.
+   Both are read off the measured distribution: over 394 partner-sessions
+   cohesion runs 20 / median 39.9 / p90 52.8 / 76, so a pivot of 38 puts the
+   sign change just under the median and the slope carries the top of the
+   range to the +18 ceiling. */
+var V21_PARTNER_PIVOT = 38;
+var V21_PARTNER_SLOPE = .47;
+/* what a broken promise takes off where cohesion settles, mirroring
+   `v17WalkFloor`'s six-per-promise rise in the floor it settles toward.
+   Declared here for the same chunk reason. */
+var V21_BROKEN_DRAG = 6;
 function partyBillSupport(st, pid, bill) {
   var p = POL[bill.policy], pp = polPos(p), pos = ppos(st, pid);
   var target = bill.dir > 0 ? pp : { e:-pp.e * .72, a:-pp.a * .72 };
   var score = 72 - dist2(pos, target) * 42;
   var coalition = st.coalition || [st.ruling];
   if (pid === bill.sponsor) score += 19;
-  if (coalition.indexOf(pid) >= 0 && bill.sponsor === st.ruling) score += 12;
+  /* S21d: A PARTNER BACKS THE GOVERNMENT BECAUSE THE COALITION IS WORKING,
+     NOT BECAUSE IT IS IN ONE. This was a flat +12 for any partner on any
+     government bill, whatever the agreement had been through -- so a partner
+     three broken promises deep, one session from walking out, whipped its
+     benches for the government exactly as hard as one whose every concession
+     had been kept. `d.satisfaction` was written by five sites and read by the
+     division in none.
+     Scaled to the range the game actually produces, measured over 394
+     partner-sessions: cohesion runs 20 / median 39.9 / p90 52.8 / 76. The sign
+     flips at 38 -- just under the median, so an ordinary partner is worth
+     about nothing and the term is a judgement rather than a bonus -- and it
+     tops out at 18, half again the old flat figure, because a government that
+     has kept its word has bought something the old line gave away. */
+  if (coalition.indexOf(pid) >= 0 && bill.sponsor === st.ruling) {
+    var dd = (st.coalitionDeals || {})[pid];
+    var sat = (dd && typeof dd.satisfaction === 'number') ? dd.satisfaction : null;
+    score += (sat === null || pid === st.ruling) ? 12
+      : clamp((sat - V21_PARTNER_PIVOT) * V21_PARTNER_SLOPE, -8, 18);
+  }
   /* S18a: keyed on `owner === 'player'` this paid the RULING party +8 to back
      the bill of a player sitting in opposition -- measured at 32 against 24 on
      the government's own bill, so the opposition's bill was the easier one.
@@ -13669,6 +13700,30 @@ function aiGovern(st) {
     var lv = st.pol[id] || 0, tg = Math.min(w[id], POL[id].max);
     if (lv !== tg) cands.push({ id: id, dir: tg > lv ? 1 : -1 });
   }
+  /* S21d: AND WHAT IT PROMISED ITS PARTNERS IS ON THE LIST. `aiGovern` read
+     the ruling party's OWN `wants` and had no idea the coalition agreement
+     existed, so a promise was kept only where the government happened to want
+     the same statute -- which is why making the rung reachable is not enough
+     on its own. A door opened on the callee is worth nothing while the caller
+     still walks past it.
+     The promise goes in as a CANDIDATE rather than as an override: the
+     forecast picker below still decides, so a government does not lay a bill
+     it cannot carry merely because it promised one. */
+  if (typeof v21Concede === 'function') {
+    (st.coalition || []).forEach(function (q) {
+      if (q === st.ruling) return;
+      var dd = (st.coalitionDeals || {})[q]; if (!dd || !dd.terms) return;
+      (dd.terms.concessions || []).forEach(function (c) {
+        if (c.kind !== 'adopt' || c.met) return;
+        if (!POL[c.ref] || !policyOpen(st, POL[c.ref])) return;
+        var rung = v21Rung(st, q, c); if (rung === null) return;
+        var at = st.pol[c.ref] || 0;
+        if (at === rung) return;
+        if (cands.some(function (x) { return x.id === c.ref; })) return;
+        cands.push({ id:c.ref, dir: rung > at ? 1 : -1, promised:q });
+      });
+    });
+  }
   if (!cands.length) {
     POLICIES.forEach(function (p) {
       if (!policyOpen(st, p) || (st.pol[p.id] || 0) >= p.max) return;
@@ -13698,6 +13753,31 @@ function aiGovern(st) {
     var aimed = null;
     try { aimed = v19BillFor(st, st.ruling); } catch (e) { aimed = null; }
     if (aimed && POL[aimed.policy]) pick = { id:aimed.policy, dir:aimed.dir };
+    /* S21d: AND A PROMISE IS WEIGHED AGAINST IT, THROUGH THE SAME INSTRUMENT.
+       Putting the promised statutes into `cands` above reaches the HAT and
+       nothing else, because `v19BillFor` builds its own pool out of the
+       ruling party's `wants` and this line discards `cands` entirely -- so a
+       promise would have moved the level that does not think and left the
+       levels that do exactly as they were, which is R1 inverted.
+       So the promised statutes are forecast HERE, on the same probe
+       `v19BillFor` uses, and carry `V21_PROMISE_PULL` -- the thumb
+       `V20_AIM_BILL` already puts on a statute a party has publicly named.
+       A preference over the order paper, not an override of the chamber. */
+    var pledged = cands.filter(function (x) { return x.promised; });
+    if (pledged.length) {
+      var bestV = -1e9;
+      if (pick) {
+        var f0 = null;
+        try { f0 = billForecast(st, v21Probe(st, st.ruling, pick.id, pick.dir)); } catch (e) { f0 = null; }
+        bestV = f0 ? f0.lower : 0;
+      }
+      pledged.forEach(function (o) {
+        var f = null;
+        try { f = billForecast(st, v21Probe(st, st.ruling, o.id, o.dir)); } catch (e) { f = null; }
+        var v = (f ? f.lower : 0) + V21_PROMISE_PULL;
+        if (v > bestV) { bestV = v; pick = o; }
+      });
+    }
   }
   var pp = POL[pick.id];
   var bill = sponsorBill(st, pick.id, pick.dir, 'government', upperOn(st) ? 'negotiated' : 'clean', true);
@@ -16225,7 +16305,7 @@ function pv5EnsureState(st, fresh) {
         portfolios:d.portfolios||0,
         /* S17g: two things the government will do and one it will not */
         concessions:wants.slice(0,2).map(function(x){
-          return {kind:'adopt',ref:x.id,due:null,met:false};
+          return v21Concede(st,x.id);
         }).concat((function(){
           var rub=(typeof v17Friction==='function'?v17Friction(st,pid,st.ruling):[]).filter(function(r){
             return wants.slice(0,2).every(function(w){return w.id!==r.id;});})[0]||wants[3];
@@ -16459,6 +16539,24 @@ function pv5CoalitionTick(st){
     var progress=0,count=0;
     (d.priorities||[]).forEach(function(id){if(POL[id]){var target=(PARTY[pid].wants||{})[id];if(target!==undefined){progress+=1-Math.min(1,Math.abs((st.pol[id]||0)-target)/Math.max(1,POL[id].max));count++;}}});
     var target=38+(count?progress/count*35:12)+(d.portfolios||0)*3+(st.coalitionProcedure?5:0);
+    /* S21d: AND THE RECORD IS IN THE TARGET. This drift read the priorities
+       and the portfolios and NOT the ledger, so a partner three broken
+       promises deep drifted back to exactly the same place as one whose word
+       had been kept -- the ledger was written by the scanner, printed on the
+       card, read by the walkout, and had no say in where cohesion settles.
+       Measured before this slice the drift was not restoring at all (median
+       -0.18 a session against a target cohesion already sat at), because
+       `progress` was near nought for the reason S21d exists: no promise was
+       reachable. Now that a promise asks for a rung, `progress` moves and the
+       drift becomes a real recovery -- which is exactly when it matters that
+       a broken one holds it down.
+       Six a promise, mirroring `v17WalkFloor`, which RAISES the walkout floor
+       by six per broken promise: the target falls as the floor rises and the
+       two close on each other, so three broken promises is a government in
+       trouble rather than a number on a card. Capped at `V17_PATIENCE` for
+       the same reason the floor is. */
+    if(typeof v17Broken==='function')
+      target-=Math.min(V17_PATIENCE,v17Broken(st,pid))*V21_BROKEN_DRAG;
     d.satisfaction=c100(d.satisfaction+(target-d.satisfaction)*.12);
     st.partyRel[pid]=c100(st.partyRel[pid]+(d.satisfaction-st.partyRel[pid])*.035);
   });
@@ -36028,8 +36126,121 @@ ballot = function (st) {
    already been broken twice. */
 
 var V17_BREACH = { refrain:8, redline:11 };   /* cohesion, per breach */
-var V17_KEPT = 7;                             /* cohesion, per promise met */
+var V17_KEPT = 7;                             /* cohesion, per RUNG of a promise met */
 var V17_PATIENCE = 3;                         /* broken promises before the floor drops */
+/* S21d — A PROMISE ASKS FOR A RUNG, AND IT HAS A DATE ON IT.
+
+   MEASURED FIRST, over 394 partner-sessions across six seeds: **0 promises
+   kept, 19 broken.** Not "kept too easily" -- never once, in any campaign.
+
+   The cause is that every outstanding `adopt` concession asked for a gap of
+   exactly FOUR -- p10 4, median 4, max 4 -- because all three mint sites take
+   `pv5TopWants`, which is the party's BIGGEST gaps by construction. A bill
+   moves a statute ONE rung and lives a median of 2 sessions (p90 5), and
+   `activeBillFor` forbids a second on the same statute while one is live. So
+   a promise needed four successive bills: eight to twenty sessions of the
+   government's entire legislative programme, for one partner's one
+   concession.
+
+   THAT IS THE DEFECT S19c FOUND IN `carry`, in the coalition agreement. This
+   file's own words: "it took the biggest gap in the party's own table, which
+   measured 4 on every adoption against an instrument that moves one, so it
+   was reached 0 times in 136 adoptions." The same mistake, unnoticed for four
+   slices because nothing measured the agreement.
+
+   `pv5TopWants` IS NOT TOUCHED. It is read by the dossier, the demand card,
+   the offer and the renegotiation, and a shared body right for a new caller
+   can be wrong for the old ones -- S17k's rule. What changes is what a
+   CONCESSION records: `from`, the level the book stood at when it was signed,
+   and `to`, one rung of it. The statute it names is still the party's own
+   want; what it asks for is a step rather than the summit. */
+var V21_RUNG = 1;
+/* AND THE DEADLINE IS THE INSTRUMENT'S. A promise is kept by a bill and by
+   nothing else, so the clock counts what that road costs: `aiGovern` runs on
+   every OTHER session (2), a bill lives a p90 of 5 from laying to leaving the
+   paper, and one more for a government with its own programme to reach it.
+   Eight. Counted from the game's own path rather than picked, because this
+   file's rule is that the instrument the answer has to use decides the
+   deadline -- and the slice that ignored it gave a demand three sessions when
+   the only way to meet one takes three by itself. */
+var V21_DUE = 8;
+/* What a promise is worth to an engine government choosing its programme.
+   Without this the rung is reachable and nothing reaches for it: `aiGovern`
+   picked out of its own `wants` and had no idea the agreement existed, so a
+   promise would be kept only where the government happened to want the same
+   statute. A door opened on the callee is worth nothing while the caller
+   still walks past it.
+
+   Priced in FORECAST POINTS, on the precedent the file already set:
+   `V20_AIM_BILL` is 12, the thumb `v19BillFor` puts on the statute a party
+   has publicly NAMED as its aim. A promise written into a coalition agreement
+   is at least that binding -- it is the thing the government's own majority
+   was bought with -- so it is worth the same thumb and no more, which keeps
+   it a preference over the order paper rather than an override of the
+   chamber. A government still does not lay a bill it cannot carry merely
+   because it promised one. */
+var V21_PROMISE_PULL = 12;
+/* ONE PLACE A CONCESSION IS MINTED. There are three call sites -- the
+   formation's offer, the confidence-and-supply offer and the backfill for a
+   save written before S17e -- and they wrote the same literal three times,
+   which is how all three came to ask for the summit. `from` is the level the
+   book stood at when it was signed; `to` is one rung of it, in the direction
+   the party wants; `due` is the date. Declared in the same block as the
+   constants and called at play time, so the later chunk's readers and the
+   earlier chunk's backfill both reach it. */
+function v21Concede(st, ref) {
+  var c = { kind:'adopt', ref:ref, due:null, met:false };
+  var p = POL[ref]; if (!p) return c;
+  var lv = (st.pol || {})[ref] || 0;
+  c.from = lv;
+  c.due = (st.turn || 0) + V21_DUE;
+  return c;
+}
+/* WHAT A CONCESSION ASKS FOR, and the one place that decides it. A promise
+   with a `from` asks for one rung of it; a promise carried in a save from
+   before S21d has none, and asks for the party's full target exactly as it
+   always did -- a save may not quietly lose what it was governed under. */
+function v21Rung(st, pid, c) {
+  var want = v17Want(st, pid, c.ref);
+  if (want === undefined || !POL[c.ref]) return null;
+  var cap = POL[c.ref].max;
+  var target = Math.min(want, cap);
+  if (c.from === undefined) return target;      /* legacy: the summit */
+  var dir = target > c.from ? 1 : (target < c.from ? -1 : 0);
+  if (!dir) return target;
+  return dir > 0 ? Math.min(target, c.from + V21_RUNG)
+                 : Math.max(target, c.from - V21_RUNG);
+}
+/* AND WHETHER THE BOOK HAS REACHED IT. Read in the direction the promise was
+   made, so a statute driven PAST the rung still counts as kept -- a
+   government that gave a partner more than it promised has not broken the
+   promise. */
+function v21Met(st, pid, c) {
+  var rung = v21Rung(st, pid, c);
+  if (rung === null) return false;
+  var lv = (st.pol || {})[c.ref] || 0;
+  if (c.from === undefined) return Math.abs(lv - rung) <= .001;
+  return rung >= c.from ? lv >= rung - .001 : lv <= rung + .001;
+}
+/* HOW MANY RUNGS OF IT WERE ACTUALLY COVERED, which is what `V17_KEPT` pays
+   per. A one-rung promise pays once; a four-rung promise carried in an older
+   save pays for the four sessions of legislative programme it cost. */
+/* THE PROBE SHAPE `v19BillFor` USES, extracted so `aiGovern` weighs a promise
+   on the same instrument rather than on a second one that would drift from it.
+   Pure: `billForecast` is pure by its own contract and nothing here is
+   pushed onto `st.bills`. */
+function v21Probe(st, pid, policy, dir) {
+  return { id:'v21probe', policy:policy, dir:dir, owner:'government', sponsor:pid,
+    title:'', introduced:st.turn, stage:'assembly', strategy:'clean', whip:0, upperDeal:0,
+    committee:0, concessions:0, confidence:false, urgent:false, playerPosition:null,
+    notes:[], cost:0 };
+}
+function v21Rungs(st, pid, c) {
+  if (c.from === undefined) return 1;
+  var rung = v21Rung(st, pid, c);
+  if (rung === null) return 1;
+  return Math.max(1, Math.round(Math.abs(rung - c.from)));
+}
 
 function v17Ledger(st, pid, entry) {
   var d = (st.coalitionDeals || {})[pid]; if (!d) return null;
@@ -36143,11 +36354,15 @@ function v17DealScan(st, pid, d, kind, ref, actor, note) {
       hit = hit || { kind:'broken', ref:ref, why:'a promise to leave it alone', cost:V17_BREACH.refrain };
     }
     if (c.kind === 'adopt' && !c.met && kind === 'move') {
-      var off2 = v17Off(st, pid, ref);
-      if (off2 !== null && off2 <= 0.001) {
+      /* S21d: THE RUNG, NOT THE SUMMIT. This read `v17Off(st, pid, ref) <= 0`
+         -- the book reaching the party's FULL target -- against concessions
+         that all asked for a gap of four and an instrument that moves one.
+         Measured, 0 promises kept in 394 partner-sessions. */
+      if (v21Met(st, pid, c)) {
         c.met = true;
-        v17Ledger(st, pid, { kind:'kept', ref:ref, why:'the concession they were promised', cost:V17_KEPT });
-        d.satisfaction = c100((d.satisfaction || 50) + V17_KEPT);
+        var pay = V17_KEPT * v21Rungs(st, pid, c);
+        v17Ledger(st, pid, { kind:'kept', ref:ref, why:'the concession they were promised', cost:pay });
+        d.satisfaction = c100((d.satisfaction || 50) + pay);
         st.partyRel[pid] = c100((st.partyRel[pid] || 50) + 4);
         logIt(st, 'The ' + PARTY[pid].short + ' got what the coalition agreement promised them on ' +
           (POL[ref] ? POL[ref].name : ref) + '.');
@@ -36197,8 +36412,28 @@ function v16RedLineTick(st) {
     /* an adopt concession can be satisfied by any route, not only a bill */
     ((d.terms && d.terms.concessions) || []).forEach(function (c) {
       if (c.kind !== 'adopt' || c.met) return;
-      var off = v17Off(st, pid, c.ref);
-      if (off !== null && off <= .001) v17DealScan(st, pid, d, 'move', c.ref, st.ruling, 'sweep');
+      if (v21Met(st, pid, c)) { v17DealScan(st, pid, d, 'move', c.ref, st.ruling, 'sweep'); return; }
+      /* S21d: AND THE DATE ON IT PASSES. A promise with no deadline is a wish
+         list, which is what every concession in this game was: `due` was
+         literally `null` at all three mint sites, so nothing could ever be
+         late. The clock books ONE breach and marks the promise so it cannot
+         book a second -- `expireInbox` and the street taught this file that
+         when two mechanisms hold the same date, one owns the outcome. The
+         breach is the ledger's, and the paper (S21f) will report it. */
+      if (c.due && st.turn >= c.due && !c.late) {
+        c.late = true;
+        v17Ledger(st, pid, { kind:'broken', ref:c.ref, why:'the session they were promised it by',
+          cost:V17_BREACH.refrain });
+        d.satisfaction = c100((d.satisfaction || 50) - V17_BREACH.refrain);
+        st.partyRel[pid] = c100((st.partyRel[pid] || 50) - Math.round(V17_BREACH.refrain * .55));
+        if (typeof v16Resent === 'function') v16Resent(st, pid, st.ruling, V17_BREACH.refrain + 1);
+        logIt(st, 'The session by which the ' + PARTY[pid].short + ' were promised ' +
+          (POL[c.ref] ? POL[c.ref].name : c.ref) + ' passed without it.');
+        addNews(st, 'The Coalition', PARTY[pid].short + ' are still waiting on ' +
+          (POL[c.ref] ? POL[c.ref].name : c.ref),
+          'The agreement named a session and the session has gone by. Cohesion is at ' +
+          Math.round(d.satisfaction) + '.', 'bad');
+      }
     });
     if ((d.satisfaction || 50) <= v17WalkFloor(st, pid)) v17Walkout(st, pid, d);
   });
@@ -37996,7 +38231,7 @@ function v17Offer(st, lead, pid, co) {
   /* S17g: two things the government will DO and one it will NOT. A promise to
      leave a statute alone is the cheapest thing to give and the easiest to
      break, which is what makes it worth writing down. */
-  var cs = wants.slice(0, 2).map(function (w) { return { kind:'adopt', ref:w.id, due:null, met:false }; });
+  var cs = wants.slice(0, 2).map(function (w) { return v21Concede(st, w.id); });
   var rub = (typeof v17Friction === 'function' ? v17Friction(st, pid, lead) : []).filter(function (r) {
     return !cs.some(function (c) { return c.ref === r.id; });
   })[0] || wants[3];
@@ -38094,7 +38329,7 @@ function v17Supply(st, lead, exclude, relax, pin) {
     if (pid === lead || exclude.indexOf(pid) >= 0) return;
     var offer = { to:pid, from:lead, share:0, portfolios:0, offices:0,
       concessions:pv5TopWants(pid, st, 3).map(function (w) {
-        return { kind:'adopt', ref:w.id, due:null, met:false };
+        return v21Concede(st, w.id);
       }), redLines:[] };
     var ans = v17Accept(st, pid, lead, offer, (relax || 0) + V17_SUPPLY_RELIEF, pin);
     if (ans.yes && (!best || ans.value > best.value)) best = ans;
