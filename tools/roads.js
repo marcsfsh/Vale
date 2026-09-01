@@ -4259,7 +4259,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         : c.id === 'attack' ? (S.machine[S.ruling] || 0) < before.targetMachine
         : c.id === 'platform' ? JSON.stringify(S.push || {}) !== before.push
         : c.id === 'pact' ? Object.keys(S.aiPacts || {}).length > before.pacts
-        : c.id === 'demand' ? S.inbox.length > before.inbox
+        /* S21b: THE DEMAND CARD HAS TWO OUTCOMES AND BOTH ARE THE CARD
+           WORKING. It posted to the player's inbox whatever chair they were
+           in -- so a player in opposition received letters addressed to "the
+           government" -- and when an engine holds office it is now answered by
+           the engine government instead: the measure is taken up (a bill
+           appears) or it is refused (a grievance is written). This arm seats
+           the player outside the government, so the second path is the one it
+           drives, and asking only about the inbox reported the card dead. */
+        : c.id === 'demand' ? (S.inbox.length > before.inbox || S.bills.length > before.bills ||
+            v16Grudge(S, pid, S.ruling) > 0)
         : c.id === 'article' ? (v11Con(S).pending || []).length > before.pending
         : c.id === 'order' ? Object.keys(v10Orders(S)).length > before.orders
         : c.id === 'floor' ? S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0) > before.lines
@@ -6702,6 +6711,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.burn.building = run('organise');
     return R;
   });
+  const V21_IGNORED_LETTER_ORDER = await page.evaluate(() =>
+    V21_IGNORED_LETTER > 5 && V21_IGNORED_LETTER < 13.4 && V21_IGNORED_LETTER >= V19_REACT_RISE);
   const mindsOk =
     minds.cover.total >= 30 && minds.cover.missing.length === 0 &&
     minds.fires.open && minds.fires.before === 0 && minds.fires.after === 12 &&
@@ -6711,7 +6722,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     minds.letter.type === 'party_demand' && minds.letter.faction === undefined &&
     minds.letter.choices === 'carry,talks,decline' &&
     minds.letter.caucusAfter === minds.letter.caucusBefore && minds.letter.billLaid &&
-    minds.letter.ignoredGrudge === 44 && minds.letter.caucusOnIgnore === 0 &&
+    /* S21b: 41, WAS 44, AND THE CLAIM IS THE ORDERING RATHER THAN THE NUMBER.
+       Silence used to be worth 14 against a median deliberate provocation of
+       13.4 -- measured in S19f's own arm over 463 rises -- so ignoring a letter
+       weighed as much as going after a party on purpose. It is 11 now: more
+       than declining to their face (5, the `decline` answer below it) and less
+       than an attack. The bare pin follows the constant; the ordering is what
+       the assertion is about, and a build that put silence back above a real
+       provocation reddens on the clause after it. */
+    minds.letter.ignoredGrudge === 41 && minds.letter.caucusOnIgnore === 0 &&
+    V21_IGNORED_LETTER_ORDER === true &&
     minds.burn.distinct >= 5 && minds.burn.holding > minds.burn.building;
   say(mindsOk, 'a party remembers what was done to it',
     `ALL ${minds.cover.total} VERBS A PARTY CAN AIM AT ANOTHER PARTY CARRY A MEMORY ` +
@@ -6728,7 +6748,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `\`${minds.letter.type}\` answered ${minds.letter.choices}, the player's own caucus is untouched at ` +
     `${minds.letter.caucusAfter} where answering used to move it sixteen, carrying it lays the bill ` +
     `(${minds.letter.billLaid}) and ignoring it costs the SENDER (${minds.letter.ignoredGrudge}) rather than ` +
-    `docking a caucus that never wrote (${minds.letter.caucusOnIgnore}) · and the purse burn follows the ` +
+    `docking a caucus that never wrote (${minds.letter.caucusOnIgnore}) -- S21b took what silence is worth from ` +
+    `14 to 11, because 14 was the median DELIBERATE provocation this game delivers (13.4 over 463 rises) and ` +
+    `ignoring a letter should cost more than declining to their face and less than an attack · and the purse burn follows the ` +
     `posture across ${minds.burn.distinct} distinct rates, so a party holding on keeps ${minds.burn.holding} ` +
     `of party money over twelve sessions where one building spends down to ${minds.burn.building} -- it was ` +
     `seven tenths for every party in every circumstance, and a card costs twelve to thirty-four`);
@@ -9008,7 +9030,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          runs took the box to 14GB of 16 and a load of 40. Forty samples a
          level is well past what the claim needs -- it asks for more than
          twenty -- and costs a fortieth of the time. */
-      const CAP = 40;
+      /* S21b RAISED THIS FROM 40 TO 150. Forty samples of a proportion near a
+         half carry a standard error of about .08, so the bound of .42 the arm
+         asserted could not be told from the .5 a chooser ignoring the goal
+         would give -- `harness.md` flagged it as an effect-size claim on a
+         single seed, and S21b's goal mix moved it to .46 without touching the
+         chooser. The cost is real and is why the cap exists at all: each
+         rehearsal deep-clones a 78KB state. 150 is still bounded, and it is
+         the smallest sample that separates the claim from its null. */
+      const CAP = 150;
       v19Choose = function (st, pid, open, goal) {
         const pick = base(st, pid, open, goal);
         if (pick && open.length > 1 && !V19_SIMULATING && simRanks.length < CAP) {
@@ -10607,29 +10637,65 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* (e) THE BAR IS WHERE THE DISTRIBUTION PUTS IT, re-measured here rather
        than read off itself -- S17q's rule, that a threshold picked by eye is a
        mechanic that never fires. */
+    /* S21b: THE RISES ARE TWO POPULATIONS NOW AND THE BAR'S JOB IS TO SEPARATE
+       THEM. Until S21b every grievance against the player came from a verb the
+       player pressed, so one median described the whole distribution. S21b adds
+       the ambient kind -- a statute carried against a party's table, a bill of
+       theirs voted down, a demand refused -- which arrives in small increments
+       from governing rather than from anybody deciding to do something.
+
+       Pooled, the median fell from 13.4 to 3.4 and the share clearing the bar
+       from .914 to .287, and read that way the arm looks broken while the
+       mechanism is doing exactly what it was built for: the bar exists to
+       answer a DISCRETE ACT and to ignore an accumulation of small ones. So it
+       is measured against both populations, and the claim is that it sits
+       ABOVE the ambient median and BELOW the deliberate one. That is a
+       stronger statement than the single median it replaces. */
     R.bar = (() => {
-      const rises = [], falls = [];
-      SEEDS.forEach(seed => {
-        fresh(seed);
-        const me = playParty(S), last = {};
-        for (let i = 0; i < 120; i++) {
-          drive(1);
-          PARTIES.forEach(q => {
-            if (q.id === me || S.banned[q.id]) return;
-            const g = v16Grudge(S, q.id, me), l = last[q.id] === undefined ? 0 : last[q.id];
-            if (g > l) rises.push(g - l); else if (g < l) falls.push(l - g);
-            last[q.id] = g;
-          });
+      const deliberate = [], ambient = [], falls = [];
+      let inPolitics = 0;
+      const bAns = (typeof v21Answer === 'function') ? v21Answer : null;
+      if (bAns) v21Answer = function (st, kind, target, w) {
+        inPolitics++; try { return bAns.call(this, st, kind, target, w); } finally { inPolitics--; }
+      };
+      const bRes = v16Resent;
+      v16Resent = function (st, pid, against, n) {
+        const me2 = playParty(st);
+        const before = (v16Ai(st)[pid].grudge[against] || 0);
+        const out = bRes.call(this, st, pid, against, n);
+        const after = (v16Ai(st)[pid].grudge[against] || 0);
+        if (against === me2 && after > before && !V19_SIMULATING) {
+          (inPolitics > 0 ? ambient : deliberate).push(after - before);
         }
-      });
+        return out;
+      };
+      try {
+        SEEDS.forEach(seed => {
+          fresh(seed);
+          const me = playParty(S), last = {};
+          for (let i = 0; i < 120; i++) {
+            drive(1);
+            PARTIES.forEach(q => {
+              if (q.id === me || S.banned[q.id]) return;
+              const g = v16Grudge(S, q.id, me), l = last[q.id] === undefined ? 0 : last[q.id];
+              if (g < l) falls.push(l - g);
+              last[q.id] = g;
+            });
+          }
+        });
+      } finally { v16Resent = bRes; if (bAns) v21Answer = bAns; }
       const m = a => a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null;
-      const sorted = rises.slice().sort((x, y) => x - y);
-      const clears = rises.filter(r => r >= V19_REACT_RISE).length;
-      return { rises:rises.length, minRise:rises.length ? +Math.min.apply(null, rises).toFixed(1) : null,
-        medianRise: sorted.length ? +sorted[Math.floor(sorted.length / 2)].toFixed(1) : null,
-        meanRise:m(rises), meanFall:m(falls),
+      const med = a => { const t = a.slice().sort((x, y) => x - y);
+        return t.length ? +t[Math.floor(t.length / 2)].toFixed(1) : null; };
+      const all = deliberate.concat(ambient);
+      const clears = deliberate.filter(r => r >= V19_REACT_RISE).length;
+      return { rises:all.length, deliberateN:deliberate.length, ambientN:ambient.length,
+        medianRise:med(deliberate), ambientMedian:med(ambient), pooledMedian:med(all),
+        minRise: deliberate.length ? +Math.min.apply(null, deliberate).toFixed(1) : null,
+        meanRise:m(deliberate), meanFall:m(falls),
         maxFall: falls.length ? +Math.max.apply(null, falls).toFixed(2) : null,
-        clears:clears, clearShare: rises.length ? +(clears / rises.length).toFixed(3) : null,
+        clears:clears, clearShare: deliberate.length ? +(clears / deliberate.length).toFixed(3) : null,
+        ambientClearShare: ambient.length ? +(ambient.filter(r => r >= V19_REACT_RISE).length / ambient.length).toFixed(3) : null,
         bar:V19_REACT_RISE };
     })();
 
@@ -10689,7 +10755,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     answr.aim.aimed.n > 300 && answr.aim.flat.n > 300 &&
     answr.aim.lift > .03 && answr.aim.aimed.attack > 1.2 * answr.aim.flat.attack &&
     answr.bar.rises > 150 && answr.bar.maxFall < answr.bar.bar &&
+    /* the bar sits BETWEEN the two populations: above the ambient grievance
+       governing produces and below the deliberate act it exists to answer */
+    answr.bar.deliberateN > 100 && answr.bar.ambientN > 100 &&
     answr.bar.bar < answr.bar.medianRise && answr.bar.clearShare > .85 &&
+    answr.bar.bar > answr.bar.ambientMedian && answr.bar.ambientClearShare < .35 &&
     answr.floor.instinct === null && answr.floor.shrewd === true &&
     answr.said.found === true && answr.said.promisesRiposte === false;
   say(answrOk, 'a party does not wait for the season',
@@ -10721,11 +10791,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${answr.aim.aimed.share} against ${answr.aim.flat.share} with that reading flattened, and \`attack\` ` +
     `${answr.aim.aimed.attack} against ${answr.aim.flat.attack} -- read on fifteen provocations first, which ` +
     `came back +.066 and decided nothing · THE BAR IS WHERE THE DISTRIBUTION PUTS IT, re-measured in this ` +
-    `run and NOT as it was first written down: ${answr.bar.rises} rises in grievance against the player, ` +
-    `median ${answr.bar.medianRise} and mean ${answr.bar.meanRise}, against a cooling that never exceeds ` +
-    `${answr.bar.maxFall} in a session -- so ${answr.bar.bar} sits an order of magnitude above the passage of ` +
-    `time and below the provocation the game actually delivers, and ${answr.bar.clears} of ` +
-    `${answr.bar.rises} rises clear it (${answr.bar.clearShare}) · THE FIRST VERSION OF THIS SENTENCE SAID ` +
+    `run and NOT as it was first written down, AND AGAINST TWO POPULATIONS SINCE S21b: ${answr.bar.rises} rises ` +
+    `in grievance against the player, of which ${answr.bar.deliberateN} come from a verb somebody pressed ` +
+    `(median ${answr.bar.medianRise}, mean ${answr.bar.meanRise}) and ${answr.bar.ambientN} from the ordinary ` +
+    `course of governing (median ${answr.bar.ambientMedian}) -- a statute carried against a party's table, a ` +
+    `bill of theirs voted down, a demand refused. ${answr.bar.bar} sits BETWEEN them, which is the whole job: ` +
+    `${answr.bar.clearShare} of deliberate acts clear it against ${answr.bar.ambientClearShare} of ambient ` +
+    `ones, and a cooling that never exceeds ${answr.bar.maxFall} in a session is below both. Pooled the two ` +
+    `read a median of ${answr.bar.pooledMedian} and .287 clearing, which looks like a broken bar and is a ` +
+    `mechanism doing exactly what it was built for -- answering a DISCRETE ACT and ignoring an accumulation ` +
+    `of small ones · THE FIRST VERSION OF THIS SENTENCE SAID ` +
     `"below every real provocation" AND WAS A CARD THAT LIES: read over four seeds the smallest rise was 8.4 ` +
     `and over ten it is ${answr.bar.minRise}, because beneath the discrete act there is a continuum of small ` +
     `accumulations the bar is meant to ignore -- what is true is the gap between a session's cooling and a ` +
