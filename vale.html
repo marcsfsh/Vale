@@ -9150,10 +9150,34 @@ function v21Met(st, pid, c) {
    range to the +18 ceiling. */
 var V21_PARTNER_PIVOT = 38;
 var V21_PARTNER_SLOPE = .47;
-/* what a broken promise takes off where cohesion settles, mirroring
-   `v17WalkFloor`'s six-per-promise rise in the floor it settles toward.
-   Declared here for the same chunk reason. */
-var V21_BROKEN_DRAG = 6;
+/* WHAT A BROKEN PROMISE TAKES OFF WHERE COHESION SETTLES. Declared here for
+   the same chunk reason as the two above.
+
+   THIS WAS 6, MIRRORING `v17WalkFloor`'S SIX-PER-PROMISE RISE, AND THAT
+   ANALOGY WAS WRONG BY A FACTOR OF TWO -- the same mistake as pricing the
+   promise thumb by analogy, made twice in one slice. The floor RISES six as
+   this FALLS six, so the gap between them closes at TWELVE a promise. Cohesion
+   settles around 48 and the floor starts at 12; three broken promises put the
+   floor at 30 and the target at 48 - 18 = 30. They meet exactly, so EVERY
+   partner three promises deep walked out by construction, and the walkout's
+   own `v16Resent(pid, ruling, 25)` then made the next formation fail.
+
+   Measured over six seeds of 120 sessions, driven, against a shipped build
+   that spends 3 sessions of 720 without a government:
+
+     drag 0 -- 0 episodes,  0 sessions ungoverned, grudge p90 29.2
+     drag 2 -- 0 episodes,  0 sessions,            p90 26.4
+     drag 3 -- 2 episodes, 15 sessions (2.1%),     p90 28.0
+     drag 4 -- 6 episodes, 33 sessions (4.6%),     p90 36.2
+     drag 6 -- 8 episodes, 103 sessions (14.3%),   p90 46.8
+
+   Three: the same number of caretaker EPISODES as the shipped build, a grudge
+   distribution below it, and the arithmetic that motivates the mechanic --
+   floor up six, target down three, closing at nine a promise, so at three
+   broken promises the floor is 30 against a target of 39 and a partner is NEAR
+   walking rather than walking automatically. Which is what "a government in
+   trouble rather than a number on a card" has to mean if it means anything. */
+var V21_BROKEN_DRAG = 3;
 function partyBillSupport(st, pid, bill) {
   var p = POL[bill.policy], pp = polPos(p), pos = ppos(st, pid);
   var target = bill.dir > 0 ? pp : { e:-pp.e * .72, a:-pp.a * .72 };
