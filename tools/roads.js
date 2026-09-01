@@ -462,20 +462,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     out.atOutright = acts(billCard(b)).filter(a => ['talkOut', 'amendIt', 'delayIt', 'kill'].indexOf(a) >= 0).sort().join(',');
 
     /* 4. a declared line is worth what the party declaring it is worth.
-       THE MEMORY IS ZEROED AND PUT BACK, because this arm claims to isolate
-       the LINE and `partyBillSupport` reads the voter's regard for the sponsor
-       beside it. Every arm above this one drives sessions, so the parties
-       arrive here carrying whatever they made of each other -- which mattered
-       for the first time when S21a let that store hold credit as well as
-       grievance, and read .120 per point of chamber against .467 on a clean
-       board. Measured on a clean state the two builds agree to three figures,
-       so what moved was the probe's starting position and not the mechanism. */
-    const memKeep = {};
-    PARTIES.forEach(p => {
-      const a0 = v16Ai(S)[p.id];
-      memKeep[p.id] = JSON.parse(JSON.stringify(a0.grudge || {}));
-      a0.grudge = {};
-    });
+       MEASURED ON A FRESH REPUBLIC, not on the one four hundred assertions
+       above have been driving. This arm claims to isolate the LINE, and
+       `partyBillSupport` is 71% position: by the time the harness reaches here
+       the parties' positions have drifted far enough that their support sits
+       near the 3..98 clamp, and a declared line moves a saturated voter less.
+       It read .120 per point of chamber against .467 on a clean board -- all
+       three readings compressed by the same 3.9x, which is what saturation
+       looks like and is not what a broken mechanism looks like.
+       It surfaced when S21a reverted an unrelated line and the accumulated
+       state shifted; measured on a defined board the shipped build and this
+       one agree to three figures, so the arm was reading the harness's own
+       history. `S` is swapped for a fresh one and put back. */
+    const keepAll = S;
+    SEED_OVERRIDE = 4242;
+    S = enrichState(v6NewGame('normal', 'v6default', 'epic', me), false);
+    S.aiLevel = 'ruthless'; S.rngState = 4242;
+    S.ruling = me; S.coalition = [me]; S.capital = 400;
+    PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
     const delta = frac => {
       setSeats(frac);
       b.playerPosition = null; const a = billForecast(S, b).lower;
@@ -484,7 +488,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return Math.round((a - c) * 10) / 10;
     };
     out.d05 = delta(.05); out.d50 = delta(.50); out.d90 = delta(.90);
-    PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = memKeep[p.id]; });
+    S = keepAll;
 
     /* 5. the handler refuses the kill, not only the renderer */
     setSeats(.30); S.coalition = [me, donor];
