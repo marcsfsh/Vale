@@ -1264,6 +1264,88 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## A party does not wait for the season (S19f)
+
+S18e made the tempo READ the grudge, so a provoked party moves sooner in
+expectation. Measured, that still left a long wait: the player hands a party a
+real grievance and it takes SOME initiative a mean of **2.5 sessions** later,
+as late as **9**. By then the player has done four other things and the answer
+reads as weather rather than as a reply. `v19React` runs in `endTurn`, sees a
+RISE in grievance clear a bar, and stamps the session; the gate in `v16AiTurn`
+lets a party so stamped act without waiting for its tempo roll, and reads the
+provoker as its rival so what it does is aimed. The lag becomes **0.25**.
+
+- **THE OWNER'S BUDGET IS BORROWED FROM, NEVER ADDED TO.** `V16_AI_CADENCE` is
+  the dial the owner swept and its own comment records the cost of moving it —
+  six parties acting every session took the harness from 5.5 elections won to
+  1.2. So a party that answers at once does not get a free go: it borrows one
+  and the next session it would have used pays it back.
+- **THE TOTAL IS THE WRONG INSTRUMENT FOR THAT AND THREE BUILDS WERE SPENT ON
+  IT.** Charged on every answer the total read 3 to 8 per cent below the
+  reaction-off build, and three separate placements of the same unconditional
+  charge — at the tempo gate, after the open-set test, against a pick that was
+  about to run — moved it not at all. Every one of them asked WHERE to book the
+  debt and none asked WHETHER one was owed. Then the total was measured **per
+  seed**, and it runs from **-7.9% to +19.7%** across ten: every reading that
+  had driven those three rewrites was a single sample from a band twenty points
+  wide. Which is this session's pacing lesson a second time, in a different
+  harness, found the same way and within the hour.
+- **SO THE LEDGER IS ASSERTED AND THE TOTAL IS ONLY REPORTED.** 154 borrowed,
+  154 repaid, none outstanding, and none borrowed at all with the reaction off.
+  That is exact and it is the same on every seed, which is what "the budget is
+  held" can honestly mean in a system where acting in a different session
+  changes the board the tempo odds are then read from.
+- **AND THE CHARGE HAS TO BE EARNED, WHICH THE LEDGER ALONE CANNOT SAY.**
+  `answering` skips the tempo test; it does not follow that the test would have
+  refused. When it would have passed, the party was going to act anyway, the
+  reaction bought nothing, and charging for it is a straight deduction from the
+  dial — and the two are correlated the worst possible way, since S18e made the
+  tempo read the grudge, so a freshly provoked party has RAISED odds and the
+  unearned charges are exactly what the mechanism produces. Hence `!passed`.
+  Measured: 226 reactions, **154 charged (.681)** — a third of answers are free
+  — against **.987** on a build charging unconditionally. Charging every answer
+  balances the ledger just as neatly, so this is a second reading and not a
+  restatement of the first.
+- **`borrows === repays + outstanding` IS AN IDENTITY AND SHIPPED AS THE GATE.**
+  `outstanding` is definitionally what is borrowed and not yet repaid, so
+  deleting the repayment line leaves 154 === 0 + 154 and the arm green — which
+  is what its poison reported. The gate asserts the debt is PAID: repayments
+  happen and nothing is left owing. This is S17e's tautology family, caught by
+  a poison written from the diff rather than from the assertion.
+- **A GUARD WHOSE POISON COMES BACK GREEN IS A MISSING ARM OR A DEAD BODY, and
+  `a.react = null` was dead.** The stamp carries the session it was raised in
+  and is read as `=== st.turn`, so it stops matching when the session ends
+  whether or not anybody blanks it. Deleted rather than shipped, per S17r.
+- **THE BAR'S OWN SENTENCE WAS A CARD THAT LIES, and four seeds were what made
+  it one.** Read over four, every rise in grievance fell between 13 and 14 and
+  the comment claimed ten sat *"below every real provocation"*. Read over ten —
+  288 rises — the median is still 13.4 but the smallest is **1.8**, and 21 sit
+  under the bar: beneath the discrete act there is a continuum of small
+  accumulations, which is what the bar is FOR and not a gap in it. The claim
+  that survives measurement is the GAP — a session's cooling never exceeds 0.6,
+  the provocation the game delivers is 13.4 — never the absence of anything
+  below. S17q's rule says measure the distribution before a number gates
+  anything; this says measure it on enough of the thing to see its tail.
+- **AN IN-PROCESS A/B HAS TO HOLD EVERYTHING ELSE, AND A LATER SLICE IS
+  EVERYTHING ELSE.** S19e's temper arm isolates its own weight but ran with
+  this reaction live, which overrides the rival reading on a share of picks —
+  so the same unchanged mechanism measured 5 of 6 parties at .028 instead of
+  6 of 6 at .063, and the arm failed. The A/B now holds the reaction off on
+  both sides and reads exactly what it read at S19e. Its twin: the patience
+  control was gated at |r| < .5, loose enough that the un-held reading of .421
+  passed, which made the isolation a line whose removal changed nothing — at
+  .3 the control asserts what it is for and the hold is load-bearing.
+- **The pacing arc does not move**, measured the corrected way: six seeds,
+  crises per ten sessions 0.80 / 0.85 / 0.81 → 0.83 / 0.83 / 0.81, elections
+  exactly unchanged at 0.40 / 0.20 / 0.10, all 36 runs reaching their end year,
+  every delta far inside one build's own spread. Read the old way — the first
+  seed's three rows — the same pair reads 0.8 / 1.0 / 0.8 → 0.8 / 0.9 / 0.7, a
+  fall on two lengths that is not there. The instrument fix earned itself back
+  inside one slice.
+- Assertion `a party does not wait for the season`, seven arms, **fourteen
+  poisons from the diff, all fourteen redden it**; a fifteenth came back green
+  and its subject was deleted.
+
 ## The parties have characters (S19e)
 
 `v16Posture`'s own comment says it: *"Circumstance, not temperament."* Every

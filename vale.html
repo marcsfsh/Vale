@@ -34919,8 +34919,25 @@ function v16AiTurn(st) {
        test comes FIRST, so a debt is only ever repaid out of a session the
        party would actually have used. Repaying it out of a session it was
        going to sit out anyway would cost it nothing and the total would
-       drift up. */
-    if (roll >= v18TempoOdds(st, p.id)) return;
+       drift up.
+
+       AND THE ROLL IS ASKED EVEN WHEN IT IS NOT OBEYED, for two reasons. The
+       first is S18c: `roll >= v18TempoOdds(...)` short-circuits past the odds
+       when a party is answering, and while `v18TempoOdds` happens to draw no
+       number today, a gate that skips a call is one edit away from being the
+       gate that skips a `rand()`. The second is the whole of the accounting
+       below -- `passed` is the counterfactual, and without it nothing here can
+       tell a borrowed initiative from one the party had coming anyway. */
+    var passed = roll < v18TempoOdds(st, p.id);
+    /* and `a.react` is NOT cleared here, because clearing it is a line nothing
+       can turn: it is stamped with the session it was raised in and read as
+       `=== st.turn`, so it stops matching the moment the session ends whether
+       or not anybody blanks it. Shipped as a clear, its poison came back green
+       -- which for a guard means either a missing arm or a dead body, and this
+       one is dead. `st.court.size` is what a field like this becomes if it is
+       left in: a line later readers reason about as though it did something. */
+    var answering = a.react === st.turn;
+    if (!answering && !passed) return;
     var post = v16Posture(st, p.id);
     a.posture = post;
     var open = V16_AI_DECK.filter(function (c) {
@@ -34939,14 +34956,52 @@ function v16AiTurn(st) {
     var goal = v19Goal(st, p.id);
     /* S19b: read the board ONCE for this party, then weigh every open card
        against the same reading.
-       against the same reading. */
+       S19f: AND A PARTY THAT IS ANSWERING READS THE PROVOKER AS THE RIVAL.
+       Without this the party acted in the right SESSION and then chose on the
+       board's ordinary merits, so the log line saying it answered at once was
+       a card that lies -- measured, the lag to any action fell to 0 and the
+       lag to an answer aimed back stayed at 7.5 sessions. It borrows S19b's
+       channel rather than adding one: the rivalry term already lifts the
+       cards that reach another party, and `attack`'s own picker already goes
+       at the worst grudge, which the provocation has just made the player. */
     var rival = v19Rival(st, p.id);
+    if (answering) rival = { foe:me, foeAt:Math.max(rival.foeAt, V19_RIVAL.aimed) };
     var pick = v19Choose(st, p.id, open, goal, rival);
     if (!pick) return;
+    /* S19f: AND THE DEBT IS REPAID AGAINST AN INITIATIVE, not against a
+       session. Repaid at the tempo gate it came out of sessions that passed
+       the roll and then found nothing to do; repaid after the open-set test it
+       still came out of ones whose card would have returned null. Taken here,
+       against a pick that was about to run, the exchange is one initiative for
+       one initiative -- which is what "the budget is held" has to mean when
+       the dial the owner swept counts initiatives. */
+    if (!answering && a.owed > 0) { a.owed -= 1; return; }
     var line = null;
     try { line = pick.run(st, p.id); } catch (e) { line = null; }
     if (line) {
       a.last[pick.id] = st.turn; a.acts++;
+      /* S19f: THE DEBT IS INCURRED WHERE THE INITIATIVE IS, AND ONLY WHEN THE
+         REACTION ACTUALLY BOUGHT ONE. Two separate mistakes were made here and
+         the second cost four measured builds to find.
+
+         Booked at the gate, it was charged for answering sessions that
+         produced NOTHING -- an empty open set, or a card whose `run` returned
+         null -- and the party sat out a session it had never spent.
+
+         Then, booked here but charged on every answer, it was still 3 to 8 per
+         cent BELOW the reaction-off build, and three further placements of the
+         same unconditional charge moved it not at all -- because every one of
+         them asked WHERE to book the debt and none asked WHETHER a debt was
+         owed. `answering` skips the tempo test; it does not follow that the
+         test would have refused. When it would have passed, the party was
+         going to act in this session regardless, the reaction bought nothing,
+         and charging for it is a straight deduction from the owner's dial.
+         And the two are correlated the worst possible way: S18e made the
+         tempo READ the grudge, so a party that has just been provoked has
+         RAISED odds, and the sessions where the charge is unearned are
+         exactly the sessions the mechanism produces. Hence `!passed` -- the
+         debt is the counterfactual, one initiative for one initiative. */
+      if (answering && !passed) a.owed = (a.owed || 0) + 1;
       /* R2: WHY THIS, THIS SESSION. The panel says what the party did and what
          it was for, so a reader can follow a party across a campaign instead
          of reading a list of unrelated events. */
@@ -35282,10 +35337,69 @@ function v17LedgerCard(st, pid) {
     '<small>They walk at a cohesion of ' + v17WalkFloor(st, pid) + ', which rises with every promise broken.</small></div>';
 }
 
+/* ---------- ANSWERING BETWEEN SCHEDULED TURNS (S19f) ----------
+   S18e made the tempo READ the grudge, so a provoked party moves sooner in
+   expectation. Measured, that left a long wait: over ten trials the player
+   gives a party a real grievance and it takes SOME initiative a mean of 3
+   sessions later, and answers back specifically a mean of **7.1 sessions**
+   later, as late as 17. Seven turns is not a reaction; by then the player has
+   done four other things and the answer reads as weather.
+
+   THE BUDGET IS THE OWNER'S AND IS NOT MOVED. `V16_AI_CADENCE`'s own comment
+   records what raising it costs -- six parties acting every session took the
+   harness from 5.5 elections won to 1.2 -- and S18e's whole design was to
+   change WHICH party acts and WHEN while holding the total. So a party that
+   answers at once does not get a free go: it BORROWS one, and the next session
+   it would have used is spent paying the debt back. The long-run number of
+   initiatives is what it was; only their placing changes.
+
+   And the die is still drawn for every party every session before any test,
+   which is S18c's rule: what changes here is what the roll is compared with,
+   never how many numbers come off the stream.
+
+   THE BAR IS MEASURED, AND THE FIRST MEASUREMENT OF IT WAS TOO NARROW TO SAY
+   WHAT IT SAID. Read over four seeds, every rise in grievance against the
+   player fell between 13 and 14 and the sentence here claimed ten sat "below
+   every real provocation". Read over ten -- 288 rises -- the median is still
+   13.4 and the mean 13.3, but the smallest is 1.8: beneath the discrete act
+   there is a continuum of small accumulations, and 21 of the 288 sit under
+   the bar. That is what the bar is FOR, not a gap in it. What is true, and
+   what `roads.js` asserts, is the distance between the two: a session's
+   cooling never takes more than 0.6 off, the provocation the game actually
+   delivers is 13.4, and ten sits an order of magnitude above the one and
+   below the other, so this answers what the player DID and never the passage
+   of time. The claim is the GAP, never the absence of anything below. */
+var V19_REACT_RISE = 10;
+function v19React(st) {
+  if (!v19Thinks(st)) return;
+  var ai = v16Ai(st), me = playParty(st);
+  PARTIES.forEach(function (p) {
+    if (p.id === me || st.banned[p.id]) return;
+    var a = ai[p.id]; if (!a) return;
+    var now = 0;
+    try { now = v16Grudge(st, p.id, me); } catch (e) { now = 0; }
+    var felt = a.felt === undefined ? now : a.felt;
+    /* the RISE, not the level: a party answers the thing that was just done to
+       it, once, rather than every session it is still angry */
+    if (now - felt >= V19_REACT_RISE) {
+      a.react = st.turn;
+      /* WHAT THE LINE SAYS IS WHAT HAPPENS, and the first draft of it was a
+         card that lies. It said the party ANSWERED, and measured across
+         eleven provocations the card it then played was `attack` twice,
+         `demand` four times, `platform` three and `court` twice -- it moved
+         at once and then chose on its own merits, which is right, and the
+         sentence promising a riposte was not. It says what is true: the party
+         did not wait. */
+      logIt(st, 'The ' + PARTY[p.id].short + ' did not wait for the season to take this up.');
+    }
+    a.felt = now;
+  });
+}
 var v16AiTickBase = tickTurn;
 tickTurn = function (st) {
   v16AiTickBase(st);
   v16RedLineTick(st);
+  v19React(st);
   v16AiTurn(st);
 };
 /* The cards that give a party something to remember. Each of these already
