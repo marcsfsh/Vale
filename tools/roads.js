@@ -9567,6 +9567,266 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${seen.priv.sameStream}) -- and it is SHARED with the demand card, which \`roads.js\` pins on purpose, ` +
     `so the change goes in this caller and not in the body`);
 
+  /* ---------- S21d: THE AGREEMENT BITES ----------
+
+     MEASURED BEFORE ANYTHING WAS WRITTEN, over 394 partner-sessions across
+     six seeds: **0 promises kept, 19 broken.** Never once, in any campaign.
+
+     Every outstanding `adopt` concession asked for a gap of exactly FOUR --
+     p10 4, median 4, max 4 -- because all three mint sites take
+     `pv5TopWants`, the party's BIGGEST gaps by construction. A bill moves a
+     statute ONE rung and lives a median of 2 sessions, and `activeBillFor`
+     forbids a second on the same statute while one is live. Four successive
+     bills, eight to twenty sessions of the government's whole legislative
+     programme, for one partner's one concession.
+
+     That is S19c's `carry` defect in the coalition agreement, and this file
+     already recorded the shape of it: "it took the biggest gap in the party's
+     own table, which measured 4 on every adoption against an instrument that
+     moves one, so it was reached 0 times in 136 adoptions."
+
+     Six legs. The rung is one step and a legacy promise still asks for the
+     summit; a promise carries a date and the clock books ONE breach; the
+     government REACHES for it, which is the half that makes the rest live;
+     and the two fields written-but-never-read -- `d.satisfaction` in the
+     division, the ledger in the drift -- are read. */
+  const bites = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    /* R9: the agreement only exists downstream of a formation */
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+    const partnerOf = () => {
+      const co = S.coalition || [];
+      return co.filter(x => x !== S.ruling && x !== playParty(S))[0] || null;
+    };
+
+    /* (a) A PROMISE ASKS FOR A RUNG, AND A LEGACY ONE STILL ASKS FOR THE
+       SUMMIT. Read through `v21Rung` on a real concession, both shapes. */
+    R.rung = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      const w = (PARTY[pid] || {}).wants || {};
+      const ref = Object.keys(w).filter(id => POL[id] &&
+        Math.abs(Math.min(w[id], POL[id].max) - (S.pol[id] || 0)) >= 2)[0];
+      if (!ref) return { ran:false };
+      const at = S.pol[ref] || 0, want = Math.min(w[ref], POL[ref].max);
+      const fresh1 = v21Concede(S, ref);
+      const legacy = { kind:'adopt', ref:ref, due:null, met:false };  /* no `from` */
+      return { ran:true, ref:ref, at:at, want:want, gap:Math.abs(want - at),
+        rung:v21Rung(S, pid, fresh1), legacyRung:v21Rung(S, pid, legacy),
+        askedOneStep: Math.abs(v21Rung(S, pid, fresh1) - at) === V21_RUNG,
+        legacyAsksSummit: v21Rung(S, pid, legacy) === want,
+        dated: typeof fresh1.due === 'number' && fresh1.due > S.turn,
+        due: fresh1.due - S.turn, DUE:V21_DUE,
+        /* and it is MET at the rung, not at the summit */
+        metAtRung: (() => {
+          const was = S.pol[ref];
+          S.pol[ref] = v21Rung(S, pid, fresh1);
+          const m = v21Met(S, pid, fresh1);
+          S.pol[ref] = at; const m0 = v21Met(S, pid, fresh1);
+          S.pol[ref] = was; return m === true && m0 === false;
+        })() };
+    })();
+
+    /* (b) DRIVEN, WHICH IS THE WHOLE CLAIM. The structural leg says the rung
+       is reachable; only real sessions say a promise is ever kept. */
+    R.driven = (() => {
+      let kept = 0, broken = 0, late = 0, partnerSessions = 0, dated = 0, undated = 0;
+      const sat = [];
+      [4242, 90210, 7, 31337].forEach(seed => {
+        fresh(seed);
+        const seen = {};
+        for (let i = 0; i < 40; i++) {
+          step();
+          (S.coalition || []).forEach(pid => {
+            if (pid === S.ruling) return;
+            const d = (S.coalitionDeals || {})[pid]; if (!d || !d.terms) return;
+            partnerSessions++;
+            if (typeof d.satisfaction === 'number') sat.push(d.satisfaction);
+            (d.terms.concessions || []).forEach(c => {
+              if (c.kind !== 'adopt') return;
+              if (c.due === null || c.due === undefined) undated++; else dated++;
+              if (c.late) late++;
+            });
+            const n = seen[pid] || 0;
+            (d.ledger || []).slice(n).forEach(e => {
+              if (e.kind === 'kept') kept++;
+              if (e.kind === 'broken') broken++;
+            });
+            seen[pid] = (d.ledger || []).length;
+          });
+        }
+      });
+      return { kept:kept, broken:broken, late:late, partnerSessions:partnerSessions,
+        dated:dated, undated:undated,
+        satMin: sat.length ? +Math.min.apply(null, sat).toFixed(1) : null,
+        satMax: sat.length ? +Math.max.apply(null, sat).toFixed(1) : null };
+    })();
+
+    /* (c) THE CLOCK BOOKS ONE BREACH AND ONLY ONE. Two mechanisms holding one
+       date is what `expireInbox` and the street taught this file; the flag is
+       what makes this one own its outcome. */
+    R.clock = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && !partnerOf(); i++) step();
+      const pid = partnerOf(); if (!pid) return { ran:false };
+      const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false };
+      const c = (d.terms.concessions || []).filter(x => x.kind === 'adopt' && !x.met)[0];
+      if (!c) return { ran:false };
+      c.met = false; c.late = false; c.due = S.turn - 1;
+      const before = v17Broken(S, pid), sat0 = d.satisfaction;
+      v16RedLineTick(S);
+      const after1 = v17Broken(S, pid);
+      v16RedLineTick(S); v16RedLineTick(S);
+      const after3 = v17Broken(S, pid);
+      return { ran:true, before:before, afterOne:after1, afterThree:after3,
+        booksOne: after1 === before + 1, booksOnlyOne: after3 === after1,
+        costsCohesion: d.satisfaction < sat0, marked: c.late === true };
+    })();
+
+    /* (d) AND THE GOVERNMENT REACHES FOR IT. Making the rung reachable is
+       worth nothing while `aiGovern` reads only its own `wants` -- a door
+       opened on the callee while the caller walks past it. Driven through the
+       real `aiGovern` on one board, with and without the promise. */
+    R.reaches = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && !partnerOf(); i++) step();
+      const pid = partnerOf();
+      if (!pid || S.ruling === playParty(S)) return { ran:false };
+      const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false };
+      /* a statute the GOVERNMENT does not want, promised to the partner */
+      const gw = (PARTY[S.ruling] || {}).wants || {};
+      const ref = Object.keys((PARTY[pid] || {}).wants || {}).filter(id =>
+        POL[id] && gw[id] === undefined && policyOpen(S, POL[id]) &&
+        (S.pol[id] || 0) < POL[id].max)[0];
+      if (!ref) return { ran:false };
+      const run = (promised) => {
+        S.bills = [];
+        d.terms.concessions = promised ? [v21Concede(S, ref)] : [];
+        if (S.turn % 2) S.turn += 1;
+        aiGovern(S);
+        const b = S.bills.filter(x => x.owner === 'government')[0];
+        return b ? b.policy : null;
+      };
+      const without = run(false), withIt = run(true);
+      return { ran:true, ref:ref, without:without, withIt:withIt,
+        laysThePromise: withIt === ref, differs: without !== withIt,
+        governmentDoesNotWantIt: gw[ref] === undefined };
+    })();
+
+    /* (e) THE DIVISION READS THE AGREEMENT. `d.satisfaction` was written by
+       five sites and read by the vote in none: a partner three broken
+       promises deep whipped its benches exactly as hard as one whose every
+       concession had been kept. */
+    R.vote = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && !partnerOf(); i++) step();
+      const pid = partnerOf(); if (!pid) return { ran:false };
+      const d = S.coalitionDeals[pid]; if (!d) return { ran:false };
+      const p = POLICIES.filter(x => policyOpen(S, x) && (S.pol[x.id] || 0) < x.max)[0];
+      if (!p) return { ran:false };
+      const bill = { id:'v21vote', policy:p.id, dir:1, owner:'government', sponsor:S.ruling,
+        stage:'assembly', lines:{}, notes:[], concessions:0, committee:0, whip:0,
+        upperDeal:0, confidence:false, urgent:false, playerPosition:null };
+      const at = (s) => { d.satisfaction = s; return +partyBillSupport(S, pid, bill).toFixed(2); };
+      const was = d.satisfaction;
+      const low = at(22), mid = at(V21_PARTNER_PIVOT), high = at(74);
+      d.satisfaction = was;
+      return { ran:true, low:low, mid:mid, high:high,
+        rises: high > mid && mid > low,
+        /* the sign flips INSIDE the range the game produces (20..76) */
+        flipsInRange: low < mid && high > mid,
+        spread:+(high - low).toFixed(2), pivot:V21_PARTNER_PIVOT };
+    })();
+
+    /* (f) AND THE DRIFT READS THE RECORD. The ledger was written by the
+       scanner, printed on the card, read by the walkout -- and had no say in
+       where cohesion settles, so a partner three broken promises deep drifted
+       back to exactly where a kept one did. */
+    R.drift = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && !partnerOf(); i++) step();
+      const pid = partnerOf(); if (!pid) return { ran:false };
+      const d = S.coalitionDeals[pid]; if (!d) return { ran:false };
+      const run = (broken) => {
+        d.ledger = [];
+        for (let i = 0; i < broken; i++) d.ledger.push({ kind:'broken', ref:'x', why:'probe', cost:8, turn:S.turn });
+        d.satisfaction = 50;
+        pv5CoalitionTick(S);
+        return +d.satisfaction.toFixed(3);
+      };
+      const clean = run(0), one = run(1), three = run(3), five = run(5);
+      d.ledger = [];
+      return { ran:true, clean:clean, one:one, three:three, five:five,
+        holdsDown: clean > one && one > three,
+        cappedAtPatience: Math.abs(five - three) < 1e-6, patience:V17_PATIENCE };
+    })();
+    return R;
+  });
+
+  const bitesOk =
+    bites.rung.ran === true && bites.rung.gap >= 2 && bites.rung.askedOneStep === true &&
+    bites.rung.legacyAsksSummit === true && bites.rung.dated === true &&
+    bites.rung.due === bites.rung.DUE && bites.rung.metAtRung === true &&
+    bites.driven.partnerSessions > 200 && bites.driven.kept > 5 &&
+    bites.driven.undated === 0 && bites.driven.dated > 100 &&
+    bites.clock.ran === true && bites.clock.booksOne === true &&
+    bites.clock.booksOnlyOne === true && bites.clock.costsCohesion === true &&
+    bites.reaches.ran === true && bites.reaches.laysThePromise === true &&
+    bites.reaches.differs === true && bites.reaches.governmentDoesNotWantIt === true &&
+    bites.vote.ran === true && bites.vote.rises === true && bites.vote.flipsInRange === true &&
+    bites.drift.ran === true && bites.drift.holdsDown === true &&
+    bites.drift.cappedAtPatience === true;
+  say(bitesOk, 'the agreement bites',
+    `MEASURED BEFORE ANYTHING WAS WRITTEN, over 394 partner-sessions across six seeds: **0 PROMISES KEPT, 19 ` +
+    `BROKEN.** Never once, in any campaign · THE CAUSE IS S19c'S DEFECT IN THE COALITION AGREEMENT: every ` +
+    `outstanding \`adopt\` concession asked for a gap of exactly FOUR -- p10 4, median 4, max 4 -- because all ` +
+    `three mint sites take \`pv5TopWants\`, the party's BIGGEST gaps by construction. A bill moves a statute ONE ` +
+    `rung and lives a median of 2 sessions, and \`activeBillFor\` forbids a second on the same statute while one ` +
+    `is live, so a promise needed four successive bills: eight to twenty sessions of the government's whole ` +
+    `legislative programme for one partner's one concession. This file already recorded the shape of it -- ` +
+    `"it took the biggest gap in the party's own table, which measured 4 against an instrument that moves one, ` +
+    `so it was reached 0 times in 136 adoptions" -- and nobody had measured the agreement · \`pv5TopWants\` IS ` +
+    `NOT TOUCHED, because the dossier, the demand card, the offer and the renegotiation all read it and a ` +
+    `shared body right for a new caller can be wrong for the old ones. What changes is what a CONCESSION ` +
+    `records: on a gap of ${bites.rung.gap} it asks for ${bites.rung.rung} where the party's target is ` +
+    `${bites.rung.want} (${bites.rung.askedOneStep}), and a promise from a save written before this slice has no ` +
+    `\`from\` and still asks for the summit (${bites.rung.legacyAsksSummit}) -- a save may not quietly lose what ` +
+    `it was governed under. It is MET at the rung and not before (${bites.rung.metAtRung}) · AND IT CARRIES A ` +
+    `DATE, where \`due\` was literally \`null\` at all three mint sites so nothing could ever be late: ` +
+    `${bites.rung.due} sessions, which is the INSTRUMENT'S and not a number -- \`aiGovern\` runs every other ` +
+    `session (2), a bill lives a p90 of 5, and one more for a government with its own programme to reach it · ` +
+    `DRIVEN, WHICH IS THE WHOLE CLAIM: ${bites.driven.kept} promises kept and ${bites.driven.broken} broken over ` +
+    `${bites.driven.partnerSessions} partner-sessions, against 0 and 19 before, with ${bites.driven.undated} ` +
+    `concessions still undated of ${bites.driven.dated + bites.driven.undated} · THE CLOCK BOOKS ONE BREACH AND ` +
+    `ONLY ONE (${bites.clock.booksOne}/${bites.clock.booksOnlyOne}), because when two mechanisms hold the same ` +
+    `date one owns the outcome -- which is what the street's demand and \`expireInbox\` taught this file · AND ` +
+    `THE GOVERNMENT REACHES FOR IT, which is the half that makes the rest live: \`aiGovern\` read the ruling ` +
+    `party's OWN \`wants\` and had no idea the agreement existed, so a promise would be kept only where the ` +
+    `government happened to want the same statute. On a statute the government does not want at all ` +
+    `(${bites.reaches.governmentDoesNotWantIt}) it lays ${bites.reaches.without} unpromised and ` +
+    `${bites.reaches.withIt} promised (${bites.reaches.differs}) -- as a CANDIDATE forecast on the same probe ` +
+    `\`v19BillFor\` uses, carrying the thumb \`V20_AIM_BILL\` already puts on a publicly named aim, so a ` +
+    `government still does not lay a bill it cannot carry merely because it promised one · AND TWO FIELDS ` +
+    `WRITTEN BUT NEVER READ ARE READ. \`d.satisfaction\` reached the division in NO place: a partner three ` +
+    `broken promises deep whipped its benches for the government exactly as hard as one whose every concession ` +
+    `had been kept, both worth a flat +12. It is ${bites.vote.low} at a cohesion of 22, ${bites.vote.mid} at the ` +
+    `pivot of ${bites.vote.pivot} and ${bites.vote.high} at 74 (${bites.vote.rises}), a spread of ` +
+    `${bites.vote.spread} whose sign flips INSIDE the range the game produces -- 20 to 76, measured · and the ` +
+    `LEDGER reaches the drift, which read the priorities and the portfolios and not the record: cohesion ` +
+    `settles at ${bites.drift.clean} clean, ${bites.drift.one} on one broken promise and ${bites.drift.three} on ` +
+    `three (${bites.drift.holdsDown}), capped at \`V17_PATIENCE\` like the walkout floor it mirrors ` +
+    `(${bites.drift.cappedAtPatience}) -- the floor RISES six a promise as this falls six, so the two close on ` +
+    `each other and three broken promises is a government in trouble rather than a number on a card`);
+
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
      asked what the OTHERS were after, so a party whose goal was being taken
