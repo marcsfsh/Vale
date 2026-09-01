@@ -9883,10 +9883,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const oneRung = { keptBefore:kept0, keptAfter:v17Kept(S, pid),
         satBefore:sat0, satAfter:+d.satisfaction.toFixed(2),
         recorded: v17Kept(S, pid) > kept0, paid: d.satisfaction > sat0,
-        rungs: v21Rungs(S, pid, c), gain:+(d.satisfaction - sat0).toFixed(2) };
+        gain:+(d.satisfaction - sat0).toFixed(2) };
       return { ran:true, keptBefore:oneRung.keptBefore, keptAfter:oneRung.keptAfter,
         satBefore:oneRung.satBefore, satAfter:oneRung.satAfter,
-        recorded:oneRung.recorded, paid:oneRung.paid, rungs:oneRung.rungs,
+        recorded:oneRung.recorded, paid:oneRung.paid,
         gain:oneRung.gain, KEPT:V17_KEPT };
     })();
 
