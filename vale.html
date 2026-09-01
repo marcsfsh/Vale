@@ -34167,6 +34167,119 @@ function v16Posture(st, pid) {
    of 50 and tops out at 47.3. A sixteen-per-cent party cannot carry a bill on
    its own account whatever it picks, which is correct. It can carry one that
    others come out for. */
+/* ==========================================================
+   S20g — THE VERB READS THE AIM.
+
+   The comment over `V19_GOALS` says it plainly: "A goal whose progress no card
+   can move is the decoration this file punishes hardest, so `worth` below is
+   the list of cards that serve it and `roads.js` asserts every goal has at
+   least one." That guard was written and it is real, and it checks the wrong
+   half. `worth` is a PREFERENCE over the deck: it makes a party with a
+   `ground` aim reach for `court` more often than for `article`. It says
+   nothing whatever about whether the card, once drawn, acts on the thing the
+   goal NAMED -- and measured over six seeds of a hundred and twenty sessions,
+   three of them did not:
+
+     court   (serves `ground`)  played 159 times with that aim live,
+                                landed on the named bloc     50 -- 31.4%
+     bill    (serves `carry`)   played 103 times with that aim live,
+                                laid the named statute       33 -- 32.0%
+     exec spend (serves `office`) 86 chances at the named office,
+                                money on it                  17 -- 19.8%
+
+   A third is roughly what picking at random out of the pool gives, which is
+   what these were doing. The `ground` case is the sharpest, because both
+   halves are deliberate and they were written to disagree: the goal picks the
+   bloc by `affinity * (100 - have)` -- the one it is close to and has LEAST of
+   -- and its own comment says "the court card is the only thing that moves
+   it", while the court card banked 2.6 points onto the bloc of HIGHEST
+   affinity, which is the one it already holds. The aim and the only instrument
+   that can reach it were reading two different tables.
+
+   The executive is worse than random, not merely random: `v17AiRaceSpend`
+   refuses any office the party polls under twelve per cent in, so of 86
+   chances to back the office a party had publicly named, 69 were refused
+   outright BECAUSE it was behind in it. Wanting a thing you do not yet have is
+   the definition of an aim, and it was the disqualification.
+
+   `v20Aim` is the one accessor all four read. Two rules govern it, and both
+   are this file's rather than mine:
+
+   - It READS `a.goal` and never calls `v19Goal`, because `v19AdoptGoal` rolls
+     and a read that adopts would move the dice. S18c's rule: a gate in front
+     of `rand()` decides how many numbers come off the stream.
+   - It answers null when `v19Thinks` is false, so at `instinct` every one of
+     the four verbs behaves exactly as it shipped. R1 of this program asks that
+     the scale's floor be the shipped game EXACTLY rather than approximately,
+     and this gets it by construction rather than by four separate guards.
+
+   `V20_AIM` names, for every goal that carries a `ref`, the verb that answers
+   it. It is a covered surface and not a hand-kept list: `roads.js` walks
+   `V19_GOALS` and fails if a ref-bearing goal arrives without an entry, which
+   is the guard `V17_MEMORY` has and a whitelist can never have. `build`'s ref
+   is the string 'machine' -- the party's own organisation, which `organise`
+   moves and cannot miss -- so it is declared and served, not exempted.
+   ========================================================== */
+var V20_AIM = {
+  ground:  'court',      /* S20g: the named bloc, not the strongest affinity */
+  carry:   'bill',       /* S20g: the named statute is put in the running */
+  office:  'exec',       /* S20g: money follows the office the party named */
+  enter:   'platform',   /* S20g: move toward the government it wants to join */
+  oust:    'attack',     /* S17k/S19b: goes at the worst grudge, rivalry-fed */
+  charter: 'article',    /* both halves call `v17AiArticleFor`, so they agree */
+  build:   'organise',   /* ref is the organisation itself; nothing to miss */
+};
+/* How far the aim tips a choice that is otherwise the shipped one. The bill is
+   the only one of the four where the aim has a RIVAL objective and the tension
+   is real: S19d taught `v19BillFor` to lay "the one your neighbours also want"
+   because a sixteen-per-cent party cannot carry a bill on its own account, so
+   a party that always laid its aim would spend every session losing.
+
+   THIS NUMBER WAS FIRST PICKED BY EYE AT 5 AND THE MEASUREMENT MOVED IT.
+   Driven six seeds by 120 sessions, over the 102 bills laid with a `carry` aim
+   live: where the aim lost, the forecast gap between the statute the party
+   came for and the one the forecast preferred runs a median of 4.75 and a mean
+   of 8.47, with a tail to 28.05, against a pool whose own best-to-worst spread
+   means 20.07. Five clears 50 of 98 and moved the rate .265 to .329 -- a knob
+   that turns, barely, because a mean gap of 8.47 walks straight over it.
+   Twelve clears 73 of 98 and measures .600, and it is about three fifths of
+   the pool's own spread, which is the sentence this constant is FOR: the party
+   lays what it came for unless another statute is very much more likely to
+   carry. Anything near the 28 of the tail would carry every aim and make the
+   forecast decorative, which is S19d's finding thrown away.
+
+   A SCALE ON `sharp` WAS DRAFTED HERE AND DELETED BEFORE IT SHIPPED, for two
+   reasons that are both this file's own. It could not be poisoned: the harness
+   drives at `ruthless`, where `sharp / 5` is 1 and removing the whole scale
+   changes nothing an arm can see -- a knob nothing in the game can turn, found
+   exactly where S17r's two were, in the poison list. And it was WRONG on its
+   own terms: `V19_DEFAULT_LEVEL` is `purposeful`, where the scale would have
+   put the thumb at 3.4 against a median gap of 6.06, so the default campaign
+   would have kept the defect this slice is about. The gate that matters is
+   already inside `v20Aim` -- `instinct` is the shipped game and every thinking
+   level lays what it came for -- which is what the other three channels do.
+
+   AND THE CEILING IS NOT 100%, because `v19BillFor` refuses a statute that is
+   shut or already has a bill before the House while `carry.target` reads
+   neither, so an aim can be live and unlayable: measured, 4 of the 102, a
+   ceiling of .961. THAT FIGURE WAS FIRST READ AS .696 AND THE PROBE WAS WRONG
+   -- it asked whether the aim was layable AFTER the card had run, and a party
+   that lays its aim has just put a bill on that very statute, so every hit
+   counted as unavailable. It reported a rate of .591 against a ceiling of
+   .333, which is arithmetic that cannot happen telling you to check the probe
+   before the game. `roads.js` asks before the card runs and asserts the rate
+   is inside the ceiling, so that shape cannot come back unnoticed. */
+var V20_AIM_BILL = 12;
+/* and the executive's is the push a party puts behind an office it has named,
+   against the .12 it puts behind one it merely polls well in. */
+var V20_AIM_PUSH = .2;
+function v20Aim(st, pid, kind) {
+  if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return null;
+  var a = v16Ai(st)[pid], g = a && a.goal;
+  if (!g || g.kind !== kind || !g.ref) return null;
+  return g.ref;
+}
+
 var V19_BILL_LOOK = 5;
 function v19BillFor(st, pid) {
   var w = (PARTY[pid] || {}).wants || {}, pool = [];
@@ -34182,6 +34295,23 @@ function v19BillFor(st, pid) {
      character; the chamber decides which of them it is */
   pool.sort(function (a, b) { return b.gap - a.gap; });
   var top = pool.slice(0, V19_BILL_LOOK), best = null, bestF = -1;
+  /* S20g: AND THE ONE THIS PARTY SAID IT WAS AFTER. Measured on the shipped
+     build, a party holding a `carry` aim laid the statute it had named on
+     26.5% of its bills -- so the aim gets `V20_AIM_BILL`'s thumb below.
+
+     A BLOCK PUTTING THE AIM INTO THE SHORTLIST STOOD HERE AND CAME OUT ON ITS
+     OWN POISON. `top` is the five largest gaps and the aim can be picked by a
+     different rule, so it looked as though it could fall outside and need
+     adding -- and it cannot, because `carry.target` maximises the gap over
+     `wants` and this maximises it over a SUBSET of `wants`, so an aim that is
+     in the pool is the pool's maximum. Deleting the block changed nothing any
+     arm could see, and the measurement says why: over 98 plays with the aim in
+     the pool it ranked FIRST on 96 and second on 2, and outside the top five
+     on none. (The two are the stale-gap case, where the goal was adopted
+     earlier and `st.pol` has moved since.) A knob nothing in the game can
+     turn, found where S17r's two were and where S20d's `restive` floor and
+     S20f's posture filter were -- in the poison list, before it shipped. */
+  var aimPol = v20Aim(st, pid, 'carry');
   top.forEach(function (o) {
     var probe = { id:'v19probe', policy:o.policy, dir:o.dir, owner:'opposition', sponsor:pid,
       title:'', introduced:st.turn, stage:'assembly', strategy:'clean', whip:0, upperDeal:0,
@@ -34190,6 +34320,7 @@ function v19BillFor(st, pid) {
     var f = null;
     try { f = billForecast(st, probe); } catch (e) { f = null; }
     var v = f ? f.lower : 0;
+    if (aimPol && o.policy === aimPol) v += V20_AIM_BILL;
     if (v > bestF) { bestF = v; best = o; }
   });
   return best || top[0];
@@ -34213,8 +34344,17 @@ var V16_AI_DECK = [
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.court; },
     run:function (st, pid) {
       v16AiPay(st, pid, V16_AI_COST.court);
-      var aff = PARTY[pid].aff || {}, best = null;
-      BLOCS.forEach(function (b) { if (best === null || (aff[b.id] || 0) > (aff[best] || 0)) best = b.id; });
+      /* S20g: THE BLOC THE PARTY NAMED, if it has named one. `ground.target`
+         picks by `affinity * (100 - have)` and this picked by affinity alone,
+         so the aim was the bloc it was short of and the season was spent on
+         the one it already held -- 50 of 159 agreed, which is chance. The
+         goal's own target rule refuses any bloc under .2 affinity, so an aim
+         can never send a party courting people it has no business with. */
+      var aff = PARTY[pid].aff || {}, best = v20Aim(st, pid, 'ground');
+      if (!best || !BLOCS.filter(function (b) { return b.id === best; }).length) {
+        best = null;
+        BLOCS.forEach(function (b) { if (best === null || (aff[b.id] || 0) > (aff[best] || 0)) best = b.id; });
+      }
       if (!best) return null;
       st.blocs[best] = c100((st.blocs[best] || 50) + 2.6);
       return 'The ' + PARTY[pid].short + ' spent the season courting ' + (BLOC[best] ? BLOC[best].name.toLowerCase() : best) + '.';
@@ -34289,11 +34429,23 @@ var V16_AI_DECK = [
          them moves it back toward its own people. Both are real and the file
          had neither: `st.push` was written by three PLAYER cards and by
          nothing else in three megabytes. */
-      var toward = v16Posture(st, pid) === 'moderate' ? g : h;
+      var toward = v16Posture(st, pid) === 'moderate' ? g : h, join = null;
+      /* S20g: AND A PARTY TRYING TO GET INTO A GOVERNMENT MOVES TOWARD IT.
+         `formCoalition` admits on `dist2(ppos(candidate), ppos(lead)) <= .95`
+         or on cooption, and cooption is the player's instrument -- so position
+         is the ONLY road an engine has into a government, and `enter` weights
+         `platform` at .8 precisely because of that. The card then moved the
+         party toward the middle of the country or back toward its own members,
+         neither of which is where the government it named is standing. The aim
+         holds the ruling party's id, so this is the same arithmetic aimed at
+         the thing `formCoalition` actually measures. */
+      var want = v20Aim(st, pid, 'enter');
+      if (want && PARTY[want] && want !== pid) { join = want; toward = ppos(st, want); }
       st.push = st.push || {};
       st.push[pid] = { e:(toward.e - q.e) * .22, a:(toward.a - q.a) * .22 };
       return 'The ' + PARTY[pid].short + ' rewrote its platform ' +
-        (toward === g ? 'toward the middle of the country.' : 'back toward its own members.');
+        (join ? 'to stand where the ' + PARTY[join].short + ' stand.'
+              : toward === g ? 'toward the middle of the country.' : 'back toward its own members.');
     } },
   { id:'pact', post:['moderate', 'attack', 'hold'],
     can:function (st, pid) {
@@ -37893,12 +38045,21 @@ function v17AiRaceSpend(st) {
       var have = partyPurse(st, p.id);
       if (have < V17_AI_OFFICE_SPEND) return;
       /* a party spends on an office it can win or already holds */
+      /* S20g: OR ONE IT HAS SAID IT WANTS. The poll floor is the right rule
+         for a party with no view -- it stops six parties funding four races
+         each -- and it was the wrong rule for one with an aim, because it
+         disqualified exactly the case an aim describes. Of 86 chances to back
+         the office a party had publicly named, 69 were refused for being
+         behind in it and 17 were funded. The floor still governs every office
+         the party has NOT named, so this opens one race per party, not four,
+         and the purse is asked first either way. */
       var polls = v17RacePolls(st, o);
       var share = polls[p.id] || 0;
-      if (share < .12 && st.exec[o] !== p.id) return;
+      var wants = v20Aim(st, p.id, 'office') === o;
+      if (!wants && share < .12 && st.exec[o] !== p.id) return;
       v16AiPay(st, p.id, V17_AI_OFFICE_SPEND);
       st.execPush = st.execPush || {};
-      st.execPush[key] = (st.execPush[key] || 0) + .12;
+      st.execPush[key] = (st.execPush[key] || 0) + (wants ? V20_AIM_PUSH : .12);
       r.spent[key] = V17_AI_OFFICE_SPEND;
     });
   });

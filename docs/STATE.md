@@ -46,15 +46,30 @@ six-way audit and the rulings.
   the bill.
 - **S20f — the AI arms were measured on too few seeds.** Two S19 claims did not
   survive a wider sample and were corrected in place.
+- **S20g — the verb reads the aim.** `roads.js` asserted every goal has a card
+  that serves it, and `worth` is a PREFERENCE over the deck: it never asked
+  whether the card, once drawn, acts on the thing the goal NAMED. Court landed
+  on the named bloc **.422** of the time, the bill laid the named statute
+  **.265**, money reached the named office **.233** — chance. The `ground` case
+  was written to disagree with itself, and the executive was worse than chance
+  because the twelve-per-cent poll floor refused **69 of 86** chances to back
+  an office a party had publicly named. Now 1.000 / .600 (ceiling .961) /
+  .464 / 1.000. `V20_AIM` is a covered surface, not a hand-kept list.
 
-**WHAT IS STILL OPEN, and it is the largest thing the audit found:** the
-engine's decision surface is 11 cards with no target choice -- 2.1% of the
-player's -- and no engine can enter a government, take an office, dissolve or
-call a referendum. S20 fixed the chamber the AI plays in, the cost of the board,
-the difficulty and its model of the player; what an engine can DO is the
-remaining half of the owner's 8-10/10.
+**WHAT IS STILL OPEN:** the engine's decision surface is **11 cards** against
+the player's several hundred controls, and it holds no verb reaching a
+dissolution or a referendum. S20 fixed the chamber the AI plays in, the cost of
+the board, the difficulty, its model of the player and whether its verbs serve
+its aims; the SIZE of the deck is the remaining half of the owner's 8-10/10.
 
-Verification across the program: checks 11/11, roads **199/199**, playtest,
+**A correction this file carried until S20g:** it said no engine can enter a
+government or take an office. Engines do end up in both — the ballot and
+`execContest` put them there, at 22.8% turnover per contest across 720
+measured sessions. What no engine could do was ACT on the aim it had named.
+The three probes that produced the wrong claim drove `endTurn()` without
+overriding `runQueue`, so `runElection` never ran; see `docs/PLAN-S20.md`.
+
+Verification across the program: checks 11/11, roads **200/200**, playtest,
 determinism 8/8, contrast at three tiers.
 
 **S19 — The parties think** is **COMPLETE** as of S19f. It exists because the

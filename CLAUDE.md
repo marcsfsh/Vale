@@ -121,6 +121,27 @@ before touching the file.
   wrong measurement, which is the failure this whole family of rules exists to
   stop. Before believing a red assertion, check the probe. Before believing a
   green one, poison it.
+- **HALF OF `endTurn` RUNS INSIDE `runQueue`'S CALLBACK, so a probe that clears
+  `UI.queue` around the call drives a republic that never holds an election.**
+  `endTurn` sets `UI.queue = v17Route(...)` and then passes the rest of the
+  session — `runElection`, the caretaker's clock, the executive season — to
+  `runQueue(function () {...})`, which raises a sheet and waits for a click
+  when the queue is not empty. Clearing the queue *before* and *after* does not
+  help: the queue is filled in between. The harness's driver overrides the
+  function (`var rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };`)
+  and roads.js has arms both ways, correctly — an arm about the initiative pass
+  needs no override, an arm about anything downstream of the queue does. Three
+  S20g probes used the plain step and reported **1 election and 1 executive
+  turnover in 720 sessions**; the same seeds under the override give 360
+  elections, 20 government changes and offices turning over at 22.8%. A whole
+  investigation was built on "the offices are frozen" and the offices were
+  fine. Two smaller instances of the same family from that slice: **a rate
+  above its own ceiling is arithmetic that cannot happen and is the probe
+  telling you so** (availability was asked AFTER the card ran, so every hit
+  counted as unavailable — .591 against a ceiling of .333), and **a probe that
+  reproduces the rule under test to decide what counts as a hit measures the
+  change against itself** — read the outcome through the game's own path, which
+  bloc actually rose, not by recomputing what the old code would have picked.
 - **An assertion that compares two things, one of which is derived from the
   other, proves nothing.** S17e's mirror check compared `redLine` with
   `terms.redLines[0]` as seeded — but the list is *built from* the scalar, so

@@ -11642,6 +11642,353 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `in three megabytes and it is in that display -- the card rendered "499 of 1305 · 499 / 653 needed" beside ` +
     `a forecast of 68.2 and the game decided the bill with the 68.2`);
 
+  /* ---------- S20g: THE VERB READS THE AIM ----------
+     The comment over `V19_GOALS` says "a goal whose progress no card can move
+     is the decoration this file punishes hardest, so `worth` below is the list
+     of cards that serve it and `roads.js` asserts every goal has at least
+     one." That guard exists and it checks the wrong half: `worth` is a
+     PREFERENCE over the deck and says nothing about whether the card, once
+     drawn, acts on the thing the goal NAMED. Measured six seeds by 120
+     sessions on the shipped build, through each verb's own path rather than by
+     reproducing its rule: court landed on the named bloc 65 of 154 (.422),
+     the bill laid the named statute 27 of 102 (.265), and money reached the
+     named office 21 of 90 (.233). The `ground` case is the sharpest because
+     both halves were deliberate and they were written to disagree -- the goal
+     picks `affinity * (100 - have)`, the bloc it is CLOSE to and has LEAST of,
+     and the card banked its 2.6 onto the bloc of highest affinity, the one it
+     already held. */
+  const aims = await page.evaluate(() => {
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) {} UI.queue = []; UI.busy = false; }
+    const card = id => V16_AI_DECK.filter(c => c.id === id)[0] || null;
+    const R = {};
+
+    /* (a) THE REGISTRY IS TOTAL, which is the guard a hand-kept list can never
+       have: a goal a later slice adds fails here unless it names the verb that
+       answers it, and a verb that stops existing fails here too. */
+    R.registry = (() => {
+      const verbs = {}; V16_AI_DECK.forEach(c => { verbs[c.id] = 1; }); verbs.exec = 1;
+      const kinds = V19_GOALS.map(g => g.id);
+      return {
+        kinds: kinds.length, declared: Object.keys(V20_AIM).length,
+        missing: kinds.filter(k => !V20_AIM[k]),
+        stale: Object.keys(V20_AIM).filter(k => kinds.indexOf(k) < 0),
+        unserved: Object.keys(V20_AIM).filter(k => !verbs[V20_AIM[k]]),
+        total: kinds.filter(k => !V20_AIM[k]).length === 0 &&
+               Object.keys(V20_AIM).filter(k => kinds.indexOf(k) < 0).length === 0 &&
+               Object.keys(V20_AIM).filter(k => !verbs[V20_AIM[k]]).length === 0,
+      };
+    })();
+
+    /* (b) THE SCALE'S FLOOR IS THE SHIPPED GAME EXACTLY. R1 of this program
+       asks it of every term S19 and S20 add, and `v20Aim` gets it for all four
+       verbs at once by answering null at `instinct`. Asserted BOTH ways round
+       -- a poison that makes the accessor always-null would pass the silent
+       half on its own. */
+    R.floor = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const q = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0];
+      if (!q) return { ran:false };
+      const a = v16Ai(S)[q.id];
+      const bloc = (BLOCS[0] || {}).id;
+      a.goal = { kind:'ground', ref:bloc, since:S.turn, want:99, best:0 };
+      S.aiLevel = 'instinct';
+      let quiet = 0;
+      Object.keys(V20_AIM).forEach(k => { if (v20Aim(S, q.id, k)) quiet++; });
+      S.aiLevel = 'ruthless';
+      const loud = v20Aim(S, q.id, 'ground');
+      /* and it answers about the RIGHT kind: a `ground` aim is not an `office` aim */
+      const crossed = v20Aim(S, q.id, 'office');
+      return { ran:true, atInstinct:quiet, silent: quiet === 0,
+        atRuthless: loud || null, speaks: loud === bloc, kindKept: !crossed };
+    })();
+
+    /* (c) COURT LANDS ON THE NAMED BLOC, and the arm stands in the gap the
+       change closes: the aim is set to a bloc that is NOT this party's
+       strongest affinity, which is the one the shipped card always picked.
+       An arm that named the strongest affinity could not tell the two apart. */
+    R.court = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const q = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0];
+      const c = card('court');
+      if (!q || !c) return { ran:false };
+      const aff = PARTY[q.id].aff || {};
+      let top = null;
+      BLOCS.forEach(b => { if (top === null || (aff[b.id] || 0) > (aff[top] || 0)) top = b.id; });
+      const other = (BLOCS.filter(b => b.id !== top && (aff[b.id] || 0) > .2)[0] ||
+                     BLOCS.filter(b => b.id !== top)[0] || {}).id;
+      if (!top || !other) return { ran:false };
+      const a = v16Ai(S)[q.id];
+      const shot = () => { const o = {}; BLOCS.forEach(b => { o[b.id] = S.blocs[b.id] || 0; }); return o; };
+      const rose = b0 => BLOCS.filter(b => (S.blocs[b.id] || 0) > b0[b.id] + 1e-9).map(b => b.id);
+      a.goal = { kind:'ground', ref:other, since:S.turn, want:99, best:0 };
+      let b0 = shot(); try { c.run(S, q.id); } catch (e) {}
+      const withAim = rose(b0);
+      a.goal = null;
+      b0 = shot(); try { c.run(S, q.id); } catch (e) {}
+      const noAim = rose(b0);
+      return { ran:true, strongest:top, named:other, withAim:withAim, noAim:noAim,
+        onAim: withAim.length === 1 && withAim[0] === other,
+        shippedPicksStrongest: noAim.length === 1 && noAim[0] === top,
+        differ: withAim.join(',') !== noAim.join(',') };
+    })();
+
+    /* (d) PLATFORM MOVES TOWARD THE GOVERNMENT IT WANTS TO JOIN. `formCoalition`
+       admits on `dist2(ppos(candidate), ppos(lead)) <= .95` or on cooption, and
+       cooption is the player's instrument -- so position is the only road an
+       engine has into a government.
+       THE PARTY IS CHOSEN FOR A POSTURE THAT IS NOT `moderate`, because the
+       shipped card sends a moderate one toward `govPos` anyway and an arm
+       seated on one of those cannot tell the change from the absence of it.
+       Measured, the shipped card already closed the distance on .750 of plays
+       for exactly that reason, so this is the quarter that is the finding. */
+    R.platform = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const c = card('platform');
+      if (!c) return { ran:false };
+      /* and a party that is NOT already in the government, because `enter` is
+         adopted by one that is outside it and a partner reads oddly on the page */
+      const co = S.coalition || [S.ruling];
+      const pool = PARTIES.filter(p => p.id !== playParty(S) && co.indexOf(p.id) < 0 && !S.banned[p.id]);
+      let q = pool.filter(p => { try { return v16Posture(S, p.id) !== 'moderate'; } catch (e) { return false; } })[0];
+      const posture = q ? (() => { try { return v16Posture(S, q.id); } catch (e) { return null; } })() : null;
+      if (!q) return { ran:false };
+      const a = v16Ai(S)[q.id];
+      const d2 = push => {
+        const s = ppos(S, q.id), t = ppos(S, S.ruling);
+        return Math.pow(s.e + (push ? push.e : 0) - t.e, 2) + Math.pow(s.a + (push ? push.a : 0) - t.a, 2);
+      };
+      const d0 = d2(null);
+      a.goal = { kind:'enter', ref:S.ruling, since:S.turn, best:0 };
+      S.push = {}; let line = null;
+      try { line = c.run(S, q.id); } catch (e) { line = null; }
+      const hot = S.push[q.id] || null;
+      a.goal = null;
+      S.push = {}; let coldLine = null;
+      try { coldLine = c.run(S, q.id); } catch (e) { coldLine = null; }
+      const cold = S.push[q.id] || null;
+      /* AND THE CARD DOES NOT LIE ABOUT IT. The line the player reads used to
+         say "toward the middle of the country" or "back toward its own
+         members" and there is now a third thing it does; a card that moved
+         toward the government and said it moved toward its members would be
+         this file's own "a modifier nothing reads is a lie on the card" with
+         the halves the other way round. */
+      const says = String(line || ''), coldSays = String(coldLine || '');
+      return { ran:true, party:q.id, posture:posture, at:+d0.toFixed(4),
+        says: says.slice(0, 90), namesIt: says.indexOf(PARTY[S.ruling].short) >= 0,
+        coldSaysIt: coldSays.indexOf(PARTY[S.ruling].short) >= 0,
+        withAim: hot ? +d2(hot).toFixed(4) : null, noAim: cold ? +d2(cold).toFixed(4) : null,
+        closes: !!hot && d2(hot) < d0 - 1e-9,
+        differ: !!hot && !!cold && (Math.abs(hot.e - cold.e) > 1e-9 || Math.abs(hot.a - cold.a) > 1e-9) };
+    })();
+
+    /* (e) MONEY FOLLOWS THE OFFICE THE PARTY NAMED, and this arm too stands in
+       the gap: the office is one the party polls UNDER the twelve per cent
+       floor in and does not hold, which is precisely what the shipped gate
+       refused. Wanting a thing you do not yet have was the disqualification --
+       69 of 86 chances refused for being behind.
+       THE PURSE IS RESTORED BETWEEN THE TWO CALLS, because `v16AiPay` drains
+       it and the second reading would then be refused for having no money and
+       look exactly like a refusal for having no aim. */
+    R.exec = (() => {
+      fresh(4242); for (let i = 0; i < 8; i++) step();
+      const cyc = (typeof v17NextExecTurn === 'function') ? v17NextExecTurn(S) : null;
+      if (cyc === null || typeof v17RaceSeed !== 'function') return { ran:false };
+      try { v17RaceSeed(S, cyc); } catch (e) { return { ran:false }; }
+      if (!S.execRace) return { ran:false };
+      S.execRace.stage = 'general';
+      let q = null, off = null;
+      (S.execRace.offices || []).forEach(o => {
+        let polls = {}; try { polls = v17RacePolls(S, o); } catch (e) { polls = {}; }
+        PARTIES.forEach(p => {
+          if (q || p.id === playParty(S) || S.banned[p.id]) return;
+          if ((polls[p.id] || 0) < .12 && S.exec[o] !== p.id) { q = p.id; off = o; }
+        });
+      });
+      if (!q) return { ran:false };
+      S.purse = S.purse || {}; S.purse[q] = V17_AI_OFFICE_SPEND * 4;
+      const purse = S.purse[q], key = off + ':' + q;
+      const a = v16Ai(S)[q];
+      a.goal = null; S.execPush = {}; S.execRace.spent = {}; S.purse[q] = purse;
+      try { v17AiRaceSpend(S); } catch (e) {}
+      const cold = (S.execPush || {})[key] || 0;
+      a.goal = { kind:'office', ref:off, since:S.turn, best:0 };
+      S.execPush = {}; S.execRace.spent = {}; S.purse[q] = purse;
+      try { v17AiRaceSpend(S); } catch (e) {}
+      const hot = (S.execPush || {})[key] || 0;
+      return { ran:true, party:q, office:off, cold:+cold.toFixed(3), hot:+hot.toFixed(3),
+        refusedWithout: cold === 0, fundedWith: hot > 0, biggerPush: hot > .12 + 1e-9 };
+    })();
+
+    /* (f) AND IT COSTS THE STREAM NOTHING. S18c: a gate in front of `rand()`
+       decides how many numbers come off it, and `v20Aim` is read inside four
+       verbs -- if asking what a party is after ADOPTED a goal it would roll,
+       because `v19AdoptGoal` does, and every seeded campaign would re-phase.
+       It reads `a.goal` and never calls `v19Goal`, which is the whole reason
+       it is a separate accessor rather than a call to the one that exists. */
+    R.stream = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      let rolls = 0; const r0 = rand;
+      rand = function () { rolls++; return r0.apply(this, arguments); };
+      try {
+        PARTIES.forEach(p => Object.keys(V20_AIM).forEach(k => {
+          try { v20Aim(S, p.id, k); } catch (e) {}
+        }));
+      } finally { rand = r0; }
+      return { rolls:rolls, free: rolls === 0 };
+    })();
+
+    /* (g) AND IN REAL PLAY, because calling the function is not testing the
+       wiring and S17p found two call sites neither of its poisons touched.
+       Every reading is taken through the verb's OWN path -- which bloc rose,
+       which push key appeared, what the producer returned -- and never by
+       reproducing the rule under test, which is how the first version of this
+       probe came to measure the change against itself. */
+    R.driven = (() => {
+      const C = { court:{ n:0, hit:0 }, bill:{ n:0, hit:0, gone:0 }, exec:{ n:0, hit:0 }, plat:{ n:0, hit:0 } };
+      const deck = {}; V16_AI_DECK.forEach(c => { deck[c.id] = c; });
+      const bC = deck.court.run, bB = deck.bill.run, bP = deck.platform.run, bS = v17AiRaceSpend;
+      const rq = runQueue;
+      const goalOf = (st, pid) => { const a = v16Ai(st)[pid]; return (a && a.goal) || null; };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      deck.court.run = function (st, pid) {
+        const g = goalOf(st, pid), b0 = {};
+        BLOCS.forEach(b => { b0[b.id] = st.blocs[b.id] || 0; });
+        const out = bC.call(this, st, pid);
+        if (g && g.kind === 'ground' && out) {
+          let moved = null;
+          BLOCS.forEach(b => { if ((st.blocs[b.id] || 0) > b0[b.id] + 1e-9) moved = b.id; });
+          if (moved) { C.court.n++; if (moved === g.ref) C.court.hit++; }
+        }
+        return out;
+      };
+      deck.bill.run = function (st, pid) {
+        const g = goalOf(st, pid);
+        let pick = null; try { pick = v19BillFor(st, pid); } catch (e) { pick = null; }
+        /* HOW OFTEN THE AIM WAS NOT LAYABLE AT ALL, which is the ceiling:
+           `v19BillFor` refuses a statute that is shut or already before the
+           House and `carry.target` reads neither. ASKED BEFORE THE CARD RUNS,
+           because a party that lays its aim puts a bill on that very statute
+           and reading it afterwards counts every hit as unavailable -- the
+           first version did, and reported a rate of .591 against a ceiling of
+           .333, which is the arithmetic telling you the probe is wrong. */
+        let there = false;
+        if (g && g.kind === 'carry') {
+          try { there = !!(POL[g.ref] && policyOpen(st, POL[g.ref]) && !activeBillFor(st, g.ref)); }
+          catch (e) { there = false; }
+        }
+        const out = bB.call(this, st, pid);
+        if (g && g.kind === 'carry' && pick && out) {
+          C.bill.n++;
+          if (pick.policy === g.ref) C.bill.hit++;
+          if (!there) C.bill.gone++;
+        }
+        return out;
+      };
+      deck.platform.run = function (st, pid) {
+        const g = goalOf(st, pid), q = ppos(st, pid);
+        const out = bP.call(this, st, pid);
+        if (g && g.kind === 'enter' && out && st.push && st.push[pid] && PARTY[g.ref]) {
+          const t = ppos(st, g.ref), p = st.push[pid];
+          const d0 = Math.pow(q.e - t.e, 2) + Math.pow(q.a - t.a, 2);
+          const d1 = Math.pow(q.e + p.e - t.e, 2) + Math.pow(q.a + p.a - t.a, 2);
+          C.plat.n++; if (d1 < d0 - 1e-9) C.plat.hit++;
+        }
+        return out;
+      };
+      v17AiRaceSpend = function (st) {
+        const r = st.execRace;
+        if (!(r && r.stage === 'general')) return bS.call(this, st);
+        const want = {};
+        PARTIES.forEach(p => {
+          if (p.id === playParty(st)) return;
+          const g = goalOf(st, p.id);
+          if (g && g.kind === 'office' && g.ref) want[p.id] = g.ref;
+        });
+        const chances = [];
+        Object.keys(want).forEach(pid => (r.offices || []).forEach(o => {
+          if (o === want[pid] && !(r.spent || {})[o + ':' + pid]) chances.push(o + ':' + pid);
+        }));
+        const before = Object.assign({}, st.execPush || {});
+        const out = bS.call(this, st);
+        chances.forEach(k => {
+          C.exec.n++;
+          if (((st.execPush || {})[k] || 0) > (before[k] || 0)) C.exec.hit++;
+        });
+        return out;
+      };
+      try {
+        [4242, 90210, 7, 31337].forEach(seed => { fresh(seed); for (let i = 0; i < 90; i++) step(); });
+      } finally {
+        deck.court.run = bC; deck.bill.run = bB; deck.platform.run = bP;
+        v17AiRaceSpend = bS; runQueue = rq;
+      }
+      const rate = o => +(o.hit / Math.max(1, o.n)).toFixed(3);
+      return {
+        court:{ n:C.court.n, hit:C.court.hit, rate:rate(C.court) },
+        bill:{ n:C.bill.n, hit:C.bill.hit, unlayable:C.bill.gone, rate:rate(C.bill),
+               ceiling:+((C.bill.n - C.bill.gone) / Math.max(1, C.bill.n)).toFixed(3) },
+        exec:{ n:C.exec.n, hit:C.exec.hit, rate:rate(C.exec) },
+        platform:{ n:C.plat.n, hit:C.plat.hit, rate:rate(C.plat) },
+      };
+    })();
+    return R;
+  });
+
+  const aimOk =
+    aims.registry.total === true && aims.registry.declared === aims.registry.kinds &&
+    aims.floor.ran === true && aims.floor.silent === true &&
+    aims.floor.speaks === true && aims.floor.kindKept === true &&
+    aims.court.ran === true && aims.court.onAim === true &&
+    aims.court.shippedPicksStrongest === true && aims.court.differ === true &&
+    aims.platform.ran === true && aims.platform.closes === true && aims.platform.differ === true &&
+    aims.platform.namesIt === true && aims.platform.coldSaysIt === false &&
+    aims.exec.ran === true && aims.exec.refusedWithout === true &&
+    aims.exec.fundedWith === true && aims.exec.biggerPush === true &&
+    aims.stream.free === true &&
+    aims.driven.court.n > 40 && aims.driven.court.rate > .9 &&
+    aims.driven.bill.n > 30 && aims.driven.bill.rate > .45 &&
+    aims.driven.bill.rate <= aims.driven.bill.ceiling + 1e-9 &&
+    aims.driven.exec.n > 20 && aims.driven.exec.rate > .35 &&
+    aims.driven.platform.n > 10 && aims.driven.platform.rate > .9;
+  say(aimOk, 'the verb reads the aim',
+    `\`worth\` MAKES A PARTY REACH FOR THE RIGHT CARD AND NOTHING MADE THE CARD ACT ON THE RIGHT THING. The ` +
+    `guard over \`V19_GOALS\` asserts every goal has a card that serves it, and a \`worth\` table is a ` +
+    `PREFERENCE over the deck: measured six seeds by 120 sessions through each verb's own path, court landed ` +
+    `on the named bloc 65 of 154 (.422), the bill laid the named statute 27 of 102 (.265) and money reached ` +
+    `the named office 21 of 90 (.233) -- roughly what the pool gives by chance · THE \`ground\` CASE WAS ` +
+    `WRITTEN TO DISAGREE WITH ITSELF: the goal picks \`affinity * (100 - have)\`, the bloc it is close to and ` +
+    `has LEAST of, and its own comment says "the court card is the only thing that moves it", while the card ` +
+    `banked 2.6 onto the bloc of HIGHEST affinity -- the one it already held. Named ${aims.court.named} against ` +
+    `a strongest of ${aims.court.strongest}, the card now moves ${aims.court.withAim.join(',')} and moved ` +
+    `${aims.court.noAim.join(',')} without the aim · THE EXECUTIVE WAS WORSE THAN CHANCE, not merely equal to ` +
+    `it: \`v17AiRaceSpend\` refuses any office a party polls under twelve per cent in, so of 86 chances to ` +
+    `back an office a party had publicly NAMED, 69 were refused BECAUSE it was behind -- wanting a thing you ` +
+    `do not have was the disqualification. Seated on exactly that case (${aims.exec.party} in ` +
+    `${aims.exec.office}, behind and not holding it) the shipped gate pays ${aims.exec.cold} and the aim pays ` +
+    `${aims.exec.hot} · AND POSITION IS THE ONLY ROAD INTO A GOVERNMENT an engine has, since \`formCoalition\` ` +
+    `admits on distance or on cooption and cooption is the player's instrument: a ${aims.platform.posture} ` +
+    `party at ${aims.platform.at} from the government it named closes to ${aims.platform.withAim} and went to ` +
+    `${aims.platform.noAim} without the aim, AND THE CARD SAYS SO ("${aims.platform.says}") where it used to ` +
+    `offer only the middle of the country or its own members · IN REAL PLAY, driven four seeds by 90 sessions ` +
+    `because calling the function is not testing the wiring: court ${aims.driven.court.rate} (was .422), bill ` +
+    `${aims.driven.bill.rate} (was .265) inside a CEILING of ${aims.driven.bill.ceiling} -- ` +
+    `${aims.driven.bill.unlayable} of ${aims.driven.bill.n} aims were shut or already before the House, which ` +
+    `is the chamber working and not a miss, and it is ASKED BEFORE THE CARD RUNS because a party that lays its ` +
+    `aim has just put a bill on that statute: reading it afterwards gave .591 against a ceiling of .333, ` +
+    `arithmetic that cannot happen -- exec ${aims.driven.exec.rate} (was .233), platform ` +
+    `${aims.driven.platform.rate} (was .750, because a moderate posture already pointed at \`govPos\`) · ` +
+    `\`V20_AIM\` IS A COVERED SURFACE (${aims.registry.declared} of ${aims.registry.kinds} kinds declared, ` +
+    `every one naming a verb that exists), so a goal a later slice adds fails here rather than quietly ` +
+    `joining the three that were already decorative · the scale's floor is the shipped game EXACTLY ` +
+    `(${aims.floor.atInstinct} aims visible at \`instinct\`, ${aims.floor.atRuthless} at \`ruthless\`) and it ` +
+    `costs the stream ${aims.stream.rolls} rolls, because it reads \`a.goal\` and never calls \`v19Goal\`, ` +
+    `which adopts and therefore draws`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
