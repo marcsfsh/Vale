@@ -1592,6 +1592,45 @@ async function run() {
       `(${sixp.saysHow})` +
       (sixp.built ? '' : ' -- THIS BUILD HAS NO INITIATIVE DECK'));
 
+    /* S19b: AND WHO IS IN THE WAY, OUT OF THE DOM. The roads arm calls
+       `v16AiPanel()`, and the panel reaches the page through a marker splice
+       into `viewParties` -- so a broken splice would leave that arm green and
+       the player with nothing. This drives the real view at a level that
+       reads and takes the sentence off the rendered page. The level is set
+       and put back, because the default reads nothing by design and every
+       later step expects the campaign it was handed. */
+    const inway = await page.evaluate(() => {
+      const out = { built:typeof v19Rival === 'function', sessions:0, onRecord:0, onPage:false };
+      if (!out.built) return out;
+      const keep = { tab:UI.tab, level:S.aiLevel };
+      S.aiLevel = 'ruthless';
+      for (let i = 0; i < 120 && !out.onPage; i++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { break; }
+        UI.queue = []; UI.busy = false;
+        out.sessions = i + 1;
+        out.onRecord = PARTIES.filter(p => ((v16Ai(S)[p.id] || {}).why || {}).foe).length;
+        if (!out.onRecord) continue;
+        UI.tab = 'parties'; render();
+        const panel = [...document.querySelectorAll('#view .panel')]
+          .filter(x => /What the Others Are Doing/.test((x.querySelector('h2') || {}).textContent || ''))[0];
+        if (panel && /in the way/.test(panel.textContent)) {
+          out.onPage = true;
+          out.sample = (panel.textContent.match(/[^·]{0,90}in the way/) || [''])[0].trim().slice(-90);
+        }
+      }
+      S.aiLevel = keep.level; UI.tab = keep.tab; render();
+      return out;
+    });
+    step('rival-on-the-page',
+      inway.built && inway.onPage && inway.onRecord > 0,
+      `a party that reads a rival says so on the Parties page, driven at ruthless and read out of the DOM ` +
+      `rather than off \`v16AiPanel()\`: ${inway.onRecord} parties carrying a rival on the record by session ` +
+      `${inway.sessions} and the page naming it (${inway.onPage}) -- "${inway.sample || ''}" · the panel reaches ` +
+      `the page through a marker splice into \`viewParties\`, so the model-side arm in roads.js would stay ` +
+      `green on a build where the splice had moved and the reader saw none of it` +
+      (inway.built ? '' : ' -- THIS BUILD HAS NO RIVAL READING'));
+
     step('splices-land', spl.cards === spl.regions && spl.misassigned.length === 0 &&
       spl.regionsMissingActs.length === 0 && spl.qtMatches,
       spl.misassigned.length ? `governor strips mis-assigned on ${spl.misassigned.length} of ${spl.cards} region cards: ${spl.misassigned.slice(0, 3).join(', ')}`

@@ -9059,6 +9059,311 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${think.floor.sharp.n} of which ${think.floor.sharp.against} were -- a bill headed where a party wants it ` +
     `needs nothing from that party, and the money goes on the other nine things instead`);
 
+  /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
+     S19a gave every party an aim and left it alone on the board: nothing
+     asked what the OTHERS were after, so a party whose goal was being taken
+     off it by a rival had no way to find out. Six arms, and they pull against
+     each other on purpose. The relation must be SYMMETRIC where it claims to
+     be and asymmetric where it claims that (a relation declared at one end
+     only is this file's longest-running defect). The read must not CREATE,
+     because `v19Goal` adopts and adopting rolls. The term must change the
+     RANKING rather than merely compute, and it must do it THROUGH THE GAME'S
+     OWN PATH over driven sessions rather than by reassembling the formula.
+     And the constant must sit where the measured distribution puts it, with
+     the measurement taken in the same run rather than read off the constant. */
+  const rival = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level, me) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', me || 'lp'), false);
+      S.aiLevel = level; S.rngState = seed;
+      return S;
+    }
+    function drive(n) {
+      for (let i = 0; i < n; i++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { return e.message; }
+        UI.queue = []; UI.busy = false;
+      }
+      return null;
+    }
+    const other = (st, not) => PARTIES.filter(p => p.id !== not && p.id !== playParty(st) && !st.banned[p.id]).map(p => p.id);
+
+    /* (a) EVERY CARD IN THE DECK CARRIES A RIVALRY WEIGHT. Derived from the
+       deck rather than counted against a number, so a card a later slice adds
+       reddens here instead of silently scoring nought against every rival.
+       This is the guard a hand-kept list of ids cannot have. */
+    R.uncovered = V16_AI_DECK.map(c => c.id).filter(id => V19_RIVAL_WORTH[id] === undefined);
+    R.deckN = V16_AI_DECK.length;
+    R.ghostWeights = Object.keys(V19_RIVAL_WORTH).filter(id => V16_AI_DECK.every(c => c.id !== id));
+
+    /* (b) THE READ DOES NOT CREATE. `v19Goal` ADOPTS when a party has none
+       and adopting calls `rand()`, so one party asking about another through
+       that door would seed a goal for the party it asked about and take
+       numbers off the stream outside the cadence. Asked of both doors in the
+       same state, because "the accessor is safe" means nothing without the
+       contrast that the other one is not. */
+    fresh(4242, 'shrewd');
+    PARTIES.forEach(p => { const a = v16Ai(S)[p.id]; if (a) a.goal = null; });
+    const rng0 = S.rngState;
+    other(S).forEach(id => { for (let i = 0; i < 20; i++) v19GoalSeen(S, id); });
+    R.seenMade = other(S).filter(id => !!v19GoalSeen(S, id)).length;
+    R.seenRoll = S.rngState !== rng0;
+    v19Goal(S, other(S)[0]);
+    R.goalMade = !!v19GoalSeen(S, other(S)[0]);
+    R.goalRoll = S.rngState !== rng0;
+
+    /* (c) THE ASYMMETRIC CLAUSE IS READ FROM THE TARGET'S SIDE. `oust` is the
+       one goal that names a party, and it is adopted FROM the grudge ledger,
+       so the asking party's own hostility is already in the ledger the picker
+       reads. What it could not see is somebody else's plan for it. */
+    fresh(4242, 'shrewd');
+    const ps = other(S), A = ps[0], B = ps[1];
+    PARTIES.forEach(p => { const a = v16Ai(S)[p.id]; if (a) a.goal = null; });
+    R.aimedBefore = v19Rivalry(S, B, A);
+    v16Ai(S)[A].goal = { kind:'oust', ref:B, since:S.turn };
+    R.aimedSeen = v19Rivalry(S, B, A);      /* B reads A coming for it */
+    R.aimedOwn = v19Rivalry(S, A, B);       /* A's own hostility is the ledger's business */
+
+    /* (d) AND THE SYMMETRIC CLAUSES ARE SYMMETRIC, BOTH WAYS ROUND. Asserted
+       rather than assumed: the first version of S17m's conflict check passed
+       on a table that only worked one way. Each pair is seeded, read from
+       both ends, and then one end is cleared to prove the reading came from
+       the pair and not from something standing behind it. */
+    R.sym = {};
+    [['ground', 'blocA'], ['office', 'chan'], ['enter', 'x']].forEach(([kind, ref]) => {
+      fresh(4242, 'shrewd');
+      const q = other(S), a = q[0], b = q[1];
+      const r0 = kind === 'enter' ? S.ruling : ref;
+      PARTIES.forEach(p => { const x = v16Ai(S)[p.id]; if (x) x.goal = null; });
+      v16Ai(S)[a].goal = { kind:kind, ref:r0, since:S.turn };
+      v16Ai(S)[b].goal = { kind:kind, ref:r0, since:S.turn };
+      const ab = v19Rivalry(S, a, b), ba = v19Rivalry(S, b, a);
+      v16Ai(S)[b].goal = { kind:kind, ref:r0 + '-elsewhere', since:S.turn };
+      const apart = v19Rivalry(S, a, b);
+      R.sym[kind] = { ab:+ab.toFixed(3), ba:+ba.toFixed(3), apart:+apart.toFixed(3) };
+    });
+
+    /* (e) THE TERM CHANGES THE RANKING, AND ONLY WHERE THE SETTING BUYS IT.
+       Not the sign and not the magnitude: whether the party would now rather
+       play a card that reaches the rival than one that does not. `platform`
+       is the control, because it is the one card in the deck whose weight is
+       nought by design -- a party talking to its own members. */
+    R.rank = {};
+    ['instinct', 'purposeful', 'shrewd', 'ruthless'].forEach(level => {
+      fresh(4242, level);
+      const q = other(S), a = q[0], b = q[1];
+      PARTIES.forEach(p => { const x = v16Ai(S)[p.id]; if (x) x.goal = null; });
+      const atk = V16_AI_DECK.filter(c => c.id === 'attack')[0];
+      const plat = V16_AI_DECK.filter(c => c.id === 'platform')[0];
+      if (!atk || !plat) { R.rank[level] = null; return; }
+      const calm = v19Score(S, a, atk, null) - v19Score(S, a, plat, null);
+      v16Ai(S)[b].goal = { kind:'oust', ref:a, since:S.turn };
+      const heat = v19Score(S, a, atk, null) - v19Score(S, a, plat, null);
+      R.rank[level] = { calm:+calm.toFixed(3), heat:+heat.toFixed(3), gain:+(heat - calm).toFixed(3) };
+    });
+
+    /* (f) AND THE ATTACK LANDS ON THE PARTY THAT IS AFTER IT, through the
+       card's own `run` rather than through the picker's arithmetic. The
+       ledger is emptied first, so the fallback is the government and any
+       other answer had to come from the rivalry read. Driven at both ends of
+       the setting: at `instinct` the push is nought and the target is the
+       government the shipped line picks. */
+    R.target = {};
+    ['instinct', 'ruthless'].forEach(level => {
+      fresh(4242, level);
+      const q = other(S).filter(id => id !== S.ruling), a = q[0], b = q[1];
+      if (!a || !b) { R.target[level] = null; return; }
+      PARTIES.forEach(p => { const x = v16Ai(S)[p.id]; if (x) { x.goal = null; x.grudge = {}; } });
+      v16Ai(S)[b].goal = { kind:'oust', ref:a, since:S.turn };
+      const atk = V16_AI_DECK.filter(c => c.id === 'attack')[0];
+      let hit = null;
+      const saved = shiftPartyRel;
+      shiftPartyRel = function (st, pid, n) { return saved(st, pid, n); };
+      const before = JSON.stringify(S.machine);
+      atk.run(S, a);
+      shiftPartyRel = saved;
+      const after = S.machine;
+      const bef = JSON.parse(before);
+      PARTIES.forEach(p => { if (p.id !== a && (after[p.id] || 0) < (bef[p.id] || 0) - 1e-9) hit = p.id; });
+      R.target[level] = { hit:hit, ruling:S.ruling, rival:b, aimedAt:a };
+    });
+
+    /* (g) AND IT REACHES THE PLAYER, over driven sessions and out of the
+       panel's own HTML. Calling the function is not testing the wiring: the
+       record is written in `v16AiTurn`, carried on `a.why`, and rendered by
+       `v16AiPanel`, and a poison at any of the three leaves the sentence off
+       the page. */
+    /* THE FIRST VERSION OF THIS ARM DROVE FORTY SESSIONS AND READ `why` ONCE
+       AT THE END, AND IT WAS THE PROBE THAT WAS WRONG. `a.why` is a SNAPSHOT
+       that each initiative overwrites, a party acts on about a quarter of its
+       sessions, and a foe is on the board for about a tenth of them -- so the
+       chance that a given party's LAST act was the one with a rival is a few
+       per cent, and six parties came out at nought on a build where the
+       record was being written correctly all along. A snapshot read once
+       undersamples a signal that overwrites itself; the tally has to be taken
+       as the writes happen.
+       Two readings, kept apart: how often the record is WRITTEN with a rival
+       over a long run, and whether the page SAYS so. Joining them into one
+       would let either half carry the other, which is S17n's mistake. */
+    fresh(90210, 'ruthless');
+    R.panel = { written:0, acts:0, inTheWay:false, atSession:null, sessions:0 };
+    const seenAt = {};
+    for (let i = 0; i < 200 && !R.panel.inTheWay; i++) {
+      drive(1);
+      R.panel.sessions = i + 1;
+      PARTIES.forEach(p => {
+        const w = (v16Ai(S)[p.id] || {}).why;
+        if (!w || seenAt[p.id] === w.turn + ':' + w.card) return;
+        seenAt[p.id] = w.turn + ':' + w.card;
+        R.panel.acts++;
+        if (w.foe) R.panel.written++;
+      });
+      let html = '';
+      try { html = v16AiPanel(); } catch (e) { html = ''; }
+      if (/in the way/.test(html)) { R.panel.inTheWay = true; R.panel.atSession = i + 1; }
+    }
+
+    /* (h) AND IT REACHES A REAL PICK, THROUGH `v19Choose`. Every arm above
+       calls a function: (e) scores two cards by hand, (f) runs the attack
+       card, (g) reads a record. NONE of them goes through the chooser, and
+       the poison run said so -- forcing an empty board into `v19Choose` left
+       all eight of them green while every real pick in the game lost the
+       term.
+
+       THE FIRST TWO STATISTICS FOR THIS WERE BOTH WRONG AND BOTH IN THE PROBE.
+       The share of picks going to a card with ANY weight saturates at 94%,
+       because eight of the ten cards carry one, so there was no room for the
+       reading to move it. And `instinct` cannot be the control: `v19Goal`
+       returns null below `purposeful`, so no party there has an aim, no aim
+       means no rivalry and no rivalry means no foe board to compare -- the
+       control arm read n=0 and the gap read `null`.
+       What works is the rate a card is picked GIVEN IT WAS OPEN, which takes
+       the posture and the purse out of the reading, split by whether the board
+       carried the rival that card answers. Two cards, read component-wise and
+       never joined: `court` is how a contested bloc is contested, and `attack`
+       is how a party planning against this one is answered. */
+    R.pick = { court:{}, attack:{} };
+    (() => {
+      const t = { blocOpen:0, blocPick:0, elseOpen:0, elsePick:0, foeOpen:0, foePick:0, calmOpen:0, calmPick:0 };
+      const savedChoose = v19Choose;
+      v19Choose = function (st, pid, open, goal, rv) {
+        const got = savedChoose.call(this, st, pid, open, goal, rv);
+        if (!V19_SIMULATING) {
+          const r = rv || v19Rival(st, pid);
+          let blocFoe = false;
+          if (r.foe) {
+            const m = v19GoalSeen(st, pid), th = v19GoalSeen(st, r.foe);
+            blocFoe = !!(m && th && m.kind === 'ground' && th.kind === 'ground' && m.ref === th.ref);
+          }
+          if (open.some(c => c.id === 'court')) {
+            if (blocFoe) { t.blocOpen++; if (got && got.id === 'court') t.blocPick++; }
+            else { t.elseOpen++; if (got && got.id === 'court') t.elsePick++; }
+          }
+          if (open.some(c => c.id === 'attack')) {
+            if (r.foeAt > 0) { t.foeOpen++; if (got && got.id === 'attack') t.foePick++; }
+            else { t.calmOpen++; if (got && got.id === 'attack') t.calmPick++; }
+          }
+        }
+        return got;
+      };
+      try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 271828, 161803, 2718, 5150].forEach(s => { fresh(s, 'ruthless'); drive(100); }); }
+      finally { v19Choose = savedChoose; }
+      const rt = (a2, b2) => b2 ? +(a2 / b2).toFixed(3) : null;
+      R.pick.court = { onOpen:t.blocOpen, on:rt(t.blocPick, t.blocOpen), offOpen:t.elseOpen, off:rt(t.elsePick, t.elseOpen) };
+      R.pick.attack = { onOpen:t.foeOpen, on:rt(t.foePick, t.foeOpen), offOpen:t.calmOpen, off:rt(t.calmPick, t.calmOpen) };
+      R.pick.courtLift = (R.pick.court.on !== null && R.pick.court.off !== null) ? +(R.pick.court.on - R.pick.court.off).toFixed(3) : null;
+      R.pick.attackLift = (R.pick.attack.on !== null && R.pick.attack.off !== null) ? +(R.pick.attack.on - R.pick.attack.off).toFixed(3) : null;
+    })();
+
+    /* (i) AND THE CONSTANT SITS WHERE THE DISTRIBUTION PUTS IT. Measured in
+       THIS run rather than read off the constant: a check parameterised by
+       the number it is checking agrees with any value that number holds. The
+       claim is a relationship -- an intention outweighs an ordinary grievance
+       and loses to a real one -- so both ends are asserted. */
+    const gr = [], mags = [];
+    fresh(31337, 'shrewd');
+    const savedTurn = v16AiTurn;
+    v16AiTurn = function (st) {
+      PARTIES.forEach(p => {
+        if (p.id === playParty(st) || st.banned[p.id]) return;
+        PARTIES.forEach(q => { if (q.id !== p.id && !st.banned[q.id]) gr.push(v16Grudge(st, p.id, q.id)); });
+        const rv = v19Rival(st, p.id);
+        if (rv.foeAt > 0) mags.push(rv.foeAt);
+      });
+      return savedTurn.call(this, st);
+    };
+    drive(60);
+    v16AiTurn = savedTurn;
+    const at = (arr, p) => { if (!arr.length) return null; const s = arr.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+    const typical = mags.length ? at(mags, .5) : 0;
+    R.scale = {
+      n:gr.length, foeN:mags.length,
+      p90:+at(gr, .9).toFixed(1), p99:+at(gr, .99).toFixed(1),
+      worth:+(V19_RIVAL_PUSH * typical).toFixed(1),
+      typicalMag:+(typical || 0).toFixed(2)
+    };
+    return R;
+  });
+
+  const rvOk =
+    rival.uncovered.length === 0 && rival.ghostWeights.length === 0 && rival.deckN >= 10 &&
+    rival.seenMade === 0 && rival.seenRoll === false &&
+    rival.goalMade === true && rival.goalRoll === true &&
+    rival.aimedBefore === 0 && rival.aimedSeen < 0 && rival.aimedOwn === 0 &&
+    ['ground', 'office', 'enter'].every(k => rival.sym[k] &&
+      rival.sym[k].ab < 0 && rival.sym[k].ab === rival.sym[k].ba && rival.sym[k].apart === 0) &&
+    rival.rank.instinct && rival.rank.purposeful && rival.rank.shrewd && rival.rank.ruthless &&
+    rival.rank.instinct.gain === 0 && rival.rank.purposeful.gain === 0 &&
+    rival.rank.shrewd.gain > 0 && rival.rank.ruthless.gain > rival.rank.shrewd.gain &&
+    rival.target.instinct && rival.target.ruthless &&
+    rival.target.instinct.hit === rival.target.instinct.ruling &&
+    rival.target.ruthless.hit === rival.target.ruthless.rival &&
+    rival.panel.written > 0 && rival.panel.inTheWay === true && rival.panel.acts > 30 &&
+    rival.pick.attack.onOpen >= 50 && rival.pick.attackLift !== null && rival.pick.attackLift > .05 &&
+    rival.pick.court.onOpen >= 12 && rival.pick.courtLift !== null && rival.pick.courtLift > .1 &&
+    rival.scale.foeN > 0 && rival.scale.p90 !== null &&
+    rival.scale.worth > rival.scale.p90 && rival.scale.worth < rival.scale.p99;
+  say(rvOk, 'a party knows who is in its way',
+    `S19a GAVE EVERY PARTY AN AIM AND LEFT IT ALONE ON THE BOARD: nothing asked what the OTHERS were after, so ` +
+    `six parties pursued six aims in parallel and a party whose goal was being taken off it could not tell · ` +
+    `EVERY ONE OF THE ${rival.deckN} CARDS carries a weight against a rival (${rival.uncovered.length} without ` +
+    `one, ${rival.ghostWeights.length} weights naming a card the deck has not), derived from the deck so a card ` +
+    `a later slice adds reddens here rather than scoring nought in silence · A READ MUST NOT CREATE: twenty ` +
+    `\`v19GoalSeen\` calls per party made ${rival.seenMade} goals and moved the dice (${rival.seenRoll}), where ` +
+    `one \`v19Goal\` call made a goal (${rival.goalMade}) and did move them (${rival.goalRoll}) -- the accessor ` +
+    `is the read and the other door is the write, or a party asking about a rival would seed that rival's aim ` +
+    `and re-phase the campaign · THE RELATION IS ASYMMETRIC WHERE IT SAYS SO and symmetric where it says so: a ` +
+    `party reads somebody else's plan to bring it down at ${rival.aimedSeen} where it read ${rival.aimedBefore} ` +
+    `before that plan existed, and its OWN hostility reads ${rival.aimedOwn} here because \`oust\` is adopted ` +
+    `from the grudge ledger the picker already consults; and the contested bloc, office and seat read ` +
+    `${['ground', 'office', 'enter'].map(k => k + ' ' + rival.sym[k].ab + '/' + rival.sym[k].ba).join(', ')} ` +
+    `from both ends, falling to ${rival.sym.ground.apart} when the two are after different things · IT CHANGES ` +
+    `THE RANKING and not merely the arithmetic: \`attack\` against \`platform\`, the card whose weight is nought ` +
+    `by design, gains ${rival.rank.instinct.gain} at instinct, ${rival.rank.purposeful.gain} at purposeful, ` +
+    `${rival.rank.shrewd.gain} at shrewd and ${rival.rank.ruthless.gain} at ruthless when a rival appears -- ` +
+    `THIS LAYER IS BOUGHT AT SHREWD and the two rungs below it are S19a unchanged, because at a sharpness of ` +
+    `1.4 the draw is flat enough that the term moved nothing in play and one reading of it went the wrong way ` +
+    `· AND THE ATTACK LANDS ON THE RIGHT PARTY, read out of the card's own \`run\` with the ledger ` +
+    `emptied so the fallback is the government: at instinct it hit ${rival.target.instinct.hit} (the government) ` +
+    `and at ruthless ${rival.target.ruthless.hit} (the party planning against it) · IT REACHES THE PAGE over ` +
+    `${rival.panel.sessions} driven sessions: ${rival.panel.written} of ${rival.panel.acts} initiatives were ` +
+    `recorded with a rival behind them and the page said so by session ${rival.panel.atSession} -- read as a ` +
+    `snapshot at the end instead of as a tally the two came out at nought on a correct build, because \`why\` ` +
+    `is overwritten by every later initiative · AND IT REACHES A REAL PICK through \`v19Choose\`, which no ` +
+    `other arm here touches -- forcing an empty board into the chooser left every other arm in this assertion ` +
+    `green. Twelve seeds of a hundred sessions at ruthless, each card read as the rate it is taken GIVEN IT WAS ` +
+    `OPEN so the posture filter carries none of it: \`attack\` goes at ${rival.pick.attack.on} on the ` +
+    `${rival.pick.attack.onOpen} boards carrying a rival against ${rival.pick.attack.off} on the ` +
+    `${rival.pick.attack.offOpen} that carry none (+${rival.pick.attackLift}), and \`court\` at ` +
+    `${rival.pick.court.on} on the ${rival.pick.court.onOpen} boards where another party is courting the same ` +
+    `bloc against ${rival.pick.court.off} elsewhere (+${rival.pick.courtLift}) -- two cards read separately, ` +
+    `because a probe that joins two readings lets either half carry the other · AND THE CONSTANT SITS WHERE THE DISTRIBUTION PUTS IT, ` +
+    `measured in this run rather than read off itself: a live rivalry of ${rival.scale.typicalMag} is worth ` +
+    `${rival.scale.worth} on the ledger's own scale, against grudges whose 90th percentile is ` +
+    `${rival.scale.p90} and whose 99th is ${rival.scale.p99} over ${rival.scale.n} readings -- an intention ` +
+    `outweighs an ordinary grievance and loses to a real one`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

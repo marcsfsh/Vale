@@ -429,14 +429,14 @@ var DEPTS = {
 };
 
 var V19_LEVELS = [
-  { id:'instinct', name:'By instinct', sharp:0, sim:0,
+  { id:'instinct', name:'By instinct', sharp:0, sim:0, read:0,
     note:'They act from where they stand and what they can afford, and pick among their options at random. This is how the parties behaved before they could think.' },
-  { id:'purposeful', name:'Purposeful', sharp:1.4, sim:0,
+  { id:'purposeful', name:'Purposeful', sharp:1.4, sim:0, read:0,
     note:'Each party carries an aim and leans toward it, while still doing the ordinary work of a party.' },
-  { id:'shrewd', name:'Shrewd', sharp:2.8, sim:1,
-    note:'Each party works out what its options would actually do to the country it wants, and takes the one that gets it there.' },
-  { id:'ruthless', name:'Ruthless', sharp:5, sim:1.9,
-    note:'They play to win. Every option is weighed by what it would leave behind, and a party will spend its last money on the session that decides its aim.' }
+  { id:'shrewd', name:'Shrewd', sharp:2.8, sim:1, read:1.2,
+    note:'Each party works out what its options would actually do to the country it wants, weighs it against the rival reaching for the same thing, and takes the one that gets it there.' },
+  { id:'ruthless', name:'Ruthless', sharp:5, sim:1.9, read:1.8,
+    note:'They play to win. Every option is weighed by what it would leave behind, a party standing in their way is answered directly, and a party will spend its last money on the session that decides its aim.' }
 ];
 var V19_DEFAULT_LEVEL = 'purposeful';
 var DIFFS = {
@@ -33776,10 +33776,26 @@ var V16_AI_DECK = [
          from the memory to the thing it was a memory of. It goes at whoever
          it actually holds something against, and falls back to the
          government when it holds nothing against anybody. */
+      /* S19b: AND WHAT THEY ARE AFTER, not only what they have done. The
+         ledger is the memory of what was done to this party. The rivalry read
+         is the standing intention of the others, and the two are different
+         facts: a party that has quietly formed a plan to bring this one down
+         has given it nothing to remember, and before S19b there was no road
+         from that plan to the party it was about. Added to the grudge rather
+         than replacing it, because `oust` is adopted FROM the ledger and a
+         term that replaced it would count one fact twice.
+         `worst` still starts at nought, so a board where nothing is held and
+         nothing is aimed falls back to the government exactly as it did. */
       var t = st.ruling, worst = 0;
+      var push = V19_RIVAL_PUSH * ((typeof v19LevelOf === 'function') ? (v19LevelOf(st).read || 0) : 0);
       PARTIES.forEach(function (q) {
         if (q.id === pid || st.banned[q.id]) return;
         var g = v16Grudge(st, pid, q.id);
+        if (push > 0) {
+          var r = 0;
+          try { r = v19Rivalry(st, pid, q.id); } catch (e) { r = 0; }
+          if (r < 0) g += push * -r;
+        }
         if (g > worst) { worst = g; t = q.id; }
       });
       st.machine[t] = clamp((st.machine[t] || 0) - V16_AI_ATTACK * 2, -.8, 1);
@@ -33895,6 +33911,19 @@ var V16_AI_DECK = [
 ];
 /* Who a party would stand down for: nearest in position, out of government,
    not somebody it holds a grudge against, and not already in a pact. */
+/* S19b WROTE AN ALIGNMENT PULL HERE AND MEASURED IT BACK OUT. The idea was
+   that a party should make its pact with whoever is after the same thing
+   rather than with whoever stands nearest. Measured over ten seeds of sixty
+   sessions -- 25,200 party pairs -- NOT ONE PAIR was ever aligned: the only
+   clause that could produce a positive rivalry is two parties carrying the
+   same statute the same way, and it fired zero times. The wants tables do
+   overlap (lp/rsf and pnl/tvc share three policies each), so it is reachable
+   in principle; `carry` targets the biggest GAP in a party's own table, and
+   two parties sharing a policy almost never have it as their largest gap at
+   the same moment. On top of that only 23 of 1,800 party-sessions had two
+   pact candidates at all, and the median distance between the best two was
+   .05. A pull nothing can produce, over a field with nothing to reorder.
+   The line below is the shipped one, unchanged. */
 function v16PactPartner(st, pid) {
   var q = ppos(st, pid), best = null, bestD = .62;
   PARTIES.forEach(function (o) {
@@ -34215,6 +34244,148 @@ function v19GoalProgress(st, pid) {
   try { return clamp(k.progress(st, pid, g), 0, 1); } catch (e) { return null; }
 }
 
+/* ---------- WHAT THE OTHERS ARE AFTER (S19b) ----------
+   S19a gave every party an aim and a way to weigh its own cards against it,
+   and left each of them alone on the board. Nothing asked what the OTHERS
+   were trying to do, so six parties pursued six aims in parallel and a party
+   whose goal was being taken off it by a rival had no way to find out.
+
+   TWO CHANNELS, and the second is the one a player watches: WHICH card a
+   party plays, and WHOM it plays it at. `attack` picked its target from the
+   grudge ledger alone and fell back to the government when it held nothing
+   against anybody; `v16PactPartner` picked the nearest party by ideological
+   distance. Neither asked what the other party wanted.
+
+   A READ MUST NOT CREATE. `v19Goal` ADOPTS when a party has none, and
+   adopting calls `rand()`. One party asking about another goes through
+   `v19GoalSeen`, which returns what is stored and writes nothing: an asking
+   party that seeded a goal for the party it asked about would take numbers
+   off the stream outside the cadence and move every later draw in the
+   campaign, which is S18c's lesson standing in a new doorway. */
+function v19GoalSeen(st, pid) {
+  var a = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
+  return (a && a.goal) || null;
+}
+
+/* WHAT ONE PARTY'S AIM DOES TO ANOTHER'S. Signed: below nought the two are
+   after things that cannot both happen, above it they are pulling the same
+   way.
+
+   GOALS ONLY, AND DELIBERATELY. The grudge ledger is what was DONE and the
+   pickers below read it separately, so folding a memory into an intention
+   would count one fact twice in the two places that already read it. The
+   `oust` goal is itself adopted FROM the grudge ledger, which is why the
+   clause here is "they are after me" and there is no matching "I am after
+   them": a party's own hostile intention is already in the ledger the picker
+   reads, and what it could not see is somebody else's.
+
+   SYMMETRY IS ASSERTED, NOT ASSUMED. Four of the five clauses key on
+   `mine.ref === theirs.ref` and are symmetric by construction; `oust` is
+   asymmetric by nature and is read from the TARGET's side, which is where
+   the information is new. `roads.js` asserts both of those properties,
+   because a relation that only works one way round is this file's
+   longest-running defect and the first version of S17m's conflict check
+   passed with it. */
+/* WHAT A RIVAL'S INTENTION IS WORTH AGAINST A REMEMBERED INJURY, on the
+   grudge ledger's own 0..100 scale. SET FROM THE DISTRIBUTION IN PLAY, not by
+   eye, and the measurement is written here so the next reader cannot re-pick
+   it by eye either: over five seeds of sixty sessions the grudges present at
+   an attack decision run p50 0, p90 14, p99 43.6, max 74.6 -- mostly nothing,
+   because most parties hold nothing against most parties. A live rivalry runs
+   .45 to .85, so at 20 it scores 9 to 17: ABOVE the ninetieth percentile of
+   the grievances it competes with and well below the ninety-ninth. An
+   intention outweighs an ordinary grudge and loses to a real one, which is
+   the relationship this term is for. At 26 it outweighed everything and the
+   ledger S18e built stopped deciding anything. */
+var V19_RIVAL_PUSH = 20;
+/* THIS LAYER IS BOUGHT AT `shrewd`, AND THE MEASUREMENT IS WHY. It was first
+   set to read at `purposeful` too, at .6. Driven over eight seeds of a hundred
+   sessions the reading did nothing there and one arm of it went the wrong way:
+   `attack` was picked on 12.5% of the boards where it was open AND a rival was
+   present, against 21.5% where it was open and none was. At `ruthless` the
+   same two readings are 26.6% and 15.1%. The cause is `sharp`, not `read`: at
+   1.4 the draw over `exp(sharp * score)` is flat enough that a term worth .23
+   moves almost nothing, and at 5 the same term decides the pick. A rung whose
+   number is set so the note reads well, and which then does not do what the
+   note says, is the card that lies -- so `purposeful` is left as S19a shipped
+   it, exactly, and the reading starts where the rehearsal starts. */
+var V19_RIVAL = { aimed:.85, sameBloc:.7, sameOffice:.8, seat:.45 };
+function v19Rivalry(st, pid, other) {
+  if (!other || other === pid) return 0;
+  var mine = v19GoalSeen(st, pid), theirs = v19GoalSeen(st, other), r = 0;
+  /* THEY ARE AFTER ME. A party that has formed a standing plan to bring this
+     one out of government has given this one no grievance at all, so before
+     S19b there was no road from that plan to the party it was about. */
+  if (theirs && theirs.kind === 'oust' && theirs.ref === pid) r -= V19_RIVAL.aimed;
+  if (!mine || !theirs) return r;
+  /* A CLAUSE FOR THE SAME STATUTE WAS WRITTEN HERE AND MEASURED OUT. Two
+     parties carrying one policy the same way was the design's only source of
+     ALIGNMENT, and opposite ways its sharpest source of conflict. Across
+     25,200 party pairs it fired zero times in either direction, so the whole
+     positive half of this function went with it: every clause left is a
+     conflict, `v19Rival` reports a foe and not a friend, and there is no
+     `friend` weight in `V19_RIVAL_WORTH`. Reachable in principle is not
+     reachable in play, and a term nothing can produce is the decoration this
+     file punishes hardest. */
+  /* a bloc has one mood, and two parties courting it are courting it away
+     from each other */
+  if (mine.kind === 'ground' && theirs.kind === 'ground' && mine.ref === theirs.ref) r -= V19_RIVAL.sameBloc;
+  /* one office, one holder */
+  if (mine.kind === 'office' && theirs.kind === 'office' && mine.ref === theirs.ref) r -= V19_RIVAL.sameOffice;
+  /* and a seat at one table is finite */
+  if (mine.kind === 'enter' && theirs.kind === 'enter' && mine.ref === theirs.ref) r -= V19_RIVAL.seat;
+  return r;
+}
+
+/* THE BOARD, ONCE. Read per party per session in `v16AiTurn` and threaded
+   down, rather than recomputed inside the card loop: this is a bounded walk
+   over PARTIES with no rehearsal in it, and the rehearsal budget belongs to
+   `v19Outcome`.
+
+   THE STRONGEST RIVAL IS A DISTINCTION THIS GAME DOES NOT PRODUCE, and the
+   measurement is here so the next reader does not spend a slice on it.
+   Over ten seeds of sixty sessions, 3,600 party-sessions: 300 had exactly one
+   rival, 142 had two or more, and the number that had two of DIFFERENT
+   magnitudes was NOUGHT. Every multi-rival board is two parties trying to
+   enter the same government, which is one clause reading .45 twice. So the
+   comparison below never breaks a tie by size; it names the first of the tied
+   parties in `PARTIES` order, which is stable across seeds. `foeAt` itself is
+   read by the score term and by the constant, so the magnitude is live even
+   though the ordering is not, and a poison that reports the weakest rival
+   instead of the strongest changes nothing anywhere -- which is what that
+   poison came back saying, and this is the answer rather than a missing arm. */
+function v19Rival(st, pid) {
+  var out = { foe:null, foeAt:0 };
+  PARTIES.forEach(function (q) {
+    if (q.id === pid || (st.banned || {})[q.id]) return;
+    var r = 0;
+    try { r = v19Rivalry(st, pid, q.id); } catch (e) { r = 0; }
+    if (r < 0 && -r > out.foeAt) { out.foeAt = -r; out.foe = q.id; }
+  });
+  return out;
+}
+
+/* What a card is worth when somebody is in the way, and what it is worth when
+   somebody wants the same thing. EVERY CARD IN THE DECK CARRIES A PAIR and
+   `roads.js` fails if one arrives without one, which is the guard a hand-kept
+   list of ids can never have -- `V17_MEMORY` is in the file for the same
+   reason, after a whitelist there named an id no action carried. Nought is a
+   real answer: `platform` is a party talking to its own members and has
+   nothing to do with anybody else, and saying so is the point of covering the
+   surface instead of listing the cards that matter. */
+var V19_RIVAL_WORTH = {
+  organise: .45,   /* build against them */
+  campaign: .30,
+  court:    .45,   /* the contested bloc is reached by exactly this card */
+  attack:   .85,
+  platform: 0,     /* a party talking to its own members */
+  pact:     0,
+  article:  .20,
+  order:    .15,
+  floor:    .55,
+  demand:   .35
+};
+
 /* ---------- THE CHOOSER ----------
    What a card is worth to this party this session. Three terms: what it does
    for the goal, what it is worth in itself where the party stands, and what
@@ -34312,7 +34483,7 @@ function v19Outcome(st, pid, card) {
      which is the state this program started from wearing the other hat. */
   return Math.max(-1, Math.min(1, d / 12));
 }
-function v19Score(st, pid, card, goal) {
+function v19Score(st, pid, card, goal, rival) {
   var s = .5;
   if (goal) {
     var k = v19GoalKind(goal.kind);
@@ -34334,17 +34505,31 @@ function v19Score(st, pid, card, goal) {
      is what the two upper rungs of the setting buy. */
   var sim = v19LevelOf(st).sim || 0;
   if (sim > 0) s += sim * v19Outcome(st, pid, card);
+  /* AND WHO IS IN THE WAY. S19b: what this card is worth given the strongest
+     rival and the strongest ally on the board. `read` is nought at
+     `instinct`, where this term contributes nothing and the pick is the
+     uniform draw the game shipped with -- the scale's floor stays the shipped
+     game exactly rather than approximately, which is what R1 asks of every
+     term added to this function. */
+  var read = v19LevelOf(st).read || 0;
+  if (read > 0) {
+    if (rival === undefined || rival === null) rival = v19Rival(st, pid);
+    var rw = V19_RIVAL_WORTH[card.id];
+    if (rw !== undefined && rival.foeAt > 0) s += read * rw * Math.min(1, rival.foeAt);
+  }
   return s;
 }
 /* The pick. A weighted draw over `exp(sharp * score)`, which at sharp 0 gives
    every open card the same weight and reproduces the uniform pick the game
    shipped with -- that is what makes `instinct` the old behaviour exactly
    rather than approximately. ONE die, whatever the level. */
-function v19Choose(st, pid, open, goal) {
+function v19Choose(st, pid, open, goal, rival) {
   if (!open.length) return null;
   var sharp = v19LevelOf(st).sharp, wts = [], tot = 0;
+  /* read once for the whole open set rather than once a card */
+  if (rival === undefined || rival === null) rival = v19Rival(st, pid);
   for (var i = 0; i < open.length; i++) {
-    var w = sharp <= 0 ? 1 : Math.exp(sharp * v19Score(st, pid, open[i], goal));
+    var w = sharp <= 0 ? 1 : Math.exp(sharp * v19Score(st, pid, open[i], goal, rival));
     if (!isFinite(w) || w <= 0) w = 1e-6;
     wts.push(w); tot += w;
   }
@@ -34456,7 +34641,10 @@ function v16AiTurn(st) {
        bottom level the sharpness is nought, every weight is equal, and this
        is the same uniform draw it always was. One die either way. */
     var goal = v19Goal(st, p.id);
-    var pick = v19Choose(st, p.id, open, goal);
+    /* S19b: read the board ONCE for this party, then weigh every open card
+       against the same reading. */
+    var rival = v19Rival(st, p.id);
+    var pick = v19Choose(st, p.id, open, goal, rival);
     if (!pick) return;
     var line = null;
     try { line = pick.run(st, p.id); } catch (e) { line = null; }
@@ -34466,7 +34654,11 @@ function v16AiTurn(st) {
          it was for, so a reader can follow a party across a campaign instead
          of reading a list of unrelated events. */
       a.why = { card:pick.id, goal:goal ? goal.kind : null,
-        aim:goal ? v19GoalSay(st, p.id) : null, turn:st.turn, line:line };
+        aim:goal ? v19GoalSay(st, p.id) : null, turn:st.turn, line:line,
+        /* S19b: AND WHO IT HAD IN MIND. R2 asks the page to state the
+           reasoning, and from this slice on a party's reasoning includes the
+           other parties, so the record carries the rival it read. */
+        foe:rival.foe };
       lines.push(line);
     }
   });
@@ -35026,8 +35218,18 @@ function v16AiPanel() {
     .sort(function (a, b) { return (b.w.turn || 0) - (a.w.turn || 0); })
     .slice(0, 4)
     .map(function (r) {
-      return '<li>' + esc(r.w.line) +
-        (r.w.aim ? ' <span class="muted">' + esc(r.w.aim.charAt(0).toLowerCase() + r.w.aim.slice(1)) + '</span>' : '') +
+      /* R2, S19b: AND WHO IT HAD IN MIND. The aim answers "what is this for";
+         the rival answers "why now, and why that one", which is the half a
+         reader needs to follow a feud across a campaign rather than reading
+         each session's line on its own. Only said when the party actually
+         read somebody: printing "with nobody in its way" every session would
+         be the panel claiming a mechanism fired when it did not, which is the
+         sentence S18e had to take off this same page. */
+      var w = r.w, foe = w.foe && PARTY[w.foe] ? PARTY[w.foe].short : null;
+      return '<li>' + esc(w.line) +
+        (w.aim ? ' <span class="muted">' + esc(w.aim.charAt(0).toLowerCase() + w.aim.slice(1)) +
+          (foe ? ', with the ' + esc(foe) + ' in the way' : '') + '</span>' :
+          (foe ? ' <span class="muted">with the ' + esc(foe) + ' in the way</span>' : '')) +
         '</li>';
     }).join('');
   return '<div class="panel"><h2>What the Others Are Doing</h2>' +

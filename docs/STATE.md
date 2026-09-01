@@ -14,34 +14,62 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S19a — The parties think** is **OPEN**, and it exists because the owner read
+**S19 — The parties think** is **OPEN**, and it exists because the owner read
 S18e's merge note and said no:
 
 > "So the AI is done? I really want the game's parties to have a seriously
 > robust, very sophisticated ai with lots of logic and capabilities"
 
-They were right twice. S18e fixed WHEN a party acts and left the decision a
-coin flip -- `open[Math.floor(rand() * open.length)]` at what is now
-vale.html:34350 -- with nothing in the model saying what a party was TRYING to
-do. And the first answer I proposed, one goal and a hand-written worth table,
-was itself too shallow: the owner said so, and the file already contained a
-working simulator I had ignored.
+**`docs/PLAN-S19.md` is the program's anchor** and holds the two rulings, the
+findings, the architecture as a call graph, and the four rules that
+architecture imposes on anything added to it. R1: AI sophistication gets its
+OWN difficulty setting, independent of the existing scale. R2: the Parties
+page states the aim and the reasoning. Both shipped in S19a.
 
-**`docs/PLAN-S19.md` is the program's anchor** and holds the two rulings. R1:
-AI sophistication gets its OWN difficulty setting, independent of the existing
-scale. R2: the Parties page states the aim and the reasoning.
+**Four of the seven reasoning layers are built.** S19a (PR #92) gave goals held
+across sessions, deliberation by rehearsal against a party-facing objective,
+and floor arithmetic that acts only when a vote is going against the party.
+S19b adds opponent modelling. Still to come: bargaining between parties,
+temperament, and reaction between scheduled turns. `docs/MAP.md` carries a
+section for each.
 
-Three of the seven reasoning layers are built: goals held across sessions,
-deliberation by rehearsal against a party-facing objective, and floor
-arithmetic that acts only when a vote is going against the party. Still to
-come: opponent modelling, bargaining between parties, temperament, and
-reaction between scheduled turns. `docs/MAP.md` carries the section.
+**S19b — A party knows who is in its way** is the current branch.
 
-**Six times in this slice the measurement corrected the design.** The full
-list is in MAP.md; the sharpest is that three poisons stayed GREEN because the
-arms read the machinery's internals rather than its effect, and one of them
-read `againstMe` straight from the picker, so a build hard-coding that field
-true passed while behaving no differently.
+S19a left every party alone on the board: nothing asked what the OTHERS were
+after, so six parties pursued six aims in parallel and a party whose goal was
+being taken off it by a rival had no way to find out. A party now reads the
+standing aims of the others and answers the one in its way -- in WHICH card it
+plays, through a term in `v19Score` weighted per card, and in WHOM it plays it
+at, through the `attack` target picker. Driven at ruthless over twelve seeds of
+a hundred sessions, `attack` goes on 26.6% of the boards where it is open and a
+rival is present against 15.1% where none is, and `court` on 80% of the boards
+where another party is courting the same bloc against 55.9% elsewhere.
+
+**The measurement deleted half the design and moved the other half up a rung.**
+The ally side -- an alignment term, a `friend` weight on every card, a pact
+that went to whoever wanted the same thing -- rested on one clause, two parties
+carrying the same statute the same way, and over 25,200 party pairs it fired
+ZERO times in either direction. It is reachable in principle and unreachable in
+play, so `v19Rival` reports a foe and no friend and `v16PactPartner` is the
+shipped line unchanged. And the layer first read at `purposeful` too: driven,
+it did nothing there and one arm ran backwards, because at a sharpness of 1.4
+the draw is flat enough that the term cannot move it. `purposeful` is left as
+S19a shipped it, exactly, which is why **the six-seed pacing A/B is
+byte-identical across all three lengths** -- the default campaign takes the
+path this slice did not touch.
+
+**Three faults in the probe before any in the game, and one arm missing until
+the poison run said so.** The panel arm read `a.why` as a snapshot once at the
+end where every later initiative overwrites it, so a signal present on a tenth
+of party-sessions read nought on a correct build. The chooser arm's first
+statistic saturated at 94%, because eight of the ten cards carry a weight. Its
+control was `instinct`, where `v19Goal` returns null, so no party has an aim
+and the control read n=0. And every arm in the assertion called a function --
+none went through `v19Choose` -- so forcing an empty board into the chooser
+left all eight green while every real pick in the game lost the term.
+Seventeen poisons from the diff, sixteen redden it; the one that stays green is
+"report the weakest rival instead of the strongest", and the answer is that of
+3,600 party-sessions not one ever had two rivals of different magnitudes.
 
 **S18e — The AI actually acts** shipped as PR #91. S18a through S18d are merged
 (PRs #87, #88, #89, #90).
