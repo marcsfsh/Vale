@@ -251,8 +251,33 @@ swept, because one card sits high in most goal tables and is open in nearly
 every posture. A leaning shifts shares, so shares are what a later slice
 should measure.
 
-**S19f — Reaction between scheduled turns.** Held to last deliberately. It
-touches `V16_AI_CADENCE`, the dial the owner swept, and `v18TempoOdds`
-normalises against a total that dial sets. The S18e comment records what
-moving it costs: six parties acting every session took the harness from 5.5
-elections won to 1.2.
+**S19f — Reaction between scheduled turns.** SHIPPED, and held to last
+deliberately: it touches `V16_AI_CADENCE`, the dial the owner swept, and
+`v18TempoOdds` normalises against a total that dial sets. The S18e comment
+records what moving it costs — six parties acting every session took the
+harness from 5.5 elections won to 1.2 — so the dial is BORROWED from and never
+added to. A party whose grievance rises acts without waiting for its tempo
+roll, aims what it does at the provoker, and the next session it would have
+used pays the go back. The wait from provocation to answer falls from a mean
+of 2.5 sessions, as late as 9, to 0.25. `docs/MAP.md` carries the section.
+
+**Its lesson is about the instrument, and it is the same one the pacing
+correction taught an hour earlier.** The budget was checked as a TOTAL, which
+read 3 to 8 per cent low; three separate placements of the charge moved it not
+at all, because all three asked where to book the debt and none asked whether
+one was owed. Measured per seed the total runs -7.9% to +19.7%, so every
+reading that drove those rewrites was one sample from a band twenty points
+wide. What is provable is the LEDGER — 154 borrowed, 154 repaid, none
+outstanding — and that the charge is earned: 226 reactions, 154 charged,
+because an answer the party's own tempo would have granted anyway must cost
+nothing.
+
+**THE S19 PROGRAM IS COMPLETE.** Six slices, all seven reasoning layers
+addressed: goals held across sessions, deliberation by rehearsal, floor
+arithmetic (S19a); opponent modelling (S19b); reachable aims (S19c);
+manifesto voting, and the bargaining question settled as a finding (S19d);
+temperament (S19e); reaction between scheduled turns (S19f). What is left open
+is recorded above as a finding rather than a slice: four of the seven goals
+have no road, and whether an engine party should be able to enter a
+government, take an office or bring one down is a question about the REPUBLIC
+rather than about the AI, and it is the owner's to open.
