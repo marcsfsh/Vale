@@ -1264,6 +1264,56 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## Easy is a cakewalk, not a coronation (S20d)
+
+The owner: *"very easy mode should not make it so that it is incredibly easy to
+build a landslide unopposable government within the first few elections. very
+easy mode should make it feel easy to play the game at a high level at a
+continued pace."* A skilled player's resources and margins, with the game still
+happening -- and what was there instead removed the game.
+
+**NOTHING MEASURED THIS TIER.** `roads.js` deliberately switches away from
+`easy` and `tools/pacing.js` could not select a difficulty at all. The tier the
+owner actually plays was the one no harness ever looked at, which is how six
+overrides in the legislature and a dead income formula survived. `VALE_DIFF`
+selects one now, and the tier's own arm runs in `roads.js`.
+
+- **The income formula was dead.** `capFloor:150` sat against a tier whose own
+  `capitalIncome` produces a mean of **46.9**, so income was the floor on
+  **100% of sessions** -- mean, min and max all exactly 150 -- and all thirteen
+  terms were decoration. `capMult` carries the generosity now (mean 98, range
+  45 to 119) and the floor is **55**, chosen off the distribution: swept, it
+  binds on 0.3% of sessions at 45, **7.2% at 55** and 13.1% at 65. A floor that
+  never binds is decoration; one that always binds is the answer; this is
+  neither.
+- **The street was arithmetically impossible.** Heat is
+  `anger + restive - guard`; `anger` is `max(0, 50 - bloc)` and caps at 50;
+  `restive` is `unrest - 35` and easy's `unrest:.35` held unrest at a mean of
+  4.7. The greatest heat the tier could ever reach was **20 against a bar of
+  22** -- measured at 20.1 with every bloc driven to 8, and the street never
+  spoke in any campaign. That is S17q's lesson (a bar the game never reaches)
+  arriving through a TERM rather than through the bar.
+- **AND A FLOOR ON `restive` WAS DRAFTED HERE AND MEASURED OUT.** Isolated over
+  the same runs: the tier's multipliers alone take the peak from 16.9 to 31.9
+  and the street speaks; the floor alone reaches 22.1 and it does not; and the
+  floor on top of the multipliers changes **nothing at all**, because at peak
+  heat unrest is already above where it would bite. Its poison came back green.
+  Deleted rather than shipped, as S17r deleted two of its own.
+- **The landslide term.** `incumbent:.12` was the largest term in the vote
+  model and no player action feeds it. At `.05`, easy's elections per ten
+  sessions fall from **0.73 / 0.37 / 0.18 to 0.40 / 0.20 / 0.10 — exactly
+  normal's rhythm** — while crises move only inside their own spread.
+- **Engine purses breathe.** `purseMult:3.6` pinned all seven party purses at
+  the 2,000 ceiling in the owner's save, so the `ruthless` setting he chose had
+  no money-shaped way left to express itself. At 2 they move again.
+- **And the card no longer lies.** The blurb promised *"two houses that pass
+  whatever you send them"*, which S20a made false.
+- Everything stays a TILT in the direction it always was, and a safe seat is
+  still safe: `noCollapse` is untouched. What went is the CONSTANT.
+- Assertion `easy is a cakewalk, not a coronation`, five readings, **eight
+  poisons from the diff, all eight redden**. Five older assertions that pinned
+  the tier's old numbers were re-derived rather than renumbered.
+
 ## The party board has a tempo (S20c)
 
 The owner's save is one verb pressed 411 times. `poach` is **60.2% of every

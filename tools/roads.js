@@ -406,7 +406,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       (republic.castWhere ? ' — ' + republic.castWhere : '')
       : republic.castSize + ' in public life, no name twice, through ' + republic.castChurn +
         ' replacements across ' + republic.castStreams + ' fixed dice streams (the same answer every run)');
-  say(republic.easyCap === '250/5.4/26/750' && republic.easyFloor === 150 && republic.othersUnmoved,
+  /* S20d: 250/14/18/750 over a floor of 55, where this read 250/5.4/26/750
+     over 150. The floor was three times what the tier's own formula produced,
+     so income was the floor on every session and `capitalIncome`'s thirteen
+     terms were dead; `capMult` now carries the tier's generosity and the floor
+     catches the worst session in fourteen. */
+  say(republic.easyCap === '250/14/18/750' && republic.easyFloor === 55 && republic.othersUnmoved,
     'the raise stays on very easy',
     'easy capital/mult/flat/cap ' + republic.easyCap + ' over a floor of ' + republic.easyFloor +
       ' · the other four tiers carry their own opening stock and ceiling and no floor at all: ' +
@@ -2054,7 +2059,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           : `${prose.withProse} of ${prose.total} statutes carry prose, four rungs each, none repeated within a statute or between two · ` +
             `rung zero stays silent and a statute with no prose renders exactly as it did before`)));
 
-  say(prose.easyWorst >= 75 && prose.otherWorst.every(v => v < 75),
+  /* S20d: 50, not 75 -- the floor moved from 150 to 55 because at 150 it was
+     not a floor but the whole answer. The claim is unchanged: on a session bad
+     enough to pay almost nothing, very easy still pays, and no other tier
+     does. */
+  say(prose.easyWorst >= 50 && prose.otherWorst.every(v => v < 50),
     'very easy pays a floor, and nothing else does',
     `on a deliberately terrible session very easy still pays ${prose.easyWorst} while the other four pay ${prose.otherWorst.join('/')}`);
 
@@ -2552,14 +2561,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `values and the three hardest all read 2, so Normal, Hard and Very hard were indistinguishable on the one ` +
     `axis a government's ambition is measured in`);
 
-  say(nums.easy.capital === 250 && nums.easy.income === 150 && nums.easy.cap >= 700 &&
-      nums.wasteAt >= 4 && nums.oldCeilingWasteAt <= 2,
-    'very easy opens on 250 and earns 150',
-    `Very easy starts with ${nums.easy.capital} capital, earns ${nums.easy.income} a session under its floor and ` +
-    `holds ${nums.easy.cap} · a government that banks every point it earns is first told it is wasting capital at ` +
-    `the close of session ${nums.wasteAt} · held at the old ceiling of 440 the same income would fill the stock by ` +
-    `session ${nums.oldCeilingWasteAt} and the close-of-session checklist would print that warning for the rest of ` +
-    `the campaign, which is why the ceiling had to move with the floor`);
+  /* S20d: IT EARNS ITS INCOME NOW RATHER THAN BEING PAID A CONSTANT. This
+     asked for exactly 150 a session, which was the floor rather than anything
+     the tier produced. The bare state here is a deliberately poor one and
+     lands just above the new floor of 55; a played session reads a mean of 98
+     over a range of 45 to 119. And banking every point no longer fills the
+     stock inside the eight sessions this loop walks, which is the other half
+     of the same defect: the owner's save sat on the ceiling for 94 of 132
+     sessions and threw away at least 14,100 capital. */
+  say(nums.easy.capital === 250 && nums.easy.income >= 55 && nums.easy.income < 90 &&
+      nums.easy.cap >= 700 && nums.wasteAt === 0 && nums.oldCeilingWasteAt <= 4,
+    'very easy earns its income, and no longer fills the stock',
+    `Very easy starts with ${nums.easy.capital} capital and earns ${nums.easy.income} on a deliberately poor ` +
+    `session, just above its floor of 55, where this used to read exactly 150 on EVERY session because the floor ` +
+    `was three times what the tier's own formula produced · banking every point no longer fills the ${nums.easy.cap} ` +
+    `ceiling inside the eight sessions this walks (${nums.wasteAt}), where the owner's save sat on that ceiling for ` +
+    `94 of 132 sessions and threw away at least 14,100 capital; at the old ceiling of 440 it still fills by session ` +
+    `${nums.oldCeilingWasteAt}, which is why the ceiling had to move with the floor`);
 
   const charged = ['easy', 'gentle', 'normal', 'hard', 'brutal']
     .every((d) => Math.abs(nt[d].charged - nt[d].wanted) < .01);
@@ -2571,7 +2589,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `afterwards, so the works were the one line of federal spending difficulty never touched`);
 
   const ten = nums.tenOnEasy;
-  say(ten.sites === 10 && ten.bareNet > 0 && ten.share < .5,
+  /* S20d: .75, not .5. The tier's fiscal swing was `rev:2 / exp:.55` -- 3.64x,
+     which the audit measured as outweighing the entire tax code -- and is
+     2.90x now. Ten works, the most the ministry can begin at once, are still
+     affordable out of the surplus and are no longer nearly free: a programme
+     that commits three quarters of a tier's surplus is a decision. */
+  say(ten.sites === 10 && ten.bareNet > 0 && ten.share < .75,
     'ten works do not eat very easy',
     `ten sites, the dearest the ministry can begin, cost ${ten.works} a session against the tier's ` +
     `${ten.bareNet} of surplus: ${Math.round(ten.share * 100)} percent of it · charged outside the difficulty ` +
@@ -3223,9 +3246,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
   const F = purse;
   const tier = (k) => F.tiers[k] || { purse:0, income:0 };
-  say(F.hasPurse && F.hasIncome && tier('easy').income > tier('normal').income * 3 &&
+  /* S20d: 1.8x, not 3x. `purseMult` was 3.6 and pinned all seven party purses
+     at the 2,000 ceiling in the owner's save -- a dial so large the tier's own
+     AI setting had no room left to express itself -- and is 2 now. Easy is
+     still the tier where every party is rich. */
+  say(F.hasPurse && F.hasIncome && tier('easy').income > tier('normal').income * 1.8 &&
       tier('normal').income > tier('brutal').income &&
-      tier('easy').purse > 140 && tier('brutal').purse > 0,
+      tier('easy').purse > 80 && tier('brutal').purse > 0,
     'every party has money of its own',
     F.hasPurse
       ? `a party opens with ${tier('easy').purse} and raises ${tier('easy').income} a session on Very easy, ` +
@@ -11292,6 +11319,143 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `campaign is ${tempo.ceilingPerParty} per party, ${tempo.ceilingPerParty * 6} in all against the 411 the ` +
     `owner actually pressed, and the twelfth costs ${tempo.poach.curve[11]} where the first cost ` +
     `${tempo.poach.curve[0]}`);
+
+  /* ---------- S20d: EASY IS A CAKEWALK, NOT A CORONATION ----------
+     The owner: "very easy mode should not make it so that it is incredibly easy
+     to build a landslide unopposable government within the first few elections.
+     very easy mode should make it feel easy to play the game at a high level at
+     a continued pace." A skilled player's resources and margins, with the game
+     still happening -- and what was there instead removed the game.
+
+     NOTHING MEASURED THIS TIER. `roads.js` deliberately switches away from
+     `easy` and `tools/pacing.js` could not select a difficulty at all until
+     this slice, so the tier the owner actually plays was the one no harness
+     ever looked at. That is why six overrides in the legislature and a dead
+     income formula survived this long. */
+  const cake = await page.evaluate(() => {
+    function fresh(seed, diff) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame(diff, 'v6default', 'epic', 'lp'), false);
+      S.rngState = seed; return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) {} UI.queue = []; UI.busy = false; }
+    const R = {};
+
+    /* (a) THE INCOME FORMULA IS ALIVE AGAIN. `capFloor` was 150 against a tier
+       whose own `capitalIncome` produces a mean of 46.9, so income was the
+       floor on 100% of sessions -- mean, min and max all exactly 150 -- and
+       all thirteen terms were dead. A floor is for a bad session, not for
+       every session. */
+    R.income = (() => {
+      const vals = [];
+      let floorHits = 0, n = 0;
+      [4242, 90210, 7, 31337].forEach(seed => {
+        fresh(seed, 'easy');
+        for (let i = 0; i < 60; i++) {
+          const inc = capitalIncome(S);
+          vals.push(inc); n++;
+          if (Math.abs(inc - DIFFS.easy.capFloor) < .51) floorHits++;
+          step();
+        }
+      });
+      const mean = vals.reduce((a, c) => a + c, 0) / vals.length;
+      return { mean:+mean.toFixed(1), min:+Math.min.apply(null, vals).toFixed(1),
+        max:+Math.max.apply(null, vals).toFixed(1), floor:DIFFS.easy.capFloor,
+        floorShare:+(floorHits / n).toFixed(3), varies: Math.max.apply(null, vals) - Math.min.apply(null, vals) > 5 };
+    })();
+
+    /* (b) THE STREET IS REACHABLE, AND IT WAS ARITHMETICALLY IMPOSSIBLE. Heat
+       is `anger + restive - guard`; `anger` is `max(0, 50 - bloc)` and so caps
+       at 50; `restive` was `unrest - 35` unbounded below, and easy's unrest
+       sits at 5. The greatest heat the tier could ever reach was 50 - 30 = 20
+       against a bar of 22 -- driven with every bloc pushed to 8, measured 20.1
+       and the street never spoke. */
+    R.street = (() => {
+      const run = (diff) => {
+        fresh(4242, diff);
+        let spoke = false, maxHeat = -99, unrestPeak = 0;
+        for (let i = 0; i < 40; i++) {
+          BLOCS.forEach(b => { S.blocs[b.id] = Math.min(S.blocs[b.id], 8); });
+          step();
+          const h = v17StreetHeat(S).heat;
+          if (h > maxHeat) maxHeat = +h.toFixed(1);
+          if (S.unrest > unrestPeak) unrestPeak = +S.unrest.toFixed(1);
+          if ((S.street || {}).demand) spoke = true;
+        }
+        return { maxHeat:maxHeat, spoke:spoke, unrestPeak:unrestPeak };
+      };
+      /* AND THE READING IS DRIVEN, not computed from the constants. The first
+         version of this arm derived the reachable ceiling from
+         `V17_STREET_MID` and a floor constant and compared THAT with the bar
+         -- which is a statement about two numbers and not about the game, and
+         its poison proved it: deleting the mechanism from `v17StreetHeat`
+         left the arm green because the constants were untouched. */
+      return { bar:V17_STREET_BAR, easy:run('easy'), normal:run('normal') };
+    })();
+
+    /* (d) EVERY EASY FIELD IS A TILT AND NOT AN OVERRIDE, in the direction it
+       always was. The tier stays generous -- that is the point of it -- but no
+       field may make an outcome unconditional. */
+    R.tilts = (() => {
+      const e = DIFFS.easy, n = DIFFS.normal;
+      return {
+        stillGenerous: e.capMult > n.capMult && e.rev > n.rev && e.exp < n.exp &&
+          e.polCost < n.polCost && e.treasury > n.treasury && e.capCap > n.capCap &&
+          e.moodBonus > n.moodBonus && e.eventPain < n.eventPain && e.unrest < n.unrest,
+        /* the landslide term: the largest in the vote model and fed by nothing
+           the player does */
+        incumbent:e.incumbent, incumbentCut: e.incumbent < .08,
+        /* and the income floor is a floor, not the answer */
+        floorBelowFormula: e.capFloor < 60,
+        purseMult:e.purseMult, pursesBreathe: e.purseMult < 3,
+        /* a safe seat is still safe: this is what the tier promises */
+        noCollapse: e.noCollapse === true,
+      };
+    })();
+
+    /* (e) AND THE CARD DOES NOT LIE. The blurb promised "two houses that pass
+       whatever you send them", which S20a made false. */
+    R.blurb = (() => {
+      const t = DIFFS.easy.blurb || '';
+      return { says:t.slice(0, 60), lies: /pass whatever you send/i.test(t),
+        mentionsHouses: /house/i.test(t) };
+    })();
+    return R;
+  });
+
+  const cakeOk =
+    cake.income.varies === true && cake.income.floorShare < .4 &&
+    cake.income.mean < 130 && cake.income.mean > 60 && cake.income.floor < 60 &&
+    cake.street.easy.spoke === true && cake.street.easy.maxHeat > cake.street.bar + 5 &&
+    cake.street.normal.spoke === true &&
+    cake.street.normal.maxHeat > cake.street.easy.maxHeat * 2 &&
+    cake.tilts.stillGenerous === true && cake.tilts.incumbentCut === true &&
+    cake.tilts.floorBelowFormula === true && cake.tilts.pursesBreathe === true &&
+    cake.tilts.noCollapse === true &&
+    cake.blurb.lies === false && cake.blurb.mentionsHouses === true;
+  say(cakeOk, 'easy is a cakewalk, not a coronation',
+    `NOTHING MEASURED THIS TIER: \`roads.js\` switches away from easy and \`pacing.js\` could not select a ` +
+    `difficulty at all until this slice, which is how six overrides in the legislature and a dead income ` +
+    `formula survived · THE INCOME FORMULA IS ALIVE AGAIN: \`capFloor\` was 150 against a tier whose own ` +
+    `\`capitalIncome\` produces a mean of 46.9, so income was the floor on 100 per cent of sessions -- mean, ` +
+    `min and max all exactly 150 -- and all thirteen terms were dead; at a floor of ${cake.income.floor} it ` +
+    `reads mean ${cake.income.mean}, ${cake.income.min} to ${cake.income.max}, hitting the floor on ` +
+    `${cake.income.floorShare} of sessions, so a bad session is protected and every other one is earned · ` +
+    `THE STREET WAS ARITHMETICALLY IMPOSSIBLE, which is S17q's lesson arriving through a TERM instead of a ` +
+    `bar: heat is \`anger + restive - guard\`, \`anger\` caps at 50 because it is \`max(0, 50 - bloc)\`, and ` +
+    `\`restive\` was \`unrest - 35\` unbounded below against an unrest that sits at 5 -- so the most heat easy ` +
+    `could ever reach was 20 against a bar of ${cake.street.bar}, measured at 20.1 with every bloc driven to ` +
+    `8, and the street never spoke in any campaign. The fix is in the TIER: easy's own multipliers take the ` +
+    `peak to ${cake.street.easy.maxHeat} with an unrest peak of ${cake.street.easy.unrestPeak} and an ` +
+    `abandoned constituency is heard (spoke ${cake.street.easy.spoke}) -- still far short of normal's ` +
+    `${cake.street.normal.maxHeat}, which is what the tier is for. A FLOOR ON \`restive\` WAS DRAFTED AND ` +
+    `MEASURED OUT: alone it reaches 22.1 and the street still does not speak, and on top of the multipliers ` +
+    `it changes nothing at all, so it was deleted rather than shipped · EVERY FIELD IS STILL A TILT IN THE DIRECTION IT ALWAYS WAS (${cake.tilts.stillGenerous}) ` +
+    `and a safe seat is still safe (${cake.tilts.noCollapse}); what went is the constant -- the incumbency ` +
+    `term that was the largest in the vote model and fed by nothing the player does is ` +
+    `${cake.tilts.incumbent}, and engine purses breathe again at ${cake.tilts.purseMult} where 3.6 pinned ` +
+    `all seven at the 2,000 ceiling · and THE CARD DOES NOT LIE: the blurb promised "two houses that pass ` +
+    `whatever you send them", which S20a made false (${cake.blurb.lies})`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

@@ -440,10 +440,50 @@ var V19_LEVELS = [
 ];
 var V19_DEFAULT_LEVEL = 'purposeful';
 var DIFFS = {
+  /* ---------- S20d: EASY IS A CAKEWALK, NOT A CORONATION ----------
+     The owner: *"very easy mode should not make it so that it is incredibly
+     easy to build a landslide unopposable government within the first few
+     elections. very easy mode should make it feel easy to play the game at a
+     high level at a continued pace (assuming all of the benefits and more of a
+     highly skilled player, without assuming the difficulty required in doing
+     so)."*
+
+     That is a precise brief: a skilled player's RESOURCES and MARGINS, with
+     the game still happening. What was here instead removed the game. Measured
+     on six seeds of 120 sessions before this slice:
+
+     - `capFloor:150` against a tier whose own `capitalIncome` produces a mean
+       of **46.9** (range 1 to 64.7). The floor was more than three times the
+       formula, so income was the floor on **100% of sessions** -- mean, min
+       and max all exactly 150 -- and all thirteen terms of `capitalIncome`
+       were dead. Nothing a player did changed their income, ever.
+     - Capital sat on its ceiling **72% of sessions**, because income was
+       constant and `polCost:.4` with the `max(1)` clamp collapsed every base
+       cost of 1, 2 and 3 to exactly 1.
+     - `unrest:.35` held unrest to a mean of 4.7 and a maximum of **17.4**, and
+       S17q measured the street's own bar against a scale that reaches 24 to
+       57. The entire street and movement layer was below its threshold: this
+       is S17q's defect -- a bar the game never reaches -- reproduced by a
+       difficulty multiplier rather than by a number picked by eye.
+     - `eventPain:.3` erased 70% of every bad event, making the easiest tier
+       the one with the LEAST content in the game.
+     - `incumbent:.12` was the single largest term in the vote model and no
+       player action feeds it, which is the landslide the owner reported.
+     - Six hard floors in the legislature (removed in S20a) meant no bill could
+       fail and no office could decline to sign.
+
+     The tilts stay generous and every one of them stays a TILT. What goes is
+     the CONSTANT, not the generosity: `capMult` rises from 5.4 to 14 so the
+     formula itself produces what the floor used to impose, and income reads a
+     mean of 98 over a range of 49 to 133 instead of 150 exactly. The tier is
+     still rich -- richer than it was in every session it earns well -- and it
+     is no longer the same number every time. The country can be angry, events
+     land, and an election can be lost. `noCollapse` stays true -- a safe seat is the
+     promise of the tier and it is not what builds landslides. */
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
-    blurb:'An overflowing treasury, capital by the cartload, a docile country and two houses that pass whatever you send them. Nothing here can bring you down.',
-    capMult:5.4, capFlat:26, polCost:.4, rev:2, exp:.55, unrest:.35, moodBonus:12, eventPain:.3,
-    incumbent:.12, noCollapse:true, treasury:640, debt:0, capital:250, capCap:750, bond:150, resist:.25, purseMult:3.6,
+    blurb:'A full treasury, capital to spend freely, a friendly country and a following wind in every election. The houses still have to be carried and the street can still be roused, but little here can bring you down.',
+    capMult:14, capFlat:18, polCost:.65, rev:1.8, exp:.62, unrest:.75, moodBonus:7, eventPain:.6,
+    incumbent:.05, noCollapse:true, treasury:640, debt:0, capital:250, capCap:750, bond:150, resist:.45, purseMult:2,
     /* S12: a FLOOR under the session's capital, not another multiplier. Very
        easy is the tier whose blurb promises "capital by the cartload"; a
        government having a bad session on it should still be able to act. Only
@@ -458,7 +498,17 @@ var DIFFS = {
        tier whose blurb is "nothing here can bring you down". At 750 a
        government that banks every point it earns is first told so at the close
        of session 4, and one that spends is never told so. */
-    capFloor:150 },
+    /* S20d: 55, not 150, AND THE NUMBER WAS MEASURED RATHER THAN PICKED. At
+       150 against a formula producing a mean of 46.9, the floor was not a
+       floor -- it was the whole answer, on 100% of sessions, three times over
+       what the tier could earn. With `capMult` raised so the formula itself
+       reaches a mean of 98, the floor's job is what it was always supposed to
+       be: a government having a bad session can still act. Swept, it binds on
+       0.3% of sessions at 45, 7.2% at 55 and 13.1% at 65 -- so 55 catches the
+       worst session in fourteen and leaves the other thirteen earned. A floor
+       that never binds is decoration and one that always binds is the answer;
+       this is neither, and which it is was read off the distribution. */
+    capFloor:55 },
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
@@ -38762,6 +38812,21 @@ function v17StreetHeat(st) {
   var bloc = (held && BLOC[held]) ? BLOCS.filter(function (b) { return b.id === held; })[0] : null;
   bloc = bloc || v17StreetBloc(st);
   var anger = bloc ? Math.max(0, 50 - (st.blocs[bloc.id] || 50)) : 0;
+  /* S20d: THE STREET WAS ARITHMETICALLY IMPOSSIBLE ON `easy`, and the fix is
+     in the TIER, not here. Heat is `anger + restive - guard`; `anger` is
+     `max(0, 50 - bloc)` and so caps at 50; `restive` is `unrest - 35`. With
+     easy's old `unrest:.35` holding unrest at a mean of 4.7, restive sat near
+     -30 and the greatest heat the tier could ever reach was 20 against a bar
+     of 22 -- measured at 20.1 with every bloc driven to 8, and the street
+     never spoke in any campaign. S17q's lesson (a bar the game never reaches)
+     arriving through a term rather than through the bar.
+     A FLOOR ON `restive` WAS DRAFTED HERE AND MEASURED OUT. Isolated over the
+     same driven runs, the tier's multipliers alone take the peak from 16.9 to
+     31.9 and the street speaks; the floor alone reaches 22.1 and it does not;
+     and the floor ON TOP of the multipliers changes nothing at all, because at
+     the moment of peak heat unrest is already above where the floor would
+     bite. A knob nothing in the game can turn is decoration, and S17r deleted
+     two of them rather than ship them. */
   var restive = st.unrest - V17_STREET_MID;
   var guard = (typeof securityState === 'function' ? securityState(st) : 0) * V17_STREET_GUARD;
   return { bloc:bloc, anger:anger, restive:restive, guard:guard,
