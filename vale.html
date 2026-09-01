@@ -38239,6 +38239,28 @@ var V17_CARETAKER_MAX = 3;   /* sessions a caretaker may hold office */
    the largest parties are usually the ones furthest apart. */
 var V17_UNBRIDGEABLE = 1.15;
 var V17_SUPPLY_RELIEF = 22;  /* not joining is a much smaller thing to ask */
+/* S21e — HOW HARD A FORMATEUR IS TRYING.
+
+   MEASURED FIRST, over 377 formations and 2,623 accept decisions across six
+   seeds: **every offer in the game is the same shape.** Three concessions, ONE
+   distinct value, on every invitation to every party by every formateur in
+   every round. A formation is a negotiation in which nobody negotiates: the
+   offer is a constant and the only thing that varies is who is being handed
+   it.
+
+   `generosity` is what a formateur is willing to pay, and it moves ONE thing
+   -- how many concessions the offer carries. It is not a new currency and it
+   does not touch the offices or the portfolios, which are already read off the
+   invitee's share.
+
+   AND THE RANGE IS SET AGAINST THE DECISION IT HAS TO MOVE, not by eye. A
+   concession is worth 5 in `v17Accept`, the accepted median clears its
+   reservation by +14 and the refused median misses by -18, and 1,455 of the
+   2,623 refusals sit within twenty points. So two concessions either side of
+   the current three is worth +/-10 -- enough to turn a near-miss, not enough
+   to buy a party that is genuinely far away, and nothing at all to the 641
+   refusals that are `far` and refuse at any price. */
+var V17_GENEROSITY = { min:1, base:3, max:5 };
 
 /* Ruling 8, in one function: a party's weight in a formation is what it holds
    across the ELECTED bodies after the renewal. An appointed Senate is not an
@@ -38279,24 +38301,44 @@ function v17PostureOf(st, pid) {
    the invitee brings, and two concessions off its own list of wants -- the
    same shape S17e writes into `coalitionDeals.terms`, so what is agreed at
    the table is what the agreement afterwards says. */
-function v17Offer(st, lead, pid, co) {
+function v17Offer(st, lead, pid, co, gen) {
   var tot = 0;
   co.forEach(function (x) { tot += v17Weight(st, x); });
   var share = tot ? v17Weight(st, pid) / tot : 0;
-  var wants = pv5TopWants(pid, st, 4);
-  /* S17g: two things the government will DO and one it will NOT. A promise to
+  /* S21e: HOW MANY THINGS THE FORMATEUR IS WILLING TO PROMISE. `gen` is a
+     count, defaulting to the three every offer in the game used to carry --
+     measured, three was not the usual number, it was the ONLY number, on every
+     invitation by every formateur in every round. `pv5TopWants` is asked for
+     what the widest offer could need, and the offer takes the first `gen` of
+     them, so a meaner offer is a PREFIX of a more generous one rather than a
+     different set: two formateurs bidding for the same party are then bidding
+     over the same things, which is what makes the number a price. */
+  var want = Math.max(V17_GENEROSITY.min,
+    Math.min(V17_GENEROSITY.max, (gen === undefined || gen === null) ? V17_GENEROSITY.base : gen));
+  var wants = pv5TopWants(pid, st, want + 2);
+  /* S17g: things the government will DO and one it will NOT. A promise to
      leave a statute alone is the cheapest thing to give and the easiest to
-     break, which is what makes it worth writing down. */
-  var cs = wants.slice(0, 2).map(function (w) { return v21Concede(st, w.id); });
-  var rub = (typeof v17Friction === 'function' ? v17Friction(st, pid, lead) : []).filter(function (r) {
-    return !cs.some(function (c) { return c.ref === r.id; });
-  })[0] || wants[3];
-  if (rub) cs.push({ kind:'refrain', ref:rub.id, due:null, met:false, broken:false });
-  return { to:pid, from:lead, share:share,
+     break, which is what makes it worth writing down. The refrain is the LAST
+     thing offered, so the leanest offer is a promise to act rather than a
+     promise to abstain -- a party bought with one concession is bought with
+     something it wanted done. */
+  var cs = wants.slice(0, Math.max(1, want - 1)).map(function (w) { return v21Concede(st, w.id); });
+  if (cs.length < want) {
+    var rub = (typeof v17Friction === 'function' ? v17Friction(st, pid, lead) : []).filter(function (r) {
+      return !cs.some(function (c) { return c.ref === r.id; });
+    })[0] || wants[want];
+    if (rub) cs.push({ kind:'refrain', ref:rub.id, due:null, met:false, broken:false });
+  }
+  /* the red line is the party's own and does not move with the price: it is
+     the thing it exists to defend, not a thing being traded */
+  var line = wants.filter(function (w) {
+    return !cs.some(function (c) { return c.ref === w.id; });
+  })[0];
+  return { to:pid, from:lead, share:share, generosity:want,
     portfolios:Math.max(1, Math.round(share * 6)),
     offices:share >= .22 ? 1 : 0,
     concessions:cs,
-    redLines:wants[2] ? [wants[2].id] : [] };
+    redLines:line ? [line.id] : [] };
 }
 /* WHETHER IT ACCEPTS. A party joins a government when what it is being given
    is worth more to it than sitting the term out -- and what sitting it out is
@@ -38351,7 +38393,7 @@ function v17Accept(st, pid, lead, offer, relax, pin) {
    with -- distance first, its own grudges second -- until the Assembly
    majority is reached, and then TRIMS: a coalition carries nobody it does not
    need, because every extra partner is another veto for nothing. */
-function v17Build(st, lead, relax, pin) {
+function v17Build(st, lead, relax, pin, gen) {
   var maj = v17Majority(st), have = st.seats[lead] || 0;
   var co = [lead], offers = {}, answers = [];
   var pool = v17Eligible(st).filter(function (x) { return x !== lead; }).sort(function (a, b) {
@@ -38360,7 +38402,24 @@ function v17Build(st, lead, relax, pin) {
     return (ka - kb) || (v15Hash(a) - v15Hash(b));
   });
   for (var i = 0; i < pool.length && have < maj; i++) {
-    var offer = v17Offer(st, lead, pool[i], co.concat([pool[i]]));
+    /* S21e: AND WHAT IT PAYS DEPENDS ON WHO IT IS ASKING AND HOW BADLY. A
+       formateur that still needs a lot of seats bids high; one that needs a
+       handful bids low; and a party it has a real quarrel with costs more than
+       one it merely disagrees with. `v17Friction` is the same reading the
+       refrain has used since S17g -- how many statutes the two tables put on
+       opposite sides -- so the price is the distance between them rather than
+       a new number about them.
+       A generosity passed in from the rotation is a FLOOR, not an override: a
+       re-mandate round that raises the bid cannot make a formateur meaner than
+       its own arithmetic already asks. */
+    var short = Math.max(0, maj - have) / Math.max(1, maj);
+    var rub = (typeof v17Friction === 'function' ? v17Friction(st, pool[i], lead).length : 0);
+    var bid = V17_GENEROSITY.base
+      + (short > .34 ? 1 : 0)                                  /* a long way to go */
+      + (rub >= 6 ? 1 : 0)                                     /* and a real quarrel */
+      - (short < .1 && rub < 3 ? 1 : 0);                       /* nearly there, and easy */
+    if (gen !== undefined && gen !== null) bid = Math.max(bid, gen);
+    var offer = v17Offer(st, lead, pool[i], co.concat([pool[i]]), bid);
     var ans = v17Accept(st, pool[i], lead, offer, relax, pin);
     answers.push(ans);
     if (ans.yes) { co.push(pool[i]); offers[pool[i]] = offer; have += st.seats[pool[i]] || 0; }
