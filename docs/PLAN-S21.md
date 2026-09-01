@@ -191,7 +191,7 @@ have been driving -- it read .120 per point of chamber against .467 on a clean
 board, all three readings compressed by the same 3.9x, which is saturation and
 not a broken mechanism.
 
-### S21b — What a party holds against a government  ·  2 improvements, 1 new
+### S21b — What a party holds against a government  ·  SHIPPED  ·  2 improvements, 1 new
 
 **A CORRECTION TO THIS PLAN, FOUND BY BUILDING IT.** S21e below attributes the
 formation's four unreachable branches to `V17_FORM_MAX` being equal to the
@@ -215,6 +215,29 @@ of it fires at 13488. `oust`'s three predicates start asking one question about
 the government, and `done` stamps `g.gov` at adoption.
 
 Widest coupling in the programme, which is why it is second.
+
+**SHIPPED, and what the coupling actually cost.** Five arms of `roads.js` went
+red on the build. Four were the arm rather than the game and are recorded in
+their own commit. The fifth is worth a paragraph here, because it is a rule
+this programme will meet again:
+
+`easy is a cakewalk, not a coronation` asserted that the street speaks on
+**seed 4242**, and S21b turned that boolean over while touching no term in
+`v17StreetHeat`, no bloc, and no unrest. Bisected across ten reverts, exactly
+one restored the old figure — `expireInbox` re-dating the provocation stamp —
+and switching off the entire political-memory table restored nothing at all.
+The mechanism is the fix working: parties now answer an ignored letter, so
+they play different cards, so every trajectory downstream is different.
+Measured over eight seeds, the street speaks on **7 of 8 before and 6 of 8
+after**, peak heat 33.1–54.2 against 29.0–53.2 — one seed's difference on a
+binary outcome at n=8, inside the tier's own 21-point spread.
+
+**A reshuffle, not a result.** That is S16a's ruling, which was made about
+pacing figures and is exactly as true of a boolean, and which `tools/pacing.js`
+had to be rebuilt to stop people reading past. The arm now reads six seeds on
+`easy` and asks about the TIER. Any S21 slice that changes what an engine
+chooses will move single-seed readings this way; the answer is to widen the
+reading, not to chase the seed.
 
 ### S21c — The rehearsal can see what a card did  ·  3 improvements
 

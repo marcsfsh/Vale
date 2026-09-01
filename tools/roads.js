@@ -11501,9 +11501,37 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        sits at 5. The greatest heat the tier could ever reach was 50 - 30 = 20
        against a bar of 22 -- driven with every bloc pushed to 8, measured 20.1
        and the street never spoke. */
+    /* S21b: AND IT IS READ ACROSS SEEDS, WHICH IT WAS NOT. This ran ONE seed
+       and asked whether the street spoke on it. S21b -- which touches neither
+       the street, nor the blocs, nor unrest, nor any term in `v17StreetHeat`
+       -- turned that boolean over on 4242 by making parties answer an ignored
+       letter, which changes which card every engine plays after it and so the
+       whole trajectory. Bisected across ten reverts, exactly ONE restored the
+       old figure (the re-dated stamp) and turning off the entire
+       political-memory table restored nothing at all.
+       Measured over eight seeds, the street speaks on 7 of 8 before the slice
+       and 6 of 8 after, peak heat 33.1-54.2 against 29.0-53.2: one seed's
+       difference on a binary outcome at n=8, inside the tier's own 21-point
+       spread of peak heat. A RESHUFFLE, NOT A RESULT -- S16a's ruling, which
+       was made about pacing figures and is exactly as true of a boolean, and
+       which `pacing.js` had to be rebuilt to stop people reading past.
+       So the arm asks about the TIER and not about one campaign: heat clears
+       the bar on every seed, and the street speaks on most of them.
+
+       POISONED ELEVEN WAYS. Five reddened it: the S20d defect restored
+       (easy's `unrest` back to .35), the bar out of reach, the demand out of
+       reach, heat's unrest term deleted, and `over()` narrowed back to one
+       seed. Two of the eleven were weak by construction and came back green
+       -- relaxing a bound on a HEALTHY build proves nothing about the bound
+       -- so the pair was poisoned the way CLAUDE.md says belt and braces have
+       to be, TOGETHER and against a broken build: with the defect restored,
+       relaxing the heat bound alone still reddens (the share catches it),
+       relaxing the share bound alone still reddens (the heat catches it), and
+       relaxing BOTH goes green, which is what proves neither is redundant and
+       nothing else in the leg is quietly doing their job. */
     R.street = (() => {
-      const run = (diff) => {
-        fresh(4242, diff);
+      const run = (seed, diff) => {
+        fresh(seed, diff);
         let spoke = false, maxHeat = -99, unrestPeak = 0;
         for (let i = 0; i < 40; i++) {
           BLOCS.forEach(b => { S.blocs[b.id] = Math.min(S.blocs[b.id], 8); });
@@ -11515,13 +11543,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         }
         return { maxHeat:maxHeat, spoke:spoke, unrestPeak:unrestPeak };
       };
+      const over = (seeds, diff) => {
+        const rows = seeds.map(s => run(s, diff));
+        const heats = rows.map(r => r.maxHeat), said = rows.filter(r => r.spoke).length;
+        return {
+          n:rows.length, spoke:said, spokeShare:+(said / rows.length).toFixed(3),
+          maxHeat:+Math.max.apply(null, heats).toFixed(1),
+          minHeat:+Math.min.apply(null, heats).toFixed(1),
+          meanHeat:+(heats.reduce((a, c) => a + c, 0) / heats.length).toFixed(1),
+          unrestPeak:+Math.max.apply(null, rows.map(r => r.unrestPeak)).toFixed(1),
+        };
+      };
       /* AND THE READING IS DRIVEN, not computed from the constants. The first
          version of this arm derived the reachable ceiling from
          `V17_STREET_MID` and a floor constant and compared THAT with the bar
          -- which is a statement about two numbers and not about the game, and
          its poison proved it: deleting the mechanism from `v17StreetHeat`
          left the arm green because the constants were untouched. */
-      return { bar:V17_STREET_BAR, easy:run('easy'), normal:run('normal') };
+      return { bar:V17_STREET_BAR,
+        easy:over([4242, 90210, 7, 31337, 1, 555], 'easy'),
+        /* `normal` needs no width -- it speaks on 8 seeds of 8 with peak heat
+           96.6 to 120.7 against a bar of 22 -- and what it is here for is the
+           RATIO between the tiers */
+        normal:over([4242, 7, 555], 'normal') };
     })();
 
     /* (d) EVERY EASY FIELD IS A TILT AND NOT AN OVERRIDE, in the direction it
@@ -11557,9 +11601,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   const cakeOk =
     cake.income.varies === true && cake.income.floorShare < .4 &&
     cake.income.mean < 130 && cake.income.mean > 60 && cake.income.floor < 60 &&
-    cake.street.easy.spoke === true && cake.street.easy.maxHeat > cake.street.bar + 5 &&
-    cake.street.normal.spoke === true &&
-    cake.street.normal.maxHeat > cake.street.easy.maxHeat * 2 &&
+    /* the tier reaches the street on MOST campaigns, and clears the bar on
+       every one of them -- not "on seed 4242", which is a coin the slice
+       before this one turned over without touching the mechanism */
+    cake.street.easy.spokeShare >= .5 && cake.street.easy.minHeat > cake.street.bar + 5 &&
+    cake.street.normal.spokeShare === 1 &&
+    cake.street.normal.meanHeat > cake.street.easy.meanHeat * 2 &&
     cake.tilts.stillGenerous === true && cake.tilts.incumbentCut === true &&
     cake.tilts.floorBelowFormula === true && cake.tilts.pursesBreathe === true &&
     cake.tilts.noCollapse === true &&
@@ -11577,9 +11624,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `\`restive\` was \`unrest - 35\` unbounded below against an unrest that sits at 5 -- so the most heat easy ` +
     `could ever reach was 20 against a bar of ${cake.street.bar}, measured at 20.1 with every bloc driven to ` +
     `8, and the street never spoke in any campaign. The fix is in the TIER: easy's own multipliers take the ` +
-    `peak to ${cake.street.easy.maxHeat} with an unrest peak of ${cake.street.easy.unrestPeak} and an ` +
-    `abandoned constituency is heard (spoke ${cake.street.easy.spoke}) -- still far short of normal's ` +
-    `${cake.street.normal.maxHeat}, which is what the tier is for. A FLOOR ON \`restive\` WAS DRAFTED AND ` +
+    `peak to ${cake.street.easy.meanHeat} on average (${cake.street.easy.minHeat} to ` +
+    `${cake.street.easy.maxHeat} over ${cake.street.easy.n} seeds) with an unrest peak of ` +
+    `${cake.street.easy.unrestPeak}, and an abandoned constituency is heard on ` +
+    `${cake.street.easy.spoke} of ${cake.street.easy.n} campaigns -- still far short of normal's ` +
+    `${cake.street.normal.meanHeat}, which is what the tier is for · AND IT IS READ ACROSS SEEDS BECAUSE THE ` +
+    `SINGLE-SEED READING WAS A COIN: S21b touches no term in \`v17StreetHeat\` and turned 4242's boolean over ` +
+    `anyway, by making parties answer an ignored letter and so changing every engine card played after it. ` +
+    `Bisected across ten reverts, exactly one restored the old figure and switching the whole political-memory ` +
+    `table off restored nothing -- 7 seeds of 8 spoke before the slice and 6 of 8 after, inside the tier's own ` +
+    `21-point spread of peak heat. S16a's ruling, made about pacing figures and exactly as true of a boolean. ` +
+    `A FLOOR ON \`restive\` WAS DRAFTED AND ` +
     `MEASURED OUT: alone it reaches 22.1 and the street still does not speak, and on top of the multipliers ` +
     `it changes nothing at all, so it was deleted rather than shipped · EVERY FIELD IS STILL A TILT IN THE DIRECTION IT ALWAYS WAS (${cake.tilts.stillGenerous}) ` +
     `and a safe seat is still safe (${cake.tilts.noCollapse}); what went is the constant -- the incumbency ` +

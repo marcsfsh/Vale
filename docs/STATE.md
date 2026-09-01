@@ -14,13 +14,81 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S20 — The chamber, the cost, and the opposition** is **OPEN**, and it exists
-because the owner played a full epic campaign to turn 133 and sent the save.
-`docs/PLAN-S20.md` is the program anchor: the brief, the measured evidence, the
-six-way audit and the rulings.
+**S21 — All-out AI** is **OPEN**. The owner's brief: *"an all-out focus on AI
+behavior, AI logic, and AI improvements… at least 4 improvements to existing AI
+behaviors and logic, and at least 8 new behaviors/logic — each being
+significant and receiving equal attention. In addition, the coalition building
+mechanic needs a serious overhaul — its way too flat, uninteresting, and
+unengaging."*
 
-**S20 has shipped six slices: S20a-f.** `docs/PLAN-S20.md` is the anchor and
-`docs/MAP.md` carries a section for each.
+**`docs/PLAN-S21.md` IS THE CONTRACT AND IS BINDING FOR THE WHOLE OF S21.**
+Twelve slices, twelve improvements and fourteen new behaviours, with nine
+rulings (R1–R9) that every slice is written against. Read it before touching
+anything under `v16Ai*`, `v17*` or `v19*`. The supporting work is durable too:
+`docs/S21-INTAKE/` (twelve reports, one per AI system), `docs/S21-DESIGN/`
+(four independent upgrade proposals, a brief and the adjudication that chose
+between them) and `docs/S21-BASELINE.md` (720 driven sessions at `ruthless`,
+the numbers every S21 claim is measured against).
+
+The four rulings a cold session most needs:
+
+- **R1 — the `instinct` floor governs COMPETENCE, not the CONSTITUTION.**
+  `v19*` and `v16Ai*` are gated by `v19Thinks`; `v17Rotation`, `v17Invest`,
+  `v17Accept` and the confidence machinery are not. A republic on `instinct`
+  still holds elections and forms governments; it just plays them badly.
+- **R2 — the eleven-card deck is part of the floor.** `v19Choose` draws
+  uniformly at `sharp <= 0`, so every new card gates its `can` on `v19Thinks`
+  or it widens the floor's random deck instead of the thinking one.
+- **R8 — an instrument that wraps `run` must check `V19_SIMULATING`.** `v19Try`
+  clones the state and replays every open card to score it. My own baseline
+  probe counted 3,916 rehearsals as plays and reported 4,941 initiatives where
+  there were 1,025.
+- **R9 — a driven assertion about elections, coalitions or offices must
+  override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
+  correction below.
+
+**S21 has shipped two slices: S21a–b.**
+
+- **S21a — the regard, signed.** A party's view of another party was a
+  one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
+  nothing a party did could make anybody think better of it, and there was no
+  channel by which a favour could be recorded at all. The ledger is signed now
+  (−100 to 100), `v21Regard` reads it as an attitude rather than a wound,
+  anger cools faster than credit, a pact writes memory on both sides, and the
+  panel names a favour where it used to name only a grievance. `defect` went
+  from `{self:18, seen:2}` to `{self:−14, seen:9}`: breaking a pact is
+  something the ROOM minds about, not mainly the party you broke it with.
+- **S21b — what a party holds against a government.** `V17_MEMORY` is the
+  memory of the PLAYER'S BUTTONS — all thirty-four weights are written by the
+  `doAction` wrapper — so nothing that happens in the ordinary course of
+  governing was remembered by anybody. `attack.can` forbids the government
+  from attacking, so the government remembered every attacker and **nobody
+  accumulated a grudge against it**: 6.0% of party-government pairs held
+  anything at all, and the 90th percentile was 0. `V21_POLITICS` is the other
+  half — six things the REPUBLIC does, written by `v21Answer` and covered in
+  both directions by `roads.js`. Measured: pairs holding a grudge 6.0% →
+  62.5%, p90 0 → 32.4, `oust` (the one aim that names an enemy) adopted 2 → 10
+  and reached 0 → 4, and the formation's four branches went from 359/1/0/0 to
+  333/15/11/4.
+
+  **A correction to my own plan, recorded here because a ruling that lives only
+  in a merged PR body is a ruling nobody will find:** `PLAN-S21.md` said the
+  formation's minority, grand and caretaker branches were unreachable because
+  `V17_FORM_MAX` equalled the party count. They were not. They were unreachable
+  because there was no political memory — nobody ever refused, because nobody
+  held anything against anybody.
+
+**WHAT IS OPEN:** ten slices, S21c–S21l, in the order `PLAN-S21.md` sets.
+S21e (table negotiation) and S21f–h (one exit, a government that can fall, the
+junior partner) are the coalition overhaul the brief names.
+
+---
+
+**S20 — The chamber, the cost, and the opposition** is **CLOSED**, having
+shipped seven slices (S20a–g). It exists because the owner played a full epic
+campaign to turn 133 and sent the save. `docs/PLAN-S20.md` is that program's
+anchor: the brief, the measured evidence, the six-way audit and the rulings,
+and `docs/MAP.md` carries a section for each slice.
 
 - **S20a — the division is counted.** Passage was a seat-weighted mean of
   propensities with eleven modifiers added after normalisation, so a party at 45
