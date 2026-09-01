@@ -329,7 +329,7 @@ cancel — which is the proof they were dead rather than a weakness in the arm.
   term decides is which is worth more. Asking for a negative was the probe
   reading the bill's worth and calling it the line's.
 
-### S21d — The agreement bites  ·  Coalition 1 of 4  ·  3 improvements, 1 new
+### S21d — The agreement bites  ·  SHIPPED  ·  Coalition 1 of 4  ·  3 improvements, 1 new
 
 `V21_DUE` sized from the instrument the answer has to use (lay, floor,
 signature: 8 sessions), with the arithmetic in the constant's own comment.
@@ -377,6 +377,43 @@ date** (`due:null` at all three mint sites), confirmed rather than assumed. And
 +0.05, against a target of ~38 that cohesion already sits at (median 39.9). The
 plan's premise that a partner "recovers" and must be stopped is backwards —
 nothing recovers, because `progress` is near zero for the reason above.
+
+**SHIPPED. Measured after: promises kept 0 → 18, broken 19 → 18, over 403
+partner-sessions. Every concession carries a date. Cohesion 20/39.9/52.8/76 →
+25.2/44/56.7/77.1, with bill life unchanged at median 2 — the legislature was
+not disturbed.** Ten legs, 18 of 18 poisons red.
+
+**A FIFTH KNOB NOTHING IN THE GAME COULD TURN, deleted rather than shipped.**
+`v21Rungs` multiplied a kept promise's payment by the rungs it covered, under a
+comment claiming a four-rung legacy promise "pays for the four sessions of
+legislative programme it cost". The poison that flattened it came back green,
+and the reason is arithmetic: `v21Rung` caps a fresh promise at one rung, and a
+legacy promise has no `from` to measure from, so the function returned 1 for it
+too — in a line I wrote. A multiplier that could only ever be 1, under a comment
+that said it scaled. After S17r's two, S20d's `restive` floor and S20f's posture
+filter, this is the fifth, and it came out in the poison list rather than after.
+
+**Four faults in my own assertion, each found by a poison coming back green:**
+
+- `laysThePromise` was satisfied by an infinite thumb as easily as by a
+  preference — the arm could not tell "reaches for a promise" from "obeys one".
+  Now asked about a promise the chamber would throw out.
+- Counting `kept` ledger entries said a promise was kept, not that it was worth
+  anything: `v17Ledger` records the entry whatever the payment is.
+- The clock leg stood its deadline where the falsy-`due` defect could not bite,
+  and separately was green on a **refrain** breach booked by the red-line scan
+  in the same function. The clock had never fired once.
+- A load-order poison that moved code *within* a chunk, where declarations
+  hoist and nothing can break. The cross-chunk version reddens.
+
+**And `V21_PROMISE_PULL` was measured rather than argued.** I priced it at 12 by
+analogy to `V20_AIM_BILL` and asserted in the comment that a promise is a
+preference and not an override. Over 715 promise-boards across eight seeds the
+deficit runs −3 / p50 **9.6** / p90 18 / max 43.2, so at 12 the government keeps
+68% of its promises and refuses 32% — the sentence is true and 12 sits just above
+the median. The one board the arm first read had a deficit of 8.8 and nearly had
+me re-tune a correct constant off a single seed: S16a's ruling, met in a fourth
+place.
 
 ### S21e — The table is a negotiation  ·  Coalition 2 of 4  ·  4 improvements, 2 new
 
