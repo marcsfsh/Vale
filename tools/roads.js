@@ -9722,6 +9722,32 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         entries:(d.ledger || []).slice(-3).map(e => e.kind + ':' + e.ref + ':' + e.why) };
     })();
 
+    /* (c2) A DUE OF NOUGHT IS A DATE, which the clock leg above cannot say
+       because it stands its deadline at a turn where the number is truthy.
+       `if (c.due && ...)` reads 0 as no date at all, so a promise due on the
+       session before the first could never be late -- the `|| 0` family, where
+       a falsy value and an absent one are treated as the same fact. Found by a
+       probe that set a due of 0 by accident; asserted here on purpose. */
+    R.zero = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && (!partnerOf() || S.turn < 5); i++) step();
+      const pid = partnerOf(); if (!pid) return { ran:false };
+      const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false };
+      const c = (d.terms.concessions || []).filter(x => x.kind === 'adopt')[0];
+      if (!c) return { ran:false };
+      c.met = false; c.late = false; c.due = 0; c.from = (S.pol[c.ref] || 0);
+      const want = v17Want(S, pid, c.ref);
+      if (want !== undefined && POL[c.ref]) {
+        const target = Math.min(want, POL[c.ref].max);
+        if (v21Met(S, pid, c)) S.pol[c.ref] = Math.max(0, Math.min(POL[c.ref].max,
+          target > c.from ? c.from - 1 : c.from + 1));
+        c.from = S.pol[c.ref];
+      }
+      if (v21Met(S, pid, c)) return { ran:false, why:'book already at the rung' };
+      v16RedLineTick(S);
+      return { ran:true, due:c.due, turn:S.turn, late:c.late === true };
+    })();
+
     /* (d) AND THE GOVERNMENT REACHES FOR IT. Making the rung reachable is
        worth nothing while `aiGovern` reads only its own `wants` -- a door
        opened on the callee while the caller walks past it. Driven through the
@@ -9759,9 +9785,83 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return b ? b.policy : null;
       };
       const without = run(false), withIt = run(true);
+      /* AND IT IS A PREFERENCE, NOT AN OVERRIDE -- which the equality above
+         cannot say, and its poison proved it: with the thumb set to 9,999 the
+         government lays the promise every time and `laysThePromise` is still
+         true. So the same board is asked about a promise the CHAMBER would
+         throw out. `V21_PROMISE_PULL` is 12 forecast points, the thumb
+         `V20_AIM_BILL` already puts on a publicly named aim, so a statute
+         forecasting far below the alternative stays off the paper however
+         solemnly it was promised. */
+      const hopeless = (() => {
+        const bad = Object.keys((PARTY[pid] || {}).wants || {}).filter(id => {
+          if (!POL[id] || gw[id] !== undefined || !policyOpen(S, POL[id])) return false;
+          if ((S.pol[id] || 0) >= POL[id].max) return false;
+          let f = null;
+          try { f = billForecast(S, v21Probe(S, S.ruling, id, 1)); } catch (e) { f = null; }
+          return f && f.lower < 25;
+        })[0];
+        if (!bad) return { ran:false };
+        S.bills = [];
+        d.terms.concessions = [v21Concede(S, bad)];
+        if (S.turn % 2) S.turn += 1;
+        aiGovern(S);
+        const b = S.bills.filter(x => x.owner === 'government')[0];
+        let f0 = null;
+        try { f0 = billForecast(S, v21Probe(S, S.ruling, bad, 1)); } catch (e) { f0 = null; }
+        return { ran:true, ref:bad, laid:b ? b.policy : null,
+          forecast: f0 ? +f0.lower.toFixed(1) : null,
+          refused: !b || b.policy !== bad };
+      })();
       return { ran:true, ref:ref, without:without, withIt:withIt,
         laysThePromise: withIt === ref, differs: without !== withIt,
-        governmentDoesNotWantIt: gw[ref] === undefined };
+        governmentDoesNotWantIt: gw[ref] === undefined, hopeless:hopeless };
+    })();
+
+    /* (e2) AND KEEPING ONE PAYS. `v17Ledger` records a `kept` entry whatever
+       the payment is, so counting entries says a promise was kept and NOT
+       that it was worth anything -- with `V17_KEPT * rungs` replaced by nought
+       the driven count is unchanged and the arm was green. Read the cohesion
+       either side of the moment it is met. */
+    R.pays = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && (!partnerOf() || S.turn < 5); i++) step();
+      const pid = partnerOf(); if (!pid) return { ran:false };
+      const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false };
+      const c = (d.terms.concessions || []).filter(x => x.kind === 'adopt')[0];
+      if (!c || !POL[c.ref]) return { ran:false };
+      const want = v17Want(S, pid, c.ref);
+      if (want === undefined) return { ran:false };
+      c.met = false; c.late = false; c.from = (S.pol[c.ref] || 0);
+      const rung = v21Rung(S, pid, c);
+      if (rung === null || rung === c.from) return { ran:false, why:'no rung to move' };
+      d.satisfaction = 50;
+      const kept0 = v17Kept(S, pid), sat0 = d.satisfaction;
+      S.pol[c.ref] = rung;                       /* the book reaches the rung */
+      v16RedLineTick(S);
+      return { ran:true, keptBefore:kept0, keptAfter:v17Kept(S, pid),
+        satBefore:sat0, satAfter:+d.satisfaction.toFixed(2),
+        recorded: v17Kept(S, pid) > kept0, paid: d.satisfaction > sat0,
+        rungs: v21Rungs(S, pid, c), KEPT:V17_KEPT };
+    })();
+
+    /* (f2) AND THE FAMILY IS DECLARED BEFORE ITS CALLER RUNS. `pv5EnsureState`
+       calls `v21Concede` from an earlier chunk than the agreement lives in,
+       inside `enrichState`, so a declaration beside the rest of S21d is not
+       yet defined when the caller runs -- `POWERS.push` wearing a different
+       hat, and the first build of this slice walked into it. Structural,
+       because a load-order fault cannot be poisoned by a string edit. */
+    R.order = (() => {
+      const html = document.documentElement.outerHTML;
+      const chunkOf = (needle) => {
+        const i = html.indexOf(needle);
+        return i < 0 ? -1 : html.slice(0, i).split('<script').length;
+      };
+      return { concede:chunkOf('function v21Concede'),
+        due:chunkOf('var V21_DUE'),
+        caller:chunkOf('function pv5EnsureState'),
+        beforeCaller: chunkOf('function v21Concede') <= chunkOf('function pv5EnsureState') &&
+                      chunkOf('var V21_DUE') <= chunkOf('function pv5EnsureState') };
     })();
 
     /* (e) THE DIVISION READS THE AGREEMENT. `d.satisfaction` was written by
@@ -9825,8 +9925,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* only the CLOCK sets `late`, so this is what says the breach was the
        clock's and not the red-line scan running in the same function */
     bites.clock.marked === true &&
+    bites.zero.ran === true && bites.zero.late === true &&
     bites.reaches.ran === true && bites.reaches.laysThePromise === true &&
     bites.reaches.differs === true && bites.reaches.governmentDoesNotWantIt === true &&
+    /* a preference over the order paper, not an override of the chamber */
+    bites.reaches.hopeless.ran === true && bites.reaches.hopeless.refused === true &&
+    bites.pays.ran === true && bites.pays.recorded === true && bites.pays.paid === true &&
+    bites.order.beforeCaller === true &&
     bites.vote.ran === true && bites.vote.rises === true && bites.vote.flipsInRange === true &&
     bites.drift.ran === true && bites.drift.holdsDown === true &&
     bites.drift.cappedAtPatience === true;
@@ -9851,7 +9956,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `session (2), a bill lives a p90 of 5, and one more for a government with its own programme to reach it · ` +
     `DRIVEN, WHICH IS THE WHOLE CLAIM: ${bites.driven.kept} promises kept and ${bites.driven.broken} broken over ` +
     `${bites.driven.partnerSessions} partner-sessions, against 0 and 19 before, with ${bites.driven.undated} ` +
-    `concessions still undated of ${bites.driven.dated + bites.driven.undated} · THE CLOCK BOOKS ONE BREACH AND ` +
+    `concessions still undated of ${bites.driven.dated + bites.driven.undated} -- AND KEEPING ONE PAYS, which ` +
+    `counting ledger entries cannot say: \`v17Ledger\` records a \`kept\` whatever the payment is, so with ` +
+    `\`V17_KEPT * rungs\` replaced by nought the driven count was unchanged and this arm was green. Read either ` +
+    `side of the moment it is met, cohesion goes ${bites.pays.satBefore} to ${bites.pays.satAfter} for ` +
+    `${bites.pays.rungs} rung(s) at ${bites.pays.KEPT} apiece (${bites.pays.paid}) · THE CLOCK BOOKS ONE BREACH AND ` +
     `ONLY ONE (${bites.clock.booksOne}/${bites.clock.booksOnlyOne}), because when two mechanisms hold the same ` +
     `date one owns the outcome -- which is what the street's demand and \`expireInbox\` taught this file · AND ` +
     `THE GOVERNMENT REACHES FOR IT, which is the half that makes the rest live: \`aiGovern\` read the ruling ` +
@@ -9859,8 +9968,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `government happened to want the same statute. On a statute the government does not want at all ` +
     `(${bites.reaches.governmentDoesNotWantIt}) it lays ${bites.reaches.without} unpromised and ` +
     `${bites.reaches.withIt} promised (${bites.reaches.differs}) -- as a CANDIDATE forecast on the same probe ` +
-    `\`v19BillFor\` uses, carrying the thumb \`V20_AIM_BILL\` already puts on a publicly named aim, so a ` +
-    `government still does not lay a bill it cannot carry merely because it promised one · AND TWO FIELDS ` +
+    `\`v19BillFor\` uses, carrying the thumb \`V20_AIM_BILL\` already puts on a publicly named aim -- AND IT IS ` +
+    `A PREFERENCE AND NOT AN OVERRIDE, which the equality alone cannot say and whose poison proved it: with the ` +
+    `thumb at 9,999 the government lays the promise every time and that clause is still true. Asked about a ` +
+    `promise the CHAMBER would throw out (${bites.reaches.hopeless.ref}, forecasting ` +
+    `${bites.reaches.hopeless.forecast}) it lays ${bites.reaches.hopeless.laid} instead ` +
+    `(${bites.reaches.hopeless.refused}) · AND A DUE OF NOUGHT IS A DATE: \`if (c.due && ...)\` read 0 as no ` +
+    `date at all, so a promise due on the session before the first could never be late -- the \`|| 0\` family, ` +
+    `where a falsy value and an absent one are treated as the same fact. Found by a probe that set one by ` +
+    `accident, asserted here on purpose (${bites.zero.late}) · AND THE FAMILY IS DECLARED BEFORE ITS CALLER ` +
+    `RUNS (${bites.order.beforeCaller}): \`pv5EnsureState\` calls \`v21Concede\` from chunk ` +
+    `${bites.order.caller} inside \`enrichState\`, so a declaration beside the rest of the agreement is not yet ` +
+    `defined when the caller runs -- \`POWERS.push\` wearing a different hat, and the first build of this slice ` +
+    `walked into it · AND TWO FIELDS ` +
     `WRITTEN BUT NEVER READ ARE READ. \`d.satisfaction\` reached the division in NO place: a partner three ` +
     `broken promises deep whipped its benches for the government exactly as hard as one whose every concession ` +
     `had been kept, both worth a flat +12. It is ${bites.vote.low} at a cohesion of 22, ${bites.vote.mid} at the ` +
