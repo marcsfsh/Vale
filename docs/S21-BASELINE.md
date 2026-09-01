@@ -10,26 +10,41 @@ reported one election in 720 sessions, and this file would have been fiction.
 
 Probes: `scratchpad/base21.js`, `scratchpad/rota.js`. Re-runnable.
 
-## The engine acts often enough, and every card lands
+## The engine acts about a quarter of the time, and one card is a third of it
+
+**A CORRECTION IS RECORDED HERE RATHER THAN QUIETLY FIXED.** The first version
+of this file said 4,941 initiatives with an even spread across the eleven
+cards. That was the probe, not the game. `v19Outcome` rehearses **every open
+card on a clone** at the thinking levels through `v19Try`, which calls
+`card.run` — and the probe wrapped `run` without checking `V19_SIMULATING`, so
+3,916 rehearsals were counted as plays. The corrected figures are below, and
+the conclusion drawn from the wrong ones ("no card is starved and none is
+dominant") was the opposite of the truth.
 
 | | |
 |---|---|
-| Initiatives played | **4,941** in 720 sessions |
-| Card `run` returning null (a wasted session) | **0** |
+| Real initiatives | **1,025** in 720 sessions |
+| Rehearsals (simulation, not play) | 3,916 |
+| Party-sessions available | 4,320 (6 engines x 720) |
+| Action rate | **23.7%**, matching the documented one-in-four cadence |
+| Card `run` returning null (a wasted session) | 0 |
 
 Plays by card:
 
-| card | plays | card | plays |
-|---|---|---|---|
-| court | 796 | campaign | 296 |
-| demand | 762 | order | 232 |
-| organise | 594 | article | 230 |
-| attack | 559 | platform | 195 |
-| bill | 477 | floor | 326 |
-| pact | 474 | | |
+| card | plays | share | card | plays | share |
+|---|---|---|---|---|---|
+| court | **280** | **27.3%** | campaign | 65 | 6.3% |
+| demand | 164 | 16.0% | article | 47 | 4.6% |
+| organise | 157 | 15.3% | bill | 47 | 4.6% |
+| order | 80 | 7.8% | platform | 24 | 2.3% |
+| attack | 74 | 7.2% | pact | **18** | **1.8%** |
+| floor | 69 | 6.7% | | | |
 
-No card is starved and none is dominant. **The deck's distribution is not the
-problem.** What the cards *do* is the question S21 has to answer.
+One card is more than a quarter of everything an engine does, and the bottom
+three together are 8.7%. `court` moves a bloc by 2.6 on a 0-100 scale; a
+quarter of the engine's whole output goes into a number the player barely sees
+move. `pact`, the only card that makes a relationship with another party, is
+played eighteen times in 720 sessions.
 
 ## Postures: two fifths of the time a party has no mood at all
 
@@ -216,9 +231,21 @@ no session after this one**. Nothing anywhere models what the player will do
 next, and no party has a plan that spans sessions beyond holding a single goal
 it abandons 86% of the time.
 
+## A rule for anyone measuring this AI
+
+**Any instrument that wraps a card's `run`, or anything a card calls, must
+check `V19_SIMULATING`.** `v19Try` clones the state and replays the card to
+score it, so at `shrewd` and `ruthless` every open card is run for every
+initiative. Uncorrected, that inflated the play count by 3.8x here and would
+inflate any ledger, news, or inbox instrument the same way. It is the reason
+this file's first draft reported an even card mix over a distribution where one
+card is 27%.
+
 ## What these numbers say the programme is
 
-The engine ACTS enough. It picks cards sensibly. What it lacks is **consequence
-between sessions**: an aim it can finish, a relationship that is more than one
-number, a government it can threaten, a memory of being helped, and any reason
-for the player to believe an opponent is pursuing something across a campaign.
+The engine acts at the cadence it was designed to. What it lacks is
+**consequence between sessions**: an aim it can finish, a relationship that is
+more than one number, a government it can threaten, a memory of being helped,
+and any reason for the player to believe an opponent is pursuing something
+across a campaign. And its output is concentrated in the cheapest, least
+visible card it holds.
