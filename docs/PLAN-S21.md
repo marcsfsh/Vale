@@ -289,11 +289,34 @@ that belongs to the owner under `AGREEMENT.md`. What ships is the correction to
 the comment, which claimed the term was "squashed to about −1..1" and was a
 card that lies.
 
+**4. A FOURTH ENGINE BILL ROAD, found by writing the poison list from the
+diff.** `pv5AiPrivateBill` picks by `partyDemandPolicy`'s biggest gap — the
+same defect `aiGovern` had, on the opposition side. An engine has THREE doors
+to the order paper and they disagreed, so the same party laid a statute it
+could carry through one and one it could not through another.
+`partyDemandPolicy` is still called and still the fallback, because it ROLLS
+(S18c) and because it is shared with the demand card (which `roads.js` pins on
+purpose), so the change goes in the caller and not in the body.
+
 **The measurement that states the defect:** on the shipped build **nine of the
 eleven cards returned a single constant** from the rehearsal — min, median and
 max the same number, exactly minus the card's own price tag. On the new build,
 one does (`bill`, which always lays the statute its own table names, so every
 instance of it is a good one).
+
+**Two things the poison run caught that the assertion had not:**
+
+- **A leg that computes is not a leg that is read.** The first version asserted
+  `v16CheapestCard()` equals the table's minimum and nothing else — and putting
+  the old name back at the CALL SITE in `v18Tempo` left it green. Every gate in
+  this harness calls a function and something in the game has to read it. The
+  arm now drives `v18Tempo` across the band (12 to 16) the change lives in.
+- **Flatness is escapable through an unrelated clamp.** With the bill term
+  deleted, `bill` still came back non-flat, because the purse term is
+  `min(20, purse/100) * 1.2` and a party over 2,000 has it saturated. So the
+  six terms are also read ONE AT A TIME, by making the change the card would
+  make and asking `v19Flight` either side — the driven leg says the terms reach
+  real rehearsals, the unit leg says which is which.
 
 ### S21d — The agreement bites  ·  Coalition 1 of 4  ·  3 improvements, 1 new
 

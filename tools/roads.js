@@ -9255,6 +9255,59 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         flatIds:ids.filter(id => per[id].flat) };
     })();
 
+    /* (a2) AND EACH OF THE SIX TERMS ANSWERS FOR ITSELF. The flatness reading
+       above proves the objective can tell instances apart; it does NOT pin
+       which term did it, and the poison run showed why that matters -- with
+       the bill term deleted, `bill` still came back non-flat, because the
+       purse term is `min(20, purse/100) * 1.2` and a party over 2,000 has it
+       CLAMPED, so a card can escape flatness on an unrelated saturation.
+       So the six are read one at a time, by making the change the card would
+       make and asking `v19Flight` either side. Between them the driven leg
+       says the terms reach real rehearsals and this one says which is which. */
+    R.terms = (() => {
+      fresh(4242); for (let i = 0; i < 3; i++) step();
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      const w = (PARTY[pid] || {}).wants || {};
+      const pol = Object.keys(w).filter(id => POL[id] && (S.pol[id] || 0) !== Math.min(w[id], POL[id].max))[0];
+      const f = () => v19Flight(S, pid);
+      const out = {};
+      const move = (label, fn, undo) => {
+        const b = f(); fn(); const a = f(); undo();
+        out[label] = +(a - b).toFixed(4);
+      };
+      /* a bill before the house going the party's way, and the same bill
+         going the other way -- the sign is the claim, not the magnitude */
+      if (pol) {
+        const want = Math.min(w[pol], POL[pol].max), lv = S.pol[pol] || 0;
+        const dir = want > lv ? 1 : -1;
+        move('billFor', () => S.bills.push({ policy:pol, dir:dir, sponsor:pid, owner:'opposition', lines:{} }),
+          () => S.bills.pop());
+        move('billAgainst', () => S.bills.push({ policy:pol, dir:-dir, sponsor:pid, owner:'opposition', lines:{} }),
+          () => S.bills.pop());
+        /* a POSITION declared on a bill going the party's way */
+        move('lineFor', () => S.bills.push({ policy:pol, dir:dir, sponsor:'x', owner:'opposition', lines:{ [pid]:'support' } }),
+          () => S.bills.pop());
+        move('lineAgainst', () => S.bills.push({ policy:pol, dir:dir, sponsor:'x', owner:'opposition', lines:{ [pid]:'oppose' } }),
+          () => S.bills.pop());
+      }
+      const art = V11_ARTICLES.filter(a => !v11Adopted(S, a.id))[0];
+      if (art) move('article', () => v11Con(S).pending.push({ id:art.id, by:pid, laid:S.turn, due:S.turn + 2 }),
+        () => v11Con(S).pending.pop());
+      const other = PARTIES.filter(p => p.id !== pid && !S.banned[p.id])[0].id;
+      move('pact', () => { S.aiPacts = S.aiPacts || {}; S.aiPacts[pid] = { with:other, since:S.turn }; },
+        () => { delete S.aiPacts[pid]; });
+      move('push', () => { S.push = S.push || {}; S.push[pid] = { e:.18, a:.18 }; },
+        () => { delete S.push[pid]; });
+      move('letter', () => S.inbox.push({ id:'probe', type:'party_demand', from:pid }),
+        () => S.inbox.pop());
+      return { out:out, pol:pol,
+        /* every kind moves it, and the two signed ones are signed */
+        allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter']
+          .every(k => out[k] !== undefined && Math.abs(out[k]) > 1e-9),
+        billSigned: out.billFor > 0 && out.billAgainst < 0,
+        lineSigned: out.lineFor > 0 && out.lineAgainst < 0 };
+    })();
+
     /* (b) A READ MUST NOT CREATE. `v19Standing` is called on the REAL state
        at the top of `v19Outcome`, so a term that installs a structure to read
        it installs it on the live campaign -- which is `v6TreatyRows`, whose
@@ -9293,6 +9346,31 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
              V17_AI_COST_FLOOR === V16_AI_COST.floor,
         flight: V21_FLIGHT,
       };
+    })();
+
+    /* AND THE TEMPO READS IT, which is a different claim from the function
+       computing it -- THE POISON RUN IS WHERE I FOUND THAT OUT. The first
+       version of this leg asserted `v16CheapestCard() === min(table)` and
+       nothing else, and putting `V16_AI_COST.demand` back at the CALL SITE in
+       `v18Tempo` left it green. Every gate in this harness calls a function
+       and something in the game has to read it: a party holding 14 sits above
+       the cheapest card (12) and below the name the gate used to carry (16),
+       so it is throttled by one build and not by the other, and that is the
+       band the whole change lives in. */
+    R.broke = (() => {
+      fresh(4242); for (let i = 0; i < 2; i++) step();
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && p.id !== S.ruling && !S.banned[p.id])[0].id;
+      const at = (n) => { S.purse[pid] = n; return +v18Tempo(S, pid).toFixed(4); };
+      /* clear anything else that scales the weight, so the reading is the
+         broke test alone */
+      const a = v16Ai(S)[pid]; if (a) { a.grudge = {}; a.lastSeats = undefined; }
+      const under = at(V16_AI_COST[Object.keys(V16_AI_COST).reduce((lo, k) =>
+        V16_AI_COST[k] < V16_AI_COST[lo] ? k : lo)] - 1);   /* below the cheapest: throttled */
+      const between = at(14);                                /* 12 <= 14 < 16: the band */
+      const over = at(60);                                   /* plainly solvent */
+      return { under:under, between:between, over:over,
+        throttledUnder: under < over, notThrottledInBand: between === over,
+        band: [v16CheapestCard(), V16_AI_COST.demand] };
     })();
 
     /* (d) A GOVERNMENT CHOOSES ITS PROGRAMME. `aiGovern` drew uniformly out
@@ -9400,11 +9478,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   const seenOk =
     /* nine of eleven cards returned one constant; at most one may now */
     seen.cards.cards === 11 && seen.cards.rehearsals > 600 && seen.cards.flat <= 1 &&
+    seen.terms.allMove === true && seen.terms.billSigned === true && seen.terms.lineSigned === true &&
     seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
     seen.cost.deck === 11 && seen.cost.priced === 11 &&
     seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
     seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
     seen.cost.s17 === true &&
+    seen.broke.throttledUnder === true && seen.broke.notThrottledInBand === true &&
     seen.govern.bothLaid === true && seen.govern.sharpIsAimed === true &&
     seen.govern.levelsDiffer === true && seen.govern.better === true &&
     seen.priv.ran === true && seen.priv.sameSponsor === true &&
@@ -9428,7 +9508,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `write · A THING IN FLIGHT IS WORTH THE PRICE OF THE CARD THAT PRODUCES IT, times how good this instance ` +
     `is -- ONE constant, taken from the cards that already scored rather than by eye: their median gain is 0.75, ` +
     `the median price across the six kinds is 28 and the median instance is .90, so V21_FLIGHT is ` +
-    `${seen.cost.flight} · AND THE READS DO NOT CREATE (${seen.pure.created ? 'they DO' : 'true'}), asked of ` +
+    `${seen.cost.flight} · AND EACH OF THE SIX TERMS ANSWERS FOR ITSELF (${seen.terms.allMove}), because the ` +
+    `flatness reading above says the objective can tell instances apart and NOT which term did it -- the poison ` +
+    `run showed why that matters: with the bill term deleted \`bill\` still came back non-flat, since the purse ` +
+    `term is \`min(20, purse/100) * 1.2\` and a party over 2,000 has it CLAMPED, so a card escapes flatness on ` +
+    `an unrelated saturation. Read one at a time: a bill ${seen.terms.out.billFor} going the party's way and ` +
+    `${seen.terms.out.billAgainst} going the other (${seen.terms.billSigned}), a position declared ` +
+    `${seen.terms.out.lineFor} for and ${seen.terms.out.lineAgainst} against (${seen.terms.lineSigned}), an ` +
+    `article ${seen.terms.out.article}, a pact ${seen.terms.out.pact}, a platform move ${seen.terms.out.push}, ` +
+    `an outstanding letter ${seen.terms.out.letter} · AND THE READS DO NOT CREATE ` +
+    `(${seen.pure.created ? 'they DO' : 'true'}), asked of ` +
     `a state stripped of \`v11\`, \`aiPacts\` and \`push\`: \`v19Standing\` runs on the LIVE state at the top of ` +
     `\`v19Outcome\`, so a term that installs a structure to read it installs it on the campaign -- which is ` +
     `\`v6TreatyRows\`, whose read gave every power an empty treaty array and awarded the Peacemaker record on ` +
@@ -9436,9 +9525,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `cards, ${seen.cost.unpriced.length} unpriced and ${seen.cost.ghosts.length} naming no card, where the table ` +
     `held eight and \`article\`, \`order\` and \`floor\` kept theirs in three later constants -- and BOTH readers ` +
     `read \`V16_AI_COST[id] || 0\`, so the chooser's money term scored those three as free and the tempo's broke ` +
-    `test could not see them. The broke test now reads the cheapest card in the deck (${seen.cost.cheapest}) ` +
-    `where it NAMED one (${seen.cost.wasNamed}), so a party holding 14 is no longer throttled to a third of its ` +
-    `tempo while it can still afford to act · AND A GOVERNMENT CHOOSES ITS PROGRAMME: \`aiGovern\` drew it out ` +
+    `test could not see them · AND THE TEMPO READS IT, which is a different claim from the function computing ` +
+    `it and IS WHERE THE POISON RUN CAUGHT ME: the first version of this leg asserted only that ` +
+    `\`v16CheapestCard()\` equals the table's minimum, and putting the old name back at the CALL SITE in ` +
+    `\`v18Tempo\` left it GREEN. Every gate in this harness calls a function and something in the game has to ` +
+    `read it. The band is ${seen.broke.band[0]} to ${seen.broke.band[1]}: below the cheapest card a party is ` +
+    `throttled (${seen.broke.under} against ${seen.broke.over}, ${seen.broke.throttledUnder}) and AT 14 -- above ` +
+    `the cheapest card and below the name the gate used to carry -- it is not (${seen.broke.between}, ` +
+    `${seen.broke.notThrottledInBand}), where it used to be cut to a third of its tempo while it could still ` +
+    `afford to act · AND A GOVERNMENT CHOOSES ITS PROGRAMME: \`aiGovern\` drew it out ` +
     `of a hat while an opposition party has picked by forecast since S19c, worth +4.9 forecast points over 133 ` +
     `real decisions -- the one chair that legislates most was the least deliberate in the republic. Above ` +
     `\`instinct\` the bill it lays is the one the forecast picks (${seen.govern.sharpIsAimed}: ` +
