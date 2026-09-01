@@ -14,8 +14,8 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S19 — The parties think** is **OPEN**, and it exists because the owner read
-S18e's merge note and said no:
+**S19 — The parties think** is **COMPLETE** as of S19f. It exists because the
+owner read S18e's merge note and said no:
 
 > "So the AI is done? I really want the game's parties to have a seriously
 > robust, very sophisticated ai with lots of logic and capabilities"
@@ -43,6 +43,22 @@ coalition never grew in 720 sessions, `office` because no engine card reaches
 party should be able to enter a government, take an office or bring one down is
 a question about the REPUBLIC rather than about the AI, and it is the owner's
 to open.
+
+**WHAT'S NEXT, in the order the evidence ranks it.** None of this is started;
+all of it is the owner's to choose.
+
+1. **The dead-body sweep the owner's own late-game save asks for.** A real
+   run was analysed during S19 rather than a driven one, and the standout is
+   that `poach` is used 411 times at a flat cost of 8 with no `esc` and no
+   cooldown, against nine other party actions that carry an escalating cost —
+   the target's machine has no passive recovery, so the verb is a one-way
+   ratchet and the dominant strategy in the late game. Beside it sit roughly
+   twenty subsystems the same save shows are never touched in ordinary play.
+   This is a balance question, so `docs/AGREEMENT.md` makes it the owner's,
+   but the measurement is done and the finding is specific.
+2. **The four goals with no road** (above), if the answer is that an engine
+   party should be able to reach them.
+3. **`docs/AUDIT-S17.md`'s eight partial verdicts**, still unanswered.
 
 **S19f — A party does not wait for the season** is the current branch.
 
