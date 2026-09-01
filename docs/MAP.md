@@ -1264,6 +1264,96 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The division is counted (S20a)
+
+The owner reported three things about the chamber and all three were one
+defect: *"bills almost always pass"*; *"the higher the party unity, the more
+members oppose the bill"*; *"it is not properly accounting for actual number of
+assembly votes -- things without a majority still pass."*
+
+**Nothing was ever counted.** `billForecast` returned a seat-weighted MEAN OF
+PROPENSITIES -- each party contributing `seats x support/100` -- so a party at
+45 handed the bill 45% OF ITS SEATS instead of voting against it. A party never
+voted against anything; it voted mostly-for. Then eleven modifiers were added
+to that number AFTER it was normalised, summing to more than 60 points against
+a bar of 50, so the chamber's composition was the smaller half of its own
+division. A confidence motion was worth +12 on a number that is supposed to BE
+a share of a house: it manufactured votes no member cast.
+
+- **`divisionOf` walks the house seat by seat** and returns ayes and noes;
+  `lower` and `upper` are the aye share of that count. All sixteen readers
+  compare them against ~50 and every one becomes more correct for free, because
+  62 now means 62 per cent of the seats. Put as arithmetic: parties holding 912
+  of 1,304 seats oppose and the player's 30% is for -- the old arithmetic said
+  **56.5 and PASSED**, the count says **594 ayes to 710 noes, 45.5, and it
+  FAILS**.
+- **A united party votes as a bloc**, which is the owner's second sentence and
+  the thing `st.unity` was never read for: it is written in about fifty places
+  and the voting path read it in none. `partyDiscipline` derives from
+  `factionAverage` and, for the government, `st.unity` -- state that already
+  exists and is already read, because a new field with no writer is a card that
+  lies. The same opposed party sends .29 of its seats to the aye lobby at a
+  cohesion of 20 and .14 at 95.
+- **THE BLOC IS A STEEP CURVE AND NOT A STEP, and the step was the first
+  draft.** Against `sup >= 50 ? 1 : 0` one support point was worth either 0.1
+  chamber points or 9.4 depending only on which side of fifty the party sat --
+  fine for a vote and ruinous for anything that BUYS one, since S20b's six
+  persuasion verbs would each either do nothing or carry the house. A logistic
+  hinge keeps what the step was for and measures a continuous 10.3x across the
+  range, steepest where the vote is close.
+- **The modifiers move parties, not the total.** A whip reaches the
+  government's own benches; a confidence motion binds the coalition; a
+  negotiated bill pays the parties not sponsoring it. Each is applied to a
+  named party and counted through its seats, so the swing a party can cause is
+  bounded by what it holds -- .05 of the house swings 3.9 points, .5 swings
+  39.6.
+- **AND THE FIELD CARRIES TWO THINGS.** `talkOut` -- obstruction, which a
+  government is forbidden to use -- writes `b.whip -= 8` into the whip. Scoped
+  to the coalition it landed on benches at 95 support where the curve is flat,
+  and the worth of obstructing a bill fell from -8 Assembly points to -0.85.
+  The SIGN decides the reach: a whip is a government talking to its own party,
+  disorder is a thing the whole House sits through.
+- **Difficulty tilts and never overrides.** Six floors sat ABOVE the bars they
+  were compared with -- committee 72 against 43, assembly 68 against 50,
+  council and decree 68 against 50, senate 66 against 50, and the ASSENT vote
+  72 against 55. On easy no bill could fail at any stage and no office could
+  decline to sign: the setting did not make the game easier, it removed the
+  legislature. This is also why the owner's 133-session save contains **zero
+  referendums** -- the houses passed everything the referendum exists to
+  bypass.
+- **One surface, one rule.** `v11ArtForecast` was a second copy of the same
+  design, its own comment admitting the constitution "carried the bill
+  machine's defect one layer up", so an article and a bill put to the same
+  chamber on the same day were decided by different arithmetic. Both go through
+  `divisionOf` now.
+- Assertion `the division is counted`, eight arms, **thirteen poisons from the
+  diff, all thirteen redden** -- four only after the arm was given a reading it
+  did not have. **The tilt arm drives a real bill through `advanceBills`**,
+  because the floors were applied to the ROLL and an arm reading the forecast
+  cannot see them: it would have stayed green against the exact defect the
+  owner reported.
+
+**AND FIVE S19 ARMS WERE RESHAPED, every one because a deep change exposed a
+statistic that was measuring the wrong thing.** A sample of four read as a rate
+(widened to nineteen). A cross-party correlation confounded by how often a
+party is READ, which read -.18 on a clean control the day it was written and
+-.64 once the division was real -- a PAIRED lift now, each party against
+itself. A mean over a long-tailed distribution where one straggler at twelve
+sessions moved it by a whole session -- the SHARE answered in the session now,
+.42 to .75. A small party's swing bounded at 1.5 points when a real division
+makes it worth up to its seat share -- PROPORTIONALITY now, .400/.396/.397
+points per point of the chamber. And a probe reading a CAPPED log by index,
+reporting a line missing that the game was writing correctly.
+
+**And S19f's reaction was found dead in the case that matters most.** It read a
+RISE in the grudge; the grudge clamps at 100; a player who presses one verb
+repeatedly pins it there. The owner's save has 411 poaches and every opposition
+machine at the clamp -- measured, 150 poaches produced 0 reactions. A running
+tally was the first fix and was worse: ten slights of one point assembled into
+a reaction the bar exists to refuse, 225 became 1,637, and 313 borrowed goes
+went unpaid. The ACT is stamped now, with a cooldown, so a party cannot answer
+faster than it can pay the go back.
+
 ## A party does not wait for the season (S19f)
 
 S18e made the tempo READ the grudge, so a provoked party moves sooner in

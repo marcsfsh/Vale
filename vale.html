@@ -9027,37 +9027,167 @@ function partyBillSupport(st, pid, bill) {
   return clamp(score, 3, 98);
 }
 
-function billForecast(st, bill) {
-  var lower = 0, lowerTotal = 0, upper = 0, upperTotal = 0;
-  PARTIES.forEach(function (p) {
-    var chance = partyBillSupport(st, p.id, bill) / 100;
-    var seats = st.seats[p.id] || 0;
-    lower += seats * chance; lowerTotal += seats;
-    if (upperOn(st)) {
-      var us = st.upper.seats[p.id] || 0;
-      upper += us * chance; upperTotal += us;
-    }
-  });
-  lower = lowerTotal ? lower / lowerTotal * 100 : 0;
-  upper = upperTotal ? upper / upperTotal * 100 : 100;
+/* ---------- S20a: THE DIVISION IS COUNTED ----------
+   The owner reported three things about the chamber and all three were the
+   same defect: "bills almost always pass"; "the higher the party unity, the
+   more members oppose the bill"; "it is not properly accounting for actual
+   number of assembly votes -- things without a majority still pass."
+
+   They were right, and the reason is that no vote was ever counted. What
+   `billForecast` returned was a seat-weighted MEAN OF PROPENSITIES -- each
+   party contributing `seats x support/100` -- and then eleven modifiers were
+   added to that number AFTER it was normalised. Two consequences, both
+   visible in the owner's own save:
+
+   1. A party at 45 support contributed 45% OF ITS SEATS to the aye figure. A
+      party never voted against anything; it voted mostly-for. Six parties
+      that all disliked a bill at 40 still handed it 40% and the bar is 50, so
+      a single friendly bloc carried everything.
+   2. The post-normalisation modifiers are not attributable to any seat. A
+      confidence motion was worth +12 on a number that is supposed to BE a
+      share of a chamber, so it manufactured votes that no member cast. The
+      modifiers sum to more than 60 points against a bar of 50: the chamber's
+      composition was the smaller half of its own division.
+
+   So the number is now what its name always claimed. `billDivision` walks the
+   house seat by seat, splits each party by its own discipline, and returns
+   ayes and noes; `lower` and `upper` are the AYE SHARE of that count. Every
+   one of the sixteen readers of this function compares it against ~50 and
+   every one of them becomes more correct for free, because 62 now means 62
+   per cent of the seats and not 62 points of sentiment.
+
+   AND THE MODIFIERS MOVE PARTIES, NOT THE TOTAL. A whip reaches the
+   government's own benches, a confidence motion binds the parties in the
+   coalition, a negotiated bill pays the parties that are not sponsoring it.
+   Each is applied to a named party's support and then counted through its
+   seats, so a whip in a party holding nine seats moves nine seats. */
+
+/* How much a party votes as a BLOC. The owner's second observation is the
+   rule: a united party opposing a bill should put ALL its members through the
+   no lobby, not 40% of them. Derived from state that already exists and is
+   already read -- `factionAverage` is the party's own cohesion and `st.unity`
+   is the ruling party's -- because a new field with no writer is a card that
+   lies, and this file has found that ten times. */
+var V20_BLOC = 6;
+function partyDiscipline(st, pid) {
+  var base = factionAverage(st, pid);
+  if (pid === st.ruling) base = (base + (st.unity === undefined ? 60 : st.unity)) / 2;
+  /* 40 of cohesion is a rabble that splits on the merits; 90 is a party whose
+     whips deliver. Below .25 even a shambles votes together more often than
+     not, because members mostly agree with their own party. */
+  return clamp(.25 + (base - 40) / 100, .25, .97);
+}
+
+/* What this bill's circumstances are worth TO THIS PARTY, in support points.
+   Everything here used to be added to the normalised total instead. */
+function billPull(st, bill, pid, house) {
+  var pull = 0, co = st.coalition || [st.ruling];
   var issue = issueForPolicy(POL[bill.policy]);
-  var publicHeat = ((st.salience[issue.id] || 50) - 50) * .1;
-  var directionMood = 0;
+  var heat = ((st.salience[issue.id] || 50) - 50) * .1;
+  var dirMood = 0;
   if (POL[bill.policy].mood) {
     var flv = st.pol[bill.policy] || 0;
     var fd = polMoodDelta(POL[bill.policy], flv, clamp(flv + bill.dir, 0, POL[bill.policy].max));
-    BLOCS.forEach(function (b) { directionMood += (fd[b.id] || 0) * b.pop; });
+    BLOCS.forEach(function (b) { dirMood += (fd[b.id] || 0) * b.pop; });
   }
-  lower += publicHeat + directionMood * .35 + (bill.whip || 0) + (bill.confidence ? 12 : 0);
-  upper += publicHeat * .45 + directionMood * .18 + (bill.upperDeal || 0);
-  if (bill.strategy === 'negotiated') { lower += 5; upper += 11; }
-  if (st.coalitionProcedure && bill.strategy === 'negotiated') lower += 4;
-  if (st.senateConference && st.senateConference >= st.turn) upper += 8;
-  if (bill.urgent) { lower += 5; upper -= 6; }
-  if (st.doctrine === 'operator' && bill.owner === 'player') lower += 7;
-  if (st.doctrine === 'broker' && bill.strategy === 'negotiated') { lower += 4; upper += 5; }
-  if (st.diff === 'easy') { lower += 28; upper += 34; }
-  if (st.diff === 'hard') { lower -= 4; upper -= 6; }
+  pull += house === 'upper' ? heat * .45 : heat;
+  pull += dirMood * (house === 'upper' ? .18 : .35);
+  /* The whip is the government's own instrument and reaches its own benches.
+     BUT THE FIELD CARRIES TWO THINGS AND ONLY ONE OF THEM IS A WHIP:
+     `talkOut` -- the opposition's obstruction, which a government is forbidden
+     to use -- writes `b.whip -= 8` into the same number. Scoped to the
+     coalition, that -8 landed on benches sitting at 95 support where the bloc
+     curve is flat, and the measured worth of obstructing a bill fell from -8
+     Assembly points to -0.85. So the sign decides the reach: a whip is a
+     government talking to its own party, and disorder on the floor is a thing
+     the whole House sits through. */
+  if (house !== 'upper' && bill.whip) {
+    pull += bill.whip > 0 ? (co.indexOf(pid) >= 0 ? bill.whip : 0) : bill.whip;
+  }
+  /* S20a: and the floor work with it. `pv5BillForecast` added `bill.floorWork`
+     to `f.lower` AFTER the count, at a point of aye share per point of work --
+     this slice's own defect, one wrapper downstream of the function it was
+     fixed in. It is persuasion done on the floor, so it persuades members. */
+  if (house !== 'upper' && bill.floorWork) pull += bill.floorWork;
+  /* a confidence motion binds the parties holding the government up, and is
+     worth nothing at all to anybody else -- which is the point of it */
+  if (house !== 'upper' && bill.confidence && co.indexOf(pid) >= 0) pull += 22;
+  if (bill.strategy === 'negotiated' && pid !== bill.sponsor) {
+    pull += house === 'upper' ? 11 : 5;
+    if (house !== 'upper' && st.coalitionProcedure) pull += 4;
+  }
+  if (house === 'upper') {
+    pull += (bill.upperDeal || 0);
+    if (st.senateConference && st.senateConference >= st.turn) pull += 8;
+  }
+  if (bill.urgent) pull += house === 'upper' ? -6 : 5;
+  if (st.doctrine === 'operator' && bill.owner === 'player' && co.indexOf(pid) >= 0) pull += 7;
+  if (st.doctrine === 'broker' && bill.strategy === 'negotiated') pull += house === 'upper' ? 5 : 4;
+  /* S20a: difficulty TILTS the chamber, it does not decide it. What stood
+     here was `lower += 28; upper += 34` on the normalised figure, on top of
+     five hard floors in `advanceBills` that put the roll above the bar
+     unconditionally -- so on easy no bill could fail at any stage, whatever
+     the house thought. The tilt is a real thing a real member feels and it
+     rides their own support; the floors are gone. */
+  if (st.diff === 'easy') pull += house === 'upper' ? 16 : 14;
+  if (st.diff === 'gentle') pull += 6;
+  if (st.diff === 'hard') pull += house === 'upper' ? -6 : -4;
+  return pull;
+}
+
+/* The count itself. Deterministic -- it is called from the UI many times a
+   render and must not touch `rand()`; the division's own uncertainty stays in
+   `advanceBills` where the die is already drawn.
+
+   ONE DIVISION SERVES EVERY QUESTION PUT TO A HOUSE. `v11ArtForecast` was a
+   second copy of the mean-of-propensities design -- its own comment said "the
+   constitution carried the bill machine's defect one layer up" -- so a
+   constitutional article was decided by a different arithmetic from a bill in
+   the same chamber on the same day. Two rules for one surface drift apart,
+   which is this file's oldest lesson; the count takes a support function and
+   both callers hand it theirs. */
+function divisionOf(st, house, supportFor) {
+  var ayes = 0, seatsTotal = 0, blocs = [];
+  PARTIES.forEach(function (p) {
+    var seats = house === 'upper' ? ((st.upper.seats || {})[p.id] || 0) : (st.seats[p.id] || 0);
+    if (!seats) return;
+    seatsTotal += seats;
+    var sup = clamp(supportFor(p.id), 0, 100);
+    var d = partyDiscipline(st, p.id);
+    /* The disciplined part of a party goes through one lobby together, the way
+       its balance of opinion leans; the rest votes on the merits.
+
+       THE BLOC IS A STEEP CURVE AND NOT A STEP, and the first draft of this
+       line was a step -- `sup >= 50 ? 1 : 0`. Measured against it, one point
+       of support was worth either 0.1 chamber points or 9.4 and nothing in
+       between, depending only on which side of fifty the party already sat.
+       That is fine for a vote and ruinous for everything that BUYS a vote: the
+       whole point of a persuasion verb is that the player spends and the
+       needle moves, and against a step six such verbs land at random -- one
+       does nothing, the next carries the house, and neither is legible.
+       A logistic centred on fifty keeps what the step was for (a united party
+       arrives together, and taking it across fifty swings all of it) while
+       making every point bought worth something and the direction always
+       right. V20_BLOC is the width of the hinge in support points. */
+    var lean = 1 / (1 + Math.exp(-(sup - 50) / V20_BLOC));
+    var share = d * lean + (1 - d) * (sup / 100);
+    ayes += seats * share;
+    blocs.push({ pid:p.id, seats:seats, support:sup, discipline:d, ayes:seats * share });
+  });
+  return { ayes:ayes, noes:seatsTotal - ayes, seats:seatsTotal,
+    share: seatsTotal ? ayes / seatsTotal * 100 : 0, blocs:blocs };
+}
+function billDivision(st, bill, house) {
+  return divisionOf(st, house, function (pid) {
+    return partyBillSupport(st, pid, bill) + billPull(st, bill, pid, house);
+  });
+}
+
+function billForecast(st, bill) {
+  var lowerDiv = billDivision(st, bill, 'lower');
+  var upperDiv = upperOn(st) ? billDivision(st, bill, 'upper') : null;
+  var lower = lowerDiv.share, upper = upperDiv ? upperDiv.share : 100;
+  var issue = issueForPolicy(POL[bill.policy]);
   /* S15: this read `if (!lowerSits(st)) lower = FORMS[st.form].elections ? 0 : 100;`
      -- it asked about the CALENDAR when the question is whether a chamber
      exists, and it gave the same answer for a suspended house and an abolished
@@ -9269,7 +9399,13 @@ function assentFavour(st, bill) {
   if (f.trait === 'hardliner' && auth < 0) v -= 7;
   if (f.trait === 'liberal' && auth > 0) v -= 7;
   if (bill.confidence) v += 5;
-  if (st.diff === 'easy') v = Math.max(72, v);
+  /* S20a: this was `v = Math.max(72, v)` against a bar of 55 (45 on a bill
+     already returned), so on easy no office could ever decline to sign and
+     the whole assent stage -- S15d's work, the thing that makes an office
+     worth holding -- was a formality. A tilt, like everywhere else. */
+  if (st.diff === 'easy') v += 12;
+  if (st.diff === 'gentle') v += 5;
+  if (st.diff === 'hard') v -= 4;
   return clamp(v, 0, 100);
 }
 /* Where a returned bill goes back to: the last chamber that carried it. */
@@ -9485,7 +9621,6 @@ function advanceBills(st) {
            apparatus can still refuse, and the refusal is the whole difference
            between ruling by decree and ruling by wish. */
         roll = f.lower + (rand() - .5) * BILL_NOISE.decree;
-        if (st.diff === 'easy') roll = Math.max(68, roll);
         if (roll < BILL_BARS.decree) {
           archiveBill(st, bill, 'failed', 'The decree was not carried out: ' + roll.toFixed(0) + '% of the apparatus stood behind it');
           st.legacy.billsFailed++;
@@ -9503,7 +9638,6 @@ function advanceBills(st) {
         /* The suspended house: a council of the government's own people. One
            session, and it usually says yes. */
         roll = f.lower + (rand() - .5) * BILL_NOISE.council;
-        if (st.diff === 'easy') roll = Math.max(68, roll);
         if (roll < BILL_BARS.council) { failBill(st, bill, 'council', roll); break; }
         bill.assemblyVote = roll;
         /* S15: the chamber's decision is reported BEFORE the bill is handed on.
@@ -9515,13 +9649,11 @@ function advanceBills(st) {
         if (billAfterLower(st, bill)) break;
       } else if (bill.stage === 'committee') {
         roll = f.committee + (rand() - .5) * BILL_NOISE.committee;
-        if (st.diff === 'easy') roll = Math.max(72, roll);
         if (roll < BILL_BARS.committee) { failBill(st, bill, 'committee', roll); break; }
         bill.stage = 'assembly'; bill.notes.push('Reported from committee');
         logIt(st, bill.title + ' was reported from committee.');
       } else if (bill.stage === 'assembly') {
         roll = f.lower + (rand() - .5) * BILL_NOISE.assembly;
-        if (st.diff === 'easy') roll = Math.max(68, roll);
         if (roll < BILL_BARS.assembly) { failBill(st, bill, 'Assembly', roll); break; }
         bill.assemblyVote = roll;
         bill.notes.push('Passed the Assembly');
@@ -9529,7 +9661,6 @@ function advanceBills(st) {
         if (billAfterLower(st, bill)) break;
       } else if (bill.stage === 'senate') {
         roll = f.upper + (rand() - .5) * BILL_NOISE.senate;
-        if (st.diff === 'easy') roll = Math.max(66, roll);
         if (roll >= BILL_BARS.senate) { bill.senateVote = roll; billToAssent(st, bill); break; }
         if (st.upper.veto === 1 && !bill.delayed) {
           bill.delayed = true; bill.upperDeal += 5; bill.notes.push('Returned by the Senate with amendments');
@@ -15950,7 +16081,13 @@ billForecast=function(st,bill){
     var chairRel=(st.partyRel&&st.partyRel[c.chair]!==undefined?st.partyRel[c.chair]:50)-50;
     var committeeLift=(pv5CommitteeShare(st,cid)-50)*.18+(c.expertise-50)*.11+chairRel*.08+(c.access||0)+(bill.committeeWork||0)-c.backlog*1.4;
     f.committee=clamp(f.committee+committeeLift,0,100);
-    f.lower=clamp(f.lower+(bill.floorWork||0)+(c.expertise-50)*.025,0,100);
+    /* S20a: `bill.floorWork` moved into `billPull`, where it persuades members
+       and is then counted through their seats; adding it here added aye share
+       no member had voted for. The expertise term stays for now and is the
+       same shape at a twentieth the size (+-1.25 at the extremes) -- recorded
+       in docs/PLAN-S20.md as residue rather than fixed silently, because the
+       committee it reads is not in scope at `billPull`. */
+    f.lower=clamp(f.lower+(c.expertise-50)*.025,0,100);
   }
   return f;
 };
@@ -31141,24 +31278,26 @@ function v11ArtSupport(st, pid, a, repeal) {
 }
 
 function v11ArtForecast(st, a, repeal) {
-  var lower = 0, lowerTotal = 0, upper = 0, upperTotal = 0;
-  PARTIES.forEach(function (p) {
-    var chance = v11ArtSupport(st, p.id, a, repeal) / 100;
-    var seats = st.seats[p.id] || 0;
-    lower += seats * chance; lowerTotal += seats;
-    if (upperOn(st)) {
-      var us = (st.upper.seats && st.upper.seats[p.id]) || 0;
-      upper += us * chance; upperTotal += us;
-    }
-  });
-  lower = lowerTotal ? lower / lowerTotal * 100 : 0;
-  upper = upperTotal ? upper / upperTotal * 100 : 100;
-  /* the country hears about it for two sessions before it is put */
+  /* S20a: THROUGH THE SAME DIVISION AS A BILL. This was its own copy of the
+     mean-of-propensities design, with the same post-normalisation modifiers
+     and the same easy-mode override -- so an article and a bill put to the
+     same chamber on the same day were decided by different arithmetic, and a
+     party opposing an amendment still handed it most of its seats. The pull
+     each party feels is passed in; the counting is `divisionOf`'s. */
   var heat = ((st.salience && st.salience.federal !== undefined ? st.salience.federal : 50) - 50) * .08;
-  lower += heat; upper += heat * .4;
-  if (st.diff === 'easy') { lower += 22; upper += 26; }
-  if (st.diff === 'gentle') { lower += 9; upper += 11; }
-  if (st.diff === 'hard') { lower -= 4; upper -= 5; }
+  function pullFor(house) {
+    var pull = house === 'upper' ? heat * .4 : heat;
+    if (st.diff === 'easy') pull += house === 'upper' ? 13 : 11;
+    if (st.diff === 'gentle') pull += house === 'upper' ? 11 : 9;
+    if (st.diff === 'hard') pull += house === 'upper' ? -5 : -4;
+    return pull;
+  }
+  var lower = divisionOf(st, 'lower', function (pid) {
+    return v11ArtSupport(st, pid, a, repeal) + pullFor('lower');
+  }).share;
+  var upper = upperOn(st) ? divisionOf(st, 'upper', function (pid) {
+    return v11ArtSupport(st, pid, a, repeal) + pullFor('upper');
+  }).share : 100;
   /* S15: the constitution carried the bill machine's defect one layer up, and
      it bit harder here: under a form that still holds elections an abolished
      Assembly forced lower to 0, so NO article could ever be ratified, and the
@@ -33788,6 +33927,30 @@ function v16Grudge(st, pid, against) { return (v16Ai(st)[pid].grudge[against] ||
 function v16Resent(st, pid, against, n) {
   var a = v16Ai(st)[pid];
   a.grudge[against] = clamp((a.grudge[against] || 0) + n, 0, 100);
+  /* S20a: AND THE ACT IS STAMPED, BECAUSE THE GRUDGE CANNOT ALWAYS RISE.
+     S19f's reaction read a RISE in the grudge level, which asks the right
+     question -- a party answers what was just done to it rather than sulking
+     every session it is still angry -- and could not answer it once the level
+     was pinned. The grudge clamps at 100 and a player who presses the same
+     verb repeatedly pins it there: the owner's save has `poach` used 411 times
+     and every opposition machine at the clamp. Past that point a provocation
+     moves the level by nothing, the rise is nought, and the whole reaction
+     layer is silently dead -- measured at 150 poaches for 0 reactions, which
+     is precisely when a player would most expect an answer.
+
+     A RUNNING TALLY WAS THE FIRST FIX AND IT WAS WORSE. Unclamped, the sum
+     never falls, so ten separate slights of one point added up to a reaction
+     the bar exists to refuse: reactions went from 225 to 1637 across the same
+     run and parties answered nearly every session, with 313 borrowed goes left
+     unpaid at the end of it. What the bar was always measuring is a DISCRETE
+     ACT -- the median provocation is 13.4 and a session's cooling is 0.6 --
+     so the act is what is stamped. One act big enough, one answer; ten small
+     ones, none; and a grudge at its ceiling changes nothing, because this
+     never asks the level. */
+  if (n >= V19_REACT_RISE) {
+    a.provokedAt = a.provokedAt || {};
+    a.provokedAt[against] = st.turn;
+  }
 }
 /* What a party is trying to do this session. Circumstance, not temperament:
    a party in government defends, a party losing seats moderates, a party with
@@ -35370,18 +35533,32 @@ function v17LedgerCard(st, pid) {
    below the other, so this answers what the player DID and never the passage
    of time. The claim is the GAP, never the absence of anything below. */
 var V19_REACT_RISE = 10;
+var V19_REACT_COOL = 8;
 function v19React(st) {
   if (!v19Thinks(st)) return;
   var ai = v16Ai(st), me = playParty(st);
   PARTIES.forEach(function (p) {
     if (p.id === me || st.banned[p.id]) return;
     var a = ai[p.id]; if (!a) return;
-    var now = 0;
-    try { now = v16Grudge(st, p.id, me); } catch (e) { now = 0; }
-    var felt = a.felt === undefined ? now : a.felt;
-    /* the RISE, not the level: a party answers the thing that was just done to
-       it, once, rather than every session it is still angry */
-    if (now - felt >= V19_REACT_RISE) {
+    /* THE ACT, not the level and not a running sum -- see `v16Resent`. A
+       provocation big enough to clear the bar stamps the session it happened
+       in, and a party answers the one that happened in the session it is
+       standing in. Immune to the grudge's ceiling, and it cannot be assembled
+       out of slights too small to be worth answering. */
+    /* AND A PARTY ANSWERS AT MOST SO OFTEN. With the ceiling gone, every
+       discrete provocation earned an answer -- 1,440 of them across the same
+       run the saturating version managed 225 -- and a party provoked every
+       fourth session borrowed goes faster than it could ever pay them back:
+       159 were still outstanding when the campaigns ended, which is the
+       budget guarantee failing quietly rather than loudly. A party takes
+       roughly one initiative every four sessions, so answering more often than
+       every eighth is borrowing against a purse that cannot cover it. This is
+       S20's own ruling R4 -- a verb pressable every session is not a decision
+       -- turned on the engine's side of the table. */
+    var stamped = (a.provokedAt || {})[me];
+    var rested = a.reactedAt === undefined || st.turn - a.reactedAt >= V19_REACT_COOL;
+    if (stamped === st.turn && rested) {
+      a.reactedAt = st.turn;
       a.react = st.turn;
       /* WHAT THE LINE SAYS IS WHAT HAPPENS, and the first draft of it was a
          card that lies. It said the party ANSWERED, and measured across
@@ -35392,7 +35569,6 @@ function v19React(st) {
          did not wait. */
       logIt(st, 'The ' + PARTY[p.id].short + ' did not wait for the season to take this up.');
     }
-    a.felt = now;
   });
 }
 var v16AiTickBase = tickTurn;

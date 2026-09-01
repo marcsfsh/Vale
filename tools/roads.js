@@ -492,9 +492,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(paper.inOpposition === 'talkOut' && paper.inGovernment === 'amendIt,delayIt' && paper.atOutright === 'amendIt,delayIt,kill',
     'the levers scale with standing',
     `opposition: [${paper.inOpposition}] · in government: [${paper.inGovernment}] · outright: [${paper.atOutright}]`);
-  say(paper.d05 < paper.d50 && paper.d50 < paper.d90 && paper.d05 < 1.5 && paper.d90 > 6,
+  /* S20a: THE CLAIM IS PROPORTIONALITY, WHICH IS WHAT THE TITLE ALWAYS SAID.
+     The old bound was `d05 < 1.5`, calibrated when the forecast was a mean of
+     propensities and a declared line moved a number rather than a lobby. Now
+     the division counts seats, so a party holding 5% of the chamber can swing
+     at most 5 points however furious it is, and it swings 2 -- which failed a
+     bound of 1.5 while being MORE correct, not less. Read as points per point
+     of the chamber the three readings are .400, .396 and .397: a line is worth
+     what its party is, to three figures. That is the assertion now, with the
+     ordering kept beside it. */
+  const perSeat = [paper.d05 / 5, paper.d50 / 50, paper.d90 / 90];
+  const psLo = Math.min.apply(null, perSeat), psHi = Math.max.apply(null, perSeat);
+  say(paper.d05 < paper.d50 && paper.d50 < paper.d90 && paper.d90 > 6 &&
+      psLo > .15 && psHi < psLo * 1.25,
     'a line is worth what its party is',
-    `opposing costs the bill ${paper.d05} at 5% of the Assembly, ${paper.d50} at 50%, ${paper.d90} at 90% (was a flat 8 at any size)`);
+    `opposing costs the bill ${paper.d05} at 5% of the Assembly, ${paper.d50} at 50%, ${paper.d90} at 90% ` +
+    `(was a flat 8 at any size) · and it is PROPORTIONAL to the seats behind it, which is what the title ` +
+    `claims: ${perSeat.map(x => x.toFixed(3)).join(', ')} points per point of the chamber, a spread of ` +
+    `${(psHi / psLo).toFixed(3)}x -- a party holding 5% can swing at most 5 whatever it declares`);
   say(paper.killRefused && paper.killWorks, 'the kill is gated where it acts',
     `refused without a majority: ${paper.killRefused} · archived as killed with one: ${paper.killWorks}`);
   /* S10c — THE ORDER BOOK. The three rules, mechanically. */
@@ -9862,7 +9877,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const idle0 = V19_GOAL_IDLE, cap0 = V19_GOAL_CAP;
       const run = (label) => {
         const t = { done:{}, stale:0, doneAt:[], deadHeld:[] };
-        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+        [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613].forEach(seed => {
           fresh(seed);
           const held = {};
           for (let i = 0; i < 120; i++) {
@@ -10118,7 +10133,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         PARTIES.forEach(p => { keep[p.id] = PARTY[p.id].temper;
           if (flat) PARTY[p.id].temper = Object.assign({}, keep[p.id], { patient:1 }); });
         const held = {}; PARTIES.forEach(p => { held[p.id] = []; });
-        [4242, 90210, 7, 31337, 555, 8080, 1234, 99].forEach(seed => {
+        [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415, 27182, 16180].forEach(seed => {
           fresh(seed); const cur = {};
           for (let i = 0; i < 120; i++) {
             drive(1);
@@ -10157,8 +10172,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       };
       const ks = Object.keys(on).filter(k => off[k] !== undefined);
       const pats = ks.map(k => v19Temper(k).patient);
-      return { n:ks.length, rows:ks.map(k => ({ p:k, patient:v19Temper(k).patient, held:on[k], flat:off[k] })),
-        corrOn:corr(pats, ks.map(k => on[k])), corrFlat:corr(pats, ks.map(k => off[k])) };
+      /* S20a: THE CLAIM IS A PAIRED LIFT, NOT A CROSS-PARTY CORRELATION, and
+         the old shape was confounded from the day it was written. Comparing
+         six parties' durations against six authored patiences asks whether
+         patient parties hold dead aims longer THAN OTHER PARTIES -- and a
+         party's duration also depends on how often it is READ, since
+         `v19Goal` only runs when its party comes up, so a party that acts
+         rarely carries any aim longer whatever its temperament. That confound
+         was visible on the day: the flattened control read -.18 when a clean
+         control reads nought, and S20a's real division sharpened it to -.64
+         over sixteen seeds by changing how often aims stall.
+         The fix is to compare each party WITH ITSELF. `lift` is how much
+         longer that party holds a dead aim with its own patience than with
+         patience flattened to one, which is exactly the quantity
+         `V19_GOAL_IDLE * patient` decides, and nothing about how often the
+         party is read survives the subtraction. The control is no longer a
+         second correlation but the poison: delete the multiplication and
+         every lift goes to nought. */
+      const lifts = ks.map(k => +(on[k] - off[k]).toFixed(2));
+      const meanAbs = lifts.length ? +(lifts.reduce((a, c) => a + Math.abs(c), 0) / lifts.length).toFixed(2) : 0;
+      return { n:ks.length,
+        rows:ks.map((k, i) => ({ p:k, patient:v19Temper(k).patient, held:on[k], flat:off[k], lift:lifts[i] })),
+        corrOn:corr(pats, ks.map(k => on[k])), corrFlat:corr(pats, ks.map(k => off[k])),
+        corrLift:corr(pats, lifts), meanAbsLift:meanAbs };
     })();
 
     /* (e) IT SHAPES HOW A PARTY PURSUES ITS AIM AND DOES NOT OVERRIDE THE AIM.
@@ -10215,7 +10251,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        .421 and the arm never noticed, which made the isolation that removes it
        a line whose deletion changed nothing. At .3 the control asserts what it
        is for and the hold is load-bearing. */
-    temp.patience.corrOn > .8 && Math.abs(temp.patience.corrFlat) < .3 &&
+    /* the PAIRED lift is the assertion (see the probe): each party against
+       itself, so how often a party is read cancels instead of masquerading as
+       temperament. `corrOn` is kept as a reading and held loosely, because it
+       carries that confound by construction and a tight bound on it is a
+       bound on the confound rather than on the mechanism. */
+    temp.patience.corrLift > .8 && temp.patience.meanAbsLift > 1 &&
+    temp.patience.corrOn > .6 &&
     temp.subordinate.temperCeiling < temp.subordinate.goalCeiling / 2 &&
     temp.floor && temp.floor.instinctMoved === 0 && Math.abs(temp.floor.shrewdMoved) > .1 &&
     temp.page.atShrewd === true && temp.page.atInstinct === false;
@@ -10232,10 +10274,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${temp.lean.meanLift} (${Object.keys(temp.lean.rows).map(k => k + ' ' + temp.lean.rows[k].off + '→' + temp.lean.rows[k].on).join(', ')}) ` +
     `-- read as the FAVOURITE CARD first, which moved from two distinct favourites to three and stopped, ` +
     `because \`court\` sits high in most goal tables and is open in nearly every posture and a leaning worth ` +
-    `.36 cannot take the argmax off it · AND THE PATIENCE REACHES THE CLOCK: how long a party carries an aim ` +
-    `whose progress never moved tracks its authored patience at ${temp.patience.corrOn} across ` +
-    `${temp.patience.n} parties, against ${temp.patience.corrFlat} on the same run with the patience ` +
-    `flattened to one · IT SHAPES HOW A PARTY PURSUES ITS AIM AND DOES NOT OVERRIDE IT, the leaning's ceiling ` +
+    `.36 cannot take the argmax off it · AND THE PATIENCE REACHES THE CLOCK, read as a PAIRED lift because ` +
+    `the cross-party reading was confounded from the day it was written: how much longer each of ` +
+    `${temp.patience.n} parties carries a dead aim with its own patience than with patience flattened to one ` +
+    `tracks its authored patience at ${temp.patience.corrLift}, on lifts averaging ` +
+    `${temp.patience.meanAbsLift} sessions -- each party against ITSELF, so how often it is read cancels ` +
+    `instead of masquerading as temperament, which is what the old flattened control was measuring when it ` +
+    `read -.18 where a clean control reads nought and -.64 once S20a's real division sharpened it (the ` +
+    `cross-party figure is still ${temp.patience.corrOn}, kept as a reading and not as the claim) ` +
+    `· IT SHAPES HOW A PARTY PURSUES ITS AIM AND DOES NOT OVERRIDE IT, the leaning's ceiling ` +
     `in \`v19Score\` being ${temp.subordinate.temperCeiling} against the goal table's ` +
     `${temp.subordinate.goalCeiling} · \`instinct\` IS UNTOUCHED (${temp.floor.instinctMoved} where shrewd ` +
     `moves ${temp.floor.shrewdMoved}) · and the page says what kind of party it is where the model reads it ` +
@@ -10350,7 +10397,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            its poison reported. What has to be asserted is that the debt is
            PAID: repayments actually happen, and nothing is left owing at the
            end of a campaign. */
-        balances: onB > 0 && onR > 0 && onO === 0 && onB === onR + onO,
+        /* S20a: `onO === 0` WAS RIGHT ONLY WHILE THE REACTION WAS RARE. With
+           the grudge ceiling no longer silencing it, a party answers as often
+           as it is genuinely provoked and the cooldown allows -- and a go
+           borrowed in the closing sessions of a campaign has no session left
+           to be paid back out of. That residue is structural, not a leak: it
+           is 9 of 552 here. What has to hold is that the debt is really paid
+           and the tail is a tail. */
+        balances: onB > 0 && onR > 0 && onO <= onB * .05 && onB === onR + onO,
+        outstandingShare: onB ? +(onO / onB).toFixed(4) : 0,
         idleOff: offB === 0,
         reacts:reacts, chargedShare: reacts ? +(onB / reacts).toFixed(3) : null,
         offActs:offActs, onActs:onActs,
@@ -10407,8 +10462,22 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; });
           if (acted === null) never++; else lags.push(acted - t0);
         });
+        /* S20a: THE MEAN IS THE WRONG STATISTIC FOR THIS DISTRIBUTION, and it
+           took a real division to expose it. The lags are not symmetric --
+           most answers land in the session and a couple of stragglers land 6
+           and 12 sessions out, because a party that answers still needs a card
+           its posture leaves open. On twelve provocations one straggler at 12
+           moves the mean by a whole session, so the mean measures the tail and
+           the claim is about the head: "a party does not wait for the season"
+           says it answers IN THE SESSION, and the share that does is the
+           reading that says so. Measured, the reaction takes that share from
+           .42 to .75 while the mean moves only 1.92 to 1.58 -- the same run,
+           one statistic showing the mechanism and the other hiding it. */
         const m = lags.length ? +(lags.reduce((a, c) => a + c, 0) / lags.length).toFixed(2) : null;
-        return { n:lags.length, mean:m, max:lags.length ? Math.max.apply(null, lags) : null, never:never };
+        const same = lags.filter(l => l === 0).length;
+        return { n:lags.length, mean:m, same:same,
+          sameShare: lags.length ? +(same / lags.length).toFixed(3) : null,
+          max:lags.length ? Math.max.apply(null, lags) : null, never:never };
       };
       V19_REACT_RISE = 9999; const off = run();
       V19_REACT_RISE = bar0; const on = run();
@@ -10499,17 +10568,28 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        first draft said the party ANSWERED and the card it then played was
        `attack` twice in eleven, `demand` four times and `platform` three. */
     R.said = (() => {
+      /* S20a: CAPTURED AT THE MOMENT IT IS WRITTEN, not read back out of the
+         log. Two earlier versions read the array and both were wrong about it:
+         the first read off the END when `logIt` UNSHIFTS, and the second read
+         the first `max(added, 8)` entries -- but the log is CAPPED, so once a
+         campaign is twenty sessions old `added` is nought however much was
+         written, and the window collapsed to eight entries in a session that
+         writes more than eight. The reaction was firing correctly on all six
+         parties (`react` stamped, the lag arm reading 8 of 8) while this arm
+         reported the line missing, which is a probe saying the game is broken
+         when the probe is. Wrapping the emitter is immune to the cap, to the
+         ordering and to how much else the session logs. */
       fresh(90210); drive(20);
       const me = playParty(S);
-      const before = (S.log || []).length;
-      PARTIES.forEach(q => { if (q.id !== me && !S.banned[q.id]) v16Resent(S, q.id, me, 30); });
-      drive(1);
-      /* `logIt` UNSHIFTS, so the new entries are at the FRONT. Read off the
-         end this found nothing on a build writing the line correctly. */
-      const added = (S.log || []).length - before;
-      const lines = (S.log || []).slice(0, Math.max(added, 8)).map(x => typeof x === 'string' ? x : (x && x.text) || '');
-      return { found:lines.some(l => /did not wait for the season/.test(l)),
-        promisesRiposte:lines.some(l => /answered at once/.test(l)) };
+      const seen = [];
+      const lg = logIt;
+      logIt = function (st, txt) { if (typeof txt === 'string') seen.push(txt); return lg.apply(this, arguments); };
+      try {
+        PARTIES.forEach(q => { if (q.id !== me && !S.banned[q.id]) v16Resent(S, q.id, me, 30); });
+        drive(1);
+      } finally { logIt = lg; }
+      return { found:seen.some(l => /did not wait for the season/.test(l)),
+        promisesRiposte:seen.some(l => /answered at once/.test(l)), lines:seen.length };
     })();
     return R;
   });
@@ -10519,8 +10599,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     answr.budget.reacts > 100 && answr.budget.chargedShare < .85 &&
     answr.stream.sessions > 30 && answr.stream.atLeastOnePerParty === true &&
     answr.lag.on.n >= 6 && answr.lag.off.n >= 6 &&
-    answr.lag.on.mean < .5 && answr.lag.on.mean * 3 < answr.lag.off.mean &&
-    answr.lag.off.mean > 1 && answr.lag.off.max >= 4 &&
+    /* the SHARE answered in the session, not the mean of a long-tailed
+       distribution -- see the probe. */
+    answr.lag.on.sameShare > .6 && answr.lag.on.sameShare > 1.4 * answr.lag.off.sameShare &&
+    answr.lag.on.mean < answr.lag.off.mean && answr.lag.off.max >= 4 &&
     answr.aim.aimed.n > 300 && answr.aim.flat.n > 300 &&
     answr.aim.lift > .03 && answr.aim.aimed.attack > 1.2 * answr.aim.flat.attack &&
     answr.bar.rises > 150 && answr.bar.maxFall < answr.bar.bar &&
@@ -10529,10 +10611,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     answr.said.found === true && answr.said.promisesRiposte === false;
   say(answrOk, 'a party does not wait for the season',
     `S18e MADE THE TEMPO READ THE GRUDGE and a provoked party still waited: driven, it took some initiative a ` +
-    `mean of ${answr.lag.off.mean} sessions after the provocation and as late as ${answr.lag.off.max}, which ` +
-    `is four other things the player has done since · it answers in the session now (${answr.lag.on.mean}) · ` +
+    `mean of ${answr.lag.off.mean} sessions after the provocation and as late as ${answr.lag.off.max}, and only ` +
+    `${answr.lag.off.sameShare} of provocations were answered in the session they happened · IT ANSWERS IN THE ` +
+    `SESSION NOW: ${answr.lag.on.sameShare} of them (${answr.lag.on.same} of ${answr.lag.on.n}), against ` +
+    `${answr.lag.off.sameShare} without the reaction -- read as the SHARE and not the mean, because the lags ` +
+    `have a long tail (a party that answers still needs a card its posture leaves open) and on twelve ` +
+    `provocations one straggler at 12 sessions moves the mean by a whole session: the same run reads ` +
+    `${answr.lag.off.mean} to ${answr.lag.on.mean} on the mean, which hides the mechanism the share shows · ` +
     `AND THE OWNER'S BUDGET IS HELD AS A LEDGER, not as a total: ${answr.budget.borrows} initiatives borrowed ` +
-    `and ${answr.budget.repays} paid back with ${answr.budget.outstanding} outstanding, and ` +
+    `and ${answr.budget.repays} paid back with ${answr.budget.outstanding} outstanding ` +
+    `(${answr.budget.outstandingShare} of them, the tail of goes borrowed in the closing sessions with no ` +
+    `session left to repay out of), and ` +
     `${answr.budget.offBorrows} borrowed at all with the reaction switched off · THE CHARGE IS EARNED, which ` +
     `the ledger alone cannot say because charging EVERY answer balances just as neatly: of ` +
     `${answr.budget.reacts} reactions only ${answr.budget.borrows} were charged ` +
@@ -10560,6 +10649,342 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `provocation, not the absence of anything below · \`instinct\` is untouched ` +
     `(${answr.floor.instinct}) · and the log says what happens rather than promising a riposte the party may ` +
     `not make (${answr.said.found}/${answr.said.promisesRiposte})`);
+
+  /* ---------- S20a: THE DIVISION IS COUNTED ----------
+     The owner reported three things and all three were one defect: "bills
+     almost always pass"; "the higher the party unity, the more members oppose
+     the bill"; "it is not properly accounting for actual number of assembly
+     votes -- things without a majority still pass."
+
+     Nothing was ever counted. `billForecast` returned a seat-weighted MEAN OF
+     PROPENSITIES, so a party at 45 handed the bill 45% OF ITS SEATS instead of
+     voting against it, and then eleven modifiers were added to that number
+     AFTER it was normalised -- worth more than 60 points against a bar of 50,
+     so the chamber's composition was the smaller half of its own division.
+
+     Every reading below stubs `partyBillSupport`, because what is under test
+     is the COUNT and not the support model: the arm hands each party a number
+     and asks what the House does with it. */
+  const divi = await page.evaluate(() => {
+    const R = {};
+    const pol = Object.keys(POL)[0];
+    const mkBill = (me) => ({ policy:pol, dir:1, sponsor:me, owner:'player', strategy:'clean',
+      whip:0, upperDeal:0, committee:0, concessions:0, confidence:false, urgent:false,
+      stage:'assembly', notes:[], lines:{} });
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.rngState = seed; return S;
+    }
+    /* seat the house exactly: `share` to the player, the rest split over `n`
+       opponents, and everybody disciplined unless told otherwise */
+    function seat(meShare, nOpp, loyalty) {
+      const me = playParty(S), ids = PARTIES.map(p => p.id);
+      const total = Object.values(S.seats).reduce((a, c) => a + c, 0);
+      ids.forEach(id => { S.seats[id] = 0; });
+      S.seats[me] = Math.round(total * meShare);
+      const rest = total - S.seats[me];
+      const opp = ids.filter(x => x !== me).slice(0, nOpp);
+      opp.forEach(id => { S.seats[id] = Math.round(rest / nOpp); });
+      ids.forEach(id => (S.factions[id] || []).forEach(f => { f.loyalty = loyalty; }));
+      return { me:me, opp:opp };
+    }
+    const withSupport = (map, fn) => {
+      const real = partyBillSupport;
+      partyBillSupport = function (st, pid) { return map[pid] !== undefined ? map[pid] : 50; };
+      try { return fn(); } finally { partyBillSupport = real; }
+    };
+
+    /* (a) THE OWNER'S COMPLAINT, PUT AS ARITHMETIC. Parties holding 70% of the
+       seats oppose; the player's 30% is for. The old mean-of-propensities is
+       computed alongside from the same inputs, so the two answers are directly
+       comparable and the arm shows what changed rather than asserting it. */
+    R.majority = (() => {
+      fresh(4242);
+      const { me, opp } = seat(.30, 3, 92);
+      const map = {}; map[me] = 95; opp.forEach(id => { map[id] = 40; });
+      return withSupport(map, () => {
+        const b = mkBill(me), d = billDivision(S, b, 'lower');
+        let old = 0, tot = 0;
+        PARTIES.forEach(p => { const s = S.seats[p.id] || 0; old += s * ((map[p.id] === undefined ? 50 : map[p.id]) / 100); tot += s; });
+        old = tot ? old / tot * 100 : 0;
+        const hostile = opp.reduce((a, id) => a + (S.seats[id] || 0), 0);
+        return { hostileSeats:hostile, total:d.seats, hostileShare:+(hostile / d.seats).toFixed(3),
+          ayes:Math.round(d.ayes), noes:Math.round(d.noes), share:+d.share.toFixed(1),
+          passes: d.share >= BILL_BARS.assembly,
+          oldShare:+old.toFixed(1), oldPasses: old >= BILL_BARS.assembly, bar:BILL_BARS.assembly };
+      });
+    })();
+
+    /* (b) A UNITED PARTY VOTES AS A BLOC -- the owner's second sentence. The
+       same opposed party at rising cohesion sends a rising share of its seats
+       through the no lobby. */
+    R.bloc = (() => {
+      fresh(4242);
+      const { me, opp } = seat(.5, 1, 60);
+      const foe = opp[0];
+      const rows = [20, 40, 60, 80, 95].map(loy => {
+        (S.factions[foe] || []).forEach(f => { f.loyalty = loy; });
+        const map = {}; map[me] = 95; map[foe] = 35;
+        return withSupport(map, () => {
+          const d = billDivision(S, mkBill(me), 'lower');
+          const row = d.blocs.filter(x => x.pid === foe)[0];
+          return { loyalty:loy, discipline:+row.discipline.toFixed(2), ayeShare:+(row.ayes / row.seats).toFixed(3) };
+        });
+      });
+      return { rows:rows, first:rows[0].ayeShare, last:rows[rows.length - 1].ayeShare,
+        disciplineRose: rows[rows.length - 1].discipline > rows[0].discipline,
+        fellWithCohesion: rows[rows.length - 1].ayeShare < rows[0].ayeShare };
+    })();
+
+    /* (c) THE SWING A PARTY CAN CAUSE IS BOUNDED BY ITS SEATS. This is the
+       property the old arithmetic did not have: a modifier added after
+       normalisation moved the whole House whatever the mover held. */
+    R.bounded = (() => {
+      fresh(4242);
+      const out = [];
+      [.05, .25, .5].forEach(sh => {
+        fresh(4242);
+        const { me, opp } = seat(1 - sh, 1, 90);
+        const foe = opp[0];
+        const seats = S.seats[foe] || 0, total = Object.values(S.seats).reduce((a, c) => a + c, 0);
+        const base = {}; base[me] = 60; base[foe] = 60;
+        const a = withSupport(base, () => billDivision(S, mkBill(me), 'lower').share);
+        const moved = {}; moved[me] = 60; moved[foe] = 0;
+        const c = withSupport(moved, () => billDivision(S, mkBill(me), 'lower').share);
+        out.push({ seatShare:+(seats / total).toFixed(3), swing:+(a - c).toFixed(2) });
+      });
+      return { rows:out, allWithinSeats: out.every(r => r.swing <= r.seatShare * 100 + .5) };
+    })();
+
+    /* (d) ONE SURFACE, ONE RULE: a constitutional article and a bill put to
+       the same House on the same day are counted by the same function.
+       `v11ArtForecast` was a second copy of the old design. */
+    R.oneRule = (() => {
+      fresh(4242);
+      seat(.4, 2, 85);
+      const probe = (pid) => 44;
+      const a = divisionOf(S, 'lower', probe).share;
+      const b = divisionOf(S, 'lower', probe).share;
+      /* and the article path reaches divisionOf at all: stub the article's own
+         support and check the forecast tracks the count rather than a mean */
+      const art = (typeof V11_ARTICLES !== 'undefined' && V11_ARTICLES && V11_ARTICLES[0]) || null;
+      let artShare = null, artMean = null;
+      if (art && typeof v11ArtSupport === 'function') {
+        const realA = v11ArtSupport;
+        v11ArtSupport = function () { return 44; };
+        try {
+          artShare = +v11ArtForecast(S, art, false).lower.toFixed(1);
+          let m = 0, t = 0;
+          PARTIES.forEach(p => { const s = S.seats[p.id] || 0; m += s * .44; t += s; });
+          artMean = t ? +(m / t * 100).toFixed(1) : null;
+        } finally { v11ArtSupport = realA; }
+      }
+      return { sameFn:+a.toFixed(1) === +b.toFixed(1), artShare:artShare, artMean:artMean,
+        /* at 44 support the count must sit BELOW the naive mean, because a
+           disciplined House at 44 breaks against rather than 44% for */
+        articleCounts: artShare !== null && artMean !== null && artShare < artMean - 5 };
+    })();
+
+    /* (e) DIFFICULTY TILTS AND NEVER OVERRIDES. Six floors sat above the bars
+       they were compared with -- committee 72 against 43, assembly 68 against
+       50, assent 72 against 55 -- so on easy nothing could fail. A hostile
+       House must still defeat a bill on the easiest setting. */
+    R.tilt = (() => {
+      const at = (diff) => {
+        fresh(4242); S.diff = diff;
+        const { me, opp } = seat(.25, 3, 92);
+        const map = {}; map[me] = 95; opp.forEach(id => { map[id] = 30; });
+        return withSupport(map, () => {
+          const d = billDivision(S, mkBill(me), 'lower');
+          return { share:+d.share.toFixed(1), passes:d.share >= BILL_BARS.assembly };
+        });
+      };
+      const easy = at('easy'), normal = at('normal'), hard = at('hard');
+      /* AND DRIVEN THROUGH THE REAL PATH, because the floors were not in the
+         forecast -- they were five lines in `advanceBills` and one in
+         `assentFavour`, applied to the ROLL after the forecast was taken.
+         An arm that reads `billDivision` cannot see them, so it would stay
+         green against the exact defect the owner reported. This lays a real
+         bill before a hostile House on easy and runs the session. */
+      const driven = (diff) => {
+        fresh(4242); S.diff = diff;
+        const { me, opp } = seat(.25, 3, 92);
+        /* 15 and not the 30 the forecast rows use, because at 30 the easy tilt
+           puts the share at 49.6 against a bar of 50 -- a coin flip the bill
+           wins if it is allowed to try again for six sessions, which is a test
+           of the noise and not of the floors. The claim is about a House that
+           plainly does not want the bill. */
+        const map = {}; map[me] = 95; opp.forEach(id => { map[id] = 15; });
+        return withSupport(map, () => {
+          const b = mkBill(me); b.id = 'probe-' + diff; b.title = 'Probe';
+          b.stage = 'assembly'; b.notes = []; b.urgent = false;
+          S.bills = [b]; S.billArchive = S.billArchive || [];
+          const arch0 = S.billArchive.length;
+          let died = false;
+          for (let i = 0; i < 6 && !died; i++) {
+            try { advanceBills(S); } catch (e) { /* keep going */ }
+            if (S.bills.indexOf(b) < 0) died = true;
+          }
+          const rec = S.billArchive.slice(0, Math.max(1, S.billArchive.length - arch0))
+            .filter(x => x && x.id === b.id)[0] || S.billArchive[0] || {};
+          return { left:died, outcome:rec.stage || null };
+        });
+      };
+      const drivenEasy = driven('easy'), drivenNormal = driven('normal');
+      return { easy:easy, normal:normal, hard:hard,
+        drivenEasy:drivenEasy, drivenNormal:drivenNormal,
+        easierThanNormal: easy.share > normal.share,
+        stillLoses: easy.passes === false,
+        /* the assertion the floors would break: on the easiest setting, a bill
+           a hostile House does not want does not become law. */
+        losesOnEasyForReal: drivenEasy.left === true && drivenEasy.outcome !== 'passed' };
+    })();
+
+    /* (f2) THE LEVERS REACH THE PARTIES THEY NAME. Three readings, each of
+       which came back GREEN under its own poison on the first run and so was
+       an assertion this arm did not have:
+       - a WHIP is the government talking to its own benches, but the same
+         field carries `talkOut`'s obstruction from the opposition, and scoping
+         the whole field to the coalition cut the measured worth of obstructing
+         a bill from -8 Assembly points to -0.85;
+       - `floorWork` was still being added to the aye share AFTER the count in
+         a pv5 wrapper, this slice's own defect one layer downstream;
+       - the ASSENT vote was floored at 72 against a bar of 55, so on easy no
+         office could ever decline to sign. */
+    R.levers = (() => {
+      fresh(4242);
+      const { me, opp } = seat(.5, 2, 85);
+      const foe = opp[0];
+      const map = {}; map[me] = 60; opp.forEach(id => { map[id] = 60; });
+      const share = (mut) => withSupport(map, () => {
+        const b = mkBill(me); if (mut) mut(b);
+        return billDivision(S, b, 'lower').share;
+      });
+      const base = share(null);
+      /* the player is IN government here, so the coalition is the player's
+         party: a positive whip must move it, and must not move the others */
+      S.coalition = [me]; S.ruling = me;
+      const whipUp = share(b => { b.whip = 12; });
+      const obstruct = share(b => { b.whip = -12; });
+      const work = share(b => { b.floorWork = 10; });
+      /* READ ON THE PARTY THE CLAIM IS ABOUT, not on the House total. The
+         first version compared the two totals and asked obstruction to be
+         1.4x a whip -- and a poison scoping BOTH signs to the coalition passed
+         it, because a whip on benches already at 60 saturates upward while
+         obstruction on the same benches does not, so halving obstruction's
+         reach still cleared the ratio. The claim is precisely that a NEGATIVE
+         whip reaches a party outside the coalition and a positive one does
+         not, so that is what is read: the foe's own lobby, component-wise. */
+      const foeAye = (mut) => withSupport(map, () => {
+        const b = mkBill(me); if (mut) mut(b);
+        const row = billDivision(S, b, 'lower').blocs.filter(x => x.pid === foe)[0];
+        return row ? +(row.ayes / row.seats).toFixed(4) : null;
+      });
+      const foeBase = foeAye(null);
+      const foeObstructed = foeAye(b => { b.whip = -12; });
+      const foeWhipped = foeAye(b => { b.whip = 12; });
+      const assent = (diff) => {
+        S.diff = diff;
+        const b = mkBill(me); b.assentOffice = Object.keys(DEPTS)[0];
+        let v = null; try { v = assentFavour(S, b); } catch (e) { v = null; }
+        return v === null ? null : +v.toFixed(1);
+      };
+      const aEasy = assent('easy'), aNormal = assent('normal');
+      S.diff = 'normal';
+      return { base:+base.toFixed(2), whipUp:+whipUp.toFixed(2), obstruct:+obstruct.toFixed(2),
+        work:+work.toFixed(2),
+        foeBase:foeBase, foeObstructed:foeObstructed, foeWhipped:foeWhipped,
+        whipMoves: whipUp > base + .5,
+        /* obstruction reaches a party outside the government; a whip does not */
+        obstructionReachesTheHouse: foeBase !== null && foeObstructed < foeBase - .02,
+        whipStaysOnItsOwnBenches: foeWhipped !== null && Math.abs(foeWhipped - foeBase) < .005,
+        floorWorkCounts: work > base + .5,
+        assentEasy:aEasy, assentNormal:aNormal,
+        assentIsATilt: aEasy !== null && aNormal !== null &&
+          Math.abs((aEasy - aNormal) - 12) < 2 && aEasy < 72 };
+    })();
+
+    /* (f) AND EVERY POINT BOUGHT IS WORTH SOMETHING. The first draft of the
+       bloc was a STEP at fifty, which made one support point worth either
+       nothing or a whole party -- fine for a vote, ruinous for the six
+       persuasion verbs S20b is about. */
+    R.curve = (() => {
+      fresh(4242);
+      const { me, opp } = seat(.5, 1, 90);
+      const foe = opp[0];
+      const per = [];
+      for (let base = 20; base <= 80; base += 5) {
+        const m1 = {}; m1[me] = 50; m1[foe] = base;
+        const m2 = {}; m2[me] = 50; m2[foe] = base + 1;
+        const a = withSupport(m1, () => billDivision(S, mkBill(me), 'lower').share);
+        const c = withSupport(m2, () => billDivision(S, mkBill(me), 'lower').share);
+        per.push({ support:base, worth:+(c - a).toFixed(3) });
+      }
+      const vals = per.map(x => x.worth);
+      const lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      const atHinge = per.filter(x => x.support === 50)[0].worth;
+      return { rows:per, lo:lo, hi:hi, ratio:+(hi / Math.max(1e-9, lo)).toFixed(1),
+        everywherePositive: vals.every(v => v > 0),
+        steepestAtTheHinge: atHinge >= hi - 1e-9 };
+    })();
+    return R;
+  });
+
+  const diviOk =
+    divi.majority.hostileShare > .65 && divi.majority.oldPasses === true &&
+    divi.majority.passes === false && divi.majority.share < divi.majority.oldShare - 10 &&
+    divi.bloc.disciplineRose === true && divi.bloc.fellWithCohesion === true &&
+    /* RELATIVE, not a fixed gap: the size of the fall depends on where the
+       party's support sits relative to fifty, and a fixed .2 was a number
+       picked by eye against one configuration. Cohesion must roughly halve the
+       share of an opposed party's seats that go the government's way. */
+    divi.bloc.last < divi.bloc.first * .6 &&
+    divi.bounded.allWithinSeats === true &&
+    divi.oneRule.sameFn === true && divi.oneRule.articleCounts === true &&
+    divi.tilt.easierThanNormal === true && divi.tilt.stillLoses === true &&
+    divi.tilt.losesOnEasyForReal === true &&
+    divi.curve.everywherePositive === true && divi.curve.steepestAtTheHinge === true &&
+    divi.curve.ratio < 30 &&
+    divi.levers.whipMoves === true && divi.levers.obstructionReachesTheHouse === true &&
+    divi.levers.whipStaysOnItsOwnBenches === true &&
+    divi.levers.floorWorkCounts === true && divi.levers.assentIsATilt === true;
+  say(diviOk, 'the division is counted',
+    `THE OWNER REPORTED THAT BILLS PASS WITHOUT A MAJORITY AND THEY DID, because nothing was ever counted: ` +
+    `\`billForecast\` returned a seat-weighted MEAN OF PROPENSITIES, so a party at 45 handed the bill 45% OF ` +
+    `ITS SEATS instead of voting against it, and eleven modifiers were then added AFTER normalisation, worth ` +
+    `more than 60 points against a bar of ${divi.majority.bar} · PUT AS ARITHMETIC: parties holding ` +
+    `${divi.majority.hostileSeats} of ${divi.majority.total} seats (${divi.majority.hostileShare}) oppose and ` +
+    `the player's 30% is for -- the old arithmetic said ${divi.majority.oldShare} and PASSED, the count says ` +
+    `${divi.majority.ayes} ayes against ${divi.majority.noes} noes (${divi.majority.share}) and it FAILS · ` +
+    `A UNITED PARTY VOTES AS A BLOC, which was the owner's second sentence and the thing \`st.unity\` was ` +
+    `never read for: the same opposed party sends ${divi.bloc.first} of its seats through the aye lobby at a ` +
+    `cohesion of 20 and ${divi.bloc.last} at 95 · THE SWING IS BOUNDED BY THE SEATS BEHIND IT ` +
+    `(${divi.bounded.rows.map(r => r.seatShare + '→' + r.swing).join(', ')}), which is exactly what a modifier ` +
+    `added after normalisation did not respect · ONE SURFACE, ONE RULE: a constitutional article goes through ` +
+    `the same count (${divi.oneRule.artShare} against the ${divi.oneRule.artMean} its own mean-of-propensities ` +
+    `copy would have said) · DIFFICULTY TILTS AND NEVER OVERRIDES: six floors sat ABOVE the bars they were ` +
+    `compared with -- committee 72 against 43, assembly 68 against 50, assent 72 against 55 -- so on easy no ` +
+    `bill could fail at any stage; a hostile House now beats one on easy (${divi.tilt.easy.share} against ` +
+    `${divi.tilt.normal.share} on normal, still short of ${divi.majority.bar}) -- and DRIVEN THROUGH THE REAL ` +
+    `PATH, not read off the forecast, because the floors were applied to the ROLL in \`advanceBills\` where a ` +
+    `forecast-reading arm cannot see them: a real bill laid before a hostile House on easy leaves the paper ` +
+    `(${divi.tilt.drivenEasy.left}) and is not passed (${divi.tilt.drivenEasy.outcome}) · AND EVERY POINT BOUGHT IS ` +
+    `WORTH SOMETHING: the bloc is a steep curve and not a step, so a support point is worth ${divi.curve.lo} ` +
+    `chamber points at the extremes and ${divi.curve.hi} at the hinge (${divi.curve.ratio}x, continuous), ` +
+    `where the step this replaced was worth either nothing or a whole party and would have made S20b's six ` +
+    `persuasion verbs land at random · AND THE LEVERS REACH THE PARTIES THEY NAME, three readings this arm ` +
+    `did not have until each came back green under its own poison: a whip of 12 on a coalition holding half ` +
+    `the House moves ${divi.levers.base}→${divi.levers.whipUp} while the SAME field carrying \`talkOut\`'s ` +
+    `obstruction moves it to ${divi.levers.obstruct}, because a whip is a government talking to its own ` +
+    `benches and disorder is a thing the whole House sits through -- read on the party the claim is about, an ` +
+    `opposition bench goes ${divi.levers.foeBase}→${divi.levers.foeObstructed} of its seats to the aye lobby ` +
+    `under obstruction and ${divi.levers.foeWhipped} under a whip it never hears, where scoping the field to ` +
+    `the coalition by sign alone had cut obstructing a bill from -8 Assembly points to -0.85 · \`floorWork\` is counted through seats ` +
+    `(${divi.levers.work}) where a pv5 wrapper was still adding it to the aye share after the division · and ` +
+    `the ASSENT vote is a tilt and not a floor (${divi.levers.assentNormal} on normal, ` +
+    `${divi.levers.assentEasy} on easy, where \`Math.max(72, v)\` against a bar of 55 meant no office could ` +
+    `ever decline to sign)`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
