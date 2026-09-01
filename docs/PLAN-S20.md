@@ -251,13 +251,83 @@ point — this slice's own defect, surviving in the place it was least visible.
   `docs/MAP.md`. The posture-filter change was measured out and recorded rather
   than shipped.
 
-- **STILL OPEN, and it is the largest thing the audit found.** The engine's
-  decision surface is **11 cards with no target choice -- 2.1% of the player's
-  pressable options** -- and no engine can enter a government, take an office,
-  dissolve, or call a referendum, while two of the seven S19 goals are about
-  exactly that. S20a-f fixed the chamber the AI plays in, the cost of the board,
-  the difficulty it plays under and its model of the player; what it can DO is
-  the remaining half of the owner's 8-10/10 and is a program of its own.
+- **S20g — The verb reads the aim.** SHIPPED. The comment over `V19_GOALS` says
+  a goal whose progress no card can move is the decoration this file punishes
+  hardest, and `roads.js` asserts every goal has a card that serves it. That
+  guard is real and it checks the wrong half: `worth` is a PREFERENCE over the
+  deck and says nothing about whether the card, once drawn, acts on the thing
+  the goal NAMED. Measured six seeds by 120 sessions, each verb read through
+  its own path: court landed on the named bloc 65 of 154 (**.422**), the bill
+  laid the named statute 27 of 102 (**.265**), money reached the named office
+  21 of 90 (**.233**). The `ground` case was written to disagree with itself —
+  the goal picks `affinity * (100 - have)`, the bloc it is close to and has
+  LEAST of, and its own comment says the court card is the only thing that can
+  move it, while the card banked its 2.6 onto the bloc of HIGHEST affinity, the
+  one it already held. The executive was worse than chance: `v17AiRaceSpend`
+  refuses any office a party polls under twelve per cent in, so **69 of 86**
+  chances to back an office a party had publicly named were refused BECAUSE it
+  was behind — wanting a thing you do not have was the disqualification.
+
+  `v20Aim` is the one accessor all four read; `V20_AIM` is a covered surface
+  that fails `roads.js` if a goal arrives without a verb. After: court
+  **1.000**, bill **.600** inside a ceiling of .961, exec **.464**, platform
+  **1.000** (already .750, because a moderate posture pointed at `govPos`).
+  Assertion `the verb reads the aim`, **nineteen poisons from the diff,
+  eighteen redden and the nineteenth deleted the code it was aimed at.** The
+  block that put the aim into `v19BillFor`'s shortlist could not be reddened,
+  and the reason is arithmetic: `carry.target` maximises the gap over `wants`
+  and `v19BillFor` maximises it over a SUBSET of `wants`, so an aim in the pool
+  IS the pool's maximum. Measured, it ranked first on 96 of 98 plays, second on
+  2, and outside the top five on none. Deleted rather than shipped — the fourth
+  time in this program, after S17r's two, S20d's `restive` floor and S20f's
+  posture filter.
+
+  **A `sharp` scale on the bill's thumb was drafted and deleted before it
+  shipped**, on both of this file's tests: it could not be poisoned (the
+  harness drives at `ruthless`, where `sharp / 5` is 1 and deleting the whole
+  scale changes nothing an arm can see) and it was wrong on its own terms,
+  since `V19_DEFAULT_LEVEL` is `purposeful` and the scale would have put the
+  thumb at 3.4 against a median gap of 4.75 — the default campaign would have
+  kept the defect the slice is about.
+
+  **Four probes were wrong before the game was, and three of the four would
+  have shipped a false finding.** They are recorded because the pattern is the
+  point:
+
+  1. Three S20g investigation probes drove `endTurn()` while clearing
+     `UI.queue` around it, instead of overriding `runQueue` the way the harness
+     does. `endTurn` hands the rest of the session to `runQueue`'s callback, so
+     **`runElection` never ran** — and the probes reported 1 election, 1
+     executive turnover in 720 sessions and 0 goals ever reached. With the
+     harness's own driver: **360 elections, 20 government changes, 53 coalition
+     size changes, and executive offices turning over at 22.8% per contest.**
+     The offices were never frozen; the probe was.
+  2. The first version of the S20g assertion asked whether the aim was layable
+     AFTER the card had run — and a party that lays its aim has just put a bill
+     on that statute, so every hit counted as unavailable. It reported a rate
+     of **.591 against a ceiling of .333**, arithmetic that cannot happen. The
+     ceiling is **.961**, not the .696 first published, and `roads.js` now
+     asserts the rate is inside the ceiling so the shape cannot return unseen.
+  3. The first re-measurement after the change recomputed the OLD rule to
+     decide what counted as "on aim" — measuring the change against itself.
+     Every reading is taken through the verb's own path now: which bloc rose,
+     which push key appeared, what the producer returned.
+
+  **And a claim in this document was wrong and is corrected here rather than
+  quietly dropped.** The open item below said *"no engine can enter a
+  government, take an office, dissolve, or call a referendum."* Engines do end
+  up in governments and offices — the ballot and `execContest` put them there.
+  What no engine could do was **act on the aim it had named**: `enter` and
+  `office` were adopted, weighted and retired with no verb reading their
+  target. That is the defect, and it is narrower and more precise than the
+  sentence it replaces.
+
+- **STILL OPEN.** The engine's decision surface is **11 cards** against the
+  player's several hundred pressable controls, and it holds no verb that
+  reaches a dissolution or a referendum. S20a–g fixed the chamber the AI plays
+  in, the cost of the board, the difficulty it plays under, its model of the
+  player, and whether its verbs serve its aims; the SIZE of the deck is the
+  remaining half of the owner's 8-10/10 and is a program of its own.
 
 ## The instrument rule this program inherits
 

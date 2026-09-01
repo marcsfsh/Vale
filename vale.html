@@ -34295,19 +34295,23 @@ function v19BillFor(st, pid) {
      character; the chamber decides which of them it is */
   pool.sort(function (a, b) { return b.gap - a.gap; });
   var top = pool.slice(0, V19_BILL_LOOK), best = null, bestF = -1;
-  /* S20g: AND THE ONE THIS PARTY SAID IT WAS AFTER. Both halves read the same
-     `wants` table, so the aim is usually already in the shortlist and this
-     changes nothing -- but the shortlist is the top five BY GAP and the aim is
-     picked by a different rule, so it can fall outside, and the forecast
-     tiebreak below could carry the pick away from it even when it does not.
-     Measured on the shipped build, a party holding a `carry` aim laid the
-     statute it had named on 26.5% of its bills -- so it is put in the running
-     here and given `V20_AIM_BILL`'s thumb below. */
+  /* S20g: AND THE ONE THIS PARTY SAID IT WAS AFTER. Measured on the shipped
+     build, a party holding a `carry` aim laid the statute it had named on
+     26.5% of its bills -- so the aim gets `V20_AIM_BILL`'s thumb below.
+
+     A BLOCK PUTTING THE AIM INTO THE SHORTLIST STOOD HERE AND CAME OUT ON ITS
+     OWN POISON. `top` is the five largest gaps and the aim can be picked by a
+     different rule, so it looked as though it could fall outside and need
+     adding -- and it cannot, because `carry.target` maximises the gap over
+     `wants` and this maximises it over a SUBSET of `wants`, so an aim that is
+     in the pool is the pool's maximum. Deleting the block changed nothing any
+     arm could see, and the measurement says why: over 98 plays with the aim in
+     the pool it ranked FIRST on 96 and second on 2, and outside the top five
+     on none. (The two are the stale-gap case, where the goal was adopted
+     earlier and `st.pol` has moved since.) A knob nothing in the game can
+     turn, found where S17r's two were and where S20d's `restive` floor and
+     S20f's posture filter were -- in the poison list, before it shipped. */
   var aimPol = v20Aim(st, pid, 'carry');
-  if (aimPol && !top.filter(function (o) { return o.policy === aimPol; }).length) {
-    var row = pool.filter(function (o) { return o.policy === aimPol; })[0];
-    if (row) top.push(row);
-  }
   top.forEach(function (o) {
     var probe = { id:'v19probe', policy:o.policy, dir:o.dir, owner:'opposition', sponsor:pid,
       title:'', introduced:st.turn, stage:'assembly', strategy:'clean', whip:0, upperDeal:0,

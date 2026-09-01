@@ -1264,6 +1264,127 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## The verb reads the aim (S20g)
+
+The comment over `V19_GOALS` says it: *"A goal whose progress no card can move
+is the decoration this file punishes hardest, so `worth` below is the list of
+cards that serve it and `roads.js` asserts every goal has at least one."* The
+guard was written, it is real, **and it checks the wrong half.** `worth` is a
+PREFERENCE over the deck — it makes a party with a `ground` aim reach for
+`court` more often than for `article`. It says nothing about whether the card,
+once drawn, acts on the thing the goal NAMED.
+
+Measured six seeds by 120 sessions, each verb read through its own path:
+
+| verb (goal it serves) | plays with the aim live | acted on the named target |
+|---|---|---|
+| `court` (`ground`) | 154 | 65 — **.422** |
+| `bill` (`carry`) | 102 | 27 — **.265** |
+| exec spend (`office`) | 90 | 21 — **.233** |
+| `platform` (`enter`) | 48 | 36 — .750 |
+
+`ground` is the sharpest, because both halves are deliberate and they were
+written to disagree: the goal picks `affinity * (100 - have)` — the bloc it is
+close to and has LEAST of — and its own comment says *"the court card is the
+only thing that moves it"*, while the card banked its 2.6 onto the bloc of
+HIGHEST affinity, the one it already held.
+
+The executive was **worse than chance, not merely equal to it**.
+`v17AiRaceSpend` refuses any office a party polls under twelve per cent in, so
+of 86 chances to back an office a party had publicly NAMED, **69 were refused
+because it was behind.** Wanting a thing you do not yet have is the definition
+of an aim, and it was the disqualification.
+
+`platform` was already at .750 for a reason worth keeping: the `moderate`
+posture sends a party toward `govPos`, which is near the government's own
+position. The quarter that missed are the `hold`/`attack`/`restive` postures,
+which moved the party back toward its own members — away from the government
+its aim names.
+
+### `v20Aim`, and why it is not a call to `v19Goal`
+
+One accessor, four readers. Two rules govern it and both are this file's:
+
+- It READS `a.goal` and never calls `v19Goal`, because `v19AdoptGoal` rolls and
+  a read that adopts moves the dice. Asserted at zero rolls.
+- It answers null when `v19Thinks` is false, so at `instinct` all four verbs
+  behave exactly as they shipped. R1 asks for the floor to be the shipped game
+  EXACTLY, and this gets it by construction rather than by four separate
+  guards.
+
+`V20_AIM` names, for every goal, the verb that answers it, and it is a **covered
+surface**: `roads.js` walks `V19_GOALS` and fails if a kind arrives without an
+entry, if an entry names a kind that no longer exists, or if it names a verb
+that is not in the deck. That is the guard `V17_MEMORY` has and a hand-kept
+whitelist can never have.
+
+After: court **1.000**, bill **.600** inside a ceiling of .961, exec **.464**,
+platform **1.000**.
+
+### What the bill's constant is, and what a scale would have been
+
+A block putting the aim into the shortlist stood beside this and **came out on
+its own poison**: `top` is the five largest gaps and the aim is picked by a
+different rule, so it looked as though it could fall outside and need adding.
+It cannot — `carry.target` maximises the gap over `wants` and `v19BillFor`
+maximises it over a SUBSET of `wants`, so an aim in the pool is the pool's
+maximum. Over 98 plays it ranked first on 96, second on 2, and outside the top
+five on none. That is the fourth change this program has measured out rather
+than shipped, after S17r's two, S20d's `restive` floor and S20f's posture
+filter.
+
+`V20_AIM_BILL` is 12 Assembly points added to the aim's forecast. It is the only
+one of the four where the aim has a RIVAL objective: S19d taught `v19BillFor` to
+lay *"the one your neighbours also want"* because a sixteen-per-cent party
+cannot carry a bill on its own account. Where the aim loses, the forecast gap
+runs a median of 4.75 and a mean of 8.47 with a tail to 28.05, against a pool
+spread of 20.07. Five clears 50 of 98 and moves the rate to .329 — a knob that
+turns, barely. Twelve clears 73 and reads .600. Anything near 28 carries every
+aim and makes the forecast decorative.
+
+**A `sharp` scale was drafted here and deleted before it shipped**, on both of
+this file's tests. It could not be poisoned: the harness drives at `ruthless`,
+where `sharp / 5` is 1, so deleting the entire scale changes nothing an arm can
+see — a knob nothing in the game can turn, found exactly where S17r's two were,
+in the poison list. And it was wrong on its own terms: `V19_DEFAULT_LEVEL` is
+`purposeful`, where it would have put the thumb at 3.4 against a median gap of
+4.75, so the default campaign would have kept the defect the slice is about.
+
+### Four probes were wrong before the game was
+
+Three of the four would have shipped a false finding, which is the whole reason
+this section exists.
+
+1. **`runQueue` is where half of `endTurn` lives.** Three investigation probes
+   drove `endTurn()` while clearing `UI.queue` around it, rather than
+   overriding `runQueue` the way the harness does. `endTurn` sets
+   `UI.queue = v17Route(...)` and then hands the rest of the session to
+   `runQueue`'s callback — the elections, the caretaker's clock, the executive
+   season. With a non-empty queue that callback never fires, so **`runElection`
+   never ran**, and the probes reported 1 election and 1 executive turnover in
+   720 sessions and concluded the offices were frozen. With the harness's own
+   driver: **360 elections, 20 government changes, 53 coalition size changes,
+   offices turning over at 22.8% per contest.** The offices were never frozen.
+2. **A ceiling read after the fact.** The first assertion asked whether the aim
+   was layable AFTER the card ran, and a party that lays its aim has just put a
+   bill on that statute — so every hit counted as unavailable. It reported
+   **.591 against a ceiling of .333**, arithmetic that cannot happen. The
+   ceiling is .961. `roads.js` now asserts the rate is inside the ceiling, so
+   the shape cannot come back unnoticed.
+3. **A re-measurement that reproduced the rule under test.** The first
+   after-change probe recomputed the OLD affinity pick to decide what counted
+   as "on aim" — measuring the change against itself. Every reading is taken
+   through the verb's own path now: which bloc rose, which push key appeared,
+   what the producer returned.
+
+### A claim this program carried, corrected
+
+`docs/PLAN-S20.md` and `docs/STATE.md` both said *"no engine can enter a
+government, take an office, dissolve, or call a referendum."* Engines do end up
+in governments and offices — the ballot and `execContest` put them there. What
+no engine could do was ACT on the aim it had named. That is narrower, more
+precise, and it is what S20g fixes.
+
 ## The AI arms were measured on too few seeds (S20f)
 
 This program has now found the same defect three times, in three different
