@@ -11989,6 +11989,289 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `costs the stream ${aims.stream.rolls} rolls, because it reads \`a.goal\` and never calls \`v19Goal\`, ` +
     `which adopts and therefore draws`);
 
+  /* ---------- S21a: THE REGARD, SIGNED ----------
+     `a.grudge` has always been a per-ordered-pair map and one line stopped it
+     being a relationship: `v16Resent` clamped the store at nought, so the
+     twelve authored negative weights in `V17_MEMORY` -- under a comment saying
+     "AND IT WORKS THE OTHER WAY" -- could only spend an existing grudge down.
+     A kindness to a party holding nothing against you wrote literally nothing.
+
+     Measured on the shipped build: no gratitude field anywhere, and an
+     identical bill from a sworn enemy and a close ally scoring TO THE SAME
+     DECIMAL, because the only party-to-party channel in the file was a grudge
+     term bounded at 12 and worth 0.25 points in play. */
+  const regard = await page.evaluate(() => {
+    const rq = runQueue;
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) {} UI.queue = []; UI.busy = false; }
+    const R = {};
+
+    /* (a) THE FLOOR, BOTH WAYS ROUND. Credit stored below nought must read as
+       no grudge at all, or every pre-S21a reader changes behaviour and this
+       slice is not the safe foundation nine later ones are built on. */
+    R.floor = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const me = playParty(S);
+      const q = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0];
+      if (!q) return { ran:false };
+      const a = v16Ai(S)[q.id];
+      a.grudge[me] = -55;
+      const credit = { stored:a.grudge[me], grudge:v16Grudge(S, q.id, me), regard:v21Regard(S, q.id, me) };
+      a.grudge[me] = 40;
+      const anger = { stored:a.grudge[me], grudge:v16Grudge(S, q.id, me), regard:v21Regard(S, q.id, me) };
+      a.grudge[me] = 0;
+      return { ran:true, credit:credit, anger:anger,
+        creditHidesFromGrudge: credit.grudge === 0 && credit.regard === 55,
+        angerStillReads: anger.grudge === 40 && anger.regard === -40 };
+    })();
+
+    /* (b) AND THE CLAMP REALLY OPENED. `v16Resent` with a negative weight on a
+       party at nought used to be a no-op; it is the only way credit enters. */
+    R.store = (() => {
+      fresh(4242); for (let i = 0; i < 4; i++) step();
+      const me = playParty(S);
+      const q = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0];
+      const a = v16Ai(S)[q.id];
+      a.grudge[me] = 0;
+      v16Resent(S, q.id, me, -20);
+      const afterKindness = a.grudge[me];
+      v16Resent(S, q.id, me, -500);
+      const floorHolds = a.grudge[me] >= -100;
+      a.grudge[me] = 0;
+      return { afterKindness:afterKindness, storesCredit: afterKindness === -20,
+        bounded: floorHolds, at: a.grudge[me] };
+    })();
+
+    /* (c) THE SPONSOR IS SOMEBODY. One board, one voter, five sponsors it
+       regards differently, the same bill. The shipped build returned one
+       number for all five. This is the arm that stands in the gap. */
+    R.sponsor = (() => {
+      fresh(4242); for (let i = 0; i < 10; i++) step();
+      const me = playParty(S);
+      const voter = (PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0] || {}).id;
+      if (!voter) return { ran:false };
+      const others = PARTIES.filter(p => p.id !== me && p.id !== voter && !S.banned[p.id]).map(p => p.id);
+      if (others.length < 3) return { ran:false };
+      const a = v16Ai(S)[voter], set = [-80, -30, 0, 30, 80];
+      others.forEach((o, i) => { a.grudge[o] = -set[i % set.length]; });
+      const pol = Object.keys(POL)[0];
+      const score = o => {
+        const bill = { id:'s21a', policy:pol, dir:1, sponsor:o, owner:'opposition',
+          strategy:'clean', whip:0, upperDeal:0, committee:0, concessions:0,
+          confidence:false, urgent:false, stage:'assembly', notes:[], lines:{} };
+        let v = 0; try { v = partyBillSupport(S, voter, bill); } catch (e) { v = 0; }
+        return +v.toFixed(3);
+      };
+      const scores = others.map(o => ({ id:o, regard:v21Regard(S, voter, o), score:score(o) }));
+      const vals = scores.map(s => s.score);
+      /* and it is MONOTONE in the regard, not merely different: a probe that
+         only asked for distinct values would pass on a build that read the
+         regard and got the sign backwards */
+      const bySign = scores.slice().sort((x, y) => x.regard - y.regard);
+      let mono = true;
+      for (let i = 1; i < bySign.length; i++) if (bySign[i].score < bySign[i - 1].score - 1e-9) mono = false;
+      others.forEach(o => { delete a.grudge[o]; });
+      return { ran:true, voter:voter, scores:scores,
+        distinct:new Set(vals).size, of:vals.length,
+        spread:+(Math.max.apply(null, vals) - Math.min.apply(null, vals)).toFixed(2),
+        monotone:mono };
+    })();
+
+    /* (d) ASSENT ASKS THE HOLDER ABOUT THE SPONSOR. It read
+       `st.partyRel[who]` -- the PLAYER's relationship with the office holder --
+       and arbitrated 768 engine-to-engine decisions with it, refusing 88.2%.
+       Read here on one board with one thing changed. */
+    R.assent = (() => {
+      fresh(4242); for (let i = 0; i < 12; i++) step();
+      const me = playParty(S);
+      const offices = Object.keys(S.exec || {}).filter(d => S.exec[d] && S.exec[d] !== me);
+      if (!offices.length) return { ran:false };
+      const d = offices[0], who = S.exec[d];
+      const spon = PARTIES.filter(p => p.id !== me && p.id !== who && !S.banned[p.id])[0];
+      if (!spon) return { ran:false };
+      const pol = Object.keys(POL)[0];
+      const bill = { id:'s21aA', policy:pol, dir:1, sponsor:spon.id, owner:'opposition',
+        strategy:'clean', whip:0, upperDeal:0, committee:0, concessions:0, confidence:false,
+        urgent:false, stage:'assent', assentOffice:d, notes:[], lines:{} };
+      const a = v16Ai(S)[who];
+      a.grudge[spon.id] = 90;                 /* the holder loathes the sponsor */
+      let cold = 0; try { cold = assentFavour(S, bill); } catch (e) {}
+      a.grudge[spon.id] = -90;                /* and owes them */
+      let warm = 0; try { warm = assentFavour(S, bill); } catch (e) {}
+      delete a.grudge[spon.id];
+      return { ran:true, office:d, holder:who, sponsor:spon.id,
+        cold:+cold.toFixed(2), warm:+warm.toFixed(2), moves: warm > cold + 1e-9 };
+    })();
+
+    /* (e) A PACT IS WRITTEN ON BOTH SIDES AND POOLED ONCE. The card wrote the
+       proposer's key only, so the party stood down FOR never recorded it and
+       `V17_MEMORY.pact` reached nobody. Both keys now -- and the ballot walks
+       the keys, so the pooling has to be asked about too or it pays twice. */
+    R.pact = (() => {
+      fresh(90210); for (let i = 0; i < 6; i++) step();
+      const me = playParty(S);
+      const two = PARTIES.filter(p => p.id !== me && !S.banned[p.id]).slice(0, 2).map(p => p.id);
+      if (two.length < 2) return { ran:false };
+      S.aiPacts = {};
+      S.aiPacts[two[0]] = { with:two[1], since:S.turn };
+      S.aiPacts[two[1]] = { with:two[0], since:S.turn };
+      const base = {}; PARTIES.forEach(p => { base[p.id] = 10; });
+      const b0 = ballot(S);
+      S.aiPacts = {};
+      S.aiPacts[two[0]] = { with:two[1], since:S.turn };
+      const b1 = ballot(S);
+      S.aiPacts = {};
+      const gainTwo = (b0[two[0]] || 0) + (b0[two[1]] || 0);
+      const gainOne = (b1[two[0]] || 0) + (b1[two[1]] || 0);
+      /* the deck card writes both sides and remembers on both sides */
+      fresh(90210); for (let i = 0; i < 6; i++) step();
+      const card = V16_AI_DECK.filter(c => c.id === 'pact')[0];
+      let sides = null, remembered = null;
+      /* a party the picker will actually answer for. The first eligible one
+         had no partner within the radius, and a probe that reads null and
+         calls it a failure is measuring its own choice of party. */
+      S.aiPacts = {};
+      const q = PARTIES.filter(p => p.id !== me && p.id !== S.ruling &&
+        (S.coalition || []).indexOf(p.id) < 0 && !S.banned[p.id] &&
+        !!v16PactPartner(S, p.id))[0];
+      if (card && q) {
+        S.aiPacts = {}; S.purse = S.purse || {}; S.purse[q.id] = 400;
+        let line = null; try { line = card.run(S, q.id); } catch (e) {}
+        const o = (S.aiPacts[q.id] || {}).with;
+        if (o) {
+          sides = !!(S.aiPacts[o] && S.aiPacts[o].with === q.id);
+          remembered = v21Regard(S, o, q.id) > 0 && v21Regard(S, q.id, o) > 0;
+        }
+        S.aiPacts = {};
+      }
+      return { ran:true, pooledBoth:+gainTwo.toFixed(4), pooledOne:+gainOne.toFixed(4),
+        onceNotTwice: Math.abs(gainTwo - gainOne) < 1e-6,
+        writesBothSides:sides, bothRemember:remembered };
+    })();
+
+    /* (f) ANGER COOLS FASTER THAN CREDIT KEEPS, which is the whole argument for
+       a signed store: at one rate, credit is a grudge you have not earned. */
+    R.cool = (() => {
+      fresh(4242); for (let i = 0; i < 4; i++) step();
+      const me = playParty(S);
+      const two = PARTIES.filter(p => p.id !== me && !S.banned[p.id]).slice(0, 2);
+      if (two.length < 2) return { ran:false };
+      /* THE PER-SESSION DELTA, RE-SEEDED EACH TIME. Reading the level after ten
+         live sessions measures the cooling PLUS whatever the republic wrote in
+         between: the first version of this arm read anger of 38 from a seed of
+         30 and called the cooling broken, when what had happened is that the
+         board went on being political. Re-seeding isolates the sweep. */
+      const dropA = [], riseC = [];
+      for (let i = 0; i < 8; i++) {
+        v16Ai(S)[two[0].id].grudge[me] = 30;
+        v16Ai(S)[two[1].id].grudge[me] = -30;
+        step();
+        dropA.push(+(30 - (v16Ai(S)[two[0].id].grudge[me] || 0)).toFixed(3));
+        riseC.push(+((v16Ai(S)[two[1].id].grudge[me] || 0) + 30).toFixed(3));
+      }
+      const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+      const anger = med(dropA), credit = med(riseC);
+      return { ran:true, angerPerSession:anger, creditPerSession:credit,
+        creditKeepsLonger: credit < anger - 1e-9,
+        angerAfter20: +(30 - anger * 20).toFixed(1), creditAfter20: +(30 - credit * 20).toFixed(1) };
+    })();
+
+    /* (g) EVERY WEIGHT NAMES A VERB THAT EXISTS. S16e's memory listed
+       `radicalise`, the id of no action in the game; this is the guard that
+       makes that impossible rather than a thing somebody noticed. */
+    R.cover = (() => {
+      const ids = Object.keys(V17_MEMORY);
+      const known = {};
+      /* `partyActions` TAKES ONE ARGUMENT. It is reassigned in the S9 chunk as
+         `partyActions = function (pid)`, and calling it `(S, pid)` returns the
+         list for a party named `[object Object]` -- which is empty, and which
+         reported the four `v9*` verbs as ghosts on the first run of this arm.
+         The game was right and the probe was wrong, which is the order this
+         file's history says to check them in. */
+      PARTIES.forEach(p => {
+        let list = [];
+        try { list = (typeof partyActions === 'function') ? partyActions(p.id) : []; } catch (e) { list = []; }
+        (list || []).forEach(a => { if (a && a.id) known[a.id] = 1; });
+      });
+      (ACTIONS || []).forEach(a => { if (a && a.id) known[a.id] = 1; });
+      const ghosts = ids.filter(id => !known[id]);
+      return { entries:ids.length, ghosts:ghosts,
+        defectSign: (V17_MEMORY.defect || {}).self,
+        defectIsCredit: ((V17_MEMORY.defect || {}).self || 0) < 0,
+        negatives: ids.filter(id => (V17_MEMORY[id].self || 0) < 0).length };
+    })();
+
+    /* (h) AND IT COSTS THE STREAM NOTHING. `v21Regard` is a lookup, and it is
+       read inside `partyBillSupport`, which the forecast calls for every party
+       on every division -- if it rolled, every seeded campaign would re-phase. */
+    R.stream = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      let rolls = 0; const r0 = rand;
+      rand = function () { rolls++; return r0.apply(this, arguments); };
+      try {
+        PARTIES.forEach(p => PARTIES.forEach(q => {
+          if (p.id !== q.id) { try { v21Regard(S, p.id, q.id); v16Grudge(S, p.id, q.id); } catch (e) {} }
+        }));
+      } finally { rand = r0; }
+      return { rolls:rolls, free: rolls === 0 };
+    })();
+    runQueue = rq;
+    return R;
+  });
+
+  const regardOk =
+    regard.floor.ran === true && regard.floor.creditHidesFromGrudge === true &&
+    regard.floor.angerStillReads === true &&
+    regard.store.storesCredit === true && regard.store.bounded === true &&
+    regard.sponsor.ran === true && regard.sponsor.distinct === regard.sponsor.of &&
+    regard.sponsor.spread > 8 && regard.sponsor.monotone === true &&
+    regard.assent.ran === true && regard.assent.moves === true &&
+    regard.pact.ran === true && regard.pact.onceNotTwice === true &&
+    regard.pact.writesBothSides === true && regard.pact.bothRemember === true &&
+    regard.cool.ran === true && regard.cool.creditKeepsLonger === true &&
+    regard.cover.ghosts.length === 0 && regard.cover.defectIsCredit === true &&
+    regard.cover.negatives >= 12 &&
+    regard.stream.free === true;
+  say(regardOk, 'a party can be owed, and remembers it',
+    `\`a.grudge\` WAS ALREADY A PER-ORDERED-PAIR MAP AND ONE LINE STOPPED IT BEING A RELATIONSHIP. ` +
+    `\`v16Resent\` clamped the store at nought, so the twelve authored negative weights in ` +
+    `\`V17_MEMORY\` -- sitting under a comment that says "AND IT WORKS THE OTHER WAY" -- could only ` +
+    `ever spend an existing grudge down, and a kindness to a party that held nothing against you wrote ` +
+    `LITERALLY NOTHING. Measured on the shipped build: no gratitude field anywhere in three megabytes ` +
+    `· THE CHANGE IS THE CLAMP. The store opens to (-100, 100), \`v16Grudge\` gains a \`Math.max(0, .)\` ` +
+    `so all twelve existing readers see what they always saw (credit of 55 reads as grudge ` +
+    `${regard.floor.credit.grudge} and regard ${regard.floor.credit.regard}; anger of 40 still reads ` +
+    `${regard.floor.anger.grudge}), and \`v21Regard\` is the signed reader new code opts into. A parallel ` +
+    `trust matrix was proposed by three of the four S21 designs and REJECTED: a second mechanism ` +
+    `computing a fact the first already computes is this file's own worst habit · AND THE SPONSOR IS ` +
+    `SOMEBODY AT LAST. An identical bill from a sworn enemy and a close ally scored to the SAME DECIMAL, ` +
+    `because the grudge term was bounded at 12 and measured 0.25 points in play; one voter over ` +
+    `${regard.sponsor.of} sponsors it regards differently now returns ${regard.sponsor.distinct} distinct ` +
+    `scores across ${regard.sponsor.spread} points, monotone in the regard (${regard.sponsor.monotone}) so ` +
+    `a build that read the sign backwards reddens here · ASSENT ASKS THE HOLDER ABOUT THE SPONSOR, where ` +
+    `it read the PLAYER's relationship with the office holder and decided 768 engine-to-engine bills with ` +
+    `it, refusing 88.2%: the same office rates the same bill ${regard.assent.cold} from a sponsor it ` +
+    `loathes and ${regard.assent.warm} from one it owes, and driven the signing rate goes .065 to .111 ` +
+    `with refusal 88.2% to 83.8% · A PACT IS WRITTEN ON BOTH SIDES (${regard.pact.writesBothSides}) and ` +
+    `both parties remember it (${regard.pact.bothRemember}), where only the proposer's key was written and ` +
+    `\`V17_MEMORY.pact\` reached nobody -- and it is POOLED ONCE not twice (${regard.pact.onceNotTwice}), ` +
+    `because the ballot walks the keys and two keys would pay 12% where the card promises 6% · anger ` +
+    `cools at ${regard.cool.angerPerSession} a session and credit keeps at ${regard.cool.creditPerSession}, ` +
+    `so twenty sessions leave ${regard.cool.angerAfter20} of an injury and ${regard.cool.creditAfter20} of a ` +
+    `favour of the same size -- measured as a per-session delta with the pair re-seeded each time, because ` +
+    `reading the level after ten live sessions measures the cooling plus whatever the republic wrote in ` +
+    `between · \`defect\` NO LONGER CHARGES THE ` +
+    `PARTY IT ENRICHES: the verb hands its target seats taken from the largest parties, and the ` +
+    `beneficiary took +18 while the five who lost the members took +2 each; it is ` +
+    `${regard.cover.defectSign} now · every one of the ${regard.cover.entries} weights names a verb that ` +
+    `exists (${regard.cover.ghosts.length} ghosts), which is the guard S16e's \`radicalise\` needed · and ` +
+    `it costs the stream ${regard.stream.rolls} rolls, because \`partyBillSupport\` is called for every ` +
+    `party on every division and a read that rolled would re-phase every seeded campaign`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

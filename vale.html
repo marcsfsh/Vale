@@ -9070,8 +9070,28 @@ function partyBillSupport(st, pid, bill) {
      the same rate as one that had been left alone. It is bounded at
      V17_GRUDGE_VOTE: a memory colours a vote, it does not decide one, and a
      party that agrees with a bill still votes for it. */
+  /* S21a: AND THE SAME MEMORY THE OTHER WAY UP. The grudge arm above is
+     bounded at 12 and measured at 0.25 points in play, so an identical bill
+     from a sworn enemy and from a close ally scored TO THE SAME DECIMAL --
+     measured by swapping the sponsor across all seven parties, every voter
+     returned the same number for every sponsor. There was no party-to-party
+     relation in three megabytes to read; `st.partyRel` is one map and it means
+     "that party's relation to the player", which is why the largest non-
+     ideological term in this function was about somebody not on the bill.
+
+     Now the signed regard is read, bounded by the same constant so an enemy
+     costs no more than before and a friend is worth no more than an enemy
+     costs. Gated on `v19Thinks`: at `instinct` the store still cannot go
+     negative in practice (nothing writes credit that the floor does not also
+     write), and the grudge arm below is what shipped. */
   if (typeof v16Grudge === 'function' && bill.sponsor && bill.sponsor !== pid) {
-    score -= Math.min(V17_GRUDGE_VOTE, v16Grudge(st, pid, bill.sponsor) * .12);
+    var spon = bill.sponsor;
+    if (typeof v19Thinks === 'function' && v19Thinks(st) &&
+        typeof v21Regard === 'function' && spon !== playParty(st) && pid !== playParty(st)) {
+      score += clamp(v21Regard(st, pid, spon) * .12, -V17_GRUDGE_VOTE, V17_GRUDGE_VOTE);
+    } else {
+      score -= Math.min(V17_GRUDGE_VOTE, v16Grudge(st, pid, spon) * .12);
+    }
   }
   if (st.banned && st.banned[pid]) return 0;
   return clamp(score, 3, 98);
@@ -9441,7 +9461,26 @@ function assentFavour(st, bill) {
   var d = bill.assentOffice || assentOffice(st, bill);
   if (!d) return 100;
   var who = st.exec[d], f = holderOf(st, d), fc = billForecast(st, bill);
-  var line = clamp(st.partyRel && st.partyRel[who] !== undefined ? st.partyRel[who] : 50, 0, 100);
+  /* S21a: WHOSE RELATIONSHIP DECIDES THIS. `line` read `st.partyRel[who]`,
+     which is the PLAYER's relationship with the office holder -- and it
+     arbitrated every engine-to-engine assent in the game. Measured over 720
+     sessions: 768 decisions, every one an engine sponsor into an engine-held
+     office, and 677 refused. 88.2% of all engine legislation died on a number
+     describing somebody who was not party to it, which is this file's
+     borrowed-field defect (S16e's `faction_demand`) in the assent stage.
+
+     When the player is on neither side, the question is what the HOLDER makes
+     of the SPONSOR, which is exactly what the signed regard is for. When the
+     player is on either side the scalar is still the relationship the game
+     keeps, and it is read as before. */
+  var spon = bill.sponsor || (bill.owner === 'government' ? st.ruling : null);
+  var me = playParty(st), line;
+  if (typeof v21Regard === 'function' && typeof v19Thinks === 'function' && v19Thinks(st) &&
+      spon && who && spon !== who && spon !== me && who !== me) {
+    line = clamp(50 + v21Regard(st, who, spon) * .5, 0, 100);
+  } else {
+    line = clamp(st.partyRel && st.partyRel[who] !== undefined ? st.partyRel[who] : 50, 0, 100);
+  }
   if (who === st.ruling || (st.coalition || []).indexOf(who) >= 0) line = clamp(line + 14, 0, 100);
   var merits = clamp(bill.assemblyVote || bill.senateVote || fc.lower, 0, 100);
   var w = clamp(f.loyalty === undefined ? 60 : f.loyalty, 0, 100) / 100;
@@ -34068,12 +34107,62 @@ function v16Ai(st) {
   });
   return st.ai;
 }
-function v16Grudge(st, pid, against) { return (v16Ai(st)[pid].grudge[against] || 0); }
+/* ==========================================================
+   S21a — THE REGARD, SIGNED.
+
+   `a.grudge` has always been a per-ordered-pair map: every party's feeling
+   about every other party, eleven writers and twelve readers deep. One line
+   stopped it being a relationship. `v16Resent` clamped the store at nought, so
+   the whole positive half of `V17_MEMORY` -- twelve authored weights from
+   `joinCoalition: -20` down to `v9jointInquiry: -6`, under a comment that says
+   in as many words "AND IT WORKS THE OTHER WAY" -- could only ever spend an
+   existing grudge down. A kindness to a party that held nothing against you
+   wrote LITERALLY NOTHING, and a party that had been treated well for a
+   hundred sessions was indistinguishable from a party you had never met.
+
+   Measured on the shipped build across 720 sessions: mean grudge 22.13, max
+   100, and no gratitude field anywhere in three megabytes.
+
+   THE CHANGE IS THE CLAMP AND NOTHING ELSE. The store relaxes to (-100, 100);
+   `v16Grudge` gains a `Math.max(0, .)` so all twelve existing readers, all five
+   bars and all eleven `roads.js` literals see exactly what they saw before; and
+   `v21Regard` is the signed reader that new code opts into one call site at a
+   time. A grudge of 12 is a regard of -12. Nothing that reads `v16Grudge`
+   changes behaviour, which is what makes this safe to build nine slices on.
+
+   A PARALLEL TRUST MATRIX WAS PROPOSED AND REJECTED. Three of the four S21
+   designs wanted a new `st.stand` or `v21Trust` keyed by ordered pair -- which
+   is what `a.grudge` already is. A second mechanism computing a fact the first
+   already computes is the defect family this file's own history is a list of:
+   `MOVEMENTS` beside the street, `d.satisfaction` beside `v17DealScan`,
+   `v17Utility` beside `supportTargets`. See `docs/PLAN-S21.md` R3.
+   ========================================================== */
+/* A session's cooling, by sign. .6 is the rate this file has used since S16;
+   credit keeps at a third of it, so being owed outlives being resented. The
+   median deliberate provocation is 13.4, so anger of one act is gone in 22
+   sessions and a favour of the same size in 67. */
+var V21_COOL_ANGER = .6;
+var V21_COOL_CREDIT = .2;
+/* The signed reading: negative is a grudge, positive is credit. New readers
+   take this; every reader that existed before S21a keeps `v16Grudge`. */
+function v21Regard(st, pid, toward) {
+  var v = v16Ai(st)[pid].grudge[toward];
+  return (typeof v === 'number' && isFinite(v)) ? -v : 0;
+}
+/* THE GRUDGE READING IS UNCHANGED BY CONSTRUCTION. Credit stored below nought
+   reads here as no grudge at all, which is what every pre-S21a caller means by
+   the word. */
+function v16Grudge(st, pid, against) {
+  var v = v16Ai(st)[pid].grudge[against] || 0;
+  return v > 0 ? v : 0;
+}
 /* A party remembers. Called from the cards that give it something to remember:
    an attack, a poach, a ban, a coalition it was dropped from. */
 function v16Resent(st, pid, against, n) {
   var a = v16Ai(st)[pid];
-  a.grudge[against] = clamp((a.grudge[against] || 0) + n, 0, 100);
+  /* S21a: THE STORE IS SIGNED. Was `clamp(., 0, 100)`, which is the one line
+     that made twelve authored negative weights unable to write anything. */
+  a.grudge[against] = clamp((a.grudge[against] || 0) + n, -100, 100);
   /* S20a: AND THE ACT IS STAMPED, BECAUSE THE GRUDGE CANNOT ALWAYS RISE.
      S19f's reaction read a RISE in the grudge level, which asks the right
      question -- a party answers what was just done to it rather than sulking
@@ -34459,6 +34548,19 @@ var V16_AI_DECK = [
       st.aiPacts = st.aiPacts || {};
       st.aiPacts[pid] = { with:o, since:st.turn };
       shiftPartyRel(st, pid, -2);
+      /* S21a: A PACT IS AN AGREEMENT AND IT IS WRITTEN ON BOTH SIDES. The
+         refusal above reads `st.aiPacts[o.id] || st.aiPacts[pid]`, so it
+         already treats the arrangement as mutual -- and only the proposer's
+         key was ever written, which made a one-way door: the party stood down
+         for and never recorded standing down, and `V17_MEMORY`'s `pact: -10`
+         reached nobody at all because the card never called the memory. Both
+         keys now, and both parties remember it. */
+      st.aiPacts[o] = { with:pid, since:st.turn };
+      if (typeof v16Resent === 'function') {
+        var w = (V17_MEMORY.pact || {}).self || -10;
+        v16Resent(st, o, pid, w);
+        v16Resent(st, pid, o, w);
+      }
       return 'The ' + PARTY[pid].short + ' and the ' + PARTY[o].short + ' agreed to stand down for each other in most seats.';
     } },
   /* S17k: THE THREE INSTRUMENTS AN AI PARTY COULD NEVER TOUCH. Each of these
@@ -34601,15 +34703,29 @@ var V16_AI_DECK = [
    pact candidates at all, and the median distance between the best two was
    .05. A pull nothing can produce, over a field with nothing to reorder.
    The line below is the shipped one, unchanged. */
+/* S21a: AND A PACT GOES TO SOMEBODY YOU HAVE REASON TO TRUST. This picked the
+   ideologically nearest party under a flat grudge veto, so a party that had
+   stood down for you twice and one you had never dealt with were the same
+   candidate. The regard now pulls the distance: credit brings a party closer
+   by up to a fifth of the whole eligible radius and a grudge pushes it away,
+   which is what makes the pact a relationship rather than a measurement. The
+   veto stays exactly where it was, so nothing that was refused is now
+   offered. Gated: at `instinct` the sort is the distance alone, as shipped. */
+var V21_PACT_PULL = .0012;   /* x regard: 100 of credit is worth .12 of distance
+                                against an eligible radius of .62 */
 function v16PactPartner(st, pid) {
   var q = ppos(st, pid), best = null, bestD = .62;
+  var thinks = (typeof v19Thinks === 'function') && v19Thinks(st);
   PARTIES.forEach(function (o) {
     if (o.id === pid || o.id === st.ruling || st.banned[o.id]) return;
     if ((st.coalition || []).indexOf(o.id) >= 0) return;
     if (st.aiPacts && (st.aiPacts[o.id] || st.aiPacts[pid])) return;
     if (v16Grudge(st, pid, o.id) >= 20) return;
     var d = dist2(q, ppos(st, o.id));
-    if (d < bestD) { bestD = d; best = o.id; }
+    /* the ranking key only: `bestD` still gates on the real distance, so the
+       radius is unchanged and a party outside it cannot be pulled inside */
+    var key = thinks ? d - v21Regard(st, pid, o.id) * V21_PACT_PULL : d;
+    if (d < .62 && key < bestD) { bestD = key; best = o.id; }
   });
   return best;
 }
@@ -35384,7 +35500,10 @@ function v18Tempo(st, pid) {
   if (purse >= 120) w *= V18_TEMPO.rich;
   else if (purse < V16_AI_COST.demand) w *= V18_TEMPO.broke;
   var worst = 0;
-  if (ai && ai.grudge) for (var k in ai.grudge) if (ai.grudge[k] > worst) worst = ai.grudge[k];
+  /* S21a: through the accessor. Reading the store raw was correct only while
+     the store could not go below nought; with a signed store this asked
+     "is this party's warmest friendship greater than its worst grudge". */
+  if (ai && ai.grudge) for (var k in ai.grudge) { var gk = v16Grudge(st, pid, k); if (gk > worst) worst = gk; }
   if (worst >= 35) w *= V18_TEMPO.grudge;
   if (pid === st.ruling) w *= V18_TEMPO.govern;
   /* `lastSeats` is written at the end of every `v16AiTurn`, so this is the
@@ -35525,10 +35644,20 @@ function v16AiTurn(st) {
       lines.push(line);
     }
   });
-  /* grudges cool, slowly */
+  /* S21a: ANGER COOLS FASTER THAN CREDIT KEEPS. Both decay toward nought, and
+     they do it at different rates on purpose: an injury fades at the .6 a
+     session this file has always used, and a favour at a third of that, so a
+     party you spent a term being useful to still remembers it a term later
+     while a party you slighted once does not carry it forever. The asymmetry
+     is the whole argument for a signed store -- with one rate, credit is
+     nothing but a grudge you have not earned yet. */
   PARTIES.forEach(function (p) {
     var g = ai[p.id].grudge;
-    for (var k in g) { g[k] = Math.max(0, g[k] - .6); if (g[k] < .05) delete g[k]; }
+    for (var k in g) {
+      g[k] = g[k] > 0 ? Math.max(0, g[k] - V21_COOL_ANGER)
+                      : Math.min(0, g[k] + V21_COOL_CREDIT);
+      if (Math.abs(g[k]) < .05) delete g[k];
+    }
     ai[p.id].lastSeats = st.seats[p.id] || 0;
   });
   /* The player is told what the others did. Three lines is a session's news,
@@ -35545,6 +35674,12 @@ ballot = function (st) {
   for (var pid in st.aiPacts) {
     var o = st.aiPacts[pid].with;
     if (!res[pid] || !res[o]) continue;
+    /* S21a: ONCE PER PACT, NOT ONCE PER SIGNATORY. The card now writes both
+       sides -- a pact only one party recorded was a one-way door -- and this
+       loop walks the keys, so an agreement both parties hold would be pooled
+       twice and pay 12% where the card promises 6%. The pair is processed by
+       whichever id sorts first; a legacy save with one key still pools once. */
+    if (st.aiPacts[o] && st.aiPacts[o].with === pid && o < pid) continue;
     var pool = (res[pid] + res[o]) * .06;
     res[pid] += pool * .5; res[o] += pool * .5;
   }
@@ -35958,7 +36093,20 @@ var V17_MEMORY = {
   absorb:         { self:20, seen:4 },
   backChallenger: { self:20, seen:3 },
   coopt:          { self:18, seen:3 },
-  defect:         { self:18, seen:2 },
+  /* S21a: `defect` WAS CHARGED TO THE PARTY IT ENRICHES. The verb takes seats
+     from the largest parties and hands them to the target -- measured, the FP
+     gained 46 seats and took +18 of grudge for it, while the five parties that
+     lost the members took +2 each. The beneficiary resented a gift nine times
+     harder than the victims resented the theft.
+     The sign is flipped and the weights swapped: the party that gains the
+     members is grateful, and the room that lost them minds. `seen` is the only
+     channel for the losers, and it is imperfect (it pays every onlooker
+     equally where the seats came off the largest), but it is the right sign,
+     which is more than the shipped pair managed. `kind:'boost'` is NOT the
+     oracle here -- `infiltrate` and `pushLeft` are boosts by that field and
+     hostile in fact -- so this is the one entry the audit found and the one
+     entry changed. */
+  defect:         { self:-14, seen:9 },
   byElection:     { self:16 },
   pushAway:       { self:16 },
   audit:          { self:14, seen:2 },
@@ -36122,7 +36270,11 @@ function v17RulesPanel() {
 function v16AiPanel() {
   var me = playParty(S), ai = v16Ai(S);
   var rows = PARTIES.filter(function (p) { return p.id !== me && !S.banned[p.id]; }).map(function (p) {
-    var a = ai[p.id], g = a.grudge[me] || 0;
+    /* S21a: the panel reads the SIGNED number, because the whole point of the
+       column is what this party makes of you and "owes you one" is half of
+       that. `v16RegardSay` renders the sign; the bars below still read the
+       grudge, so a party in credit reads as holding nothing. */
+    var a = ai[p.id], reg = v21Regard(S, p.id, me), g = v16Grudge(S, p.id, me);
     return '<tr><td><span class="dot" style="background:' + p.color + '"></span> ' + esc(p.short) + '</td>' +
       '<td>' + esc(V16_POSTURE_SAY[a.posture] || a.posture) + '</td>' +
       '<td class="num">' + Math.round(partyPurse(S, p.id)) + '</td>' +
@@ -36165,7 +36317,14 @@ function v16AiPanel() {
         }
         return out;
       })() + '</td>' +
-      '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file' : 'Nothing on file') +
+      /* S21a: AND THE OTHER HALF OF THE SAME COLUMN. It read "Nothing on file"
+         for a party that had been in your coalition, taken your money and been
+         let off a cordon, because the store could not hold a favour. Both
+         halves are the one signed number, so the sentence cannot disagree with
+         what `partyBillSupport` and `assentFavour` now read. */
+      '<td>' + (g >= 35 ? 'They have not forgotten' : g >= 12 ? 'A grievance on file'
+        : reg >= 30 ? 'They owe you, and know it' : reg >= 10 ? 'A favour on file'
+        : 'Nothing on file') +
         /* S19e: AND WHAT KIND OF PARTY IT IS. Only where the parties can act
            on character at all -- below `purposeful` the leaning is not read,
            and a page saying a party deals rather than fights while the model
