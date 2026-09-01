@@ -9177,6 +9177,292 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${think.floor.sharp.n} of which ${think.floor.sharp.against} were -- a bill headed where a party wants it ` +
     `needs nothing from that party, and the money goes on the other nine things instead`);
 
+  /* ---------- S21c: THE REHEARSAL CAN SEE WHAT A CARD DID ----------
+
+     `v19Outcome` clones the board, plays the card and reads `v19Standing`
+     either side. Measured over 889 rehearsals the game actually ran, NINE OF
+     THE ELEVEN CARDS RETURNED A SINGLE CONSTANT -- min, median and max all
+     the same number, and that number was exactly minus the card's own price
+     tag. The simulation was a price list. A party clever enough to rehearse
+     concluded that laying a bill, an article, a pact, a platform, a letter or
+     a floor position was worse than doing nothing, and the two upper rungs of
+     the setting bought it.
+
+     Three of `v19Standing`'s five components could not fire either:
+     `v17Share * 60` -- its LARGEST weight -- plus a flat +18 for governing
+     and +9 an office, all read only inside a subtraction where they cancel,
+     because no card in the deck moves a seat or enters a cabinet within one
+     ply. `st.court.size`'s neighbour: not a field nothing reads, but tuned
+     weights that cannot move.
+
+     Four legs. (a) the objective's own coverage, before and after, driven
+     rather than reasoned. (b) the terms are non-CREATING, because
+     `v19Standing` runs on the live state as well as on the clone. (c) the
+     cost table covers the deck both ways. (d) the government legislates on
+     purpose, and does not above `instinct`. */
+  const seen = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed;
+      return S;
+    }
+    /* R9: anything downstream of the queue needs the override. This leg is
+       about the initiative pass, but `aiGovern` runs in the tick and the
+       formation matters to which party governs, so it is taken anyway. */
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) WHAT THE REHEARSAL CAN TELL APART. Wrapping `v19Outcome` and
+       reading `v19Standing` either side is the game's own path -- S17o's rule,
+       that reassembling the formula proves the function and not the wiring.
+       A card whose rehearsal returns ONE NUMBER on every board cannot be told
+       from any other instance of itself, which is the defect stated as a
+       measurement rather than as an argument. */
+    R.cards = (() => {
+      const rows = {};
+      const base = v19Outcome;
+      v19Outcome = function (st, pid, card) {
+        if (typeof v17Utility !== 'function' || typeof card.run !== 'function') return base.apply(this, arguments);
+        let b, a, out;
+        try { b = v19Standing(st, pid); } catch (e) { return base.apply(this, arguments); }
+        out = v19Try(st, function (clone) { card.run(clone, pid); });
+        if (out) {
+          try { a = v19Standing(out, pid); } catch (e) { a = null; }
+          if (a !== null && isFinite(a - b)) (rows[card.id] || (rows[card.id] = [])).push(+(a - b).toFixed(5));
+        }
+        return base.apply(this, arguments);
+      };
+      try {
+        [4242, 90210, 7, 31337].forEach(s => { fresh(s); for (let i = 0; i < 40; i++) step(); });
+      } finally { v19Outcome = base; }
+      const ids = Object.keys(rows);
+      let flat = 0, n = 0;
+      const per = {};
+      ids.forEach(id => {
+        const a = rows[id];
+        const lo = Math.min.apply(null, a), hi = Math.max.apply(null, a);
+        const isFlat = (hi - lo) < 1e-6;
+        if (isFlat) flat++;
+        n += a.length;
+        per[id] = { n:a.length, lo:+lo.toFixed(3), hi:+hi.toFixed(3), flat:isFlat };
+      });
+      return { cards:ids.length, rehearsals:n, flat:flat, per:per,
+        flatIds:ids.filter(id => per[id].flat) };
+    })();
+
+    /* (b) A READ MUST NOT CREATE. `v19Standing` is called on the REAL state
+       at the top of `v19Outcome`, so a term that installs a structure to read
+       it installs it on the live campaign -- which is `v6TreatyRows`, whose
+       read gave every power an empty treaty array and awarded the Peacemaker
+       record on every seed. Asked of a state stripped of all four. */
+    R.pure = (() => {
+      fresh(4242); for (let i = 0; i < 3; i++) step();
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      delete S.v11; delete S.aiPacts; delete S.push; const bills = S.bills; S.bills = [];
+      let threw = null, v = null;
+      try { v = v19Standing(S, pid); } catch (e) { threw = e.message; }
+      const made = { v11: S.v11 !== undefined, pacts: S.aiPacts !== undefined,
+        push: S.push !== undefined };
+      S.bills = bills;
+      return { threw:threw, finite: typeof v === 'number' && isFinite(v),
+        created: made.v11 || made.pacts || made.push, made:made };
+    })();
+
+    /* (c) ONE TABLE OVER THE DECK, BOTH WAYS -- the guard `V17_MEMORY` and
+       `V19_RIVAL_WORTH` carry and this one escaped. And the broke test reads
+       the cheapest card rather than naming one: it named `demand` at 16 under
+       a comment calling it the cheapest, and `floor` costs 12. */
+    R.cost = (() => {
+      const deck = V16_AI_DECK.map(c => c.id);
+      const priced = Object.keys(V16_AI_COST);
+      return {
+        deck:deck.length, priced:priced.length,
+        unpriced: deck.filter(id => typeof V16_AI_COST[id] !== 'number'),
+        ghosts: priced.filter(id => deck.indexOf(id) < 0),
+        cheapest: v16CheapestCard(),
+        trueMin: Math.min.apply(null, priced.map(k => V16_AI_COST[k])),
+        wasNamed: V16_AI_COST.demand,
+        /* and the S17 names still answer, because nine call sites read them */
+        s17: V17_AI_COST_ARTICLE === V16_AI_COST.article &&
+             V17_AI_COST_ORDER === V16_AI_COST.order &&
+             V17_AI_COST_FLOOR === V16_AI_COST.floor,
+        flight: V21_FLIGHT,
+      };
+    })();
+
+    /* (d) A GOVERNMENT CHOOSES ITS PROGRAMME. `aiGovern` drew uniformly out
+       of everything on the ruling party's table while an opposition party has
+       picked by forecast since S19c. Read through the game's own path -- the
+       bill that ends up on the paper -- at both levels, on the same board.
+       R1: `instinct` keeps the hat. */
+    R.govern = (() => {
+      const run = (level) => {
+        fresh(4242, level);
+        /* seat an ENGINE government, or `aiGovern` returns at `leads` */
+        const gov = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+        S.ruling = gov; S.coalition = [gov];
+        S.bills = [];
+        if (S.turn % 2) S.turn += 1;
+        /* WHAT THE FORECAST PICKER WANTS, ASKED BEFORE THE CARD RUNS. The
+           first version of this leg asked afterwards and read the SECOND
+           choice, because `v19BillFor` skips a statute that already has a
+           bill on it -- the same shape as availability asked after the card
+           played, which CLAUDE.md names. It reported the mechanism broken
+           while the mechanism was working: `instinct` laid `minimumWage`,
+           the picker's real answer was `techAntitrust`, and `ruthless` laid
+           `techAntitrust`. */
+        let want = null;
+        try { const a = v19BillFor(S, gov); want = a ? a.policy : null; } catch (e) { want = null; }
+        let laid = null, fc = null;
+        aiGovern(S);
+        /* counted by OWNER, because `aiGovern` is wrapped: `pv5AiGovernV4` is
+           the base and the reassignment adds `pv5AiPrivateBill`, so the call
+           lays a government bill AND, on its own roll, an opposition one. */
+        const b = S.bills.filter(x => x.owner === 'government')[0];
+        if (b) { laid = b.policy; try { fc = +billForecast(S, b).lower.toFixed(1); } catch (e) { fc = null; } }
+        return { gov:gov, laid:laid, forecast:fc, aimed:want,
+          laidCount:S.bills.filter(x => x.owner === 'government').length };
+      };
+      const dumb = run('instinct'), sharp = run('ruthless');
+      return { dumb:dumb, sharp:sharp,
+        sharpIsAimed: sharp.laid !== null && sharp.laid === sharp.aimed,
+        /* AND THE TWO LEVELS DISAGREE, which is the claim the equality above
+           cannot make on its own: a board where the hat happens to draw the
+           forecast pick would pass it with the gate deleted. */
+        levelsDiffer: dumb.laid !== sharp.laid,
+        /* and the aimed bill is the one that can be carried */
+        better: (sharp.forecast || 0) > (dumb.forecast || 0),
+        bothLaid: dumb.laidCount === 1 && sharp.laidCount === 1 };
+    })();
+
+    /* (e) AND THE OTHER ENGINE BILL ROAD. An engine has three doors to the
+       order paper and they disagreed: the deck's `bill` card by forecast
+       since S19c, `aiGovern` out of a hat, and private members' time by
+       `partyDemandPolicy`'s biggest gap. A change to `pv5AiPrivateBill` with
+       no leg here would be a change with no assertion.
+
+       The party is picked by a SEAT-WEIGHTED ROLL before the statute is, so
+       this leg is also where the stream discipline is proved: both levels
+       must land on the SAME sponsor, which they can only do if the gap
+       picker's own draws still happen at both. */
+    R.priv = (() => {
+      const run = (level, askFor) => {
+        fresh(4242, level);
+        const gov = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+        S.ruling = gov; S.coalition = [gov]; S.bills = [];
+        let want = null;
+        if (askFor) { try { const a = v19BillFor(S, askFor); want = a ? a.policy : null; } catch (e) { want = null; } }
+        S.rngState = 20260901;
+        let laid = null, by = null;
+        for (let i = 0; i < 40 && !laid; i++) {
+          pv5AiPrivateBill(S);
+          const b = S.bills.filter(x => x.owner === 'opposition')[0];
+          if (b) { laid = b.policy; by = b.sponsor; }
+        }
+        return { laid:laid, by:by, want:want, rng:S.rngState };
+      };
+      const dumb = run('instinct', null);
+      const sharp = run('ruthless', dumb.by);
+      return { dumb:dumb, sharp:sharp,
+        ran: !!dumb.laid && !!sharp.laid,
+        sameSponsor: !!dumb.by && dumb.by === sharp.by,
+        sharpIsAimed: sharp.laid !== null && sharp.laid === sharp.want,
+        levelsDiffer: dumb.laid !== sharp.laid,
+        /* and the stream is where it was: the gap picker still draws at both */
+        sameStream: dumb.rng === sharp.rng };
+    })();
+
+    /* AND THE DICE COUNT IS UNCHANGED, which is S18c's rule: a gate in front
+       of `rand()` decides how many numbers come off the stream, not just what
+       happens, and one chair consuming one roll fewer re-phases the campaign.
+       `aiGovern` draws its roll and discards it above `instinct`. */
+    R.dice = (() => {
+      const run = (level) => {
+        fresh(4242, level);
+        const gov = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+        S.ruling = gov; S.coalition = [gov]; S.bills = [];
+        if (S.turn % 2) S.turn += 1;
+        S.rngState = 777;
+        aiGovern(S);
+        return S.rngState;
+      };
+      return { instinct:run('instinct'), ruthless:run('ruthless'),
+        same: run('instinct') === run('ruthless') };
+    })();
+    return R;
+  });
+
+  const seenOk =
+    /* nine of eleven cards returned one constant; at most one may now */
+    seen.cards.cards === 11 && seen.cards.rehearsals > 600 && seen.cards.flat <= 1 &&
+    seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
+    seen.cost.deck === 11 && seen.cost.priced === 11 &&
+    seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
+    seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
+    seen.cost.s17 === true &&
+    seen.govern.bothLaid === true && seen.govern.sharpIsAimed === true &&
+    seen.govern.levelsDiffer === true && seen.govern.better === true &&
+    seen.priv.ran === true && seen.priv.sameSponsor === true &&
+    seen.priv.sharpIsAimed === true && seen.priv.levelsDiffer === true &&
+    seen.priv.sameStream === true &&
+    seen.dice.same === true;
+  say(seenOk, 'the rehearsal can see what a card did',
+    `THE SIMULATION WAS A PRICE LIST. \`v19Outcome\` clones the board, plays the card and reads ` +
+    `\`v19Standing\` either side -- and over ${seen.cards.rehearsals} rehearsals the game actually ran, NINE OF ` +
+    `THE ELEVEN CARDS RETURNED A SINGLE CONSTANT: min, median and max the same number, and that number exactly ` +
+    `minus the card's own price tag. \`article\` -0.408 every time, \`bill\` -0.456, \`campaign\` -0.480, ` +
+    `\`pact\` -0.408, \`platform\` -0.264, \`demand\` -0.192, \`floor\` -0.144. A party clever enough to rehearse ` +
+    `concluded that laying a bill was worse than doing nothing, and the two upper rungs of the setting bought ` +
+    `it. ${seen.cards.flat} of ${seen.cards.cards} are flat now` +
+    (seen.cards.flatIds.length ? ` (${seen.cards.flatIds.join(', ')} -- the bill card always lays the statute ` +
+      `its own table names, so every instance of it IS a good one)` : '') + ` · AND THREE OF THE FIVE COMPONENTS ` +
+    `COULD NOT FIRE: \`v17Share * 60\`, the LARGEST weight in the function, plus a flat +18 for governing and ` +
+    `+9 an office -- read only inside a subtraction, and no card in the deck moves a seat or enters a cabinet ` +
+    `within one ply, so all three cancelled on 889 of 889. \`st.court.size\`'s neighbour: not a field nothing ` +
+    `reads, but tuned weights that cannot move. \`supportTargets\` is on the same scale and reads what the cards ` +
+    `write · A THING IN FLIGHT IS WORTH THE PRICE OF THE CARD THAT PRODUCES IT, times how good this instance ` +
+    `is -- ONE constant, taken from the cards that already scored rather than by eye: their median gain is 0.75, ` +
+    `the median price across the six kinds is 28 and the median instance is .90, so V21_FLIGHT is ` +
+    `${seen.cost.flight} · AND THE READS DO NOT CREATE (${seen.pure.created ? 'they DO' : 'true'}), asked of ` +
+    `a state stripped of \`v11\`, \`aiPacts\` and \`push\`: \`v19Standing\` runs on the LIVE state at the top of ` +
+    `\`v19Outcome\`, so a term that installs a structure to read it installs it on the campaign -- which is ` +
+    `\`v6TreatyRows\`, whose read gave every power an empty treaty array and awarded the Peacemaker record on ` +
+    `every seed · ONE COST TABLE OVER THE DECK, BOTH WAYS: ${seen.cost.priced} prices for ${seen.cost.deck} ` +
+    `cards, ${seen.cost.unpriced.length} unpriced and ${seen.cost.ghosts.length} naming no card, where the table ` +
+    `held eight and \`article\`, \`order\` and \`floor\` kept theirs in three later constants -- and BOTH readers ` +
+    `read \`V16_AI_COST[id] || 0\`, so the chooser's money term scored those three as free and the tempo's broke ` +
+    `test could not see them. The broke test now reads the cheapest card in the deck (${seen.cost.cheapest}) ` +
+    `where it NAMED one (${seen.cost.wasNamed}), so a party holding 14 is no longer throttled to a third of its ` +
+    `tempo while it can still afford to act · AND A GOVERNMENT CHOOSES ITS PROGRAMME: \`aiGovern\` drew it out ` +
+    `of a hat while an opposition party has picked by forecast since S19c, worth +4.9 forecast points over 133 ` +
+    `real decisions -- the one chair that legislates most was the least deliberate in the republic. Above ` +
+    `\`instinct\` the bill it lays is the one the forecast picks (${seen.govern.sharpIsAimed}: ` +
+    `${seen.govern.sharp.laid}, forecasting ${seen.govern.sharp.forecast}), at \`instinct\` it is the hat ` +
+    `(${seen.govern.dumb.laid}, forecasting ${seen.govern.dumb.forecast}) -- the two DISAGREE ` +
+    `(${seen.govern.levelsDiffer}), which the equality alone cannot say because a board where the hat happens ` +
+    `to draw the forecast pick would pass it with the gate deleted, and the aimed bill is the one that can be ` +
+    `carried (${seen.govern.better}). Both lay exactly one government bill (${seen.govern.bothLaid}) · THIS LEG ` +
+    `WAS WRONG BEFORE THE GAME WAS: it first asked what the picker wanted AFTER the card had run, and read the ` +
+    `SECOND choice, because \`v19BillFor\` skips a statute that already carries a bill -- availability asked ` +
+    `after the card played, and it reported the mechanism broken while the mechanism was working · and THE DICE ` +
+    `COUNT IS UNCHANGED (${seen.dice.same}), the roll drawn and discarded, because S18c measured that one chair ` +
+    `consuming one number fewer re-phases every seeded campaign · AND AN ENGINE HAS THREE DOORS TO THE ORDER ` +
+    `PAPER AND THEY DISAGREED: the deck's \`bill\` card by forecast since S19c, \`aiGovern\` out of a hat, and ` +
+    `private members' time by \`partyDemandPolicy\`'s biggest gap -- so the same party laid a statute it could ` +
+    `carry through one door and one it could not through another. On that third road the same sponsor is picked ` +
+    `at both levels (${seen.priv.sameSponsor}: ${seen.priv.dumb.by}) and lays ${seen.priv.dumb.laid} on ` +
+    `instinct against ${seen.priv.sharp.laid} above it (${seen.priv.levelsDiffer}), which is the forecast ` +
+    `picker's own answer (${seen.priv.sharpIsAimed}) · \`partyDemandPolicy\` IS STILL CALLED and still the ` +
+    `fallback, on two counts: it ROLLS, so the draw has to happen whatever is picked -- proved by both levels ` +
+    `landing on the same sponsor after a seat-weighted roll and leaving the stream in the same place ` +
+    `(${seen.priv.sameStream}) -- and it is SHARED with the demand card, which \`roads.js\` pins on purpose, ` +
+    `so the change goes in this caller and not in the body`);
+
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
      asked what the OTHERS were after, so a party whose goal was being taken

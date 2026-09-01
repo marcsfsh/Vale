@@ -16376,6 +16376,27 @@ function pv5AiPrivateBill(st){
   for(i=0;i<cands.length;i++){roll-=(st.seats[cands[i].id]||0);if(roll<=0){opp=cands[i];break;}}
   if(!opp)return;
   var pick=partyDemandPolicy(st,opp.id);if(!pick)return;
+  /* S21c: AND THE OTHER ENGINE BILL ROAD PICKS THE SAME WAY THE FIRST ONE
+     DOES. Private members' time is the second of three roads an engine has
+     to the order paper, and the three disagreed: the deck's `bill` card has
+     picked by forecast since S19c, `aiGovern` drew out of a hat until this
+     slice, and this one takes `partyDemandPolicy`'s biggest gap -- so the
+     same party laid a statute it could carry through one door and one it
+     could not through another.
+
+     `partyDemandPolicy` IS STILL CALLED, and its result is still the
+     fallback. That is deliberate on two counts. It ROLLS, and S18c measured
+     that one chair consuming one number fewer re-phases every seeded
+     campaign, so the draw has to happen whatever is picked. And it is shared
+     with the demand card, which roads.js pins on purpose -- a shared body
+     right for a new caller can be wrong for the old ones -- so the change
+     goes in THIS caller and not in the body.
+
+     R1: competence, so `instinct` keeps the gap picker exactly. */
+  if(typeof v19Thinks==='function'&&v19Thinks(st)&&typeof v19BillFor==='function'){
+    var aimed=null;try{aimed=v19BillFor(st,opp.id);}catch(e){aimed=null;}
+    if(aimed&&POL[aimed.policy])pick={policy:aimed.policy,dir:aimed.dir};
+  }
   /* S17a: the sponsor goes IN, and the generic line stays quiet -- this path
      writes its own, and the two together printed the bill's introduction
      twice, the first naming the wrong party. */
@@ -35650,10 +35671,28 @@ function v19Outcome(st, pid, card) {
   var d = after - before;
   if (!isFinite(d)) return 0;
   /* `v17Utility` is a sum of indicator terms in the tens, so a single card
-     moves it by a few points at most. Squashed to about -1..1 so it sits
-     beside the goal term rather than swamping it -- a party that only ever
-     did the thing with the best immediate reading would have no aims at all,
-     which is the state this program started from wearing the other hat. */
+     moves it by a few points at most. Squashed so it sits beside the goal term
+     rather than swamping it -- a party that only ever did the thing with the
+     best immediate reading would have no aims at all, which is the state this
+     program started from wearing the other hat.
+
+     S21c MEASURED THIS DIVISOR AND DELIBERATELY LEFT IT WHERE IT IS, which is
+     the opposite of what the slice set out to do, so the reasoning is here
+     rather than in a merged PR body. The sentence above used to say "to about
+     -1..1" and that was a card that lies: over 886 rehearsals |d| runs
+     .0013 to 2.75 with a 99th percentile of 2.71, so `d/12` spans .0001 to
+     .229 and the clamp is unreachable by a factor of four. It reads like dead
+     decoration -- the intake called it that -- and it is not. `v19Score` adds
+     `sim * this`, and `sim` is 1.9 at `ruthless`, so the rehearsal is already
+     worth up to .43 against a goal table whose ceiling is 1. Re-setting the
+     divisor to the measured p99, which is what makes a clamp fire, would take
+     the rehearsal to 1.9 -- NEARLY TWICE the goal's ceiling -- and a party
+     whose simulator outweighs its aim has no aims, which is the thing this
+     comment was written to prevent and which R4 forbids.
+     So the clamp is a GUARD against a board none of these seeds produced, not
+     a working range, and the divisor is the scaling. Moving it is a balance
+     change and belongs to the owner under AGREEMENT.md, not to a slice whose
+     brief was to make the objective see what the cards do. */
   return Math.max(-1, Math.min(1, d / 12));
 }
 function v19Score(st, pid, card, goal, rival) {

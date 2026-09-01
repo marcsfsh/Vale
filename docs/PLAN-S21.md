@@ -239,7 +239,7 @@ had to be rebuilt to stop people reading past. The arm now reads six seeds on
 chooses will move single-seed readings this way; the answer is to widen the
 reading, not to chase the seed.
 
-### S21c — The rehearsal can see what a card did  ·  3 improvements
+### S21c — The rehearsal can see what a card did  ·  SHIPPED  ·  3 improvements
 
 Four terms enter `v19Standing`: bills in flight, a pending amendment, a live
 pact, position closed by `st.push`. `v17Share * 60` becomes
@@ -252,6 +252,48 @@ spread. `v16CardCost(id)` becomes one table over all cards with the coverage arm
 
 Largest single mover of the card mix, so it goes early and later arms are
 measured on the new population.
+
+**SHIPPED. Three corrections to this plan, all found by measuring first.**
+
+**1. "Prices `article`, `order` and `floor` as free" is right about the READER
+and would be read as wrong about the game.** The three cards always charged,
+through `V17_AI_COST_ARTICLE`, `_ORDER` and `_FLOOR`. What could not see them
+was `V16_AI_COST`'s two readers, both of which read `V16_AI_COST[id] || 0`:
+`v19Score`'s money term and `v18Tempo`'s broke test. The defect is a table with
+two sources of truth, not a free card.
+
+**2. Six terms, not four, and the sixth was found by asking which cards the
+four still missed.** With bills, articles, pacts and `push` alone, `demand` and
+`floor` still scored at exactly minus their price. Two more close them: a
+POSITION DECLARED on a live bill (`b.lines`, which `partyBillSupport` reads at
+16/−18, so it moves a real division) and an OUTSTANDING LETTER. And the bill
+term reads the whole order paper rather than the party's own bills, because a
+party minds what is before the house and not whose name is on it — which is
+what lets the government taking up its demand read as a gain to the party that
+asked. `demand` is still only covered on 26.7% of its rows, and the remainder
+is deliberate: what it leaves against an engine government is a GRIEVANCE, and
+R8 forbids writing memory during a rehearsal.
+
+**3. THE SQUASH DIVISOR WAS MEASURED AND DELIBERATELY LEFT WHERE IT IS.** The
+intake called the squash and both clamps dead, and the clamp half is true —
+over 886 rehearsals |d| runs .0013 to 2.75 with a p99 of 2.71, so `d/12` spans
+.0001 to .229 and ±1 is unreachable by a factor of four. But `v19Score` adds
+`sim * this` and **`sim` is 1.9 at `ruthless`**, so the rehearsal is already
+worth up to .43 against a goal table whose ceiling is 1. Re-setting the divisor
+to the p99 — which is what makes a clamp fire — would take the rehearsal to
+1.9, nearly TWICE the goal's ceiling, and a party whose simulator outweighs its
+aim has no aims. That is what R4 forbids and what the function's own comment
+was written to prevent. So the clamp is a guard against a board none of these
+seeds produced, the divisor is the scaling, and moving it is a balance change
+that belongs to the owner under `AGREEMENT.md`. What ships is the correction to
+the comment, which claimed the term was "squashed to about −1..1" and was a
+card that lies.
+
+**The measurement that states the defect:** on the shipped build **nine of the
+eleven cards returned a single constant** from the rehearsal — min, median and
+max the same number, exactly minus the card's own price tag. On the new build,
+one does (`bill`, which always lays the statute its own table names, so every
+instance of it is a good one).
 
 ### S21d — The agreement bites  ·  Coalition 1 of 4  ·  3 improvements, 1 new
 
