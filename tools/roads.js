@@ -9829,8 +9829,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          than assuming this board is it. The first version asked seed 4242
          alone, found a deficit of 8.8, and could not run. */
       const hunt = () => {
-        for (let s = 0; s < SEEDS.length; s++) {
-          fresh(SEEDS[s]);
+        const seeds = [4242, 90210, 7, 31337, 1, 555];
+        for (let s = 0; s < seeds.length; s++) {
+          fresh(seeds[s]);
           for (let i = 0; i < 30; i++) {
             step();
             if (!S.ruling || S.ruling === playParty(S)) continue;
