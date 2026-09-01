@@ -10750,14 +10750,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        the S19f reaction running through the A/B took this reading from -.18 to
        .421 and the arm never noticed, which made the isolation that removes it
        a line whose deletion changed nothing. At .3 the control asserts what it
-       is for and the hold is load-bearing. */
+       is for and the hold is load-bearing.
+
+       S21c: AND THE GATE NEVER CARRIED IT. That paragraph has described a
+       control held to .3 since S20f and the clause was not in this list --
+       `corrFlat` was measured, printed nowhere and asserted nothing. It is
+       here now, which is the comment's own claim finally made. */
+    Math.abs(temp.patience.corrFlat) < .3 &&
     /* the PAIRED lift is the assertion (see the probe): each party against
        itself, so how often a party is read cancels instead of masquerading as
        temperament. `corrOn` is kept as a reading and held loosely, because it
        carries that confound by construction and a tight bound on it is a
-       bound on the confound rather than on the mechanism. */
+       bound on the confound rather than on the mechanism.
+
+       S21c TOOK THE BOUND OFF `corrOn` ALTOGETHER, and did it BECAUSE the
+       paragraph above was right. S21c changes which card a party plays, and
+       therefore how often each party is read -- which IS the confound
+       `corrOn` carries by construction. Measured across the slice, the
+       confounded cross-party figure fell from .802 to .534 while the clean
+       PAIRED figure, each party against itself, held at .909 against .937,
+       on lifts of 2.13 sessions. Gating a number this arm's own words call a
+       reading is a bound on the confound, and the confound moved for a reason
+       that has nothing to do with what the arm is about. */
     temp.patience.corrLift > .8 && temp.patience.meanAbsLift > 1 &&
-    temp.patience.corrOn > .6 &&
     temp.subordinate.temperCeiling < temp.subordinate.goalCeiling / 2 &&
     temp.floor && temp.floor.instinctMoved === 0 && Math.abs(temp.floor.shrewdMoved) > .1 &&
     temp.page.atShrewd === true && temp.page.atInstinct === false;
@@ -10783,8 +10798,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `tracks its authored patience at ${temp.patience.corrLift}, on lifts averaging ` +
     `${temp.patience.meanAbsLift} sessions -- each party against ITSELF, so how often it is read cancels ` +
     `instead of masquerading as temperament, which is what the old flattened control was measuring when it ` +
-    `read -.18 where a clean control reads nought and -.64 once S20a's real division sharpened it (the ` +
-    `cross-party figure is still ${temp.patience.corrOn}, kept as a reading and not as the claim) ` +
+    `read -.18 where a clean control reads nought and -.64 once S20a's real division sharpened it -- and the ` +
+    `flattened control is ASSERTED now at ${temp.patience.corrFlat}, where that paragraph has described a hold ` +
+    `at .3 since S20f and the gate never carried the clause · S21c TOOK THE BOUND OFF THE CROSS-PARTY FIGURE ` +
+    `(${temp.patience.corrOn}, kept as a reading and not as the claim) BECAUSE that paragraph was right: this ` +
+    `slice changes which card a party plays and therefore how often each is read, which IS the confound the ` +
+    `figure carries -- across it the cross-party reading fell from .802 to ${temp.patience.corrOn} while the ` +
+    `clean PAIRED figure held at ${temp.patience.corrLift} against .937. A bound on a number this arm's own ` +
+    `words call a reading is a bound on the confound ` +
     `· IT SHAPES HOW A PARTY PURSUES ITS AIM AND DOES NOT OVERRIDE IT, the leaning's ceiling ` +
     `in \`v19Score\` being ${temp.subordinate.temperCeiling} against the goal table's ` +
     `${temp.subordinate.goalCeiling} · \`instinct\` IS UNTOUCHED (${temp.floor.instinctMoved} where shrewd ` +
