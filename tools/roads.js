@@ -11162,7 +11162,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* the SHARE answered in the session, not the mean of a long-tailed
        distribution -- see the probe. */
     answr.lag.on.sameShare > .6 && answr.lag.on.sameShare > 1.4 * answr.lag.off.sameShare &&
-    answr.lag.on.mean < answr.lag.off.mean && answr.lag.off.max >= 4 &&
+    answr.lag.on.mean < answr.lag.off.mean &&
+    /* S21c: `answr.lag.off.max >= 4` STOOD HERE AND IS THE SAME MISTAKE THIS
+       PROBE'S OWN COMMENT NAMES, IN A THIRD FORM. The comment above the
+       statistics says the mean measures the tail and the claim is about the
+       head; `max` is nothing BUT the tail. S21c makes an engine pick a better
+       card, which shortens the wait on the build with the reaction switched
+       OFF too -- the worst wait there fell from 11 sessions to 3 -- and the
+       clause read that as the mechanism breaking. It is not: measured on the
+       same run the reaction takes the in-session share .429 to .714 while the
+       worst wait WITH the reaction is LONGER than without it, because it
+       leaves fewer stragglers and the few it leaves are the hard cases. A
+       statistic that moves the wrong way on a working build is measuring
+       something else.
+       What replaces it is a bound in the statistic the probe says is the
+       right one, on the half the mechanism exists to fix: without the
+       reaction, a MAJORITY of provocations are not answered in the session
+       they happen. */
+    answr.lag.off.sameShare < .5 &&
     answr.aim.aimed.n > 300 && answr.aim.flat.n > 300 &&
     answr.aim.lift > .03 && answr.aim.aimed.attack > 1.2 * answr.aim.flat.attack &&
     answr.bar.rises > 150 && answr.bar.maxFall < answr.bar.bar &&
@@ -11176,7 +11193,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(answrOk, 'a party does not wait for the season',
     `S18e MADE THE TEMPO READ THE GRUDGE and a provoked party still waited: driven, it took some initiative a ` +
     `mean of ${answr.lag.off.mean} sessions after the provocation and as late as ${answr.lag.off.max}, and only ` +
-    `${answr.lag.off.sameShare} of provocations were answered in the session they happened · IT ANSWERS IN THE ` +
+    `${answr.lag.off.sameShare} of provocations were answered in the session they happened -- a MINORITY, which ` +
+    `is the half this mechanism exists to fix and is what this arm pins, where it used to pin the worst wait: ` +
+    `S21c made an engine pick a better card and the worst wait WITHOUT the reaction fell from 11 sessions to ` +
+    `${answr.lag.off.max}, which the old clause read as the mechanism breaking. It is not. On the same run the ` +
+    `worst wait WITH the reaction is ${answr.lag.on.max} -- LONGER -- because the reaction leaves fewer ` +
+    `stragglers and the few it leaves are the hard cases, and a statistic that moves the wrong way on a working ` +
+    `build is measuring something else. This probe's own comment already said the mean measures the tail and ` +
+    `the claim is about the head; \`max\` is nothing but the tail · IT ANSWERS IN THE ` +
     `SESSION NOW: ${answr.lag.on.sameShare} of them (${answr.lag.on.same} of ${answr.lag.on.n}), against ` +
     `${answr.lag.off.sameShare} without the reaction -- read as the SHARE and not the mean, because the lags ` +
     `have a long tail (a party that answers still needs a card its posture leaves open) and on twelve ` +
