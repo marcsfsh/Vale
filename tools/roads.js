@@ -9359,7 +9359,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           }
           return got;
         };
-        try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99].forEach(s2 => { fresh(s2, 'ruthless'); drive(100); }); }
+        try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415].forEach(s2 => { fresh(s2, 'ruthless'); drive(100); }); }
         finally { v19Choose = savedChoose; }
         return t;
       };
@@ -9437,7 +9437,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        temperament took this from .044 to .036 with the rivalry term untouched.
        What the term must do is act on the boards that HAVE a rival and not on
        the ones that do not, and that ratio is what is asserted. */
-    rival.pick.onFoeGain > .02 && rival.pick.onFoeGain > 3 * Math.abs(rival.pick.onCalmGain) &&
+    /* S20f: 1.8x, NOT 3x, AND THE NUMBER CAME DOWN WITH THE SAMPLE. The 3:1
+       here was calibrated on eight seeds. Widened to fourteen the same
+       unchanged mechanism reads +.052 on the boards carrying a rival against
+       +.025 on those that do not -- 2.08 to one. The shape of the claim is
+       intact and its STRENGTH was a small-sample reading, which is this
+       program's most-repeated defect arriving in a third place after the
+       pacing arc and the temperament. */
+    rival.pick.onFoeGain > .02 && rival.pick.onFoeGain > 1.8 * Math.abs(rival.pick.onCalmGain) &&
     rival.scale.foeN > 20 && rival.scale.p90 !== null &&
     rival.scale.worth > rival.scale.p90 && rival.scale.worth < rival.scale.p99;
   say(rvOk, 'a party knows who is in its way',
@@ -9519,7 +9526,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.carryGaps = []; R.govLaid = 0;
     (() => {
       const seen = {};
-      [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+      [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415].forEach(seed => {
         fresh(seed);
         for (let t = 0; t < 100; t++) {
           const capBefore = S.capital;
@@ -9863,7 +9870,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         }
         return saved.call(this, st, pid);
       };
-      try { [4242, 90210, 7, 31337, 555, 8080].forEach(s => { fresh(s); drive(100); }); }
+      try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415].forEach(s => { fresh(s); drive(100); }); }
       finally { card.run = saved; }
       if (R.choice.n) {
         R.choice.mineMean = +(R.choice.mine / R.choice.n).toFixed(1);
@@ -9891,7 +9898,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const dsv = dc && dc.run, bsv = bc && bc.run;
       if (dc) dc.run = function (st, pid) { inDemand = true; try { return dsv.call(this, st, pid); } finally { inDemand = false; } };
       if (bc) bc.run = function (st, pid) { inBill = true; try { return bsv.call(this, st, pid); } finally { inBill = false; } };
-      try { [4242, 90210, 7, 31337, 555, 8080].forEach(s2 => { fresh(s2); drive(100); }); }
+      try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415].forEach(s2 => { fresh(s2); drive(100); }); }
       finally { if (dc) dc.run = dsv; if (bc) bc.run = bsv; partyDemandPolicy = gp0; v19BillFor = bf0; }
     })();
 
@@ -10122,7 +10129,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
             return saved[i].call(this, st, pid);
           };
         });
-        try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99].forEach(s => { fresh(s); drive(100); }); }
+        try { [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415].forEach(s => { fresh(s); drive(100); }); }
         finally { V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; }); }
         const out = {};
         Object.keys(t).forEach(k => {
@@ -10269,7 +10276,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     temp.partiesWithout.length === 0 && temp.cardsWithoutAxis.length === 0 &&
     temp.ghostAxis.length === 0 && temp.badAxis.length === 0 && temp.parties >= 7 &&
     temp.distinctLeads >= 3 && temp.patienceSpread >= .5 &&
-    temp.lean.parties >= 5 && temp.lean.rose === temp.lean.parties && temp.lean.meanLift > .03 &&
+    /* S20f: THE LEANING'S EFFECT IS REAL AND SMALL, AND S19e SHIPPED THE
+       SMALL-SAMPLE READING AS ITS HEADLINE. "All six parties raise the share
+       of what they do that falls on their own axis, by a mean of .063" was
+       measured on EIGHT seeds. Swept, it shrinks monotonically with the
+       sample -- 6 of 6 at .045 on eight, 5 of 6 at .020 on fourteen, 4 of 6
+       at .014 on twenty-four -- which is the signature of a lucky sample
+       rather than of an effect of that size. The mechanism is in `v19Score`
+       and the patience half of this slice is strong and stable (a paired lift
+       correlating .955 over the same run), so what is corrected is the
+       STRENGTH of one claim, not the slice. */
+    temp.lean.parties >= 5 && temp.lean.rose >= 4 && temp.lean.meanLift > .008 &&
     temp.patience.n >= 5 && temp.patience.corrOn !== null &&
     /* the flattened control is held to .3 rather than .5 BECAUSE ITS POISON
        CAME BACK GREEN AT .5. With the patience flattened there should be no
@@ -10298,7 +10315,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `one leaning (${temp.cardsWithoutAxis.length} without, ${temp.ghostAxis.length} naming a card the deck has ` +
     `not) · THE LEANING REACHES THE CARDS, isolated as an in-process A/B over eight seeds: ${temp.lean.rose} of ` +
     `${temp.lean.parties} parties raise the share of what they do that falls on their OWN axis, by a mean of ` +
-    `${temp.lean.meanLift} (${Object.keys(temp.lean.rows).map(k => k + ' ' + temp.lean.rows[k].off + '→' + temp.lean.rows[k].on).join(', ')}) ` +
+    `${temp.lean.meanLift} -- SMALL, and S19e shipped a small-sample reading as its headline: "all six by a mean ` +
+    `of .063" was eight seeds, and swept it shrinks monotonically to 5 of 6 at .020 on fourteen and 4 of 6 at ` +
+    `.014 on twenty-four, which is what a lucky sample looks like rather than an effect of that size ` +
+    `(${Object.keys(temp.lean.rows).map(k => k + ' ' + temp.lean.rows[k].off + '→' + temp.lean.rows[k].on).join(', ')}) ` +
     `-- read as the FAVOURITE CARD first, which moved from two distinct favourites to three and stopped, ` +
     `because \`court\` sits high in most goal tables and is open in nearly every posture and a leaning worth ` +
     `.36 cannot take the argmax off it · AND THE PATIENCE REACHES THE CLOCK, read as a PAIRED lift because ` +
@@ -10372,7 +10392,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       }
       return null;
     }
-    const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99];
+    const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415];
 
     /* (a) THE LEDGER BALANCES, THE CHARGE IS EARNED, and the total is reported
        beside its own spread rather than asserted. */
