@@ -9177,6 +9177,396 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${think.floor.sharp.n} of which ${think.floor.sharp.against} were -- a bill headed where a party wants it ` +
     `needs nothing from that party, and the money goes on the other nine things instead`);
 
+  /* ---------- S21c: THE REHEARSAL CAN SEE WHAT A CARD DID ----------
+
+     `v19Outcome` clones the board, plays the card and reads `v19Standing`
+     either side. Measured over 889 rehearsals the game actually ran, NINE OF
+     THE ELEVEN CARDS RETURNED A SINGLE CONSTANT -- min, median and max all
+     the same number, and that number was exactly minus the card's own price
+     tag. The simulation was a price list. A party clever enough to rehearse
+     concluded that laying a bill, an article, a pact, a platform, a letter or
+     a floor position was worse than doing nothing, and the two upper rungs of
+     the setting bought it.
+
+     Three of `v19Standing`'s five components could not fire either:
+     `v17Share * 60` -- its LARGEST weight -- plus a flat +18 for governing
+     and +9 an office, all read only inside a subtraction where they cancel,
+     because no card in the deck moves a seat or enters a cabinet within one
+     ply. `st.court.size`'s neighbour: not a field nothing reads, but tuned
+     weights that cannot move.
+
+     Four legs. (a) the objective's own coverage, before and after, driven
+     rather than reasoned. (b) the terms are non-CREATING, because
+     `v19Standing` runs on the live state as well as on the clone. (c) the
+     cost table covers the deck both ways. (d) the government legislates on
+     purpose, and does not above `instinct`. */
+  const seen = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed;
+      return S;
+    }
+    /* R9: anything downstream of the queue needs the override. This leg is
+       about the initiative pass, but `aiGovern` runs in the tick and the
+       formation matters to which party governs, so it is taken anyway. */
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) WHAT THE REHEARSAL CAN TELL APART. Wrapping `v19Outcome` and
+       reading `v19Standing` either side is the game's own path -- S17o's rule,
+       that reassembling the formula proves the function and not the wiring.
+       A card whose rehearsal returns ONE NUMBER on every board cannot be told
+       from any other instance of itself, which is the defect stated as a
+       measurement rather than as an argument. */
+    R.cards = (() => {
+      const rows = {};
+      const base = v19Outcome;
+      v19Outcome = function (st, pid, card) {
+        if (typeof v17Utility !== 'function' || typeof card.run !== 'function') return base.apply(this, arguments);
+        let b, a, out;
+        try { b = v19Standing(st, pid); } catch (e) { return base.apply(this, arguments); }
+        out = v19Try(st, function (clone) { card.run(clone, pid); });
+        if (out) {
+          try { a = v19Standing(out, pid); } catch (e) { a = null; }
+          if (a !== null && isFinite(a - b)) (rows[card.id] || (rows[card.id] = [])).push(+(a - b).toFixed(5));
+        }
+        return base.apply(this, arguments);
+      };
+      try {
+        [4242, 90210, 7, 31337].forEach(s => { fresh(s); for (let i = 0; i < 40; i++) step(); });
+      } finally { v19Outcome = base; }
+      const ids = Object.keys(rows);
+      let flat = 0, n = 0;
+      const per = {};
+      ids.forEach(id => {
+        const a = rows[id];
+        const lo = Math.min.apply(null, a), hi = Math.max.apply(null, a);
+        const isFlat = (hi - lo) < 1e-6;
+        if (isFlat) flat++;
+        n += a.length;
+        per[id] = { n:a.length, lo:+lo.toFixed(3), hi:+hi.toFixed(3), flat:isFlat };
+      });
+      return { cards:ids.length, rehearsals:n, flat:flat, per:per,
+        flatIds:ids.filter(id => per[id].flat) };
+    })();
+
+    /* (a2) AND EACH OF THE SIX TERMS ANSWERS FOR ITSELF. The flatness reading
+       above proves the objective can tell instances apart; it does NOT pin
+       which term did it, and the poison run showed why that matters -- with
+       the bill term deleted, `bill` still came back non-flat, because the
+       purse term is `min(20, purse/100) * 1.2` and a party over 2,000 has it
+       CLAMPED, so a card can escape flatness on an unrelated saturation.
+       So the six are read one at a time, by making the change the card would
+       make and asking `v19Flight` either side. Between them the driven leg
+       says the terms reach real rehearsals and this one says which is which. */
+    R.terms = (() => {
+      fresh(4242); for (let i = 0; i < 3; i++) step();
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      const w = (PARTY[pid] || {}).wants || {};
+      const pol = Object.keys(w).filter(id => POL[id] && (S.pol[id] || 0) !== Math.min(w[id], POL[id].max))[0];
+      const f = () => v19Flight(S, pid);
+      const out = {};
+      const move = (label, fn, undo) => {
+        const b = f(); fn(); const a = f(); undo();
+        out[label] = +(a - b).toFixed(4);
+      };
+      /* a bill before the house going the party's way, and the same bill
+         going the other way -- the sign is the claim, not the magnitude */
+      if (pol) {
+        const want = Math.min(w[pol], POL[pol].max), lv = S.pol[pol] || 0;
+        const dir = want > lv ? 1 : -1;
+        move('billFor', () => S.bills.push({ policy:pol, dir:dir, sponsor:pid, owner:'opposition', lines:{} }),
+          () => S.bills.pop());
+        move('billAgainst', () => S.bills.push({ policy:pol, dir:-dir, sponsor:pid, owner:'opposition', lines:{} }),
+          () => S.bills.pop());
+        /* a POSITION declared on a bill going the party's way */
+        move('lineFor', () => S.bills.push({ policy:pol, dir:dir, sponsor:'x', owner:'opposition', lines:{ [pid]:'support' } }),
+          () => S.bills.pop());
+        move('lineAgainst', () => S.bills.push({ policy:pol, dir:dir, sponsor:'x', owner:'opposition', lines:{ [pid]:'oppose' } }),
+          () => S.bills.pop());
+      }
+      const art = V11_ARTICLES.filter(a => !v11Adopted(S, a.id))[0];
+      if (art) move('article', () => v11Con(S).pending.push({ id:art.id, by:pid, laid:S.turn, due:S.turn + 2 }),
+        () => v11Con(S).pending.pop());
+      const other = PARTIES.filter(p => p.id !== pid && !S.banned[p.id])[0].id;
+      move('pact', () => { S.aiPacts = S.aiPacts || {}; S.aiPacts[pid] = { with:other, since:S.turn }; },
+        () => { delete S.aiPacts[pid]; });
+      move('push', () => { S.push = S.push || {}; S.push[pid] = { e:.18, a:.18 }; },
+        () => { delete S.push[pid]; });
+      move('letter', () => S.inbox.push({ id:'probe', type:'party_demand', from:pid }),
+        () => S.inbox.pop());
+      return { out:out, pol:pol,
+        /* every kind moves it, and the two signed ones are signed */
+        allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter']
+          .every(k => out[k] !== undefined && Math.abs(out[k]) > 1e-9),
+        billSigned: out.billFor > 0 && out.billAgainst < 0,
+        /* AND THE LINE IS READ AGAINST ITS OWN PAIR, not against nought. Both
+           of these put the SAME bill on the paper -- one the party wants --
+           so both carry its docket value and both are positive; what the term
+           decides is which is worth more. Asking for a negative here was the
+           probe reading the bill's value and calling it the line's. */
+        lineSigned: out.lineFor > out.lineAgainst,
+        lineGap: +(out.lineFor - out.lineAgainst).toFixed(4) };
+    })();
+
+    /* (b) A READ MUST NOT CREATE. `v19Standing` is called on the REAL state
+       at the top of `v19Outcome`, so a term that installs a structure to read
+       it installs it on the live campaign -- which is `v6TreatyRows`, whose
+       read gave every power an empty treaty array and awarded the Peacemaker
+       record on every seed. Asked of a state stripped of all four. */
+    R.pure = (() => {
+      fresh(4242); for (let i = 0; i < 3; i++) step();
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      delete S.v11; delete S.aiPacts; delete S.push; const bills = S.bills; S.bills = [];
+      let threw = null, v = null;
+      try { v = v19Standing(S, pid); } catch (e) { threw = e.message; }
+      const made = { v11: S.v11 !== undefined, pacts: S.aiPacts !== undefined,
+        push: S.push !== undefined };
+      S.bills = bills;
+      return { threw:threw, finite: typeof v === 'number' && isFinite(v),
+        created: made.v11 || made.pacts || made.push, made:made };
+    })();
+
+    /* (c) ONE TABLE OVER THE DECK, BOTH WAYS -- the guard `V17_MEMORY` and
+       `V19_RIVAL_WORTH` carry and this one escaped. And the broke test reads
+       the cheapest card rather than naming one: it named `demand` at 16 under
+       a comment calling it the cheapest, and `floor` costs 12. */
+    R.cost = (() => {
+      const deck = V16_AI_DECK.map(c => c.id);
+      const priced = Object.keys(V16_AI_COST);
+      return {
+        deck:deck.length, priced:priced.length,
+        unpriced: deck.filter(id => typeof V16_AI_COST[id] !== 'number'),
+        ghosts: priced.filter(id => deck.indexOf(id) < 0),
+        cheapest: v16CheapestCard(),
+        trueMin: Math.min.apply(null, priced.map(k => V16_AI_COST[k])),
+        wasNamed: V16_AI_COST.demand,
+        /* and the S17 names still answer, because nine call sites read them */
+        s17: V17_AI_COST_ARTICLE === V16_AI_COST.article &&
+             V17_AI_COST_ORDER === V16_AI_COST.order &&
+             V17_AI_COST_FLOOR === V16_AI_COST.floor,
+        flight: V21_FLIGHT,
+      };
+    })();
+
+    /* AND THE TEMPO READS IT, which is a different claim from the function
+       computing it -- THE POISON RUN IS WHERE I FOUND THAT OUT. The first
+       version of this leg asserted `v16CheapestCard() === min(table)` and
+       nothing else, and putting `V16_AI_COST.demand` back at the CALL SITE in
+       `v18Tempo` left it green. Every gate in this harness calls a function
+       and something in the game has to read it: a party holding 14 sits above
+       the cheapest card (12) and below the name the gate used to carry (16),
+       so it is throttled by one build and not by the other, and that is the
+       band the whole change lives in. */
+    R.broke = (() => {
+      fresh(4242); for (let i = 0; i < 2; i++) step();
+      const pid = PARTIES.filter(p => p.id !== playParty(S) && p.id !== S.ruling && !S.banned[p.id])[0].id;
+      const at = (n) => { S.purse[pid] = n; return +v18Tempo(S, pid).toFixed(4); };
+      /* clear anything else that scales the weight, so the reading is the
+         broke test alone */
+      const a = v16Ai(S)[pid]; if (a) { a.grudge = {}; a.lastSeats = undefined; }
+      const under = at(V16_AI_COST[Object.keys(V16_AI_COST).reduce((lo, k) =>
+        V16_AI_COST[k] < V16_AI_COST[lo] ? k : lo)] - 1);   /* below the cheapest: throttled */
+      const between = at(14);                                /* 12 <= 14 < 16: the band */
+      const over = at(60);                                   /* plainly solvent */
+      return { under:under, between:between, over:over,
+        throttledUnder: under < over, notThrottledInBand: between === over,
+        band: [v16CheapestCard(), V16_AI_COST.demand] };
+    })();
+
+    /* (d) A GOVERNMENT CHOOSES ITS PROGRAMME. `aiGovern` drew uniformly out
+       of everything on the ruling party's table while an opposition party has
+       picked by forecast since S19c. Read through the game's own path -- the
+       bill that ends up on the paper -- at both levels, on the same board.
+       R1: `instinct` keeps the hat. */
+    R.govern = (() => {
+      const run = (level) => {
+        fresh(4242, level);
+        /* seat an ENGINE government, or `aiGovern` returns at `leads` */
+        const gov = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+        S.ruling = gov; S.coalition = [gov];
+        S.bills = [];
+        if (S.turn % 2) S.turn += 1;
+        /* WHAT THE FORECAST PICKER WANTS, ASKED BEFORE THE CARD RUNS. The
+           first version of this leg asked afterwards and read the SECOND
+           choice, because `v19BillFor` skips a statute that already has a
+           bill on it -- the same shape as availability asked after the card
+           played, which CLAUDE.md names. It reported the mechanism broken
+           while the mechanism was working: `instinct` laid `minimumWage`,
+           the picker's real answer was `techAntitrust`, and `ruthless` laid
+           `techAntitrust`. */
+        let want = null;
+        try { const a = v19BillFor(S, gov); want = a ? a.policy : null; } catch (e) { want = null; }
+        let laid = null, fc = null;
+        aiGovern(S);
+        /* counted by OWNER, because `aiGovern` is wrapped: `pv5AiGovernV4` is
+           the base and the reassignment adds `pv5AiPrivateBill`, so the call
+           lays a government bill AND, on its own roll, an opposition one. */
+        const b = S.bills.filter(x => x.owner === 'government')[0];
+        if (b) { laid = b.policy; try { fc = +billForecast(S, b).lower.toFixed(1); } catch (e) { fc = null; } }
+        return { gov:gov, laid:laid, forecast:fc, aimed:want,
+          laidCount:S.bills.filter(x => x.owner === 'government').length };
+      };
+      const dumb = run('instinct'), sharp = run('ruthless');
+      return { dumb:dumb, sharp:sharp,
+        sharpIsAimed: sharp.laid !== null && sharp.laid === sharp.aimed,
+        /* AND THE TWO LEVELS DISAGREE, which is the claim the equality above
+           cannot make on its own: a board where the hat happens to draw the
+           forecast pick would pass it with the gate deleted. */
+        levelsDiffer: dumb.laid !== sharp.laid,
+        /* and the aimed bill is the one that can be carried */
+        better: (sharp.forecast || 0) > (dumb.forecast || 0),
+        bothLaid: dumb.laidCount === 1 && sharp.laidCount === 1 };
+    })();
+
+    /* (e) AND THE OTHER ENGINE BILL ROAD. An engine has three doors to the
+       order paper and they disagreed: the deck's `bill` card by forecast
+       since S19c, `aiGovern` out of a hat, and private members' time by
+       `partyDemandPolicy`'s biggest gap. A change to `pv5AiPrivateBill` with
+       no leg here would be a change with no assertion.
+
+       The party is picked by a SEAT-WEIGHTED ROLL before the statute is, so
+       this leg is also where the stream discipline is proved: both levels
+       must land on the SAME sponsor, which they can only do if the gap
+       picker's own draws still happen at both. */
+    R.priv = (() => {
+      const run = (level, askFor) => {
+        fresh(4242, level);
+        const gov = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+        S.ruling = gov; S.coalition = [gov]; S.bills = [];
+        let want = null;
+        if (askFor) { try { const a = v19BillFor(S, askFor); want = a ? a.policy : null; } catch (e) { want = null; } }
+        S.rngState = 20260901;
+        let laid = null, by = null;
+        for (let i = 0; i < 40 && !laid; i++) {
+          pv5AiPrivateBill(S);
+          const b = S.bills.filter(x => x.owner === 'opposition')[0];
+          if (b) { laid = b.policy; by = b.sponsor; }
+        }
+        return { laid:laid, by:by, want:want, rng:S.rngState };
+      };
+      const dumb = run('instinct', null);
+      const sharp = run('ruthless', dumb.by);
+      return { dumb:dumb, sharp:sharp,
+        ran: !!dumb.laid && !!sharp.laid,
+        sameSponsor: !!dumb.by && dumb.by === sharp.by,
+        sharpIsAimed: sharp.laid !== null && sharp.laid === sharp.want,
+        levelsDiffer: dumb.laid !== sharp.laid,
+        /* and the stream is where it was: the gap picker still draws at both */
+        sameStream: dumb.rng === sharp.rng };
+    })();
+
+    /* AND THE DICE COUNT IS UNCHANGED, which is S18c's rule: a gate in front
+       of `rand()` decides how many numbers come off the stream, not just what
+       happens, and one chair consuming one roll fewer re-phases the campaign.
+       `aiGovern` draws its roll and discards it above `instinct`. */
+    R.dice = (() => {
+      const run = (level) => {
+        fresh(4242, level);
+        const gov = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+        S.ruling = gov; S.coalition = [gov]; S.bills = [];
+        if (S.turn % 2) S.turn += 1;
+        S.rngState = 777;
+        aiGovern(S);
+        return S.rngState;
+      };
+      return { instinct:run('instinct'), ruthless:run('ruthless'),
+        same: run('instinct') === run('ruthless') };
+    })();
+    return R;
+  });
+
+  const seenOk =
+    /* nine of eleven cards returned one constant; at most one may now */
+    seen.cards.cards === 11 && seen.cards.rehearsals > 600 && seen.cards.flat <= 1 &&
+    seen.terms.allMove === true && seen.terms.billSigned === true && seen.terms.lineSigned === true &&
+    seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
+    seen.cost.deck === 11 && seen.cost.priced === 11 &&
+    seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
+    seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
+    seen.cost.s17 === true &&
+    seen.broke.throttledUnder === true && seen.broke.notThrottledInBand === true &&
+    seen.govern.bothLaid === true && seen.govern.sharpIsAimed === true &&
+    seen.govern.levelsDiffer === true && seen.govern.better === true &&
+    seen.priv.ran === true && seen.priv.sameSponsor === true &&
+    seen.priv.sharpIsAimed === true && seen.priv.levelsDiffer === true &&
+    seen.priv.sameStream === true &&
+    seen.dice.same === true;
+  say(seenOk, 'the rehearsal can see what a card did',
+    `THE SIMULATION WAS A PRICE LIST. \`v19Outcome\` clones the board, plays the card and reads ` +
+    `\`v19Standing\` either side -- and over ${seen.cards.rehearsals} rehearsals the game actually ran, NINE OF ` +
+    `THE ELEVEN CARDS RETURNED A SINGLE CONSTANT: min, median and max the same number, and that number exactly ` +
+    `minus the card's own price tag. \`article\` -0.408 every time, \`bill\` -0.456, \`campaign\` -0.480, ` +
+    `\`pact\` -0.408, \`platform\` -0.264, \`demand\` -0.192, \`floor\` -0.144. A party clever enough to rehearse ` +
+    `concluded that laying a bill was worse than doing nothing, and the two upper rungs of the setting bought ` +
+    `it. ${seen.cards.flat} of ${seen.cards.cards} are flat now` +
+    (seen.cards.flatIds.length ? ` (${seen.cards.flatIds.join(', ')} -- the bill card always lays the statute ` +
+      `its own table names, so every instance of it IS a good one)` : '') + ` · AND THREE OF THE FIVE COMPONENTS ` +
+    `COULD NOT FIRE: \`v17Share * 60\`, the LARGEST weight in the function, plus a flat +18 for governing and ` +
+    `+9 an office -- read only inside a subtraction, and no card in the deck moves a seat or enters a cabinet ` +
+    `within one ply, so all three cancelled on 889 of 889. \`st.court.size\`'s neighbour: not a field nothing ` +
+    `reads, but tuned weights that cannot move. \`supportTargets\` is on the same scale and reads what the cards ` +
+    `write · A THING IN FLIGHT IS WORTH THE PRICE OF THE CARD THAT PRODUCES IT, times how good this instance ` +
+    `is -- ONE constant, taken from the cards that already scored rather than by eye: their median gain is 0.75, ` +
+    `the median price across the six kinds is 28 and the median instance is .90, so V21_FLIGHT is ` +
+    `${seen.cost.flight} · AND EACH OF THE SIX TERMS ANSWERS FOR ITSELF (${seen.terms.allMove}), because the ` +
+    `flatness reading above says the objective can tell instances apart and NOT which term did it -- the poison ` +
+    `run showed why that matters: with the bill term deleted \`bill\` still came back non-flat, since the purse ` +
+    `term is \`min(20, purse/100) * 1.2\` and a party over 2,000 has it CLAMPED, so a card escapes flatness on ` +
+    `an unrelated saturation. Read one at a time: a bill ${seen.terms.out.billFor} going the party's way and ` +
+    `${seen.terms.out.billAgainst} going the other (${seen.terms.billSigned}), a position declared ` +
+    `${seen.terms.out.lineFor} for and ${seen.terms.out.lineAgainst} against the SAME bill -- both positive ` +
+    `because both carry that bill's own value, so the line is read against its pair and not against nought ` +
+    `(${seen.terms.lineSigned}, a gap of ${seen.terms.lineGap}) -- asking for a negative there was the probe ` +
+    `reading the bill's worth and calling it the line's, an ` +
+    `article ${seen.terms.out.article}, a pact ${seen.terms.out.pact}, a platform move ${seen.terms.out.push}, ` +
+    `an outstanding letter ${seen.terms.out.letter} · AND THE READS DO NOT CREATE ` +
+    `(${seen.pure.created ? 'they DO' : 'true'}), asked of ` +
+    `a state stripped of \`v11\`, \`aiPacts\` and \`push\`: \`v19Standing\` runs on the LIVE state at the top of ` +
+    `\`v19Outcome\`, so a term that installs a structure to read it installs it on the campaign -- which is ` +
+    `\`v6TreatyRows\`, whose read gave every power an empty treaty array and awarded the Peacemaker record on ` +
+    `every seed · ONE COST TABLE OVER THE DECK, BOTH WAYS: ${seen.cost.priced} prices for ${seen.cost.deck} ` +
+    `cards, ${seen.cost.unpriced.length} unpriced and ${seen.cost.ghosts.length} naming no card, where the table ` +
+    `held eight and \`article\`, \`order\` and \`floor\` kept theirs in three later constants -- and BOTH readers ` +
+    `read \`V16_AI_COST[id] || 0\`, so the chooser's money term scored those three as free and the tempo's broke ` +
+    `test could not see them · AND THE TEMPO READS IT, which is a different claim from the function computing ` +
+    `it and IS WHERE THE POISON RUN CAUGHT ME: the first version of this leg asserted only that ` +
+    `\`v16CheapestCard()\` equals the table's minimum, and putting the old name back at the CALL SITE in ` +
+    `\`v18Tempo\` left it GREEN. Every gate in this harness calls a function and something in the game has to ` +
+    `read it. The band is ${seen.broke.band[0]} to ${seen.broke.band[1]}: below the cheapest card a party is ` +
+    `throttled (${seen.broke.under} against ${seen.broke.over}, ${seen.broke.throttledUnder}) and AT 14 -- above ` +
+    `the cheapest card and below the name the gate used to carry -- it is not (${seen.broke.between}, ` +
+    `${seen.broke.notThrottledInBand}), where it used to be cut to a third of its tempo while it could still ` +
+    `afford to act · AND A GOVERNMENT CHOOSES ITS PROGRAMME: \`aiGovern\` drew it out ` +
+    `of a hat while an opposition party has picked by forecast since S19c, worth +4.9 forecast points over 133 ` +
+    `real decisions -- the one chair that legislates most was the least deliberate in the republic. Above ` +
+    `\`instinct\` the bill it lays is the one the forecast picks (${seen.govern.sharpIsAimed}: ` +
+    `${seen.govern.sharp.laid}, forecasting ${seen.govern.sharp.forecast}), at \`instinct\` it is the hat ` +
+    `(${seen.govern.dumb.laid}, forecasting ${seen.govern.dumb.forecast}) -- the two DISAGREE ` +
+    `(${seen.govern.levelsDiffer}), which the equality alone cannot say because a board where the hat happens ` +
+    `to draw the forecast pick would pass it with the gate deleted, and the aimed bill is the one that can be ` +
+    `carried (${seen.govern.better}). Both lay exactly one government bill (${seen.govern.bothLaid}) · THIS LEG ` +
+    `WAS WRONG BEFORE THE GAME WAS: it first asked what the picker wanted AFTER the card had run, and read the ` +
+    `SECOND choice, because \`v19BillFor\` skips a statute that already carries a bill -- availability asked ` +
+    `after the card played, and it reported the mechanism broken while the mechanism was working · and THE DICE ` +
+    `COUNT IS UNCHANGED (${seen.dice.same}), the roll drawn and discarded, because S18c measured that one chair ` +
+    `consuming one number fewer re-phases every seeded campaign · AND AN ENGINE HAS THREE DOORS TO THE ORDER ` +
+    `PAPER AND THEY DISAGREED: the deck's \`bill\` card by forecast since S19c, \`aiGovern\` out of a hat, and ` +
+    `private members' time by \`partyDemandPolicy\`'s biggest gap -- so the same party laid a statute it could ` +
+    `carry through one door and one it could not through another. On that third road the same sponsor is picked ` +
+    `at both levels (${seen.priv.sameSponsor}: ${seen.priv.dumb.by}) and lays ${seen.priv.dumb.laid} on ` +
+    `instinct against ${seen.priv.sharp.laid} above it (${seen.priv.levelsDiffer}), which is the forecast ` +
+    `picker's own answer (${seen.priv.sharpIsAimed}) · \`partyDemandPolicy\` IS STILL CALLED and still the ` +
+    `fallback, on two counts: it ROLLS, so the draw has to happen whatever is picked -- proved by both levels ` +
+    `landing on the same sponsor after a seat-weighted roll and leaving the stream in the same place ` +
+    `(${seen.priv.sameStream}) -- and it is SHARED with the demand card, which \`roads.js\` pins on purpose, ` +
+    `so the change goes in this caller and not in the body`);
+
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
      asked what the OTHERS were after, so a party whose goal was being taken
@@ -10360,14 +10750,45 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        the S19f reaction running through the A/B took this reading from -.18 to
        .421 and the arm never noticed, which made the isolation that removes it
        a line whose deletion changed nothing. At .3 the control asserts what it
-       is for and the hold is load-bearing. */
+       is for and the hold is load-bearing.
+
+       S21c: THE GATE NEVER CARRIED THAT CLAUSE, AND MEASURING IT SAYS WHY.
+       `corrFlat` is asserted nowhere, and I added `|corrFlat| < .3` here on
+       the reading that the paragraph above describes it -- then measured it
+       at **-0.692**. The clause came straight back out, and the reason is on
+       the page already: the paragraph BELOW says the flattened control "read
+       -.18 where a clean control reads nought and -.64 once S20a's real
+       division sharpened it", and calls that a confound rather than a pass.
+       So the .3 hold was never satisfiable by this number, and a bound
+       nothing could satisfy is why the clause was never written.
+
+       WHAT THAT LEAVES IS A REAL QUESTION FOR WHOEVER REVISITS THIS ARM, and
+       it is recorded rather than patched mid-slice. With patience flattened
+       to one, every party has the SAME patience, so how long each holds a
+       dead aim should not track its AUTHORED patience at all -- and it tracks
+       it at -0.69. Something else about a party correlates with the patience
+       it was authored with (the temperament axes are authored in the same
+       table) and moves the same clock. The PAIRED lift is still the right
+       reading of the knob -- it is each party's own difference, so a constant
+       per-party offset cancels out of it -- but the flattened side is not the
+       null the comment calls it, and a slice that wants to tighten this arm
+       has to find what else is in there first. */
     /* the PAIRED lift is the assertion (see the probe): each party against
        itself, so how often a party is read cancels instead of masquerading as
        temperament. `corrOn` is kept as a reading and held loosely, because it
        carries that confound by construction and a tight bound on it is a
-       bound on the confound rather than on the mechanism. */
+       bound on the confound rather than on the mechanism.
+
+       S21c TOOK THE BOUND OFF `corrOn` ALTOGETHER, and did it BECAUSE the
+       paragraph above was right. S21c changes which card a party plays, and
+       therefore how often each party is read -- which IS the confound
+       `corrOn` carries by construction. Measured across the slice, the
+       confounded cross-party figure fell from .802 to .534 while the clean
+       PAIRED figure, each party against itself, held at .909 against .937,
+       on lifts of 2.13 sessions. Gating a number this arm's own words call a
+       reading is a bound on the confound, and the confound moved for a reason
+       that has nothing to do with what the arm is about. */
     temp.patience.corrLift > .8 && temp.patience.meanAbsLift > 1 &&
-    temp.patience.corrOn > .6 &&
     temp.subordinate.temperCeiling < temp.subordinate.goalCeiling / 2 &&
     temp.floor && temp.floor.instinctMoved === 0 && Math.abs(temp.floor.shrewdMoved) > .1 &&
     temp.page.atShrewd === true && temp.page.atInstinct === false;
@@ -10393,8 +10814,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `tracks its authored patience at ${temp.patience.corrLift}, on lifts averaging ` +
     `${temp.patience.meanAbsLift} sessions -- each party against ITSELF, so how often it is read cancels ` +
     `instead of masquerading as temperament, which is what the old flattened control was measuring when it ` +
-    `read -.18 where a clean control reads nought and -.64 once S20a's real division sharpened it (the ` +
-    `cross-party figure is still ${temp.patience.corrOn}, kept as a reading and not as the claim) ` +
+    `read -.18 where a clean control reads nought and -.64 once S20a's real division sharpened it -- and it ` +
+    `reads ${temp.patience.corrFlat} here, which is A QUESTION THIS ARM LEAVES OPEN AND S21c DECLINED TO PATCH: ` +
+    `with patience flattened to one every party has the same patience, so how long each holds a dead aim should ` +
+    `not track its AUTHORED patience at all, and it tracks it strongly. Something else authored beside patience ` +
+    `moves the same clock. The PAIRED lift is still the right reading of the knob, being each party's own ` +
+    `difference, so a constant per-party offset cancels out of it -- but the flattened side is not the null the ` +
+    `sentence above calls it, and a hold at .3 was never satisfiable by this number, which is why the gate ` +
+    `never carried the clause · S21c TOOK THE BOUND OFF THE CROSS-PARTY FIGURE ` +
+    `(${temp.patience.corrOn}, kept as a reading and not as the claim) BECAUSE that paragraph was right: this ` +
+    `slice changes which card a party plays and therefore how often each is read, which IS the confound the ` +
+    `figure carries -- across it the cross-party reading fell from .802 to ${temp.patience.corrOn} while the ` +
+    `clean PAIRED figure held at ${temp.patience.corrLift} against .937. A bound on a number this arm's own ` +
+    `words call a reading is a bound on the confound ` +
     `· IT SHAPES HOW A PARTY PURSUES ITS AIM AND DOES NOT OVERRIDE IT, the leaning's ceiling ` +
     `in \`v19Score\` being ${temp.subordinate.temperCeiling} against the goal table's ` +
     `${temp.subordinate.goalCeiling} · \`instinct\` IS UNTOUCHED (${temp.floor.instinctMoved} where shrewd ` +
@@ -10751,7 +11183,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* the SHARE answered in the session, not the mean of a long-tailed
        distribution -- see the probe. */
     answr.lag.on.sameShare > .6 && answr.lag.on.sameShare > 1.4 * answr.lag.off.sameShare &&
-    answr.lag.on.mean < answr.lag.off.mean && answr.lag.off.max >= 4 &&
+    answr.lag.on.mean < answr.lag.off.mean &&
+    /* S21c: `answr.lag.off.max >= 4` STOOD HERE AND IS THE SAME MISTAKE THIS
+       PROBE'S OWN COMMENT NAMES, IN A THIRD FORM. The comment above the
+       statistics says the mean measures the tail and the claim is about the
+       head; `max` is nothing BUT the tail. S21c makes an engine pick a better
+       card, which shortens the wait on the build with the reaction switched
+       OFF too -- the worst wait there fell from 11 sessions to 3 -- and the
+       clause read that as the mechanism breaking. It is not: measured on the
+       same run the reaction takes the in-session share .429 to .714 while the
+       worst wait WITH the reaction is LONGER than without it, because it
+       leaves fewer stragglers and the few it leaves are the hard cases. A
+       statistic that moves the wrong way on a working build is measuring
+       something else.
+       What replaces it is a bound in the statistic the probe says is the
+       right one, on the half the mechanism exists to fix: without the
+       reaction, a MAJORITY of provocations are not answered in the session
+       they happen. */
+    answr.lag.off.sameShare < .5 &&
     answr.aim.aimed.n > 300 && answr.aim.flat.n > 300 &&
     answr.aim.lift > .03 && answr.aim.aimed.attack > 1.2 * answr.aim.flat.attack &&
     answr.bar.rises > 150 && answr.bar.maxFall < answr.bar.bar &&
@@ -10765,7 +11214,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(answrOk, 'a party does not wait for the season',
     `S18e MADE THE TEMPO READ THE GRUDGE and a provoked party still waited: driven, it took some initiative a ` +
     `mean of ${answr.lag.off.mean} sessions after the provocation and as late as ${answr.lag.off.max}, and only ` +
-    `${answr.lag.off.sameShare} of provocations were answered in the session they happened · IT ANSWERS IN THE ` +
+    `${answr.lag.off.sameShare} of provocations were answered in the session they happened -- a MINORITY, which ` +
+    `is the half this mechanism exists to fix and is what this arm pins, where it used to pin the worst wait: ` +
+    `S21c made an engine pick a better card and the worst wait WITHOUT the reaction fell from 11 sessions to ` +
+    `${answr.lag.off.max}, which the old clause read as the mechanism breaking. It is not. On the same run the ` +
+    `worst wait WITH the reaction is ${answr.lag.on.max} -- LONGER -- because the reaction leaves fewer ` +
+    `stragglers and the few it leaves are the hard cases, and a statistic that moves the wrong way on a working ` +
+    `build is measuring something else. This probe's own comment already said the mean measures the tail and ` +
+    `the claim is about the head; \`max\` is nothing but the tail · IT ANSWERS IN THE ` +
     `SESSION NOW: ${answr.lag.on.sameShare} of them (${answr.lag.on.same} of ${answr.lag.on.n}), against ` +
     `${answr.lag.off.sameShare} without the reaction -- read as the SHARE and not the mean, because the lags ` +
     `have a long tail (a party that answers still needs a card its posture leaves open) and on twelve ` +

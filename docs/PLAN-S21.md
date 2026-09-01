@@ -239,7 +239,7 @@ had to be rebuilt to stop people reading past. The arm now reads six seeds on
 chooses will move single-seed readings this way; the answer is to widen the
 reading, not to chase the seed.
 
-### S21c — The rehearsal can see what a card did  ·  3 improvements
+### S21c — The rehearsal can see what a card did  ·  SHIPPED  ·  3 improvements
 
 Four terms enter `v19Standing`: bills in flight, a pending amendment, a live
 pact, position closed by `st.push`. `v17Share * 60` becomes
@@ -253,6 +253,82 @@ spread. `v16CardCost(id)` becomes one table over all cards with the coverage arm
 Largest single mover of the card mix, so it goes early and later arms are
 measured on the new population.
 
+**SHIPPED. Three corrections to this plan, all found by measuring first.**
+
+**1. "Prices `article`, `order` and `floor` as free" is right about the READER
+and would be read as wrong about the game.** The three cards always charged,
+through `V17_AI_COST_ARTICLE`, `_ORDER` and `_FLOOR`. What could not see them
+was `V16_AI_COST`'s two readers, both of which read `V16_AI_COST[id] || 0`:
+`v19Score`'s money term and `v18Tempo`'s broke test. The defect is a table with
+two sources of truth, not a free card.
+
+**2. Six terms, not four, and the sixth was found by asking which cards the
+four still missed.** With bills, articles, pacts and `push` alone, `demand` and
+`floor` still scored at exactly minus their price. Two more close them: a
+POSITION DECLARED on a live bill (`b.lines`, which `partyBillSupport` reads at
+16/−18, so it moves a real division) and an OUTSTANDING LETTER. And the bill
+term reads the whole order paper rather than the party's own bills, because a
+party minds what is before the house and not whose name is on it — which is
+what lets the government taking up its demand read as a gain to the party that
+asked. `demand` is still only covered on 26.7% of its rows, and the remainder
+is deliberate: what it leaves against an engine government is a GRIEVANCE, and
+R8 forbids writing memory during a rehearsal.
+
+**3. THE SQUASH DIVISOR WAS MEASURED AND DELIBERATELY LEFT WHERE IT IS.** The
+intake called the squash and both clamps dead, and the clamp half is true —
+over 886 rehearsals |d| runs .0013 to 2.75 with a p99 of 2.71, so `d/12` spans
+.0001 to .229 and ±1 is unreachable by a factor of four. But `v19Score` adds
+`sim * this` and **`sim` is 1.9 at `ruthless`**, so the rehearsal is already
+worth up to .43 against a goal table whose ceiling is 1. Re-setting the divisor
+to the p99 — which is what makes a clamp fire — would take the rehearsal to
+1.9, nearly TWICE the goal's ceiling, and a party whose simulator outweighs its
+aim has no aims. That is what R4 forbids and what the function's own comment
+was written to prevent. So the clamp is a guard against a board none of these
+seeds produced, the divisor is the scaling, and moving it is a balance change
+that belongs to the owner under `AGREEMENT.md`. What ships is the correction to
+the comment, which claimed the term was "squashed to about −1..1" and was a
+card that lies.
+
+**4. A FOURTH ENGINE BILL ROAD, found by writing the poison list from the
+diff.** `pv5AiPrivateBill` picks by `partyDemandPolicy`'s biggest gap — the
+same defect `aiGovern` had, on the opposition side. An engine has THREE doors
+to the order paper and they disagreed, so the same party laid a statute it
+could carry through one and one it could not through another.
+`partyDemandPolicy` is still called and still the fallback, because it ROLLS
+(S18c) and because it is shared with the demand card (which `roads.js` pins on
+purpose), so the change goes in the caller and not in the body.
+
+**The measurement that states the defect:** on the shipped build **nine of the
+eleven cards returned a single constant** from the rehearsal — min, median and
+max the same number, exactly minus the card's own price tag. On the new build,
+one does (`bill`, which always lays the statute its own table names, so every
+instance of it is a good one).
+
+**Poison run: 22 red of 24, and the two greens are adjudicated.** Putting the
+three S17 names back as literals with the SAME values is a pure refactor, and
+restoring the flat ruling/office terms genuinely changes nothing because they
+cancel — which is the proof they were dead rather than a weakness in the arm.
+
+**Three things the poison run caught that the assertion had not:**
+
+- **A leg that computes is not a leg that is read.** The first version asserted
+  `v16CheapestCard()` equals the table's minimum and nothing else — and putting
+  the old name back at the CALL SITE in `v18Tempo` left it green. Every gate in
+  this harness calls a function and something in the game has to read it. The
+  arm now drives `v18Tempo` across the band (12 to 16) the change lives in.
+- **Flatness is escapable through an unrelated clamp.** With the bill term
+  deleted, `bill` still came back non-flat, because the purse term is
+  `min(20, purse/100) * 1.2` and a party over 2,000 has it saturated. So the
+  six terms are also read ONE AT A TIME, by making the change the card would
+  make and asking `v19Flight` either side — the driven leg says the terms reach
+  real rehearsals, the unit leg says which is which.
+- **A term read against nought instead of against its own pair.** The unit leg
+  asked whether declaring a position AGAINST a bill scores negative. It does
+  not, and should not: both of its cases put the same bill on the paper, so
+  both carry that bill's docket value (1.5 for, 0.78 against). What the line
+  term decides is which is worth more. Asking for a negative was the probe
+  reading the bill's worth and calling it the line's.
+
 ### S21d — The agreement bites  ·  Coalition 1 of 4  ·  3 improvements, 1 new
 
 `V21_DUE` sized from the instrument the answer has to use (lay, floor,
@@ -265,6 +341,42 @@ broken promises stops recovering. `partyBillSupport`'s flat +12 for a partner
 becomes a reading of `d.satisfaction`, scaled from the measured cohesion
 distribution (min 20, median 38, p90 48.1, max 76) so the sign flips inside the
 range the game actually produces.
+
+**MEASURED BEFORE BUILDING, AND THE PREMISE WAS WRONG IN THE SAME WAY S19c'S
+WAS.** Over 394 partner-sessions across six seeds: **0 promises kept, 19
+broken.** Not "kept too easily" — never once.
+
+The cause is that **every outstanding `adopt` concession asks for a gap of
+exactly 4** — p10 4, median 4, max 4 — because `v17Offer` and both other mint
+sites take `pv5TopWants`, the party's BIGGEST gaps. A bill moves a statute ONE
+rung and takes a median of 2 sessions (p90 5), and `activeBillFor` forbids a
+second on the same statute while one is live. So a promise needs four
+successive bills, eight to twenty sessions of the government's whole
+legislative programme, for one partner's one concession.
+
+That is exactly the defect S19c found in `carry` and this file already records:
+*"it took the biggest gap in the party's own table, which measured 4 on every
+adoption against an instrument that moves one, so it was reached 0 times in 136
+adoptions."* The same mistake, in the coalition agreement, unnoticed because
+nothing measured it.
+
+So the slice changes shape. **It is not "one concession drawn from a small
+gap"** — it is that a concession must ask for a rung the instrument can reach,
+which is what makes every other item on this list mean anything: a clock is
+decoration on a promise nobody can keep, per-rung `V17_KEPT` never fires, and a
+ledger that reads 0 kept against 19 broken is not a record, it is a countdown.
+
+**And `V21_DUE` cannot be sized until the gap is.** The plan's 8 sessions was
+derived from lay + floor + signature for ONE bill; the measured life of a bill
+end to end is median 2 and p90 5. The instrument decides the deadline, so the
+deadline is set after the rung is.
+
+Two smaller corrections from the same run. **No concession anywhere carries a
+date** (`due:null` at all three mint sites), confirmed rather than assumed. And
+**the restoring drift is not restoring**: it reads median −0.18 a session, p90
++0.05, against a target of ~38 that cohesion already sits at (median 39.9). The
+plan's premise that a partner "recovers" and must be stopped is backwards —
+nothing recovers, because `progress` is near zero for the reason above.
 
 ### S21e — The table is a negotiation  ·  Coalition 2 of 4  ·  4 improvements, 2 new
 
