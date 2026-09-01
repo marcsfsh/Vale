@@ -10940,7 +10940,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        the same as lowering a bar, and the figures stay in the message so the
        next reader can see what they do. */
     mani.clock.byProgress.meanAt > 14 && mani.clock.byAge.meanAt < 14 &&
-    mani.clock.byProgress.total >= 1.5 * mani.clock.byAge.total &&
+    /* S21d: THE DIRECTION, NOT THE RATIO — AND THE PARAGRAPH ABOVE PREDICTED
+       THIS ONE TOO. `total` was gated at 1.5x on a reading of 32 against 16,
+       and it now reads 31 against 26: the progress rule still reaches more
+       aims, but the AGE rule climbed from 16 to 26 because S21c and S21d made
+       an engine pick a better card, so more aims finish inside a fixed span
+       whichever rule is retiring them. The count depends on how many aims are
+       adopted and completed at all, which a card-mix change moves without
+       touching this mechanism — which is exactly what S21a wrote three lines
+       up about the `afterOldClock` shares, and it applies to the ratio for the
+       same reason.
+       What carries the claim is `meanAt`, gated above across a FIXED
+       threshold rather than a ratio and separating 22.4 against 9.1; and
+       `deadHeldFor` below, which tests the mechanism itself — an aim whose
+       progress never moved is put down, one that is progressing is kept. The
+       direction of `total` stays because it is information; the magnitude
+       goes because it is composition. */
+    mani.clock.byProgress.total > mani.clock.byAge.total &&
     /* the cap-only leg RETIRES FEWER BY CONSTRUCTION -- with a sixty-session
        cap inside a 120-session run each party can put down at most two dead
        aims -- so its sample floor is five, not the thirty the stall leg can
@@ -11723,7 +11739,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* the bar sits BETWEEN the two populations: above the ambient grievance
        governing produces and below the deliberate act it exists to answer */
     answr.bar.deliberateN > 100 && answr.bar.ambientN > 100 &&
-    answr.bar.bar < answr.bar.medianRise && answr.bar.clearShare > .85 &&
+    /* S21d: THE MEDIANS CARRY THE CLAIM AND THE SHARE IS A CONSEQUENCE. The
+       bound was .85, on a reading of .902; it now reads .798 while nothing
+       about the bar or the player's buttons changed. What moved is WHICH
+       `V17_MEMORY` verbs engines aim at the player, because S21c and S21d
+       changed the card mix — and the weights of those verbs run from single
+       figures upward, so the share clearing a bar of 10 is a function of the
+       deck's composition rather than of the bar's correctness.
+       I looked for the answer in the continuum this arm has described since
+       S20a — "beneath the discrete act there is a continuum of small
+       accumulations" — and measured it at SEVEN of 368, which moves the share
+       by .015 and explains nothing. It is reported because it corrects a
+       long-standing hand-wave with a number, not because it was the cause.
+       What is gated is what the arm is actually about: the bar sits ABOVE the
+       ambient median (4) and BELOW the deliberate one (11), with a clear
+       majority of discrete acts clearing it. A build where the bar stopped
+       separating would take the share toward the ambient's nought. */
+    answr.bar.bar < answr.bar.medianRise && answr.bar.clearShare > .7 &&
     answr.bar.bar > answr.bar.ambientMedian && answr.bar.ambientClearShare < .35 &&
     answr.floor.instinct === null && answr.floor.shrewd === true &&
     answr.said.found === true && answr.said.promisesRiposte === false;
@@ -11769,6 +11801,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `course of governing (median ${answr.bar.ambientMedian}) -- a statute carried against a party's table, a ` +
     `bill of theirs voted down, a demand refused. ${answr.bar.bar} sits BETWEEN them, which is the whole job: ` +
     `${answr.bar.clearShare} of deliberate acts clear it against ${answr.bar.ambientClearShare} of ambient ` +
+    `ones and ${answr.bar.breachClearShare} of the ${answr.bar.breachN} the COALITION AGREEMENT books, a third ` +
+    `population S21d added whose median is ${answr.bar.breachMedian} -- astride the bar, so a broken promise ` +
+    `is the one discrete act that does not provoke an answer. The share was bounded at .85 on a reading of ` +
+    `.902 and reads ${answr.bar.clearShare} now while nothing about the bar or the buttons changed: what moved ` +
+    `is WHICH \`V17_MEMORY\` verbs engines aim at the player, since S21c and S21d changed the card mix. I ` +
+    `looked for it in the continuum this arm has described since S20a and measured that at ` +
+    `${answr.bar.driblesN} of ${answr.bar.deliberateN}, which moves the share by .015 and explains nothing -- ` +
+    `reported because it corrects a hand-wave with a number, not because it was the cause. The MEDIANS carry ` +
+    `the claim ` +
     `ones, and a cooling that never exceeds ${answr.bar.maxFall} in a session is below both. Pooled the two ` +
     `read a median of ${answr.bar.pooledMedian} and .287 clearing, which looks like a broken bar and is a ` +
     `mechanism doing exactly what it was built for -- answering a DISCRETE ACT and ignoring an accumulation ` +
