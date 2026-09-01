@@ -9681,7 +9681,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false };
       const c = (d.terms.concessions || []).filter(x => x.kind === 'adopt' && !x.met)[0];
       if (!c) return { ran:false };
+      /* THE PROMISE HAS TO BE UNMET IN THE BOOK, not merely unmarked. The
+         sweep asks `v21Met` FIRST and returns on it, so a concession whose
+         rung the book already stands at books a KEPT and never reaches the
+         clock -- and the first version of this leg read the breach count
+         going up and called it the clock, when it was the red-line scan in
+         the same function. `booksOne` was passing for the wrong reason,
+         which is why `marked` is in the gate: only the clock sets `late`. */
       c.met = false; c.late = false; c.due = S.turn - 1;
+      c.from = (S.pol[c.ref] || 0);
+      const want = v17Want(S, pid, c.ref);
+      if (want !== undefined && POL[c.ref]) {
+        /* stand the book one rung the WRONG side of where it was promised */
+        const target = Math.min(want, POL[c.ref].max);
+        S.pol[c.ref] = target > c.from ? c.from : Math.min(POL[c.ref].max, c.from);
+        if (v21Met(S, pid, c)) S.pol[c.ref] = Math.max(0, Math.min(POL[c.ref].max,
+          target > c.from ? c.from - 1 : c.from + 1));
+        c.from = S.pol[c.ref];
+      }
+      if (v21Met(S, pid, c)) return { ran:false, why:'could not stand the book short of the rung' };
       const before = v17Broken(S, pid), sat0 = d.satisfaction;
       v16RedLineTick(S);
       const after1 = v17Broken(S, pid);
@@ -9699,9 +9717,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.reaches = (() => {
       fresh(4242);
       for (let i = 0; i < 40 && !partnerOf(); i++) step();
-      const pid = partnerOf();
-      if (!pid || S.ruling === playParty(S)) return { ran:false };
-      const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false };
+      let pid = partnerOf();
+      /* AN ENGINE HAS TO GOVERN, or `aiGovern` returns at `leads` and the leg
+         measures nothing -- which is exactly what the first version did: the
+         probe plays `lp`, `lp` ended up governing, and `ran` came back false
+         while the mechanism was fine. Seat one, the way the S21c govern leg
+         does, and give it a partner with an agreement. */
+      if (!pid || S.ruling === playParty(S)) {
+        const gov = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0];
+        const par = PARTIES.filter(p => p.id !== playParty(S) && p.id !== gov.id && !S.banned[p.id])[0];
+        if (!gov || !par) return { ran:false, why:'no engine pair' };
+        S.ruling = gov.id; S.coalition = [gov.id, par.id]; S.partner = par.id;
+        pv5EnsureState(S, false);
+        pid = par.id;
+      }
+      const d = S.coalitionDeals[pid]; if (!d || !d.terms) return { ran:false, why:'no agreement' };
       /* a statute the GOVERNMENT does not want, promised to the partner */
       const gw = (PARTY[S.ruling] || {}).wants || {};
       const ref = Object.keys((PARTY[pid] || {}).wants || {}).filter(id =>
@@ -9780,6 +9810,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     bites.driven.undated === 0 && bites.driven.dated > 100 &&
     bites.clock.ran === true && bites.clock.booksOne === true &&
     bites.clock.booksOnlyOne === true && bites.clock.costsCohesion === true &&
+    /* only the CLOCK sets `late`, so this is what says the breach was the
+       clock's and not the red-line scan running in the same function */
+    bites.clock.marked === true &&
     bites.reaches.ran === true && bites.reaches.laysThePromise === true &&
     bites.reaches.differs === true && bites.reaches.governmentDoesNotWantIt === true &&
     bites.vote.ran === true && bites.vote.rises === true && bites.vote.flipsInRange === true &&
