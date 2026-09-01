@@ -12546,8 +12546,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         tgtOutsider = kind.target(S, q.id);
         delete a.grudge[out.id];
       }
-      /* and hate the government: it must */
-      a.grudge[S.ruling] = 90;
+      /* and hate the government LESS than an outsider: the target must still
+         be the government. An arm that only seeds the government cannot tell
+         "aims at the government" from "aims at the worst grudge", and reverting
+         `target` to the argmax over all parties came back GREEN on it. */
+      a.grudge[S.ruling] = 60;
+      if (out) a.grudge[out.id] = 95;
       const onGov = kind.fits(S, q.id);
       const tgt = kind.target(S, q.id);
       const doneAtBirth = tgt ? kind.done(S, q.id, tgt) : null;

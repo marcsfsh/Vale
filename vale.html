@@ -36225,22 +36225,31 @@ tickTurn = function (st) {
    -- which is the guard a hand-kept list cannot have and the one S16e's
    `radicalise` needed.
    ========================================================== */
-/* THE WEIGHTS ARE SET AGAINST THE RATE THE CHANNEL FIRES AT, not by eye. The
+/* THE WEIGHTS ARE SET AGAINST THE RATE EACH CHANNEL FIRES AT, not by eye. The
    first draft used the same magnitudes as `V17_MEMORY`'s button weights and
    that was the wrong comparison: a player presses `poach` when they choose to,
-   and the statute book moves about three times a session on its own. Against a
-   cooling of .6 a session per pair, a channel firing that often at 9 a time
-   runs away -- measured, it took the grudge a party holds against a government
-   to a 90th percentile of 61.7 with the clamp reached, acceptance at the
-   formation table from 71.7% to 25.8%, and 110 of 360 elections to a caretaker
-   because nobody would sit with anybody.
+   and these fire on their own. Against a cooling of .6 a session per pair the
+   table ran away -- measured, it took the grudge a party holds against a
+   government to a 90th percentile of 61.7 with the clamp reached, acceptance
+   at the formation table from 71.7% to 25.8%, and 110 of 360 elections to a
+   caretaker because nobody would sit with anybody.
 
-   So the weight of each kind is roughly the cooling times the sessions between
-   its firings. The statute channel is the frequent one and carries the
-   smallest weight; a freeze-out happens once an election and carries the
-   largest. `roads.js` measures the resulting distribution and the formation
-   outcomes together, because this channel's whole risk is that it is right in
-   kind and wrong in degree. */
+   AND THE RATES ARE NOT WHAT THEY LOOK LIKE, which the poison run is where I
+   found out. Over 720 driven sessions the firings are `billDown` 342,
+   `demandRefused` 149, `officeLost` 83, `statuteFor` 42, `frozenOut` 32 and
+   `statuteAgainst` **18** -- so the bill channel dominates the distribution
+   and the statute channel barely touches it. Raising `statuteAgainst` from 3
+   to 9 moves the 90th percentile by 0.7 and changes no formation outcome at
+   all, which is why that poison comes back green and why the comment it was
+   written against was wrong.
+
+   The statute figure is low BECAUSE THE PROBE'S PLAYER IS IDLE: `enactBill`
+   fires when a bill passes, engine bills mostly do not, and the owner's own
+   132-session save carries 1,063 laws. In a played campaign this is the
+   frequent channel, which is why it holds the smallest weight even though the
+   passive measurement would tolerate more. `roads.js` measures the resulting
+   distribution and the formation outcomes together, because this table's whole
+   risk is being right in kind and wrong in degree. */
 var V21_POLITICS = {
   /* the government moved a statute this party's own table names, away from it.
      Fires ~3x a session across the board, so the smallest weight in the table. */
