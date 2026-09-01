@@ -71,6 +71,79 @@ Seventeen poisons from the diff, sixteen redden it; the one that stays green is
 "report the weakest rival instead of the strongest", and the answer is that of
 3,600 party-sessions not one ever had two rivals of different magnitudes.
 
+**S19e — The parties have characters** is on the branch.
+
+`v16Posture`'s own comment says "Circumstance, not temperament", and measured
+over eight seeds of a hundred sessions that is how the six behaved: **four of
+six shared a favourite card, four shared a dominant posture**, and they acted
+between 181 and 221 times and spent between 5,216 and 6,996. A player could
+tell them apart by what they BELIEVE, since `wants` and `aff` are authored,
+and by nothing they did.
+
+A character is authored beside the beliefs in the same table, drawn from each
+party's own blurb: the RSF was an armed movement until 1931 and leans
+combative, the FP has stood since 1799 and is pragmatic, so it deals and
+waits. Three leanings over the deck and one patience, with every card
+belonging to exactly one leaning and `roads.js` failing if one arrives without
+an axis.
+
+**The favourite card was the wrong instrument and was tried first.** Swept
+over five weights, distinct favourites among six parties went from two to
+three and stopped at every weight from .3 to 1.6: `court` sits high in most
+goal tables and is open in nearly every posture, so a leaning worth .36 cannot
+take the argmax off it. What a leaning does is shift the SHARE, and isolated
+as an in-process A/B **all six parties raise the proportion of what they do
+that falls on their own axis**, by a mean of .063. **Patience is the sharpest
+reading**: how long a party carries an aim whose progress never moved tracks
+its authored patience at **.979**, against **-.18** with the patience
+flattened on the same run.
+
+**Two earlier arms were reshaped, both about what a claim should be made of.**
+S19a's simulator arm asked whether four parties have different FAVOURITES by
+the rehearsal's order, which depends on the board twelve driven sessions in --
+S19e moved it without touching `v19Outcome` at all. It compares the whole
+ordering now, which its own comment always said was the question. S19b's
+chooser arm asserted an absolute lift, which every later slice dilutes by
+adding a term to the same softmax (.044 to .036 here, rivalry untouched); it
+asserts the shape now, that the term acts on boards with a rival and not on
+boards without, at better than three to one.
+
+**THE PACING ARC DOES NOT MOVE, AND FINDING THAT OUT CORRECTED THE THREE
+SLICES BEFORE IT.** Six seeds, three lengths, S19d against S19e: crises per ten
+sessions **0.93 / 0.88 / 0.82 → 0.80 / 0.85 / 0.81**, elections exactly
+unchanged at 0.40 / 0.20 / 0.10, records at the close 18.6/22.3/23.9% →
+19.3/22.3/23.1%, all 36 runs reaching their end year. Every delta is inside one
+build's own seed-to-seed spread — short alone runs 0.60 to 1.20 across seeds on
+S19d — so the honest report is that the arc did not move, not that it fell by
+.13.
+
+**The instrument was the defect, and it had been for three slices.**
+`tools/pacing.js` printed a row per (length, seed) and no aggregate, and the
+figure that reached these notes each time was the FIRST THREE ROWS — the three
+lengths of one seed, sitting at the top of the table where they read like a
+summary. Corrected across six seeds, S19b → S19c → S19d → S19e is
+0.83 / 0.88 / 0.82 → 0.90 / 0.92 / 0.81 → 0.93 / 0.88 / 0.82 → 0.80 / 0.85 /
+0.81: **no slice in this program has moved the arc outside noise, and the
+cumulative change over all four builds is at most 0.03.** The published
+sentence "S19c took them down and S19d gave the two longer lengths most of it
+back" described which seed landed where. S16a had already ruled that *a pacing
+figure from one seed cannot tell a balance change from a reshuffle*; the ruling
+was on the page and the tool made it easy to ignore anyway, which is
+`MAP.md`'s stale-list defect wearing an instrument's coat. `tools/pacing.js`
+now prints the six-seed mean and the spread next to it, labelled as the row to
+quote, and says in as many words that a gap smaller than the spread is a
+reshuffle. **And `VALE_SEEDS` defaults to one seed**, so `node tools/pacing.js`
+run the obvious way cannot answer the question at all — found by running it
+that way here and getting a one-row table back; the tool now refuses to call a
+single-seed run quotable and prints the six-seed command instead. The
+corrections are marked in place in the S19c and S19d sections
+below rather than edited away. `docs/AGREEMENT.md` makes balance the owner's
+to rule — there is nothing here to rule on.
+
+Verification: checks 11/11, roads **193/193**, playtest, determinism 8/8,
+contrast at three tiers. Eleven poisons from the S19e diff, all eleven redden
+it.
+
 **S19d — A party votes its own manifesto** is on the branch.
 
 S19c named what it did not fix: 747 engine bills laid and 5 moved a statute.
@@ -139,6 +212,13 @@ are unchanged throughout at 0.4 / 0.2 / 0.1, records at the close read
 20/23/23%, and all 36 runs across both comparisons reach their end year.
 `docs/AGREEMENT.md` makes the balance the owner's to rule.
 
+> **CORRECTED IN S19e — ONE SEED AGAIN, AND THE SENTENCE IS AN ARTEFACT.** As
+> above, these are seed `5EED1234`'s three rows. Six-seed means put S19c at
+> 0.90 / 0.92 / 0.81 and S19d at **0.93 / 0.88 / 0.82** — deltas of +0.03,
+> -0.03 and +0.01. "S19c took them down and S19d gave the two longer lengths
+> most of it back" describes a reshuffle of which seed landed where; neither
+> slice moved the arc. The elections and end-year figures stand.
+
 Verification: checks 11/11, roads **192/192**, playtest, determinism 8/8,
 contrast at three tiers. Fourteen poisons from the S19d diff, all fourteen
 redden it after the one that stayed green was traced to a missing arm -- the
@@ -191,6 +271,20 @@ are unchanged at 0.4 / 0.2 / 0.1, records at the close read 20/23/23% against
 18/25/23%, and all eighteen runs reach their end year on both sides.
 `docs/AGREEMENT.md` says the balance is not mine to settle, so it is reported
 rather than absorbed.
+
+> **CORRECTED IN S19e — THE THREE CRISIS FIGURES ABOVE ARE ONE SEED, NOT SIX.**
+> `tools/pacing.js` printed a row per (length, seed) and no mean, and the three
+> numbers quoted here are the first three rows: they are the three lengths of
+> seed `5EED1234` alone. Across all six seeds these two builds are
+> **0.83 / 0.88 / 0.82 → 0.90 / 0.92 / 0.81** — S19c moved the arc by at most
+> +0.07, in the direction opposite to the one reported, and every length sits
+> inside its own build's seed-to-seed spread (short alone runs 0.60 to 1.00 on
+> one build). Nothing here was the owner's to rule; there was no change to rule
+> on. The elections, records and end-year figures stand. S16a had already ruled
+> that *a pacing figure from one seed cannot tell a balance change from a
+> reshuffle*, and this is that ruling being ignored three slices running. The
+> tool now prints the six-seed mean and the spread beside it, so the row a
+> reader quotes is the honest one.
 
 **One flake observed and not reproduced.** The playtest step `order-book`
 failed once on `bends the target exactly`, and then passed four consecutive
