@@ -342,6 +342,42 @@ becomes a reading of `d.satisfaction`, scaled from the measured cohesion
 distribution (min 20, median 38, p90 48.1, max 76) so the sign flips inside the
 range the game actually produces.
 
+**MEASURED BEFORE BUILDING, AND THE PREMISE WAS WRONG IN THE SAME WAY S19c'S
+WAS.** Over 394 partner-sessions across six seeds: **0 promises kept, 19
+broken.** Not "kept too easily" — never once.
+
+The cause is that **every outstanding `adopt` concession asks for a gap of
+exactly 4** — p10 4, median 4, max 4 — because `v17Offer` and both other mint
+sites take `pv5TopWants`, the party's BIGGEST gaps. A bill moves a statute ONE
+rung and takes a median of 2 sessions (p90 5), and `activeBillFor` forbids a
+second on the same statute while one is live. So a promise needs four
+successive bills, eight to twenty sessions of the government's whole
+legislative programme, for one partner's one concession.
+
+That is exactly the defect S19c found in `carry` and this file already records:
+*"it took the biggest gap in the party's own table, which measured 4 on every
+adoption against an instrument that moves one, so it was reached 0 times in 136
+adoptions."* The same mistake, in the coalition agreement, unnoticed because
+nothing measured it.
+
+So the slice changes shape. **It is not "one concession drawn from a small
+gap"** — it is that a concession must ask for a rung the instrument can reach,
+which is what makes every other item on this list mean anything: a clock is
+decoration on a promise nobody can keep, per-rung `V17_KEPT` never fires, and a
+ledger that reads 0 kept against 19 broken is not a record, it is a countdown.
+
+**And `V21_DUE` cannot be sized until the gap is.** The plan's 8 sessions was
+derived from lay + floor + signature for ONE bill; the measured life of a bill
+end to end is median 2 and p90 5. The instrument decides the deadline, so the
+deadline is set after the rung is.
+
+Two smaller corrections from the same run. **No concession anywhere carries a
+date** (`due:null` at all three mint sites), confirmed rather than assumed. And
+**the restoring drift is not restoring**: it reads median −0.18 a session, p90
++0.05, against a target of ~38 that cohesion already sits at (median 39.9). The
+plan's premise that a partner "recovers" and must be stopped is backwards —
+nothing recovers, because `progress` is near zero for the reason above.
+
 ### S21e — The table is a negotiation  ·  Coalition 2 of 4  ·  4 improvements, 2 new
 
 `v17Offer` gains a generosity parameter: varying concession count, priced by the
