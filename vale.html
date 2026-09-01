@@ -13676,7 +13676,29 @@ function aiGovern(st) {
     });
   }
   if (!cands.length) return;
-  var pick = cands[Math.floor(rand() * cands.length)];
+  /* S21c: A GOVERNMENT CHOOSES ITS PROGRAMME, AND THIS DREW IT OUT OF A HAT.
+     An OPPOSITION party has picked its bill by forecast since S19c -- it runs
+     `v19BillFor`, which probes the chamber and takes the statute it can carry,
+     worth +4.9 forecast points over 133 real decisions. The party in
+     GOVERNMENT, with the whip and the order paper, picked uniformly at random
+     out of everything on its table. The one chair that legislates most was the
+     least deliberate in the republic.
+
+     THE ROLL IS STILL DRAWN AND DISCARDED. S18c measured what a skipped
+     `rand()` costs: one chair consuming one number fewer re-phases every
+     seeded campaign, and the six-seed pacing arc moved on every row.
+     `v19BillFor` reads `billForecast`, which is pure by its own contract, so
+     the stream is untouched either way this branches.
+
+     R1: this is COMPETENCE, so it gates on `v19Thinks` and `instinct` keeps
+     the hat exactly. */
+  var roll = rand();
+  var pick = cands[Math.floor(roll * cands.length)];
+  if (typeof v19Thinks === 'function' && v19Thinks(st) && typeof v19BillFor === 'function') {
+    var aimed = null;
+    try { aimed = v19BillFor(st, st.ruling); } catch (e) { aimed = null; }
+    if (aimed && POL[aimed.policy]) pick = { id:aimed.policy, dir:aimed.dir };
+  }
   var pp = POL[pick.id];
   var bill = sponsorBill(st, pick.id, pick.dir, 'government', upperOn(st) ? 'negotiated' : 'clean', true);
   if (bill) {
@@ -34119,7 +34141,30 @@ viewWorld = function () {
    party out of government runs at forty to sixty in hand: a card at fifty-eight
    never fired once in sixty measured sessions and a pact at fifty-four never
    formed at all. The two dear ones came down and the deck now empties. */
-var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22, pact:34, demand:16, bill:38 };
+/* S21c: ONE TABLE OVER THE WHOLE DECK, WHICH THIS WAS NOT. It held eight of
+   the eleven cards. The prices of the other three lived in
+   `V17_AI_COST_ARTICLE`, `_ORDER` and `_FLOOR` in a later part of this chunk,
+   and BOTH readers of this table read it as `V16_AI_COST[id] || 0` -- so
+   `v19Score`'s money term scored `article`, `order` and `floor` as free and
+   never applied its penalty to them, and `v18Tempo`'s broke test could not
+   see them at all. The CARDS always charged; it is the readers that could
+   not see them, which is why nothing looked wrong.
+   Folded in here rather than by adding three keys in the later chunk,
+   because this literal is evaluated first and the S17 names now read out of
+   it: one number per card, in one place. `roads.js` fails if a deck card has
+   no entry or an entry names no card -- the guard `V17_MEMORY` and
+   `V19_RIVAL_WORTH` already carry and this table escaped. */
+var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
+  pact:34, demand:16, bill:38, article:34, order:22, floor:12 };
+/* the cheapest thing in the deck, DERIVED rather than named. `v18Tempo` read
+   `V16_AI_COST.demand` (16) under a comment calling it "the cheapest card in
+   the deck" -- and `floor` costs 12, so a party holding 14 was throttled to a
+   third of its tempo while it could still afford to act. */
+function v16CheapestCard() {
+  var lo = Infinity;
+  for (var k in V16_AI_COST) if (V16_AI_COST[k] < lo) lo = V16_AI_COST[k];
+  return isFinite(lo) ? lo : 0;
+}
 /* WHAT AN INITIATIVE IS WORTH. Set by sweeping `tools/pacing.js` over six
    seeds, not by taste: the machine is the single largest seat lever in the
    file (S15h measured the party organisation at its ceiling as +154 Assembly
@@ -35486,18 +35531,113 @@ function v19Try(st, fn) {
    So the party's own standing is added to the country's condition, and
    `v17Utility` is left exactly as it was -- `v17AiDecide` has read it since
    S17 and a crisis choice is a different question from an initiative. */
+/* S21c — WHAT A THING IN FLIGHT IS WORTH, AND WHY IT IS PRICED THIS WAY.
+
+   `v19Outcome` is a photograph taken one instant after a card is played, and
+   measured over 889 rehearsals SEVEN OF THE ELEVEN CARDS moved nothing in
+   `v19Standing` but the purse, on 100 per cent of their own rows. The
+   simulation priced a bill, an article, a pact, a platform rewrite, a demand
+   letter, a floor intervention and a campaign at EXACTLY MINUS THEIR OWN PRICE
+   TAG -- so a party clever enough to rehearse concluded that laying a bill was
+   worse than doing nothing, and the two upper rungs of the setting bought a
+   simulator that told them so.
+
+   The fix is R4's: make the objective SEE WHAT THE CARDS DO, rather than look
+   a second ply ahead. And the scale is the one the rehearsal already speaks --
+   the purse term is `purse/100 * 1.2`, so a price of `c` reads as `c * .012`.
+   A THING IN FLIGHT IS WORTH THE PRICE OF THE CARD THAT PRODUCES IT, times
+   how good this particular instance is. That costs ONE number rather than six.
+
+   AND THE NUMBER IS TAKEN FROM THE CARDS THAT ALREADY SCORED, not picked by
+   eye. Over the same 889 rehearsals the four cards the objective could see
+   moved a party's standing by: `court` +2.30, `organise` +0.75, `attack`
+   +0.59, `order` -0.67 -- so the median gain among the cards that worked is
+   **0.75**. The median price across the six in-flight kinds is 28 and the
+   median quality of the instances the game actually produces is .90, so
+   `28 * .012 * F * .90 = 0.75` gives F = 2.5. A card that leaves something
+   behind is now worth about what a card that moved a bloc was already worth,
+   which is the claim -- and it is a decision surface rather than a constant,
+   because below the median instance the card is still a loss. */
+var V21_FLIGHT = 2.5;
+/* the quality denominators, each measured rather than picked: the value a
+   perfect instance of that kind would carry. An article at the dearest thing
+   in the document; a pact with a party holding a quarter of the house; a
+   platform move at the full step the card writes. */
+var V21_ART_TOP = 26;      /* `artAbolishUpper`, the dearest article */
+var V21_PACT_TOP = .25;    /* a partner holding a quarter of the chamber */
+var V21_PUSH_FULL = .25;   /* the compass distance a full platform step moves */
+function v21Price(id) { return (V16_AI_COST[id] || 0) * .012 * V21_FLIGHT; }
+/* how a bill sits with a party: +1 if it moves a statute the party's OWN table
+   names toward where the party wants it, -1 if away, 0 if it is not on the
+   table at all. Whoever sponsored it -- a party minds what is on the order
+   paper, not whose name is on it, which is what lets the government taking up
+   its demand read as a gain to the party that asked. */
+function v21Stance(st, pid, b) {
+  var w = (PARTY[pid] || {}).wants || {}, tg = w[b.policy];
+  if (tg === undefined || !POL[b.policy]) return 0;
+  var lv = st.pol[b.policy] || 0, want = Math.min(tg, POL[b.policy].max);
+  if (want === lv) return 0;
+  return ((want > lv) === (b.dir > 0)) ? 1 : -1;
+}
+/* EVERY READ HERE IS NON-CREATING. `v19Standing` is called on the REAL state
+   as well as on the clone -- `before` at the top of `v19Outcome` -- so a read
+   that installs a structure would install it on the live campaign. That is
+   `v6TreatyRows`, which gave every power an empty treaty array for asking, and
+   awarded the Peacemaker record on every seed. */
+function v19Flight(st, pid) {
+  var u = 0;
+  (st.bills || []).forEach(function (b) {
+    var s = v21Stance(st, pid, b);
+    if (s) u += s * v21Price('bill');
+    /* and a POSITION DECLARED on one. `partyBillSupport` reads `b.lines` at
+       16/-18, so this is a thing that genuinely moves a division. */
+    var ln = (b.lines || {})[pid];
+    if (ln) u += (ln === 'support' ? 1 : -1) * (s || 1) * v21Price('floor');
+  });
+  var pend = ((st.v11 || {}).con || {}).pending || [];
+  pend.forEach(function (a) {
+    if (a.by !== pid) return;
+    u += v21Price('article') * Math.min(1, ((V11_ART[a.id] || {}).cost || 0) / V21_ART_TOP);
+  });
+  var pacts = st.aiPacts || {}, pw = null;
+  if (pacts[pid]) pw = pacts[pid].with;
+  else for (var k in pacts) if (pacts[k].with === pid) pw = k;
+  if (pw) u += v21Price('pact') * Math.min(1, (v17Share(st, pw) || 0) / V21_PACT_TOP);
+  var ps = (st.push || {})[pid];
+  if (ps) u += v21Price('platform') *
+    Math.min(1, Math.sqrt(ps.e * ps.e + ps.a * ps.a) / V21_PUSH_FULL);
+  (st.inbox || []).forEach(function (it) { if (it.from === pid) u += v21Price('demand'); });
+  return u;
+}
 function v19Standing(st, pid) {
   var u = 0;
   try { u = v17Utility(st, pid); } catch (e) { u = 0; }
   /* the weights sit beside `v17Utility`'s own, which sum indicators in the
      tens: a party trading its whole organisation for a point of the economy
      would be as wrong as one that never looked up from itself */
-  u += (typeof v17Share === 'function' ? v17Share(st, pid) : 0) * 60;
+  /* S21c: WHERE IT STANDS WITH THE COUNTRY, NOT HOW MANY SEATS IT HOLDS. This
+     read `v17Share(st, pid) * 60` -- sixty points, the largest weight in the
+     function -- and `v17Share` is seats over house. NO CARD IN THE DECK MOVES
+     A SEAT, and `v19Standing` has exactly two callers, both inside
+     `v19Outcome` and both as a DIFFERENCE, so the term cancelled on 889 of 889
+     measured rehearsals. Sixty points that could not fire.
+     `supportTargets` is on the same scale -- both are shares that sum to one
+     -- and reads bloc mood, funding, the machine, the press and the party's
+     position, which is to say the things the cards actually write. Measured,
+     it moves for `attack`, `campaign` and `organise` on every one of their
+     rows and for `court` on .887 of them, where the seat share moved on none. */
+  u += (typeof supportTargets === 'function' ? (supportTargets(st)[pid] || 0) : 0) * 60;
   u += ((st.machine || {})[pid] || 0) * 25;
   u += Math.min(20, ((st.purse || {})[pid] || 0) / 100) * 1.2;
-  if (pid === st.ruling) u += 18;
-  else if ((st.coalition || []).indexOf(pid) >= 0) u += 9;
-  for (var o in (st.exec || {})) if (st.exec[o] === pid) u += 9;
+  /* A FLAT +18 FOR GOVERNING, +9 FOR SITTING IN THE COALITION AND +9 AN OFFICE
+     STOOD HERE AND ARE DELETED. Same reading as the seat share and the same
+     reason: no card can enter a government or take an office within one ply,
+     so all three moved on 0 of 889 rehearsals. Three tuned weights in a
+     function only ever read as a difference -- `st.court.size`'s neighbour,
+     not a field nothing reads but weights that cannot fire. If a later slice
+     gives an engine a card that reaches a cabinet, the term comes back WITH
+     the card and with an arm that measures it. */
+  u += v19Flight(st, pid);
   return u;
 }
 function v19Outcome(st, pid, card) {
@@ -35611,7 +35751,9 @@ var V18_TEMPO = {
      changed nothing, which is what a knob nothing in the game can turn looks
      like. A term belongs here only if it can tell two parties apart. */
   rich:    1.35,  /* money in hand and something to spend it on */
-  broke:    .35,  /* under the cheapest card in the deck, so mostly refused anyway */
+  broke:    .35,  /* under the cheapest card in the deck, so mostly refused anyway --
+                     S21c: DERIVED from the table by `v16CheapestCard`, where it read
+                     `V16_AI_COST.demand` and the comment was one card out */
   grudge:  1.5,   /* holds something against somebody, at the attack bar */
   govern:  1.3,   /* a government has business every session */
   losing:  1.3,   /* seats went down at the last count */
@@ -35621,7 +35763,7 @@ function v18Tempo(st, pid) {
   var w = 1, ai = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
   var purse = (typeof partyPurse === 'function') ? partyPurse(st, pid) : 0;
   if (purse >= 120) w *= V18_TEMPO.rich;
-  else if (purse < V16_AI_COST.demand) w *= V18_TEMPO.broke;
+  else if (purse < v16CheapestCard()) w *= V18_TEMPO.broke;
   var worst = 0;
   /* S21a: THIS RAW READ IS SAFE AND WAS LEFT ALONE. It was routed through
      `v16Grudge` and the change came back GREEN on its own poison, which for a
@@ -38566,9 +38708,14 @@ function v17RacePanel() {
    the two can never drift apart. Nothing here is a rebind: the gates and the
    cores are widened where they live. */
 
-var V17_AI_COST_ARTICLE = 34;
-var V17_AI_COST_ORDER = 22;
-var V17_AI_COST_FLOOR = 12;
+/* S21c: these three ARE `V16_AI_COST`'s article, order and floor entries, and
+   they are read out of it rather than written twice -- the table is declared
+   earlier in this chunk, so the values are in hand. The names stay because
+   nine call sites use them and a rename would be churn; what goes is the
+   second copy of the number. */
+var V17_AI_COST_ARTICLE = V16_AI_COST.article;
+var V17_AI_COST_ORDER = V16_AI_COST.order;
+var V17_AI_COST_FLOOR = V16_AI_COST.floor;
 
 /* --- THE FLOOR. What a party may say about a bill that is not its own. --- */
 function v17FloorWhy(st, actor, b, verb) {
