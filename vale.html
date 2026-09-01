@@ -9109,6 +9109,10 @@ function billPull(st, bill, pid, house) {
      this slice's own defect, one wrapper downstream of the function it was
      fixed in. It is persuasion done on the floor, so it persuades members. */
   if (house !== 'upper' && bill.floorWork) pull += bill.floorWork;
+  /* S20b: and what the player has PERSUADED this particular party of. The one
+     new field the six floor verbs write, read here and counted through that
+     party's seats like everything else. */
+  if (bill.pull && bill.pull[pid]) pull += bill.pull[pid];
   /* a confidence motion binds the parties holding the government up, and is
      worth nothing at all to anybody else -- which is the point of it */
   if (house !== 'upper' && bill.confidence && co.indexOf(pid) >= 0) pull += 22;
@@ -9732,10 +9736,17 @@ function billAction(id, action) {
     var floorWhy = v17FloorWhy(S, playParty(S), b, action);
     if (floorWhy) { flash(floorWhy); return; }
   }
+  /* S20b: the three ways to press a position home, refused before they are
+     paid for, exactly as the floor verbs above are. */
+  var pressScope = { pressOwn:'own', pressOthers:'others', pressBoth:'both' }[action];
+  if (pressScope) {
+    var pressWhy = v20PressWhy(S, playParty(S), b, pressScope);
+    if (pressWhy) { flash(pressWhy); return; }
+  }
   var costs = { whip:4, bargain:5, amend:3, confidence:7, urgent:6, support:2, oppose:2, withdraw:0,
     pressure:3, amendIt:4, delayIt:5, talkOut:4, kill:8, pressOffice:3, override:6 };
   var monies = { bargain:8, pressure:5, amendIt:4, pressOffice:6 };
-  var c = cst(costs[action] || 0), m = monies[action] || 0;
+  var c = cst(pressScope ? v20PressCost(S, b, pressScope) : (costs[action] || 0)), m = monies[action] || 0;
   /* S18a: AND THE MONEY COMES FROM WHOEVER IS ACTING. This line read
      `S.treasury` whatever chair the player sat in, so an opposition party
      leaned on a sponsor for 5 out of the national accounts -- the defect S17a
@@ -9763,6 +9774,13 @@ function billAction(id, action) {
      takes one through the same function. `bill.lines` -- the field read
      straight into a party's vote -- had one writer in three megabytes. */
   if (action === 'support' || action === 'oppose') v17FloorCore(S, playParty(S), b, action);
+  if (pressScope) {
+    v20PressCore(S, playParty(S), b, pressScope);
+    var pressDir = b.playerPosition === 'support' ? 'behind' : 'against';
+    logIt(S, 'The ' + PARTY[playParty(S)].short + ' worked ' +
+      (pressScope === 'own' ? 'its own benches' : pressScope === 'others' ? 'the other parties' : 'the whole House') +
+      ' ' + pressDir + ' ' + b.title + '.');
+  }
   /* ---- S10b: the instruments you have against a bill that is not yours.
      What is available scales with what you actually command: a line and the
      public argument in opposition, the timetable and the committee in
@@ -14370,6 +14388,27 @@ function billCard(b) {
     if (b.playerPosition !== 'support') act('support','Support the bill',2,0,false,'Your party votes for it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.');
     if (b.playerPosition !== 'oppose') act('oppose','Oppose the bill',2,0,false,'Your party whips against it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.');
     act('pressure','Press the sponsor',3,5,!!(b.lines && b.lines[b.sponsor]),'Lean on the sponsoring party privately. Cheap, deniable, and it costs you standing with them.');
+    /* S20b: AND THREE WAYS TO PRESS THE POSITION HOME, drawn only once there
+       IS a position -- the owner's shape exactly: your own benches, the other
+       parties bar the one that laid it, and both. Each is dearer than the last
+       time you used it ON THIS BILL, so it is a decision and not a button to
+       hold down, and each says what it would cost before you press it. */
+    if (b.playerPosition) {
+      var pdir = b.playerPosition === 'support' ? 'behind' : 'against';
+      var pWord = b.playerPosition === 'support' ? 'support for' : 'opposition to';
+      var pOwnWhy = v20PressWhy(S, playParty(S), b, 'own');
+      var pOthWhy = v20PressWhy(S, playParty(S), b, 'others');
+      var pBothWhy = v20PressWhy(S, playParty(S), b, 'both');
+      act('pressOwn', 'Rally your own benches', v20PressCost(S, b, 'own'), 0, !!pOwnWhy,
+        pOwnWhy || ('Put your own members ' + pdir + ' it and close ranks behind the line. Worth ' +
+          V20_PRESS.own.pull + ' of ' + pWord + ' in your party, and it hardens their discipline.'));
+      act('pressOthers', 'Work the other parties', v20PressCost(S, b, 'others'), 0, !!pOthWhy,
+        pOthWhy || ('Every seated party except the ' + (PARTY[b.sponsor] || {}).short + ', who laid it. Worth ' +
+          V20_PRESS.others.pull + ' of ' + pWord + ' in each, and it moves where they stand with you.'));
+      act('pressBoth', 'Work the whole House', v20PressCost(S, b, 'both'), 0, !!pBothWhy,
+        pBothWhy || ('Your benches and every other party at once, for a price. Worth ' + V20_PRESS.both.pullOwn +
+          ' in your own and ' + V20_PRESS.both.pull + ' in each of theirs.'));
+    }
     if (inPower(S)) {
       act('amendIt','Table an amendment',4,4,b.concessions >= 4,'It passes more easily and delivers less of what its sponsor wanted.');
       act('delayIt','Send it back to committee',5,0,b.stage === 'committee' || (b.delayedBy || 0) >= 2,'Costs the sponsor a session and some Senate goodwill.');
@@ -37846,6 +37885,105 @@ function v17FloorWhy(st, actor, b, verb) {
 }
 /* The effect, once. The player's handler keeps its own price, its undo and
    its prose; what it does to the bill is this. */
+/* ============================================================
+   S20b — PRESSING A POSITION HOME
+   ============================================================
+   The owner: *"there needs to be more ways to both negatively and positively
+   impact a bill in terms of its support, each of which categorized as
+   supporting or opposing. after opposing, 3 options appear for various ways to
+   increase opposition, within your party, with other parties (who are not the
+   party who proposed it), and with both. same for if you support it - 3 ways
+   to increase support."*
+
+   Declaring a line was the whole of it before this, and measured from the
+   opposition bench the entire anti-bill kit came to **-5.3 Assembly points**
+   -- not enough to move a bill across the bar, so a position was a statement
+   rather than a lever.
+
+   ONE NEW FIELD, AND IT IS READ WHERE THE VOTE IS COUNTED. `bill.pull[pid]`
+   is points of support, positive or negative, on a NAMED party, read in
+   `billPull` beside the whip and then counted through that party's seats by
+   S20a's division. That is the whole of the new state: `bill.lines` keeps the
+   declared POSITION, which is a fact about a party and printable on the card,
+   and `bill.pull` carries the accumulated PERSUASION, which is a number.
+   Nothing else is added, because a field written and read by nothing is this
+   file's most-repeated defect.
+
+   AND THE COVERAGE IS A CHECK RATHER THAN A HAND-KEPT LIST. `roads.js` fails
+   if a verb in `V20_PRESS` moves nobody, or moves a party with no seats, or
+   writes a `pull` no division reads -- the guard `V17_MEMORY` carries and a
+   whitelist can never have.
+
+   ONE GATE AND TWO CALLERS, per S17k: every gate takes an ACTOR and the core
+   is what both the handler and the deck call, so an engine party pressing its
+   line runs these lines and not a copy of them. */
+var V20_PRESS = {
+  own:    { pull:14, faction:4,  rel:0, cost:4, esc:1.6 },
+  others: { pull:9,  faction:0,  rel:3, cost:5, esc:1.6 },
+  both:   { pullOwn:9, pull:6, faction:3, rel:2, cost:7, esc:1.7 },
+};
+/* who a scope reaches: the actor's own benches, every seated party that is
+   neither the actor nor the SPONSOR (the owner's words -- "other parties who
+   are not the party who proposed it"), or both. */
+function v20PressTargets(st, actor, b, scope) {
+  var out = [];
+  if (scope === 'own' || scope === 'both') out.push(actor);
+  if (scope === 'others' || scope === 'both') {
+    PARTIES.forEach(function (p) {
+      if (p.id === actor || p.id === b.sponsor) return;
+      if (st.banned[p.id] || !(st.seats[p.id] > 0)) return;
+      out.push(p.id);
+    });
+  }
+  return out;
+}
+function v20PressWhy(st, actor, b, scope) {
+  if (!b) return 'That bill is no longer before the House.';
+  if (!V20_PRESS[scope]) return 'There is no such way to press it.';
+  if (b.stage === 'assent' || b.stage === 'referendum') return 'The houses have finished with it. There is nothing left to persuade.';
+  var pos = actor === playParty(st) ? b.playerPosition : (b.lines || {})[actor];
+  if (!pos) return 'Say where you stand on it first. There is nothing to press until there is a position.';
+  if (!v20PressTargets(st, actor, b, scope).length) {
+    return scope === 'own' ? 'Your party holds no seats in this House.'
+      : 'There is no other party with seats to work on.';
+  }
+  return null;
+}
+/* what pressing it again costs: metered PER BILL and per scope, so a verb is a
+   decision on this bill rather than a button to hold down. S20's ruling R4. */
+function v20PressCost(st, b, scope) {
+  var k = V20_PRESS[scope]; if (!k) return 0;
+  var used = ((b.pushes || {})[scope] || 0);
+  return Math.round(k.cost * Math.pow(k.esc, used));
+}
+function v20PressCore(st, actor, b, scope) {
+  var why = v20PressWhy(st, actor, b, scope);
+  if (why) return why;
+  var k = V20_PRESS[scope];
+  var pos = actor === playParty(st) ? b.playerPosition : (b.lines || {})[actor];
+  var dir = pos === 'support' ? 1 : -1;
+  b.pull = b.pull || {};
+  v20PressTargets(st, actor, b, scope).forEach(function (pid) {
+    var isOwn = pid === actor;
+    var n = scope === 'both' ? (isOwn ? k.pullOwn : k.pull) : k.pull;
+    b.pull[pid] = (b.pull[pid] || 0) + dir * n;
+    /* AND A SECOND CHANNEL THAT WAS ALREADY READ, so the effect is legible in
+       more than one place and survives anyone deleting the new field: a party
+       worked on by its own leadership closes ranks (`factions` feeds both
+       `partyBillSupport` and S20a's `partyDiscipline`), and a party courted
+       from outside warms or cools toward the actor (`partyRel`). */
+    if (isOwn && k.faction) {
+      (st.factions[pid] || []).forEach(function (f) { f.loyalty = c100(f.loyalty + dir * k.faction); });
+    }
+    if (!isOwn && k.rel) shiftPartyRel(st, pid, dir * k.rel);
+  });
+  b.pushes = b.pushes || {};
+  b.pushes[scope] = (b.pushes[scope] || 0) + 1;
+  b.notes.push((dir > 0 ? 'Support' : 'Opposition') + ' pressed ' +
+    (scope === 'own' ? 'on its own benches' : scope === 'others' ? 'with the other parties' : 'across the House'));
+  return null;
+}
+
 function v17FloorCore(st, actor, b, verb) {
   var why = v17FloorWhy(st, actor, b, verb);
   if (why) return why;

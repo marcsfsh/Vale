@@ -10986,6 +10986,224 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${divi.levers.assentEasy} on easy, where \`Math.max(72, v)\` against a bar of 55 meant no office could ` +
     `ever decline to sign)`);
 
+  /* ---------- S20b: PRESSING A POSITION HOME ----------
+     The owner: "there needs to be more ways to both negatively and positively
+     impact a bill... after opposing, 3 options appear for various ways to
+     increase opposition, within your party, with other parties (who are not
+     the party who proposed it), and with both. same for if you support it."
+
+     Measured before this slice, the whole anti-bill kit from the opposition
+     bench came to -5.3 Assembly points, which cannot move a bill across the
+     bar: a position was a statement rather than a lever.
+
+     AND IT IS DRIVEN BY REAL CLICKS. This file's most expensive lesson is that
+     every gate in the harness calls a function and a player presses a button,
+     and five separate slices shipped a door that was correct and reachable by
+     nothing. So the arm finds the buttons in the rendered card, clicks them,
+     and reads the division afterwards. */
+  const press = await page.evaluate(async () => {
+    const R = {};
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.rngState = seed; return S;
+    }
+    function drive(n) { for (let i = 0; i < n; i++) { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) {} UI.queue = []; UI.busy = false; } }
+    /* put a bill on the paper that the player did NOT lay */
+    function otherBill() {
+      const me = playParty(S);
+      const opp = PARTIES.filter(p => p.id !== me && !S.banned[p.id] && S.seats[p.id] > 0)[0];
+      if (!opp) return null;
+      const pol = Object.keys(POL)[0];
+      const b = { id:'s20b', title:'Probe Bill', policy:pol, dir:1, sponsor:opp.id, owner:'opposition',
+        strategy:'clean', whip:0, upperDeal:0, committee:0, concessions:0, confidence:false,
+        urgent:false, stage:'assembly', notes:[], lines:{} };
+      S.bills = [b];
+      return b;
+    }
+    const cardButtons = (b) => {
+      const html = (typeof billCard === 'function') ? billCard(b) : '';
+      const ids = [];
+      const re = /data-bill-action="([a-zA-Z]+)"([^>]*)/g;
+      let m;
+      while ((m = re.exec(html))) ids.push({ id:m[1], disabled:/disabled/.test(m[2]) });
+      return ids;
+    };
+
+    /* (a) THE THREE VERBS ARE DRAWN ONLY ONCE THERE IS A POSITION, and all
+       three of them are drawn. */
+    R.drawn = (() => {
+      fresh(4242); drive(2);
+      const b = otherBill(); if (!b) return null;
+      const before = cardButtons(b).map(x => x.id);
+      b.playerPosition = 'oppose';
+      const after = cardButtons(b).map(x => x.id);
+      const want = ['pressOwn', 'pressOthers', 'pressBoth'];
+      return { beforeHas: want.filter(w => before.indexOf(w) >= 0).length,
+        afterHas: want.filter(w => after.indexOf(w) >= 0).length,
+        enabled: cardButtons(b).filter(x => want.indexOf(x.id) >= 0 && !x.disabled).length };
+    })();
+
+    /* (b) A REAL CLICK MOVES THE DIVISION, and by enough to matter. The whole
+       kit is pressed from the opposition bench, which is the chair the owner
+       reported from. */
+    R.clicked = (() => {
+      fresh(4242); drive(2);
+      const me = playParty(S);
+      S.ruling = PARTIES.filter(p => p.id !== me)[0].id;
+      S.coalition = [S.ruling];
+      const b = otherBill(); if (!b) return null;
+      S.capital = 400;
+      const f0 = billForecast(S, b).lower;
+      billAction(b.id, 'oppose');
+      const fPos = billForecast(S, b).lower;
+      const cap0 = S.capital;
+      billAction(b.id, 'pressOwn');
+      billAction(b.id, 'pressOthers');
+      billAction(b.id, 'pressBoth');
+      const fEnd = billForecast(S, b).lower;
+      return { start:+f0.toFixed(2), afterPosition:+fPos.toFixed(2), afterKit:+fEnd.toFixed(2),
+        positionWorth:+(f0 - fPos).toFixed(2), kitWorth:+(fPos - fEnd).toFixed(2),
+        totalWorth:+(f0 - fEnd).toFixed(2), spent:cap0 - S.capital,
+        pulled:Object.keys(b.pull || {}).length };
+    })();
+
+    /* (c) THE SCOPES REACH WHO THEY SAY, and the SPONSOR is never in the
+       "other parties" -- the owner named that exclusion explicitly. */
+    R.scopes = (() => {
+      fresh(4242); drive(2);
+      const me = playParty(S);
+      const out = {};
+      ['own', 'others', 'both'].forEach(scope => {
+        const b = otherBill();
+        b.playerPosition = 'oppose'; b.pull = {};
+        const why = v20PressWhy(S, me, b, scope);
+        v20PressCore(S, me, b, scope);
+        const moved = Object.keys(b.pull).filter(k => b.pull[k] !== 0);
+        out[scope] = { why:why, moved:moved.slice().sort(),
+          hasMe: moved.indexOf(me) >= 0, hasSponsor: moved.indexOf(b.sponsor) >= 0,
+          n:moved.length, allSeated: moved.every(k => (S.seats[k] || 0) > 0),
+          negative: moved.every(k => b.pull[k] < 0) };
+      });
+      return out;
+    })();
+
+    /* (d) IT IS DEARER EACH TIME ON THIS BILL -- S20's ruling R4, that a verb
+       pressable every session for ever is not a decision. */
+    R.meter = (() => {
+      fresh(4242); drive(2);
+      const b = otherBill(); b.playerPosition = 'oppose';
+      const costs = [];
+      for (let i = 0; i < 4; i++) {
+        costs.push(v20PressCost(S, b, 'others'));
+        v20PressCore(S, playParty(S), b, 'others');
+      }
+      return { costs:costs, rises: costs.every((c, i) => i === 0 || c > costs[i - 1]) };
+    })();
+
+    /* (e) COVERAGE AS A CHECK, not a hand-kept list: every scope the table
+       declares must move at least one seated party and write `bill.pull`,
+       which is the field the division reads. A scope that moves nobody is a
+       button that lies. */
+    R.coverage = (() => {
+      fresh(4242); drive(2);
+      const me = playParty(S);
+      const dead = [];
+      /* AND ONE PARTY IS EMPTIED OF SEATS FIRST. Without this every party in a
+         fresh republic holds some, so the guard that skips a seatless party is
+         never exercised and its poison comes back green -- a filter nothing
+         tests. A party with no seats has nobody to persuade. */
+      const b0 = otherBill();
+      const ghost = PARTIES.filter(p => p.id !== me && p.id !== b0.sponsor)[0].id;
+      S.seats[ghost] = 0;
+      let ghostMoved = false;
+      Object.keys(V20_PRESS).forEach(scope => {
+        const b = otherBill();
+        b.playerPosition = 'support'; b.pull = {};
+        v20PressCore(S, me, b, scope);
+        const moved = Object.keys(b.pull).filter(k => b.pull[k] !== 0);
+        if (moved.indexOf(ghost) >= 0) ghostMoved = true;
+        if (!moved.length || !moved.every(k => (S.seats[k] || 0) > 0)) dead.push(scope);
+      });
+      return { scopes:Object.keys(V20_PRESS).length, dead:dead, ghost:ghost, ghostMoved:ghostMoved };
+    })();
+
+    /* (e2) AND EACH VERB WRITES A SECOND CHANNEL THAT WAS ALREADY READ, so the
+       effect is legible in more than one place and does not rest on one new
+       field: working your own benches closes ranks (`factions`, which feeds
+       both `partyBillSupport` and S20a's `partyDiscipline`), and courting
+       another party moves where it stands with you (`partyRel`). */
+    R.channels = (() => {
+      fresh(4242); drive(2);
+      const me = playParty(S);
+      const b1 = otherBill(); b1.playerPosition = 'support';
+      const loy0 = factionAverage(S, me);
+      v20PressCore(S, me, b1, 'own');
+      const loy1 = factionAverage(S, me);
+      const b2 = otherBill(); b2.playerPosition = 'support';
+      const other = PARTIES.filter(p => p.id !== me && p.id !== b2.sponsor && S.seats[p.id] > 0)[0];
+      const rel0 = (S.partyRel || {})[other.id];
+      v20PressCore(S, me, b2, 'others');
+      const rel1 = (S.partyRel || {})[other.id];
+      return { loyaltyMoved:+(loy1 - loy0).toFixed(2), relMoved:+(rel1 - rel0).toFixed(2) };
+    })();
+
+    /* (f) AND IT IS REFUSED BEFORE IT IS PAID FOR. Pressing with no position
+       declared must cost nothing -- the S18a defect, where a refused floor
+       verb took the capital anyway. */
+    R.refused = (() => {
+      fresh(4242); drive(2);
+      const b = otherBill();
+      S.capital = 300;
+      const cap0 = S.capital, pull0 = JSON.stringify(b.pull || {});
+      billAction(b.id, 'pressOwn');
+      return { spent:cap0 - S.capital, pullUnchanged: JSON.stringify(b.pull || {}) === pull0,
+        why: v20PressWhy(S, playParty(S), b, 'own') };
+    })();
+    return R;
+  });
+
+  const pressOk =
+    press.drawn && press.drawn.beforeHas === 0 && press.drawn.afterHas === 3 && press.drawn.enabled === 3 &&
+    press.clicked && press.clicked.pulled >= 3 &&
+    press.clicked.kitWorth > 8 && press.clicked.spent > 0 &&
+    press.scopes.own.moved.length === 1 && press.scopes.own.hasMe === true &&
+    press.scopes.others.hasMe === false && press.scopes.others.hasSponsor === false &&
+    press.scopes.others.n >= 2 && press.scopes.others.allSeated === true &&
+    press.scopes.both.hasMe === true && press.scopes.both.hasSponsor === false &&
+    press.scopes.both.n > press.scopes.others.n &&
+    ['own', 'others', 'both'].every(s => press.scopes[s].negative === true && press.scopes[s].why === null) &&
+    press.meter.rises === true &&
+    press.coverage.dead.length === 0 && press.coverage.scopes === 3 &&
+    press.coverage.ghostMoved === false &&
+    press.channels.loyaltyMoved > 0 && press.channels.relMoved > 0 &&
+    press.refused.spent === 0 && press.refused.pullUnchanged === true && !!press.refused.why;
+  say(pressOk, 'a position can be pressed home',
+    `DECLARING A LINE WAS THE WHOLE OF IT, and measured from the opposition bench the entire anti-bill kit came ` +
+    `to -5.3 Assembly points -- not enough to move a bill across the bar, so a position was a statement rather ` +
+    `than a lever · THREE WAYS TO PRESS IT, drawn only once there IS a position (${press.drawn.beforeHas} of ` +
+    `three before, ${press.drawn.afterHas} after, all ${press.drawn.enabled} live) and DRIVEN BY REAL CLICKS ` +
+    `through the card, because this file's most expensive lesson is that every gate calls a function and a ` +
+    `player presses a button: from the bench a declared position is worth ` +
+    `${press.clicked.positionWorth} Assembly points and the three verbs a further ` +
+    `${press.clicked.kitWorth} on top of it, ${press.clicked.totalWorth} in all for ` +
+    `${press.clicked.spent} capital, across ${press.clicked.pulled} named parties · THE SCOPES REACH WHO THEY ` +
+    `SAY: own moves ${press.scopes.own.moved.join(',')} alone, others moves ${press.scopes.others.n} parties ` +
+    `and NEVER the sponsor (${press.scopes.others.hasSponsor}) which is the exclusion the owner named, both ` +
+    `moves ${press.scopes.both.n} · IT IS DEARER EACH TIME ON THIS BILL (${press.meter.costs.join(' → ')} ` +
+    `capital), because a verb pressable for ever is not a decision -- which is the ruling this program wrote ` +
+    `after finding \`poach\` clicked 411 times at a flat 8 with no cooldown · EVERY SCOPE MOVES A SEATED PARTY ` +
+    `AND WRITES THE FIELD THE DIVISION READS (${press.coverage.dead.length} dead of ` +
+    `${press.coverage.scopes}), which is a covered surface rather than a hand-kept list, and a party emptied of ` +
+    `its seats is never worked on (${press.coverage.ghostMoved}) because there is nobody in it to persuade · ` +
+    `EACH VERB ALSO WRITES ` +
+    `A CHANNEL THAT WAS ALREADY READ, so the effect does not rest on one new field: working your own benches ` +
+    `moves their cohesion by ${press.channels.loyaltyMoved} (read by both the vote and S20a's discipline) and ` +
+    `courting another party moves where it stands with you by ${press.channels.relMoved} · and it is REFUSED ` +
+    `BEFORE IT IS PAID FOR: pressing with no position declared costs ${press.refused.spent} capital and moves ` +
+    `nothing (${press.refused.pullUnchanged}), where S18a found three floor verbs taking the money for a ` +
+    `refusal`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

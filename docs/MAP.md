@@ -1264,6 +1264,52 @@ source order say what the eye gets.
   PARTY palette is untouched: the crest is cleared by bolding its initial and
   lifting it to 19px on the phone, which earns large-text status.
 
+## A position can be pressed home (S20b)
+
+The owner: *"there needs to be more ways to both negatively and positively
+impact a bill in terms of its support, each of which categorized as supporting
+or opposing. after opposing, 3 options appear for various ways to increase
+opposition, within your party, with other parties (who are not the party who
+proposed it), and with both. same for if you support it - 3 ways to increase
+support."*
+
+Declaring a line was the whole of it before this. Measured from the opposition
+bench, the entire anti-bill kit came to **-5.3 Assembly points** -- not enough
+to move a bill across the bar, so a position was a statement rather than a
+lever. Driven now: a declared position is worth 9.9 and the three verbs a
+further **15.3** on top of it, **25.2 in all** for 16 capital.
+
+- **ONE NEW FIELD, READ WHERE THE VOTE IS COUNTED.** `bill.pull[pid]` is points
+  of support on a NAMED party, read in `billPull` beside the whip and counted
+  through that party's seats by S20a's division. That is the whole of the new
+  state: `bill.lines` keeps the declared POSITION, which is a fact about a
+  party and printable on the card, and `bill.pull` carries the accumulated
+  PERSUASION, which is a number. Nothing else was added, because a field
+  written and read by nothing is this file's most-repeated defect.
+- **The scopes reach who they say.** Own moves the player's benches alone;
+  others moves every seated party except the actor and **the sponsor**, which
+  is the exclusion the owner named; both moves all of them at a premium. A
+  party emptied of its seats is never worked on, because there is nobody in it
+  to persuade -- and that guard's poison came back GREEN until the probe was
+  given a seatless party, since every party in a fresh republic holds some.
+- **Each verb also writes a channel that was already read**, so the effect does
+  not rest on one new field: working your own benches moves their cohesion by 4
+  (read by both `partyBillSupport` and S20a's `partyDiscipline`), and courting
+  another party moves where it stands with you by 3.
+- **It is dearer each time ON THIS BILL** -- 5, 8, 13, 20 capital -- because a
+  verb pressable for ever is not a decision. That is S20's own ruling R4, the
+  one written after finding `poach` clicked 411 times at a flat cost with no
+  cooldown, applied to the new verbs before they ship rather than after.
+- **Refused before it is paid for**: pressing with no position declared costs 0
+  and moves nothing, where S18a found three floor verbs taking the money for a
+  refusal.
+- **And it is DRIVEN BY REAL CLICKS.** The arm finds the buttons in the
+  rendered card and presses them, because this file's most expensive lesson is
+  that every gate calls a function and a player presses a button -- five
+  separate slices shipped a door that was correct and reachable by nothing.
+- Assertion `a position can be pressed home`, seven arms, **twelve poisons from
+  the diff, all twelve redden**.
+
 ## The division is counted (S20a)
 
 The owner reported three things about the chamber and all three were one

@@ -212,9 +212,14 @@ point — this slice's own defect, surviving in the place it was least visible.
   one point assembled into a reaction the bar exists to refuse: 225 → 1,637,
   with 313 borrowed goes unpaid). The ACT is stamped now, with a cooldown of
   eight sessions so a party cannot answer faster than it can pay the go back.
-- **S20b — The floor has verbs.** Declare support or opposition, then three ways
-  to press it: your own benches, the other parties bar the sponsor, and both.
-  Six verbs, each writing state a named function already reads.
+- **S20b — A position can be pressed home.** SHIPPED. `bill.pull[pid]` is the
+  one new field, read in `billPull` and counted through seats; three scopes
+  (own benches, the other parties bar the sponsor, both) each write it plus a
+  second already-read channel, meter their price per bill, and are refused
+  before they are paid for. From the bench a position is worth 9.9 Assembly
+  points and the verbs a further 15.3, against the -5.3 the whole kit managed
+  before. Assertion `a position can be pressed home`, seven arms, **twelve
+  poisons from the diff, all twelve redden**.
 - **S20c — The party board has a tempo.** Cooldowns, escalating prices and
   closable preconditions across the 23 per-party verbs, `poach` first.
 - **S20d — Easy is a cakewalk, not a coronation.** What the setting means after
