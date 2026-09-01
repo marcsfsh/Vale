@@ -38414,10 +38414,23 @@ function v17Build(st, lead, relax, pin, gen) {
        its own arithmetic already asks. */
     var short = Math.max(0, maj - have) / Math.max(1, maj);
     var rub = (typeof v17Friction === 'function' ? v17Friction(st, pool[i], lead).length : 0);
+    /* AND IT IS SYMMETRIC ABOUT THE OLD CONSTANT, which the first build was
+       not -- and the measurement caught it before the harness did. Bidding up
+       when short of seats and up again on friction, with a single narrow
+       condition bidding down, skewed the mean above three: formations became
+       so easy that the outcome went 348 majority / 12 minority / 0 grand / 0
+       CARETAKER, and S21b's whole finding was that those branches must be
+       reachable. Making the table a negotiation must not make the negotiation
+       always succeed -- that is the S21d regression with the sign flipped, and
+       a slice that fixed one by causing the other has fixed nothing.
+       Each reading now moves the bid in BOTH directions, so the mean sits on
+       the constant every offer used to carry and what changes is the spread. */
     var bid = V17_GENEROSITY.base
-      + (short > .34 ? 1 : 0)                                  /* a long way to go */
-      + (rub >= 6 ? 1 : 0)                                     /* and a real quarrel */
-      - (short < .1 && rub < 3 ? 1 : 0);                       /* nearly there, and easy */
+      + (short > .34 ? 1 : short < .12 ? -1 : 0)   /* a long way to go, or nearly there */
+      + (rub >= 6 ? 1 : rub <= 2 ? -1 : 0);        /* a real quarrel, or an easy friend */
+    /* a generosity passed in from the rotation is a FLOOR, not an override: a
+       re-mandate round that raises the bid cannot make a formateur meaner than
+       its own arithmetic already asks */
     if (gen !== undefined && gen !== null) bid = Math.max(bid, gen);
     var offer = v17Offer(st, lead, pool[i], co.concat([pool[i]]), bid);
     var ans = v17Accept(st, pool[i], lead, offer, relax, pin);
