@@ -9305,7 +9305,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter']
           .every(k => out[k] !== undefined && Math.abs(out[k]) > 1e-9),
         billSigned: out.billFor > 0 && out.billAgainst < 0,
-        lineSigned: out.lineFor > 0 && out.lineAgainst < 0 };
+        /* AND THE LINE IS READ AGAINST ITS OWN PAIR, not against nought. Both
+           of these put the SAME bill on the paper -- one the party wants --
+           so both carry its docket value and both are positive; what the term
+           decides is which is worth more. Asking for a negative here was the
+           probe reading the bill's value and calling it the line's. */
+        lineSigned: out.lineFor > out.lineAgainst,
+        lineGap: +(out.lineFor - out.lineAgainst).toFixed(4) };
     })();
 
     /* (b) A READ MUST NOT CREATE. `v19Standing` is called on the REAL state
@@ -9514,7 +9520,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `term is \`min(20, purse/100) * 1.2\` and a party over 2,000 has it CLAMPED, so a card escapes flatness on ` +
     `an unrelated saturation. Read one at a time: a bill ${seen.terms.out.billFor} going the party's way and ` +
     `${seen.terms.out.billAgainst} going the other (${seen.terms.billSigned}), a position declared ` +
-    `${seen.terms.out.lineFor} for and ${seen.terms.out.lineAgainst} against (${seen.terms.lineSigned}), an ` +
+    `${seen.terms.out.lineFor} for and ${seen.terms.out.lineAgainst} against the SAME bill -- both positive ` +
+    `because both carry that bill's own value, so the line is read against its pair and not against nought ` +
+    `(${seen.terms.lineSigned}, a gap of ${seen.terms.lineGap}) -- asking for a negative there was the probe ` +
+    `reading the bill's worth and calling it the line's, an ` +
     `article ${seen.terms.out.article}, a pact ${seen.terms.out.pact}, a platform move ${seen.terms.out.push}, ` +
     `an outstanding letter ${seen.terms.out.letter} · AND THE READS DO NOT CREATE ` +
     `(${seen.pure.created ? 'they DO' : 'true'}), asked of ` +
