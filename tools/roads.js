@@ -9884,34 +9884,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         satBefore:sat0, satAfter:+d.satisfaction.toFixed(2),
         recorded: v17Kept(S, pid) > kept0, paid: d.satisfaction > sat0,
         rungs: v21Rungs(S, pid, c), gain:+(d.satisfaction - sat0).toFixed(2) };
-      /* AND IT PAYS PER RUNG, which a one-rung promise cannot show: on it
-         `V17_KEPT * rungs` and a flat `V17_KEPT` are the same number, and the
-         poison that flattened it came back green. The claim only bites on a
-         promise carried in a save from before this slice, which has no `from`
-         and asks for the party's whole gap -- four rungs, four sessions of
-         legislative programme, and it is paid for what it cost. */
-      const legacy = (() => {
-        const ref = c.ref, want2 = v17Want(S, pid, ref);
-        if (want2 === undefined || !POL[ref]) return { ran:false };
-        const target = Math.min(want2, POL[ref].max);
-        const start = target >= 4 ? 0 : POL[ref].max;
-        if (Math.abs(target - start) < 2) return { ran:false, why:'no multi-rung gap here' };
-        const lc = { kind:'adopt', ref:ref, due:null, met:false };   /* no `from` */
-        d.terms.concessions = [lc];
-        S.pol[ref] = start;
-        const rungs = v21Rungs(S, pid, lc);
-        d.satisfaction = 50; const s0 = d.satisfaction;
-        S.pol[ref] = target;                       /* the whole way, at once */
-        v16RedLineTick(S);
-        return { ran:true, rungs:rungs, gap:Math.abs(target - start),
-          gain:+(d.satisfaction - s0).toFixed(2), asksSummit: rungs > 1 };
-      })();
       return { ran:true, keptBefore:oneRung.keptBefore, keptAfter:oneRung.keptAfter,
         satBefore:oneRung.satBefore, satAfter:oneRung.satAfter,
         recorded:oneRung.recorded, paid:oneRung.paid, rungs:oneRung.rungs,
-        gain:oneRung.gain, KEPT:V17_KEPT, legacy:legacy,
-        perRung: legacy.ran === true && legacy.asksSummit === true &&
-                 legacy.gain > oneRung.gain * 1.5 };
+        gain:oneRung.gain, KEPT:V17_KEPT };
     })();
 
     /* (f2) AND THE FAMILY IS DECLARED BEFORE ITS CALLER RUNS. `pv5EnsureState`
@@ -10000,8 +9976,6 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* a preference over the order paper, not an override of the chamber */
     bites.reaches.hopeless.ran === true && bites.reaches.hopeless.refused === true &&
     bites.pays.ran === true && bites.pays.recorded === true && bites.pays.paid === true &&
-    /* and it pays PER RUNG, which a one-rung promise cannot show */
-    bites.pays.perRung === true &&
     bites.order.beforeCaller === true &&
     bites.vote.ran === true && bites.vote.rises === true && bites.vote.flipsInRange === true &&
     bites.drift.ran === true && bites.drift.holdsDown === true &&
@@ -10031,7 +10005,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `counting ledger entries cannot say: \`v17Ledger\` records a \`kept\` whatever the payment is, so with ` +
     `\`V17_KEPT * rungs\` replaced by nought the driven count was unchanged and this arm was green. Read either ` +
     `side of the moment it is met, cohesion goes ${bites.pays.satBefore} to ${bites.pays.satAfter} for ` +
-    `${bites.pays.rungs} rung(s) at ${bites.pays.KEPT} apiece (${bites.pays.paid}) -- AND PER RUNG, which a one-rung promise cannot show, because there \`V17_KEPT * rungs\` and a flat \`V17_KEPT\` are the same number and the poison that flattened it came back GREEN: a promise carried in a save from before this slice asks for the whole gap (${bites.pays.legacy.rungs} rungs) and is paid ${bites.pays.legacy.gain} against ${bites.pays.gain} for one (${bites.pays.perRung}) · THE CLOCK BOOKS ONE BREACH AND ` +
+    `${bites.pays.KEPT} for the promise (${bites.pays.gain}) -- A PER-RUNG PAYMENT STOOD HERE AND CAME OUT ON ITS OWN POISON: \`v21Rungs\` multiplied it by the rungs covered, flattening it to a flat rate changed nothing, and the reason is arithmetic -- \`v21Rung\` caps a fresh promise at one rung and a legacy one has no \`from\` to measure from, so the multiplier could only ever be 1. A knob nothing in the game can turn, deleted rather than shipped, the fifth this programme has found in a poison list · THE CLOCK BOOKS ONE BREACH AND ` +
     `ONLY ONE (${bites.clock.booksOne}/${bites.clock.booksOnlyOne}), because when two mechanisms hold the same ` +
     `date one owns the outcome -- which is what the street's demand and \`expireInbox\` taught this file · AND ` +
     `THE GOVERNMENT REACHES FOR IT, which is the half that makes the rest live: \`aiGovern\` read the ruling ` +

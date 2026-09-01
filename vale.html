@@ -9097,6 +9097,16 @@ var V21_PROMISE_PULL = 12;
    the party wants; `due` is the date. Declared in the same block as the
    constants and called at play time, so the later chunk's readers and the
    earlier chunk's backfill both reach it. */
+/* THE PROBE SHAPE `v19BillFor` USES, extracted so `aiGovern` weighs a promise
+   on the same instrument rather than on a second one that would drift from it.
+   Pure: `billForecast` is pure by its own contract and nothing here is
+   pushed onto `st.bills`. */
+function v21Probe(st, pid, policy, dir) {
+  return { id:'v21probe', policy:policy, dir:dir, owner:'government', sponsor:pid,
+    title:'', introduced:st.turn, stage:'assembly', strategy:'clean', whip:0, upperDeal:0,
+    committee:0, concessions:0, confidence:false, urgent:false, playerPosition:null,
+    notes:[], cost:0 };
+}
 function v21Concede(st, ref) {
   var c = { kind:'adopt', ref:ref, due:null, met:false };
   var p = POL[ref]; if (!p) return c;
@@ -9130,25 +9140,6 @@ function v21Met(st, pid, c) {
   var lv = (st.pol || {})[c.ref] || 0;
   if (c.from === undefined) return Math.abs(lv - rung) <= .001;
   return rung >= c.from ? lv >= rung - .001 : lv <= rung + .001;
-}
-/* HOW MANY RUNGS OF IT WERE ACTUALLY COVERED, which is what `V17_KEPT` pays
-   per. A one-rung promise pays once; a four-rung promise carried in an older
-   save pays for the four sessions of legislative programme it cost. */
-/* THE PROBE SHAPE `v19BillFor` USES, extracted so `aiGovern` weighs a promise
-   on the same instrument rather than on a second one that would drift from it.
-   Pure: `billForecast` is pure by its own contract and nothing here is
-   pushed onto `st.bills`. */
-function v21Probe(st, pid, policy, dir) {
-  return { id:'v21probe', policy:policy, dir:dir, owner:'government', sponsor:pid,
-    title:'', introduced:st.turn, stage:'assembly', strategy:'clean', whip:0, upperDeal:0,
-    committee:0, concessions:0, confidence:false, urgent:false, playerPosition:null,
-    notes:[], cost:0 };
-}
-function v21Rungs(st, pid, c) {
-  if (c.from === undefined) return 1;
-  var rung = v21Rung(st, pid, c);
-  if (rung === null) return 1;
-  return Math.max(1, Math.round(Math.abs(rung - c.from)));
 }
 /* S21d: WHERE A PARTNER'S VOTE TURNS. Declared here rather than beside the
    other S21d constants, which live in a later script chunk than this function
@@ -36380,7 +36371,22 @@ function v17DealScan(st, pid, d, kind, ref, actor, note) {
          Measured, 0 promises kept in 394 partner-sessions. */
       if (v21Met(st, pid, c)) {
         c.met = true;
-        var pay = V17_KEPT * v21Rungs(st, pid, c);
+        /* S21d: `V17_KEPT` FLAT, AND `v21Rungs` WAS DELETED RATHER THAN
+           SHIPPED. It multiplied the payment by the rungs a promise covered,
+           and the poison that replaced it with a flat rate came back GREEN --
+           which for a change means a missing arm or a dead body, and this one
+           was dead by arithmetic. `v21Rung` caps a fresh promise at
+           `from + V21_RUNG`, so it covers ONE; and a promise carried in a save
+           from before this slice has no `from` to measure from, so the
+           function returned 1 for it too, by a line I wrote. A multiplier that
+           can only ever be 1. The comment beside it claimed a four-rung legacy
+           promise "pays for the four sessions of legislative programme it
+           cost", and the code paid it once -- a card that lies, caught by its
+           own poison rather than by a reader.
+           A knob nothing in the game can turn is decoration: S17r deleted two,
+           S20d deleted the `restive` floor and S20f the posture filter, all in
+           the poison list before they shipped. This is the fifth. */
+        var pay = V17_KEPT;
         v17Ledger(st, pid, { kind:'kept', ref:ref, why:'the concession they were promised', cost:pay });
         d.satisfaction = c100((d.satisfaction || 50) + pay);
         st.partyRel[pid] = c100((st.partyRel[pid] || 50) + 4);
