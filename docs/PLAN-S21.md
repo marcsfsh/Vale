@@ -193,6 +193,18 @@ not a broken mechanism.
 
 ### S21b — What a party holds against a government  ·  2 improvements, 1 new
 
+**A CORRECTION TO THIS PLAN, FOUND BY BUILDING IT.** S21e below attributes the
+formation's four unreachable branches to `V17_FORM_MAX` being equal to the
+party count. That is true and it is not the binding constraint. The branches
+were unreachable because **nobody ever refused an offer**, and nobody refused
+because nobody held anything against anybody: `V17_MEMORY` records only what
+the player's buttons did, so a government could govern against a party for a
+hundred sessions and that party regarded it exactly as before. Adding the
+political memory alone -- with `V17_FORM_MAX` untouched -- takes the outcomes
+from 359 majority / 1 minority / 0 grand / 0 caretaker to **333 / 15 / 11 / 4**,
+and acceptance at the table from 71.7% to 45.1%. S21e's own changes still
+stand; what changes is the claim about why they are needed.
+
 `v21Answer(st, kind, actor, target, w)` and `V21_POLITICS`, covered both ways,
 gated on `v19Thinks`, returning early under `V19_SIMULATING`. Six writers: a
 statute carried away from a party's `wants`, a bill of theirs voted down, an
