@@ -10752,11 +10752,27 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        a line whose deletion changed nothing. At .3 the control asserts what it
        is for and the hold is load-bearing.
 
-       S21c: AND THE GATE NEVER CARRIED IT. That paragraph has described a
-       control held to .3 since S20f and the clause was not in this list --
-       `corrFlat` was measured, printed nowhere and asserted nothing. It is
-       here now, which is the comment's own claim finally made. */
-    Math.abs(temp.patience.corrFlat) < .3 &&
+       S21c: THE GATE NEVER CARRIED THAT CLAUSE, AND MEASURING IT SAYS WHY.
+       `corrFlat` is asserted nowhere, and I added `|corrFlat| < .3` here on
+       the reading that the paragraph above describes it -- then measured it
+       at **-0.692**. The clause came straight back out, and the reason is on
+       the page already: the paragraph BELOW says the flattened control "read
+       -.18 where a clean control reads nought and -.64 once S20a's real
+       division sharpened it", and calls that a confound rather than a pass.
+       So the .3 hold was never satisfiable by this number, and a bound
+       nothing could satisfy is why the clause was never written.
+
+       WHAT THAT LEAVES IS A REAL QUESTION FOR WHOEVER REVISITS THIS ARM, and
+       it is recorded rather than patched mid-slice. With patience flattened
+       to one, every party has the SAME patience, so how long each holds a
+       dead aim should not track its AUTHORED patience at all -- and it tracks
+       it at -0.69. Something else about a party correlates with the patience
+       it was authored with (the temperament axes are authored in the same
+       table) and moves the same clock. The PAIRED lift is still the right
+       reading of the knob -- it is each party's own difference, so a constant
+       per-party offset cancels out of it -- but the flattened side is not the
+       null the comment calls it, and a slice that wants to tighten this arm
+       has to find what else is in there first. */
     /* the PAIRED lift is the assertion (see the probe): each party against
        itself, so how often a party is read cancels instead of masquerading as
        temperament. `corrOn` is kept as a reading and held loosely, because it
@@ -10798,9 +10814,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `tracks its authored patience at ${temp.patience.corrLift}, on lifts averaging ` +
     `${temp.patience.meanAbsLift} sessions -- each party against ITSELF, so how often it is read cancels ` +
     `instead of masquerading as temperament, which is what the old flattened control was measuring when it ` +
-    `read -.18 where a clean control reads nought and -.64 once S20a's real division sharpened it -- and the ` +
-    `flattened control is ASSERTED now at ${temp.patience.corrFlat}, where that paragraph has described a hold ` +
-    `at .3 since S20f and the gate never carried the clause · S21c TOOK THE BOUND OFF THE CROSS-PARTY FIGURE ` +
+    `read -.18 where a clean control reads nought and -.64 once S20a's real division sharpened it -- and it ` +
+    `reads ${temp.patience.corrFlat} here, which is A QUESTION THIS ARM LEAVES OPEN AND S21c DECLINED TO PATCH: ` +
+    `with patience flattened to one every party has the same patience, so how long each holds a dead aim should ` +
+    `not track its AUTHORED patience at all, and it tracks it strongly. Something else authored beside patience ` +
+    `moves the same clock. The PAIRED lift is still the right reading of the knob, being each party's own ` +
+    `difference, so a constant per-party offset cancels out of it -- but the flattened side is not the null the ` +
+    `sentence above calls it, and a hold at .3 was never satisfiable by this number, which is why the gate ` +
+    `never carried the clause · S21c TOOK THE BOUND OFF THE CROSS-PARTY FIGURE ` +
     `(${temp.patience.corrOn}, kept as a reading and not as the claim) BECAUSE that paragraph was right: this ` +
     `slice changes which card a party plays and therefore how often each is read, which IS the confound the ` +
     `figure carries -- across it the cross-party reading fell from .802 to ${temp.patience.corrOn} while the ` +
