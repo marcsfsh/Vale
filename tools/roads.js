@@ -9623,8 +9623,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         }
         return o;
       };
+      /* ASKED OF `v17Build` DIRECTLY, ON FRESH BOARDS, WITH NO SESSIONS
+         DRIVEN. The function is pure given a state, so the distribution does
+         not need ninety turns of play to sample -- and the version of this leg
+         that drove them took long enough to be killed twice by a container
+         restart before it ever reported. Every eligible party is put in the
+         formateur's chair, then the seats are reshuffled and they are all
+         asked again, so the POOL ORDER varies, which is the thing the bid
+         reads. 2,288 offers against the ~400 driving four seeds produced. */
       try {
-        [4242, 90210, 7, 31337].forEach(s => { fresh(s); for (let i = 0; i < 40; i++) step(); });
+        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+          fresh(seed);
+          v17Eligible(S).forEach(lead => { v17Build(S, lead, 0, null); });
+          for (let k = 0; k < 6; k++) {
+            PARTIES.forEach(p => { S.seats[p.id] = 60 + (v15Hash(p.id + k) % 200); });
+            v17Eligible(S).forEach(lead => { v17Build(S, lead, 0, null); });
+          }
+        });
       } finally { v17Offer = base; }
       const d = {}; seen.forEach(n => { d[n] = (d[n] || 0) + 1; });
       return { n:seen.length, distinct:Object.keys(d).length, hist:d,
@@ -9633,7 +9648,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         base:V17_GENEROSITY.base,
         /* the mean sits ON the constant every offer used to carry: what the
            slice adds is spread, not a thumb on the scale */
-        centred: Math.abs(seen.reduce((a, c) => a + c, 0) / Math.max(1, seen.length) - V17_GENEROSITY.base) < .6,
+        /* CENTRED BY CONSTRUCTION, NOT BY TUNING. Both readings are taken
+           against the pool's own middle -- rank about its midpoint, friction
+           about its median -- so half the pool sits either side of each by
+           definition. Measured at 3.126 against a base of 3 over 2,288
+           offers. Two earlier versions picked absolute thresholds by eye: the
+           first skewed the mean UP until the grand and caretaker branches
+           stopped firing, the second used bars so high they almost never fired
+           and the mean came out at 2.22. */
+        meanGen: +(gens.reduce((a, c) => a + c, 0) / Math.max(1, gens.length)).toFixed(3),
+        centred: Math.abs(gens.reduce((a, c) => a + c, 0) / Math.max(1, gens.length) - V17_GENEROSITY.base) < .35,
         generosityRead: gens.every(g => typeof g === 'number') };
     })();
 
@@ -9726,7 +9750,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   });
 
   const tableOk =
-    table.varies.n > 400 && table.varies.distinct >= 3 &&
+    table.varies.n > 1500 && table.varies.distinct >= 3 &&
     table.varies.centred === true && table.varies.generosityRead === true &&
     table.screen.rows >= 4 && table.screen.withTerms === table.screen.rows &&
     table.screen.distinct >= 3 && table.screen.keepsOffer === true &&
@@ -9745,9 +9769,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `across six seeds: three concessions, ONE distinct value, on every invitation to every party by every ` +
     `formateur in every round. A formation was a negotiation in which nobody negotiated, and the only thing ` +
     `that varied was who was being handed the constant · IT VARIES NOW across ${table.varies.n} offers, ` +
-    `${table.varies.distinct} distinct sizes from ${table.varies.min} to ${table.varies.max}, on how many ` +
-    `seats the formateur still needs and how much friction it has with the party it is asking. The mean is ` +
-    `${table.varies.mean} against a base of ${table.varies.base} (${table.varies.centred}), because the FIRST ` +
+    `${table.varies.distinct} distinct sizes from ${table.varies.min} to ${table.varies.max}, on where the party ` +
+    `sits in the formateur's own pool and how much friction it has with it. The generosity means ` +
+    `${table.varies.meanGen} against a base of ${table.varies.base} (${table.varies.centred}) -- CENTRED BY ` +
+    `CONSTRUCTION, because both readings are taken against the pool's own middle rather than an absolute bar, ` +
+    `so half the pool sits either side of each by definition. TWO EARLIER VERSIONS PICKED THRESHOLDS BY EYE ` +
+    `AND BOTH WERE WRONG: the FIRST ` +
     `build bid up when short and up again on friction with one narrow condition bidding down, the mean skewed ` +
     `above the constant, and formations became so easy that the grand and caretaker branches stopped firing ` +
     `altogether -- the S21d regression with the sign flipped. A slice that makes the table a negotiation must ` +
