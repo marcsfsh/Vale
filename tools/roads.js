@@ -11840,11 +11840,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         out.laidABill = S.bills.length > bills0;
         out.quieted = d.pressure < 2;
         out.pressure = d.pressure;
-        /* AND IT DOES NOT LAY A BILL THAT IS ALREADY ON THE PAPER. The same
-           promise, still outstanding, with its bill before the house: a
-           government that laid a second copy would be answering an ultimatum
-           with a duplicate, and the guard is invisible on a board where the
-           first branch has nothing to collide with. */
+        /* AND IT DOES NOT CLAIM TO LAY A BILL THAT IS ALREADY ON THE PAPER.
+           `sponsorBill` refuses a second bill on a live policy by itself, so
+           the bill COUNT is guaranteed by the game and asserting it proves
+           nothing -- the poison that removed the guard came back green on it.
+           What the guard changes is the ANSWER: without it the government
+           calls `sponsorBill`, gets null, quiets the partner anyway and
+           reports "deliver" for a bill it never laid, which is a card that
+           lies. The second answer must be `stand`. */
         const kinds0 = JSON.parse(JSON.stringify(out.kinds));
         d.pressure = 1; d.pressureAt = -99;
         const billsAgain = S.bills.length;
@@ -11947,6 +11950,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const ref = v21ReopenCore(S, partner, 'probe');
       const c = (d.terms.concessions || [])[0] || {};
       out.rewrote = !!ref && ref !== wasRef;
+      /* AND THE HEAD OF GOVERNMENT'S OWN BUTTON GOES THROUGH IT. `v17Renegotiate`
+         is the door on the coalition card and it was the body as well; driven
+         by the real handler, with `v21ReopenCore` watched, because a Core its
+         first caller does not use is two functions again. */
+      const dd = (S.coalitionDeals || {})[partner];
+      dd.terms.concessions = [v21Concede(S, pv5TopWants(partner, S, 2)[1].id)];
+      dd.altered = -99;
+      let coreCalls = 0;
+      const brc = v21ReopenCore;
+      v21ReopenCore = function () { coreCalls += 1; return brc.apply(this, arguments); };
+      S.capital = 90; S.treasury = 900;
+      try { pv5CoalitionAction(partner, 'renegotiate'); } finally { v21ReopenCore = brc; }
+      out.headReopenedThroughTheCore = coreCalls === 1;
       out.freshFrom = c.from === ((S.pol || {})[ref] || 0);
       out.freshDue = typeof c.due === 'number' && c.due > S.turn;
       out.notBornLate = c.late === false;
@@ -11992,12 +12008,27 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       S.capital = 40; S.treasury = 400;
       const cap0 = S.capital, tre0 = S.treasury;
       respondInbox(it.id, 'rewrite');
-      return { posted:true, threw:threw, why:why, btns:btns,
+      const chargedNothing = S.capital === cap0 && S.treasury === tre0;
+      const stillThere = S.inbox.some(x => x.id === it.id);
+      /* AND THE ANSWER THAT IS OPEN QUIETS THEM THROUGH `v21Quiet`, the one
+         owner of the ladder. This arm was reading the SHUT answer only, so the
+         poison that put `d.pressure = 0` back inline here passed. Given a
+         promise it can lay, "lay the bill they were promised" is open. */
+      d.terms.concessions = [v21Concede(S, pv5TopWants(partner, S, 1)[0].id)];
+      d.pressure = 2; d.pressureAt = S.turn;
+      let quietCalls = 0;
+      const bq = v21Quiet;
+      v21Quiet = function () { quietCalls += 1; return bq.apply(this, arguments); };
+      S.capital = 40; S.treasury = 400;
+      const bills0 = S.bills.length;
+      try { respondInbox(it.id, 'deliver'); } finally { v21Quiet = bq; }
+      const delivered = { laid:S.bills.length > bills0, quietCalls:quietCalls,
+        pressure:d.pressure, quieted:d.pressure < 2 };
+      return { posted:true, threw:threw, why:why, btns:btns, delivered:delivered,
         shutInThePage: btns.filter(b => b.disabled && /rewrite|deliver/.test(b.id)).length,
         rewriteShut: !!why.rewrite,
         deliverShut: !!why.deliver,
-        chargedNothing: S.capital === cap0 && S.treasury === tre0,
-        stillThere: S.inbox.some(x => x.id === it.id) };
+        chargedNothing: chargedNothing, stillThere: stillThere };
     })();
 
     /* (h) AND SAYING IT COSTS THE GOVERNMENT SOMETHING, which is why a partner
@@ -12026,13 +12057,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     junior.rendered.everyShutSaysWhy === true &&
     junior.answer.calls === 3 && junior.answer.laidABill === true &&
     junior.answer.quieted === true && junior.answer.stoodFirm === true &&
-    junior.answer.noDuplicate === true && junior.answer.saidInPublic === true &&
+    junior.answer.noDuplicate === true && junior.answer.secondAnswer === 'stand' &&
+    junior.answer.saidInPublic === true &&
     junior.wired.reached === true && junior.wired.oneRungAtATime === true &&
     junior.cores.juniorGotOffice === true && junior.cores.headGaveOffice === true &&
     junior.cores.rewrote === true && junior.cores.freshFrom === true &&
     junior.cores.freshDue === true && junior.cores.notBornLate === true &&
     junior.paper.posted === true && junior.paper.rewriteShut === true &&
     junior.paper.chargedNothing === true && junior.paper.stillThere === true &&
+    !!junior.paper.delivered && junior.paper.delivered.laid === true &&
+    junior.paper.delivered.quietCalls === 1 && junior.paper.delivered.quieted === true &&
+    junior.cores.headReopenedThroughTheCore === true &&
     junior.cost.fell === true && junior.cost.byTheConstant === true;
   say(juniorOk, 'the junior partner has a game',
     `"YOU CAN READ IT, WHICH IS WORTH MORE THAN IT SOUNDS" was the coalition panel's own voice to a junior ` +
@@ -12069,7 +12104,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `can see, and the ladder had three of them and a price on none · ONE BODY, TWO DOORS: the junior asking for a department ` +
     `(${junior.cores.juniorGotOffice}) and the head of government handing one over ` +
     `(${junior.cores.headGaveOffice}) both move it through \`v21OfficeCore\`, driven from both chairs ` +
-    `because a Core nobody proves is shared is two functions that agree today · AND THE REWRITTEN PROMISE ` +
+    `because a Core nobody proves is shared is two functions that agree today, and the head's own "Reopen the ` +
+    `agreement" button goes through \`v21ReopenCore\` as well ` +
+    `(${junior.cores.headReopenedThroughTheCore}), driven by its real handler · AND THE REWRITTEN PROMISE ` +
     `IS A NEW PROMISE (${junior.cores.rewrote}): its \`from\` is the level the NEW statute stands at ` +
     `(${junior.cores.freshFrom}), its date is ahead of today (${junior.cores.freshDue}) and it is not born ` +
     `late (${junior.cores.notBornLate}). \`v17Renegotiate\` set \`ref\`, \`kind\`, \`met\` and \`broken\` ` +
@@ -12078,6 +12115,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `promise born late that could never book a second breach. Found by extracting the Core, which is what ` +
     `extracting a Core is for · AND A PAPER'S ANSWER SAYS WHEN IT CANNOT BE TAKEN, BEFORE IT CHARGES ` +
     `(${junior.paper.rewriteShut}/${junior.paper.chargedNothing}): "${junior.paper.why.rewrite}". ` +
+    `and the answer that IS open quiets them through \`v21Quiet\`, the one owner of the ladder ` +
+    `(${junior.paper.delivered ? junior.paper.delivered.quietCalls : 'n/a'} call, pressure ` +
+    `${junior.paper.delivered ? junior.paper.delivered.pressure : 'n/a'}) -- this leg read the SHUT answer ` +
+    `only and the poison that put \`d.pressure = 0\` back inline passed on it · ` +
     `\`respondInbox\` took the capital and the money and THEN flashed, and measured over 240 driven ` +
     `sessions every ultimatum an engine government received arrived at exactly three broken promises -- ` +
     `\`V17_PATIENCE\`, at which \`v17CanRenegotiate\` refuses outright. So "Reopen the agreement and ` +
