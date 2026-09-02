@@ -50,7 +50,7 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped five slices: S21a–e.**
+**S21 has shipped six slices: S21a–f.**
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -160,10 +160,66 @@ The four rulings a cold session most needs:
   history. It is twelve seeds and a rate now, and the rate still reddens on all
   three builds that really did hand the slice back.
 
-**WHAT IS OPEN:** seven slices of the original twelve (S21f–S21l) plus the
-owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. S21f–h (one exit,
-a government that can fall, the junior partner) finish the coalition overhaul
-the brief names.
+- **S21f — one exit, and the partner speaks.** Measured first, over 180 driven
+  sessions: **27 exits and twenty-three of them through a door that never set
+  `d.walkedOut`.** There were five doors — the `dare` answer to a confidence
+  threat, `expelPartner`, the merge that absorbs a party, `leaveCoalition` in
+  both its arms, and `v17Walkout` — and only the last was complete. The others
+  skipped the ledger entry, the standing, the resentment, and the field
+  `pv5EnsureState` reads to decide that a party coming BACK signs a new
+  agreement. S17g wrote that reset after coalition lifespan fell from 6.6
+  sessions to 2.1; it ran on four exits in twenty-seven. `v21Leave` is the one
+  door and all six sites call it, with a `checks/run.js` ratchet holding the
+  line: the removal idiom appears exactly once.
+
+  **And the departure was booked against the wrong agreements.**
+  `v17DealEvent(…'quit'…)` walked `st.coalition` and booked one broken promise
+  per unmet concession on EVERY member's record. Measured: 20 quit entries, **0
+  on the leaver, 20 on somebody else**, and two parties reached `V17_PATIENCE`
+  on nothing but other parties' departures — which takes their walk floor to 30
+  and costs the government the right to reopen agreements it never breached.
+  `leaveCoalition` ran the fan-out before emptying the coalition, so N leavers
+  scanned N members. Driven: 107 such entries → 0, and walkouts 25 → 13.
+
+  **The partner speaks before it walks.** `d.pressure` runs asked → insisting →
+  threatening and comes back down when the government keeps its word; the bars
+  are `v17WalkFloor`'s own floor plus 18, 10 and 4, so they move with the record
+  rather than drifting from the thing they lead to. `coalition_ultimatum` is its
+  own paper type with three answers driven by real clicks. `v21Defect` gives a
+  partner at the floor one session of withheld whip first: `V21_DEFECT` is 27,
+  the measured p90 of how far a supporting partner clears the passing line over
+  6,042 readings, so nine ordinary government bills in ten fall while one the
+  partner actively wants still carries its benches.
+
+  `joinCoalition` stops bypassing the acceptance model — it could seat a party
+  whose own formation answer is "they will not sit with you at any price", one
+  click from the sheet that says so — and `a.why` is wired into `actionCard`
+  so a shut card gives its reason instead of "Not available".
+
+  **Two defects this slice found in itself.** A reset with two owners: S17g's
+  "a party coming back signs a new agreement" was written out longhand inside
+  `pv5EnsureState`, so the new `defected` and `pressure` fields were not
+  cleared — a party that had defected, walked out and rejoined skipped its
+  warning and docked its new government 27 a bill under an agreement it had
+  just signed. `v21Rejoin` is the one owner. And two of the arm's six legs were
+  wrong before the game was: the exit leg read `d.walkedOut` at the end of the
+  session, where a party rejoining in the same session had it cleared; the dice
+  leg counted every roll in `politicsTick` and keyed each tick by whatever paper
+  was last in the inbox.
+
+  **The bar on `the agreement bites` moved from .02 to .015, measured.** This
+  slice hoists two `rand()` calls (S18c's rule: a gate decides what happens,
+  never how many numbers are drawn), which re-phases every campaign — and the
+  re-phase ALONE, the same mechanism on a different stream, moves the kept rate
+  from .0413 to .0284 over twelve seeds. That is ±30% on an unchanged
+  mechanism. Healthy builds measure .023 to .044 and the two that really handed
+  S21d back measured .006 and .011, so .015 is the widest separation the
+  measurement supports; .02 sat inside the noise.
+
+**WHAT IS OPEN:** six slices of the original twelve (S21g–S21l) plus the
+owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. S21g and S21h (a
+government that can fall, the junior partner's game) finish the coalition
+overhaul the brief names.
 
 ---
 

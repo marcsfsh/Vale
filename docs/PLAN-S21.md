@@ -594,6 +594,38 @@ The producer's two `rand()` calls are hoisted into one block so the draw count
 is constant whichever branch fires. This re-phases the stream once,
 deliberately, and is recorded.
 
+**AS SHIPPED.** `v21Leave` replaces five doors, not four: the merge that
+absorbs a party is an exit too. `d.press` is `d.pressure` — `st.press` is the
+newspaper share that eleven sites read, and the shorter name would have put two
+unrelated ideas one grep apart. The producer's hoist covers THREE draws rather
+than two: `partyDemandPolicy` rolls, and it sat below the confidence-threat gate.
+
+**What this slice found that the plan did not name.** The `'quit'` fan-out did
+not merely take `v17Broken` to `V17_PATIENCE` — it booked every entry on the
+WRONG agreement. Measured over 180 sessions: 20 quit entries, 0 on the party
+that left and 20 on parties that had not, and `leaveCoalition` ran the fan-out
+before emptying the coalition, so N leavers scanned N members. The kind is gone
+from the emitter entirely: a departure is one thing that happens to one
+agreement, and `v17DealEvent` exists to fan an event across all of them.
+
+**And a reset with two owners bit the slice itself**, which is worth recording
+because it is the same shape as the defect the slice exists to fix. S17g's "a
+party coming back signs a NEW agreement" was written longhand inside
+`pv5EnsureState`, so the two fields this slice adds to the agreement —
+`defected` and `pressure` — were not cleared on a rejoin. The arm caught it as
+ten walkouts against nine withheld whips. `v21Rejoin` is the one owner now, in
+chunk 1 because `pv5EnsureState` calls it from inside `enrichState`.
+
+**A measurement note for every slice after this one.** Hoisting the draws
+re-phases every campaign, and the re-phase alone moves coalition promises kept
+from .0413 to .0284 per partner-session over twelve seeds (.0468 to .0325
+normalised to engine-led sessions). That is ±30% on an unchanged mechanism, and
+it is the precision of any rate measured this way. `the agreement bites` moved
+its bar from .02 to .015 on that reading. Also worth knowing: the exit fix makes
+coalitions stable enough that the player's own starting government survives, so
+player-led sessions go from 36 of 480 to 82 — which moves every rate whose
+denominator includes them, without touching the mechanism.
+
 ### S21g — A government that can fall  ·  Coalition 4 of 4, the keystone  ·  1 improvement, 3 new
 
 Two cards, `topple` and `bargain`, both gating `can` on `v19Thinks` per R2, with
