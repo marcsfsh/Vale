@@ -9681,7 +9681,30 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         meanGen: +(gens.reduce((a, c) => a + c, 0) / Math.max(1, gens.length)).toFixed(3),
         centred: Math.abs(gens.reduce((a, c) => a + c, 0) / Math.max(1, gens.length) - V17_GENEROSITY.base) < .35,
         generosityRead: gens.every(g => typeof g === 'number'),
-        overlap:overlap, mismatch:mismatch, unlined:unlined };
+        overlap:overlap, mismatch:mismatch, unlined:unlined,
+        /* EXHAUSTIVE, BECAUSE THE SAMPLE ABOVE MISSED IT. The poison that
+           removes the cap came back GREEN against 1,716 driven offers, and
+           the case it guards is not unreachable -- it is reachable by exactly
+           one party. The FP carry five wants where every other party carries
+           six, so a bid of five against the FP promises four and has nothing
+           left to name as the refrain: six of the 42 ordered pairs, and the
+           driven sample never put a top bid on that party. A rare case asked
+           of a sample is a case not asked. Every party is invited by every
+           other at every bid the constants allow, which is 210 offers and
+           takes no sessions at all. */
+        every:(() => {
+          let bad = 0, none = 0, dup = 0, n = 0;
+          PARTIES.forEach(a => PARTIES.forEach(b => {
+            if (a.id === b.id) return;
+            for (let g = V17_GENEROSITY.min; g <= V17_GENEROSITY.max; g++) {
+              const o = v17Offer(S, b.id, a.id, [b.id, a.id], g); n += 1;
+              if (o.generosity !== (o.concessions || []).length) bad += 1;
+              if (!(o.redLines || []).length) none += 1;
+              if ((o.redLines || []).some(r => (o.concessions || []).some(c => c.ref === r))) dup += 1;
+            }
+          }));
+          return { n:n, mismatch:bad, unlined:none, overlap:dup };
+        })() };
     })();
 
     /* (b) AND IT REACHES THE SCREEN, which is the owner's complaint. Read off
@@ -9834,6 +9857,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     table.varies.centred === true && table.varies.generosityRead === true &&
     table.varies.overlap === 0 && table.varies.mismatch === 0 &&
     table.varies.unlined === 0 &&
+    table.varies.every.n >= 200 && table.varies.every.mismatch === 0 &&
+    table.varies.every.unlined === 0 && table.varies.every.overlap === 0 &&
     table.screen.raised === true &&
     table.screen.rows >= 4 && table.screen.withTerms === table.screen.rows &&
     table.screen.distinct >= 3 && table.screen.keepsOffer === true &&
@@ -9871,7 +9896,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${table.varies.unlined} with no red line at all): the parties here carry five or six wants apiece, so a ` +
     `bid of five against a five-want party promised four and had nothing left to name as the refrain. A party ` +
     `cannot be offered everything it wants -- one is always left over to be the thing it is in the room to ` +
-    `defend · AND THE OFFER REACHES THE ` +
+    `defend. ASKED EXHAUSTIVELY as well as of the sample, because the sample MISSED IT: the poison that ` +
+    `removes the cap came back GREEN against those 1,716 driven offers, and the case is reachable by exactly ` +
+    `one party -- the FP carry five wants where the other six carry six, which is six of the 42 ordered pairs ` +
+    `and no top bid the driven sample happened to place on them. Every party invited by every other at every ` +
+    `bid the constants allow is ${table.varies.every.n} offers, ${table.varies.every.mismatch} mismatched, ` +
+    `${table.varies.every.unlined} unlined, ${table.varies.every.overlap} naming a statute twice · AND THE OFFER REACHES THE ` +
     `SCREEN, which is the owner's complaint with a line number on it: \`v6CoalitionCandidates\` built the real ` +
     `offer, handed it to \`v17Accept\` and DROPPED IT ON THE NEXT LINE, so the row read a party name, two ` +
     `scalars and a seat count while every concession, the red line and the price the formateur set were ` +

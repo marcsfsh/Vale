@@ -38364,18 +38364,17 @@ function v17Offer(st, lead, pid, co, gen) {
      over the same things, which is what makes the number a price. */
   var want = Math.max(V17_GENEROSITY.min,
     Math.min(V17_GENEROSITY.max, (gen === undefined || gen === null) ? V17_GENEROSITY.base : gen));
-  /* asked for what the WIDEST offer could need, not for what this one needs,
-     so the cap below is taken against the party's whole list rather than
-     against a list this bid has already truncated */
-  var wants = pv5TopWants(pid, st, V17_GENEROSITY.max + 2);
+  var wants = pv5TopWants(pid, st, want + 2);
   /* AND A PARTY CANNOT BE OFFERED EVERYTHING IT WANTS. One want is always left
      over to be the red line, which is what the party is in the room to defend.
-     Without this the arithmetic breaks two ways at the top of the range: the
-     parties in this game carry five or six wants apiece, so a bid of five
-     against a five-want party promised four and had nothing left for the
-     refrain -- `generosity` said 5 while `concessions` carried 4, and the
-     sentence on the sheet then named less than the number beside it -- and a
-     six-want party promised all six would have had no red line at all. */
+     Without this the arithmetic breaks at the top of the range: the FP carry
+     five wants where the other six parties carry six, so a bid of five against
+     the FP promised four and had nothing left for the refrain -- `generosity`
+     would say 5 while `concessions` carried 4, and the sheet's row would name
+     less than the price printed beside it. Six of the 42 ordered pairs, and
+     the poison that removes this line came back GREEN against 1,716 driven
+     offers because none of them put a top bid on that one party, which is why
+     the assertion asks all 42 pairs at all five bids instead. */
   want = Math.min(want, Math.max(1, wants.length - 1));
   /* S17g: things the government will DO and one it will NOT. A promise to
      leave a statute alone is the cheapest thing to give and the easiest to
