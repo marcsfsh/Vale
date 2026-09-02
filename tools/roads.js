@@ -9994,6 +9994,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        is reachable; only real sessions say a promise is ever kept. */
     R.driven = (() => {
       let kept = 0, broken = 0, late = 0, partnerSessions = 0, dated = 0, undated = 0;
+      let engineSessions = 0, engineKept = 0;
       const sat = [];
       /* TWELVE SEEDS AND A RATE, WHERE THIS WAS FOUR SEEDS AND A COUNT. The
          bar was `kept > 5` against a count of single digits, and S21e walked
@@ -10011,10 +10012,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         const seen = {};
         for (let i = 0; i < 40; i++) {
           step();
+          const engineLed = S.ruling !== playParty(S);
           (S.coalition || []).forEach(pid => {
             if (pid === S.ruling) return;
             const d = (S.coalitionDeals || {})[pid]; if (!d || !d.terms) return;
             partnerSessions++;
+            if (engineLed) engineSessions++;
             if (typeof d.satisfaction === 'number') sat.push(d.satisfaction);
             (d.terms.concessions || []).forEach(c => {
               if (c.kind !== 'adopt') return;
@@ -10023,7 +10026,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
             });
             const n = seen[pid] || 0;
             (d.ledger || []).slice(n).forEach(e => {
-              if (e.kind === 'kept') kept++;
+              if (e.kind === 'kept') { kept++; if (engineLed) engineKept++; }
               if (e.kind === 'broken') broken++;
             });
             seen[pid] = (d.ledger || []).length;
@@ -10032,6 +10035,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       });
       return { kept:kept, broken:broken, late:late, partnerSessions:partnerSessions,
         keptRate: +(kept / Math.max(1, partnerSessions)).toFixed(4),
+        /* REPORTED, NOT GATED. The fairer denominator: `aiGovern` is what
+           reaches for a promise and it only runs while an ENGINE governs, so a
+           probe that presses no buttons scores every player-led session as a
+           session in which nothing was kept. S21f made coalitions stable
+           enough that the player's own starting government survives, which
+           took player-led sessions from 36 of 480 to 82 and moved the whole
+           rate without touching the mechanism. */
+        engineSessions:engineSessions, engineKept:engineKept,
+        engineRate: +(engineKept / Math.max(1, engineSessions)).toFixed(4),
         dated:dated, undated:undated,
         satMin: sat.length ? +Math.min.apply(null, sat).toFixed(1) : null,
         satMax: sat.length ? +Math.max.apply(null, sat).toFixed(1) : null };
@@ -10329,7 +10341,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     bites.rung.ran === true && bites.rung.gap >= 2 && bites.rung.askedOneStep === true &&
     bites.rung.legacyAsksSummit === true && bites.rung.dated === true &&
     bites.rung.due === bites.rung.DUE && bites.rung.metAtRung === true &&
-    bites.driven.partnerSessions > 500 && bites.driven.keptRate > .02 &&
+    /* S21f moved this bar from .02 to .015, and the move is measured rather
+       than eyeballed. The statistic's own spread is large: S21f hoists two
+       `rand()` calls, which re-phases every campaign, and the re-phase ALONE
+       — the same mechanism, a different dice stream — takes the rate from
+       .0413 to .0284 over twelve seeds, and from .0468 to .0325 when
+       normalised to the sessions an ENGINE governs. That is ±30% on an
+       unchanged mechanism. Healthy builds measure .023 to .044; the two that
+       really did hand S21d back measured .006 and .011. A bar at .015 sits
+       below every healthy reading including its downside spread and above both
+       regressions including theirs, which is the widest separation the
+       measurement supports. A bar at .02 sat inside the noise. */
+    bites.driven.partnerSessions > 500 && bites.driven.keptRate > .015 &&
     bites.driven.undated === 0 && bites.driven.dated > 100 &&
     bites.clock.ran === true && bites.clock.booksOne === true &&
     bites.clock.booksOnlyOne === true && bites.clock.costsCohesion === true &&
@@ -10367,6 +10390,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `session (2), a bill lives a p90 of 5, and one more for a government with its own programme to reach it · ` +
     `DRIVEN, WHICH IS THE WHOLE CLAIM: ${bites.driven.kept} promises kept and ${bites.driven.broken} broken over ` +
     `${bites.driven.partnerSessions} partner-sessions across TWELVE seeds, a rate of ${bites.driven.keptRate} ` +
+    `(${bites.driven.engineRate} counting only the ${bites.driven.engineSessions} sessions an ENGINE governs, which is ` +
+    `the fairer denominator: \`aiGovern\` is what reaches for a promise and it runs in no other chair) ` +
     `against 0 before, with ${bites.driven.undated} ` +
     `concessions still undated of ${bites.driven.dated + bites.driven.undated} -- A RATE AND NOT A COUNT, and ` +
     `the change is S21e's doing: this was four seeds against \`kept > 5\`, and the same four give this ` +
