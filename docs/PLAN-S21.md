@@ -453,6 +453,63 @@ accept decisions):
   currently succeed, and S21d's caretaker regression is the warning. Measured
   against the caretaker episode count before it ships, or it does not ship.
 
+**THEN EVERY REMAINING ITEM WAS CHECKED AGAINST THE CODE BY INDEPENDENT READERS,
+EACH ADVERSARIALLY CHALLENGED. Three of the six do not survive.**
+
+**`v17Invest` counting members symmetrically — DROPPED. It is a provable
+no-op.** `divisionOf`'s share function is odd about 50: `share(d, 100-s) =
+1 - share(d, s)` for every discipline `d`. So with the abstain bucket kept, the
+sign of `aye - nay` flips only if the OPPOSITION is more disciplined than the
+government, seat-weighted — measured at 0.428 against 0.427. Swept across six
+government/opposition support pairs, **174 of 174 investitures unchanged**. This
+is a knob nothing in the game can turn, proven algebraically *and* by sweep, and
+it would have been the sixth this programme deleted. It also has a hidden
+prerequisite the plan never names: `partyDiscipline` needs a per-party
+support-for-this-government scalar that does not exist.
+
+**`V17_FORM_MAX` → 3 "which is what makes rounds two to four reachable" —
+the causal half is FALSE, and this programme has already written that down
+twice.** S21b's own correction records that political memory alone, with
+`V17_FORM_MAX` untouched, moved outcomes from 359/1/0/0 to 333/15/11/4, and
+`roads.js` now asserts `branches >= 3` as a shipped guarantee. `JUDGE.md`
+adjudicated the identical sentence during design. And the constant is *already*
+dead: `PARTIES` holds exactly seven entries and is never mutated, so
+`i < order.length` always fails at or before `i < V17_FORM_MAX`. Any re-mandate
+round must be justified on its own terms, not on a reachability claim that is
+untrue.
+
+**`v21Kingmaker` — HELD, pending a consumer.** "Pure" survives. "Installs no
+field" is false in letter (`ppos` writes `st.ppos` on read, the `v6TreatyRows`
+shape — harmless here, but only because three readers were checked). The real
+risk is that nothing consumes the number: a pivotality reading with no stated
+reader is decoration by this file's own rule. It ships only once a site that
+reads it is named.
+
+**And the reservation's posture term is worse than the plan said.** `v16Posture`
+takes **no `lead` argument**, so the +16 is charged identically against all seven
+formateurs, and it can only fire on parties that were in opposition to the
+*outgoing* government. The common case is a party charged sixteen extra to join
+the government that is REPLACING the one it hates — not stale but wrong-signed.
+(One challenger disputes this at one of the two caller contexts; measure the
+sign of the store at the table before acting.)
+
+**THE SHEET IS THE OWNER'S COMPLAINT WITH A LINE NUMBER ON IT.** `v6CoalitionCandidates`
+builds the real offer and **drops it one line later**; the row the player reads
+is a party name, two scalars and a seat count. The whole negotiation — every
+concession, every red line, the price the formateur set — is computed and thrown
+away before it reaches the screen. "Flat, uninteresting, unengaging" is this.
+
+**A defect in S21e's own new code, found by the same pass:** `offer.generosity`
+is written and read by nothing — `st.court.size` in code two hours old. It is
+kept only because the sheet is going to read it; otherwise it comes out.
+
+**Two more `st.court.size` instances found in passing**, both in scope for this
+slice because it is already touching the offer: `d.terms.portfolios` is written
+by three sites and read by none, so the offer's `portfolios` promise is
+decorative; and the coalition portfolio trade takes a great office off one
+partner and books nothing against them at all — no ledger entry, no cohesion
+cost, no breach.
+
 ### S21f — One exit, and the partner speaks  ·  Coalition 3 of 4  ·  1 improvement, 3 new
 
 `v21Leave(st, pid, why, actor)` replaces four disagreeing exits; it books one
