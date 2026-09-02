@@ -10314,7 +10314,7 @@ var V18_PAPER_NEED = {
      between the houses, are both things a partner does. They are 'gov'. */
   coalition_review:'gov', senate_conference:'gov', coalition_demand:'leading',
   confidence_threat:'leading', governors_conference:'leading',
-  coalition_ultimatum:'leading',
+  coalition_ultimatum:'leading', notice_of_motion:'leading',
   cross_party:'any', faction_demand:'any', party_demand:'any',
   street_demand:'gov', opposition_conference:'any', government_offer:'any'
 };
@@ -10392,6 +10392,20 @@ function inboxChoices(it) {
     { id:'deliver', label:'Lay the bill they were promised', cost:5, tip:'The outstanding promise goes on the order paper this session.' },
     { id:'rewrite', label:'Reopen the agreement and rewrite it', cost:4, money:5, tip:'Trade a promise neither side will keep for one they still want.' },
     { id:'stand', label:'Tell them to go if they are going', cost:0, tip:'They may leave the government.' }
+  ];
+  /* S21g: THE SESSION BETWEEN THE NOTICE AND THE QUESTION, WITH BUTTONS ON
+     IT. The whole design of the motion is that the government gets one
+     session; a notice with nothing to press would have made that session a
+     sentence in a news item. These are the two things an engine can do about
+     the same arithmetic -- buy a wavering partner back, or find somebody
+     outside to supply confidence -- put on the paper the player reads. */
+  if (it.type === 'notice_of_motion') return [
+    { id:'shore', label:'Buy the wavering benches back', cost:5, money:8,
+      tip:'The largest partner below the line that turns its benches is brought back above it.' },
+    { id:'supply', label:'Go outside for confidence and supply', cost:4, money:10,
+      tip:'A party outside the cabinet is offered policy for an abstention. They may refuse.' },
+    { id:'face', label:'Let the question be put', cost:0,
+      tip:'Unity rises for standing on it. The house is counted at the next sitting either way.' }
   ];
   if (it.type === 'opposition_conference') return [
     { id:'constructive', label:'Constructive scrutiny', cost:2, tip:'Institutional standing and committee influence.' },
@@ -10532,6 +10546,50 @@ function respondInbox(id, choice) {
          been dared out with. */
       if ((S.partyRel[from] || 0) < 28) v21Leave(S, from, 'they were dared to bring the government down, and did', playParty(S));
       else shiftPartyRel(S, from, -10);
+    }
+  } else if (it.type === 'notice_of_motion') {
+    /* S21g. Each of the three reaches a mechanism that already exists and
+       moves the count the question is decided on; none of them touches
+       `st.motion`, because the motion owns its own date and a second
+       mechanism holding it is what `expireInbox` and the street taught this
+       file. `defected` is not cleared by hand either -- `v16RedLineTick` owns
+       that flag and runs at the top of the very session the question is put,
+       so raising the cohesion is enough and the tick does the rest. */
+    if (choice === 'shore') {
+      var wob = (S.coalition || []).filter(function (x) {
+        var dw = (S.coalitionDeals || {})[x];
+        return x !== S.ruling && dw && (dw.satisfaction === undefined ? 60 : dw.satisfaction) < V21_PARTNER_PIVOT;
+      }).sort(function (a, b) { return (S.seats[b] || 0) - (S.seats[a] || 0); })[0];
+      if (wob) {
+        var dw2 = S.coalitionDeals[wob];
+        dw2.satisfaction = c100(Math.max(dw2.satisfaction || 0, V21_PARTNER_PIVOT + 5));
+        dw2.pressure = 0; dw2.pressureAt = S.turn;
+        shiftPartyRel(S, wob, 10);
+        logIt(S, 'The ' + PARTY[wob].short + ' were brought back into line before the question was put.');
+      } else {
+        /* the S12 defect: taking the capital and doing nothing is worse than
+           saying there was nothing to do */
+        flash('No partner is below the line at which its benches turn. The movers are counting on votes you already have.');
+        S.unity = c100(S.unity + 3);
+      }
+    }
+    if (choice === 'supply') {
+      var sup = (typeof v17Supply === 'function')
+        ? v17Supply(S, S.ruling, (S.coalition || [S.ruling]).slice(), 0, null) : null;
+      if (sup && sup.id) {
+        S.confidence = sup.id;
+        if (typeof v21SignDeal === 'function' && sup.offer) v21SignDeal(S, sup.id, sup.offer);
+        logIt(S, 'The ' + PARTY[sup.id].short + ' agreed to abstain, and were told what it would cost the programme.');
+        addNews(S, 'The Chamber', PARTY[sup.id].short + ' will abstain',
+          'No offices and no cabinet. The government has the numbers it needs for the question and has paid in statute for them.', 'watch');
+      } else {
+        flash('Nobody outside the cabinet will hold this government up at any price.');
+      }
+    }
+    if (choice === 'face') {
+      S.unity = c100(S.unity + 6);
+      S.machine[playParty(S)] = clamp((S.machine[playParty(S)] || 0) + .03, -.8, 1);
+      logIt(S, 'The government let the question be put without buying a single vote for it.');
     }
   } else if (it.type === 'opposition_conference') {
     var me = playParty(S);
@@ -13123,26 +13181,31 @@ var ACTIONS = [
          S16e's cohesion a number worth watching. A government that falls does
          not go straight to the country either: the same Assembly is asked
          whether it can produce another one, and sometimes it can. */
-      { label:'Force a vote of no confidence', cost:11,
+      /* S21g: AND IT GIVES NOTICE LIKE EVERYBODY ELSE. This put the question
+         the instant it was pressed -- no notice, no session for the
+         government, and its own inline copy of what a failed motion costs
+         (capital -4 and machine +.05, written nowhere else). So the player's
+         instrument and the engines' were two rules for one surface, and the
+         player's was both cheaper and strictly better: a government facing the
+         player could not do the one thing the whole design gives a government
+         facing an engine, which is a week to make the arithmetic wrong.
+         `v21LayMotion` lays it, `v21MotionTick` puts it, and `v21Confidence`
+         decides it and charges for it, for the player exactly as for the six
+         parties that are not theirs. */
+      { label:'Give notice of no confidence', cost:11,
         run:function (S) {
+          var me = playParty(S);
           if (!lowerSits(S)) { flash('There is no Assembly sitting to put the question to.'); return; }
-          var v = (typeof v17ConfidenceVote === 'function') ? v17ConfidenceVote(S) : null;
-          if (!v) return;
-          logIt(S, 'The question was put: ' + v.nay + ' against the government, ' + v.aye + ' for' +
-            (v.abstain ? ', ' + v.abstain + ' abstaining' : '') + '.' +
-            (v.defectors.length ? ' The ' + v.defectors.map(function (x) { return PARTY[x].short; }).join(' and ') +
-              ' voted against a government they sit in.' : ''));
-          if (v.carried) {
-            chronicle(S, 'A government fell on a vote of confidence.');
-            var out = v17Refound(S);
-            S = enrichState(S, false);
-            if (!out.ok) toast('The government fell. Nobody can replace it.');
-            else toast('The government fell.');
-          } else {
-            S.capital = clamp(S.capital - 4, -5, capCap(S));
-            S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) + .05, -.8, 1);
-            logIt(S, 'The confidence motion failed and the government is stronger for it.');
-          }
+          if (S.motion) { flash('A motion is already before the house. The question is put at the next sitting.'); return; }
+          /* no "a government does not move against itself" guard here: the
+             card's own `can` is `!inPower(S)`, and `standing` calls a supply
+             party in power too, so it could not be reached and would be a
+             guard nothing in the game can turn */
+          var c = (typeof v21Count === 'function') ? v21Count(S) : null;
+          if (!v21LayMotion(S, me)) { flash('The question cannot be put.'); return; }
+          toast(c && c.carried
+            ? 'Notice given. On your own count it carries — the government has until the next sitting.'
+            : 'Notice given. The government has until the next sitting.');
         } }
     ] }),
   A({ id:'courtLeader', cat:'Figures', name:'Court a Rival Leader', cost:6, money:6, cool:1,
