@@ -14006,7 +14006,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            reshuffled the republic -- a floor that a boundary can sit on is a
            floor that reports sampling as failure. Six seeds carry every leg
            clear of its own floor without moving a single rate. */
-        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => { fresh(seed); for (let i = 0; i < 90; i++) step(); });
+        /* S21f: TWELVE SEEDS, WHERE THIS WAS SIX. The bill arm gates a RATE at
+           .45 and six seeds gave it 63 observations, whose standard error is
+           .063 -- so a build measuring .413 is six tenths of a standard error
+           from the bar and reddens on the dice. S21f hoists three `rand()`
+           calls per S18c's rule and re-phases every campaign, which is exactly
+           the perturbation a sample that size cannot absorb; this is the fifth
+           arm in two slices found gating a real mechanism on a sample too small
+           to show it (see CLAUDE.md). Twelve seeds halves the error. */
+        [4242, 90210, 7, 31337, 555, 8080,
+         1234, 99, 2718, 161803, 42, 77].forEach(seed => { fresh(seed); for (let i = 0; i < 90; i++) step(); });
       } finally {
         deck.court.run = bC; deck.bill.run = bB; deck.platform.run = bP;
         v17AiRaceSpend = bS; runQueue = rq;

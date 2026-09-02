@@ -294,7 +294,7 @@ before touching the file.
   office rule then seated a stranger in the second. Pinning the probe would
   have hidden it. Make the assertion name which of its conditions failed, run
   it until it does, and fix what it points at.
-- **AN ASSERTION SIZED FOR ONE SEED IS A CLAIM ABOUT THE SEED.** Four arms in
+- **AN ASSERTION SIZED FOR ONE SEED IS A CLAIM ABOUT THE SEED.** FIVE arms in
   two slices were found gating a real mechanism on a sample that could not show
   it, and every one of them reddened on a slice that legitimately re-phased the
   dice — so each looked exactly like a defect in the slice, and three cost an
@@ -306,9 +306,12 @@ before touching the file.
   hundred-and-second let a price list through for four slices. `a party moves
   when it has a reason to` gated `> 0` on counts of nought to three over forty
   sessions of ONE seed. `a party does not wait for the season` bounded a
-  proportion taken over fourteen provocations, whose standard error is .13.
+  proportion taken over fourteen provocations, whose standard error is .13. And
+  `the verb reads the aim` gated a rate at .45 on 63 observations, standard
+  error .063, so a reading of .413 was six tenths of an error from the bar; at
+  twelve seeds it is .560 here and .556 on the build before the slice.
   They are twelve seeds and a rate, twelve seeds and a modal share, six seeds,
-  and forty-two provocations now. Before writing an assertion that counts events
+  forty-two provocations, and twelve seeds now. Before writing an assertion that counts events
   or takes a proportion, ask how many the game produces per seed and size the
   sample so the bar sits OUTSIDE the standard error; and when an arm reddens on
   a slice that re-phased the dice, check the sample size before hunting the
