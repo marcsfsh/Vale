@@ -11877,6 +11877,42 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return out;
     })();
 
+    /* (c2) AND THEY ARE SHUT FROM EVERY OTHER CHAIR, with the reason on them.
+       Every leg above sits in the junior chair, so a build whose `can` was
+       simply `true` would pass all of them: the claim that these are the
+       PARTNER's verbs has to be asked from the chairs that are not. */
+    R.chairs = (() => {
+      const out = {};
+      const ask = () => IDS.map(id => {
+        const a = card(id);
+        return { id:id, open:actionOpen(a), why:a.why ? a.why() : null };
+      });
+      /* leading */
+      fresh(4242);
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me];
+      S = enrichState(S, false);
+      S.capital = 90; S.purse = S.purse || {}; S.purse[me] = 900;
+      out.leading = ask();
+      /* opposition */
+      fresh(4242);
+      const other = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      S.ruling = other; S.coalition = [other];
+      S = enrichState(S, false);
+      S.capital = 90; S.purse[me] = 900;
+      out.opposition = ask();
+      out.allShut = out.leading.every(r => r.open === false) &&
+        out.opposition.every(r => r.open === false);
+      out.allSayWhy = out.leading.concat(out.opposition)
+        .every(r => typeof r.why === 'string' && r.why.length > 10);
+      out.leadingSays = out.leading[0].why;
+      out.oppositionSays = out.opposition[0].why;
+      /* and the two chairs are told DIFFERENT things, or the sentence is a
+         constant rather than a reading of where the player sits */
+      out.differentSentences = out.leadingSays !== out.oppositionSays;
+      return out;
+    })();
+
     /* (e2) AND THE LADDER REACHES THE VOICE, which is a different claim from
        the voice working. `v21Pressure` decides WHEN a partner climbs and
        `v21Say` is what climbing does, and the poison that put the assignment
@@ -11934,9 +11970,30 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       S = enrichState(S, false);
       S.capital = 90; S.treasury = 900;
       const exec1 = JSON.stringify(S.exec);
-      pv5CoalitionAction(partner, 'portfolio');
+      /* WATCHED, not merely observed. The poison that put the head's own
+         inline copy back does the same thing to `S.exec`, so "the office
+         moved" passes on two bodies as readily as on one. The claim is that
+         there IS one body. */
+      let officeCalls = 0;
+      const boc = v21OfficeCore;
+      v21OfficeCore = function () { officeCalls += 1; return boc.apply(this, arguments); };
+      try { pv5CoalitionAction(partner, 'portfolio'); } finally { v21OfficeCore = boc; }
       out.headGaveOffice = JSON.stringify(S.exec) !== exec1 &&
         ['pres', 'vpres', 'chan', 'vchan'].some(o => S.exec[o] === partner);
+      out.headGaveThroughTheCore = officeCalls === 1;
+      /* AND IT NEVER TAKES AN OFFICE THE GOVERNMENT DOES NOT HOLD. `pres` is
+         first in the list the Core walks, so a board where an OPPOSITION party
+         holds it is the one that tells a filter from an index -- the poison
+         that replaced the filter with `offices[0]` passed on a board where the
+         first office happened to be the government's. */
+      const outsider = PARTIES.filter(q => q.id !== lead && q.id !== partner &&
+        !S.banned[q.id])[0].id;
+      S.exec.pres = outsider;
+      const third = PARTIES.filter(q => q.id !== lead && q.id !== partner &&
+        q.id !== outsider && !S.banned[q.id])[0].id;
+      const took = v21OfficeCore(S, third);
+      out.leftTheOutsiderAlone = S.exec.pres === outsider;
+      out.tookSomethingElse = took !== 'pres';
       /* AND THE REWRITTEN PROMISE IS A NEW PROMISE: `from` on the new statute,
          a date ahead of today, and `late` cleared. It set `ref`, `kind`, `met`
          and `broken` and left the other three, so the rung was measured from
@@ -12060,7 +12117,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     junior.answer.noDuplicate === true && junior.answer.secondAnswer === 'stand' &&
     junior.answer.saidInPublic === true &&
     junior.wired.reached === true && junior.wired.oneRungAtATime === true &&
+    junior.chairs.allShut === true && junior.chairs.allSayWhy === true &&
+    junior.chairs.differentSentences === true &&
     junior.cores.juniorGotOffice === true && junior.cores.headGaveOffice === true &&
+    junior.cores.headGaveThroughTheCore === true &&
+    junior.cores.leftTheOutsiderAlone === true && junior.cores.tookSomethingElse === true &&
     junior.cores.rewrote === true && junior.cores.freshFrom === true &&
     junior.cores.freshDue === true && junior.cores.notBornLate === true &&
     junior.paper.posted === true && junior.paper.rewriteShut === true &&
@@ -12086,6 +12147,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${junior.ladder.saysWhy}) · AND EVERY ONE IS PRESSED BY A REAL CLICK through \`doAction\` ` +
     `(${junior.press.allMoved}: ${JSON.stringify(junior.press)}), and the refusal is READ OUT OF THE ` +
     `RENDERED PAGE (${junior.rendered.everyShutSaysWhy}) -- ${junior.rendered.drawn} drawn, ` +
+    `${junior.rendered.shut} shut · AND ALL FIVE ARE SHUT FROM EVERY OTHER CHAIR ` +
+    `(${junior.chairs.allShut}), each saying why in words the chair chose ` +
+    `(${junior.chairs.differentSentences}): "${junior.chairs.leadingSays}" from the head of government and ` +
+    `"${junior.chairs.oppositionSays}" from the bench -- every leg above sits in the junior chair, so a build ` +
+    `whose \`can\` was simply true would pass all of them · ${junior.rendered.drawn} drawn, ` +
     `${junior.rendered.shut} shut, "${junior.rendered.sample}" -- because S21f's poison run caught the ` +
     `first version of that leg calling \`a.why()\` and passing on a build where the renderer printed ` +
     `nothing · THE ENGINE GOVERNMENT ANSWERS AN ULTIMATUM (${junior.answer.calls} calls, ` +
@@ -12106,7 +12172,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${junior.cores.headGaveOffice}) both move it through \`v21OfficeCore\`, driven from both chairs ` +
     `because a Core nobody proves is shared is two functions that agree today, and the head's own "Reopen the ` +
     `agreement" button goes through \`v21ReopenCore\` as well ` +
-    `(${junior.cores.headReopenedThroughTheCore}), driven by its real handler · AND THE REWRITTEN PROMISE ` +
+    `(${junior.cores.headReopenedThroughTheCore}), driven by its real handler and WATCHED rather than ` +
+    `observed (${junior.cores.headGaveThroughTheCore}), because an inline copy moves \`S.exec\` exactly as a ` +
+    `shared body does and "the office moved" passes on two bodies as readily as on one · AND THE CORE NEVER ` +
+    `TAKES AN OFFICE THE GOVERNMENT DOES NOT HOLD (${junior.cores.leftTheOutsiderAlone}), asked on a board ` +
+    `where an OPPOSITION party holds \`pres\` -- first in the list the Core walks, which is what tells a ` +
+    `filter from an index · AND THE REWRITTEN PROMISE ` +
     `IS A NEW PROMISE (${junior.cores.rewrote}): its \`from\` is the level the NEW statute stands at ` +
     `(${junior.cores.freshFrom}), its date is ahead of today (${junior.cores.freshDue}) and it is not born ` +
     `late (${junior.cores.notBornLate}). \`v17Renegotiate\` set \`ref\`, \`kind\`, \`met\` and \`broken\` ` +
