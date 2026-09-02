@@ -35346,13 +35346,16 @@ var V16_AI_DECK = [
      session later, so a party moves only where the house as it stands would
      carry it -- and loses where the government spent the week making that
      false. That is what makes a failed motion reachable at all. */
-  { id:'topple', post:['attack', 'restive', 'consolidate', 'organise'],
+  /* `restive` IS NOT ON THIS LIST and cannot be: `v16Posture` returns it only
+     for a party sitting IN the coalition, and `v21CanMove` refuses one. A
+     posture a card's own gate can never coincide with is the enum with one
+     value in a third place. Same for `partner` on the card below. */
+  { id:'topple', post:['attack', 'consolidate', 'organise'],
     can:function (st, pid) {
       if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
       if (!v21CanMove(st, pid)) return false;
       if (partyPurse(st, pid) < V16_AI_COST.topple) return false;
-      var v = v17ConfidenceVote(st);
-      return v.carried;
+      return v21Count(st).carried;
     },
     run:function (st, pid) {
       if (!v21LayMotion(st, pid)) return null;
@@ -35367,18 +35370,37 @@ var V16_AI_DECK = [
      with one value. Supply is that second state, and it is paid for in policy
      rather than in offices, which is the difference between confidence and
      supply and a place at the table. */
-  { id:'bargain', post:['partner', 'hold', 'moderate', 'consolidate'],
+  { id:'bargain', post:['hold', 'moderate', 'consolidate'],
     can:function (st, pid) {
       if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
       if (!pid || pid === st.ruling || st.banned[pid]) return false;
       if ((st.coalition || []).indexOf(pid) >= 0) return false;
       if (st.confidence) return false;                   /* somebody already supplies it */
       if (partyPurse(st, pid) < V16_AI_COST.bargain) return false;
-      /* only worth offering to a government that NEEDS it */
-      var maj = v17Majority(st), have = 0;
-      (st.coalition || [st.ruling]).forEach(function (x) { have += st.seats[x] || 0; });
-      if (have >= maj) return false;
       if (!(st.seats[pid] || 0)) return false;
+      /* ONE COUNT OF THE HOUSE, READ FROM BOTH SIDES. This asked whether the
+         coalition held fewer seats than a majority, which is a different
+         question from the one `topple` asks and answers it wrong in both
+         directions: a government whose partner has withdrawn the whip is
+         losing the house on a nominal majority, and a government the
+         opposition cannot unite against is safe without one. Both cards read
+         `v17ConfidenceVote` now, so the board on which one party moves to
+         bring a government down is the board on which another can sell it the
+         votes to survive -- which is what the government's session between
+         the notice and the question is FOR. */
+      if (!v17ConfidenceVote(st).carried) return false;
+      /* AND WHETHER IT IS WORTH DOING IS NOT ASKED HERE. The first build
+         demanded that this party's own benches flip the count on their own,
+         which took the card from 22 openings in 480 sessions to 7 -- and it
+         was a second rule for a surface that already has one. `v19Outcome`
+         prices the agreement through `v19Flight`, which reads the supplier's
+         SHARE of the chamber, so a party holding a twentieth of the house
+         scores it at a twentieth of a party holding a quarter and the softmax
+         does the rest. A hard gate in front of a scoring function is the
+         defect this same slice took out of `v17ConfidenceVote`. And a party
+         that supplies a government which falls anyway has made a bad bet,
+         which is the same outcome as a motion that fails: both are what the
+         price is for. */
       /* and only where the two can live with each other at all */
       return dist2(ppos(st, pid), ppos(st, st.ruling)) <= V17_UNBRIDGEABLE;
     },
@@ -36157,13 +36179,17 @@ var V21_PUSH_FULL = .25;   /* the compass distance a full platform step moves */
    new cards with no term is the flatness gate going from `<= 2` to `<= 4`,
    which is the assertion giving up.
 
-   BOTH DENOMINATORS ARE MEASURED IN PLAY, not picked by eye. Over 480 driven
+   BOTH DENOMINATORS ARE MEASURED IN PLAY, not picked by eye, AND EACH IS
+   MEASURED THROUGH THE READING THE TERM ACTUALLY TAKES. Over 480 driven
    sessions on twelve seeds: `v17AiOrderFor` returned NINE distinct orders in
    618 askings, costing 3 to 7 against a book whose dearest is 8, so the term
-   takes four values rather than one; and the 360 boards where `topple` was
-   open carried the motion by .165 to .390 of the house, median .260. A
-   denominator that clipped at the median would make three motions in five
-   worth the same, which is the flat card wearing a new hat. */
+   takes four values rather than one; and across the 153 boards on which a
+   mover's own count carries, `(nay - aye) / (nay + aye)` runs .027 / .240 /
+   .312 / .395. The first version of this number was .4 too, and it was read
+   off the HOUSE's count over a denominator that included abstentions -- a
+   different statistic that happened to land in the same place. A denominator
+   that clipped at the median would make three motions in five worth the same,
+   which is the flat card wearing a new hat. */
 var V21_ORDER_TOP = 8;     /* the dearest orders in the book */
 var V21_MOTION_TOP = .4;   /* a motion carrying by two fifths of the house */
 function v21Price(id) { return (V16_AI_COST[id] || 0) * .012 * V21_FLIGHT; }
@@ -36225,7 +36251,7 @@ function v19Flight(st, pid) {
      is the thing the mover does not know yet. */
   var mo = st.motion;
   if (mo && mo.by === pid) {
-    var tot = (mo.countedAye || 0) + (mo.countedNay || 0) + (mo.countedAbstain || 0);
+    var tot = (mo.countedAye || 0) + (mo.countedNay || 0);
     u += v21Price('topple') * (tot
       ? Math.min(1, Math.max(0, (mo.countedNay - mo.countedAye) / tot) / V21_MOTION_TOP)
       : 0);
@@ -39239,8 +39265,24 @@ function v17ConfidenceVote(st) {
     var n = st.seats[p.id] || 0; if (!n) return;
     if (co.indexOf(p.id) >= 0) {
       var d = deals[p.id];
-      var coh = (p.id === st.ruling || !d) ? 100 : (d.satisfaction === undefined ? 60 : d.satisfaction);
-      if (coh < 30) { nay += n; defectors.push(p.id); } else aye += n;
+      if (p.id === st.ruling || !d) { aye += n; return; }
+      /* S21g — THE SAME FACT THE DIVISION READS. This asked `satisfaction <
+         30`, a bare number with no relation to anything, while
+         `partyBillSupport` asks `d.defected` -- the flag S21f sets the session
+         a partner reaches its own walk floor and clears the session it is
+         bought back above it. Two rules for one surface, and they had drifted:
+         a partner that had publicly withheld the whip and was one session from
+         walking out still voted CONFIDENCE in the government, so the one week
+         in which a government is genuinely in danger was the one week this
+         count could not see it. Asked of the flag, and of the floor the flag
+         is set at -- which is `v17WalkFloor`, and moves with the record --
+         rather than of a constant. Belt and braces: a deal minted mid-session
+         by `joinCoalition` is below its floor before any tick has set the
+         flag, so removing either alone changes nothing and both are poisoned
+         together. */
+      var coh = (d.satisfaction === undefined) ? 60 : d.satisfaction;
+      var floor = (typeof v17WalkFloor === 'function') ? v17WalkFloor(st, p.id) : 30;
+      if (d.defected || coh <= floor) { nay += n; defectors.push(p.id); } else aye += n;
       return;
     }
     if (st.confidence === p.id) { abstain += n; return; }
@@ -39330,6 +39372,49 @@ function v17Refound(st) {
 var V21_MOTION_COST = 9;      /* what a failed motion takes off the mover */
 var V21_MOTION_MACHINE = .07; /* and what surviving one is worth to a government */
 
+/* WHAT A MOVER COUNTS, which is not what the house does.
+
+   `v17ConfidenceVote` is the division: a coalition partner votes for the
+   government unless it has withdrawn the whip. This is the count an
+   opposition whip makes on the morning, and it is OPTIMISTIC in exactly one
+   place -- a partner whose benches have already stopped backing the
+   government's bills is a partner they think they can get. `V21_PARTNER_PIVOT`
+   is where that happens and it was measured for S21d: over 394 partner-
+   sessions cohesion runs 20 / 39.9 / 52.8 / 76, and the sign of the division
+   term flips at 38.
+
+   THE MOVER IS OFTEN WRONG AND THAT IS THE WHOLE POINT. A mover with perfect
+   information never loses and `V21_MOTION_COST` would be unreachable code.
+   Measured over 480 driven sessions on twelve seeds, three readings of one
+   house: it would ACTUALLY carry a motion on 50 sessions; counting a wavering
+   partner as HOSTILE says 153, and counting it as ABSENT says 105. The
+   hostile reading is the one here, and it was chosen on RECALL rather than
+   accuracy -- it catches 50 of the 50 boards on which a government would
+   really fall, where the absent reading is more accurate (.42 against .33)
+   and misses six of them. A government never escapes a motion it deserves,
+   and the movers pay for the two in three they get wrong: the government is
+   stronger for a failed one, on the same two channels.
+
+   The notice the government receives prints the TRUE count, because a whip's
+   office counts its own benches correctly. The asymmetry is the drama, not a
+   trick played on the player. */
+function v21Count(st) {
+  var co = st.coalition || [st.ruling], deals = st.coalitionDeals || {};
+  var aye = 0, nay = 0;
+  PARTIES.forEach(function (p) {
+    var n = st.seats[p.id] || 0; if (!n) return;
+    if (co.indexOf(p.id) >= 0) {
+      var d = deals[p.id];
+      var coh = (p.id === st.ruling || !d) ? 100 : (d.satisfaction === undefined ? 60 : d.satisfaction);
+      if (coh < V21_PARTNER_PIVOT) nay += n; else aye += n;
+      return;
+    }
+    if (st.confidence === p.id) return;        /* an abstention is not a vote either way */
+    nay += n;
+  });
+  return { aye:aye, nay:nay, carried:nay > aye };
+}
+
 /* WHO MAY PUT THE QUESTION. Not the government, not a party sitting in it,
    not while another question is already before the house, and not where there
    is no house sitting to put it to. */
@@ -39346,20 +39431,23 @@ function v21CanMove(st, pid) {
    session to make it wrong. */
 function v21LayMotion(st, pid) {
   if (!v21CanMove(st, pid)) return null;
-  var v = v17ConfidenceVote(st);
+  var c = v21Count(st), v = v17ConfidenceVote(st);
   st.motion = { by:pid, laid:st.turn, put:st.turn + 1,
-    countedNay:v.nay, countedAye:v.aye, countedAbstain:v.abstain };
+    countedNay:c.nay, countedAye:c.aye,                          /* what the mover counted */
+    houseNay:v.nay, houseAye:v.aye, houseAbstain:v.abstain };    /* and what the house is */
   logIt(st, 'The ' + PARTY[pid].short + ' gave notice of a motion of no confidence. ' +
-    'On today\'s arithmetic it carries, ' + v.nay + ' to ' + v.aye + '.');
+    'On their own count it carries, ' + c.nay + ' to ' + c.aye +
+    '; the whips make it ' + v.nay + ' to ' + v.aye + '.');
   addNews(st, 'The Chamber', PARTY[pid].short + ' move no confidence in the government',
     'The question is put at the next sitting. The government has until then.', 'bad');
   if (st.ruling === playParty(st)) {
     addInbox(st, { type:'notice_of_motion', from:pid,
       title:PARTY[pid].short + ' Give Notice of No Confidence',
-      body:'The question is put at the next sitting. As the house stands this morning it carries, ' +
+      body:'The question is put at the next sitting. Your own whips count the house ' +
         v.nay + ' against the government to ' + v.aye + ' for' +
-        (v.abstain ? ', with ' + v.abstain + ' abstaining' : '') +
-        '. What you do between now and then is what decides it.',
+        (v.abstain ? ', with ' + v.abstain + ' abstaining' : '') + ', which is ' +
+        (v.carried ? 'a defeat.' : 'a majority — the movers are counting on benches you still hold.') +
+        ' What you do between now and then is what decides it.',
       deadline:st.turn + 1 });
   }
   return st.motion;
