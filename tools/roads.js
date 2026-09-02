@@ -11913,6 +11913,67 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return out;
     })();
 
+    /* (c3) EVERY REFUSAL `v21PartnerWhy` CAN PRODUCE, ON A BOARD DIFFERING IN
+       THAT ONE FACT, and each cleared again so the sentence is a reading of
+       the board rather than a constant. A covered surface rather than a hand
+       list: each case names the verb it shuts and the thing that shuts it, and
+       a refusal a later slice adds with no case here leaves `cases` short of
+       `named`. */
+    R.refusals = (() => {
+      const me = junior(424242);
+      const d = () => (S.coalitionDeals || {})[me];
+      const lead = () => S.ruling;
+      const openOf = id => actionOpen(card(id));
+      const whyOf = id => { const a = card(id); return a.why ? a.why() : null; };
+      const rows = [];
+      /* set, read, clear, read: both halves or a constant sentence passes */
+      const one = (name, id, set, clear) => {
+        set();
+        const shut = !openOf(id), said = whyOf(id);
+        clear();
+        const open = openOf(id);
+        rows.push({ name:name, id:id, shut:shut, said:said, opensAgain:open });
+      };
+      const base = () => { const x = d(); x.pressure = 0; x.pressureAt = -99; x.defected = null;
+        x.altered = -99; x.ledger = []; v16Ai(S)[lead()].grudge[me] = 0;
+        ['pres', 'vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = lead(); });
+        x.portfolios = 0; };
+      base();
+      one('said it already', 'partnerPublish',
+        () => { d().pressure = 1; }, () => { d().pressure = 0; });
+      one('threatened already', 'partnerThreaten',
+        () => { d().pressure = 2; }, () => { d().pressure = 1; });
+      one('has not said it', 'partnerThreaten',
+        () => { d().pressure = 0; }, () => { d().pressure = 1; });
+      base(); d().pressure = 2;
+      one('whip already off', 'partnerWhip',
+        () => { d().defected = S.turn; }, () => { d().defected = null; });
+      one('has not threatened', 'partnerWhip',
+        () => { d().pressure = 1; }, () => { d().pressure = 2; });
+      base();
+      one('the government is angry', 'partnerAsk',
+        () => { v16Ai(S)[lead()].grudge[me] = 60; },
+        () => { v16Ai(S)[lead()].grudge[me] = 0; });
+      one('one office left', 'partnerOffice',
+        () => { ['vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = me; }); },
+        () => { ['vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = lead(); }); });
+      one('two offices taken already', 'partnerOffice',
+        () => { d().portfolios = 2; }, () => { d().portfolios = 0; });
+      one('the agreement is past saving', 'partnerAsk',
+        () => { for (let i = 0; i < V17_PATIENCE; i++)
+                  v17Ledger(S, me, { kind:'broken', ref:null, why:'probe', cost:0 }); },
+        () => { d().ledger = []; });
+      one('reopened this session', 'partnerAsk',
+        () => { d().altered = S.turn; }, () => { d().altered = -99; });
+      const said = rows.map(r => r.said);
+      return { n:rows.length, rows:rows,
+        allShut: rows.every(r => r.shut === true),
+        allSaidSomething: rows.every(r => typeof r.said === 'string' && r.said.length > 10),
+        allOpenAgain: rows.every(r => r.opensAgain === true),
+        /* and no two cases say the same sentence, or one of them is a fall-through */
+        distinct: new Set(said).size === said.length };
+    })();
+
     /* (e2) AND THE LADDER REACHES THE VOICE, which is a different claim from
        the voice working. `v21Pressure` decides WHEN a partner climbs and
        `v21Say` is what climbing does, and the poison that put the assignment
@@ -12117,6 +12178,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     junior.answer.noDuplicate === true && junior.answer.secondAnswer === 'stand' &&
     junior.answer.saidInPublic === true &&
     junior.wired.reached === true && junior.wired.oneRungAtATime === true &&
+    junior.refusals.n === 10 && junior.refusals.allShut === true &&
+    junior.refusals.allSaidSomething === true && junior.refusals.allOpenAgain === true &&
+    junior.refusals.distinct === true &&
     junior.chairs.allShut === true && junior.chairs.allSayWhy === true &&
     junior.chairs.differentSentences === true &&
     junior.cores.juniorGotOffice === true && junior.cores.headGaveOffice === true &&
@@ -12151,7 +12215,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${junior.chairs.allShut}), each saying why in words the chair chose ` +
     `(${junior.chairs.differentSentences}): "${junior.chairs.leadingSays}" from the head of government and ` +
     `"${junior.chairs.oppositionSays}" from the bench -- every leg above sits in the junior chair, so a build ` +
-    `whose \`can\` was simply true would pass all of them · ${junior.rendered.drawn} drawn, ` +
+    `whose \`can\` was simply true would pass all of them · AND EVERY REFUSAL \`v21PartnerWhy\` CAN PRODUCE ` +
+    `IS ASKED ON A BOARD DIFFERING IN THAT ONE FACT (${junior.refusals.n} of them, all shut ` +
+    `${junior.refusals.allShut}, all saying something ${junior.refusals.allSaidSomething}, ALL OPENING AGAIN ` +
+    `when the cause is cleared ${junior.refusals.allOpenAgain}, and no two saying the same sentence ` +
+    `${junior.refusals.distinct}) -- said it already, threatened already, has not said it, whip already off, ` +
+    `has not threatened, the government is angry, one office left, two offices taken already, the agreement ` +
+    `is past saving, reopened this session. Both halves of each, because a sentence that never clears is a ` +
+    `constant rather than a reading of the board · ${junior.rendered.drawn} drawn, ` +
     `${junior.rendered.shut} shut, "${junior.rendered.sample}" -- because S21f's poison run caught the ` +
     `first version of that leg calling \`a.why()\` and passing on a build where the renderer printed ` +
     `nothing · THE ENGINE GOVERNMENT ANSWERS AN ULTIMATUM (${junior.answer.calls} calls, ` +
