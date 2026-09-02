@@ -5929,7 +5929,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     }
     R.walk = { sessions:n, gone:(S.coalition || []).indexOf('sd') < 0,
       recordKept:!!(S.coalitionDeals || {}).sd,
-      former:!!(((S.coalitionDeals || {}).sd) || {}).former,
+      /* S21g: was `d.former`, a field four sites wrote and nothing read --
+         deleted. What this leg means is that the agreement records the walk,
+         and `d.walkedOut` is the field `pv5EnsureState` actually consults. */
+      former:!!(((S.coalitionDeals || {}).sd) || {}).walkedOut,
       ledger:((((S.coalitionDeals || {}).sd) || {}).ledger || []).map(function (e) { return e.kind; }) };
 
     /* (e) ALTERING IS NOT BREAKING. */
@@ -11176,11 +11179,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       d.defected = S.turn;
       const whipOff = { mover:v21Count(S).carried, house:v17ConfidenceVote(S).carried };
       d.defected = null;
+      /* AND THE MOVER'S COUNT TURNS AT `V21_PARTNER_PIVOT` AND NOT AT SOME
+         OTHER NUMBER. The band above says the two readings differ; it does not
+         say WHERE the optimistic one turns, and the poison that put the
+         mover's bar back at the bare 30 the division used to carry passed on
+         it, because a partner at 25 is below both. Asked one point either
+         side of the constant, so a bar anywhere else reddens. */
+      d.satisfaction = V21_PARTNER_PIVOT - 1;
+      const under = { mover:v21Count(S).carried, house:v17ConfidenceVote(S).carried };
+      d.satisfaction = V21_PARTNER_PIVOT + 1;
+      const over = { mover:v21Count(S).carried, house:v17ConfidenceVote(S).carried };
+      d.satisfaction = band;
       return { floor:floor, pivot:V21_PARTNER_PIVOT, band:band,
         inBand: band > floor && band < V21_PARTNER_PIVOT,
-        loyal:loyal, whipOff:whipOff,
+        loyal:loyal, whipOff:whipOff, under:under, over:over,
         /* the two counts differ where the partner is wavering and loyal */
         countsDiffer: loyal.mover === true && loyal.house === false,
+        /* and the optimistic reading turns AT the pivot, both ways */
+        turnsAtThePivot: under.mover === true && over.mover === false &&
+          under.house === false && over.house === false,
         /* and withdrawing the whip moves the DIVISION, which is the fix */
         whipReachesTheHouse: whipOff.house === true };
     })();
@@ -11219,21 +11236,39 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          may leave again and a claim read afterwards would be read off a
          board that has moved. */
       const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99];
-      for (let si = 0; si < SEEDS.length && !sup; si++) {
-        fresh(SEEDS[si]);
-        for (let n = 0; n < 40 && !sup; n++) {
-          step(); out.sessions = (out.sessions || 0) + 1;
-          const c = S.confidence;
-          if (!c) continue;
-          const dd = (S.coalitionDeals || {})[c];
-          if (dd && dd.terms && dd.terms.confidence === 'supply') { sup = c; out.formed = 1; out.how = 'driven'; }
+      /* AND IT IS THE FORMATION'S OWN PATH THAT IS READ, not whichever route
+         happened to mint a supply agreement first. Two OTHER things in this
+         slice write one -- the `bargain` card and the notice's own answer --
+         so a leg that drove until `st.confidence` had terms passed with the
+         formation fix deleted twice over. `v17Install` is wrapped and the
+         first install that seats a supply party is the one recorded. */
+      let form = null;
+      const bi = v17Install;
+      v17Install = function (st, out) {
+        const r = bi.apply(this, arguments);
+        if (!form && out && out.confidence) {
+          const dd = (st.coalitionDeals || {})[out.confidence] || null;
+          form = { pid:out.confidence, how:out.how,
+            written: !!(dd && dd.terms && (dd.terms.concessions || []).length > 0),
+            promises: dd && dd.terms ? (dd.terms.concessions || []).length : 0,
+            mode: dd && dd.terms ? dd.terms.confidence : null };
         }
-      }
-      if (!sup) return out;
+        return r;
+      };
+      try {
+        for (let si = 0; si < SEEDS.length && !form; si++) {
+          fresh(SEEDS[si]);
+          for (let n = 0; n < 40 && !form; n++) { step(); out.sessions = (out.sessions || 0) + 1; }
+        }
+      } finally { v17Install = bi; }
+      if (!form) return out;
+      out.formed = 1; out.how = form.how; out.written = form.written;
+      out.mode = form.mode; out.promises = form.promises;
+      sup = form.pid;
+      /* the drive stops on the install, so the party is still supplying */
+      out.stillSupplying = S.confidence === sup;
       const d = (S.coalitionDeals || {})[sup] || null;
-      out.written = !!(d && d.terms && (d.terms.concessions || []).length > 0);
-      out.mode = d && d.terms && d.terms.confidence;
-      out.promises = d ? (d.terms.concessions || []).length : 0;
+      if (!d || !out.stillSupplying) return out;
       /* AND IT IS SWEPT. `v16RedLineTick` walked `st.coalition`, which a
          supply party is not in, so the agreement was never read again. */
       let scanned = 0;
@@ -11245,10 +11280,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         v16RedLineTick(S);
       } finally { v17DealScan = bd; }
       out.swept = scanned;
-      /* AND WITHDRAWING IT GOES THROUGH THE ONE DOOR. */
-      const still = S.confidence === sup;
-      out.withdrawn = v21Leave(S, sup, 'they withdrew confidence and supply', S.ruling) ? 1 : 0;
-      out.cleared = still && S.confidence === null;
+      /* AND WITHDRAWING IT GOES OUT THROUGH THE TERMINAL THE GAME USES, not
+         through `v21Leave` by hand: the first version called the door
+         directly, so the poison that made `v17Walkout` call a withdrawal
+         "leaving the government" -- a log line about a party that had never
+         sat in it -- passed. */
+      const logWas = (S.log || []).length;
+      v17Walkout(S, sup, d);
+      out.withdrawn = S.confidence === null ? 1 : 0;
+      out.cleared = S.confidence === null;
+      out.said = (S.log || []).slice(0, Math.max(1, (S.log || []).length - logWas))
+        .map(e => e.text).join(' ');
+      out.saidWithdrew = /withdrew confidence and supply/.test(out.said);
+      out.saidLeft = /left the government/.test(out.said);
       out.markedOnExit = !!(d && d.walkedOut);
       return out;
     })();
@@ -11352,10 +11396,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     fall.failed.carried === false && fall.failed.stillRuling === true &&
     fall.failed.isTheConstant === true && fall.failed.byTheConstant === true &&
     fall.count.inBand === true && fall.count.countsDiffer === true &&
+    fall.count.turnsAtThePivot === true &&
     fall.count.whipReachesTheHouse === true &&
     fall.supply.written === true && fall.supply.mode === 'supply' &&
+    fall.supply.stillSupplying === true &&
     fall.supply.swept > 0 && fall.supply.withdrawn === 1 &&
     fall.supply.cleared === true && fall.supply.markedOnExit === true &&
+    fall.supply.saidWithdrew === true && fall.supply.saidLeft === false &&
     fall.paper.posted === true && fall.paper.opts.length === 3 &&
     fall.paper.truthOnTheCard === true &&
     !!fall.paper.shore && fall.paper.shore.rose === true &&
@@ -11394,7 +11441,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `partner at cohesion ${fall.count.band}, above its own walk floor of ${fall.count.floor} and below the ` +
     `pivot of ${fall.count.pivot} at which its benches stop backing a government bill (${fall.count.inBand}), ` +
     `because where the two agree there is nothing to test. The mover reads ${fall.count.loyal.mover} and the ` +
-    `house reads ${fall.count.loyal.house} (${fall.count.countsDiffer}). Measured over 480 driven sessions on ` +
+    `house reads ${fall.count.loyal.house} (${fall.count.countsDiffer}) -- and the optimistic reading turns AT ` +
+    `the pivot and not at some other number (${fall.count.turnsAtThePivot}), asked one point either side of ` +
+    `the constant, because the poison that put the mover's bar back at the bare 30 the division used to ` +
+    `carry passed on the band alone: a partner at ${fall.count.band} is below both. Measured over 480 driven sessions on ` +
     `twelve seeds, the house would carry on 50 and the mover's count says 153: it was chosen on RECALL, ` +
     `catching 50 of the 50 boards on which a government would really fall where the gentler reading is more ` +
     `accurate (.42 against .33) and misses six · AND THE WHIP REACHES THE DIVISION ` +
@@ -11407,8 +11457,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `the party accepted was thrown away at the moment it said yes -- nothing recorded, so nothing breakable, ` +
     `so a party supplying confidence and supply could not withdraw it for a reason. ` +
     `${fall.supply.promises} promises on the record (${fall.supply.written}) under a mode of ` +
-    `"${fall.supply.mode}", found by DRIVING ${fall.supply.sessions} sessions rather than by building a ` +
-    `board: a minority government needs a chamber no formateur can win AND an opposition not hostile ` +
+    `"${fall.supply.mode}", read at \`v17Install\` itself over ${fall.supply.sessions} driven sessions -- the ` +
+    `formation's own path and not whichever route minted a supply agreement first, because two OTHER things ` +
+    `in this slice write one and a leg that drove until \`st.confidence\` had terms passed with this fix ` +
+    `deleted twice over. DRIVEN rather than built, because a minority government needs a chamber no ` +
+    `formateur can win AND an opposition not hostile ` +
     `enough to vote the result down, and those pull on one number -- \`v17Accept\` blocks a coalition at ` +
     `a grudge near 60 and \`v17Invest\` turns a party NAY at 30, so over that whole range on four chamber ` +
     `shapes the rotation went majority -> grand and never once through the minority round · a mode of ` +
@@ -11419,7 +11472,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `\`v21Signed\` is that question with a name · AND WITHDRAWING IT GOES THROUGH THE ONE DOOR ` +
     `(${fall.supply.withdrawn === 1}), clearing \`st.confidence\` (${fall.supply.cleared}) and marking the ` +
     `agreement (${fall.supply.markedOnExit}) -- a sixth exit written somewhere else would have been S21f's ` +
-    `whole finding repeated · AND THE PAPER HAS BUTTONS ON IT, driven by real clicks through ` +
+    `whole finding repeated. Driven through \`v17Walkout\`, the terminal the game uses, rather than through ` +
+    `the door by hand: it says they "withdrew confidence and supply" (${fall.supply.saidWithdrew}) and not ` +
+    `that they left a government they never sat in (${fall.supply.saidLeft === false}) -- calling the door ` +
+    `directly is what let that poison through · AND THE PAPER HAS BUTTONS ON IT, driven by real clicks through ` +
     `\`respondInbox\`: ${fall.paper.opts.length} answers (${fall.paper.opts.join(', ')}), the government's own ` +
     `whips counting the house on the card rather than the movers' claim (${fall.paper.truthOnTheCard}); ` +
     `"buy the wavering benches back" takes the partner from ${fall.paper.shore ? fall.paper.shore.was : 'n/a'} ` +

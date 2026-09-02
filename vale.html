@@ -9129,7 +9129,6 @@ function v21Concede(st, ref) {
    `enrichState`, which is the trap S21d walked into with `v21Concede`. */
 function v21Rejoin(st, pid, d) {
   if (!d) return d;
-  d.former = false;
   d.walkedOut = null;
   d.defected = null;
   d.pressure = null;
@@ -16669,9 +16668,8 @@ function pv5EnsureState(st, fresh) {
      `pressure` to the agreement did not know to come back and add them. */
   /* S21g: `v21Signed`, not `st.coalition`. A party supplying confidence and
      supply has an agreement with the government and does not sit in it, and
-     all three of these loops meant the first thing while asking the second --
-     so a supply agreement was minted, marked `former` on the very next enrich,
-     and never ticked again. */
+     both of these loops meant the first thing while asking the second, so a
+     supply agreement was minted and then never backfilled or ticked again. */
   v21Signed(st).forEach(function(pid){
     var d=st.coalitionDeals[pid];
     if(!d||!d.walkedOut)return;
@@ -16706,7 +16704,15 @@ function pv5EnsureState(st, fresh) {
     /* the legacy scalar mirrors the list, so v16RedLineTick is unchanged */
     if(d.terms.redLines&&d.terms.redLines.length)d.redLine=d.terms.redLines[0];
   });
-  (function(){var live=v21Signed(st);Object.keys(st.coalitionDeals).forEach(function(pid){if(live.indexOf(pid)<0)st.coalitionDeals[pid].former=true;});})();
+  /* S21g: AND `d.former` IS GONE. It was set here for every agreement whose
+     party is not in the government, cleared in `v21Rejoin` and in
+     `v21SignDeal`, set again in `v21Leave` -- four writers, and a grep of 3.8
+     megabytes finds NO READER. `st.court.size` exactly: a field the code
+     maintains carefully and consults nowhere, which later readers reason about
+     as though it did something. Found by this slice's own poison run, where
+     making the line wrong on purpose changed nothing anywhere. What it was
+     trying to say is said by `d.walkedOut`, which `pv5EnsureState` reads to
+     decide that a party coming back signs a new agreement. */
   /* S15f: warChest is gone. It was a party purse with one earner, one
      three-point deduction and a single read capped at 30 and weighted .09,
      and nothing in the file ever paid for a party action out of it. What it
@@ -37105,7 +37111,6 @@ function v21Leave(st, pid, why, actor) {
   st.coalition = (st.coalition || []).filter(function (x) { return x !== pid; });
   if (st.partner === pid) st.partner = st.coalition[1] || null;
   if (d) {
-    d.former = true;
     d.walkedOut = st.turn;
     /* ONE ENTRY, ON THE LEAVER'S OWN RECORD. `v17DealEvent(…'quit'…)` walked
        `st.coalition` and booked one `broken` per unmet concession on EVERY
@@ -39204,7 +39209,6 @@ function v21SignDeal(st, pid, offer) {
      happened. What is agreed is decided where the offer is described. */
   d.terms.confidence = offer.confidence || 'cabinet';
   d.redLine = (d.terms.redLines && d.terms.redLines[0]) || d.redLine || null;
-  d.former = false;
   if (typeof d.satisfaction !== 'number') d.satisfaction = c100(st.partyRel[pid] || 55);
   if (!d.ledger) d.ledger = [];
   return d;
