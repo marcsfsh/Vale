@@ -11826,26 +11826,85 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         out.calls += 1; if (r) out.kinds[r] = (out.kinds[r] || 0) + 1;
         return r;
       };
+      const bn = addNews;
+      const news = [];
+      addNews = function (st, sec, head) { news.push(String(head)); return bn.apply(this, arguments); };
       try {
         const d = (S.coalitionDeals || {})[me];
         /* an outstanding promise on the record, which is what a government
            answers WITH -- constructed rather than waited for */
         d.terms.concessions = [v21Concede(S, pv5TopWants(me, S, 1)[0].id)];
         d.pressure = 1; d.pressureAt = -99;
-        const bills0 = S.bills.length, press0 = d.pressure;
+        const bills0 = S.bills.length;
         v21Say(S, me, d, 2);
         out.laidABill = S.bills.length > bills0;
         out.quieted = d.pressure < 2;
         out.pressure = d.pressure;
+        /* AND IT DOES NOT LAY A BILL THAT IS ALREADY ON THE PAPER. The same
+           promise, still outstanding, with its bill before the house: a
+           government that laid a second copy would be answering an ultimatum
+           with a duplicate, and the guard is invisible on a board where the
+           first branch has nothing to collide with. */
+        const kinds0 = JSON.parse(JSON.stringify(out.kinds));
+        d.pressure = 1; d.pressureAt = -99;
+        const billsAgain = S.bills.length;
+        v21Say(S, me, d, 2);
+        out.noDuplicate = S.bills.length === billsAgain;
+        out.secondAnswer = Object.keys(out.kinds).filter(k => out.kinds[k] > (kinds0[k] || 0))[0] || null;
         /* and with NOTHING to lay, the same call stands firm rather than
            silently doing nothing */
         const d2 = (S.coalitionDeals || {})[me];
         d2.terms.concessions = [];
         d2.pressure = 1; d2.pressureAt = -99;
-        const grudge0 = v16Grudge(S, me, S.ruling);
         v21Say(S, me, d2, 2);
         out.stoodFirm = out.kinds.stand > 0;
-      } finally { v21GovAnswer = bg; }
+      } finally { v21GovAnswer = bg; addNews = bn; }
+      /* AND THE FIRST RUNG IS SAID IN PUBLIC. `v21Say(…, 1)` is a partner
+         telling the country the agreement is not being kept, and a rung with
+         no news item is a rung nobody outside the room can see. */
+      const d3 = (S.coalitionDeals || {})[me];
+      d3.pressure = 0; d3.pressureAt = -99;
+      const n0 = news.length;
+      const bn2 = addNews;
+      addNews = function (st, sec, head) { news.push(String(head)); return bn2.apply(this, arguments); };
+      try { v21Say(S, me, d3, 1); } finally { addNews = bn2; }
+      out.saidInPublic = news.length > n0 &&
+        news.slice(n0).some(h => /say in public/.test(h));
+      out.news = news.slice(-3);
+      return out;
+    })();
+
+    /* (e2) AND THE LADDER REACHES THE VOICE, which is a different claim from
+       the voice working. `v21Pressure` decides WHEN a partner climbs and
+       `v21Say` is what climbing does, and the poison that put the assignment
+       back inline -- `d.pressure = at + 1` with no call -- passed on a leg
+       that only ever called `v21Say` itself. Driven through `v16RedLineTick`,
+       which is the tick the game runs. */
+    R.wired = (() => {
+      const me = junior(2718);
+      const out = { calls:0, stages:[] };
+      const bs = v21Say;
+      v21Say = function (st, pid, d, stage) {
+        out.calls += 1; out.stages.push(stage);
+        return bs.apply(this, arguments);
+      };
+      try {
+        const partner = PARTIES.filter(p => p.id !== S.ruling && p.id !== me &&
+          !S.banned[p.id])[0].id;
+        S.coalition = [S.ruling, me, partner];
+        S = enrichState(S, false);
+        const d = (S.coalitionDeals || {})[partner];
+        /* a partner whose cohesion has collapsed climbs a rung a session */
+        d.satisfaction = v17WalkFloor(S, partner) + 6;
+        d.pressure = -1; d.pressureAt = -99;
+        for (let i = 0; i < 6 && out.calls < 3; i++) {
+          d.pressureAt = -99;
+          v16RedLineTick(S);
+          S.turn += 1;
+        }
+      } finally { v21Say = bs; }
+      out.reached = out.calls > 0;
+      out.oneRungAtATime = out.stages.every((v, i) => i === 0 || v === out.stages[i - 1] + 1);
       return out;
     })();
 
@@ -11965,8 +12024,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     junior.press.allMoved === true &&
     junior.rendered.threw === null && junior.rendered.drawn === 5 &&
     junior.rendered.everyShutSaysWhy === true &&
-    junior.answer.calls === 2 && junior.answer.laidABill === true &&
+    junior.answer.calls === 3 && junior.answer.laidABill === true &&
     junior.answer.quieted === true && junior.answer.stoodFirm === true &&
+    junior.answer.noDuplicate === true && junior.answer.saidInPublic === true &&
+    junior.wired.reached === true && junior.wired.oneRungAtATime === true &&
     junior.cores.juniorGotOffice === true && junior.cores.headGaveOffice === true &&
     junior.cores.rewrote === true && junior.cores.freshFrom === true &&
     junior.cores.freshDue === true && junior.cores.notBornLate === true &&
@@ -11997,7 +12058,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `else and said so: the only instrument for answering one was \`v17Renegotiate\`, whose gate opens on ` +
     `\`leads(st)\`. It lays the bill it promised (${junior.answer.laidABill}) and the partner comes back ` +
     `down the ladder (${junior.answer.quieted}, at ${junior.answer.pressure}); with nothing to lay it ` +
-    `stands firm (${junior.answer.stoodFirm}) · ONE BODY, TWO DOORS: the junior asking for a department ` +
+    `stands firm (${junior.answer.stoodFirm}); and it does NOT lay a bill that is already before the house ` +
+    `(${junior.answer.noDuplicate}, answering "${junior.answer.secondAnswer}" instead), which is invisible on a ` +
+    `board where the first branch has nothing to collide with · AND THE LADDER REACHES THE VOICE, driven ` +
+    `through \`v16RedLineTick\` rather than by calling it (${junior.wired.reached}, stages ` +
+    `${JSON.stringify(junior.wired.stages)}, one rung at a time: ${junior.wired.oneRungAtATime}) -- the poison ` +
+    `that put \`d.pressure = at + 1\` back inline with no call passed on a leg that only ever called the voice ` +
+    `itself, which is "calling the function is not testing the wiring" in a new place · AND THE FIRST RUNG IS ` +
+    `SAID IN PUBLIC (${junior.answer.saidInPublic}): a rung with no news item is a rung nobody outside the room ` +
+    `can see, and the ladder had three of them and a price on none · ONE BODY, TWO DOORS: the junior asking for a department ` +
     `(${junior.cores.juniorGotOffice}) and the head of government handing one over ` +
     `(${junior.cores.headGaveOffice}) both move it through \`v21OfficeCore\`, driven from both chairs ` +
     `because a Core nobody proves is shared is two functions that agree today · AND THE REWRITTEN PROMISE ` +
