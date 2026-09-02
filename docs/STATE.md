@@ -22,8 +22,11 @@ mechanic needs a serious overhaul — its way too flat, uninteresting, and
 unengaging."*
 
 **`docs/PLAN-S21.md` IS THE CONTRACT AND IS BINDING FOR THE WHOLE OF S21.**
-Twelve slices, twelve improvements and fourteen new behaviours, with nine
-rulings (R1–R9) that every slice is written against. Read it before touching
+Twenty slices, twelve improvements and twenty-two new behaviours, with nine
+rulings (R1–R9) that every slice is written against. (The contract was twelve
+slices and fourteen new behaviours until the owner asked for eight more
+behaviours; S21m–S21t are that extension, and they were mined from the intake
+rather than invented — nearly every capability in this game is player-only.) Read it before touching
 anything under `v16Ai*`, `v17*` or `v19*`. The supporting work is durable too:
 `docs/S21-INTAKE/` (twelve reports, one per AI system), `docs/S21-DESIGN/`
 (four independent upgrade proposals, a brief and the adjudication that chose
@@ -47,7 +50,7 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped four slices: S21a–d.**
+**S21 has shipped five slices: S21a–e.**
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -103,9 +106,41 @@ The four rulings a cold session most needs:
   land on 30. Every partner three promises deep walked out by construction, and
   sessions with no government went from 3 in 720 to 103. Swept and set to 3.
 
-**WHAT IS OPEN:** eight slices, S21e–S21l, in the order `PLAN-S21.md` sets.
-S21e (table negotiation) and S21f–h (one exit, a government that can fall, the
-junior partner) are the coalition overhaul the brief names.
+- **S21e — the table is a negotiation.** Measured first, over 377 formations
+  and 2,623 accept decisions across six seeds: **every offer in the game was
+  the same shape** — three concessions, one distinct value, on every invitation
+  to every party by every formateur in every round. A formation was a
+  negotiation in which nobody negotiated. `V17_GENEROSITY` gives the formateur
+  a price it sets per invitee, from the pool's own middle rather than an
+  absolute bar: 1,716 offers, five sizes from 1 to 5, mean 3.126 against the
+  constant 3. And the offer now **reaches the screen** — `v6CoalitionCandidates`
+  built the real terms, handed them to `v17Accept` and dropped them on the next
+  line, so the owner's "flat" row was a party name, two scalars and a seat
+  count. The reservation stopped pricing the wrong relationship: `v16Posture`
+  takes no `lead`, so its +16 was charged identically against every formateur at
+  the table and fired on anger at the OUTGOING government — a party charged
+  sixteen extra to join the government replacing the one it hates. It is gone,
+  and `v17PostureOf` with it.
+
+  **Three things this slice got wrong and the harness caught, in this order:**
+  the first bid skewed the mean upward and formations became so easy that the
+  grand and caretaker branches stopped firing (the S21d regression, sign
+  flipped); the second used absolute bars picked by eye that almost never fired
+  and the mean came out at 2.22; and `v17Build` shipped a `gen` parameter no
+  call site passed — decoration of the `st.court.size` kind, deleted rather
+  than shipped. **Four of the fifteen poisons came back GREEN and all four were
+  defects in the arm**, not dead bodies: the terms leg asked "does the sentence
+  name a statute" and the red line at the end carried a deleted concessions
+  clause; the same leg read `v6CoalitionCandidates` rather than the raised
+  sheet, so deleting the row's own `<small>` from the renderer passed; and
+  nothing asked whether an offer could name one statute as both a concession
+  and a red line, which the wider offer made reachable and which would book
+  `kept` and `broken` on a single enacted rung.
+
+**WHAT IS OPEN:** seven slices of the original twelve (S21f–S21l) plus the
+owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. S21f–h (one exit,
+a government that can fall, the junior partner) finish the coalition overhaul
+the brief names.
 
 ---
 

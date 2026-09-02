@@ -9614,12 +9614,34 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* (a) THE OFFER VARIES, read where the formateur actually builds it. */
     R.varies = (() => {
       const seen = [], gens = [];
+      let overlap = 0, mismatch = 0, unlined = 0;
       const base = v17Offer;
       v17Offer = function (st, lead, pid, co, gen) {
         const o = base.apply(this, arguments);
         if (!V19_SIMULATING && o) {
           seen.push((o.concessions || []).length);
           gens.push(o.generosity);
+          /* AND NO OFFER NAMES ONE STATUTE TWICE. A red line drawn from the
+             same list the concessions come off can BE one of them, and the
+             two halves of the agreement then contradict each other in the
+             model as well as on the card: `v17DealScan` books `kept` when an
+             adopt concession is met and `broken` when a red line moves, so
+             one enacted rung would do both at once. The wider offer this
+             slice introduced is what makes it reachable -- at three
+             concessions off a list of four there was one statute left. */
+          (o.redLines || []).forEach(r => {
+            if ((o.concessions || []).some(c => c.ref === r)) overlap += 1;
+          });
+          /* AND THE NUMBER BESIDE THE SENTENCE IS THE SENTENCE'S OWN. The
+             parties here carry five or six wants apiece, so a bid of five
+             against a five-want party promised four and had nothing left to
+             name as the refrain: `generosity` said 5 while `concessions`
+             carried 4, and the sheet's row would have named less than the
+             price it printed. The bid is capped by the party's own list now,
+             with one want always left over, which is also what guarantees the
+             red line below. */
+          if (o.generosity !== (o.concessions || []).length) mismatch += 1;
+          if (!(o.redLines || []).length) unlined += 1;
         }
         return o;
       };
@@ -9658,21 +9680,79 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            and the mean came out at 2.22. */
         meanGen: +(gens.reduce((a, c) => a + c, 0) / Math.max(1, gens.length)).toFixed(3),
         centred: Math.abs(gens.reduce((a, c) => a + c, 0) / Math.max(1, gens.length) - V17_GENEROSITY.base) < .35,
-        generosityRead: gens.every(g => typeof g === 'number') };
+        generosityRead: gens.every(g => typeof g === 'number'),
+        overlap:overlap, mismatch:mismatch, unlined:unlined };
     })();
 
-    /* (b) AND IT REACHES THE SCREEN, which is the owner's complaint. Read
-       through the sheet's own builder, not by calling `v17Offer` again. */
+    /* (b) AND IT REACHES THE SCREEN, which is the owner's complaint. Read off
+       the RAISED SHEET rather than off `v6CoalitionCandidates`: the first
+       version of this leg called the builder, and the poison that deleted the
+       `<small class="coal-terms">` emission from the renderer -- so the player
+       sees exactly what they saw before the slice -- came back GREEN. Calling
+       the function is not testing the wiring, and there are two halves here,
+       the builder and the sheet. The sheet is raised through the game's own
+       call (`v6CoalitionDialog`, as `v6Render` makes it at 19713) on a board
+       where the rotation put the PLAYER in the formateur's chair, because the
+       picker is drawn for that chair and no other. */
     R.screen = (() => {
-      fresh(4242);
-      const cands = v6CoalitionCandidates(S);
+      let cands = [], raised = false, domTerms = [];
+      for (const seed of [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 161803]) {
+        fresh(seed);
+        const out = v17Rotation(S, null);
+        if (!out.ok || out.lead !== playParty(S)) continue;
+        v17Install(S, out);
+        UI.queue = []; UI.busy = false;
+        try { v6CoalitionDialog({}); } catch (e) { continue; }
+        const rows = [].slice.call(document.querySelectorAll('#sheet .coal-row'));
+        if (!rows.length) continue;
+        domTerms = rows.map(r => {
+          const s = r.querySelector('.coal-terms');
+          return s ? s.textContent : '';
+        });
+        cands = v6CoalitionCandidates(S);
+        raised = rows.length === cands.length;
+        break;
+      }
+      if (!raised) return { raised:false, rows:0, withTerms:0, distinct:0 };
+      /* the sentence the PLAYER reads, in row order, is what every leg below
+         is measured against */
+      cands = cands.map((c, i) => ({ id:c.id, offer:c.offer, terms:domTerms[i] || '' }));
       const terms = cands.map(c => c.terms).filter(t => t && t.length);
-      return { rows:cands.length, withTerms:terms.length,
+      /* COMPONENT-WISE, AND THE FIRST VERSION WAS NOT. It asked whether the
+         sentence named SOME real statute, and the poison that deleted the
+         whole "move X and Y" clause came back GREEN -- because the red line
+         at the end of the same sentence named a statute and carried it. One
+         reading standing in for the other is the defect this file names after
+         S17n's `String(on) + '/' + String(refusal)`, found here in an arm I
+         had just written. Each half is now read against that ROW'S OWN offer:
+         the concessions by their exact clause, the red line by its own. */
+      const conc = (c) => (c.offer && c.offer.concessions) || [];
+      const line = (c) => ((c.offer && c.offer.redLines) || []).filter(x => POL[x])[0];
+      const namesConc = (c) => {
+        const cs = conc(c); if (!cs.length) return false;
+        /* the clause itself, not just the words in it: `v17Offer` always puts
+           at least one `adopt` in an offer (`Math.max(1, want - 1)`), so a
+           row without "You would move " has lost the clause */
+        if (c.terms.indexOf('You would move ') < 0) return false;
+        return cs.every(x => !POL[x.ref] || c.terms.indexOf(POL[x.ref].name) >= 0);
+      };
+      const namesLine = (c) => {
+        const r = line(c); if (!r) return false;
+        return c.terms.indexOf('Their red line is ' + POL[r].name + '.') >= 0;
+      };
+      const withConc = cands.filter(c => conc(c).length).length;
+      const withLine = cands.filter(c => line(c)).length;
+      const withRefrain = cands.filter(c => conc(c).some(x => x.kind === 'refrain' && POL[x.ref]));
+      return { raised:true, rows:cands.length, withTerms:terms.length,
         distinct:new Set(terms).size,
         keepsOffer: cands.every(c => c.offer && typeof c.offer.generosity === 'number'),
-        /* every row names at least one real statute, or the sentence is a
-           template with nothing in it */
-        namesStatutes: terms.every(t => POLICIES.some(p => t.indexOf(p.name) >= 0)),
+        concRows: withConc,
+        namesConcessions: withConc === cands.length && cands.every(namesConc),
+        lineRows: withLine,
+        namesRedLine: withLine === cands.length && cands.every(namesLine),
+        refrainRows: withRefrain.length,
+        namesRefrain: withRefrain.length > 0 && withRefrain.every(c =>
+          c.terms.indexOf('leave ' + POL[conc(c).filter(x => x.kind === 'refrain')[0].ref].name + ' alone') >= 0),
         sample: terms[0] || '' };
     })();
 
@@ -9752,9 +9832,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   const tableOk =
     table.varies.n > 1500 && table.varies.distinct >= 3 &&
     table.varies.centred === true && table.varies.generosityRead === true &&
+    table.varies.overlap === 0 && table.varies.mismatch === 0 &&
+    table.varies.unlined === 0 &&
+    table.screen.raised === true &&
     table.screen.rows >= 4 && table.screen.withTerms === table.screen.rows &&
     table.screen.distinct >= 3 && table.screen.keepsOffer === true &&
-    table.screen.namesStatutes === true &&
+    table.screen.namesConcessions === true && table.screen.namesRedLine === true &&
+    table.screen.namesRefrain === true &&
     table.reservation.ran === true && table.reservation.blindToOutgoing === true &&
     table.reservation.directedBites === true &&
     table.reservation.posturePriced === false &&
@@ -9778,12 +9862,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `build bid up when short and up again on friction with one narrow condition bidding down, the mean skewed ` +
     `above the constant, and formations became so easy that the grand and caretaker branches stopped firing ` +
     `altogether -- the S21d regression with the sign flipped. A slice that makes the table a negotiation must ` +
-    `not make the negotiation always succeed, and the branches are asserted below · AND THE OFFER REACHES THE ` +
+    `not make the negotiation always succeed, and the branches are asserted below · AND NO OFFER NAMES ONE ` +
+    `STATUTE TWICE (${table.varies.overlap} of ${table.varies.n}): a red line taken off the same list of wants ` +
+    `the concessions come off can BE one of them, and \`v17DealScan\` would then book \`kept\` and \`broken\` on ` +
+    `one enacted rung. At the old three-off-four there was one statute left over and it could not happen; the ` +
+    `wider offer is what makes it reachable · AND THE NUMBER IS THE SENTENCE'S OWN ` +
+    `(${table.varies.mismatch} offers where \`generosity\` and the concession count disagree, ` +
+    `${table.varies.unlined} with no red line at all): the parties here carry five or six wants apiece, so a ` +
+    `bid of five against a five-want party promised four and had nothing left to name as the refrain. A party ` +
+    `cannot be offered everything it wants -- one is always left over to be the thing it is in the room to ` +
+    `defend · AND THE OFFER REACHES THE ` +
     `SCREEN, which is the owner's complaint with a line number on it: \`v6CoalitionCandidates\` built the real ` +
     `offer, handed it to \`v17Accept\` and DROPPED IT ON THE NEXT LINE, so the row read a party name, two ` +
     `scalars and a seat count while every concession, the red line and the price the formateur set were ` +
-    `computed and thrown away. ${table.screen.withTerms} of ${table.screen.rows} rows carry terms now, ` +
-    `${table.screen.distinct} of them distinct, every one naming real statutes (${table.screen.namesStatutes}) ` +
+    `computed and thrown away. Read off the RAISED SHEET rather than off the builder -- the first version of ` +
+    `this leg called \`v6CoalitionCandidates\` and a poison that deleted the row's own \`<small>\` from the ` +
+    `renderer, so the player sees what they saw before the slice, came back GREEN -- ` +
+    `${table.screen.withTerms} of ${table.screen.rows} rows carry terms now, ` +
+    `${table.screen.distinct} of them distinct, and each HALF of the sentence is read against that row's own ` +
+    `offer rather than against "does it name a statute": ${table.screen.concRows} rows name every concession ` +
+    `they promise (${table.screen.namesConcessions}), ${table.screen.refrainRows} name the statute they promise ` +
+    `to leave alone (${table.screen.namesRefrain}) and ${table.screen.lineRows} name the party's red line ` +
+    `(${table.screen.namesRedLine}) -- the first version of this leg asked the joined question and a poison ` +
+    `that deleted the whole concessions clause passed on the red line at the end of the same sentence ` +
     `-- "${table.screen.sample}" · THIS ALSO GIVES \`offer.generosity\` ITS ONLY READER ` +
     `(${table.screen.keepsOffer}): without it the field was written and consulted by nothing, which is ` +
     `\`st.court.size\` in code this slice had itself added, and the independent check found it before the ` +

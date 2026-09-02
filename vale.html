@@ -19828,7 +19828,7 @@ function v21OfferLine(st, offer) {
      bolted to a noun phrase, and three clauses in a row reads as a list
      rather than as terms. */
   var bits = [];
-  if (adopt.length) bits.push('move ' + v8And(adopt));
+  if (adopt.length) bits.push('move ' + v21And(adopt));
   if (leave) bits.push('leave ' + leave + ' alone');
   var line = bits.length ? 'You would ' + bits.join(', and ') + '.' : 'You are promising them nothing.';
   if (offer.offices) line += ' A great office comes with it.';
@@ -19836,8 +19836,12 @@ function v21OfferLine(st, offer) {
   if (rl) line += ' Their red line is ' + rl + '.';
   return line;
 }
-/* the file has no general list-joiner; this is the one place that wants one */
-function v8And(a) {
+/* the file has no general list-joiner; this is the one place that wants one.
+   Named for the slice and not `v8And`: `v8Plural` and `v8Surname` are the
+   file's other text helpers and they live in the v8 chunk, six hundred lines
+   and two script blocks below this one, so a reader grepping the prefix would
+   have found a stranger among them. */
+function v21And(a) {
   if (!a || !a.length) return '';
   if (a.length === 1) return a[0];
   return a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
@@ -38360,7 +38364,19 @@ function v17Offer(st, lead, pid, co, gen) {
      over the same things, which is what makes the number a price. */
   var want = Math.max(V17_GENEROSITY.min,
     Math.min(V17_GENEROSITY.max, (gen === undefined || gen === null) ? V17_GENEROSITY.base : gen));
-  var wants = pv5TopWants(pid, st, want + 2);
+  /* asked for what the WIDEST offer could need, not for what this one needs,
+     so the cap below is taken against the party's whole list rather than
+     against a list this bid has already truncated */
+  var wants = pv5TopWants(pid, st, V17_GENEROSITY.max + 2);
+  /* AND A PARTY CANNOT BE OFFERED EVERYTHING IT WANTS. One want is always left
+     over to be the red line, which is what the party is in the room to defend.
+     Without this the arithmetic breaks two ways at the top of the range: the
+     parties in this game carry five or six wants apiece, so a bid of five
+     against a five-want party promised four and had nothing left for the
+     refrain -- `generosity` said 5 while `concessions` carried 4, and the
+     sentence on the sheet then named less than the number beside it -- and a
+     six-want party promised all six would have had no red line at all. */
+  want = Math.min(want, Math.max(1, wants.length - 1));
   /* S17g: things the government will DO and one it will NOT. A promise to
      leave a statute alone is the cheapest thing to give and the easiest to
      break, which is what makes it worth writing down. The refrain is the LAST
@@ -38369,6 +38385,13 @@ function v17Offer(st, lead, pid, co, gen) {
      something it wanted done. */
   var cs = wants.slice(0, Math.max(1, want - 1)).map(function (w) { return v21Concede(st, w.id); });
   if (cs.length < want) {
+    /* `wants[want]` and not `wants[cs.length]`: the index is SKIPPED on
+       purpose, so the want the refrain does not take is left for the red line
+       below and a party's hardest term is something it wants MORE than the
+       thing it is promised will be left alone. Swapping them reads as a
+       one-index tidy-up and is a different offer -- measured, it took the
+       grand round out of 720 sessions. Under the cap above this index is
+       always in range. */
     var rub = (typeof v17Friction === 'function' ? v17Friction(st, pid, lead) : []).filter(function (r) {
       return !cs.some(function (c) { return c.ref === r.id; });
     })[0] || wants[want];
@@ -38456,7 +38479,13 @@ function v17Accept(st, pid, lead, offer, relax, pin) {
    with -- distance first, its own grudges second -- until the Assembly
    majority is reached, and then TRIMS: a coalition carries nobody it does not
    need, because every extra partner is another veto for nothing. */
-function v17Build(st, lead, relax, pin, gen) {
+/* The bid is the formateur's OWN arithmetic and takes no argument: a `gen`
+   parameter was drafted here for a rotation round that would raise the price,
+   and both call sites pass four arguments, so it was a knob nothing in the
+   game could turn -- decoration of exactly the kind this file names after
+   `st.court.size`. The escalation belongs to whichever slice gives the
+   rotation a reason to re-ask, and it can be measured then. */
+function v17Build(st, lead, relax, pin) {
   var maj = v17Majority(st), have = st.seats[lead] || 0;
   var co = [lead], offers = {}, answers = [];
   var pool = v17Eligible(st).filter(function (x) { return x !== lead; }).sort(function (a, b) {
@@ -38501,16 +38530,9 @@ function v17Build(st, lead, relax, pin, gen) {
   var medFric = sortedFric.length ? sortedFric[Math.floor(sortedFric.length / 2)] : 0;
   var mid = (pool.length - 1) / 2;
   for (var i = 0; i < pool.length && have < maj; i++) {
-    /* A generosity passed in from the rotation is a FLOOR, not an override: a
-       re-mandate round that raises the bid cannot make a formateur meaner than
-       its own arithmetic already asks. */
     var bid = V17_GENEROSITY.base
       + (i > mid ? 1 : i < mid ? -1 : 0)                         /* further down the list */
       + (fric[i] > medFric ? 1 : fric[i] < medFric ? -1 : 0);    /* and harder to live with */
-    /* a generosity passed in from the rotation is a FLOOR, not an override: a
-       re-mandate round that raises the bid cannot make a formateur meaner than
-       its own arithmetic already asks */
-    if (gen !== undefined && gen !== null) bid = Math.max(bid, gen);
     var offer = v17Offer(st, lead, pool[i], co.concat([pool[i]]), bid);
     var ans = v17Accept(st, pool[i], lead, offer, relax, pin);
     answers.push(ans);
