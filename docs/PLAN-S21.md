@@ -511,6 +511,45 @@ decorative; and the coalition portfolio trade takes a great office off one
 partner and books nothing against them at all — no ledger entry, no cohesion
 cost, no breach.
 
+**AS SHIPPED, THE GENEROSITY PARAMETER IS NOT IN THE BUILD, AND THE REASON IS
+MEASURED.** The plan asked for "varying concession count, priced by the invitee's
+gap and the formateur's `v17Friction`". Three builds of it were measured and none
+could ship. `v17Accept` reads `concessions.length` and nothing about their
+identity, so a varying count is a varying VALUE — and `v17Build` walks its pool
+greedily, gaining from every acceptance and losing NOTHING to a refusal, because
+a refusal simply moves it to the next party. Bid variance is therefore one-sided
+in its effect: **any** spread makes formation strictly easier, whatever its mean.
+
+Over twelve seeds of forty sessions, against the build before this slice:
+
+| build | kept / partner-session | player's party governs | mean coalition |
+|---|---|---|---|
+| before this slice (flat 3) | 0.044 | 36 of 480 | 2.28 |
+| count varies, mean 2.71 | 0.006 | 226 of 480 | 2.68 |
+| count varies, mean 3.33 | 0.011 | 122 of 480 | 2.38 |
+| count varies, mean 3.23 | 0.031 | 152 of 480 | 2.46 |
+| **WHICH varies, count fixed** | **0.041** | **36 of 480** | **2.26** |
+
+Lowering the mean bid kept the branch mix and kept the collapse; holding the mean
+on the constant kept the promises and turned every formation into a majority, 360
+of 360. Four AI assertions failed that are green on the build before the slice.
+That is S21d handed back in the course of decorating the sheet, which is the S19d
+pattern this programme has now recorded twice.
+
+**What ships varies WHICH statutes an offer names, at a constant three.**
+`v17Mind` reads how far the formateur's own table is from the invitee's on each
+want and the offer takes what it minds least, so two formateurs bidding for the
+same party put different things on the table and every accept decision in the
+game is arithmetically identical to what it was. Over 42 ordered pairs the offers
+fall into 22 distinct sets, and every invitee is offered between two and five of
+them — asked per invitee, because a party offered the same three things by all
+six formateurs is a party nobody negotiates with however varied the board total
+looks. `offer.generosity` and `V17_GENEROSITY` are gone with the count.
+
+A price that varies belongs to a slice that can pay for the compensating change,
+and the compensation is structural rather than a constant: as long as a refusal
+costs a formateur nothing, no bid distribution is neutral.
+
 ### S21f — One exit, and the partner speaks  ·  Coalition 3 of 4  ·  1 improvement, 3 new
 
 `v21Leave(st, pid, why, actor)` replaces four disagreeing exits; it books one

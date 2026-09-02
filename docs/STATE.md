@@ -110,32 +110,55 @@ The four rulings a cold session most needs:
   and 2,623 accept decisions across six seeds: **every offer in the game was
   the same shape** — three concessions, one distinct value, on every invitation
   to every party by every formateur in every round. A formation was a
-  negotiation in which nobody negotiated. `V17_GENEROSITY` gives the formateur
-  a price it sets per invitee, from the pool's own middle rather than an
-  absolute bar: 1,716 offers, five sizes from 1 to 5, mean 3.126 against the
-  constant 3. And the offer now **reaches the screen** — `v6CoalitionCandidates`
-  built the real terms, handed them to `v17Accept` and dropped them on the next
-  line, so the owner's "flat" row was a party name, two scalars and a seat
-  count. The reservation stopped pricing the wrong relationship: `v16Posture`
-  takes no `lead`, so its +16 was charged identically against every formateur at
-  the table and fired on anger at the OUTGOING government — a party charged
-  sixteen extra to join the government replacing the one it hates. It is gone,
-  and `v17PostureOf` with it.
+  negotiation in which nobody negotiated.
 
-  **Three things this slice got wrong and the harness caught, in this order:**
-  the first bid skewed the mean upward and formations became so easy that the
-  grand and caretaker branches stopped firing (the S21d regression, sign
-  flipped); the second used absolute bars picked by eye that almost never fired
-  and the mean came out at 2.22; and `v17Build` shipped a `gen` parameter no
-  call site passed — decoration of the `st.court.size` kind, deleted rather
-  than shipped. **Four of the fifteen poisons came back GREEN and all four were
-  defects in the arm**, not dead bodies: the terms leg asked "does the sentence
-  name a statute" and the red line at the end carried a deleted concessions
-  clause; the same leg read `v6CoalitionCandidates` rather than the raised
-  sheet, so deleting the row's own `<small>` from the renderer passed; and
-  nothing asked whether an offer could name one statute as both a concession
-  and a red line, which the wider offer made reachable and which would book
-  `kept` and `broken` on a single enacted rung.
+  Two formateurs now bid **different things** for the same party. `v17Mind`
+  reads how far the formateur's own table is from the invitee's on each want
+  and the offer takes what it minds least, so over 42 ordered pairs the offers
+  fall into 22 distinct sets and every invitee is offered between two and five
+  of them. And the offer **reaches the screen** — `v6CoalitionCandidates` built
+  the real terms, handed them to `v17Accept` and dropped them on the next line,
+  so the owner's "flat" row was a party name, two scalars and a seat count.
+  The reservation stopped pricing the wrong relationship: `v16Posture` takes no
+  `lead`, so its +16 was charged identically against every formateur at the
+  table and fired on anger at the OUTGOING government — a party charged sixteen
+  extra to join the government replacing the one it hates. It is gone, and
+  `v17PostureOf` with it. And a red line can no longer name a statute the same
+  offer promises to move, which would book `kept` and `broken` on one rung.
+
+  **THE FIRST BUILD MADE THE COUNT THE PRICE AND COULD NOT SHIP, and only the
+  full harness found it.** `v17Accept` reads `concessions.length` and nothing
+  about their identity, so a varying count is a varying VALUE — and `v17Build`
+  walks its pool greedily, gaining from every acceptance and losing nothing to
+  a refusal, so **any** spread makes formation strictly easier whatever its
+  mean. Over twelve seeds of forty sessions: kept per partner-session
+  0.044 → 0.006, the player's party governing 36 of 480 sessions → 226,
+  coalitions 2.28 → 2.68. That is S21d handed back in the course of decorating
+  the sheet — the S19d pattern, recorded a second time. Lowering the mean bid
+  kept the branch mix and kept the collapse (0.011); holding the mean on the
+  constant kept the promises and made every formation a majority, 360 of 360.
+  Four AI arms failed that are green on main. What ships holds the count at
+  three, so the driven board is main's: 12 of 160 player-led sessions against
+  12, coalitions 2.26 against 2.28, kept 0.041 against 0.044.
+
+  **Six of seventeen poisons came back GREEN and every one was a defect in a
+  probe**, not a dead body: the terms leg asked "does the sentence name a
+  statute" and the red line at the end carried a deleted concessions clause;
+  the same leg read the builder rather than the raised sheet, so deleting the
+  row's own `<small>` from the renderer passed; nothing asked whether one
+  statute could be both a concession and a red line; the cap on the widest
+  offer was reachable by exactly one party and the 1,716-offer sample never hit
+  it; and two changes turned out to be no changes at all. Separately, `v17Build`
+  shipped a `gen` parameter no call site passed — decoration of the
+  `st.court.size` kind, deleted rather than shipped.
+
+  **And S21d's own leg was part of the failure.** `kept > 5` over four seeds is
+  a bar on a single-digit count: those four seeds give this build 11 while three
+  other quartets give it 9, 7 and 8, and a build 7% below it on the twelve-seed
+  rate came back at 5 and reddened. A count from four campaigns cannot tell a
+  change from a reshuffle — S16a's ruling, and `tools/pacing.js`'s whole
+  history. It is twelve seeds and a rate now, and the rate still reddens on all
+  three builds that really did hand the slice back.
 
 **WHAT IS OPEN:** seven slices of the original twelve (S21f–S21l) plus the
 owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. S21f–h (one exit,
