@@ -12694,15 +12694,26 @@ function v21PartnerWhy(kind) {
   }
   var d = (S.coalitionDeals || {})[me];
   if (!d || !d.terms) return 'There is no agreement with you to press.';
-  if (kind === 'whip') {
-    return d.defected ? 'Your members are already off the government\'s whip.' : null;
-  }
+  /* THE THREE PUBLIC VERBS ARE ONE ESCALATION AND THEY UNLOCK IN ORDER, which
+     is the ladder the engine climbs in `v21Pressure` -- one rung at a time,
+     with a session between them -- read from the player's side. Without it a
+     partner's road to an ultimatum is one click where an engine's is three
+     sessions, and the whip, which `v21Defect` books at the top rung, would be
+     a first move that silently skipped both rungs under it. Asking for a
+     statute and asking for a department sit outside the ladder: they are what
+     a partner does BEFORE any of this, and they are refused for their own
+     reasons by `v21GovWould`. */
   if (kind === 'publish') {
     return (d.pressure || 0) >= 1 ? 'You have said it. What is left is the ultimatum.' : null;
   }
   if (kind === 'threaten') {
-    if ((d.pressure || 0) >= 2) return 'The ultimatum stands. What follows it is leaving.';
+    if ((d.pressure || 0) >= 2) return 'The ultimatum stands. What follows it is withdrawing the whip.';
     if ((d.pressure || 0) < 1) return 'Say it in public first. A threat nobody saw coming is a bluff.';
+    return null;
+  }
+  if (kind === 'whip') {
+    if (d.defected) return 'Your members are already off the government\'s whip.';
+    if ((d.pressure || 0) < 2) return 'Threaten to withdraw first. The benches are the last thing you take, not the first.';
     return null;
   }
   return (typeof v21GovWould === 'function') ? v21GovWould(S, me, kind) : null;
@@ -13233,7 +13244,7 @@ var ACTIONS = [
      rule this file keeps relearning is that a verb the engine has and the
      player has must be ONE body, or the two drift and the one nobody wrote
      about wins. */
-  v21Partner({ id:'partnerAsk', name:'Ask for a Statute in the Agreement', cost:4, money:3,
+  v21Partner({ id:'partnerAsk', name:'Ask for a Statute in the Agreement', cost:4, money:3, verb:'Ask for it',
     desc:'A priority of yours is written into the coalition agreement, in place of a promise neither side was going to keep.',
     kind:'concession',
     run:function (S) {
@@ -13244,7 +13255,7 @@ var ACTIONS = [
       logIt(S, 'The ' + PARTY[me].short + ' asked the ' + PARTY[S.ruling].short +
         ' to write one of their own priorities into the agreement, and were not refused.');
     } }),
-  v21Partner({ id:'partnerOffice', name:'Ask for a Department', cost:5, money:0,
+  v21Partner({ id:'partnerOffice', name:'Ask for a Department', cost:5, money:0, verb:'Ask for one',
     desc:'A great office the government holds is handed to you. A partner with a department is a partner with a hand on something.',
     kind:'office',
     run:function (S) {
@@ -13253,21 +13264,21 @@ var ACTIONS = [
       if (!off) { flash('There is no office in the government\'s hands to give you.'); return; }
       S.unity = c100((S.unity || 60) - 3);
     } }),
-  v21Partner({ id:'partnerWhip', name:'Withhold the Whip', cost:2, money:0,
+  v21Partner({ id:'partnerWhip', name:'Withhold the Whip', cost:2, money:0, verb:'Withdraw it',
     desc:'Your members stop being bound to vote for the government. You have not left it, and you are not voting for it either.',
     kind:'whip',
     run:function (S) {
       var me = playParty(S), d = (S.coalitionDeals || {})[me];
       if (d) v21Defect(S, me, d);
     } }),
-  v21Partner({ id:'partnerPublish', name:'Say It in Public', cost:3, money:2,
+  v21Partner({ id:'partnerPublish', name:'Say It in Public', cost:3, money:2, verb:'Say it',
     desc:'What has been said in the room goes on the record. A government briefed against by its own partner governs worse.',
     kind:'publish',
     run:function (S) {
       var me = playParty(S), d = (S.coalitionDeals || {})[me];
       if (d) v21Say(S, me, d, 1);
     } }),
-  v21Partner({ id:'partnerThreaten', name:'Threaten to Withdraw', cost:4, money:0,
+  v21Partner({ id:'partnerThreaten', name:'Threaten to Withdraw', cost:4, money:0, verb:'Deliver the ultimatum',
     desc:'An ultimatum, in as many words. The government answers it or it loses you.',
     kind:'threaten',
     run:function (S) {
