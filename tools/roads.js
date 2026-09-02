@@ -11304,6 +11304,88 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return out;
     })();
 
+    /* (d2) THE GATES ON THE TWO NEW CARDS, each asked on a board differing in
+       that one fact. The deck arm drives every card on a state BUILT for it,
+       with the setting at `ruthless` and every purse at 400, so three of these
+       gates were unasserted there and their poisons came back green: R2's
+       floor, the price, and the board the supply card is FOR. */
+    R.gates = (() => {
+      const mover = weakGov(161803);
+      const topple = V16_AI_DECK.filter(c => c.id === 'topple')[0];
+      const bargain = V16_AI_DECK.filter(c => c.id === 'bargain')[0];
+      const out = { found: !!topple && !!bargain };
+      if (!out.found) return out;
+      const ask = () => ({ topple:topple.can(S, mover), bargain:bargain.can(S, mover) });
+      /* R2: the deck at the floor setting is the eleven the game shipped with */
+      S.aiLevel = 'instinct';
+      out.instinct = ask();
+      S.aiLevel = 'ruthless';
+      out.thinks = ask();
+      out.behindTheFloor = out.instinct.topple === false && out.instinct.bargain === false &&
+        out.thinks.topple === true && out.thinks.bargain === true;
+      /* the price, one coin under it */
+      const purse0 = S.purse[mover];
+      S.purse[mover] = V16_AI_COST.topple - 1;
+      out.brokeTopple = topple.can(S, mover);
+      S.purse[mover] = V16_AI_COST.bargain - 1;
+      out.brokeBargain = bargain.can(S, mover);
+      S.purse[mover] = purse0;
+      out.pricedBoth = out.brokeTopple === false && out.brokeBargain === false;
+      /* AND A GOVERNMENT THAT HAS THE HOUSE IS OFFERED NOTHING AND FEARS
+         NOTHING: both cards read one count, so both go shut together. */
+      const seats0 = {}; PARTIES.forEach(p => { seats0[p.id] = S.seats[p.id] || 0; });
+      let all = 0; PARTIES.forEach(p => { all += S.seats[p.id] || 0; });
+      const opp = PARTIES.filter(p => p.id !== S.ruling && !S.banned[p.id]);
+      S.seats[S.ruling] = Math.round(all * .70);
+      let rest = all - S.seats[S.ruling];
+      opp.forEach((p, i) => { S.seats[p.id] = i === opp.length - 1 ? rest : Math.round(rest / opp.length);
+        if (i < opp.length - 1) rest -= S.seats[p.id]; });
+      const safe = ask();
+      out.safeGov = safe.topple === false && safe.bargain === false;
+      PARTIES.forEach(p => { S.seats[p.id] = seats0[p.id]; });
+      /* AND NEITHER CARD LISTS A POSTURE ITS OWN GATE CANNOT COINCIDE WITH.
+         `v16Posture` answers `restive` and `partner` ONLY for a party sitting
+         in the coalition, and both cards refuse one -- so a card carrying
+         either is carrying a posture that can never open it. Both halves are
+         read: the lists here, and the claim about `v16Posture` driven rather
+         than taken from the source. */
+      const seen = { restive:0, restiveInCo:0, partner:0, partnerInCo:0 };
+      fresh(31337);
+      for (let i = 0; i < 30; i++) {
+        PARTIES.forEach(p => {
+          if (S.banned[p.id] || p.id === playParty(S)) return;
+          const post = v16Posture(S, p.id);
+          const inCo = (S.coalition || []).indexOf(p.id) >= 0;
+          if (post === 'restive') { seen.restive += 1; if (inCo) seen.restiveInCo += 1; }
+          if (post === 'partner') { seen.partner += 1; if (inCo) seen.partnerInCo += 1; }
+        });
+        step();
+      }
+      out.postureSeen = seen;
+      /* `restive` needs a grudge against the head of government and did not
+         occur in thirty driven sessions, so it is CONSTRUCTED -- and the same
+         grudge is given to a party OUTSIDE the government, which is the half
+         that makes the claim about coalition membership rather than about
+         anger. A partner turns restive; an outsider with the identical
+         grievance turns to `attack`, which the motion card does list. */
+      const partner = (S.coalition || []).filter(x => x !== S.ruling)[0] || null;
+      const outsider = PARTIES.filter(p => p.id !== S.ruling && !S.banned[p.id] &&
+        (S.coalition || []).indexOf(p.id) < 0)[0];
+      if (partner && outsider) {
+        v16Ai(S)[partner].grudge[S.ruling] = 60;
+        v16Ai(S)[outsider.id].grudge[S.ruling] = 60;
+        out.builtRestive = v16Posture(S, partner);
+        out.builtOutside = v16Posture(S, outsider.id);
+      }
+      out.insideOnly = seen.partner > 0 && seen.partner === seen.partnerInCo &&
+        seen.restive === seen.restiveInCo &&
+        out.builtRestive === 'restive' && out.builtOutside !== 'restive' &&
+        out.builtOutside !== 'partner';
+      out.noDeadPosture = ['restive', 'partner'].every(x =>
+        topple.post.indexOf(x) < 0 && bargain.post.indexOf(x) < 0);
+      return out;
+    })();
+
     /* (e2) A SAVE FROM BEFORE THIS SLICE. Every campaign written before S21g
        that had a minority government carries `st.confidence` set and NO
        agreement with that party at all, because the formation threw the offer
@@ -11443,6 +11525,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     fall.supply.swept > 0 && fall.supply.withdrawn === 1 &&
     fall.supply.cleared === true && fall.supply.markedOnExit === true &&
     fall.supply.saidWithdrew === true && fall.supply.saidLeft === false &&
+    fall.gates.found === true && fall.gates.behindTheFloor === true &&
+    fall.gates.pricedBoth === true && fall.gates.safeGov === true &&
+    fall.gates.insideOnly === true && fall.gates.noDeadPosture === true &&
     fall.legacy.minted === true && fall.legacy.hasTerms === true &&
     fall.legacy.mode === 'supply' && fall.legacy.promises > 0 &&
     fall.legacy.rejoined === true &&
@@ -11494,7 +11579,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${fall.count.whipReachesTheHouse}): with \`d.defected\` set on the same partner the house now counts it ` +
     `AGAINST the government. That line asked \`satisfaction < 30\`, a bare number with no relation to ` +
     `anything, while \`partyBillSupport\` asked \`d.defected\` -- two rules for one surface, and the one week ` +
-    `in which a government is genuinely in danger was the one week this count could not see it · THE SUPPLY ` +
+    `in which a government is genuinely in danger was the one week this count could not see it · AND THE ` +
+    `GATES ON THE TWO CARDS, each asked on a board differing in that one fact: both are behind ` +
+    `\`v19Thinks\`, so the deck at \`instinct\` is the eleven the game shipped with -- R2's floor ` +
+    `(${fall.gates.behindTheFloor}); both are refused one coin under their own price ` +
+    `(${fall.gates.pricedBoth}); and a government holding seventy per cent of the house is neither moved ` +
+    `against nor sold an abstention (${fall.gates.safeGov}), because both read ONE count. The deck arm ` +
+    `drives every card on a state built for it at \`ruthless\` with every purse at 400, so all three of ` +
+    `those poisons went green there · AND NEITHER CARD LISTS A POSTURE ITS OWN GATE CANNOT COINCIDE ` +
+    `WITH (${fall.gates.noDeadPosture}): \`v16Posture\` answers \`restive\` and \`partner\` only for a ` +
+    `party SITTING in the coalition: ${fall.gates.postureSeen.partner} driven occurrences of ` +
+    `\`partner\` and every one of them inside, and \`restive\` CONSTRUCTED because it needs a grudge ` +
+    `against the head of government and did not occur in thirty driven sessions -- a partner given one ` +
+    `turns "${fall.gates.builtRestive}" and an outsider given the IDENTICAL grievance turns ` +
+    `"${fall.gates.builtOutside}", which is the half that makes this a claim about membership rather ` +
+    `than about anger (${fall.gates.insideOnly}). Both cards refuse a member. The first build shipped ` +
+    `\`restive\` on the ` +
+    `motion card and \`partner\` on the supply card: two postures that could never open them, which is ` +
+    `the enum with one value in a third place · THE SUPPLY ` +
     `AGREEMENT IS WRITTEN DOWN. \`v17Supply\` has built an offer of concessions, priced it and put it to the ` +
     `party at every formation since S17e, and \`v17Rotation\` returned the COALITION's offers, so the thing ` +
     `the party accepted was thrown away at the moment it said yes -- nothing recorded, so nothing breakable, ` +

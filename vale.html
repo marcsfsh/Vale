@@ -39081,12 +39081,16 @@ function v17Build(st, lead, relax, pin) {
    agree not to bring it down, and it is a cheaper thing to ask for: no
    offices, no portfolios, concessions only, and a bar lowered by fourteen
    because nobody is being asked to sit in a cabinet they dislike. */
-/* S21g: AND THE OFFER COMES BACK WITH THE ANSWER. Three concessions were
-   built here, priced, and put to the party -- and then thrown away, because
-   `v17Rotation` returned the COALITION's `offers` and nothing carried this
-   one. The party said yes to something that was never written down, so
-   `v16RedLineTick` had nothing to sweep and a government could break every
-   promise it made to the party keeping it alive. */
+/* S21g: THE OFFER ALREADY CAME BACK WITH THE ANSWER, and a line adding it
+   here was written and then taken out again -- `v17Accept` has returned
+   `offer:offer` since S17e, so `best.offer` was set before this slice and the
+   poison that removed the addition changed nothing. The thing that was
+   missing is one line up the stack: `v17Rotation` returned the COALITION's
+   `offers` and nothing carried this one, so the party said yes to three
+   concessions that were never written down, `v16RedLineTick` had nothing to
+   sweep, and a government could break every promise it made to the party
+   keeping it alive. What IS new here is `confidence:'supply'`, which is the
+   mode the agreement is signed under. */
 function v17Supply(st, lead, exclude, relax, pin) {
   var best = null;
   v17Eligible(st).forEach(function (pid) {
@@ -39096,7 +39100,7 @@ function v17Supply(st, lead, exclude, relax, pin) {
         return v21Concede(st, w.id);
       }), redLines:[], confidence:'supply' };
     var ans = v17Accept(st, pid, lead, offer, (relax || 0) + V17_SUPPLY_RELIEF, pin);
-    if (ans.yes && (!best || ans.value > best.value)) { best = ans; best.offer = offer; }
+    if (ans.yes && (!best || ans.value > best.value)) best = ans;
   });
   return best;
 }
