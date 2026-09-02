@@ -19807,17 +19807,60 @@ function v6ShowReport(rep) {
    party was offered and what it said, and where their OWN party has a say
    they take it and the rotation is run again with their answer in place of
    the one the model gave. */
+/* S21e — WHAT AN OFFER SAYS, in the country's own words.
+   Reads an offer and returns one sentence naming what is being promised: the
+   statutes the government would move, the one it would leave alone, and
+   whether a great office is in it. `offer.generosity` is read here, which is
+   the only thing that stops it being a field nothing consults -- the defect
+   this file names after `st.court.size`, and one this slice had itself
+   introduced before the check caught it.
+   Statute names come from `POL`, so a card the owner retunes says the new
+   thing without anybody editing a sentence. */
+function v21OfferLine(st, offer) {
+  if (!offer) return '';
+  var adopt = [], leave = null;
+  (offer.concessions || []).forEach(function (c) {
+    var nm = POL[c.ref] ? POL[c.ref].name : null; if (!nm) return;
+    if (c.kind === 'refrain') leave = nm; else adopt.push(nm);
+  });
+  /* At most two clauses in the first sentence, and the office gets its own --
+     joining "a great office" onto "leave X alone" reads as a verb phrase
+     bolted to a noun phrase, and three clauses in a row reads as a list
+     rather than as terms. */
+  var bits = [];
+  if (adopt.length) bits.push('move ' + v8And(adopt));
+  if (leave) bits.push('leave ' + leave + ' alone');
+  var line = bits.length ? 'You would ' + bits.join(', and ') + '.' : 'You are promising them nothing.';
+  if (offer.offices) line += ' A great office comes with it.';
+  var rl = (offer.redLines || []).map(function (r) { return POL[r] ? POL[r].name : null; }).filter(Boolean)[0];
+  if (rl) line += ' Their red line is ' + rl + '.';
+  return line;
+}
+/* the file has no general list-joiner; this is the one place that wants one */
+function v8And(a) {
+  if (!a || !a.length) return '';
+  if (a.length === 1) return a[0];
+  return a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+}
 function v6CoalitionCandidates(st) {
   var me = playParty(st), lp = ppos(st, me);
   return PARTIES.filter(function (p) { return p.id !== me && !st.banned[p.id] && (st.seats[p.id] || 0) > 0; }).map(function (p) {
     var d = dist2(ppos(st, p.id), lp), rel = st.partyRel[p.id] || 50, cordon = !!(st.cordon && st.cordon[p.id]);
-    var ans = v17Accept(st, p.id, me, v17Offer(st, me, p.id, [me, p.id]), 0, null);
+    /* S21e: THE OFFER IS KEPT. It was built on this line, handed to
+       `v17Accept`, and dropped on the next one -- so the row the player read
+       was a party name, two scalars and a seat count, while every concession,
+       the red line and the price the formateur set were computed and thrown
+       away before they reached the screen. The owner's word for the result was
+       "flat". A negotiation nobody can see is not one. */
+    var offer = v17Offer(st, me, p.id, [me, p.id]);
+    var ans = v17Accept(st, p.id, me, offer, 0, null);
     var willing = !cordon && ans.yes;
     var reason = cordon ? 'Under your cordon'
       : (ans.far ? 'They will not sit with you at any price'
       : (ans.yes ? '' : 'They want ' + ans.reservation + ' and this is worth ' + ans.value + ' to them'));
     return { id:p.id, seats:st.seats[p.id] || 0, d:d, rel:rel, willing:willing,
-      value:ans.value, reservation:ans.reservation, far:ans.far, reason:reason };
+      value:ans.value, reservation:ans.reservation, far:ans.far, reason:reason,
+      offer:offer, terms:v21OfferLine(st, offer) };
   }).sort(function (a, b) { return a.d - b.d; });
 }
 /* One row of the rotation, in the country's own words. */
@@ -19918,7 +19961,13 @@ function v6CoalitionDialog(nc) {
           return '<button class="coal-row" data-coal="' + c.id + '" aria-pressed="' + on + '"' + (c.willing ? '' : ' disabled') +
             '><span class="dot" style="background:' + p.color + ';width:14px;height:14px"></span><span><b>' + esc(p.name) +
             '</b><small>' + esc(c.willing ? 'They will sit with you. Worth ' + c.value + ' to them against a price of ' + c.reservation + '.' : c.reason + '.') +
-            '</small></span><span class="seats">' + c.seats + '</span></button>';
+            /* S21e: AND WHAT YOU ARE ACTUALLY OFFERING THEM. The row printed
+               two scalars and no terms, so a player choosing partners was
+               choosing between prices with nothing priced. It is drawn on
+               every row, willing or not, because what a party is refusing is
+               as much use to the reader as what one is accepting. */
+            (c.terms ? '<small class="coal-terms">' + esc(c.terms) + '</small>' : '') +
+            '</span><span class="seats">' + c.seats + '</span></button>';
         }).join('') + '</div>';
     }
     var choices = [];
