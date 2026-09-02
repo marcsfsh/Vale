@@ -10536,7 +10536,19 @@ function respondInbox(id, choice) {
     }
   } else if (it.type === 'confidence_threat') {
     if (choice === 'concede') { shiftPartyRel(S, from, 18); S.unity = c100(S.unity - 5); }
-    if (choice === 'renegotiate') { shiftPartyRel(S, from, 11); S.confidence = from; }
+    /* S21g: "Reopen the coalition agreement" REOPENS THE AGREEMENT. It read
+       `S.confidence = from` -- naming a party that is sitting IN the cabinet
+       as the one supplying the government confidence from outside it, which
+       is not a thing that can be true. `v17ConfidenceVote` tests coalition
+       membership first, so the write did nothing there; what it did do was
+       make `st.confidence` a field that could name a cabinet party, which
+       this slice's whole supply agreement now hangs off. Its S21f twin, the
+       ultimatum's "reopen the agreement and rewrite it", calls the right
+       function; this one now does the same, and a refusal is audible. */
+    if (choice === 'renegotiate') {
+      shiftPartyRel(S, from, 11);
+      if (typeof v17Renegotiate === 'function') v17Renegotiate(S, from);
+    }
     if (choice === 'dare') {
       /* S21f: through the one door. This filtered the coalition and patched
          `st.partner` and did nothing else -- no record, no standing, no

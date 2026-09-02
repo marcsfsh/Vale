@@ -11245,8 +11245,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       let form = null;
       const bi = v17Install;
       v17Install = function (st, out) {
+        /* AND THE PARTY MUST NOT ALREADY HAVE ONE. Two other things in this
+           slice mint a supply agreement, so a formation that seats a party
+           which already had one would be read as the formation having written
+           it -- which is how the poison that threw the offer away again came
+           back green. The first install that seats a party with NO agreement
+           at all is the one this leg is about. */
+        const pre = !!(out && out.confidence && (st.coalitionDeals || {})[out.confidence]);
         const r = bi.apply(this, arguments);
-        if (!form && out && out.confidence) {
+        if (!form && !pre && out && out.confidence) {
           const dd = (st.coalitionDeals || {})[out.confidence] || null;
           form = { pid:out.confidence, how:out.how,
             written: !!(dd && dd.terms && (dd.terms.concessions || []).length > 0),
@@ -11294,6 +11301,39 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       out.saidWithdrew = /withdrew confidence and supply/.test(out.said);
       out.saidLeft = /left the government/.test(out.said);
       out.markedOnExit = !!(d && d.walkedOut);
+      return out;
+    })();
+
+    /* (e2) A SAVE FROM BEFORE THIS SLICE. Every campaign written before S21g
+       that had a minority government carries `st.confidence` set and NO
+       agreement with that party at all, because the formation threw the offer
+       away -- so the load path is where those agreements have to appear, and
+       `pv5EnsureState` asked `st.coalition` in all three of its loops. Driven
+       through `enrichState`, which is what a save actually goes through, and
+       not by calling the ensure. */
+    R.legacy = (() => {
+      const mover = weakGov(2718);
+      const out = {};
+      const outsider = PARTIES.filter(p => p.id !== S.ruling && !S.banned[p.id] &&
+        (S.coalition || []).indexOf(p.id) < 0)[0].id;
+      S.confidence = outsider;
+      S.coalitionDeals = S.coalitionDeals || {};
+      delete S.coalitionDeals[outsider];
+      S = enrichState(S, false);
+      const d = (S.coalitionDeals || {})[outsider] || null;
+      out.minted = !!d;
+      out.hasTerms = !!(d && d.terms);
+      out.mode = d && d.terms ? d.terms.confidence : null;
+      out.promises = d && d.terms ? (d.terms.concessions || []).length : 0;
+      /* and a supply party that walked out and came back signs a NEW one --
+         the rejoin loop is the third of the three sites and asks the same
+         question the other two do */
+      if (d) {
+        d.walkedOut = S.turn; d.defected = S.turn; d.pressure = 2;
+        S = enrichState(S, false);
+        const d2 = (S.coalitionDeals || {})[outsider] || {};
+        out.rejoined = !d2.walkedOut && !d2.defected && !d2.pressure;
+      }
       return out;
     })();
 
@@ -11403,6 +11443,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     fall.supply.swept > 0 && fall.supply.withdrawn === 1 &&
     fall.supply.cleared === true && fall.supply.markedOnExit === true &&
     fall.supply.saidWithdrew === true && fall.supply.saidLeft === false &&
+    fall.legacy.minted === true && fall.legacy.hasTerms === true &&
+    fall.legacy.mode === 'supply' && fall.legacy.promises > 0 &&
+    fall.legacy.rejoined === true &&
     fall.paper.posted === true && fall.paper.opts.length === 3 &&
     fall.paper.truthOnTheCard === true &&
     !!fall.paper.shore && fall.paper.shore.rose === true &&
@@ -11469,7 +11512,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `other value never occurs is the decoration \`st.court.size\` is · AND IT IS SWEPT (${fall.supply.swept} ` +
     `scans): \`v16RedLineTick\` walked \`st.coalition\`, which a supply party is not in, so four sites asked ` +
     `"is this party in the coalition" to mean "does this party have an agreement with the government" and ` +
-    `\`v21Signed\` is that question with a name · AND WITHDRAWING IT GOES THROUGH THE ONE DOOR ` +
+    `\`v21Signed\` is that question with a name -- AND THE LOAD PATH IS WHERE THE OLD ONES APPEAR: every ` +
+    `campaign saved before this slice with a minority government carries \`st.confidence\` set and no ` +
+    `agreement with that party at all, and \`enrichState\` mints one for it now with ` +
+    `${fall.legacy.promises} promises under mode "${fall.legacy.mode}" (${fall.legacy.hasTerms}), and ` +
+    `signs a NEW one when that party has walked out and come back (${fall.legacy.rejoined}) · AND ` +
+    `WITHDRAWING IT GOES THROUGH THE ONE DOOR ` +
     `(${fall.supply.withdrawn === 1}), clearing \`st.confidence\` (${fall.supply.cleared}) and marking the ` +
     `agreement (${fall.supply.markedOnExit}) -- a sixth exit written somewhere else would have been S21f's ` +
     `whole finding repeated. Driven through \`v17Walkout\`, the terminal the game uses, rather than through ` +
