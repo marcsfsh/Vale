@@ -38342,10 +38342,6 @@ function v17ByWeight(st) {
 function v17GrudgeOf(st, pid, against) {
   return (typeof v16Grudge === 'function') ? v16Grudge(st, pid, against) : 0;
 }
-function v17PostureOf(st, pid) {
-  return (typeof v16Posture === 'function') ? v16Posture(st, pid) : 'hold';
-}
-
 /* WHAT ONE PARTY OFFERS ANOTHER. Offices and portfolios in proportion to what
    the invitee brings, and two concessions off its own list of wants -- the
    same shape S17e writes into `coalitionDeals.terms`, so what is agreed at
@@ -38398,7 +38394,6 @@ function v17Offer(st, lead, pid, co, gen) {
 function v17Accept(st, pid, lead, offer, relax, pin) {
   var d = dist2(ppos(st, pid), ppos(st, lead));
   var grudge = v17GrudgeOf(st, pid, lead);
-  var post = v17PostureOf(st, pid);
   var value = 38 - d * 38 - grudge * .32
     + (offer.share || 0) * 46
     + ((offer.concessions || []).length) * 5
@@ -38425,7 +38420,26 @@ function v17Accept(st, pid, lead, offer, relax, pin) {
      larger than the one asking will not serve under it at any ordinary price,
      which is where a plurality gets frozen out by three smaller parties who
      are all cheap and all willing. */
-  var res = 30 + v17Share(st, pid) * 70 + (post === 'attack' ? 16 : 0)
+  /* S21e: THE POSTURE TERM IS GONE, AND IT WAS WRONG-SIGNED RATHER THAN
+     MERELY STALE. `v16Posture(st, pid)` takes no `lead` argument, so the +16
+     was charged identically against all seven formateurs at the same table.
+     Worse, `attack` is returned on `v16Grudge(st, pid, me) >= 35 ||
+     v16Grudge(st, pid, st.ruling) >= 35` -- anger at the player, or at
+     whoever is governing. During a formation `st.ruling` is the OUTGOING
+     government, so the common case was a party charged sixteen extra to join
+     the government that is REPLACING the one it hates. It priced the wrong
+     relationship in the wrong direction.
+
+     Nothing takes its place, because the right relationship is already priced
+     and correctly directed: `value` carries `- grudge * .32` on
+     `v17GrudgeOf(st, pid, lead)`, which asks about THIS formateur. Adding
+     regard to the reservation as well would be a second mechanism computing
+     what the first already computes, which this file forbids.
+
+     It fired on 31% of accept decisions against 1,455 refusals sitting within
+     twenty points, so removing it moves the table toward accepting and the
+     figure is measured either side rather than assumed. */
+  var res = 30 + v17Share(st, pid) * 70
     + (v17Weight(st, pid) > v17Weight(st, lead) ? 22 : 0) - (relax || 0);
   var far = d > V17_UNBRIDGEABLE;
   var yes = !far && value >= res;
@@ -38435,7 +38449,7 @@ function v17Accept(st, pid, lead, offer, relax, pin) {
      their own would never sit with is told so, rather than obeyed. */
   if (pin && pin[pid] && !far) { yes = pin[pid] === 'accept'; pinned = true; }
   return { id:pid, value:Math.round(value), reservation:Math.round(res),
-    yes:yes, pinned:pinned, far:far, distance:d, grudge:grudge, posture:post, offer:offer };
+    yes:yes, pinned:pinned, far:far, distance:d, grudge:grudge, offer:offer };
 }
 
 /* ONE FORMATEUR'S ATTEMPT. It invites the parties it can most easily live
