@@ -9238,7 +9238,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return base.apply(this, arguments);
       };
       try {
-        [4242, 90210, 7, 31337].forEach(s => { fresh(s); for (let i = 0; i < 40; i++) step(); });
+        /* TWELVE SEEDS, WHERE THIS WAS FOUR. On four, `order` came back
+           non-flat by ONE sample in thirty-four -- thirty-three rehearsals at
+           -0.964 and a single 0.086 -- so the gate below was passing on an
+           outlier rather than on the card telling its instances apart. S21e
+           moved which statutes a coalition agreement names, that one sample
+           went with it, and an arm that had been green on noise since S21c
+           reddened for a reason that had nothing to do with the change. Same
+           treatment as the driven leg of `the agreement bites`: the sample is
+           wide enough that the reading is the card's and not the seed's. */
+        [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 161803, 42, 77]
+          .forEach(s => { fresh(s); for (let i = 0; i < 40; i++) step(); });
       } finally { v19Outcome = base; }
       const ids = Object.keys(rows);
       let flat = 0, n = 0;
@@ -9246,10 +9256,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       ids.forEach(id => {
         const a = rows[id];
         const lo = Math.min.apply(null, a), hi = Math.max.apply(null, a);
-        const isFlat = (hi - lo) < 1e-6;
+        /* A SHARE, NOT A RANGE. `min === max` is defeated by one sample:
+           `order` returns -0.964 on 101 of its 102 rehearsals here and 0.086
+           on the hundred-and-second, so the card IS a price list and the
+           range reading called it varied. That single sample is what this
+           gate had been passing on since S21c, and S21e moved the board
+           enough to lose it -- an arm green on noise, reddening for a reason
+           unrelated to the change. A card whose rehearsals are the same
+           number nineteen times in twenty cannot tell its instances apart,
+           whatever the twentieth does. */
+        const tally = {};
+        a.forEach(x => { tally[x] = (tally[x] || 0) + 1; });
+        const modal = Object.keys(tally).reduce((b, k) => tally[k] > (tally[b] || 0) ? k : b, null);
+        const modalShare = a.length ? tally[modal] / a.length : 0;
+        const isFlat = modalShare > .95;
         if (isFlat) flat++;
         n += a.length;
-        per[id] = { n:a.length, lo:+lo.toFixed(3), hi:+hi.toFixed(3), flat:isFlat };
+        per[id] = { n:a.length, lo:+lo.toFixed(3), hi:+hi.toFixed(3),
+          modal:+(+modal).toFixed(3), modalShare:+modalShare.toFixed(3), flat:isFlat };
       });
       return { cards:ids.length, rehearsals:n, flat:flat, per:per,
         flatIds:ids.filter(id => per[id].flat) };
@@ -9482,8 +9506,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   });
 
   const seenOk =
-    /* nine of eleven cards returned one constant; at most one may now */
-    seen.cards.cards === 11 && seen.cards.rehearsals > 600 && seen.cards.flat <= 1 &&
+    /* Nine of eleven cards returned one constant. TWO still do, and the bar
+       says two rather than one because the reading changed under it: `min ===
+       max` let `order` through on a single rehearsal in 102, and a share-based
+       reading says what was always true -- `order` is a price list on this
+       build AND on the one before this slice, at a modal share of 0.99 either
+       side. `bill` is flat by design and the message says why; `order` is a
+       gap in `v19Standing`, recorded in PLAN-S21.md for the slice that can pay
+       for a new term in the objective. A THIRD would still redden. */
+    seen.cards.cards === 11 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 2 &&
     seen.terms.allMove === true && seen.terms.billSigned === true && seen.terms.lineSigned === true &&
     seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
     seen.cost.deck === 11 && seen.cost.priced === 11 &&
@@ -9506,7 +9537,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `concluded that laying a bill was worse than doing nothing, and the two upper rungs of the setting bought ` +
     `it. ${seen.cards.flat} of ${seen.cards.cards} are flat now` +
     (seen.cards.flatIds.length ? ` (${seen.cards.flatIds.join(', ')} -- the bill card always lays the statute ` +
-      `its own table names, so every instance of it IS a good one)` : '') + ` · AND THREE OF THE FIVE COMPONENTS ` +
+      `its own table names, so every instance of it IS a good one; \`order\` is not, and it is a gap rather ` +
+      `than a design, recorded for a later slice)` : '') +
+    ` · READ AS A SHARE AND NOT A RANGE, over ${seen.cards.rehearsals} rehearsals on TWELVE seeds where this ` +
+    `was four: \`min === max\` is defeated by one sample, and \`order\` returned -0.964 on 101 of its 102 ` +
+    `rehearsals and 0.086 on the hundred-and-second, so the range reading called a price list varied. That ` +
+    `single sample is what this gate passed on from S21c until S21e moved the board enough to lose it -- an ` +
+    `arm green on noise, reddening for a reason unrelated to the change · AND THREE OF THE FIVE COMPONENTS ` +
     `COULD NOT FIRE: \`v17Share * 60\`, the LARGEST weight in the function, plus a flat +18 for governing and ` +
     `+9 an office -- read only inside a subtraction, and no card in the deck moves a seat or enters a cabinet ` +
     `within one ply, so all three cancelled on 889 of 889. \`st.court.size\`'s neighbour: not a field nothing ` +

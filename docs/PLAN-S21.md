@@ -550,6 +550,33 @@ A price that varies belongs to a slice that can pay for the compensating change,
 and the compensation is structural rather than a constant: as long as a refusal
 costs a formateur nothing, no bid distribution is neutral.
 
+**A DEFECT S21e EXPOSED AND DID NOT CAUSE, for a later slice.** The `order`
+card's rehearsal is a price list: `v19Outcome` returns -0.964 on 101 of its 102
+rehearsals over twelve seeds on the build BEFORE this slice, and on 105 of 105
+after it — the modal share is 0.99 either side. `v19Standing` has no term an
+executive order moves, so a party clever enough to rehearse scores the order
+card at exactly minus its own price and never plays it above `instinct`. That is
+the same defect S21c fixed for nine of the eleven cards, and `order` escaped the
+fix's own assertion on a single rehearsal in a hundred; `the rehearsal can see
+what a card did` read `min === max`, which one sample defeats, and it has been
+green on that sample since S21c. It now reads the modal SHARE, reports two cards
+flat with `order` named, and a third would still redden. Giving `v19Flight` an
+order term is small and it is not free: it changes what every card is worth, so
+it needs the twelve-seed kept rate, the four board-sensitive arms and a poison
+run.
+
+**One refinement is deliberately left for that slice.** `v17Mind` reads two
+registry values — the formateur's want and the invitee's — so the ranking for a
+given pair is the same on every board and at every moment. What varies is who is
+offering, which is the half that was missing; what does not yet vary is the
+circumstance. Shading it by how far the statute book already stands from the
+invitee's target would make a formateur mind less about a promise that is nearly
+delivered, and the same pair would then offer different things at different
+points in a campaign. It is cheap to write and it is not free to ship: it moves
+which statutes are promised over time, so it needs the twelve-seed kept rate,
+the four board-sensitive arms and a poison run of its own. It ships with the
+slice that can pay for that, not as a rider here.
+
 ### S21f — One exit, and the partner speaks  ·  Coalition 3 of 4  ·  1 improvement, 3 new
 
 `v21Leave(st, pid, why, actor)` replaces four disagreeing exits; it books one
