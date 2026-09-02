@@ -283,6 +283,35 @@ The four rulings a cold session most needs:
   `v17Supply` was a change that was not a change — `v17Accept` has returned the
   offer since S17e — so it was reverted rather than shipped.
 
+  **Five arms reddened, and the cause was one thing: this slice changes which
+  card an engine plays.** A build with the two cards and the three objective
+  terms switched off reproduces every pre-slice figure to the digit, so the
+  mechanisms those arms are about are untouched. Each was gated on a statistic
+  the deck's composition moves, and each is re-read against the claim it makes
+  in its own words — all five now pass on the build before this slice as well
+  as on this one, which is the property a re-shaped assertion has to have.
+
+  | arm | was gated on | pre → post | now |
+  |---|---|---|---|
+  | `a party moves when it has a reason to` | the unluckiest of five seeds ≥ 4 | all ≥ 4 → one at 3 | 12 seeds, the mean, and no seed at nought |
+  | `a party knows who is in its way` | `worth > p90` of a mostly-nought column | 9.8 > 9.6 → 9.3 vs 17.4 | above half the median LIVE grievance, below p75 |
+  | `the parties have characters` | a Pearson r over SIX points at .8 | .95 → .755 | the sign agreement, 4 of 6, with r reported |
+  | `a party does not wait for the season` | `clearShare > .7` | .818 → .693 | not gated: the bound has moved three times for one reason |
+  | `easy is a cakewalk` | the unluckiest of six, and a driver | see below | the mean, on a driver that holds elections |
+
+  **And the easy-tier arm was driving a republic that never went to the polls.**
+  S21g's motion is the only thing that can change a government where no election
+  runs, so seven refoundings against two elections took the tier's capital income
+  from 101.6 to 73.9 and looked exactly like a balance regression. Driven with
+  `runQueue` overridden — R9, this program's own ruling — the same two builds
+  read 61.6 and 60.1 on 120 elections each and no refoundings at all. The
+  corrected driver also says **two of S21b's easy-tier claims were measured on
+  that broken republic**: income sits at its floor on .80 of sessions rather
+  than .00, and the street reaches "most campaigns" on .167 rather than .500 —
+  both identical before and after this slice. S21b's actual defect (mean, min
+  and max all exactly 150, every term dead) is fixed and stays fixed; whether
+  `capFloor` should move again is recorded as the owner's, not taken as a rider.
+
   **In play:** 7 notices over 960 driven sessions, 6 questions put, 1 carried;
   the mover was right twice and wrong five times, which is what the price is
   for. The rate is modest and conditional on a state the player controls: a

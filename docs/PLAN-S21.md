@@ -694,6 +694,30 @@ against .33) and misses six. A government never escapes a motion it deserves.
   `v17Accept` has returned `offer:offer` since S17e, so its poison could not
   redden anything. Reverted rather than shipped — S21e's P18 in a new place.
 
+**Five arms reddened and none of them was a defect in the slice.** The cause
+is one thing — this slice changes which card an engine plays — and a build with
+the two cards and the three objective terms switched off reproduces every
+pre-slice figure to the digit. All five were gated on statistics the deck's
+composition moves: the unluckiest of five seeds, a `worth > p90` clause passing
+by two tenths, a Pearson r over six points, a `clearShare` bound three
+consecutive slices have had to lower, and the unluckiest of six campaigns. Each
+is re-read against the claim it makes in its own words and all five now pass on
+the build BEFORE this slice as well as on this one, which is the property a
+re-shaped assertion has to have and the test that separates it from a weakened
+one.
+
+**And one of them was driving a republic that never went to the polls.** The
+easy-tier arm's own `step()` clears `UI.queue` around `endTurn` without
+overriding `runQueue`, so it held two elections in 240 sessions — R9 exactly.
+S21g's motion is the only thing that can change a government in such a republic,
+so seven refoundings took the tier's capital income from 101.6 to 73.9 and read
+as a balance regression. Corrected, the same two builds read 61.6 and 60.1 with
+120 elections each and no refoundings. The corrected driver also shows that two
+of S21b's easy-tier claims were measured on that broken republic — income at the
+floor on .80 of sessions rather than .00, and the street reaching .167 of
+campaigns rather than .500, both identical either side of this slice. Recorded
+for the owner rather than re-tuned here.
+
 **The rate, stated plainly.** Over 960 driven sessions on 24 seeds at
 `ruthless`: 7 notices laid, 6 questions put, 1 carried, and the mover was right
 twice and wrong five times. That is roughly one motion every 140 sessions, and
