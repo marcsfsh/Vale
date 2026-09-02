@@ -9115,6 +9115,32 @@ function v21Concede(st, ref) {
   c.due = (st.turn || 0) + V21_DUE;
   return c;
 }
+/* S21f — WHAT A PARTY COMING BACK LEAVES BEHIND, in one place because two
+   places is how this slice's own defect happened. S17g's rule is that a party
+   returning to a coalition signs a NEW agreement: the record persists and the
+   cohesion and the terms do not. This slice added two more fields that carry
+   the old quarrel -- `defected`, which withholds the whip, and `pressure`,
+   which is how loudly the party is complaining -- and the first build cleared
+   neither. Measured, that showed up as ten walkouts against nine withheld
+   whips: a party that had defected, walked out and rejoined came back with the
+   flag still set, so it skipped its warning the next time AND docked the new
+   government 27 on every bill under an agreement it had just signed.
+   Declared in chunk 1 because `pv5EnsureState` calls it from inside
+   `enrichState`, which is the trap S21d walked into with `v21Concede`. */
+function v21Rejoin(st, pid, d) {
+  if (!d) return d;
+  d.former = false;
+  d.walkedOut = null;
+  d.defected = null;
+  d.pressure = null;
+  d.pressureAt = null;
+  d.redLineOff = {};
+  d.terms = null;
+  d.satisfaction = clamp(st.partyRel[pid] || 55, 20, 85);
+  if (d.ledger) d.ledger.push({ turn:st.turn, kind:'altered', ref:null,
+    why:'they came back, and a new agreement was signed', cost:0 });
+  return d;
+}
 /* WHAT A CONCESSION ASKS FOR, and the one place that decides it. A promise
    with a `from` asks for one rung of it; a promise carried in a save from
    before S21d has none, and asks for the party's full target exactly as it
@@ -9150,6 +9176,18 @@ function v21Met(st, pid, c) {
    range to the +18 ceiling. */
 var V21_PARTNER_PIVOT = 38;
 var V21_PARTNER_SLOPE = .47;
+/* S21f — WHAT WITHDRAWING THE WHIP TAKES OFF A GOVERNMENT BILL. Measured over
+   6,042 readings of this function for a coalition partner on a government bill
+   across six seeds of forty sessions: median 64.6, p10 37.8, p90 76.6, and
+   4,694 of the 6,042 at or above the line a bill has to clear. Of those, the
+   median clears it by 20.5 and the NINETIETH PERCENTILE by 27.2, which is this
+   number. So a partner that has withdrawn the whip loses the government nine
+   ordinary bills in ten while a bill it actively wants still carries its
+   benches -- which is the difference between withholding the whip and opposing
+   the government, and it is the difference the game had no way to express.
+   Declared here beside the other two constants this function reads: chunk 8 is
+   where the coalition agreement lives and chunk 1 is where it is consulted. */
+var V21_DEFECT = 27;
 /* WHAT A BROKEN PROMISE TAKES OFF WHERE COHESION SETTLES. Declared here for
    the same chunk reason as the two above.
 
@@ -9202,6 +9240,14 @@ function partyBillSupport(st, pid, bill) {
     var sat = (dd && typeof dd.satisfaction === 'number') ? dd.satisfaction : null;
     score += (sat === null || pid === st.ruling) ? 12
       : clamp((sat - V21_PARTNER_PIVOT) * V21_PARTNER_SLOPE, -8, 18);
+    /* S21f: AND A PARTNER THAT HAS WITHDRAWN THE WHIP IS NOT VOTING FOR IT.
+       The cohesion term above is a judgement and bottoms out at -8; this is a
+       fact about the division, and it is the only thing in the game that
+       separates "a partner in the government" from "a partner whose votes the
+       government has". Read where the whip is exercised rather than where the
+       card is drawn, so the forecast, the whip count and the pass roll all
+       move together. */
+    if (dd && dd.defected && pid !== st.ruling) score -= V21_DEFECT;
   }
   /* S18a: keyed on `owner === 'player'` this paid the RULING party +8 to back
      the bill of a player sitting in opposition -- measured at 32 against 24 on
@@ -10586,15 +10632,30 @@ function politicsTick(st) {
      benches, addressed to them as head of a government they do not head. */
   var coalition = (st.coalition || []).filter(function (p) { return p !== st.ruling && p !== playParty(st); });
   var lowFaction = (st.factions[playParty(st)] || []).slice().sort(function (a, b) { return a.loyalty - b.loyalty; })[0];
+  /* S21f: BOTH DRAWS UP HERE, BEFORE ANY BRANCH DECIDES ANYTHING. S18c wrote
+     the rule immediately below this and the branch above it broke it: the
+     confidence-threat path returned before either roll, the coalition-demand
+     path spent one, and everything past them spent two, so how many numbers
+     this producer consumed depended on which paper it chose. A gate decides
+     what happens, never how many numbers are drawn -- the dice are the
+     campaign's identity, and S18c measured the six-seed pacing arc moving on
+     every row for exactly this. Hoisting them re-phases the stream ONCE,
+     deliberately, and this is the record of it. */
+  var v21RollDemand = rand();
+  var v18Governors = rand() < .35;
   if (leads(st) && coalition.length) {
     var partner = coalition.slice().sort(function (a, b) { return st.partyRel[a] - st.partyRel[b]; })[0];
+    /* AND `partyDemandPolicy` IS ASKED ABOVE THE GATE, because it ROLLS. It is
+       a seat-weighted draw, so a session that took the confidence-threat branch
+       spent one number fewer than one that fell through to the demand -- the
+       same rule as the two above, one level further in. */
+    var demand = partyDemandPolicy(st, partner);
     if (st.partyRel[partner] < 27) {
       addInbox(st, { type:'confidence_threat', from:partner, title:PARTY[partner].short + ' Threatens the Coalition',
         body:'Their leader says the agreement no longer binds the government and asks for an immediate concession before the next division.' });
       return;
     }
-    var demand = partyDemandPolicy(st, partner);
-    if (demand && rand() < .62) {
+    if (demand && v21RollDemand < .62) {
       addInbox(st, { type:'coalition_demand', from:partner, policy:demand.policy, dir:demand.dir,
         title:PARTY[partner].short + ' Demands ' + POL[demand.policy].name,
         body:'The coalition partner has made this measure the test of whether its place in government still means anything.' });
@@ -10616,8 +10677,9 @@ function politicsTick(st) {
      re-phases the whole seeded stream from that point on -- measured, the
      six-seed pacing arc moved on every row for that reason alone. The dice
      are the campaign's identity; a gate decides what happens, never how many
-     numbers are drawn. */
-  var v18Governors = rand() < .35;
+     numbers are drawn. S21f: drawn at the top of the function with the
+     coalition demand's roll, because the branches ABOVE this line could return
+     before reaching it and the rule is the same one. */
   if (v18Governors && leads(st)) {
     addInbox(st, { type:'governors_conference', from:null, title:'The Fifty Governors Call for a Conference',
       body:'They want grants, a clearer division of powers and an answer from the government rather than another departmental circular.' });
@@ -16513,13 +16575,14 @@ function pv5EnsureState(st, fresh) {
      record -- which is the point of the ledger -- meant a partner returned on
      the cohesion it stormed out with and stormed out again the next session.
      Measured: mean coalition lifespan fell from 6.6 sessions to 2.1. The
-     record persists, the terms and the cohesion do not. */
+     record persists, the terms and the cohesion do not.
+     S21f: the reset is `v21Rejoin` and this is one of its two callers. It was
+     written out longhand here, and the slice that added `defected` and
+     `pressure` to the agreement did not know to come back and add them. */
   (st.coalition||[]).forEach(function(pid){
     var d=st.coalitionDeals[pid];
     if(!d||!d.walkedOut)return;
-    d.former=false; d.walkedOut=null; d.terms=null; d.redLineOff={};
-    d.satisfaction=clamp(st.partyRel[pid]||55,20,85);
-    if(d.ledger)d.ledger.push({turn:st.turn,kind:'altered',ref:null,why:'they came back, and a new agreement was signed',cost:0});
+    v21Rejoin(st,pid,d);
   });
   (st.coalition||[]).forEach(function(pid){
     var wants=pv5TopWants(pid,st,4);
@@ -36622,8 +36685,47 @@ function v16RedLineTick(st) {
       }
     });
     v21Pressure(st, pid, d);
-    if ((d.satisfaction || 50) <= v17WalkFloor(st, pid)) v17Walkout(st, pid, d);
+    /* S21f: AND THE FLOOR IS A WARNING BEFORE IT IS A DOOR. A partner reaching
+       its walk floor withholds the whip for a session first; it walks the next
+       time it is still there. A government given a session's notice can lay
+       the bill, reopen the agreement, or watch its own measure fall. */
+    if ((d.satisfaction || 50) <= v17WalkFloor(st, pid)) {
+      if (!d.defected) v21Defect(st, pid, d);
+      else v17Walkout(st, pid, d);
+    } else if (d.defected) {
+      /* brought back above the floor: the whip is restored and the warning
+         shot is theirs again, or a partner could only ever be saved once */
+      d.defected = null;
+      logIt(st, 'The ' + PARTY[pid].short + ' restored the whip. Their members are with the government again.');
+    }
   });
+}
+
+/* S21f — WITHHOLDING THE WHIP.
+
+   MEASURED FIRST, over 6,042 readings of `partyBillSupport` for a coalition
+   partner on a government bill across six seeds of forty sessions: the partner
+   scores a median of 64.6 with a p10 of 37.8 and a p90 of 76.6, and 4,694 of
+   the 6,042 sit at or above the line a bill has to clear. Of those, the median
+   clears it by 20.5 and the ninetieth percentile by 27.2.
+
+   `V21_DEFECT` is that p90, and it is declared in chunk 1 beside the other
+   two constants `partyBillSupport` reads. It is not "the partner votes against
+   everything": a bill the partner actively wants clears the line by more than
+   27 and still carries their benches, which is what withholding the WHIP means
+   as against opposing the government. What it takes off is the ordinary
+   government bill, which is the whole point -- the government finds out that
+   its majority is arithmetic and not a fact. */
+function v21Defect(st, pid, d) {
+  d.defected = st.turn;
+  d.pressure = 2; d.pressureAt = st.turn;
+  logIt(st, 'The ' + PARTY[pid].short + ' withdrew the whip from the government\'s business. ' +
+    'They have not left the cabinet, and they are not voting for it either.');
+  addNews(st, 'The Coalition', PARTY[pid].short + ' withdraw the whip',
+    'The partner remains in the government and its members are no longer bound to vote for it. ' +
+    'The agreement records ' + v8Plural(v17Broken(st, pid), 'broken promise') +
+    ', and the arithmetic on the order paper is not what the government thinks it is.', 'bad');
+  if (typeof v16Resent === 'function') v16Resent(st, pid, st.ruling, 10);
 }
 
 /* S21f — THE PARTNER SPEAKS BEFORE IT WALKS.
@@ -38798,6 +38900,10 @@ function v21SignDeal(st, pid, offer) {
     d = st.coalitionDeals[pid] = { satisfaction:c100(st.partyRel[pid] || 55),
       councils:0, portfolios:0, priorities:[], redLine:null, lastCouncil:-99, ledger:[] };
   }
+  /* a party that had left and is being brought back signs a NEW agreement, and
+     leaves the whole of the old quarrel behind -- S17g's rule, through the one
+     function that knows what "the old quarrel" now includes */
+  if (d.walkedOut) v21Rejoin(st, pid, d);
   d.terms = d.terms || {};
   d.terms.portfolios = offer.portfolios;
   d.terms.concessions = offer.concessions;
@@ -38805,14 +38911,6 @@ function v21SignDeal(st, pid, offer) {
   d.terms.confidence = 'cabinet';
   d.redLine = (d.terms.redLines && d.terms.redLines[0]) || d.redLine || null;
   d.former = false;
-  /* a party that had walked out and is being brought back signs a NEW
-     agreement, which is S17g's rule and the reason `walkedOut` exists */
-  if (d.walkedOut) {
-    d.walkedOut = null; d.redLineOff = {};
-    d.satisfaction = clamp(st.partyRel[pid] || 55, 20, 85);
-    if (d.ledger) d.ledger.push({ turn:st.turn, kind:'altered', ref:null,
-      why:'they came back, and a new agreement was signed', cost:0 });
-  }
   if (typeof d.satisfaction !== 'number') d.satisfaction = c100(st.partyRel[pid] || 55);
   if (!d.ledger) d.ledger = [];
   return d;

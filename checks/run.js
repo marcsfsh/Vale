@@ -200,6 +200,42 @@ if (process.argv.includes('--sites')) {
     (stale.length ? `: ${stale.join('; ')}` : ''));
 }
 
+/* ---- 4b. one door out of a coalition ---- */
+// S21f. There were five ways for a party to leave a coalition and they
+// disagreed about what leaving means. Measured over 180 driven sessions before
+// the fix: 27 exits, 23 of them through a door that never set `d.walkedOut` —
+// the field `pv5EnsureState` reads to decide that a party coming BACK signs a
+// new agreement. So a party expelled, dared out, or walked away rejoined on the
+// cohesion it left with, and its ledger never said it had gone.
+//
+// The failure is silent and it is structural, which is what makes it a static
+// check rather than a playtest step: a sixth door added by a later slice will
+// look correct at every call site and be wrong in exactly the same way. The
+// idiom a departure is written in — filtering the id out of the coalition
+// array — must appear exactly ONCE in three megabytes, inside `v21Leave`.
+//
+// Scenario definitions assign whole coalitions as literals (`st.coalition =
+// ['fp','cup']`) and joins concat; neither is a removal and neither matches.
+// The gate is the COUNT and the door's existence, not where the line sits.
+// Moving the removal into a private helper of `v21Leave` is a refactor and not
+// a sixth door; a check that rejected it would be asking about layout rather
+// than about the invariant. Call sites are reported so a door that stops
+// calling the function is visible, and not gated, because a hand-kept count of
+// callers is the kind of list this project's own rules say goes stale.
+{
+  const re = /\.coalition\s*=\s*\(?[^;\n]*\.filter\s*\(/;
+  const hits = [];
+  src.split('\n').forEach((l, i) => { if (re.test(l)) hits.push(i + 1); });
+  const door = /function v21Leave\s*\(/.test(src);
+  const callers = (src.match(/v21Leave\s*\(/g) || []).length - (door ? 1 : 0);
+  const ok = hits.length === 1 && door;
+  report('one-coalition-exit', ok,
+    !door ? 'v21Leave is gone — there is no single door out of a coalition to hold the line'
+      : hits.length === 1
+        ? `1 removal from st.coalition, at line ${hits[0]}, reached by ${callers} call site(s) of v21Leave`
+        : `${hits.length} removals from st.coalition (lines ${hits.join(', ')}) — a departure goes through v21Leave, or the doors disagree again`);
+}
+
 /* ---- 5. marker integrity (literal string markers only) ---- */
 // S14 split this in two, because a third of what it reported was vacuous.
 //

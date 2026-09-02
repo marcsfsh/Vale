@@ -10413,6 +10413,337 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${bites.drift.cappedAtPatience}) -- the floor RISES six a promise as this falls six, so the two close on ` +
     `each other and three broken promises is a government in trouble rather than a number on a card`);
 
+  /* ---------- S21f: ONE EXIT, AND THE PARTNER SPEAKS ----------
+     Five ways out of a coalition that disagreed about what leaving means, a
+     departure booked against every agreement except the leaver's, a partner
+     that went from content to gone in one session, and a card that seated a
+     party the acceptance model would have refused. */
+  const exit = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+    function partnerOf() {
+      return (S.coalition || []).filter(x => x !== S.ruling)[0] || null;
+    }
+
+    /* (a) EVERY EXIT GOES THROUGH THE ONE DOOR, and the door does the whole
+       job. Read at the CALL and not from the state afterwards: the first
+       version of this asked `d.walkedOut` at the end of the session, and a
+       party that rejoined in the same session had it cleared, so a re-entry
+       scored as an exit through the wrong door. */
+    R.door = (() => {
+      let walkouts = 0, leaves = 0, marked = 0, booked = 0, defects = 0, wrongLedger = 0;
+      const bw = v17Walkout, bl = v21Leave, bd = v21Defect;
+      v17Walkout = function () { walkouts += 1; return bw.apply(this, arguments); };
+      v21Leave = function (st, pid) {
+        const n = (((st.coalitionDeals || {})[pid] || {}).ledger || []).length;
+        const ok = bl.apply(this, arguments);
+        if (ok) {
+          leaves += 1;
+          const d = (st.coalitionDeals || {})[pid] || {};
+          if (d.walkedOut) marked += 1;
+          if ((d.ledger || []).length > n) booked += 1;
+        }
+        return ok;
+      };
+      v21Defect = function () { defects += 1; return bd.apply(this, arguments); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+          fresh(seed);
+          for (let i = 0; i < 60; i++) step();
+          /* AND NOBODY IS CHARGED FOR SOMEBODY ELSE'S DEPARTURE. The old
+             `'quit'` fan-out booked one broken promise per unmet concession on
+             every OTHER member's agreement. */
+          Object.keys(S.coalitionDeals || {}).forEach(pid => {
+            ((S.coalitionDeals[pid] || {}).ledger || []).forEach(e => {
+              if (e.kind === 'broken' && e.why === 'the government left the field') wrongLedger += 1;
+            });
+          });
+        });
+      } finally { v17Walkout = bw; v21Leave = bl; v21Defect = bd; }
+      return { walkouts:walkouts, leaves:leaves, marked:marked, booked:booked,
+        defects:defects, wrongLedger:wrongLedger,
+        allThroughTheDoor: walkouts > 0 && leaves >= walkouts,
+        allMarked: leaves > 0 && marked === leaves,
+        allBooked: leaves > 0 && booked === leaves,
+        warnedFirst: walkouts > 0 && defects >= walkouts };
+    })();
+
+    /* (b) THE PARTNER SPEAKS BEFORE IT WALKS, on a board driven to it rather
+       than on one assembled by hand -- the stages have to be reachable by the
+       game's own arithmetic or they are decoration. */
+    R.ladder = (() => {
+      const seen = {};
+      let downs = 0, ups = 0;
+      [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+        fresh(seed);
+        const last = {};
+        for (let i = 0; i < 60; i++) {
+          step();
+          (S.coalition || []).forEach(pid => {
+            if (pid === S.ruling) return;
+            const d = (S.coalitionDeals || {})[pid]; if (!d) return;
+            const p = (typeof d.pressure === 'number') ? d.pressure : -1;
+            seen[p] = (seen[p] || 0) + 1;
+            if (last[pid] !== undefined) { if (p > last[pid]) ups += 1; if (p < last[pid]) downs += 1; }
+            last[pid] = p;
+          });
+        }
+      });
+      return { seen:seen, ups:ups, downs:downs,
+        /* all three stages occur in play */
+        reachesAll: [0, 1, 2].every(k => (seen[k] || 0) > 0),
+        /* AND IT COMES BACK DOWN: a ladder that only rose would end every long
+           coalition in an ultimatum whatever the government did */
+        comesDown: downs > 0 };
+    })();
+
+    /* (c) THE ULTIMATUM IS A REAL PAPER WITH THREE REAL ANSWERS, driven from
+       the head of government's chair. Constructed rather than waited for: over
+       360 driven sessions it arrived 0 times, because the paper needs the
+       PLAYER to be leading at the moment a partner escalates and an unattended
+       probe leads 17% of the time and keeps no promises. Rarity in an
+       unattended drive is not unreachability, and the difference is what this
+       leg exists to say. */
+    R.paper = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && !(S.ruling === playParty(S) && partnerOf()); i++) step();
+      if (S.ruling !== playParty(S)) {
+        /* put the player in the chair the paper is addressed to, which is the
+           chair the game itself puts them in on the default start */
+        S.ruling = playParty(S);
+        if (!(S.coalition || []).length || S.coalition.indexOf(S.ruling) < 0) S.coalition = [S.ruling];
+      }
+      let pid = partnerOf();
+      if (!pid) {
+        pid = PARTIES.filter(p => p.id !== S.ruling && !S.banned[p.id])[0].id;
+        S.coalition = S.coalition.concat([pid]);
+      }
+      pv5EnsureState(S, false);
+      const d = (S.coalitionDeals || {})[pid];
+      if (!d || !d.terms) return { ran:false, why:'no agreement to press on' };
+      /* drive the partner to the ultimatum through the game's own reading:
+         set the cohesion the escalation reads and run the sweep */
+      d.satisfaction = v17WalkFloor(S, pid) + 3;
+      d.pressure = 1; d.pressureAt = -99;
+      S.inbox = [];
+      v16RedLineTick(S);
+      const it = (S.inbox || []).filter(x => x.type === 'coalition_ultimatum')[0] || null;
+      const opts = it ? inboxChoices(it).map(o => o.id) : [];
+      const out = { ran:true, posted:!!it, from:it ? it.from : null, opts:opts,
+        stage:d.pressure, ownType:opts.length === 3 };
+      if (!it) return out;
+      /* AND THE THREE ANSWERS DO THREE DIFFERENT THINGS, each driven through
+         the game's own answer path rather than by calling the effect. */
+      const co0 = (S.coalition || []).length;
+      const bills0 = (S.bills || []).length;
+      S.capital = 60; S.treasury = 400;
+      respondInbox(it.id, 'deliver');
+      out.afterDeliver = { bills:(S.bills || []).length, laid:(S.bills || []).length > bills0,
+        pressure:d.pressure, sat:Math.round(d.satisfaction) };
+      /* re-post and take the other door */
+      d.satisfaction = v17WalkFloor(S, pid) + 3; d.pressure = 1; d.pressureAt = -99;
+      S.inbox = [];
+      v16RedLineTick(S);
+      const it2 = (S.inbox || []).filter(x => x.type === 'coalition_ultimatum')[0];
+      if (it2) {
+        S.capital = 60; S.treasury = 400;
+        respondInbox(it2.id, 'stand');
+        out.afterStand = { inCoalition:(S.coalition || []).indexOf(pid) >= 0,
+          left:(S.coalition || []).length < co0 || (S.coalition || []).indexOf(pid) < 0,
+          markedOnExit:!!((S.coalitionDeals || {})[pid] || {}).walkedOut };
+      }
+      return out;
+    })();
+
+    /* (d) THE WHIP. A partner that has withdrawn it is not voting for the
+       government's ordinary business, read through `partyBillSupport` on ONE
+       bill with one field changed -- and restored when the government brings
+       it back above the floor. */
+    R.whip = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && !partnerOf(); i++) step();
+      const pid = partnerOf(); if (!pid) return { ran:false };
+      const d = (S.coalitionDeals || {})[pid]; if (!d) return { ran:false };
+      const bill = { policy:'wealthTax', dir:1, sponsor:S.ruling, owner:'government' };
+      d.defected = null;
+      const whipped = partyBillSupport(S, pid, bill);
+      d.defected = S.turn;
+      const withheld = partyBillSupport(S, pid, bill);
+      d.defected = null;
+      const back = partyBillSupport(S, pid, bill);
+      return { ran:true, whipped:+whipped.toFixed(1), withheld:+withheld.toFixed(1),
+        back:+back.toFixed(1), cost:+(whipped - withheld).toFixed(1),
+        isConstant: Math.abs((whipped - withheld) - V21_DEFECT) < .001,
+        restored: Math.abs(back - whipped) < .001 };
+    })();
+
+    /* (e) AND THE CARD CANNOT SEAT A PARTY THE TABLE WOULD REFUSE. Asked of
+       the card's own `can` and its own `why`, not of `v17Accept` directly:
+       every gate in this harness calls a function and a player presses a
+       button. */
+    R.join = (() => {
+      fresh(4242);
+      for (let i = 0; i < 30 && S.ruling !== playParty(S); i++) step();
+      if (S.ruling !== playParty(S)) S.ruling = playParty(S);
+      const out = { ran:true, open:0, shut:0, shutWithReason:0, mintedTerms:null, sample:null };
+      let picked = null;
+      PARTIES.forEach(p => {
+        if (p.id === S.ruling || S.banned[p.id]) return;
+        const list = (typeof partyActions === 'function') ? partyActions(p.id) : [];
+        const card = list.filter(a => a.id === 'joinCoalition')[0];
+        if (!card) return;
+        const can = card.can();
+        if (can) { out.open += 1; if (!picked) picked = { p:p.id, card:card }; }
+        else {
+          out.shut += 1;
+          const why = (typeof card.why === 'function') ? card.why() : null;
+          if (why && why.length > 4) {
+            out.shutWithReason += 1;
+            /* quote a refusal that came from the ACCEPTANCE MODEL rather than
+               the first one in party order: "they are already in the cabinet"
+               is true and says nothing about the gate this slice added */
+            if (/price|worth/.test(why)) out.sample = why;
+            else if (!out.sample) out.sample = why;
+          }
+        }
+      });
+      out.everyShutSaysWhy = out.shut === 0 || out.shutWithReason === out.shut;
+      /* and the one that IS open mints an agreement, where the card minted none */
+      if (picked) {
+        picked.card.run();
+        const d = (S.coalitionDeals || {})[picked.p];
+        out.mintedTerms = !!(d && d.terms && (d.terms.concessions || []).length > 0);
+        out.seated = (S.coalition || []).indexOf(picked.p) >= 0;
+      }
+      return out;
+    })();
+
+    /* (f) AND THE PRODUCER SPENDS THE SAME DICE WHICHEVER PAPER IT CHOOSES.
+       ONE STATE, ONE FIELD CHANGED, because the whole of `politicsTick` draws
+       for a dozen other reasons and counting them all measures the tick rather
+       than the branch -- the first version of this leg keyed ticks by whatever
+       paper happened to be LAST in the inbox, which attributed ticks that
+       posted nothing at all, and reported seven distinct counts on a build
+       where the hoist was working. The claim is about the GATE: two runs from
+       the same seeded state, differing only in the standing that decides which
+       paper the producer writes, must spend the same numbers. */
+    R.dice = (() => {
+      fresh(4242);
+      for (let i = 0; i < 40 && !(S.ruling === playParty(S) && partnerOf()); i++) step();
+      if (S.ruling !== playParty(S) || !partnerOf()) return { ran:false, why:'no player-led coalition' };
+      const partner = partnerOf();
+      /* the producer only runs on the sessions the sequence lets it run */
+      S.inbox = []; S.inboxSeq = (S.turn % 2) ? 1 : 0;
+      const saved = JSON.stringify(S);
+      const spend = (rel) => {
+        S = JSON.parse(saved);
+        S.partyRel[partner] = rel;
+        let n = 0; const br = rand;
+        rand = function () { n += 1; return br.apply(this, arguments); };
+        try { politicsTick(S); } finally { rand = br; }
+        return { n:n, posted:(S.inbox || []).length ? S.inbox[S.inbox.length - 1].type : 'none' };
+      };
+      /* below 27 is the confidence threat; above it the demand or whatever
+         falls through -- one field, two papers */
+      const low = spend(12), high = spend(70);
+      S = JSON.parse(saved);
+      return { ran:true, low:low, high:high,
+        differentPapers: low.posted !== high.posted,
+        constant: low.n === high.n };
+    })();
+    return R;
+  });
+
+  const exitOk =
+    exit.door.allThroughTheDoor === true && exit.door.allMarked === true &&
+    exit.door.allBooked === true && exit.door.warnedFirst === true &&
+    exit.door.wrongLedger === 0 && exit.door.walkouts > 0 &&
+    exit.ladder.reachesAll === true && exit.ladder.comesDown === true &&
+    exit.paper.ran === true && exit.paper.posted === true &&
+    exit.paper.ownType === true &&
+    !!exit.paper.afterDeliver && exit.paper.afterDeliver.laid === true &&
+    !!exit.paper.afterStand && exit.paper.afterStand.left === true &&
+    exit.paper.afterStand.markedOnExit === true &&
+    exit.whip.ran === true && exit.whip.isConstant === true &&
+    exit.whip.restored === true &&
+    exit.join.ran === true && exit.join.everyShutSaysWhy === true &&
+    exit.join.mintedTerms === true &&
+    exit.dice.ran === true && exit.dice.differentPapers === true &&
+    exit.dice.constant === true;
+  say(exitOk, 'one exit, and the partner speaks',
+    `THERE WERE FIVE WAYS OUT OF A COALITION AND THEY DISAGREED ABOUT WHAT LEAVING MEANS -- the \`dare\` answer ` +
+    `to a confidence threat, the \`expelPartner\` card, the merge that absorbs a party, \`leaveCoalition\` in ` +
+    `both its arms, and \`v17Walkout\`. Only the last was complete. Measured over 180 driven sessions before ` +
+    `the fix, 27 exits and TWENTY-THREE through a door that never set \`d.walkedOut\` -- the field ` +
+    `\`pv5EnsureState\` reads to decide that a party coming BACK signs a new agreement, which S17g wrote after ` +
+    `coalition lifespan fell from 6.6 sessions to 2.1. It ran on four exits in twenty-seven · ONE DOOR NOW, ` +
+    `read at the CALL and not from the state afterwards -- the first version of this leg asked \`d.walkedOut\` ` +
+    `at the end of the session and a party that rejoined in the same session had it cleared, so a re-entry ` +
+    `scored as an exit through the wrong door. ${exit.door.leaves} exits over 360 driven sessions, all of them ` +
+    `through \`v21Leave\` (${exit.door.allThroughTheDoor}), every one marking the agreement ` +
+    `(${exit.door.allMarked}) and booking one entry on it (${exit.door.allBooked}) · AND NOBODY IS CHARGED FOR ` +
+    `SOMEBODY ELSE'S DEPARTURE: ${exit.door.wrongLedger} entries reading "the government left the field" ` +
+    `against 107 before, EVERY ONE of which sat on a party that had not left. \`v17DealEvent(…'quit'…)\` walked ` +
+    `\`st.coalition\` and booked one broken promise per unmet concession on every member, and ` +
+    `\`leaveCoalition\` ran it BEFORE emptying the coalition, so N leavers scanned N members. \`v17WalkFloor\` ` +
+    `reads that count, so one exit took every survivor's floor to 30 and \`v17CanRenegotiate\` refuses outright ` +
+    `at three: driven, parties reaching \`V17_PATIENCE\` fall 16 to 6 and walkouts 25 to ` +
+    `${exit.door.walkouts} · THE PARTNER SPEAKS BEFORE IT WALKS, where the coalition had two states and a ` +
+    `partner went from content to gone in the session its cohesion crossed one bar. All three stages occur in ` +
+    `play (${exit.ladder.reachesAll}, ${JSON.stringify(exit.ladder.seen)}) and the ladder COMES BACK DOWN ` +
+    `${exit.ladder.downs} times (${exit.ladder.comesDown}) -- one that only rose would end every long ` +
+    `coalition in an ultimatum whatever the government did. The bars are \`v17WalkFloor\`'s own floor plus 18, ` +
+    `10 and 4 rather than numbers picked by eye, so they move with the record and cannot drift from the thing ` +
+    `they lead to · AND EVERY WALKOUT IS WARNED FIRST (${exit.door.warnedFirst}): ${exit.door.defects} ` +
+    `withheld whips against ${exit.door.walkouts} walkouts · \`coalition_ultimatum\` IS ITS OWN PAPER TYPE ` +
+    `with its own ${exit.paper.opts.length} answers (${exit.paper.ownType}) -- borrowing \`confidence_threat\` ` +
+    `would inherit that paper's choices, answer arm AND ignore arm, which is how S16e's demand letter reached ` +
+    `into the player's own first caucus. CONSTRUCTED rather than waited for: over 360 driven sessions it ` +
+    `arrived 0 times, because it needs the PLAYER leading at the moment a partner escalates and an unattended ` +
+    `probe leads 17% of the time and keeps no promises. Rarity in an unattended drive is not unreachability. ` +
+    `Driven through the game's own answer path: "lay the bill they were promised" puts one on the paper ` +
+    `(${exit.paper.afterDeliver ? exit.paper.afterDeliver.laid : 'n/a'}) and quiets them to stage ` +
+    `${exit.paper.afterDeliver ? exit.paper.afterDeliver.pressure : 'n/a'}, and "tell them to go if they are ` +
+    `going" takes them out through the SAME door every other exit uses ` +
+    `(${exit.paper.afterStand ? exit.paper.afterStand.left : 'n/a'}), marked ` +
+    `(${exit.paper.afterStand ? exit.paper.afterStand.markedOnExit : 'n/a'}) · THE WHIP IS THE ONLY THING IN ` +
+    `THIS GAME THAT SEPARATES "a partner in the government" FROM "a partner whose votes the government has": ` +
+    `on one bill with one field changed, ${exit.whip.whipped} whipped against ${exit.whip.withheld} withheld, ` +
+    `a cost of exactly \`V21_DEFECT\` (${exit.whip.isConstant}), restored when the government brings them back ` +
+    `above the floor (${exit.whip.restored}). The number is the measured p90: over 6,042 readings of this ` +
+    `function for a partner on a government bill the median is 64.6 and 4,694 sit at or above the line, and ` +
+    `of those the median clears it by 20.5 and the ninetieth percentile by 27.2. So nine ordinary bills in ten ` +
+    `fall and one the partner actively wants still carries its benches, which is the difference between ` +
+    `withholding the whip and opposing the government · AND \`joinCoalition\` STOPS BYPASSING THE ACCEPTANCE ` +
+    `MODEL. It asked whether the party was banned, already in, or cordoned, then pushed the id -- so a player ` +
+    `could seat a party whose own formation answer is "they will not sit with you at any price", one click ` +
+    `from the sheet that says so, and it minted NO agreement, so \`partyBillSupport\` read \`sat === null\` ` +
+    `and paid the flat +12 that S21d's cohesion term replaced. Asked of the card's own \`can\` and its own ` +
+    `\`why\`: ${exit.join.open} open and ${exit.join.shut} shut, every shut one saying why in its own words ` +
+    `(${exit.join.everyShutSaysWhy}) -- "${exit.join.sample}" -- and the open one mints the agreement ` +
+    `(${exit.join.mintedTerms}) through the same body \`v17Install\` writes through · AND THE PRODUCER DRAWS ` +
+    `THE SAME DICE WHICHEVER PAPER IT CHOOSES. ONE STATE, ONE FIELD CHANGED -- the first version of this leg ` +
+    `counted every roll in \`politicsTick\` and keyed the tick by whatever paper was LAST in the inbox, which ` +
+    `attributed ticks that posted nothing and reported seven distinct counts on a build where the hoist was ` +
+    `working. Two runs from one seeded state differing only in the standing that decides the paper: ` +
+    `${exit.dice.low.posted} and ${exit.dice.high.posted} (${exit.dice.differentPapers}), spending ` +
+    `${exit.dice.low.n} and ${exit.dice.high.n} numbers (${exit.dice.constant}). S18c wrote that rule ONE ` +
+    `BRANCH BELOW where it broke, and ` +
+    `the confidence-threat path returned before either roll while everything past it spent two. Hoisting them ` +
+    `re-phases the stream once, deliberately, and this is the record of it -- measured against the build ` +
+    `before this slice, the re-phase ALONE moves coalition promises kept from 0.044 per partner-session to ` +
+    `0.028 with the board otherwise unmoved, which is the seed-to-seed spread of that statistic and not a ` +
+    `mechanism`);
+
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
      asked what the OTHERS were after, so a party whose goal was being taken
