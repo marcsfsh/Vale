@@ -25,8 +25,9 @@ The owner, verbatim:
 
 They had previously scored the AI **1 out of 10** and asked for **8-10**.
 
-This programme delivers **12 improvements and 14 new behaviours** across twelve
-slices, one PR each. Four of the twelve slices are the coalition.
+This programme delivers **12 improvements and 22 new behaviours** across twenty
+slices, one PR each. Four of them are the coalition proper. The last eight were
+added at the owner's request after S21d shipped.
 
 ## What the measurement found, in one page
 
@@ -432,6 +433,150 @@ recomputed live.
 Named casualties: `a plurality is not a government` and `a caretaker holds
 office`, both re-derived. `form.pure.noDice` stays green — nothing here rolls.
 
+**MEASURED BEFORE BUILDING** (six seeds, 120 sessions, 377 formations, 2,623
+accept decisions):
+
+- **Every offer is identical in shape: 3 concessions, ONE distinct value.**
+  Generosity is a real gap, not decoration — there is no variation to speak of
+  today.
+- **The decision is close where it matters.** Accept share .333; the accepted
+  median clears by +14 and the refused median misses by −18, and **1,455 of
+  2,623 refusals sit within twenty points**. A term worth ~10 flips real
+  decisions, so the reservation reading `v21Regard` is live.
+- **641 refusals are `far`** — structurally unbridgeable, and generosity
+  correctly cannot buy them.
+- **The posture term fires on 1,228 decisions (31%).** The plan says drop it.
+  Deleting a +16 term that frequent, against 1,455 refusals within twenty
+  points, is a LARGE balance move in the accepting direction — the same shape
+  as the S21d drag. It is measured before and after, not assumed.
+- **A second formateur is tried on 59 of 377 formations, and the max tried is
+  seven.** So `V17_FORM_MAX` is not inert: cutting it to 3 removes rounds that
+  currently succeed, and S21d's caretaker regression is the warning. Measured
+  against the caretaker episode count before it ships, or it does not ship.
+
+**THEN EVERY REMAINING ITEM WAS CHECKED AGAINST THE CODE BY INDEPENDENT READERS,
+EACH ADVERSARIALLY CHALLENGED. Three of the six do not survive.**
+
+**`v17Invest` counting members symmetrically — DROPPED. It is a provable
+no-op.** `divisionOf`'s share function is odd about 50: `share(d, 100-s) =
+1 - share(d, s)` for every discipline `d`. So with the abstain bucket kept, the
+sign of `aye - nay` flips only if the OPPOSITION is more disciplined than the
+government, seat-weighted — measured at 0.428 against 0.427. Swept across six
+government/opposition support pairs, **174 of 174 investitures unchanged**. This
+is a knob nothing in the game can turn, proven algebraically *and* by sweep, and
+it would have been the sixth this programme deleted. It also has a hidden
+prerequisite the plan never names: `partyDiscipline` needs a per-party
+support-for-this-government scalar that does not exist.
+
+**`V17_FORM_MAX` → 3 "which is what makes rounds two to four reachable" —
+the causal half is FALSE, and this programme has already written that down
+twice.** S21b's own correction records that political memory alone, with
+`V17_FORM_MAX` untouched, moved outcomes from 359/1/0/0 to 333/15/11/4, and
+`roads.js` now asserts `branches >= 3` as a shipped guarantee. `JUDGE.md`
+adjudicated the identical sentence during design. And the constant is *already*
+dead: `PARTIES` holds exactly seven entries and is never mutated, so
+`i < order.length` always fails at or before `i < V17_FORM_MAX`. Any re-mandate
+round must be justified on its own terms, not on a reachability claim that is
+untrue.
+
+**`v21Kingmaker` — HELD, pending a consumer.** "Pure" survives. "Installs no
+field" is false in letter (`ppos` writes `st.ppos` on read, the `v6TreatyRows`
+shape — harmless here, but only because three readers were checked). The real
+risk is that nothing consumes the number: a pivotality reading with no stated
+reader is decoration by this file's own rule. It ships only once a site that
+reads it is named.
+
+**And the reservation's posture term is worse than the plan said.** `v16Posture`
+takes **no `lead` argument**, so the +16 is charged identically against all seven
+formateurs, and it can only fire on parties that were in opposition to the
+*outgoing* government. The common case is a party charged sixteen extra to join
+the government that is REPLACING the one it hates — not stale but wrong-signed.
+(One challenger disputes this at one of the two caller contexts; measure the
+sign of the store at the table before acting.)
+
+**THE SHEET IS THE OWNER'S COMPLAINT WITH A LINE NUMBER ON IT.** `v6CoalitionCandidates`
+builds the real offer and **drops it one line later**; the row the player reads
+is a party name, two scalars and a seat count. The whole negotiation — every
+concession, every red line, the price the formateur set — is computed and thrown
+away before it reaches the screen. "Flat, uninteresting, unengaging" is this.
+
+**A defect in S21e's own new code, found by the same pass:** `offer.generosity`
+is written and read by nothing — `st.court.size` in code two hours old. It is
+kept only because the sheet is going to read it; otherwise it comes out.
+
+**Two more `st.court.size` instances found in passing**, both in scope for this
+slice because it is already touching the offer: `d.terms.portfolios` is written
+by three sites and read by none, so the offer's `portfolios` promise is
+decorative; and the coalition portfolio trade takes a great office off one
+partner and books nothing against them at all — no ledger entry, no cohesion
+cost, no breach.
+
+**AS SHIPPED, THE GENEROSITY PARAMETER IS NOT IN THE BUILD, AND THE REASON IS
+MEASURED.** The plan asked for "varying concession count, priced by the invitee's
+gap and the formateur's `v17Friction`". Three builds of it were measured and none
+could ship. `v17Accept` reads `concessions.length` and nothing about their
+identity, so a varying count is a varying VALUE — and `v17Build` walks its pool
+greedily, gaining from every acceptance and losing NOTHING to a refusal, because
+a refusal simply moves it to the next party. Bid variance is therefore one-sided
+in its effect: **any** spread makes formation strictly easier, whatever its mean.
+
+Over twelve seeds of forty sessions, against the build before this slice:
+
+| build | kept / partner-session | player's party governs | mean coalition |
+|---|---|---|---|
+| before this slice (flat 3) | 0.044 | 36 of 480 | 2.28 |
+| count varies, mean 2.71 | 0.006 | 226 of 480 | 2.68 |
+| count varies, mean 3.33 | 0.011 | 122 of 480 | 2.38 |
+| count varies, mean 3.23 | 0.031 | 152 of 480 | 2.46 |
+| **WHICH varies, count fixed** | **0.041** | **36 of 480** | **2.26** |
+
+Lowering the mean bid kept the branch mix and kept the collapse; holding the mean
+on the constant kept the promises and turned every formation into a majority, 360
+of 360. Four AI assertions failed that are green on the build before the slice.
+That is S21d handed back in the course of decorating the sheet, which is the S19d
+pattern this programme has now recorded twice.
+
+**What ships varies WHICH statutes an offer names, at a constant three.**
+`v17Mind` reads how far the formateur's own table is from the invitee's on each
+want and the offer takes what it minds least, so two formateurs bidding for the
+same party put different things on the table and every accept decision in the
+game is arithmetically identical to what it was. Over 42 ordered pairs the offers
+fall into 22 distinct sets, and every invitee is offered between two and five of
+them — asked per invitee, because a party offered the same three things by all
+six formateurs is a party nobody negotiates with however varied the board total
+looks. `offer.generosity` and `V17_GENEROSITY` are gone with the count.
+
+A price that varies belongs to a slice that can pay for the compensating change,
+and the compensation is structural rather than a constant: as long as a refusal
+costs a formateur nothing, no bid distribution is neutral.
+
+**A DEFECT S21e EXPOSED AND DID NOT CAUSE, for a later slice.** The `order`
+card's rehearsal is a price list: `v19Outcome` returns -0.964 on 101 of its 102
+rehearsals over twelve seeds on the build BEFORE this slice, and on 105 of 105
+after it — the modal share is 0.99 either side. `v19Standing` has no term an
+executive order moves, so a party clever enough to rehearse scores the order
+card at exactly minus its own price and never plays it above `instinct`. That is
+the same defect S21c fixed for nine of the eleven cards, and `order` escaped the
+fix's own assertion on a single rehearsal in a hundred; `the rehearsal can see
+what a card did` read `min === max`, which one sample defeats, and it has been
+green on that sample since S21c. It now reads the modal SHARE, reports two cards
+flat with `order` named, and a third would still redden. Giving `v19Flight` an
+order term is small and it is not free: it changes what every card is worth, so
+it needs the twelve-seed kept rate, the four board-sensitive arms and a poison
+run.
+
+**One refinement is deliberately left for that slice.** `v17Mind` reads two
+registry values — the formateur's want and the invitee's — so the ranking for a
+given pair is the same on every board and at every moment. What varies is who is
+offering, which is the half that was missing; what does not yet vary is the
+circumstance. Shading it by how far the statute book already stands from the
+invitee's target would make a formateur mind less about a promise that is nearly
+delivered, and the same pair would then offer different things at different
+points in a campaign. It is cheap to write and it is not free to ship: it moves
+which statutes are promised over time, so it needs the twelve-seed kept rate,
+the four board-sensitive arms and a poison run of its own. It ships with the
+slice that can pay for that, not as a rider here.
+
 ### S21f — One exit, and the partner speaks  ·  Coalition 3 of 4  ·  1 improvement, 3 new
 
 `v21Leave(st, pid, why, actor)` replaces four disagreeing exits; it books one
@@ -548,14 +693,127 @@ Parties card. The coverage arm — every card's `run` produces exactly one recor
 and a record whose verb is not in the deck reddens — grows with the deck. The
 card is finished in S21l.
 
+## The owner's extension: eight more new behaviours
+
+Asked for after S21d shipped, in the owner's words: *"Tbh I'd really like it if
+an additional 8 AI behaviors / logic features were added in s21."*
+
+Sourced by mining the thirteen intake reports for findings the twelve slices
+never claimed, merging 46 raw candidates down to 32, and picking against one
+question: would a player feel it across a session.
+
+**They share a cause.** Nearly every capability in this game is player-only. The
+engine cannot hold a coalition council, draw a boundary, license a newspaper,
+earn an endorsement, lead a strike, cordon a rival, reach the emergency book, or
+say a word about a bill it laid itself. That is not eight gaps, it is one gap
+with eight faces, and it is most of the owner's "1 out of 10": an opponent that
+cannot do what you can is not an opponent.
+
+Every item below names the existing reader its effect lands in, because a
+behaviour whose effect nothing consumes is the decoration this file deletes.
+
+### S21m - The party in office gets a deck and a second mood
+
+`govern` appears in three of the eleven `post:` arrays, so a government's whole
+output is order, campaign and article, on every board and every seed. It never
+courts a bloc, never builds its organisation, never speaks on a bill. And
+`v16Posture` returns `govern` unconditionally before reading a single fact, so
+the party in office behaves identically in its fiftieth session and its first.
+
+Open `court`, `organise` and `floor` to `govern` through a second list read only
+when the party thinks, so the instinct deck stays eleven cards. Add one gated
+posture for a government whose smoothed support sits below its seat share.
+
+Measured: govern's mean open set is 1.56 with 24.1% of sessions EMPTY, against
+5.00 for `hold`. The support gap runs -8.05 to +11.41 with a median of -1.14, so
+a bar at -2 occupies 36.4% of government-sessions. Inside the distribution,
+which is what S17q's failure was about.
+
+Channels: `st.machine` to `machineOf` to `supportTargets`; `b.lines[actor]` to
+`partyBillSupport` at 16/-18; `st.blocs` to `supportTargets`, where `court` has
+the right sign only in this chair.
+
+### S21n - The government that is not yours keeps its own coalition
+
+Somebody else governs in about 98% of the sessions a player watches, and that
+government's coalition can only decay. No engine has ever held a council, traded
+a department or reopened an agreement. The player has all three buttons.
+
+Channel: `d.satisfaction`, which since S21d has four live readers and needs no
+new one.
+
+### S21o - An engine government can descend
+
+The emergency book is player-only. A Vanguard or Restoration government cannot
+open an investigation, federalise a count, license the press or classify a
+record, so the descent the game is named for can only ever be the player's.
+
+Channel: `st.extra[id]`, five live readers, all reached through S15 wrappers
+rather than the base bodies. `securityState` is reassigned at 33720, so the
+guard goes on the live function.
+
+### S21p - Put a party at the head of the crowd
+
+A general strike shuts the country and no party stands at the head of it. The
+street is a weather system rather than a thing a party can ride.
+
+Channel: `st.street.pressure` to the demand bar at 26 and the strike bar at 58,
+then `v17StrikeBar` and `v17Barred`, the sibling of the caretaker gate.
+
+### S21q - Put a price on the benches
+
+A party writes offering to take its members through the aye lobby on one bill if
+you drop your opposition to another. Accept and its line changes on the card that
+session and the forecast moves before the division.
+
+Channel: `v17FloorCore` to `b.lines[pid]` to `partyBillSupport` at 16/-18. The
+paper machinery is complete and extensible.
+
+### S21r - An engine fights for the bill it laid, and the House answers yours
+
+143 engine bills were archived in 300 sessions and none carried. An engine lays a
+bill and is then mute about it for the rest of its life. And almost no bill of
+the player's is ever spoken to before the division.
+
+Channels: `v20PressCore` writes `b.pull[pid]`, `billPull` counts it through that
+party's seats; `b.lines[actor]` reaches `partyBillSupport` and the forecast.
+
+### S21s - An organisation endorses somebody other than you
+
+Eight named national organisations exist in a seven-party republic and six of
+the parties can never be endorsed by any of them.
+
+Channel: `endorsedTurnout` to `partyTurnout` to `ballot`, where every party's
+base is multiplied by it.
+
+### S21t - A party that will not sit with another
+
+`st.cordon` has five readers and two writers, both player buttons. Parties
+cannot refuse each other, so a formateur is never forced to choose between two
+parties it needs, and a player can never be vetoed by a party they are not
+asking.
+
+Channel: `st.cordon`, read by `v17Eligible`, `partyBillSupport` at -8, the AI
+bill score at -8, and `v6CoalitionCandidates`.
+
+### What was measured and left out
+
+Twenty-four other candidates survived the merge with live channels. The ones
+closest to the line, recorded so they are not re-derived: the boundary pen and
+the press licence being player-only; election night printing the projection
+rather than a count with doubt in it; `v17Utility` weighting the PLAYER's
+political capital at +0.5 when a hostile government answers a crisis, so it
+quietly funds the opposition it is fighting; and three aims printing the seat
+counter as their progress.
+
 ## Deliverables against the brief
 
 | | required | delivered |
 |---|---|---|
 | Improvements to existing AI behaviour | at least 4 | **12** |
-| New behaviours | at least 8 | **14** |
+| New behaviours | at least 8 (owner later asked for 8 more) | **22** |
 | Equal attention | every item significant | one slice per PR, each with its own assertion, its own poison list and its own measured pins |
-| Coalition overhaul | "serious" | **4 of 12 slices**, covering formation, the agreement, the exits and the fall of a government, plus a junior-partner game |
+| Coalition overhaul | "serious" | **4 of 20 slices** on the coalition proper, plus S21n giving an engine government the three maintenance instruments the player has |
 
 ## If the programme has to shrink
 
