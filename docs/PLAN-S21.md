@@ -641,6 +641,69 @@ concessions, dues, a recurring price, and a withdrawal that clears
 Pins: motions moved, at least one carried, and government changes between
 elections against the measured 3 in 720.
 
+**AS SHIPPED, AND THE THREE PLACES IT DIVERGES.**
+
+*The notice prints the HOUSE's count, not the mover's.* The plan said "printing
+the tally the mover counts". Two counts exist as shipped, and giving the
+government the mover's optimistic one would be the game lying to the player
+about its own benches. `v21Count` is what the mover reads and `v17ConfidenceVote`
+is the division; a whip's office counts its own benches correctly, so the paper
+carries the true count and says in words when the movers are counting on votes
+the government still holds. The asymmetry is the drama, not a trick.
+
+*There is no recurring price on the supply agreement.* The plan asked for
+"concessions, dues, a recurring price". The concessions and dues are there —
+`v17Supply` has always built three of them with `v21Concede`, which carries a
+`due`, and this slice is what finally writes them down. A recurring price was
+not built: `st.confidence` is read by `v17ConfidenceVote`, `govShare`,
+`v17Invest` and four renderers, and a per-session charge would need a fifth
+mechanism with its own tick, its own arrears state and its own failure mode.
+The agreement bites through the machinery every other agreement bites through —
+`v16RedLineTick`, the pressure ladder, the walk floor — which is one rule for
+one surface rather than two.
+
+*The mover's count is a THIRD function, not `v17ConfidenceVote` with a flag.*
+Measured over 480 driven sessions on twelve seeds, three readings of one house:
+it would really carry on 50, counting a wavering partner as HOSTILE says 153,
+counting it ABSENT says 105. The hostile reading is the one shipped and it was
+chosen on RECALL rather than accuracy — it catches 50 of the 50 boards on which
+a government would really fall, where the absent reading is more accurate (.42
+against .33) and misses six. A government never escapes a motion it deserves.
+
+**What this slice found that the plan did not name.**
+
+- **`v17ConfidenceVote` was two rules for one surface.** It asked
+  `satisfaction < 30`, a bare number, while `partyBillSupport` asks
+  `d.defected`. A partner that had publicly withdrawn the whip still voted
+  CONFIDENCE, so the one week in which a government is genuinely in danger was
+  the one week the count could not see it.
+- **The supply party's agreement had never been written down.** `v17Supply`
+  builds an offer, prices it, and the party accepts — and `v17Rotation`
+  returned the COALITION's `offers`, so the accepted one was discarded at the
+  moment it was accepted. Nothing recorded, nothing breakable. Four sites asked
+  "is this party in `st.coalition`" to mean "does this party have an agreement
+  with the government"; `v21Signed` is that question with a name.
+- **`d.former` was written by four sites and read by none** in 3.8 megabytes.
+  `st.court.size` exactly, found by this slice's own poison run — making the
+  line wrong on purpose changed nothing anywhere — and deleted.
+- **The confidence threat's "reopen the coalition agreement" set
+  `S.confidence = from`**, naming a party sitting IN the cabinet as the one
+  supplying the government from outside it. It calls `v17Renegotiate` now, like
+  its S21f twin.
+- **`best.offer = offer` in `v17Supply` was a change that was not a change.**
+  `v17Accept` has returned `offer:offer` since S17e, so its poison could not
+  redden anything. Reverted rather than shipped — S21e's P18 in a new place.
+
+**The rate, stated plainly.** Over 960 driven sessions on 24 seeds at
+`ruthless`: 7 notices laid, 6 questions put, 1 carried, and the mover was right
+twice and wrong five times. That is roughly one motion every 140 sessions, and
+it is conditional on a state the player controls rather than on the dice — a
+government whose coalition rots is a government that gets a notice. Two things
+bound it and neither is a knob worth turning: only ~1.4 parties act per session
+(`V16_AI_CADENCE`, whose own comment records that moving it took the harness
+from 5.5 elections won to 1.2), and `v16Posture` gives an opposition party one
+of five postures of which three open the card.
+
 ### S21h — The junior partner's game  ·  3 new
 
 Five verbs on the junior partner's deal card, each sharing a Core with the
