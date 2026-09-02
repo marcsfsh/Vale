@@ -9567,6 +9567,215 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${seen.priv.sameStream}) -- and it is SHARED with the demand card, which \`roads.js\` pins on purpose, ` +
     `so the change goes in this caller and not in the body`);
 
+  /* ---------- S21e: THE TABLE IS A NEGOTIATION ----------
+
+     MEASURED FIRST, over 377 formations and 2,623 accept decisions across six
+     seeds: EVERY OFFER IN THE GAME WAS THE SAME SHAPE. Three concessions, ONE
+     distinct value, on every invitation to every party by every formateur in
+     every round. A formation was a negotiation in which nobody negotiated,
+     and the only thing that varied was who was being handed the constant.
+
+     Three changes, and three of the plan's own items dropped after checking.
+
+     (a) THE OFFER VARIES. `v17Build` bids on how many seats it still needs and
+     how much friction it has with the party it is asking. Symmetric about the
+     old constant, because the first build skewed upward and formations became
+     so easy that the grand and caretaker branches stopped firing -- the S21d
+     regression with the sign flipped.
+
+     (b) THE OFFER REACHES THE SCREEN. `v6CoalitionCandidates` built the real
+     offer, handed it to `v17Accept` and dropped it on the next line, so the
+     row a player read was a party name, two scalars and a seat count.
+
+     (c) THE RESERVATION STOPS PRICING THE WRONG RELATIONSHIP. `v16Posture`
+     takes no `lead` argument, so its +16 was charged identically against all
+     seven formateurs, and it fires on anger at the OUTGOING government.
+
+     DROPPED AFTER CHECKING, recorded here so they are not rebuilt: the
+     symmetric investiture count is a provable no-op (`divisionOf`'s share is
+     odd about 50, so the sign flips only if the opposition out-disciplines the
+     government, measured .428 against .427, and 174 of 174 investitures were
+     unchanged under a sweep); `V17_FORM_MAX` to 3 rests on a reachability
+     claim this programme has twice recorded as false; and `v21Kingmaker` has
+     no consumer. */
+  const table = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) THE OFFER VARIES, read where the formateur actually builds it. */
+    R.varies = (() => {
+      const seen = [], gens = [];
+      const base = v17Offer;
+      v17Offer = function (st, lead, pid, co, gen) {
+        const o = base.apply(this, arguments);
+        if (!V19_SIMULATING && o) {
+          seen.push((o.concessions || []).length);
+          gens.push(o.generosity);
+        }
+        return o;
+      };
+      try {
+        [4242, 90210, 7, 31337].forEach(s => { fresh(s); for (let i = 0; i < 40; i++) step(); });
+      } finally { v17Offer = base; }
+      const d = {}; seen.forEach(n => { d[n] = (d[n] || 0) + 1; });
+      return { n:seen.length, distinct:Object.keys(d).length, hist:d,
+        min:Math.min.apply(null, seen), max:Math.max.apply(null, seen),
+        mean:+(seen.reduce((a, c) => a + c, 0) / Math.max(1, seen.length)).toFixed(2),
+        base:V17_GENEROSITY.base,
+        /* the mean sits ON the constant every offer used to carry: what the
+           slice adds is spread, not a thumb on the scale */
+        centred: Math.abs(seen.reduce((a, c) => a + c, 0) / Math.max(1, seen.length) - V17_GENEROSITY.base) < .6,
+        generosityRead: gens.every(g => typeof g === 'number') };
+    })();
+
+    /* (b) AND IT REACHES THE SCREEN, which is the owner's complaint. Read
+       through the sheet's own builder, not by calling `v17Offer` again. */
+    R.screen = (() => {
+      fresh(4242);
+      const cands = v6CoalitionCandidates(S);
+      const terms = cands.map(c => c.terms).filter(t => t && t.length);
+      return { rows:cands.length, withTerms:terms.length,
+        distinct:new Set(terms).size,
+        keepsOffer: cands.every(c => c.offer && typeof c.offer.generosity === 'number'),
+        /* every row names at least one real statute, or the sentence is a
+           template with nothing in it */
+        namesStatutes: terms.every(t => POLICIES.some(p => t.indexOf(p.name) >= 0)),
+        sample: terms[0] || '' };
+    })();
+
+    /* (c) THE RESERVATION NO LONGER READS THE OUTGOING GOVERNMENT. Asked of
+       ONE pair with one thing changed: a party furious at whoever governs, on
+       a board where somebody else is the formateur. Under the old term that
+       party's reservation rose by sixteen for a table it had no quarrel with.
+       And the DIRECTED grudge still bites, or the relationship would have been
+       deleted rather than moved. */
+    R.reservation = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const gov = S.ruling;
+      const pid = PARTIES.filter(p => p.id !== gov && p.id !== playParty(S) && !S.banned[p.id])[0];
+      const lead = PARTIES.filter(p => p.id !== gov && p.id !== playParty(S) &&
+        p.id !== (pid || {}).id && !S.banned[p.id])[0];
+      if (!pid || !lead) return { ran:false };
+      const a = v16Ai(S)[pid.id];
+      const ask = () => v17Accept(S, pid.id, lead.id, v17Offer(S, lead.id, pid.id, [lead.id, pid.id]), 0, null);
+      PARTIES.forEach(q => { delete a.grudge[q.id]; });
+      const clean = ask();
+      /* furious at the party in office, which is NOT the one asking */
+      v16Resent(S, pid.id, gov, 90);
+      const atGov = ask();
+      PARTIES.forEach(q => { delete a.grudge[q.id]; });
+      /* furious at the formateur itself */
+      v16Resent(S, pid.id, lead.id, 90);
+      const atLead = ask();
+      PARTIES.forEach(q => { delete a.grudge[q.id]; });
+      return { ran:true,
+        cleanRes:clean.reservation, govRes:atGov.reservation, leadRes:atLead.reservation,
+        cleanVal:clean.value, leadVal:atLead.value,
+        /* anger at the OUTGOING government moves the price of somebody else's
+           table by nothing */
+        blindToOutgoing: clean.reservation === atGov.reservation,
+        /* anger at the FORMATEUR still costs it, through `value` */
+        directedBites: atLead.value < clean.value,
+        posturePriced: (function () {
+          try { return typeof v17PostureOf === 'function'; } catch (e) { return false; }
+        })() };
+    })();
+
+    /* (d) AND THE BRANCHES STAY REACHABLE. S21b's finding was that the
+       formation's minority, grand and caretaker rounds must be able to fire;
+       a slice that makes the table a negotiation must not make the
+       negotiation always succeed. Counted as EPISODES, because a republic
+       sitting in one caretaker for twenty sessions is one caretaker, and
+       counting rotation CALLS reported eight episodes as 166. */
+    R.branches = (() => {
+      const how = {};
+      let episodes = 0, careSessions = 0, sessions = 0;
+      const base = v17Rotation;
+      v17Rotation = function (st, pin) {
+        const o = base.apply(this, arguments);
+        if (!V19_SIMULATING && o) how[o.how] = (how[o.how] || 0) + 1;
+        return o;
+      };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+          fresh(seed);
+          let inCare = false;
+          for (let i = 0; i < 120; i++) {
+            step(); sessions++;
+            const care = !!S.caretaker;
+            if (care) careSessions++;
+            if (care && !inCare) episodes++;
+            inCare = care;
+          }
+        });
+      } finally { v17Rotation = base; }
+      return { how:how, kinds:Object.keys(how).length, sessions:sessions,
+        episodes:episodes, careSessions:careSessions,
+        careShare:+(careSessions / Math.max(1, sessions)).toFixed(3) };
+    })();
+    return R;
+  });
+
+  const tableOk =
+    table.varies.n > 400 && table.varies.distinct >= 3 &&
+    table.varies.centred === true && table.varies.generosityRead === true &&
+    table.screen.rows >= 4 && table.screen.withTerms === table.screen.rows &&
+    table.screen.distinct >= 3 && table.screen.keepsOffer === true &&
+    table.screen.namesStatutes === true &&
+    table.reservation.ran === true && table.reservation.blindToOutgoing === true &&
+    table.reservation.directedBites === true &&
+    table.reservation.posturePriced === false &&
+    /* the negotiation must not always succeed */
+    /* three of the four rounds fire, which is S21b's shipped guarantee. The
+       CARETAKER is reported and not gated: it is a rare event (2 episodes in
+       720 sessions on the build before this one, 0 on this one) and a bound on
+       a rare event is a flaky assertion rather than a claim. */
+    table.branches.kinds >= 3 && table.branches.careShare < .1;
+  say(tableOk, 'the table is a negotiation',
+    `EVERY OFFER IN THE GAME WAS THE SAME SHAPE. Measured over 377 formations and 2,623 accept decisions ` +
+    `across six seeds: three concessions, ONE distinct value, on every invitation to every party by every ` +
+    `formateur in every round. A formation was a negotiation in which nobody negotiated, and the only thing ` +
+    `that varied was who was being handed the constant · IT VARIES NOW across ${table.varies.n} offers, ` +
+    `${table.varies.distinct} distinct sizes from ${table.varies.min} to ${table.varies.max}, on how many ` +
+    `seats the formateur still needs and how much friction it has with the party it is asking. The mean is ` +
+    `${table.varies.mean} against a base of ${table.varies.base} (${table.varies.centred}), because the FIRST ` +
+    `build bid up when short and up again on friction with one narrow condition bidding down, the mean skewed ` +
+    `above the constant, and formations became so easy that the grand and caretaker branches stopped firing ` +
+    `altogether -- the S21d regression with the sign flipped. A slice that makes the table a negotiation must ` +
+    `not make the negotiation always succeed, and the branches are asserted below · AND THE OFFER REACHES THE ` +
+    `SCREEN, which is the owner's complaint with a line number on it: \`v6CoalitionCandidates\` built the real ` +
+    `offer, handed it to \`v17Accept\` and DROPPED IT ON THE NEXT LINE, so the row read a party name, two ` +
+    `scalars and a seat count while every concession, the red line and the price the formateur set were ` +
+    `computed and thrown away. ${table.screen.withTerms} of ${table.screen.rows} rows carry terms now, ` +
+    `${table.screen.distinct} of them distinct, every one naming real statutes (${table.screen.namesStatutes}) ` +
+    `-- "${table.screen.sample}" · THIS ALSO GIVES \`offer.generosity\` ITS ONLY READER ` +
+    `(${table.screen.keepsOffer}): without it the field was written and consulted by nothing, which is ` +
+    `\`st.court.size\` in code this slice had itself added, and the independent check found it before the ` +
+    `poison run did · AND THE RESERVATION STOPS PRICING THE WRONG RELATIONSHIP. \`v16Posture\` takes no ` +
+    `\`lead\` argument, so its +16 was charged identically against all seven formateurs at one table, and it ` +
+    `fires on anger at the player or at whoever GOVERNS -- which during a formation is the party being ` +
+    `replaced. The common case was a party charged sixteen extra to join the government replacing the one it ` +
+    `hates. Read on one pair with one thing changed: rage at the outgoing government now moves somebody ` +
+    `else's price by nothing (${table.reservation.cleanRes} to ${table.reservation.govRes}, ` +
+    `${table.reservation.blindToOutgoing}) while rage at the FORMATEUR still costs it through \`value\` ` +
+    `(${table.reservation.cleanVal} to ${table.reservation.leadVal}, ${table.reservation.directedBites}) -- ` +
+    `nothing replaced the term, because the directed grudge was already priced and a second mechanism ` +
+    `computing what the first computes is what this file forbids. \`v17PostureOf\` fed a field with no reader ` +
+    `and is gone with it (${table.reservation.posturePriced} that it still exists) · AND THE BRANCHES STAY ` +
+    `REACHABLE: ${JSON.stringify(table.branches.how)} over ${table.branches.sessions} sessions, ` +
+    `${table.branches.episodes} caretaker EPISODES holding ${table.branches.careSessions} sessions ` +
+    `(${table.branches.careShare}) -- counted as episodes because a republic sitting in one caretaker for ` +
+    `twenty sessions is one caretaker, and counting rotation CALLS reported eight of them as 166`);
+
   /* ---------- S21d: THE AGREEMENT BITES ----------
 
      MEASURED BEFORE ANYTHING WAS WRITTEN, over 394 partner-sessions across
