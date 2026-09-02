@@ -13215,7 +13215,7 @@ var ACTIONS = [
           var c = (typeof v21Count === 'function') ? v21Count(S) : null;
           if (!v21LayMotion(S, me)) { flash('The question cannot be put.'); return; }
           toast(c && c.carried
-            ? 'Notice given. On your own count it carries — the government has until the next sitting.'
+            ? 'Notice given. On your own count it carries. The government has until the next sitting.'
             : 'Notice given. The government has until the next sitting.');
         } }
     ] }),
@@ -39529,7 +39529,7 @@ function v21LayMotion(st, pid) {
       body:'The question is put at the next sitting. Your own whips count the house ' +
         v.nay + ' against the government to ' + v.aye + ' for' +
         (v.abstain ? ', with ' + v.abstain + ' abstaining' : '') + ', which is ' +
-        (v.carried ? 'a defeat.' : 'a majority — the movers are counting on benches you still hold.') +
+        (v.carried ? 'a defeat.' : 'a majority. The movers are counting on benches you still hold.') +
         ' What you do between now and then is what decides it.',
       deadline:st.turn + 1 });
   }
