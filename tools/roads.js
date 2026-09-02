@@ -4220,9 +4220,26 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
       S.seed = 0x5EED1234; S.rngState = 0x5EED1234;
       S.ruling = 'fp'; S.coalition = ['fp'];
-      const pid = PARTIES.filter(p => p.id !== playParty(S) && p.id !== 'fp')[0].id;
+      let pid = PARTIES.filter(p => p.id !== playParty(S) && p.id !== 'fp')[0].id;
       PARTIES.forEach(p => { S.purse = S.purse || {}; S.purse[p.id] = 400; });
       S.turn = 8;
+      /* S21g: the supply card is a bargain between two parties that can live
+         with each other at all, so the state built for it takes the NEAREST
+         eligible party rather than the first in the list, and says here what
+         it was chosen for. The positional pick above is fine for a card whose
+         gate does not read the compass and is wrong for one that does. */
+      if (c.id === 'bargain') {
+        const near = PARTIES.filter(p => p.id !== playParty(S) && p.id !== 'fp' && !S.banned[p.id])
+          .sort((a, b) => dist2(ppos(S, a.id), ppos(S, 'fp')) - dist2(ppos(S, b.id), ppos(S, 'fp')))[0];
+        if (!near || dist2(ppos(S, near.id), ppos(S, 'fp')) > V17_UNBRIDGEABLE) {
+          cardFails.push('bargain: no party in this republic can live with the FP at all'); return;
+        }
+        pid = near.id;
+        S.confidence = null;
+      }
+      /* and both of S21g's cards are behind `v19Thinks`, which is R2's floor:
+         at `instinct` the deck is the eleven the game shipped with */
+      if (c.id === 'topple' || c.id === 'bargain') S.aiLevel = 'ruthless';
       /* S17k: three of the cards need a state the others do not -- an order is
          signed by the office that holds the department, and a line on the
          floor needs a bill on it. Building that is part of "a state where it
@@ -4277,6 +4294,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            until somebody says what it is supposed to move -- the guard a
            per-card list can have and a count cannot. */
         : c.id === 'bill' ? S.bills.length > before.bills
+        /* S21g: the deck's twelfth and thirteenth. A motion is a notice on the
+           paper with this party's name on it; a supply agreement is this party
+           named as the government's confidence AND an agreement written down,
+           because `st.confidence` alone is what the game had before and the
+           whole point of the card is that the price is recorded. */
+        : c.id === 'topple' ? !!S.motion && S.motion.by === pid
+        : c.id === 'bargain' ? S.confidence === pid &&
+            (((S.coalitionDeals || {})[pid] || {}).terms || {}).confidence === 'supply'
         : false;
       const paid = partyPurse(S, pid) < before.purse;
       cardWorks[c.id] = !!(line && moved && paid);
@@ -4342,8 +4367,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   /* S17k: TEN CARDS. The deck gained the three instruments an AI party could
      never touch -- an article, an order and a line on a bill -- and the claim
      is unchanged: EVERY card, given a state where it can play, does what it
-     says and is paid for out of that party's own money. */
-  say(six.built && six.deck === 11 && six.cardWorks === 11 && six.cardFails.length === 0 && six.actedAll &&
+     says and is paid for out of that party's own money.
+     S21g: THIRTEEN. The two it gained are the two halves of one count of the
+     house -- move no confidence in a government, or sell it the abstention
+     that keeps it alive -- and both sit behind `v19Thinks`, so `instinct` is
+     still the eleven the game shipped with. */
+  say(six.built && six.deck === 13 && six.cardWorks === 13 && six.cardFails.length === 0 && six.actedAll &&
       six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
       six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
       six.redLineBites && six.partnerWarned && six.partnerLeaves,
@@ -9378,10 +9407,33 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         () => { delete S.push[pid]; });
       move('letter', () => S.inbox.push({ id:'probe', type:'party_demand', from:pid }),
         () => S.inbox.pop());
+      /* S21g's three. An ORDER is read off `st.v10` directly rather than
+         through `v10Orders`, which is created-on-write, so the probe installs
+         the register by hand and takes it away again; a MOTION is the notice
+         with this party's name on it, and its worth is the margin the mover
+         counted, so the two counts are set apart or the term reads nought; and
+         SUPPLY is this party named as the government's confidence. */
+      const dear = V10_ORDERS.slice().sort((a, b) => (b.cost || 0) - (a.cost || 0))[0];
+      if (dear) move('order', () => { S.v10 = S.v10 || {}; S.v10.orders = S.v10.orders || {};
+          S.v10.orders[dear.id] = { status:'inforce', issued:S.turn, dept:dear.dept, target:null, by:pid }; },
+        () => { delete S.v10.orders[dear.id]; });
+      move('motion', () => { S.motion = { by:pid, laid:S.turn, put:S.turn + 1,
+          countedNay:70, countedAye:30, houseNay:70, houseAye:30, houseAbstain:0 }; },
+        () => { S.motion = null; });
+      /* the same notice moved by SOMEBODY ELSE is worth nothing to this party:
+         a term that read `st.motion` without asking whose it was would score
+         every party on the board for one party's motion */
+      move('motionTheirs', () => { S.motion = { by:other, laid:S.turn, put:S.turn + 1,
+          countedNay:70, countedAye:30, houseNay:70, houseAye:30, houseAbstain:0 }; },
+        () => { S.motion = null; });
+      const wasConf = S.confidence;
+      move('supply', () => { S.confidence = pid; }, () => { S.confidence = wasConf; });
       return { out:out, pol:pol,
         /* every kind moves it, and the two signed ones are signed */
-        allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter']
+        allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter', 'order', 'motion', 'supply']
           .every(k => out[k] !== undefined && Math.abs(out[k]) > 1e-9),
+        /* and the motion is read as THIS party's: somebody else's is nought */
+        motionIsMine: out.motion > 0 && out.motionTheirs === 0,
         billSigned: out.billFor > 0 && out.billAgainst < 0,
         /* AND THE LINE IS READ AGAINST ITS OWN PAIR, not against nought. Both
            of these put the SAME bill on the paper -- one the party wants --
@@ -9396,18 +9448,26 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        at the top of `v19Outcome`, so a term that installs a structure to read
        it installs it on the live campaign -- which is `v6TreatyRows`, whose
        read gave every power an empty treaty array and awarded the Peacemaker
-       record on every seed. Asked of a state stripped of all four. */
+       record on every seed. Asked of a state stripped of all four.
+       S21g: FIVE. The order term reads the register `v10Orders` installs on
+       being asked -- created-on-write is the v10 house pattern and the whole
+       reason this leg exists -- so `st.v10` is stripped here too, and the
+       motion and the confidence party with it. */
     R.pure = (() => {
       fresh(4242); for (let i = 0; i < 3; i++) step();
       const pid = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
-      delete S.v11; delete S.aiPacts; delete S.push; const bills = S.bills; S.bills = [];
+      delete S.v11; delete S.aiPacts; delete S.push; delete S.v10;
+      delete S.motion; delete S.confidence;
+      const bills = S.bills; S.bills = [];
       let threw = null, v = null;
       try { v = v19Standing(S, pid); } catch (e) { threw = e.message; }
       const made = { v11: S.v11 !== undefined, pacts: S.aiPacts !== undefined,
-        push: S.push !== undefined };
+        push: S.push !== undefined, v10: S.v10 !== undefined,
+        motion: S.motion !== undefined, confidence: S.confidence !== undefined };
       S.bills = bills;
       return { threw:threw, finite: typeof v === 'number' && isFinite(v),
-        created: made.v11 || made.pacts || made.push, made:made };
+        created: made.v11 || made.pacts || made.push || made.v10 || made.motion || made.confidence,
+        made:made };
     })();
 
     /* (c) ONE TABLE OVER THE DECK, BOTH WAYS -- the guard `V17_MEMORY` and
@@ -9560,18 +9620,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   });
 
   const seenOk =
-    /* Nine of eleven cards returned one constant. TWO still do, and the bar
-       says two rather than one because the reading changed under it: `min ===
-       max` let `order` through on a single rehearsal in 102, and a share-based
-       reading says what was always true -- `order` is a price list on this
-       build AND on the one before this slice, at a modal share of 0.99 either
-       side. `bill` is flat by design and the message says why; `order` is a
-       gap in `v19Standing`, recorded in PLAN-S21.md for the slice that can pay
-       for a new term in the objective. A THIRD would still redden. */
-    seen.cards.cards === 11 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 2 &&
+    /* Nine of eleven cards returned one constant. ONE still does, and it is
+       `bill`, which is flat by design -- the card always lays the statute its
+       own table names, so every instance of it is a good one.
+       S21c left the bar at two because `order` was the second, at a modal
+       share of 0.99: the card signed an executive order and `v19Standing` read
+       nothing about one. That was recorded in PLAN-S21.md as a gap waiting for
+       a slice that could pay for a term, and S21g paid for it -- `order` now
+       reads .44 -- because two new cards arriving with no term of their own
+       would have taken this bar to four, which is the assertion giving up.
+       A SECOND FLAT CARD REDDENS. */
+    seen.cards.cards === 13 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
     seen.terms.allMove === true && seen.terms.billSigned === true && seen.terms.lineSigned === true &&
+    seen.terms.motionIsMine === true &&
     seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
-    seen.cost.deck === 11 && seen.cost.priced === 11 &&
+    seen.cost.deck === 13 && seen.cost.priced === 13 &&
     seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
     seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
     seen.cost.s17 === true &&
@@ -9591,8 +9654,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `concluded that laying a bill was worse than doing nothing, and the two upper rungs of the setting bought ` +
     `it. ${seen.cards.flat} of ${seen.cards.cards} are flat now` +
     (seen.cards.flatIds.length ? ` (${seen.cards.flatIds.join(', ')} -- the bill card always lays the statute ` +
-      `its own table names, so every instance of it IS a good one; \`order\` is not, and it is a gap rather ` +
-      `than a design, recorded for a later slice)` : '') +
+      `its own table names, so every instance of it IS a good one)` : '') +
+    ` · AND THE BAR IS ONE WHERE S21c LEFT IT AT TWO: \`order\` was the second, a price list at a modal share ` +
+    `of .99 either side of that slice, and the gap was recorded in PLAN-S21.md rather than papered over. S21g ` +
+    `paid for it, along with terms for its own two cards -- shipping those with no term would have taken this ` +
+    `bar to FOUR, which is the assertion giving up ·` +
     ` · READ AS A SHARE AND NOT A RANGE, over ${seen.cards.rehearsals} rehearsals on TWELVE seeds where this ` +
     `was four: \`min === max\` is defeated by one sample, and \`order\` returned -0.964 on 101 of its 102 ` +
     `rehearsals and 0.086 on the hundred-and-second, so the range reading called a price list varied. That ` +
@@ -9605,7 +9671,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `write · A THING IN FLIGHT IS WORTH THE PRICE OF THE CARD THAT PRODUCES IT, times how good this instance ` +
     `is -- ONE constant, taken from the cards that already scored rather than by eye: their median gain is 0.75, ` +
     `the median price across the six kinds is 28 and the median instance is .90, so V21_FLIGHT is ` +
-    `${seen.cost.flight} · AND EACH OF THE SIX TERMS ANSWERS FOR ITSELF (${seen.terms.allMove}), because the ` +
+    `${seen.cost.flight} · AND EACH OF THE NINE TERMS ANSWERS FOR ITSELF (${seen.terms.allMove}), because the ` +
     `flatness reading above says the objective can tell instances apart and NOT which term did it -- the poison ` +
     `run showed why that matters: with the bill term deleted \`bill\` still came back non-flat, since the purse ` +
     `term is \`min(20, purse/100) * 1.2\` and a party over 2,000 has it CLAMPED, so a card escapes flatness on ` +
@@ -9616,9 +9682,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${seen.terms.lineSigned}, a gap of ${seen.terms.lineGap}) -- asking for a negative there was the probe ` +
     `reading the bill's worth and calling it the line's, an ` +
     `article ${seen.terms.out.article}, a pact ${seen.terms.out.pact}, a platform move ${seen.terms.out.push}, ` +
-    `an outstanding letter ${seen.terms.out.letter} · AND THE READS DO NOT CREATE ` +
+    `an outstanding letter ${seen.terms.out.letter}, S21g's standing order ${seen.terms.out.order}, its motion ` +
+    `${seen.terms.out.motion} and its supply agreement ${seen.terms.out.supply} · and the MOTION is read as ` +
+    `THIS party's (${seen.terms.motionIsMine}): the same notice moved by somebody else is worth ` +
+    `${seen.terms.out.motionTheirs}, where a term that read \`st.motion\` without asking whose it was would ` +
+    `have scored every party on the board for one party's motion · AND THE READS DO NOT CREATE ` +
     `(${seen.pure.created ? 'they DO' : 'true'}), asked of ` +
-    `a state stripped of \`v11\`, \`aiPacts\` and \`push\`: \`v19Standing\` runs on the LIVE state at the top of ` +
+    `a state stripped of \`v11\`, \`aiPacts\`, \`push\`, \`v10\`, \`motion\` and \`confidence\`: \`v19Standing\` runs on the LIVE state at the top of ` +
     `\`v19Outcome\`, so a term that installs a structure to read it installs it on the campaign -- which is ` +
     `\`v6TreatyRows\`, whose read gave every power an empty treaty array and awarded the Peacemaker record on ` +
     `every seed · ONE COST TABLE OVER THE DECK, BOTH WAYS: ${seen.cost.priced} prices for ${seen.cost.deck} ` +
@@ -10926,6 +10996,445 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `before this slice, the re-phase ALONE moves coalition promises kept from 0.044 per partner-session to ` +
     `0.028 with the board otherwise unmoved, which is the seed-to-seed spread of that statistic and not a ` +
     `mechanism`);
+
+  /* ---------- S21g: A GOVERNMENT THAT CAN FALL ----------
+     `v17ConfidenceVote` and `v17Refound` had ONE caller each and it was the
+     player's own button, so no engine in this game could end a government.
+     Six arms: the door and who may go through it; the CLOCK, because a
+     countdown that resolves in a tick is the defect this file names first;
+     both outcomes of the question, since "the government fell" passes on a
+     build where it always does; the two readings of one house, which is what
+     makes a failed motion reachable at all; the supply agreement, priced and
+     accepted at every formation since S17e and written down at none of them;
+     and the paper the government reads, driven by real clicks. */
+  const fall = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    /* R9: half of `endTurn` runs inside `runQueue`'s callback, so a probe that
+       does not override it drives a republic that never holds an election --
+       and every leg below is downstream of the queue. */
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+    /* a board on which the house would remove the government: the FP governs
+       alone on a minority of the chamber and everybody else is outside it */
+    function weakGov(seed) {
+      fresh(seed);
+      S.ruling = 'fp'; S.coalition = ['fp']; S.confidence = null; S.motion = null;
+      const opp = PARTIES.filter(p => p.id !== 'fp' && !S.banned[p.id]);
+      let all = 0; PARTIES.forEach(p => { all += S.seats[p.id] || 0; });
+      S.seats.fp = Math.round(all * .28);
+      let rest = all - S.seats.fp;
+      opp.forEach((p, i) => { S.seats[p.id] = i === opp.length - 1 ? rest : Math.round(rest / opp.length); });
+      opp.forEach((p, i) => { if (i < opp.length - 1) rest -= S.seats[p.id]; });
+      PARTIES.forEach(p => { S.purse = S.purse || {}; S.purse[p.id] = 600; });
+      return opp.filter(p => p.id !== playParty(S))[0].id;
+    }
+
+    /* (a) WHO MAY PUT THE QUESTION, and the door refusing each thing it says
+       it refuses -- each asked on a board that differs in that ONE fact. */
+    R.door = (() => {
+      const mover = weakGov(4242);
+      const out = {};
+      out.govRefused = v21LayMotion(S, S.ruling) === null;
+      S.coalition = ['fp', mover];
+      out.partnerRefused = v21LayMotion(S, mover) === null;
+      S.coalition = ['fp'];
+      const susp = S.lower.suspended;
+      S.lower.suspended = true;
+      out.noHouseRefused = lowerSits(S) === false && v21LayMotion(S, mover) === null;
+      S.lower.suspended = susp;
+      out.laid = !!v21LayMotion(S, mover);
+      out.named = !!S.motion && S.motion.by === mover;
+      out.secondRefused = v21LayMotion(S, PARTIES.filter(p =>
+        p.id !== 'fp' && p.id !== mover && !S.banned[p.id])[0].id) === null;
+      out.stillFirst = !!S.motion && S.motion.by === mover;
+      return out;
+    })();
+
+    /* (b) THE CLOCK, AND IT IS NOT THE SAME NUMBER OF CLICKS EITHER WAY.
+       The invariant the card states is that THE GOVERNMENT GETS EXACTLY ONE
+       SESSION, and that is not the same as "one End Session from the call":
+       an engine lays inside `aiGovern`, which is already inside the `endTurn`
+       the player just pressed, so the notice arrives at the top of the
+       government's session and the very next click puts it; the player lays
+       during their OWN session, so the click that follows only ends that
+       session and the government's is the one after. The first version of
+       this leg asserted one click for both, measured nought for the player's
+       path, and was about to be read as the clock being broken -- the probe
+       wrong before the game. Both paths are driven and both numbers are
+       stated, because a leg that measured one and printed the other is how
+       four of this game's six session clocks went wrong. */
+    R.clock = (() => {
+      const player = (() => {
+        const mover = weakGov(90210);
+        let put = 0;
+        const bc = v21Confidence;
+        v21Confidence = function () { put += 1; return bc.apply(this, arguments); };
+        try {
+          v21LayMotion(S, mover);
+          const laidAt = S.turn, stood = !!S.motion, due = S.motion && S.motion.put;
+          step(); const afterOne = put;
+          step(); const afterTwo = put;
+          return { stood:stood, laidAt:laidAt, due:due, afterOne:afterOne, afterTwo:afterTwo };
+        } finally { v21Confidence = bc; }
+      })();
+      const engine = (() => {
+        const mover = weakGov(90211);
+        let put = 0, laid = false;
+        const ba = aiGovern, bc = v21Confidence;
+        aiGovern = function (st) {
+          const r = ba.apply(this, arguments);
+          if (!laid && !st.motion) laid = v21LayMotion(st, mover) !== null;
+          return r;
+        };
+        v21Confidence = function () { put += 1; return bc.apply(this, arguments); };
+        try {
+          step();                                   /* the notice is laid inside this one */
+          const stood = !!S.motion, during = put;
+          step();                                   /* the government's own session */
+          return { laid:laid, stood:stood, during:during, afterOne:put };
+        } finally { aiGovern = ba; v21Confidence = bc; }
+      })();
+      return { player:player, engine:engine,
+        /* the notice survives the session it was laid in, whichever path laid it */
+        survives: player.stood === true && engine.stood === true,
+        /* and the question is put on the government's session and no earlier */
+        engineOneClick: engine.laid === true && engine.during === 0 && engine.afterOne === 1,
+        playerTwoClicks: player.afterOne === 0 && player.afterTwo === 1,
+        oneSessionEither: engine.during === 0 && engine.afterOne === 1 &&
+          player.afterOne === 0 && player.afterTwo === 1 };
+    })();
+
+    /* (c) BOTH OUTCOMES. "The government fell" passes on a build where it
+       always does, so the same probe drives a motion the house carries AND
+       one it refuses, and reads what each costs. */
+    R.carried = (() => {
+      const mover = weakGov(7);
+      const was = S.ruling;
+      v21LayMotion(S, mover);
+      const r = v21Confidence(S, mover);
+      return { carried: !!(r && r.carried), refounded: S.ruling !== was || !!S.caretaker,
+        formation: !!S.formation && S.formation.turn === S.turn };
+    })();
+    R.failed = (() => {
+      const mover = weakGov(31337);
+      /* the same board with the government given the house: the FP holds a
+         majority, so the question is refused and the mover pays for it */
+      let all = 0; PARTIES.forEach(p => { all += S.seats[p.id] || 0; });
+      const opp = PARTIES.filter(p => p.id !== 'fp' && !S.banned[p.id]);
+      S.seats.fp = Math.round(all * .62);
+      let rest = all - S.seats.fp;
+      opp.forEach((p, i) => { S.seats[p.id] = i === opp.length - 1 ? rest : Math.round(rest / opp.length);
+        if (i < opp.length - 1) rest -= S.seats[p.id]; });
+      const purse0 = partyPurse(S, mover), mach0 = S.machine[S.ruling] || 0;
+      const was = S.ruling;
+      const r = v21Confidence(S, mover);
+      return { carried: !!(r && r.carried), stillRuling: S.ruling === was,
+        costTheMover: purse0 - partyPurse(S, mover),
+        isTheConstant: (purse0 - partyPurse(S, mover)) === V21_MOTION_COST,
+        govStronger: (S.machine[S.ruling] || 0) > mach0,
+        byTheConstant: Math.abs(((S.machine[S.ruling] || 0) - mach0) - V21_MOTION_MACHINE) < 1e-9 };
+    })();
+
+    /* (d) TWO READINGS OF ONE HOUSE, and the house's own reading of the whip.
+       The mover's count is optimistic and the division is not; where they
+       agree there is nothing to test, so the board is built in the band that
+       separates them -- a partner below the pivot at which its benches turn
+       and ABOVE the floor at which it walks. And `v17ConfidenceVote` reads
+       `d.defected`, the flag S21f sets when a partner withholds the whip:
+       before this slice it asked `satisfaction < 30`, so a partner that had
+       publicly withdrawn the whip still voted confidence. */
+    R.count = (() => {
+      const mover = weakGov(555);
+      const p2 = PARTIES.filter(p => p.id !== 'fp' && p.id !== mover && !S.banned[p.id])[0].id;
+      /* the FP plus one partner hold the house between them, so the partner's
+         vote is what decides it and nothing else can */
+      let all = 0; PARTIES.forEach(p => { all += S.seats[p.id] || 0; });
+      S.seats.fp = Math.round(all * .30); S.seats[p2] = Math.round(all * .26);
+      let rest = all - S.seats.fp - S.seats[p2];
+      const others = PARTIES.filter(p => p.id !== 'fp' && p.id !== p2 && !S.banned[p.id]);
+      others.forEach((p, i) => { S.seats[p.id] = i === others.length - 1 ? rest : Math.round(rest / others.length);
+        if (i < others.length - 1) rest -= S.seats[p.id]; });
+      S.coalition = ['fp', p2];
+      S.coalitionDeals = S.coalitionDeals || {};
+      const d = S.coalitionDeals[p2] = S.coalitionDeals[p2] ||
+        { satisfaction:60, councils:0, portfolios:0, priorities:[], redLine:null, lastCouncil:-99, ledger:[] };
+      d.terms = d.terms || { offices:[], portfolios:0, concessions:[], redLines:[], confidence:'cabinet' };
+      const floor = v17WalkFloor(S, p2);
+      /* IN THE BAND, and the band is asserted rather than assumed: a probe
+         that put the cohesion below the floor would be testing the floor. */
+      const band = Math.round((floor + V21_PARTNER_PIVOT) / 2);
+      d.satisfaction = band; d.defected = null;
+      const loyal = { mover:v21Count(S).carried, house:v17ConfidenceVote(S).carried };
+      d.defected = S.turn;
+      const whipOff = { mover:v21Count(S).carried, house:v17ConfidenceVote(S).carried };
+      d.defected = null;
+      return { floor:floor, pivot:V21_PARTNER_PIVOT, band:band,
+        inBand: band > floor && band < V21_PARTNER_PIVOT,
+        loyal:loyal, whipOff:whipOff,
+        /* the two counts differ where the partner is wavering and loyal */
+        countsDiffer: loyal.mover === true && loyal.house === false,
+        /* and withdrawing the whip moves the DIVISION, which is the fix */
+        whipReachesTheHouse: whipOff.house === true };
+    })();
+
+    /* (e) THE SUPPLY AGREEMENT. `v17Supply` builds an offer of three
+       concessions, prices it and puts it to the party; `v17Rotation` returned
+       the COALITION's offers and the accepted one was thrown away, so a
+       minority government could break every promise it made to the party
+       keeping it alive and the party had no way to find out. Driven through
+       `v17Refound`, which is the game's own path to a minority government. */
+    R.supply = (() => {
+      const out = { formed:0, written:false, swept:0, mode:null, withdrawn:0, cleared:null,
+        grudge:null, how:null };
+      /* A MINORITY GOVERNMENT IS CONSTRUCTED, NOT WAITED FOR. `v17Rotation`
+         tries every formateur for a majority coalition first and one is
+         usually there: over 480 driven sessions on twelve seeds a supply
+         government formed 8 times, which is a sample no arm should be built
+         on. The lever is the model's own -- `v17Accept` prices a grudge at
+         .32 a point against a reservation that `V17_SUPPLY_RELIEF` lowers by
+         22 for an abstention, so there is a band of mutual ill-will in which
+         nobody will SIT with anybody and somebody will still abstain. The
+         band is SEARCHED rather than named, so a later change to either
+         constant moves this probe instead of reddening it. */
+      let sup = null;
+      /* DRIVEN, NOT CONSTRUCTED, AND THE CONSTRUCTION WAS TRIED FIRST. A
+         minority government needs a chamber where no formateur can build a
+         majority AND the opposition is not hostile enough to vote the result
+         down, and those two pull on the same number: `v17Accept` blocks a
+         coalition at a grudge around 60 and `v17Invest` turns a party into a
+         NAY at 30, so raising the ill-will far enough to stop the coalition
+         forming also guarantees the investiture fails. Measured over that
+         whole range on four chamber shapes, the rotation went majority ->
+         grand and never once through the minority round. So the board is
+         driven for until the game produces one, which it does about once in
+         sixty sessions -- and the leg stops on the first, because the party
+         may leave again and a claim read afterwards would be read off a
+         board that has moved. */
+      const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99];
+      for (let si = 0; si < SEEDS.length && !sup; si++) {
+        fresh(SEEDS[si]);
+        for (let n = 0; n < 40 && !sup; n++) {
+          step(); out.sessions = (out.sessions || 0) + 1;
+          const c = S.confidence;
+          if (!c) continue;
+          const dd = (S.coalitionDeals || {})[c];
+          if (dd && dd.terms && dd.terms.confidence === 'supply') { sup = c; out.formed = 1; out.how = 'driven'; }
+        }
+      }
+      if (!sup) return out;
+      const d = (S.coalitionDeals || {})[sup] || null;
+      out.written = !!(d && d.terms && (d.terms.concessions || []).length > 0);
+      out.mode = d && d.terms && d.terms.confidence;
+      out.promises = d ? (d.terms.concessions || []).length : 0;
+      /* AND IT IS SWEPT. `v16RedLineTick` walked `st.coalition`, which a
+         supply party is not in, so the agreement was never read again. */
+      let scanned = 0;
+      const bd = v17DealScan;
+      v17DealScan = function (st, pid) { if (pid === sup) scanned += 1; return bd.apply(this, arguments); };
+      try {
+        d.terms.redLines = [Object.keys(POL)[0]];
+        d.redLine = d.terms.redLines[0];
+        v16RedLineTick(S);
+      } finally { v17DealScan = bd; }
+      out.swept = scanned;
+      /* AND WITHDRAWING IT GOES THROUGH THE ONE DOOR. */
+      const still = S.confidence === sup;
+      out.withdrawn = v21Leave(S, sup, 'they withdrew confidence and supply', S.ruling) ? 1 : 0;
+      out.cleared = still && S.confidence === null;
+      out.markedOnExit = !!(d && d.walkedOut);
+      return out;
+    })();
+
+    /* (f) THE PAPER, DRIVEN BY REAL CLICKS. The whole design of the motion is
+       that the government gets one session; a notice with nothing to press
+       would have made that session a sentence in a news item. Each answer is
+       pressed through `respondInbox` and read for what it says it does. */
+    R.paper = (() => {
+      const out = { posted:false, opts:[], shore:null, supply:null, face:null };
+      const mover = weakGov(8080);
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me];
+      /* the player's own party governs on the same minority arithmetic */
+      const opp = PARTIES.filter(p => p.id !== me && !S.banned[p.id]);
+      let all = 0; PARTIES.forEach(p => { all += S.seats[p.id] || 0; });
+      S.seats[me] = Math.round(all * .28);
+      let rest = all - S.seats[me];
+      opp.forEach((p, i) => { S.seats[p.id] = i === opp.length - 1 ? rest : Math.round(rest / opp.length);
+        if (i < opp.length - 1) rest -= S.seats[p.id]; });
+      const mv = opp[0].id;
+      S.inbox = [];
+      v21LayMotion(S, mv);
+      const it = S.inbox.filter(x => x.type === 'notice_of_motion')[0] || null;
+      out.posted = !!it;
+      if (!it) return out;
+      out.opts = (inboxChoices(it) || []).map(o => o.id);
+      out.truthOnTheCard = /whips count the house/.test(it.body || '');
+      /* shore: a partner below the pivot is brought back above it */
+      const p2 = opp[1].id;
+      S.coalition = [me, p2];
+      S.coalitionDeals = S.coalitionDeals || {};
+      const d = S.coalitionDeals[p2] = S.coalitionDeals[p2] ||
+        { satisfaction:60, councils:0, portfolios:0, priorities:[], redLine:null, lastCouncil:-99, ledger:[] };
+      d.terms = d.terms || { offices:[], portfolios:0, concessions:[], redLines:[], confidence:'cabinet' };
+      d.satisfaction = 12;
+      S.capital = 60; S.treasury = 400;
+      const before = d.satisfaction;
+      respondInbox(it.id, 'shore');
+      out.shore = { was:before, now:Math.round(d.satisfaction),
+        rose: d.satisfaction > before && d.satisfaction >= V21_PARTNER_PIVOT };
+      /* supply: somebody outside is offered policy for an abstention */
+      S.inbox = []; S.motion = null; S.confidence = null;
+      S.coalition = [me];
+      v21LayMotion(S, mv);
+      const it2 = S.inbox.filter(x => x.type === 'notice_of_motion')[0];
+      S.capital = 60; S.treasury = 400;
+      if (it2) {
+        respondInbox(it2.id, 'supply');
+        const sd = (S.coalitionDeals || {})[S.confidence] || null;
+        out.supply = { set: !!S.confidence && S.confidence !== me,
+          written: !!(sd && sd.terms && (sd.terms.concessions || []).length > 0),
+          mode: sd && sd.terms && sd.terms.confidence };
+      }
+      /* face: unity rises and the motion is untouched -- the paper reports the
+         question and does not own it, which is the two-clocks rule */
+      S.inbox = []; S.motion = null; S.confidence = null;
+      v21LayMotion(S, mv);
+      const it3 = S.inbox.filter(x => x.type === 'notice_of_motion')[0];
+      S.capital = 60; S.unity = 50;
+      if (it3) {
+        const u0 = S.unity;
+        respondInbox(it3.id, 'face');
+        out.face = { unity0:u0, unity1:S.unity, rose:S.unity > u0, motionStands: !!S.motion };
+      }
+      return out;
+    })();
+
+    /* (g) AND THE PLAYER GIVES NOTICE LIKE EVERYBODY ELSE. The opposition
+       card put the question the instant it was pressed -- no notice, no
+       session for the government, and its own inline copy of what a failed
+       motion costs. Driven by finding the option and running it. */
+    R.player = (() => {
+      const mover = weakGov(1234);
+      const me = playParty(S);
+      S.ruling = 'fp'; S.coalition = ['fp']; S.motion = null;
+      const card = ACTIONS.filter(a => a.id === 'oppositionAttack')[0];
+      if (!card) return { found:false };
+      const opt = (card.opts || []).filter(o => /no confidence/i.test(o.label))[0];
+      if (!opt) return { found:false };
+      S.capital = 60;
+      const was = S.ruling;
+      opt.run(S);
+      return { found:true, label:opt.label, laid: !!S.motion,
+        mine: !!S.motion && S.motion.by === me,
+        /* and it did NOT put the question there and then */
+        governmentStillStands: S.ruling === was && !S.caretaker };
+    })();
+
+    return R;
+  });
+
+  const fallOk =
+    fall.door.govRefused === true && fall.door.partnerRefused === true &&
+    fall.door.noHouseRefused === true && fall.door.laid === true &&
+    fall.door.named === true && fall.door.secondRefused === true &&
+    fall.door.stillFirst === true &&
+    fall.clock.survives === true && fall.clock.engineOneClick === true &&
+    fall.clock.playerTwoClicks === true && fall.clock.oneSessionEither === true &&
+    fall.carried.carried === true && fall.carried.refounded === true &&
+    fall.failed.carried === false && fall.failed.stillRuling === true &&
+    fall.failed.isTheConstant === true && fall.failed.byTheConstant === true &&
+    fall.count.inBand === true && fall.count.countsDiffer === true &&
+    fall.count.whipReachesTheHouse === true &&
+    fall.supply.written === true && fall.supply.mode === 'supply' &&
+    fall.supply.swept > 0 && fall.supply.withdrawn === 1 &&
+    fall.supply.cleared === true && fall.supply.markedOnExit === true &&
+    fall.paper.posted === true && fall.paper.opts.length === 3 &&
+    fall.paper.truthOnTheCard === true &&
+    !!fall.paper.shore && fall.paper.shore.rose === true &&
+    !!fall.paper.supply && fall.paper.supply.set === true &&
+    fall.paper.supply.written === true && fall.paper.supply.mode === 'supply' &&
+    !!fall.paper.face && fall.paper.face.rose === true && fall.paper.face.motionStands === true &&
+    fall.player.found === true && fall.player.laid === true && fall.player.mine === true &&
+    fall.player.governmentStillStands === true;
+  say(fallOk, 'a government that can fall',
+    `\`v17ConfidenceVote\` AND \`v17Refound\` HAD ONE CALLER EACH AND IT WAS THE PLAYER'S OWN BUTTON. Six ` +
+    `parties could hate a ministry, watch it break every promise in the agreement, and the only thing that ` +
+    `ever removed one was a human pressing a card · THE DOOR REFUSES WHAT IT SAYS IT REFUSES, each asked on a ` +
+    `board differing in that one fact: the government itself (${fall.door.govRefused}), a party sitting in it ` +
+    `(${fall.door.partnerRefused}), a house not sitting (${fall.door.noHouseRefused}) and a second question ` +
+    `while one is before the members (${fall.door.secondRefused}, the first still standing ` +
+    `${fall.door.stillFirst}) · THE GOVERNMENT GETS EXACTLY ONE SESSION (${fall.clock.oneSessionEither}), and ` +
+    `that is NOT the same claim as "one End Session from the call" -- which is what the first version of this ` +
+    `leg asserted, measured nought on the player's path, and would have been read as the clock being broken. ` +
+    `An engine lays inside \`aiGovern\`, already inside the \`endTurn\` the player has just pressed, so the ` +
+    `notice arrives at the top of the government's session and the very next click puts it: ` +
+    `${fall.clock.engine.during} during the laying session and ${fall.clock.engine.afterOne} on the next ` +
+    `(${fall.clock.engineOneClick}). The player lays during their OWN session, so the click that follows only ` +
+    `ends it and the government's is the one after: ${fall.clock.player.afterOne} then ` +
+    `${fall.clock.player.afterTwo} (${fall.clock.playerTwoClicks}). The notice survives the session it was laid ` +
+    `in either way (${fall.clock.survives}). \`endTurn\` runs the tick and only THEN does \`S.turn += 1\`, so ` +
+    `a clock counted against \`st.turn\` charges one click more than it prints -- four of the six session ` +
+    `clocks in this game did · AND THAT SESSION IS THE WHOLE DESIGN rather than a flourish: ` +
+    `\`v17ConfidenceVote\` is deterministic given the board, so a mover with perfect information would carry ` +
+    `every motion it ever laid and "a failed motion costs the mover" would be unreachable code · BOTH ` +
+    `OUTCOMES, because "the government fell" passes on a build where it always does. Carried, it refounds out ` +
+    `of the same Assembly (${fall.carried.carried}/${fall.carried.refounded}); refused, the government stands ` +
+    `(${fall.failed.stillRuling}), the mover pays ${fall.failed.costTheMover} -- exactly \`V21_MOTION_COST\` ` +
+    `(${fall.failed.isTheConstant}) -- and the government is stronger by exactly \`V21_MOTION_MACHINE\` ` +
+    `(${fall.failed.byTheConstant}) · TWO READINGS OF ONE HOUSE. \`v21Count\` is the count an opposition whip ` +
+    `makes and \`v17ConfidenceVote\` is the division, and they are read IN THE BAND THAT SEPARATES THEM -- a ` +
+    `partner at cohesion ${fall.count.band}, above its own walk floor of ${fall.count.floor} and below the ` +
+    `pivot of ${fall.count.pivot} at which its benches stop backing a government bill (${fall.count.inBand}), ` +
+    `because where the two agree there is nothing to test. The mover reads ${fall.count.loyal.mover} and the ` +
+    `house reads ${fall.count.loyal.house} (${fall.count.countsDiffer}). Measured over 480 driven sessions on ` +
+    `twelve seeds, the house would carry on 50 and the mover's count says 153: it was chosen on RECALL, ` +
+    `catching 50 of the 50 boards on which a government would really fall where the gentler reading is more ` +
+    `accurate (.42 against .33) and misses six · AND THE WHIP REACHES THE DIVISION ` +
+    `(${fall.count.whipReachesTheHouse}): with \`d.defected\` set on the same partner the house now counts it ` +
+    `AGAINST the government. That line asked \`satisfaction < 30\`, a bare number with no relation to ` +
+    `anything, while \`partyBillSupport\` asked \`d.defected\` -- two rules for one surface, and the one week ` +
+    `in which a government is genuinely in danger was the one week this count could not see it · THE SUPPLY ` +
+    `AGREEMENT IS WRITTEN DOWN. \`v17Supply\` has built an offer of concessions, priced it and put it to the ` +
+    `party at every formation since S17e, and \`v17Rotation\` returned the COALITION's offers, so the thing ` +
+    `the party accepted was thrown away at the moment it said yes -- nothing recorded, so nothing breakable, ` +
+    `so a party supplying confidence and supply could not withdraw it for a reason. ` +
+    `${fall.supply.promises} promises on the record (${fall.supply.written}) under a mode of ` +
+    `"${fall.supply.mode}", found by DRIVING ${fall.supply.sessions} sessions rather than by building a ` +
+    `board: a minority government needs a chamber no formateur can win AND an opposition not hostile ` +
+    `enough to vote the result down, and those pull on one number -- \`v17Accept\` blocks a coalition at ` +
+    `a grudge near 60 and \`v17Invest\` turns a party NAY at 30, so over that whole range on four chamber ` +
+    `shapes the rotation went majority -> grand and never once through the minority round · a mode of ` +
+    `"${fall.supply.mode}" is the SECOND value \`d.terms.confidence\` has ever carried -- an enum whose ` +
+    `other value never occurs is the decoration \`st.court.size\` is · AND IT IS SWEPT (${fall.supply.swept} ` +
+    `scans): \`v16RedLineTick\` walked \`st.coalition\`, which a supply party is not in, so four sites asked ` +
+    `"is this party in the coalition" to mean "does this party have an agreement with the government" and ` +
+    `\`v21Signed\` is that question with a name · AND WITHDRAWING IT GOES THROUGH THE ONE DOOR ` +
+    `(${fall.supply.withdrawn === 1}), clearing \`st.confidence\` (${fall.supply.cleared}) and marking the ` +
+    `agreement (${fall.supply.markedOnExit}) -- a sixth exit written somewhere else would have been S21f's ` +
+    `whole finding repeated · AND THE PAPER HAS BUTTONS ON IT, driven by real clicks through ` +
+    `\`respondInbox\`: ${fall.paper.opts.length} answers (${fall.paper.opts.join(', ')}), the government's own ` +
+    `whips counting the house on the card rather than the movers' claim (${fall.paper.truthOnTheCard}); ` +
+    `"buy the wavering benches back" takes the partner from ${fall.paper.shore ? fall.paper.shore.was : 'n/a'} ` +
+    `to ${fall.paper.shore ? fall.paper.shore.now : 'n/a'}, above the pivot ` +
+    `(${fall.paper.shore ? fall.paper.shore.rose : 'n/a'}); "go outside for confidence and supply" seats one ` +
+    `(${fall.paper.supply ? fall.paper.supply.set : 'n/a'}) with the price WRITTEN ` +
+    `(${fall.paper.supply ? fall.paper.supply.written : 'n/a'}); and "let the question be put" moves unity ` +
+    `${fall.paper.face ? fall.paper.face.unity0 + ' to ' + fall.paper.face.unity1 : 'n/a'} and leaves the ` +
+    `motion standing (${fall.paper.face ? fall.paper.face.motionStands : 'n/a'}) -- the paper REPORTS the ` +
+    `question and does not own it, because two mechanisms holding one date is what \`expireInbox\` and the ` +
+    `street taught this file · AND THE PLAYER GIVES NOTICE LIKE EVERYBODY ELSE ("${fall.player.label}"): the ` +
+    `card put the question the instant it was pressed, with no notice, no session for the government and its ` +
+    `own inline copy of what a failed motion costs. It lays a notice now (${fall.player.laid}) in the player's ` +
+    `own name (${fall.player.mine}) and the government is still standing when the click returns ` +
+    `(${fall.player.governmentStillStands})`);
 
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
