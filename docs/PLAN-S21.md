@@ -25,8 +25,9 @@ The owner, verbatim:
 
 They had previously scored the AI **1 out of 10** and asked for **8-10**.
 
-This programme delivers **12 improvements and 14 new behaviours** across twelve
-slices, one PR each. Four of the twelve slices are the coalition.
+This programme delivers **12 improvements and 22 new behaviours** across twenty
+slices, one PR each. Four of them are the coalition proper. The last eight were
+added at the owner's request after S21d shipped.
 
 ## What the measurement found, in one page
 
@@ -626,14 +627,127 @@ Parties card. The coverage arm — every card's `run` produces exactly one recor
 and a record whose verb is not in the deck reddens — grows with the deck. The
 card is finished in S21l.
 
+## The owner's extension: eight more new behaviours
+
+Asked for after S21d shipped, in the owner's words: *"Tbh I'd really like it if
+an additional 8 AI behaviors / logic features were added in s21."*
+
+Sourced by mining the thirteen intake reports for findings the twelve slices
+never claimed, merging 46 raw candidates down to 32, and picking against one
+question: would a player feel it across a session.
+
+**They share a cause.** Nearly every capability in this game is player-only. The
+engine cannot hold a coalition council, draw a boundary, license a newspaper,
+earn an endorsement, lead a strike, cordon a rival, reach the emergency book, or
+say a word about a bill it laid itself. That is not eight gaps, it is one gap
+with eight faces, and it is most of the owner's "1 out of 10": an opponent that
+cannot do what you can is not an opponent.
+
+Every item below names the existing reader its effect lands in, because a
+behaviour whose effect nothing consumes is the decoration this file deletes.
+
+### S21m - The party in office gets a deck and a second mood
+
+`govern` appears in three of the eleven `post:` arrays, so a government's whole
+output is order, campaign and article, on every board and every seed. It never
+courts a bloc, never builds its organisation, never speaks on a bill. And
+`v16Posture` returns `govern` unconditionally before reading a single fact, so
+the party in office behaves identically in its fiftieth session and its first.
+
+Open `court`, `organise` and `floor` to `govern` through a second list read only
+when the party thinks, so the instinct deck stays eleven cards. Add one gated
+posture for a government whose smoothed support sits below its seat share.
+
+Measured: govern's mean open set is 1.56 with 24.1% of sessions EMPTY, against
+5.00 for `hold`. The support gap runs -8.05 to +11.41 with a median of -1.14, so
+a bar at -2 occupies 36.4% of government-sessions. Inside the distribution,
+which is what S17q's failure was about.
+
+Channels: `st.machine` to `machineOf` to `supportTargets`; `b.lines[actor]` to
+`partyBillSupport` at 16/-18; `st.blocs` to `supportTargets`, where `court` has
+the right sign only in this chair.
+
+### S21n - The government that is not yours keeps its own coalition
+
+Somebody else governs in about 98% of the sessions a player watches, and that
+government's coalition can only decay. No engine has ever held a council, traded
+a department or reopened an agreement. The player has all three buttons.
+
+Channel: `d.satisfaction`, which since S21d has four live readers and needs no
+new one.
+
+### S21o - An engine government can descend
+
+The emergency book is player-only. A Vanguard or Restoration government cannot
+open an investigation, federalise a count, license the press or classify a
+record, so the descent the game is named for can only ever be the player's.
+
+Channel: `st.extra[id]`, five live readers, all reached through S15 wrappers
+rather than the base bodies. `securityState` is reassigned at 33720, so the
+guard goes on the live function.
+
+### S21p - Put a party at the head of the crowd
+
+A general strike shuts the country and no party stands at the head of it. The
+street is a weather system rather than a thing a party can ride.
+
+Channel: `st.street.pressure` to the demand bar at 26 and the strike bar at 58,
+then `v17StrikeBar` and `v17Barred`, the sibling of the caretaker gate.
+
+### S21q - Put a price on the benches
+
+A party writes offering to take its members through the aye lobby on one bill if
+you drop your opposition to another. Accept and its line changes on the card that
+session and the forecast moves before the division.
+
+Channel: `v17FloorCore` to `b.lines[pid]` to `partyBillSupport` at 16/-18. The
+paper machinery is complete and extensible.
+
+### S21r - An engine fights for the bill it laid, and the House answers yours
+
+143 engine bills were archived in 300 sessions and none carried. An engine lays a
+bill and is then mute about it for the rest of its life. And almost no bill of
+the player's is ever spoken to before the division.
+
+Channels: `v20PressCore` writes `b.pull[pid]`, `billPull` counts it through that
+party's seats; `b.lines[actor]` reaches `partyBillSupport` and the forecast.
+
+### S21s - An organisation endorses somebody other than you
+
+Eight named national organisations exist in a seven-party republic and six of
+the parties can never be endorsed by any of them.
+
+Channel: `endorsedTurnout` to `partyTurnout` to `ballot`, where every party's
+base is multiplied by it.
+
+### S21t - A party that will not sit with another
+
+`st.cordon` has five readers and two writers, both player buttons. Parties
+cannot refuse each other, so a formateur is never forced to choose between two
+parties it needs, and a player can never be vetoed by a party they are not
+asking.
+
+Channel: `st.cordon`, read by `v17Eligible`, `partyBillSupport` at -8, the AI
+bill score at -8, and `v6CoalitionCandidates`.
+
+### What was measured and left out
+
+Twenty-four other candidates survived the merge with live channels. The ones
+closest to the line, recorded so they are not re-derived: the boundary pen and
+the press licence being player-only; election night printing the projection
+rather than a count with doubt in it; `v17Utility` weighting the PLAYER's
+political capital at +0.5 when a hostile government answers a crisis, so it
+quietly funds the opposition it is fighting; and three aims printing the seat
+counter as their progress.
+
 ## Deliverables against the brief
 
 | | required | delivered |
 |---|---|---|
 | Improvements to existing AI behaviour | at least 4 | **12** |
-| New behaviours | at least 8 | **14** |
+| New behaviours | at least 8 (owner later asked for 8 more) | **22** |
 | Equal attention | every item significant | one slice per PR, each with its own assertion, its own poison list and its own measured pins |
-| Coalition overhaul | "serious" | **4 of 12 slices**, covering formation, the agreement, the exits and the fall of a government, plus a junior-partner game |
+| Coalition overhaul | "serious" | **4 of 20 slices** on the coalition proper, plus S21n giving an engine government the three maintenance instruments the player has |
 
 ## If the programme has to shrink
 
