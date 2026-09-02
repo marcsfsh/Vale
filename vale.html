@@ -10247,6 +10247,7 @@ var V18_PAPER_NEED = {
      between the houses, are both things a partner does. They are 'gov'. */
   coalition_review:'gov', senate_conference:'gov', coalition_demand:'leading',
   confidence_threat:'leading', governors_conference:'leading',
+  coalition_ultimatum:'leading',
   cross_party:'any', faction_demand:'any', party_demand:'any',
   street_demand:'gov', opposition_conference:'any', government_offer:'any'
 };
@@ -10315,6 +10316,15 @@ function inboxChoices(it) {
     { id:'concede', label:'Concede the partner\'s immediate demand', cost:6, tip:'Coalition trust recovers at the expense of authority.' },
     { id:'renegotiate', label:'Reopen the coalition agreement', cost:4, money:5, tip:'A compromise with a permanent capital cost.' },
     { id:'dare', label:'Dare them to leave', cost:0, tip:'They may leave the cabinet.' }
+  ];
+  /* S21f: the ultimatum's own three answers. Its own type, not a borrowed one:
+     posting it as a `confidence_threat` would have inherited that paper's
+     choices, its answer arm AND its ignore arm, which is exactly how S16e's
+     demand letter reached into the player's own first caucus. */
+  if (it.type === 'coalition_ultimatum') return [
+    { id:'deliver', label:'Lay the bill they were promised', cost:5, tip:'The outstanding promise goes on the order paper this session.' },
+    { id:'rewrite', label:'Reopen the agreement and rewrite it', cost:4, money:5, tip:'Trade a promise neither side will keep for one they still want.' },
+    { id:'stand', label:'Tell them to go if they are going', cost:0, tip:'They may leave the government.' }
   ];
   if (it.type === 'opposition_conference') return [
     { id:'constructive', label:'Constructive scrutiny', cost:2, tip:'Institutional standing and committee influence.' },
@@ -10409,11 +10419,51 @@ function respondInbox(id, choice) {
     if (choice === 'grants') { REGIONS.forEach(function (r) { S.regions[r.id].federal = c100(S.regions[r.id].federal + 8); S.regions[r.id].services = c100(S.regions[r.id].services + 3); }); S.crown = c100(S.crown + 8); }
     if (choice === 'compact') { S.crown = c100(S.crown + 13); S.capital += 2; S.ind.corruption = c100(S.ind.corruption - 1); }
     if (choice === 'decline') S.crown = c100(S.crown - 7);
+  } else if (it.type === 'coalition_ultimatum') {
+    /* S21f: THE THREE ANSWERS TO AN ULTIMATUM, each one an instrument the game
+       already has rather than a number on a card. Delivering lays the bill the
+       agreement promised; rewriting goes through `v17Renegotiate`, which
+       refuses in its own words when the record is past `V17_PATIENCE`;
+       standing firm is the door out, and it is the SAME door every other exit
+       goes through. */
+    var uD = (S.coalitionDeals || {})[from] || null;
+    var uC = ((uD && uD.terms && uD.terms.concessions) || []).filter(function (c) {
+      return c.kind === 'adopt' && !c.met && POL[c.ref];
+    })[0];
+    if (choice === 'deliver') {
+      if (uC) {
+        var uLv = S.pol[uC.ref] || 0, uT = v17Want(S, from, uC.ref);
+        sponsorBill(S, uC.ref, (uT !== undefined && uT < uLv) ? -1 : 1, 'government', 'the coalition agreement', true);
+        shiftPartyRel(S, from, 12);
+        if (uD) { uD.satisfaction = c100((uD.satisfaction || 50) + 8); uD.pressure = 0; uD.pressureAt = S.turn; }
+        logIt(S, 'The bill the ' + PARTY[from].short + ' were promised went on the order paper.');
+      } else {
+        /* nothing outstanding to lay is a real answer and it says so, rather
+           than taking the capital and doing nothing -- the S12 defect */
+        flash('There is no outstanding promise to lay. What they want is not in the agreement.');
+        shiftPartyRel(S, from, 4);
+      }
+    }
+    if (choice === 'rewrite') {
+      if (typeof v17Renegotiate === 'function' && v17Renegotiate(S, from)) {
+        if (uD) { uD.pressure = 1; uD.pressureAt = S.turn; }
+      }
+    }
+    if (choice === 'stand') {
+      S.unity = c100(S.unity + 6);
+      v21Leave(S, from, 'the government told them to go if they were going, and they went', playParty(S));
+      logIt(S, 'The ' + PARTY[from].short + ' were told to go if they were going. They went.');
+    }
   } else if (it.type === 'confidence_threat') {
     if (choice === 'concede') { shiftPartyRel(S, from, 18); S.unity = c100(S.unity - 5); }
     if (choice === 'renegotiate') { shiftPartyRel(S, from, 11); S.confidence = from; }
     if (choice === 'dare') {
-      if ((S.partyRel[from] || 0) < 28) { S.coalition = (S.coalition || []).filter(function (x) { return x !== from; }); if (S.partner === from) S.partner = S.coalition[1] || null; }
+      /* S21f: through the one door. This filtered the coalition and patched
+         `st.partner` and did nothing else -- no record, no standing, no
+         resentment, and above all no `d.walkedOut`, so a party dared out of
+         the government and later invited back resumed the cohesion it had
+         been dared out with. */
+      if ((S.partyRel[from] || 0) < 28) v21Leave(S, from, 'they were dared to bring the government down, and did', playParty(S));
       else shiftPartyRel(S, from, -10);
     }
   } else if (it.type === 'opposition_conference') {
@@ -13235,23 +13285,47 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
       can:function () { return !S.banned[pid] && S.confidence !== pid && (S.coalition || []).indexOf(pid) < 0; },
       run:function () { S.confidence = pid; S.unity = clamp((S.unity || 60) - 4, 5, 100);
         logIt(S, 'A confidence and supply agreement was signed with the ' + p.short + '.'); } });
+    /* S21f: AND THEY HAVE TO SAY YES. This asked whether the party was banned,
+       already in, or cordoned, and then simply pushed the id -- so the whole
+       acceptance model the formation runs on was reachable around rather than
+       through. A player could seat a party that would refuse any government it
+       led at any price, and `v17Accept`'s own `far` verdict, which the
+       formation sheet prints as "they will not sit with you at any price", was
+       true on the sheet and false on this card one click away.
+       It also minted no agreement, so `partyBillSupport` read `sat === null`
+       and paid the flat +12 that S21d's cohesion term replaced -- the player's
+       hand-built coalition was the one shape that measurement could not
+       reach. `v17Install` writes the terms from the offer, so this does too. */
     list.push({ id:'joinCoalition', need:'leading', name:'Bring them into the cabinet', cost:12, kind:'deal',
-      desc:'A full coalition. Their seats are yours and so are their demands.',
-      can:function () { return !S.banned[pid] && (S.coalition || []).indexOf(pid) < 0 && !S.cordon[pid]; },
+      desc:'A full coalition. Their seats are yours and so are their demands. They have to accept the terms.',
+      can:function () {
+        if (S.banned[pid] || (S.coalition || []).indexOf(pid) >= 0 || S.cordon[pid]) return false;
+        return v21WouldJoin(S, pid).yes;
+      },
+      why:function () {
+        if (S.cordon[pid]) return 'They are under your cordon.';
+        if ((S.coalition || []).indexOf(pid) >= 0) return 'They are already in the cabinet.';
+        var a = v21WouldJoin(S, pid);
+        if (a.far) return 'They will not sit with you at any price.';
+        if (!a.yes) return 'They want ' + a.reservation + ' and what you can offer is worth ' + a.value + ' to them.';
+        return null;
+      },
       run:function () {
+        var a = v21WouldJoin(S, pid);
+        if (!a.yes) { flash('They will not sit with you on these terms.'); return; }
         S.coalition = (S.coalition || [S.ruling]).concat([pid]);
         if (!S.partner) S.partner = pid;
+        v21SignDeal(S, pid, a.offer);
         S.unity = clamp((S.unity || 60) - 8, 5, 100);
         var mm = {}; BLOCS.forEach(function (b) { mm[b.id] = affOf(S, pid, b.id) * 4; }); mood(S, mm);
-        logIt(S, 'The ' + p.short + ' entered the cabinet.');
+        logIt(S, 'The ' + p.short + ' entered the cabinet on terms: ' +
+          v21OfferLine(S, a.offer).replace(/^You would /, 'the government will ').replace(/\.$/, '') + '.');
       } });
     list.push({ id:'expelPartner', need:'leading', name:'Expel them from the cabinet', cost:8, kind:'deal',
       desc:'Break the coalition and govern without them. They will vote against everything for a decade.',
       can:function () { return (S.coalition || []).indexOf(pid) >= 0 && pid !== S.ruling; },
       run:function () {
-        S.coalition = (S.coalition || []).filter(function (x) { return x !== pid; });
-        if (S.partner === pid) S.partner = S.coalition.length > 1 ? S.coalition[1] : null;
-        S.machine[pid] = clamp((S.machine[pid] || 0) + .05, -.8, 1);
+        v21Leave(S, pid, 'they were put out of the cabinet', playParty(S));
         S.unity = clamp((S.unity || 60) + 9, 5, 100);
         logIt(S, 'The ' + p.short + ' were put out of the cabinet.');
       } });
@@ -13453,8 +13527,10 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
         S.machine[pid] = clamp((S.machine[pid] || 0) + (S.machine[near] || 0) * .5, -.8, 1);
         var q1 = ppos(S, pid), q2 = ppos(S, near);
         q1.e = (q1.e + q2.e) / 2; q1.a = (q1.a + q2.a) / 2;
-        if (S.partner === near) S.partner = null;
-        S.coalition = (S.coalition || [S.ruling]).filter(function (x) { return x !== near; });
+        /* S21f: a merge is an exit too, and the one door records it as what it
+           is. Nobody is resented for it -- the party did not walk out and was
+           not put out, it stopped existing -- so `actor` is null. */
+        v21Leave(S, near, 'they merged into the ' + PARTY[pid].short, null);
         logIt(S, 'The ' + PARTY[near].short + ' merged into the ' + PARTY[pid].short + '.');
       } });
 list.push({ id:'reselect', name:'Change your own leader', cost:9, kind:'internal',
@@ -13530,22 +13606,20 @@ list.push({ id:'reselect', name:'Change your own leader', cost:9, kind:'internal
       can:function () { return (S.coalition || []).indexOf(pid) >= 0 && (S.coalition || []).length > 1; },
       run:function () {
         /* S17g: THIS IS THE BETRAYAL ENDPOINT, and it goes in the record.
-           Collapsing a coalition breaks every promise still outstanding in it,
-           and the agreement is kept afterwards as the account of what was
-           broken rather than deleted as though it had never been signed. */
+           Collapsing a coalition breaks the agreement with everyone in it, and
+           the agreements are kept afterwards as the account of what happened
+           rather than deleted as though they had never been signed.
+           S21f: through the one door, and ONE entry per partner rather than
+           the N-squared this used to book. `v17DealEvent(…'quit'…)` ran BEFORE
+           the coalition was emptied, so each of the N leavers scanned all N
+           members and every partner was charged for every other partner's
+           departure as well as its own. */
         if (pid === S.ruling) {
-          var gone = (S.coalition || []).filter(function (x) { return x !== S.ruling; });
-          gone.forEach(function (x) {
-            S.machine[x] = clamp((S.machine[x] || 0) + .04, -.8, 1);
-            if (typeof v17DealEvent === 'function') v17DealEvent(S, 'quit', null, x, 'the government walked away');
-            if (typeof v16Resent === 'function') v16Resent(S, x, S.ruling, 22);
-          });
-          S.coalition = [S.ruling]; S.partner = null;
+          (S.coalition || []).filter(function (x) { return x !== S.ruling; })
+            .forEach(function (x) { v21Leave(S, x, 'the government walked away from the coalition', S.ruling); });
+          S.partner = null;
         } else {
-          if (typeof v17DealEvent === 'function') v17DealEvent(S, 'quit', null, pid, 'the partner walked away');
-          S.coalition = (S.coalition || []).filter(function (x) { return x !== pid; });
-          if (S.partner === pid) S.partner = S.coalition[1] || null;
-          S.machine[pid] = clamp((S.machine[pid] || 0) + .05, -.8, 1);
+          v21Leave(S, pid, 'they walked away from the coalition', null);
         }
         S.unity = clamp((S.unity || 60) + 12, 5, 100);
         logIt(S, pid === S.ruling ? 'The coalition was dissolved and the government continues alone.' : 'The ' + PARTY[pid].short + ' left the coalition.');
@@ -14998,8 +15072,17 @@ function actionCard(a) {
      down, a form is named, a `can` shows its own price -- and "Not available"
      was the one refusal that told the player nothing at all. */
   if (!open) {
-    tags.push(modeAllows(S, actionNeed(a))
-      ? '<span class="tag down">Not available</span>'
+    /* S21f: AND A CARD MAY SAY WHY IN ITS OWN WORDS. `a.why()` returns the
+       sentence when the card knows one and null when it does not, so the
+       "Not available" tag S17b's comment calls the one refusal that tells the
+       player nothing is now the FALLBACK rather than the only answer. The
+       chair message still wins where the chair is the reason: that is a fact
+       about the player and not about this card. */
+    var mine = modeAllows(S, actionNeed(a));
+    var said = null;
+    if (mine && typeof a.why === 'function') { try { said = a.why(); } catch (e) { said = null; } }
+    tags.push(mine
+      ? '<span class="tag down">' + esc(said || 'Not available') + '</span>'
       : '<span class="tag down">' + (actionNeed(a) === 'leading'
           ? (inPower(S) ? 'The head of government\'s' : 'The government\'s')
           : 'The government\'s') + '</span>');
@@ -36381,16 +36464,20 @@ function v17Off(st, pid, ref) {
    this; nothing else knows what a concession is.
      kind  'lay'  a bill was introduced on ref
            'move' ref actually changed in the book
-           'quit' a party walked out of the government
      actor the party that did it. Only the GOVERNMENT can breach the
            government's agreement, so an opposition bill on a partner's red
-           line is a fact about the opposition and not a betrayal. */
+           line is a fact about the opposition and not a betrayal.
+   S21f: there was a third kind, 'quit', and it was the wrong shape for what
+   it described. A departure is one thing that happens to ONE agreement -- the
+   leaver's -- and this function exists to fan an event out across all of them,
+   so the fan-out charged every party still in the room for somebody else
+   leaving. `v21Leave` books that entry directly and the kind is gone. */
 function v17DealEvent(st, kind, ref, actor, note) {
   if (!st || !st.coalitionDeals) return;
   var co = st.coalition || [];
-  if (kind !== 'quit' && co.indexOf(actor) < 0) return;
+  if (co.indexOf(actor) < 0) return;
   co.forEach(function (pid) {
-    if (pid === actor && kind !== 'quit') return;   /* nobody breaches with themselves */
+    if (pid === actor) return;                      /* nobody breaches with themselves */
     var d = st.coalitionDeals[pid];
     if (!d || !d.terms) return;
     v17DealScan(st, pid, d, kind, ref, actor, note);
@@ -36405,12 +36492,6 @@ function v17DealScan(st, pid, d, kind, ref, actor, note) {
      session sweep threw on its first contact with a legacy shape. */
   var t = d && d.terms; if (!t) return;
   var hit = null;
-  if (kind === 'quit') {
-    (t.concessions || []).forEach(function (c) {
-      if (!c.met) v17Ledger(st, pid, { kind:'broken', ref:c.ref, why:'the government left the field', cost:0 });
-    });
-    return;
-  }
   /* A RED LINE MOVED AWAY FROM WHAT THEY EXIST TO DEFEND. The baseline is PER
      STATUTE. S16e kept one `redLineWas` because it watched one red line; a
      list needs one apiece, and reading the single scalar for whichever
@@ -36540,8 +36621,132 @@ function v16RedLineTick(st) {
           Math.round(d.satisfaction) + '.', 'bad');
       }
     });
+    v21Pressure(st, pid, d);
     if ((d.satisfaction || 50) <= v17WalkFloor(st, pid)) v17Walkout(st, pid, d);
   });
+}
+
+/* S21f — THE PARTNER SPEAKS BEFORE IT WALKS.
+
+   The coalition had two states, in and out, and a partner went from content to
+   gone in the session its cohesion crossed one bar. It says three things on the
+   way now: it ASKS, then INSISTS, then THREATENS, and only then does
+   `v17Walkout` fire on the same reading.
+
+   THE BARS ARE THE WALKOUT'S OWN FLOOR AND NOT NUMBERS PICKED BY EYE, which is
+   what stops them drifting apart from the thing they lead to. `v17WalkFloor` is
+   `12 + min(3, broken) * 6`, so it runs 12 to 30 as the record fills; cohesion
+   was measured in S21d over 394 partner-sessions at 20 / median 39.9 / p90 52.8
+   / 76. Each stage sits a fixed distance ABOVE the floor, so a partner whose
+   agreement has been broken three times starts asking where a partner with a
+   clean record is still content, and every bar moves when the floor does.
+
+   `d.pressure` is NOT `d.press`: `st.press` is a party's share of the newspapers
+   and eleven sites read it, and a reader grepping the shorter name on a deal
+   object would find two unrelated ideas. */
+var V21_PRESS_STEPS = [
+  { id:'asked',       over:18, said:'have asked the government to keep its word' },
+  { id:'insisting',   over:10, said:'are insisting, in public, that the agreement be kept' },
+  { id:'threatening', over:4,  said:'have said they will leave the government' }
+];
+var V21_PRESS_GAP = 2;   /* sessions before a partner may raise its voice again */
+
+function v21PressStage(st, pid, d) {
+  var sat = (typeof d.satisfaction === 'number') ? d.satisfaction : 50;
+  var floor = v17WalkFloor(st, pid), out = -1;
+  for (var i = 0; i < V21_PRESS_STEPS.length; i++) {
+    if (sat <= floor + V21_PRESS_STEPS[i].over) out = i;
+  }
+  return out;
+}
+
+function v21Pressure(st, pid, d) {
+  var want = v21PressStage(st, pid, d);
+  var at = (typeof d.pressure === 'number') ? d.pressure : -1;
+  /* IT COMES BACK DOWN. A government that keeps a promise quiets its partner,
+     and a stage that only ever rose would make every long coalition end in an
+     ultimatum whatever the government did. */
+  if (want < at) { d.pressure = want; d.pressureAt = st.turn; return; }
+  if (want <= at) return;
+  if (d.pressureAt !== undefined && d.pressureAt !== null &&
+      st.turn - d.pressureAt < V21_PRESS_GAP) return;
+  /* ONE STEP A TIME, so the three stages are three sessions of warning rather
+     than one jump to the ultimatum on a bad session */
+  d.pressure = at + 1; d.pressureAt = st.turn;
+  var step = V21_PRESS_STEPS[d.pressure];
+  var broke = v17Broken(st, pid);
+  logIt(st, 'The ' + PARTY[pid].short + ' ' + step.said + '.');
+  if (d.pressure === 2) {
+    addNews(st, 'The Coalition', PARTY[pid].short + ' threaten to leave the government',
+      'The partner has said in public what it has been saying in the room. The agreement records ' +
+      v8Plural(broke, 'broken promise') + '.', 'bad');
+    /* AND THE ULTIMATUM IS ITS OWN PAPER. Borrowing `confidence_threat` would
+       inherit every branch that keys on it -- the choices, the answer arm and
+       the ignore arm -- which is how S16e's demand letter moved the loyalty of
+       the player's own first caucus. */
+    if (st.ruling === playParty(st)) {
+      addInbox(st, { type:'coalition_ultimatum', from:pid, title:PARTY[pid].short + ' Deliver an Ultimatum',
+        body:'The coalition partner says the agreement has not been kept and that it will leave the government ' +
+          'unless it is. The record shows ' + v8Plural(broke, 'broken promise') + ' against ' +
+          v17Kept(st, pid) + ' kept, and cohesion at ' + Math.round(d.satisfaction || 50) + '.' });
+    } else if (typeof v21Answer === 'function') {
+      /* AN ENGINE GOVERNMENT WEARS THE ULTIMATUM. It cannot answer it: the only
+         instrument for answering one is `v17Renegotiate`, and `v17CanRenegotiate`
+         opens on `leads(st)` -- the player's chair -- so an engine government
+         has no door to it at all. Reaching for it here would be a branch that
+         cannot fire, which this file deletes rather than ships. What it does
+         have is the consequence, recorded through the same channel a refused
+         demand goes through, so the partner's grievance is real and the room
+         sees it. Giving the engine the renegotiation itself is S21h's, where
+         the junior partner's five verbs get their government-side pairs. */
+      v21Answer(st, 'demandRefused', pid);
+    }
+  }
+}
+
+/* S21f — ONE DOOR OUT OF A COALITION, and every way out goes through it.
+
+   MEASURED FIRST, over 180 driven sessions across three seeds: 27 exits, and
+   TWENTY-THREE of them through a door that never set `d.walkedOut`. There were
+   five: the `dare` answer to a confidence threat, the `expelPartner` card, the
+   merge that absorbs a party, the `leaveCoalition` card in both its arms, and
+   `v17Walkout`. Only the last one was complete. What the other four skipped:
+
+   - `d.walkedOut`, which `pv5EnsureState` reads to decide that a party coming
+     BACK signs a new agreement. S17g wrote that reset after measuring coalition
+     lifespan fall from 6.6 sessions to 2.1, and it ran on four exits in
+     twenty-seven; the other twenty-three parties rejoined on the cohesion they
+     had stormed out with, terms intact.
+   - the ledger entry, so the record the deal card exists to show did not say
+     the party had left.
+   - the resentment, the standing, the news and the chronicle.
+
+   `why` is the sentence the country reads. `actor` is who did it: the party
+   itself walking out, the head of government putting it out, or null where the
+   coalition simply dissolved and nobody is owed a grudge. */
+function v21Leave(st, pid, why, actor) {
+  if (!pid || (st.coalition || []).indexOf(pid) < 0) return false;
+  var d = (st.coalitionDeals || {})[pid] || null;
+  st.coalition = (st.coalition || []).filter(function (x) { return x !== pid; });
+  if (st.partner === pid) st.partner = st.coalition[1] || null;
+  if (d) {
+    d.former = true;
+    d.walkedOut = st.turn;
+    /* ONE ENTRY, ON THE LEAVER'S OWN RECORD. `v17DealEvent(…'quit'…)` walked
+       `st.coalition` and booked one `broken` per unmet concession on EVERY
+       member's agreement -- so a partner walking out charged every OTHER
+       partner for it and never itself. Measured: 20 quit entries, 0 on the
+       leaver, 20 on somebody else, and two parties reached `V17_PATIENCE` on
+       nothing but other parties' departures. `v17WalkFloor` reads that count
+       (12 + min(3, broken) * 6), so one exit took every survivor's floor to
+       30, and `v17CanRenegotiate` refuses outright at three: the government
+       lost the right to reopen agreements it had not breached. */
+    v17Ledger(st, pid, { kind:'broken', ref:null, why:why || 'they left the government', cost:0 });
+  }
+  st.partyRel[pid] = c100((st.partyRel[pid] || 50) - 10);
+  if (typeof v16Resent === 'function' && actor && actor !== pid) v16Resent(st, pid, actor, 25);
+  st.machine[pid] = clamp((st.machine[pid] || 0) + .05, -.8, 1);
+  return true;
 }
 
 /* THE TERMINAL. S16e's walkout, with the record read into it. */
@@ -36549,20 +36754,13 @@ function v17Walkout(st, pid, d) {
   var lines = (d.terms && d.terms.redLines && d.terms.redLines.length) ? d.terms.redLines : (d.redLine ? [d.redLine] : []);
   var over = lines.filter(function (r) { return POL[r]; })[0];
   var broke = v17Broken(st, pid), kept = v17Kept(st, pid);
-  st.coalition = (st.coalition || []).filter(function (x) { return x !== pid; });
-  if (st.partner === pid) st.partner = st.coalition[1] || null;
-  d.former = true; d.walkedOut = st.turn;
-  st.partyRel[pid] = c100((st.partyRel[pid] || 50) - 10);
-  if (typeof v16Resent === 'function') v16Resent(st, pid, st.ruling, 25);
+  if (!v21Leave(st, pid, over ? 'they walked out over ' + POL[over].name : 'they walked out of the government', st.ruling)) return;
   logIt(st, 'The ' + PARTY[pid].short + ' left the government' +
     (over ? '. The red line was ' + POL[over].name + '.' : '.') +
     ' The agreement records ' + v8Plural(broke, 'broken promise') + ' against ' + kept + ' kept.');
   addNews(st, 'The Coalition', PARTY[pid].short + ' leave the government',
     'The partner has withdrawn. The arithmetic on the order paper changed this morning.', 'bad');
   chronicle(st, 'The ' + PARTY[pid].short + ' left the government' + (over ? ' over ' + POL[over].name : '') + '.');
-  /* the deal is kept as a record rather than deleted -- S16e deleted it, and
-     an agreement nobody can read afterwards cannot be argued about */
-  v17DealEvent(st, 'quit', null, pid, 'walkout');
 }
 
 /* ALTERATION. Changing an agreement is not breaking one, and the difference
@@ -38575,6 +38773,51 @@ function v17Rotation(st, pin) {
     offers:{}, rounds:rounds };
 }
 
+/* S21f — WOULD THEY JOIN, AND ON WHAT TERMS. The formation's own two
+   functions, asked about one party at the table the government already has.
+   Pure: it builds an offer and prices it and writes nothing, so the card's
+   `can` may ask it on every render. */
+function v21WouldJoin(st, pid) {
+  var lead = st.ruling;
+  if (!lead || pid === lead) return { yes:false, far:false, value:0, reservation:0, offer:null };
+  var co = (st.coalition || [lead]).concat([pid]);
+  var offer = v17Offer(st, lead, pid, co);
+  var ans = v17Accept(st, pid, lead, offer, 0, null);
+  return { yes:!!ans.yes, far:!!ans.far, value:ans.value, reservation:ans.reservation, offer:offer };
+}
+
+/* WRITING AN AGREEMENT FROM AN OFFER. One body, so a coalition assembled at
+   the table and one assembled from the party page carry the same shape of
+   agreement -- the card used to mint NONE, and `partyBillSupport` then read
+   `sat === null` and paid the flat +12 that S21d's cohesion term replaced. */
+function v21SignDeal(st, pid, offer) {
+  if (!offer) return null;
+  st.coalitionDeals = st.coalitionDeals || {};
+  var d = st.coalitionDeals[pid];
+  if (!d) {
+    d = st.coalitionDeals[pid] = { satisfaction:c100(st.partyRel[pid] || 55),
+      councils:0, portfolios:0, priorities:[], redLine:null, lastCouncil:-99, ledger:[] };
+  }
+  d.terms = d.terms || {};
+  d.terms.portfolios = offer.portfolios;
+  d.terms.concessions = offer.concessions;
+  if (offer.redLines && offer.redLines.length) d.terms.redLines = offer.redLines.slice();
+  d.terms.confidence = 'cabinet';
+  d.redLine = (d.terms.redLines && d.terms.redLines[0]) || d.redLine || null;
+  d.former = false;
+  /* a party that had walked out and is being brought back signs a NEW
+     agreement, which is S17g's rule and the reason `walkedOut` exists */
+  if (d.walkedOut) {
+    d.walkedOut = null; d.redLineOff = {};
+    d.satisfaction = clamp(st.partyRel[pid] || 55, 20, 85);
+    if (d.ledger) d.ledger.push({ turn:st.turn, kind:'altered', ref:null,
+      why:'they came back, and a new agreement was signed', cost:0 });
+  }
+  if (typeof d.satisfaction !== 'number') d.satisfaction = c100(st.partyRel[pid] || 55);
+  if (!d.ledger) d.ledger = [];
+  return d;
+}
+
 /* INSTALLING WHAT THE ROTATION FOUND. `st.partner` is still written, exactly
    as formCoalition wrote it: twenty sites read it and retiring it is its own
    change, not a rider on this one. */
@@ -38595,19 +38838,10 @@ function v17Install(st, out) {
           return { id:a.id, yes:a.yes, value:a.value, reservation:a.reservation };
         }) };
     }) };
-  /* the agreement is written from the terms that were actually offered */
+  /* the agreement is written from the terms that were actually offered, through
+     the same body the party page's own card writes through */
   if (out.offers) {
-    st.coalitionDeals = st.coalitionDeals || {};
-    Object.keys(out.offers).forEach(function (pid) {
-      var o = out.offers[pid], d = st.coalitionDeals[pid];
-      if (!d) return;
-      d.terms = d.terms || {};
-      d.terms.portfolios = o.portfolios;
-      d.terms.concessions = o.concessions;
-      if (o.redLines && o.redLines.length) d.terms.redLines = o.redLines.slice();
-      d.terms.confidence = 'cabinet';
-      d.former = false;
-    });
+    Object.keys(out.offers).forEach(function (pid) { v21SignDeal(st, pid, out.offers[pid]); });
   }
   return st.formation;
 }
