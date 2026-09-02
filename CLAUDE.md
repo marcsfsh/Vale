@@ -294,6 +294,26 @@ before touching the file.
   office rule then seated a stranger in the second. Pinning the probe would
   have hidden it. Make the assertion name which of its conditions failed, run
   it until it does, and fix what it points at.
+- **AN ASSERTION SIZED FOR ONE SEED IS A CLAIM ABOUT THE SEED.** Four arms in
+  two slices were found gating a real mechanism on a sample that could not show
+  it, and every one of them reddened on a slice that legitimately re-phased the
+  dice — so each looked exactly like a defect in the slice, and three cost an
+  hour of hunting the mechanism before the sample was checked. `the agreement
+  bites` had `kept > 5` on a single-digit count over four seeds, and the same
+  four seeds give one build 11 while three other quartets give it 9, 7 and 8.
+  `the rehearsal can see what a card did` asked `min === max`, which ONE sample
+  defeats: `order` returns the same number on 101 of its 102 rehearsals and the
+  hundred-and-second let a price list through for four slices. `a party moves
+  when it has a reason to` gated `> 0` on counts of nought to three over forty
+  sessions of ONE seed. `a party does not wait for the season` bounded a
+  proportion taken over fourteen provocations, whose standard error is .13.
+  They are twelve seeds and a rate, twelve seeds and a modal share, six seeds,
+  and forty-two provocations now. Before writing an assertion that counts events
+  or takes a proportion, ask how many the game produces per seed and size the
+  sample so the bar sits OUTSIDE the standard error; and when an arm reddens on
+  a slice that re-phased the dice, check the sample size before hunting the
+  mechanism. This is S16a's ruling — a pacing figure from one seed cannot tell a
+  balance change from a reshuffle — applied to every arm rather than to pacing.
 - **A book whose cards are about something the model has no channel to is a
   book of decoration, however carefully each card is authored.** Every statute
   reaches the model through `eff`, `mood`, `rev`/`exp` and `auth`, which is
