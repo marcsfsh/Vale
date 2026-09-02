@@ -10795,13 +10795,32 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         try { politicsTick(S); } finally { rand = br; }
         return { n:n, posted:(S.inbox || []).length ? S.inbox[S.inbox.length - 1].type : 'none' };
       };
-      /* below 27 is the confidence threat; above it the demand or whatever
-         falls through -- one field, two papers */
+      /* below 27 is the confidence threat; above it the demand -- one field,
+         two papers */
       const low = spend(12), high = spend(70);
+      /* AND A TICK THAT RETURNS EARLY SPENDS WHAT ONE THAT RUNS ON SPENDS.
+         Both readings above return inside the coalition block, so neither ever
+         reaches the governors' branch -- and the poison that moved THAT draw
+         back inside its own `if` came back GREEN on them. The third reading
+         gets past the block by making `partyDemandPolicy` answer null while
+         still drawing its die, which is exactly the property under test: the
+         draw happens, the branch does not. Under the rule, this must cost the
+         same as the confidence threat that returned three lines earlier. */
+      const far = (() => {
+        S = JSON.parse(saved);
+        S.partyRel[partner] = 70;
+        const bd = partyDemandPolicy;
+        partyDemandPolicy = function () { bd.apply(this, arguments); return null; };
+        let n = 0; const br = rand;
+        rand = function () { n += 1; return br.apply(this, arguments); };
+        try { politicsTick(S); } finally { rand = br; partyDemandPolicy = bd; }
+        return { n:n, posted:(S.inbox || []).length ? S.inbox[S.inbox.length - 1].type : 'none' };
+      })();
       S = JSON.parse(saved);
-      return { ran:true, low:low, high:high,
+      return { ran:true, low:low, high:high, far:far,
         differentPapers: low.posted !== high.posted,
-        constant: low.n === high.n };
+        reachedFurther: far.posted !== low.posted && far.posted !== 'none',
+        constant: low.n === high.n && low.n === far.n };
     })();
     return R;
   });
@@ -10896,8 +10915,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `counted every roll in \`politicsTick\` and keyed the tick by whatever paper was LAST in the inbox, which ` +
     `attributed ticks that posted nothing and reported seven distinct counts on a build where the hoist was ` +
     `working. Two runs from one seeded state differing only in the standing that decides the paper: ` +
-    `${exit.dice.low.posted} and ${exit.dice.high.posted} (${exit.dice.differentPapers}), spending ` +
-    `${exit.dice.low.n} and ${exit.dice.high.n} numbers (${exit.dice.constant}). S18c wrote that rule ONE ` +
+    `${exit.dice.low.posted} and ${exit.dice.high.posted} (${exit.dice.differentPapers}), and a THIRD that gets ` +
+    `past the coalition block altogether to ${exit.dice.far.posted} (${exit.dice.reachedFurther}) -- because the ` +
+    `first two both RETURN inside that block, so neither reaches the governors' draw and the poison moving it ` +
+    `back inside its own `+'`'+`if`+'`'+` passed on them. Spending ${exit.dice.low.n}, ${exit.dice.high.n} and ` +
+    `${exit.dice.far.n} numbers (${exit.dice.constant}). S18c wrote that rule ONE ` +
     `BRANCH BELOW where it broke, and ` +
     `the confidence-threat path returned before either roll while everything past it spent two. Hoisting them ` +
     `re-phases the stream once, deliberately, and this is the record of it -- measured against the build ` +
@@ -12245,6 +12267,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return null;
     }
     const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 1618, 4001, 60613, 8675309, 31415];
+    /* S21f: THE LAG LEG GETS ITS OWN, WIDER LIST. Fourteen seeds means fourteen
+       provocations, and the control arm's share was gated below .5 on that --
+       three of fourteen on the build before this slice and EIGHT of fourteen
+       after it, with nothing about the reaction touched. S21f hoists three
+       `rand()` calls per S18c's rule and re-phases every campaign; a proportion
+       over fourteen has a standard error of about .13, so the bar was inside
+       the noise. Forty-two provocations put it outside. */
+    const LAG_SEEDS = SEEDS.concat([161803, 271828, 141421, 173205, 223606, 264575,
+      112358, 132134, 55555, 909090, 777, 24601, 86753, 19937,
+      65537, 32768, 4096, 512, 128, 64, 32, 16, 8, 4, 2, 1, 3, 5]);
 
     /* (a) THE LEDGER BALANCES, THE CHARGE IS EARNED, and the total is reported
        beside its own spread rather than asserted. */
@@ -12342,7 +12374,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const bar0 = V19_REACT_RISE;
       const run = () => {
         const lags = []; let never = 0;
-        SEEDS.forEach(seed => {
+        LAG_SEEDS.forEach(seed => {
           fresh(seed); drive(20);
           const me = playParty(S);
           const target = PARTIES.filter(q => q.id !== me && !S.banned[q.id] && q.id !== S.ruling)[0];
@@ -12626,7 +12658,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   say(answrOk, 'a party does not wait for the season',
     `S18e MADE THE TEMPO READ THE GRUDGE and a provoked party still waited: driven, it took some initiative a ` +
     `mean of ${answr.lag.off.mean} sessions after the provocation and as late as ${answr.lag.off.max}, and only ` +
-    `${answr.lag.off.sameShare} of provocations were answered in the session they happened -- a MINORITY, which ` +
+    `${answr.lag.off.sameShare} of ${answr.lag.off.n} provocations were answered in the session they happened -- a ` +
+    `MINORITY, read over FORTY-TWO seeds where this leg used fourteen: a proportion over fourteen has a ` +
+    `standard error near .13, and S21f's deliberate re-phase alone moved this reading from 3 of 14 to 8 of 14 ` +
+    `with nothing about the reaction touched, which reddened the arm. At forty-two it is .31 on the build ` +
+    `before that slice and .38 after, and the bar is outside the noise -- which ` +
     `is the half this mechanism exists to fix and is what this arm pins, where it used to pin the worst wait: ` +
     `S21c made an engine pick a better card and the worst wait WITHOUT the reaction fell from 11 sessions to ` +
     `${answr.lag.off.max}, which the old clause read as the mechanism breaking. It is not. On the same run the ` +
