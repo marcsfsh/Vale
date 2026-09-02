@@ -10398,8 +10398,25 @@ function inboxChoices(it) {
      choices, its answer arm AND its ignore arm, which is exactly how S16e's
      demand letter reached into the player's own first caucus. */
   if (it.type === 'coalition_ultimatum') return [
-    { id:'deliver', label:'Lay the bill they were promised', cost:5, tip:'The outstanding promise goes on the order paper this session.' },
-    { id:'rewrite', label:'Reopen the agreement and rewrite it', cost:4, money:5, tip:'Trade a promise neither side will keep for one they still want.' },
+    { id:'deliver', label:'Lay the bill they were promised', cost:5,
+      tip:'The outstanding promise goes on the order paper this session.',
+      /* S21h: each answer says when it cannot be taken, rather than taking the
+         capital and flashing. Both of these were lit on every ultimatum and
+         both could refuse after being paid for. */
+      why:function (p) {
+        var dd = (S.coalitionDeals || {})[p.from] || null;
+        var owed = (((dd || {}).terms || {}).concessions || []).filter(function (c) {
+          return c.kind === 'adopt' && !c.met && POL[c.ref];
+        })[0];
+        if (!owed) return 'There is no outstanding promise to lay. What they want is not in the agreement.';
+        if (typeof lowerSits === 'function' && !lowerSits(S)) return 'There is no Assembly sitting to lay it before.';
+        return null;
+      } },
+    { id:'rewrite', label:'Reopen the agreement and rewrite it', cost:4, money:5,
+      tip:'Trade a promise neither side will keep for one they still want.',
+      why:function (p) {
+        return (typeof v17CanRenegotiate === 'function') ? v17CanRenegotiate(S, p.from) : null;
+      } },
     { id:'stand', label:'Tell them to go if they are going', cost:0, tip:'They may leave the government.' }
   ];
   /* S21g: THE SESSION BETWEEN THE NOTICE AND THE QUESTION, WITH BUTTONS ON
@@ -10434,6 +10451,10 @@ function respondInbox(id, choice) {
   var opt = inboxChoices(it).filter(function (x) { return x.id === choice; })[0]; if (!opt) return;
   var paperWhy = (typeof v18PaperWhy === 'function') ? v18PaperWhy(S, it) : null;
   if (paperWhy) { flash(paperWhy); return; }
+  /* S21h: the choice's own refusal, asked HERE as well as at the button and
+     BEFORE the capital moves. One predicate, both sides of the click. */
+  var choiceWhy = (typeof opt.why === 'function') ? opt.why(it) : null;
+  if (choiceWhy) { flash(choiceWhy); return; }
   var c = cst(opt.cost || 0), m = opt.money || 0;
   if (S.capital < c || (m && S.treasury < m)) { flash('The resources are not available.'); return; }
   captureUndo('Answer ' + it.title);
@@ -15043,8 +15064,17 @@ function politicalInboxPanel(limit) {
     var choices = inboxChoices(it).map(function (o) {
       var c = cst(o.cost || 0), m = o.money || 0;
       var pw = (typeof v18PaperWhy === 'function') ? v18PaperWhy(S, it) : null;
-      var ok = !pw && S.capital >= c && (!m || S.treasury >= m);
-      return '<button class="btn ghost" data-inbox="' + it.id + '" data-answer="' + o.id + '"' + (ok ? '' : ' disabled') + ' title="' + esc(pw || o.tip || '') + '">' + esc(o.label) +
+      /* S21h: AND THE CHOICE'S OWN REFUSAL. `v18PaperWhy` answers for the whole
+         PAPER -- which chair may open it -- and a paper's individual answers had
+         no gate at all, so `respondInbox` charged the capital and the money and
+         THEN flashed. Measured on the ultimatum: every one of the four an
+         engine government received arrived with exactly three broken promises,
+         which is `V17_PATIENCE`, so "Reopen the agreement and rewrite it" was
+         lit, priced at 4 capital and $5B, and refused by `v17CanRenegotiate`
+         after taking both. S12's defect with the money already spent. */
+      var cw = (typeof o.why === 'function') ? o.why(it) : null;
+      var ok = !pw && !cw && S.capital >= c && (!m || S.treasury >= m);
+      return '<button class="btn ghost" data-inbox="' + it.id + '" data-answer="' + o.id + '"' + (ok ? '' : ' disabled') + ' title="' + esc(pw || cw || o.tip || '') + '">' + esc(o.label) +
         (c || m ? ' <span class="c">' + (c ? c + ' cap' : '') + (c && m ? ', ' : '') + (m ? fmc(m) : '') + '</span>' : '') + '</button>';
     }).join('');
     return '<article class="inbox-card"><div class="eyebrow">From ' + esc(sender) + '</div><h3>' + esc(it.title) + '</h3><p>' + esc(it.body) + '</p>' +
@@ -37353,18 +37383,23 @@ function v21GovAnswer(st, pid, d) {
       'The government found the time it said it did not have.', 'good');
     return 'deliver';
   }
-  /* 2. REOPEN THE AGREEMENT. Nothing to lay, but something to trade. */
-  if (!v21GovWould(st, pid, 'concession')) {
-    var ref = v21ReopenCore(st, pid, 'the government reopened it rather than lose them');
-    if (ref) {
-      v21Quiet(st, pid, d, 4);
-      addNews(st, 'The Coalition', PARTY[lead].short + ' reopen the agreement',
-        'A promise neither side was going to keep was traded for one the partner still wants.', 'watch');
-      return 'rewrite';
-    }
-  }
-  /* 3. STAND FIRM, which is what a government with nothing to give does. The
-     consequence goes through the channel a refused demand already uses. */
+  /* A REOPENING WAS DRAFTED HERE AS THE SECOND ANSWER AND TAKEN BACK OUT,
+     because it cannot fire at this moment. `v17CanRenegotiate` refuses at
+     `V17_PATIENCE` -- three broken promises and there is nothing left to
+     renegotiate with -- and an ultimatum is reached at a cohesion of
+     `v17WalkFloor + 4`, where the floor is `12 + min(3, broken) * 6`. A
+     partner with three broken promises has a bar of 34, just under the median
+     cohesion of 39.9 that S21d measured; a partner with none has a bar of 16,
+     which the distribution barely reaches. So an ultimatum is a late-record
+     event by construction, and driven over 240 sessions every one of the four
+     an engine government received arrived at exactly three. The branch was
+     written, measured and deleted rather than shipped as a road nobody can
+     take -- and the PLAYER's identical answer, which was lit on the same
+     papers, is now shut with `v17CanRenegotiate`'s own sentence on it instead
+     of charging four capital and five for a flash.
+
+     2. STAND FIRM, which is what a government with nothing left to give does.
+     The consequence goes through the channel a refused demand already uses. */
   if (typeof v21Answer === 'function') v21Answer(st, 'demandRefused', pid);
   logIt(st, 'The ' + PARTY[lead].short + ' had nothing to offer the ' + PARTY[pid].short +
     ' and said so.');
