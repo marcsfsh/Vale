@@ -19810,12 +19810,8 @@ function v6ShowReport(rep) {
 /* S21e — WHAT AN OFFER SAYS, in the country's own words.
    Reads an offer and returns one sentence naming what is being promised: the
    statutes the government would move, the one it would leave alone, and
-   whether a great office is in it. `offer.generosity` is read here, which is
-   the only thing that stops it being a field nothing consults -- the defect
-   this file names after `st.court.size`, and one this slice had itself
-   introduced before the check caught it.
-   Statute names come from `POL`, so a card the owner retunes says the new
-   thing without anybody editing a sentence. */
+   whether a great office is in it. Statute names come from `POL`, so a card
+   the owner retunes says the new thing without anybody editing a sentence. */
 function v21OfferLine(st, offer) {
   if (!offer) return '';
   var adopt = [], leave = null;
@@ -38292,28 +38288,6 @@ var V17_CARETAKER_MAX = 3;   /* sessions a caretaker may hold office */
    the largest parties are usually the ones furthest apart. */
 var V17_UNBRIDGEABLE = 1.15;
 var V17_SUPPLY_RELIEF = 22;  /* not joining is a much smaller thing to ask */
-/* S21e — HOW HARD A FORMATEUR IS TRYING.
-
-   MEASURED FIRST, over 377 formations and 2,623 accept decisions across six
-   seeds: **every offer in the game is the same shape.** Three concessions, ONE
-   distinct value, on every invitation to every party by every formateur in
-   every round. A formation is a negotiation in which nobody negotiates: the
-   offer is a constant and the only thing that varies is who is being handed
-   it.
-
-   `generosity` is what a formateur is willing to pay, and it moves ONE thing
-   -- how many concessions the offer carries. It is not a new currency and it
-   does not touch the offices or the portfolios, which are already read off the
-   invitee's share.
-
-   AND THE RANGE IS SET AGAINST THE DECISION IT HAS TO MOVE, not by eye. A
-   concession is worth 5 in `v17Accept`, the accepted median clears its
-   reservation by +14 and the refused median misses by -18, and 1,455 of the
-   2,623 refusals sit within twenty points. So two concessions either side of
-   the current three is worth +/-10 -- enough to turn a near-miss, not enough
-   to buy a party that is genuinely far away, and nothing at all to the 641
-   refusals that are `far` and refuse at any price. */
-var V17_GENEROSITY = { min:1, base:3, max:5 };
 
 /* Ruling 8, in one function: a party's weight in a formation is what it holds
    across the ELECTED bodies after the renewal. An appointed Senate is not an
@@ -38350,62 +38324,61 @@ function v17GrudgeOf(st, pid, against) {
    the invitee brings, and two concessions off its own list of wants -- the
    same shape S17e writes into `coalitionDeals.terms`, so what is agreed at
    the table is what the agreement afterwards says. */
-function v17Offer(st, lead, pid, co, gen) {
+function v17Offer(st, lead, pid, co) {
   var tot = 0;
   co.forEach(function (x) { tot += v17Weight(st, x); });
   var share = tot ? v17Weight(st, pid) / tot : 0;
-  /* S21e: HOW MANY THINGS THE FORMATEUR IS WILLING TO PROMISE. `gen` is a
-     count, defaulting to the three every offer in the game used to carry --
-     measured, three was not the usual number, it was the ONLY number, on every
-     invitation by every formateur in every round. `pv5TopWants` is asked for
-     what the widest offer could need, and the offer takes the first `gen` of
-     them, so a meaner offer is a PREFIX of a more generous one rather than a
-     different set: two formateurs bidding for the same party are then bidding
-     over the same things, which is what makes the number a price. */
-  var want = Math.max(V17_GENEROSITY.min,
-    Math.min(V17_GENEROSITY.max, (gen === undefined || gen === null) ? V17_GENEROSITY.base : gen));
-  var wants = pv5TopWants(pid, st, want + 2);
-  /* AND A PARTY CANNOT BE OFFERED EVERYTHING IT WANTS. One want is always left
-     over to be the red line, which is what the party is in the room to defend.
-     Without this the arithmetic breaks at the top of the range: the FP carry
-     five wants where the other six parties carry six, so a bid of five against
-     the FP promised four and had nothing left for the refrain -- `generosity`
-     would say 5 while `concessions` carried 4, and the sheet's row would name
-     less than the price printed beside it. Six of the 42 ordered pairs, and
-     the poison that removes this line came back GREEN against 1,716 driven
-     offers because none of them put a top bid on that one party, which is why
-     the assertion asks all 42 pairs at all five bids instead. */
-  want = Math.min(want, Math.max(1, wants.length - 1));
-  /* S17g: things the government will DO and one it will NOT. A promise to
+  var wants = pv5TopWants(pid, st, 6);
+  /* S21e: WHICH THINGS, AND NOT HOW MANY. Measured over 377 formations and
+     2,623 accept decisions across six seeds, every offer in this game was the
+     same shape -- three concessions, ONE distinct value, on every invitation
+     by every formateur in every round -- and the first build of this slice
+     made the COUNT the price. It could not ship: `v17Accept` reads
+     `concessions.length` and nothing about their identity, so a varying count
+     is a varying VALUE, and a formateur walking its pool greedily gains from
+     every acceptance and loses nothing to a refusal. Any variance therefore
+     makes formation strictly easier -- measured, the player's party went from
+     governing 36 of 480 driven sessions to 226, coalitions from 2.28 to 2.68,
+     and coalition promises kept from 0.044 per partner-session to 0.006.
+     Lowering the mean to compensate kept the branch mix and kept the
+     collapse; holding the mean at the constant kept the promises and made
+     every formation a majority. The count is the wrong dial.
+     WHAT VARIES IS WHICH STATUTES, at a constant three, so every accept
+     decision in the game is arithmetically identical to what it was and two
+     formateurs bidding for the same party bid different things. */
+  var ranked = wants.slice().sort(function (a, b) {
+    return v17Mind(st, lead, a) - v17Mind(st, lead, b) || v15Hash(a.id) - v15Hash(b.id);
+  });
+  /* S17g: two things the government will DO and one it will NOT. A promise to
      leave a statute alone is the cheapest thing to give and the easiest to
-     break, which is what makes it worth writing down. The refrain is the LAST
-     thing offered, so the leanest offer is a promise to act rather than a
-     promise to abstain -- a party bought with one concession is bought with
-     something it wanted done. */
-  var cs = wants.slice(0, Math.max(1, want - 1)).map(function (w) { return v21Concede(st, w.id); });
-  if (cs.length < want) {
-    /* `wants[want]` and not `wants[cs.length]`: the index is SKIPPED on
-       purpose, so the want the refrain does not take is left for the red line
-       below and a party's hardest term is something it wants MORE than the
-       thing it is promised will be left alone. Swapping them reads as a
-       one-index tidy-up and is a different offer -- measured, it took the
-       grand round out of 720 sessions. Under the cap above this index is
-       always in range. */
-    var rub = (typeof v17Friction === 'function' ? v17Friction(st, pid, lead) : []).filter(function (r) {
-      return !cs.some(function (c) { return c.ref === r.id; });
-    })[0] || wants[want];
-    if (rub) cs.push({ kind:'refrain', ref:rub.id, due:null, met:false, broken:false });
-  }
-  /* the red line is the party's own and does not move with the price: it is
-     the thing it exists to defend, not a thing being traded */
-  var line = wants.filter(function (w) {
+     break, which is what makes it worth writing down. */
+  var cs = ranked.slice(0, 2).map(function (w) { return v21Concede(st, w.id); });
+  var rub = (typeof v17Friction === 'function' ? v17Friction(st, pid, lead) : []).filter(function (r) {
+    return !cs.some(function (c) { return c.ref === r.id; });
+  })[0] || ranked[3];
+  if (rub) cs.push({ kind:'refrain', ref:rub.id, due:null, met:false, broken:false });
+  /* the red line is whatever the offer did NOT touch: a statute cannot be
+     both promised and the thing the party exists to defend, or `v17DealScan`
+     books `kept` and `broken` on one enacted rung */
+  var line = ranked.filter(function (w) {
     return !cs.some(function (c) { return c.ref === w.id; });
   })[0];
-  return { to:pid, from:lead, share:share, generosity:want,
+  return { to:pid, from:lead, share:share,
     portfolios:Math.max(1, Math.round(share * 6)),
     offices:share >= .22 ? 1 : 0,
     concessions:cs,
     redLines:line ? [line.id] : [] };
+}
+/* HOW MUCH THE FORMATEUR MINDS GIVING THIS ONE. Read off its OWN table: nought
+   where it wants the same thing the invitee does, larger the further it is
+   being asked to move, and in between for a statute it has no view on. A
+   formateur offers first what it minds least, which is why two of them bidding
+   for the same party put different things on the table. */
+function v17Mind(st, lead, w) {
+  var lw = (PARTY[lead] || {}).wants || {};
+  var t = lw[w.id];
+  if (t === undefined) return 2;
+  return Math.abs(t - w.target);
 }
 /* WHETHER IT ACCEPTS. A party joins a government when what it is being given
    is worth more to it than sitting the term out -- and what sitting it out is
@@ -38492,47 +38465,8 @@ function v17Build(st, lead, relax, pin) {
     var kb = dist2(ppos(st, b), ppos(st, lead)) + v17GrudgeOf(st, lead, b) / 220;
     return (ka - kb) || (v15Hash(a) - v15Hash(b));
   });
-  /* S21e: WHAT A FORMATEUR PAYS, AND WHY IT IS CENTRED BY CONSTRUCTION.
-
-     A formateur bids least for the party it likes most and most for the party
-     it needs but quarrels with. Both readings are taken RELATIVE TO THIS
-     POOL rather than against an absolute bar, which is what makes the mean
-     land on the constant every offer used to carry: what the slice adds is
-     spread, and a slice that made the table a negotiation while quietly
-     making formation easier would be the S21d regression with the sign
-     flipped.
-
-     TWO EARLIER VERSIONS OF THIS BLOCK PICKED THRESHOLDS BY EYE AND BOTH WERE
-     WRONG, which is why it is built this way. The first bid up when short of
-     seats and up again on friction with one narrow condition bidding down;
-     the mean skewed above three and formations became so easy that the grand
-     and caretaker branches stopped firing altogether. The second made each
-     reading two-sided but kept absolute bars (`short > .34`, `rub >= 6`), and
-     the high bars almost never fired: the mean came out at 2.22, nearly a
-     whole concession BELOW the constant. R7 says measure the distribution
-     before setting a threshold on it. A reading taken against the pool's own
-     middle needs no distribution measured, because the middle is where the
-     distribution is.
-
-     RANK is the first reading: `pool` is already sorted by distance plus
-     grudge, so position in it is exactly "how much this formateur would
-     rather not be here", and half the pool sits either side of its own
-     midpoint by definition.
-     FRICTION is the second, against the median friction across the same pool
-     -- `v17Friction` is the reading S17g's refrain has used since it was
-     written, so the price is the distance between two tables rather than a
-     new number about them. */
-  var fric = pool.map(function (x) {
-    return (typeof v17Friction === 'function' ? v17Friction(st, x, lead).length : 0);
-  });
-  var sortedFric = fric.slice().sort(function (a, b) { return a - b; });
-  var medFric = sortedFric.length ? sortedFric[Math.floor(sortedFric.length / 2)] : 0;
-  var mid = (pool.length - 1) / 2;
   for (var i = 0; i < pool.length && have < maj; i++) {
-    var bid = V17_GENEROSITY.base
-      + (i > mid ? 1 : i < mid ? -1 : 0)                         /* further down the list */
-      + (fric[i] > medFric ? 1 : fric[i] < medFric ? -1 : 0);    /* and harder to live with */
-    var offer = v17Offer(st, lead, pool[i], co.concat([pool[i]]), bid);
+    var offer = v17Offer(st, lead, pool[i], co.concat([pool[i]]));
     var ans = v17Accept(st, pool[i], lead, offer, relax, pin);
     answers.push(ans);
     if (ans.yes) { co.push(pool[i]); offers[pool[i]] = offer; have += st.seats[pool[i]] || 0; }
