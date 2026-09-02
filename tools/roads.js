@@ -12144,6 +12144,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         pressure:d.pressure, quieted:d.pressure < 2 };
       return { posted:true, threw:threw, why:why, btns:btns, delivered:delivered,
         shutInThePage: btns.filter(b => b.disabled && /rewrite|deliver/.test(b.id)).length,
+        /* and the sentence is ON THE BUTTON in the page, not merely returned by
+           `inboxChoices` -- the renderer is the half a player reads */
+        titledInThePage: btns.filter(b => b.disabled && /rewrite|deliver/.test(b.id) &&
+          b.title && b.title.length > 10).length,
         rewriteShut: !!why.rewrite,
         deliverShut: !!why.deliver,
         chargedNothing: chargedNothing, stillThere: stillThere };
@@ -12189,6 +12193,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     junior.cores.rewrote === true && junior.cores.freshFrom === true &&
     junior.cores.freshDue === true && junior.cores.notBornLate === true &&
     junior.paper.posted === true && junior.paper.rewriteShut === true &&
+    junior.paper.deliverShut === true && junior.paper.shutInThePage === 2 &&
+    junior.paper.titledInThePage === 2 &&
     junior.paper.chargedNothing === true && junior.paper.stillThere === true &&
     !!junior.paper.delivered && junior.paper.delivered.laid === true &&
     junior.paper.delivered.quietCalls === 1 && junior.paper.delivered.quieted === true &&
@@ -12256,7 +12262,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `statute stood at and the deadline was the one the promise it replaced had already gone past -- a ` +
     `promise born late that could never book a second breach. Found by extracting the Core, which is what ` +
     `extracting a Core is for · AND A PAPER'S ANSWER SAYS WHEN IT CANNOT BE TAKEN, BEFORE IT CHARGES ` +
-    `(${junior.paper.rewriteShut}/${junior.paper.chargedNothing}): "${junior.paper.why.rewrite}". ` +
+    `(${junior.paper.rewriteShut}/${junior.paper.chargedNothing}): "${junior.paper.why.rewrite}", and both ` +
+    `shut answers carry it ON THE BUTTON IN THE PAGE (${junior.paper.titledInThePage} of ` +
+    `${junior.paper.shutInThePage}) rather than only in what \`inboxChoices\` returns, which is the half a ` +
+    `player reads. ` +
     `and the answer that IS open quiets them through \`v21Quiet\`, the one owner of the ladder ` +
     `(${junior.paper.delivered ? junior.paper.delivered.quietCalls : 'n/a'} call, pressure ` +
     `${junior.paper.delivered ? junior.paper.delivered.pressure : 'n/a'}) -- this leg read the SHUT answer ` +
