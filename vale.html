@@ -716,7 +716,11 @@ var BILL_STAGES = ['committee','assembly','senate','assent'];
 var V19_TEMPER_AXIS = {
   attack:'combative', article:'combative', bill:'combative', topple:'combative',
   organise:'organiser', campaign:'organiser', court:'organiser', platform:'organiser',
-  pact:'dealer', demand:'dealer', order:'dealer', floor:'dealer', bargain:'dealer'
+  pact:'dealer', demand:'dealer', order:'dealer', floor:'dealer', bargain:'dealer',
+  /* S21n: calling your partners in and reopening the agreement with them is
+     the dealer's move, which is what every other card about talking to another
+     party is filed under. */
+  keep:'dealer'
 };
 var V19_TEMPER = .6;
 /* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
@@ -17953,11 +17957,44 @@ function pv5InterestAction(id,action){
    The two unclamped writes above are clamped too: `+= 16` and `+= 9` drove
    cohesion past 100 -- measured 103 in three clicks -- which then put the
    walkout threshold further away than the card's meter could show. */
+/* S21n — THE COUNCIL, WITH NO CHAIR IN IT. Every other instrument the head of
+   government has for holding a coalition together already had one: S21h put
+   the office trade through `v21OfficeCore` and the reopening through
+   `v21ReopenCore`. The council was still eight statements inline in the
+   player's handler, so a government that is not the player's could not call
+   one -- and measured over 1,440 driven sessions, 559 of them had an engine
+   government sitting with a partner under 45 cohesion and NOTHING it could do
+   about it, while 97 partners walked out.
+
+   AND THE STANDING A COUNCIL MOVES BELONGS TO THE RIGHT PAIR, which is S21k's
+   lesson in this surface. `shiftPartyRel` writes that party's standing with
+   the PLAYER: correct while every council was the player's, and a write on the
+   wrong record the moment an engine holds one. Three cases and one question --
+   a council the player calls warms the partner toward them; one called WITH
+   the player warms them toward the party that called it; and one between two
+   engines goes to the signed ledger `v21Regard` reads. */
+var V21_COUNCIL_LIFT = 12;
+var V21_COUNCIL_REL = 7;
+function v21CouncilCore(st, lead, pid) {
+  var d = (st.coalitionDeals || {})[pid];
+  if (!d || lead === pid) return false;
+  d.satisfaction = c100((d.satisfaction || 50) + V21_COUNCIL_LIFT);
+  d.councils = (d.councils || 0) + 1;
+  d.lastCouncil = st.turn;
+  var me = playParty(st);
+  if (lead === me) shiftPartyRel(st, pid, V21_COUNCIL_REL);
+  else if (pid === me) shiftPartyRel(st, lead, V21_COUNCIL_REL);
+  else if (typeof v16Resent === 'function') v16Resent(st, pid, lead, -V21_COUNCIL_REL);
+  if (st.v5Stats) st.v5Stats.coalitionCouncils = (st.v5Stats.coalitionCouncils || 0) + 1;
+  return true;
+}
 function pv5CoalitionAction(pid,action){
   if(!leads(S)){flash('The coalition agreement is the head of government\'s to keep.');return;}
   var d=S.coalitionDeals[pid];if(!d)return;
   if(action==='council'){
-    if(!pv5Spend(3,2,'Coalition council with '+PARTY[pid].short))return;d.satisfaction=c100(d.satisfaction+12);d.councils++;d.lastCouncil=S.turn;shiftPartyRel(S,pid,7);S.v5Stats.coalitionCouncils++;logIt(S,'A coalition council was held with the '+PARTY[pid].short+'.');
+    if(!pv5Spend(3,2,'Coalition council with '+PARTY[pid].short))return;
+    v21CouncilCore(S,S.ruling,pid);
+    logIt(S,'A coalition council was held with the '+PARTY[pid].short+'.');
   }else if(action==='portfolio'){
     /* S21h: through `v21OfficeCore`, which the junior partner's own ask and an
        engine government answering one both write through. The office moves in
@@ -35306,7 +35343,15 @@ viewWorld = function () {
    buys a party a slow advantage and this ends somebody else's government. */
 var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
   pact:34, demand:16, bill:38, article:34, order:22, floor:12,
-  topple:48, bargain:30 };
+  topple:48, bargain:30,
+  /* S21n: holding a coalition together. The player pays 3 capital and 2 money
+     for a council and 4 and 2 to reopen an agreement; on the engines' own
+     scale that sits with `bargain` and `pact`, which are the other cards about
+     talking to another party rather than to the country. It is under
+     `organise` at 42 on purpose: the working balance S21m derives is the
+     dearest card a posture can draw, so pricing this above 42 would raise
+     every government's reserve as a side effect of adding a card. */
+  keep:30 };
 /* the cheapest thing in the deck, DERIVED rather than named. `v18Tempo` read
    `V16_AI_COST.demand` (16) under a comment calling it "the cheapest card in
    the deck" -- and `floor` costs 12, so a party holding 14 was throttled to a
@@ -36245,6 +36290,40 @@ var V16_AI_DECK = [
      with one value. Supply is that second state, and it is paid for in policy
      rather than in offices, which is the difference between confidence and
      supply and a place at the table. */
+  /* S21n — A GOVERNMENT THAT IS NOT YOURS KEEPS ITS OWN COALITION.
+
+     An engine leads the government in 93.8% of the sessions a player watches,
+     and that coalition could only decay: measured over 1,440 driven sessions,
+     559 had an engine government sitting with a partner under 45 cohesion and
+     no instrument at all, and 97 partners walked out. The player has five
+     buttons for exactly this.
+
+     ONE CARD AND NOT TWO, which is S21k's lesson: `floor` comes up for a given
+     party about once in fifty-five party-sessions, so a verb that fires only
+     when a rarer precondition also holds fires never. Holding a coalition
+     together is one act with two shapes -- when the agreement itself is what
+     is wrong, reopen it; otherwise call them in -- and the card chooses.
+
+     R2: gated on `v19Thinks`, so the eleven-card floor is untouched. */
+  { id:'keep', post:[], post2:['govern', 'exposed'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (st.ruling !== pid) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.keep) return false;
+      return !!v21KeepTarget(st, pid);
+    },
+    run:function (st, pid) {
+      var t = v21KeepTarget(st, pid);
+      if (!t) return null;
+      v16AiPay(st, pid, V16_AI_COST.keep);
+      if (t.how === 'reopen' && v21ReopenCore(st, t.pid, 'the agreement was reopened and rewritten')) {
+        return 'The ' + PARTY[pid].short + ' reopened the agreement with the ' +
+          PARTY[t.pid].short + '.';
+      }
+      if (!v21CouncilCore(st, pid, t.pid)) return null;
+      return 'The ' + PARTY[pid].short + ' called the ' + PARTY[t.pid].short +
+        ' in for a coalition council.';
+    } },
   { id:'bargain', post:['hold', 'moderate', 'consolidate'],
     can:function (st, pid) {
       if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
@@ -37012,6 +37091,10 @@ function v19Rival(st, pid) {
    nothing to do with anybody else, and saying so is the point of covering the
    surface instead of listing the cards that matter. */
 var V19_RIVAL_WORTH = {
+  /* S21n: holding your own coalition together is inward work. It is worth
+     nothing against the party standing in your way -- the same reading as
+     `platform`, which is a party talking to its own members. */
+  keep:     0,
   organise: .45,   /* build against them */
   campaign: .30,
   court:    .45,   /* the contested bloc is reached by exactly this card */
@@ -37188,6 +37271,24 @@ function v19Flight(st, pid) {
     var ln = (b.lines || {})[pid];
     if (ln) u += (ln === 'support' ? 1 : -1) * (s || 1) * v21Price('floor');
   });
+  /* S21n — AND A COALITION THAT IS STILL THERE. A government's standing
+     includes whether the room behind it is holding: `d.satisfaction` has four
+     live readers since S21d, and a partner about to walk out is worth less to
+     the party leading it than a contented one. Without this the `keep` card
+     rehearses as a PRICE LIST -- min, median and max the same number, exactly
+     minus what it cost -- which is the defect S21c found in nine of eleven
+     cards and the reason `roads.js` counts the flat ones.
+     Read on the same scale as the rest of the term: the price of the card that
+     produces it, times how good this instance is, where "good" is how far the
+     room sits above the floor a partner walks out at. */
+  if (st.ruling === pid) {
+    (st.coalition || []).forEach(function (q) {
+      if (q === pid || st.banned[q]) return;
+      var dd = (st.coalitionDeals || {})[q];
+      if (!dd || typeof dd.satisfaction !== 'number') return;
+      u += v21Price('keep') * clamp((dd.satisfaction - 35) / 50, -1, 1);
+    });
+  }
   var pend = ((st.v11 || {}).con || {}).pending || [];
   pend.forEach(function (a) {
     if (a.by !== pid) return;
@@ -37565,6 +37666,40 @@ function v18TempoOdds(st, pid) {
     return clamp(v18Tempo(st, pid) * (live.length / V16_AI_CADENCE) / sum, 0, 1);
   }
   return clamp(v18Tempo(st, pid) / (V16_AI_CADENCE * v18TempoBase(st)), 0, 1);
+}
+/* S21n — WHICH PARTNER, AND WHICH SHAPE. The least contented partner first,
+   because that is the one about to leave: the walkout floor is read off
+   `d.satisfaction` and 97 partners crossed it in 1,440 driven sessions.
+
+   THE BAR IS THE MEASURED QUARTILE. Cohesion in a coalition an engine leads
+   runs p10 35.0, p25 43.1, p50 51.2, p75 75.7 -- so 45 is a partner in the
+   bottom quarter of the range, which is where the walkouts come from, and not
+   a number picked to look plausible. A government does not call in a partner
+   that is content; it has nine other things to do.
+
+   AND WHEN THE AGREEMENT ITSELF IS WHAT IS WRONG, IT REOPENS RATHER THAN
+   TALKS. A council lifts cohesion and changes nothing about the document; a
+   party that has watched promises broken wants the document changed. So the
+   reopening is chosen where there IS a broken promise on the ledger and the
+   agreement will still bear reopening, which `v17CanRenegotiate` is the judge
+   of -- the same predicate the player's button reads, now asked about an
+   actor. */
+var V21_KEEP_BAR = 45;
+function v21KeepTarget(st, pid) {
+  var co = st.coalition || [];
+  if (co.indexOf(pid) < 0) return null;
+  var worst = null, low = V21_KEEP_BAR;
+  co.forEach(function (q) {
+    if (q === pid || st.banned[q]) return;
+    var d = (st.coalitionDeals || {})[q];
+    if (!d || typeof d.satisfaction !== 'number') return;
+    if (d.satisfaction < low) { low = d.satisfaction; worst = q; }
+  });
+  if (!worst) return null;
+  var reopen = typeof v17CanRenegotiate === 'function' &&
+    !v17CanRenegotiate(st, worst, pid) &&
+    typeof v17Broken === 'function' && v17Broken(st, worst) > 0;
+  return { pid:worst, how: reopen ? 'reopen' : 'council', sat:low };
 }
 /* A cooldown per card so a party does not do the same thing twice running.
    The die picks among what the posture allows and the money reaches, which
@@ -38344,10 +38479,25 @@ function v17Walkout(st, pid, d) {
    `altered` rather than `broken`, and is refused outright to a government
    that has already broken this partner's agreement V17_PATIENCE times --
    there is nothing left to renegotiate with. */
-function v17CanRenegotiate(st, pid) {
+/* S21n — AND IT ASKS ABOUT AN ACTOR, WHERE IT ASKED ABOUT THE PLAYER.
+   `!leads(st)` is `playParty(st) !== st.ruling`, so this refused for every
+   coalition an ENGINE leads -- and an engine leads 93.8% of the sessions a
+   player watches. Measured over 1,440 driven sessions the agreement could be
+   reopened on 178 of 178 player partner-sessions and 0 of 1,969 engine ones:
+   the reopening was not a mechanism a government had, it was a button the
+   player had. That is `holdsDept`'s confusion in another surface -- "the
+   government holds it" and "THIS party holds it" are different questions --
+   and the fix is the one S17a made there: the gate names the actor.
+
+   THE DEFAULT IS THE PLAYER, so the button's own reading is unchanged to the
+   letter: `leads(st)` is exactly `playParty(st) === st.ruling`, which is what
+   `st.ruling !== actor` says with the actor left out. */
+function v17CanRenegotiate(st, pid, actor) {
   var d = (st.coalitionDeals || {})[pid];
   if (!d || !d.terms) return 'There is no agreement with them to reopen.';
-  if (!leads(st)) return 'The coalition agreement is the head of government\'s to keep.';
+  if (st.ruling !== (actor || playParty(st))) {
+    return 'The coalition agreement is the head of government\'s to keep.';
+  }
   if (v17Broken(st, pid) >= V17_PATIENCE) {
     return 'They will not reopen it. The agreement already records ' +
       v8Plural(v17Broken(st, pid), 'broken promise') + ', and a fourth conversation is not what they want.';
