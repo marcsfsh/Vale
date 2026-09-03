@@ -17545,6 +17545,347 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `\`blocLean\` at all, which the reading accessor makes a nought rather than a throw ` +
     `(${lean.legacy.affFinite}/${lean.legacy.supportFinite}, page ${lean.legacy.pageThrew === null})`);
 
+  /* ---------- S21k: THE ENGINE WORKS THE FLOOR ----------
+     S20b built the persuasion layer -- three scopes, a metered escalating
+     price, `bill.pull` read in `billPull` beside the whip and counted through
+     the party's seats by S20a's division -- and gave it ONE caller, which
+     hard-codes `playParty(S)`. Measured over 720 driven sessions: `bill.pull`
+     non-zero on 0 of 254,492 divisions, `v20PressCore` called 0 times. ------ */
+  const whipk = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) THE RELATION A PRESS MOVES BELONGS TO THE RIGHT PAIR. `shiftPartyRel`
+       writes that party's standing WITH THE PLAYER, which was correct while
+       every press was the player's. Asked on three boards differing only in
+       who is pressing whom. */
+    R.pair = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const me = playParty(S);
+      const b = (S.bills || []).filter(x => x.sponsor !== me)[0];
+      if (!b) return { ran:false };
+      const others = PARTIES.filter(p => !S.banned[p.id] && p.id !== me && p.id !== b.sponsor &&
+        (S.seats[p.id] || 0) > 0).map(p => p.id);
+      if (others.length < 2) return { ran:false };
+      const actor = others[0], target = others[1];
+      const read = () => ({ rel:JSON.parse(JSON.stringify(S.partyRel)),
+        led: PARTIES.map(p => v16Grudge(S, p.id, actor)) });
+      /* an ENGINE presses: the player's relations must not move */
+      b.lines = b.lines || {}; b.lines[actor] = 'oppose';
+      const r0 = read();
+      v20PressCore(S, actor, b, 'others');
+      const r1 = read();
+      /* THE PLAYER IS ONE OF THE TARGETS OF EVERY `others` PRESS -- a seated
+         party that is neither the actor nor the sponsor -- so "no `partyRel`
+         moves" is the wrong claim and the first version of this leg made it.
+         What must be true is that the ONE entry that moves is the ACTOR's,
+         which is the pair (player, actor); the player's own entry would be
+         their standing with themselves. */
+      const moved = PARTIES.filter(p => r0.rel[p.id] !== r1.rel[p.id]).map(p => p.id);
+      const relMoved = moved.length;
+      const ledgerMoved = r0.led.filter((v, i) => v !== r1.led[i]).length;
+      /* and the PLAYER presses: the player's relations must move */
+      const b2 = (S.bills || []).filter(x => x.sponsor !== me && x !== b)[0] || b;
+      b2.playerPosition = 'oppose';
+      const p0 = JSON.parse(JSON.stringify(S.partyRel));
+      v20PressCore(S, me, b2, 'others');
+      const playerRelMoved = PARTIES.filter(p => p0[p.id] !== S.partyRel[p.id]).length;
+      /* AND WHICH WAY. The first version asked only that the ledger MOVED, so
+         a build storing the warming with its sign flipped -- a friendly press
+         making an enemy -- passed. A party pressing FOR a bill eases what the
+         others hold against it; pressing against hardens it. */
+      const dirRead = (() => {
+        const b3 = (S.bills || []).filter(x => x.sponsor !== me && x.sponsor !== actor)[0];
+        if (!b3) return null;
+        const t3 = PARTIES.filter(p => !S.banned[p.id] && p.id !== me && p.id !== actor &&
+          p.id !== b3.sponsor && (S.seats[p.id] || 0) > 0)[0];
+        if (!t3) return null;
+        b3.lines = b3.lines || {};
+        b3.lines[actor] = 'support';
+        v16Resent(S, t3.id, actor, 40);
+        const warm0 = v16Grudge(S, t3.id, actor);
+        v20PressCore(S, actor, b3, 'others');
+        const warm1 = v16Grudge(S, t3.id, actor);
+        b3.lines[actor] = 'oppose';
+        v20PressCore(S, actor, b3, 'others');
+        const cold = v16Grudge(S, t3.id, actor);
+        return { warm0:warm0, warm1:warm1, cold:cold,
+          forEases: warm1 < warm0, againstHardens: cold > warm1 };
+      })();
+      return { ran:true, actor:actor, target:target, dirRead:dirRead,
+        warmsForward: !!(dirRead && dirRead.forEases && dirRead.againstHardens),
+        relMovedOnEnginePress:relMoved, ledgerMovedOnEnginePress:ledgerMoved,
+        playerRelMoved:playerRelMoved,
+        movedEntries:moved,
+        enginePressLeavesThePlayerAlone:
+          relMoved === 1 && moved[0] === actor && moved.indexOf(me) < 0 && ledgerMoved > 0,
+        playerPressMovesTheirs: playerRelMoved > 0 };
+    })();
+
+    /* (b) AND `can` AGREES WITH WHAT `run` WILL DO. A press is metered per bill
+       and per scope and costs more than the flat floor fee once used, so a gate
+       that only knew the flat fee would open a card `run` then refused -- an
+       enabled control that moves nothing. */
+    R.gate = (() => {
+      /* DRIVEN UNTIL THE PICKER HAS SOMETHING TO PICK. It returns null when
+         nothing on the floor needs this party, which is most sessions -- and a
+         leg that asks `can` on such a board is asking about a card that is
+         correctly shut, not about the price. */
+      const card = V16_AI_DECK.filter(c => c.id === 'floor')[0];
+      let pid = null, f = null;
+      fresh(4242);
+      for (let i = 0; i < 60 && !f; i++) {
+        step();
+        PARTIES.forEach(p => {
+          if (f || S.banned[p.id] || p.id === playParty(S)) return;
+          if (S.purse) S.purse[p.id] = 400;
+          const g = v17AiFloorFor(S, p.id);
+          if (g) { pid = p.id; f = g; }
+        });
+      }
+      if (!f) return { ran:false };
+      if (S.purse) S.purse[pid] = 400;
+      const openRich = card.can(S, pid);
+      if (S.purse) S.purse[pid] = 0;
+      const openBroke = card.can(S, pid);
+      if (S.purse) S.purse[pid] = 400;
+      return { ran:!!f, openRich:openRich, openBroke:openBroke,
+        shutWhenBroke: openBroke === false, openWhenRich: openRich === true };
+    })();
+
+    /* (b2) WHERE THE PARTY'S PROBLEM IS, AND WHAT IT COSTS. A party whose own
+       benches are split spends the session on them; one whose benches are solid
+       works on everybody else's. Asked on two boards differing in exactly that
+       one fact -- without which a build that inverted the test would pass on
+       "some scope was chosen". */
+    R.scope = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const me = playParty(S);
+      const b = (S.bills || []).filter(x => x.sponsor !== me)[0];
+      if (!b) return { ran:false };
+      const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== me && p.id !== b.sponsor &&
+        (S.seats[p.id] || 0) > 0)[0];
+      if (!pid) return { ran:false };
+      b.lines = b.lines || {}; b.lines[pid.id] = 'oppose';
+      const setLoyalty = (n) => { (S.factions[pid.id] || []).forEach(f => { f.loyalty = n; }); };
+      setLoyalty(20);
+      const split = v21PressScopeFor(S, pid.id, b);
+      setLoyalty(95);
+      const solid = v21PressScopeFor(S, pid.id, b);
+      /* AND IT REFUSES WHEN NEITHER SCOPE IS OPEN: a party with no declared
+         position has nothing to press, which `v20PressWhy` is the judge of --
+         a scope returned without asking would hand `run` a verb the core then
+         refuses, which is the enabled control that moves nothing. */
+      delete b.lines[pid.id];
+      const noLine = v21PressScopeFor(S, pid.id, b);
+      b.lines[pid.id] = 'oppose';
+      /* AND THE PRICE IS PAID. `v20PressCost` meters per bill and per scope. */
+      const card = V16_AI_DECK.filter(c => c.id === 'floor')[0];
+      let paid = null;
+      (() => {
+        /* THE SCOPE CANNOT BE ASKED BEFORE THE DECLARATION. `v20PressWhy`
+           refuses without a position and the position is what `v17FloorCore`
+           writes one line earlier inside `run`, so a leg that pre-checks the
+           scope finds none and reports the price unpaid -- which is what the
+           first version of this did. Run the card and read what it spent. */
+        fresh(4242);
+        let ran = null;
+        for (let i = 0; i < 90 && ran === null; i++) {
+          step();
+          PARTIES.forEach(q => {
+            if (ran !== null || S.banned[q.id] || q.id === playParty(S)) return;
+            const f = v17AiFloorFor(S, q.id);
+            if (!f || (f.verb !== 'support' && f.verb !== 'oppose')) return;
+            S.purse[q.id] = 300;
+            const before = S.purse[q.id];
+            const said = card.run(S, q.id);
+            if (said === null) return;
+            ran = { spent:before - S.purse[q.id], flat:V17_AI_COST_FLOOR, said:said };
+          });
+        }
+        paid = ran;
+      })();
+      return { ran:true, split:split, solid:solid, noLine:noLine, paid:paid,
+        splitWorksItsOwn: split === 'own', solidWorksTheOthers: solid === 'others',
+        refusesWithNoLine: noLine === null,
+        /* MORE THAN THE FLAT FEE, which is the whole claim: the press has its
+           own metered price on top of the floor's, and a build that pressed
+           for free would spend exactly the flat fee. */
+        paysBoth: !!(paid && paid.spent > paid.flat),
+        /* and the session says so, or a press is a number nobody is told about */
+        saysSo: !!(paid && /worked the votes/.test(String(paid.said || ''))) };
+    })();
+
+    /* (c) DRIVEN: THE LAYER REACHES A DIVISION. The whole claim in one reading
+       -- `billPull` is where the vote is counted, and a pull nothing reads is
+       the field S20b's own comment warns about. */
+    R.driven = (() => {
+      const out = { divisions:0, withPull:0, pressCalls:0, floorRuns:0, verbs:{},
+        oppLaid:0, oppCarried:0, sessions:0 };
+      const seenAssent = {};
+      const bp = billPull;
+      billPull = function (st, bill, pid) {
+        if (!V19_SIMULATING) { out.divisions++; if (bill && bill.pull && bill.pull[pid]) out.withPull++; }
+        return bp.apply(this, arguments);
+      };
+      const pc = v20PressCore;
+      v20PressCore = function () { if (!V19_SIMULATING) out.pressCalls++; return pc.apply(this, arguments); };
+      const fc = v17FloorCore;
+      v17FloorCore = function (st, actor, b, verb) {
+        if (!V19_SIMULATING) { out.floorRuns++; out.verbs[verb] = (out.verbs[verb] || 0) + 1; }
+        return fc.apply(this, arguments);
+      };
+      const sb = sponsorBill;
+      sponsorBill = function (st, pol, dir, free, owner) {
+        const r = sb.apply(this, arguments);
+        if (!V19_SIMULATING && ((r && r.owner) || owner) === 'opposition') out.oppLaid++;
+        return r;
+      };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+          fresh(seed);
+          for (let i = 0; i < 120; i++) {
+            step(); out.sessions++;
+            (S.bills || []).forEach(b => {
+              if (b.owner === 'opposition' && b.stage === 'assent') seenAssent[seed + ':' + b.id] = 1;
+            });
+          }
+        });
+      } finally { billPull = bp; v20PressCore = pc; v17FloorCore = fc; sponsorBill = sb; }
+      out.oppCarried = Object.keys(seenAssent).length;
+      out.pullShare = +(out.withPull / Math.max(1, out.divisions)).toFixed(4);
+      out.pressPerFloor = +(out.pressCalls / Math.max(1, out.floorRuns)).toFixed(3);
+      return out;
+    })();
+
+    /* (d) AND NOT BELOW THE FLOOR. R1: at `instinct` a party says where it
+       stands and stops, which is the game as it shipped. */
+    R.floor = (() => {
+      const run = (level) => {
+        let presses = 0;
+        const pc2 = v20PressCore;
+        v20PressCore = function () { if (!V19_SIMULATING) presses++; return pc2.apply(this, arguments); };
+        try {
+          fresh(4242, level);
+          for (let i = 0; i < 60; i++) step();
+        } finally { v20PressCore = pc2; }
+        return presses;
+      };
+      const dumb = run('instinct'), sharp = run('ruthless');
+      return { dumb:dumb, sharp:sharp, silentAtInstinct: dumb === 0, liveAbove: sharp > 0 };
+    })();
+
+    /* (e) AND THE PAGE SAYS WHERE THE OTHER PARTIES STAND. `b.lines` has been
+       written since S17b and read by `partyBillSupport` on every division --
+       16 for a declared support, -18 for a declared opposition -- and rendered
+       NOWHERE: a forecast could move thirty-four points with nothing on the
+       page saying why. Read off the emitter, which is a string: no script node
+       can reach it and no fold can hide it. */
+    R.page = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      const me = playParty(S);
+      const b = (S.bills || []).filter(x => x.sponsor !== me)[0];
+      if (!b) return { ran:false };
+      const other = PARTIES.filter(p => !S.banned[p.id] && p.id !== me && p.id !== b.sponsor)[0];
+      if (!other) return { ran:false };
+      b.lines = {};
+      let quiet = '';
+      try { quiet = billCard(b); } catch (e) { return { ran:false, threw:e.message }; }
+      b.lines[other.id] = 'oppose';
+      let loud = '';
+      let threw = null;
+      try { loud = billCard(b); } catch (e) { threw = e.message; }
+      const want = PARTY[other.id].short + ' against';
+      /* and a SUPPORT reads the other way, or the leg is green on the word
+         alone rather than on the direction */
+      b.lines[other.id] = 'support';
+      let warm = '';
+      try { warm = billCard(b); } catch (e) { }
+      return { ran:true, threw:threw,
+        silentWithNoLines: quiet.indexOf(' against</span>') < 0 && quiet.indexOf(' for</span>') < 0,
+        namesTheParty: loud.indexOf(want) >= 0,
+        readsTheDirection: warm.indexOf(PARTY[other.id].short + ' for') >= 0 &&
+          warm.indexOf(want) < 0 };
+    })();
+    R.consts = { split:V21_PRESS_SPLIT, floorBar:V19_FLOOR_BAR, floorCost:V17_AI_COST_FLOOR };
+    return R;
+  });
+
+  const whipkOk =
+    whipk.pair.ran === true && whipk.pair.enginePressLeavesThePlayerAlone === true &&
+    whipk.pair.playerPressMovesTheirs === true &&
+    whipk.pair.warmsForward === true &&
+    whipk.scope.ran === true && whipk.scope.splitWorksItsOwn === true &&
+    whipk.scope.solidWorksTheOthers === true && whipk.scope.refusesWithNoLine === true &&
+    whipk.scope.paysBoth === true && whipk.scope.saysSo === true &&
+    whipk.gate.ran === true && whipk.gate.openWhenRich === true &&
+    whipk.gate.shutWhenBroke === true &&
+    whipk.driven.divisions > 100000 && whipk.driven.floorRuns > 20 &&
+    /* THE HEADLINE: a pull that reaches a division at all, where it reached
+       none. The band is wide because the share depends on how many bills are
+       alive and how often the card comes up, and narrow enough that a build
+       where the press stopped reaching the count reddens. */
+    whipk.driven.withPull > 500 && whipk.driven.pullShare > .003 &&
+    whipk.driven.pressCalls > 20 && whipk.driven.pressPerFloor > .5 &&
+    /* OPPOSITION BILLS ARE REPORTED, NOT CLAIMED. `PLAN-S21.md` pins this slice
+       on "opposition bills passed against 0 of 143", and that baseline is wrong
+       twice: over twelve seeds and 1,440 sessions the build BEFORE this slice
+       lays 141 and carries 15, and this one lays 109 and carries 12 -- the same
+       rate, and fewer laid, because a party that spends on working the votes
+       has less left for laying. A six-seed reading of 3 against 11 said
+       otherwise and was noise. The bar is that the road still exists, not that
+       this slice widened it. */
+    whipk.driven.oppLaid > 20 && whipk.driven.oppCarried > 0 &&
+    whipk.floor.silentAtInstinct === true && whipk.floor.liveAbove === true &&
+    whipk.page.ran === true && whipk.page.threw === null &&
+    whipk.page.silentWithNoLines === true && whipk.page.namesTheParty === true &&
+    whipk.page.readsTheDirection === true;
+  say(whipkOk, 'the engine works the floor',
+    `S20b BUILT THE PERSUASION LAYER AND GAVE IT ONE CALLER, WHICH HARD-CODES \`playParty(S)\`. Three scopes, ` +
+    `a metered escalating price, and \`bill.pull\` read in \`billPull\` beside the whip and counted through the ` +
+    `party's seats by S20a's division -- measured over 720 driven sessions, \`bill.pull\` was non-zero on 0 of ` +
+    `254,492 divisions and \`v20PressCore\` was called 0 times. A whole layer of the model no engine had ever ` +
+    `touched · DECLARING AND WHIPPING ARE ONE ACT, which the two-step could not be: \`floor\` comes up for a ` +
+    `given party about once in fifty-five party-sessions, a bill lives three to six, and the party being asked ` +
+    `held a line on any current bill on 3 of 961 occasions -- so a first build that pressed a bill it had ` +
+    `declared on earlier fired ZERO times. A party that comes out against a bill and then works the votes for ` +
+    `that position is one act, and pricing it as two is what made the layer unreachable. It pays both prices ` +
+    `and only when it can afford both · DRIVEN, the pull now reaches ${whipk.driven.withPull} of ` +
+    `${whipk.driven.divisions} divisions (${whipk.driven.pullShare}) on ${whipk.driven.pressCalls} presses ` +
+    `across ${whipk.driven.floorRuns} floor moves · AND OPPOSITION BILLS ARE REPORTED RATHER THAN ` +
+    `CLAIMED: ${whipk.driven.oppCarried} of ${whipk.driven.oppLaid} here, and over twelve seeds 12 of ` +
+    `109 against 15 of 141 on the build before this slice -- the same rate, and FEWER laid, because a ` +
+    `party that spends on working the votes has less left for laying one. The plan pinned this slice on ` +
+    `"opposition bills passed against 0 of 143" and that baseline is wrong twice over; a six-seed ` +
+    `reading of 3 against 11 said otherwise and was noise · AND THE RELATION IT MOVES BELONGS TO THE RIGHT PAIR ` +
+    `(${whipk.pair.enginePressLeavesThePlayerAlone}): \`shiftPartyRel\` writes that party's standing WITH THE ` +
+    `PLAYER, which was correct while every press was the player's and became a write on the wrong record the ` +
+    `moment an engine pressed -- the player's relations move on ${whipk.pair.relMovedOnEnginePress} of them ` +
+    `when one engine leans on another, and the signed ledger \`v21Regard\` reads moves on ` +
+    `${whipk.pair.ledgerMovedOnEnginePress}. No new writer: \`v16Resent\` has stored a SIGN since S21a and ` +
+    `warming is resentment with a minus in front of it · AND \`can\` AGREES WITH \`run\` ` +
+    `(${whipk.gate.openWhenRich}/${whipk.gate.shutWhenBroke}), because the press is metered and a gate that ` +
+    `only knew the flat floor fee would open a card \`run\` then refused · NOT BELOW THE FLOOR ` +
+    `(${whipk.floor.dumb} at \`instinct\` against ${whipk.floor.sharp}) · AND THE PAGE SAYS WHERE THE OTHER ` +
+    `PARTIES STAND (${whipk.page.namesTheParty}, and the direction reads both ways: ` +
+    `${whipk.page.readsTheDirection}). \`b.lines\` has been written since S17b and read by ` +
+    `\`partyBillSupport\` on every division -- 16 for a declared support, -18 for a declared opposition -- and ` +
+    `rendered NOWHERE, so a forecast could move thirty-four points with nothing on the page saying why. That ` +
+    `is \`st.court.size\` inverted: not a field nothing reads, but one the model reads and the reader cannot ` +
+    `see · AND \`pressure\` WAS MEASURED AND LEFT ALONE. \`PLAN-S21.md\` asked for its bar to be re-set or ` +
+    `the branch deleted; it fires 13 of 71 floor moves at \`purposeful\` and 0 of 37 at \`shrewd\`, which is ` +
+    `not a dead branch but the UNTHINKING party's third option -- the thinking levels skip it because ` +
+    `\`V19_FLOOR_BAR\` excludes a bill already going your way, which is the line S17o added on purpose`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

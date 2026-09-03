@@ -15642,7 +15642,26 @@ function billCard(b) {
     (b.returned ? '<span class="tag">Returned with objections</span>' : '') +
     '<span class="tag">' + esc(f.issue.name) + ' ' + Math.round(S.salience[f.issue.id]) + '</span>' +
     '<span class="tag">' + b.concessions + ' concession' + (b.concessions === 1 ? '' : 's') + '</span>' +
-    (b.confidence ? '<span class="tag down">Confidence matter</span>' : '') + (b.playerPosition ? '<span class="tag up">Your line: ' + esc(b.playerPosition) + '</span>' : '') + '</div>' +
+    (b.confidence ? '<span class="tag down">Confidence matter</span>' : '') + (b.playerPosition ? '<span class="tag up">Your line: ' + esc(b.playerPosition) + '</span>' : '') +
+    /* S21k: AND WHERE THE OTHER PARTIES STAND. `b.lines` has been written since
+       S17b and read by `partyBillSupport` -- 16 points for a declared support
+       and -18 for a declared opposition, on every division -- and RENDERED
+       NOWHERE. A player could watch a forecast move by thirty-four points
+       because two parties had come out, with nothing on the page saying they
+       had. That is `st.court.size` inverted: not a field nothing reads, but a
+       field the model reads and the reader cannot see. `bill.pull` is not
+       printed beside it because it is the accumulated PERSUASION and this is
+       the POSITION -- one is a fact about a party and the other a running
+       total, and S20b kept them apart for that reason. */
+    (function () {
+      var ls = b.lines || {};
+      return Object.keys(ls).filter(function (id) { return PARTY[id] && id !== playParty(S); })
+        .sort(function (x, y) { return (S.seats[y] || 0) - (S.seats[x] || 0); })
+        .map(function (id) {
+          return '<span class="tag ' + (ls[id] === 'support' ? 'up' : 'down') + '">' +
+            esc(PARTY[id].short) + ' ' + (ls[id] === 'support' ? 'for' : 'against') + '</span>';
+        }).join('');
+    })() + '</div>' +
     (b.notes.length ? '<p class="desc">Procedure: ' + esc(b.notes.join(' · ')) + '.</p>' : '') + '<div class="btnrow">' + actions.join('') + '</div></article>';
 }
 
@@ -35862,9 +35881,38 @@ var V16_AI_DECK = [
       var err = v17FloorCore(st, pid, f.bill, f.verb);
       if (err) return null;
       v16AiPay(st, pid, V17_AI_COST_FLOOR);
-      return 'The ' + PARTY[pid].short + ' ' +
+      var said = 'The ' + PARTY[pid].short + ' ' +
         (f.verb === 'support' ? 'came out for ' : f.verb === 'oppose' ? 'came out against ' : 'leaned on the sponsors of ') +
         f.bill.title + '.';
+      /* S21k — AND DECLARING IS THE SAME ACT AS WHIPPING FOR IT. The two-step
+         was the first design and it CANNOT MEET at this game's cadence: `floor`
+         comes up for a given party about once in fifty-five party-sessions, a
+         bill lives three to six, and measured over 720 sessions the party being
+         asked held a line on any current bill on 3 of 961 occasions -- so a
+         party pressing a bill it had declared on earlier fired ZERO times.
+         A party that comes out against a bill and then works the votes for that
+         position is one act, not two, and pricing it as two is what made the
+         layer unreachable. It pays both, and only when it can afford both.
+         R1: above the floor only. At `instinct` a party says where it stands
+         and stops, which is the game as it shipped. */
+      /* ONE JUDGE, NOT TWO. A `f.verb === 'support' || 'oppose'` test stood
+         here and its poison could not redden anything: `v20PressWhy` already
+         refuses a bill the actor has taken no position on, and `pressure`
+         writes the SPONSOR's line rather than the actor's, so the second test
+         was a restatement of the first. Two predicates for one surface drift
+         apart; this file has the scars. */
+      if (typeof v19Thinks === 'function' && v19Thinks(st)) {
+        var sc = v21PressScopeFor(st, pid, f.bill);
+        if (sc) {
+          var pc = v20PressCost(st, f.bill, sc);
+          if (partyPurse(st, pid) >= pc && !v20PressCore(st, pid, f.bill, sc)) {
+            v16AiPay(st, pid, pc);
+            said = said.slice(0, -1) + ', and worked the votes ' +
+              (sc === 'own' ? 'on their own benches.' : 'with the other parties.');
+          }
+        }
+      }
+      return said;
     } },
   /* S19c -- THE ROAD THE `carry` GOAL DID NOT HAVE.
 
@@ -40934,7 +40982,33 @@ function v20PressCore(st, actor, b, scope) {
     if (isOwn && k.faction) {
       (st.factions[pid] || []).forEach(function (f) { f.loyalty = c100(f.loyalty + dir * k.faction); });
     }
-    if (!isOwn && k.rel) shiftPartyRel(st, pid, dir * k.rel);
+    /* S21k: AND THE RELATION IT MOVES BELONGS TO THE RIGHT PAIR.
+       `shiftPartyRel` writes `st.partyRel[pid]`, which is that party's standing
+       WITH THE PLAYER -- the only relation this game kept until S21a gave the
+       ledger a sign and `v21Regard` a reading. It was correct while
+       `v20PressCore` had one caller and that caller hard-coded `playParty(S)`:
+       every press was the player's, measured at 0 engine calls in 720 driven
+       sessions. The moment an engine presses, the same line moves the target's
+       opinion of the PLAYER, who had nothing to do with it -- a write landing
+       on the wrong record, which is `st.court.size` read from the other end.
+       Three pairs and one question: if either side is the player the relation
+       is `partyRel`, and if neither is, it is the signed ledger `v21Regard`
+       reads. No new writer -- `v16Resent` has stored a SIGN since S21a, and
+       warming is resentment with a minus in front of it. */
+    if (!isOwn && k.rel) {
+      /* THREE CASES AND THE PAIR DECIDES. `st.partyRel` is indexed by the OTHER
+         party and means that party's standing with the player -- there is one
+         number for the pair and no separate "the player's view of them". So a
+         press BY the player moves the target's entry; a press ON the player --
+         which happens on every `others` scope, because the player is a seated
+         party that is neither the actor nor the sponsor -- moves the ACTOR's
+         entry, not the player's own, which would be the player's standing with
+         themselves; and a press between two engines moves neither and goes to
+         the signed ledger `v21Regard` reads. */
+      if (actor === playParty(st)) shiftPartyRel(st, pid, dir * k.rel);
+      else if (pid === playParty(st)) shiftPartyRel(st, actor, dir * k.rel);
+      else if (typeof v16Resent === 'function') v16Resent(st, pid, actor, -dir * k.rel);
+    }
   });
   b.pushes = b.pushes || {};
   b.pushes[scope] = (b.pushes[scope] || 0) + 1;
@@ -41111,6 +41185,24 @@ function v19Pivot(st, pid, bill) {
     pivot:(againstMe ? 1 : .12) * close * care * (.4 + weight),
     againstMe:againstMe, forecast:Math.round(f.lower), bar:bar, support:Math.round(sup) };
 }
+/* WHERE THIS PARTY'S PROBLEM IS. A party whose own benches are split spends
+   the session on them; one whose benches are solid goes to work on everybody
+   else's. `both` is not offered to an engine: it is the dearest scope and it
+   is the player's choice to make when they want the whole House at once, where
+   an engine picking it would simply be the expensive option every time. */
+var V21_PRESS_SPLIT = 62;    /* faction loyalty below which a party is working its own benches */
+function v21PressScopeFor(st, pid, b) {
+  var fs = (st.factions || {})[pid] || [];
+  var own = fs.length
+    ? fs.reduce(function (t, f) { return t + (f.loyalty || 0); }, 0) / fs.length
+    : 100;
+  var wantOwn = own < V21_PRESS_SPLIT;
+  var first = wantOwn ? 'own' : 'others', second = wantOwn ? 'others' : 'own';
+  if (!v20PressWhy(st, pid, b, first)) return first;
+  if (!v20PressWhy(st, pid, b, second)) return second;
+  return null;
+}
+
 function v17AiFloorFor(st, pid) {
   var live = (st.bills || []).filter(function (b) {
     return !v17FloorWhy(st, pid, b, 'oppose');
@@ -41134,6 +41226,31 @@ function v17AiFloorFor(st, pid) {
     var v = v19Pivot(st, pid, b);
     if (v && (!best || v.pivot > best.pivot)) best = v;
   });
+  /* S21k — AND A PARTY THAT HAS ALREADY SAID WHERE IT STANDS WORKS THE VOTES.
+     S20b built the persuasion layer -- three scopes, a metered escalating
+     price, `bill.pull` read in `billPull` beside the whip and counted through
+     the party's seats by S20a's division -- and gave it ONE caller, which
+     hard-codes `playParty(S)`. Measured over 720 driven sessions: `bill.pull`
+     was non-zero on 0 of 254,492 divisions and `v20PressCore` was called 0
+     times. A whole layer of the model that no engine had ever touched.
+
+     Declaring is the first move and pressing is the second, which is what
+     `v20PressWhy` already requires: it refuses without a position, so a party
+     cannot work votes on a bill it has not taken a side on. So the verb is
+     chosen by whether this party has spoken yet, and the SCOPE by where its
+     problem is -- its own benches if they are wavering, the other parties if
+     they are not. `v20PressCost` meters the price per bill and per scope, so
+     this is a decision on this bill and not a button to hold down.
+
+     AND A SEPARATE `press` VERB WAS WRITTEN, MEASURED AND DELETED. The plan
+     asked for press as a fourth verb the picker could return -- a party
+     working the votes on a bill it had declared on in an earlier session --
+     and it fired 0 times in 922 askings on the shipped build and 0 on the
+     build that already presses, because the party being asked holds a line on
+     a current bill on 0 of them: `floor` comes up for a given party about once
+     in fifty-five party-sessions and a bill lives three to six. A branch that
+     cannot fire is deleted rather than shipped. What replaces it is below, in
+     the card's own `run`: declaring and whipping are one act. */
   /* AND IF NOTHING ON THE FLOOR NEEDS THIS PARTY, IT DOES SOMETHING ELSE.
      Measured before this line: a thinking party made 13 of 17 floor moves on
      bills already going its way -- it had correctly worked out that no vote
