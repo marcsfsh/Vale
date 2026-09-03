@@ -714,9 +714,9 @@ var BILL_STAGES = ['committee','assembly','senate','assent'];
    It is gated on `v19Thinks` like every other competence term, so `instinct`
    is the shipped game exactly, which is what R1 asks of anything added here. */
 var V19_TEMPER_AXIS = {
-  attack:'combative', article:'combative', bill:'combative',
+  attack:'combative', article:'combative', bill:'combative', topple:'combative',
   organise:'organiser', campaign:'organiser', court:'organiser', platform:'organiser',
-  pact:'dealer', demand:'dealer', order:'dealer', floor:'dealer'
+  pact:'dealer', demand:'dealer', order:'dealer', floor:'dealer', bargain:'dealer'
 };
 var V19_TEMPER = .6;
 /* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
@@ -9129,7 +9129,6 @@ function v21Concede(st, ref) {
    `enrichState`, which is the trap S21d walked into with `v21Concede`. */
 function v21Rejoin(st, pid, d) {
   if (!d) return d;
-  d.former = false;
   d.walkedOut = null;
   d.defected = null;
   d.pressure = null;
@@ -9140,6 +9139,27 @@ function v21Rejoin(st, pid, d) {
   if (d.ledger) d.ledger.push({ turn:st.turn, kind:'altered', ref:null,
     why:'they came back, and a new agreement was signed', cost:0 });
   return d;
+}
+/* S21g — WHO THE GOVERNMENT HAS A WRITTEN AGREEMENT WITH, in one place.
+   `st.confidence` is a party that keeps a minority government alive without
+   sitting in it, and it has been in this file since S17e: it abstains in
+   every confidence vote, it is counted onto the government's benches for a
+   division, it is printed on the Chamber page. What it never had was an
+   AGREEMENT. `v17Supply` builds an offer of three concessions, prices it,
+   asks the party, and then `v17Rotation` returns `offers:r.offers` -- the
+   COALITION's offers -- so the thing the supply party accepted was thrown
+   away at the moment it said yes. Nothing was written down, so nothing could
+   be broken, so a party supplying confidence and supply could not withdraw it
+   for a reason. `st.court.size` in the other direction: not a field nothing
+   reads, but a bargain nothing records.
+   Four sites asked "is this party in `st.coalition`" to mean "does this party
+   have an agreement with the government", and this is that question with a
+   name. Chunk 1 because `pv5EnsureState` is one of them and it runs inside
+   `enrichState` at load -- the trap S21d walked into. */
+function v21Signed(st) {
+  var co = (st.coalition || []).slice();
+  if (st.confidence && co.indexOf(st.confidence) < 0) co.push(st.confidence);
+  return co;
 }
 /* WHAT A CONCESSION ASKS FOR, and the one place that decides it. A promise
    with a `from` asks for one rung of it; a promise carried in a save from
@@ -10293,7 +10313,7 @@ var V18_PAPER_NEED = {
      between the houses, are both things a partner does. They are 'gov'. */
   coalition_review:'gov', senate_conference:'gov', coalition_demand:'leading',
   confidence_threat:'leading', governors_conference:'leading',
-  coalition_ultimatum:'leading',
+  coalition_ultimatum:'leading', notice_of_motion:'leading',
   cross_party:'any', faction_demand:'any', party_demand:'any',
   street_demand:'gov', opposition_conference:'any', government_offer:'any'
 };
@@ -10371,6 +10391,20 @@ function inboxChoices(it) {
     { id:'deliver', label:'Lay the bill they were promised', cost:5, tip:'The outstanding promise goes on the order paper this session.' },
     { id:'rewrite', label:'Reopen the agreement and rewrite it', cost:4, money:5, tip:'Trade a promise neither side will keep for one they still want.' },
     { id:'stand', label:'Tell them to go if they are going', cost:0, tip:'They may leave the government.' }
+  ];
+  /* S21g: THE SESSION BETWEEN THE NOTICE AND THE QUESTION, WITH BUTTONS ON
+     IT. The whole design of the motion is that the government gets one
+     session; a notice with nothing to press would have made that session a
+     sentence in a news item. These are the two things an engine can do about
+     the same arithmetic -- buy a wavering partner back, or find somebody
+     outside to supply confidence -- put on the paper the player reads. */
+  if (it.type === 'notice_of_motion') return [
+    { id:'shore', label:'Buy the wavering benches back', cost:5, money:8,
+      tip:'The largest partner below the line that turns its benches is brought back above it.' },
+    { id:'supply', label:'Go outside for confidence and supply', cost:4, money:10,
+      tip:'A party outside the cabinet is offered policy for an abstention. They may refuse.' },
+    { id:'face', label:'Let the question be put', cost:0,
+      tip:'Unity rises for standing on it. The house is counted at the next sitting either way.' }
   ];
   if (it.type === 'opposition_conference') return [
     { id:'constructive', label:'Constructive scrutiny', cost:2, tip:'Institutional standing and committee influence.' },
@@ -10502,7 +10536,19 @@ function respondInbox(id, choice) {
     }
   } else if (it.type === 'confidence_threat') {
     if (choice === 'concede') { shiftPartyRel(S, from, 18); S.unity = c100(S.unity - 5); }
-    if (choice === 'renegotiate') { shiftPartyRel(S, from, 11); S.confidence = from; }
+    /* S21g: "Reopen the coalition agreement" REOPENS THE AGREEMENT. It read
+       `S.confidence = from` -- naming a party that is sitting IN the cabinet
+       as the one supplying the government confidence from outside it, which
+       is not a thing that can be true. `v17ConfidenceVote` tests coalition
+       membership first, so the write did nothing there; what it did do was
+       make `st.confidence` a field that could name a cabinet party, which
+       this slice's whole supply agreement now hangs off. Its S21f twin, the
+       ultimatum's "reopen the agreement and rewrite it", calls the right
+       function; this one now does the same, and a refusal is audible. */
+    if (choice === 'renegotiate') {
+      shiftPartyRel(S, from, 11);
+      if (typeof v17Renegotiate === 'function') v17Renegotiate(S, from);
+    }
     if (choice === 'dare') {
       /* S21f: through the one door. This filtered the coalition and patched
          `st.partner` and did nothing else -- no record, no standing, no
@@ -10511,6 +10557,50 @@ function respondInbox(id, choice) {
          been dared out with. */
       if ((S.partyRel[from] || 0) < 28) v21Leave(S, from, 'they were dared to bring the government down, and did', playParty(S));
       else shiftPartyRel(S, from, -10);
+    }
+  } else if (it.type === 'notice_of_motion') {
+    /* S21g. Each of the three reaches a mechanism that already exists and
+       moves the count the question is decided on; none of them touches
+       `st.motion`, because the motion owns its own date and a second
+       mechanism holding it is what `expireInbox` and the street taught this
+       file. `defected` is not cleared by hand either -- `v16RedLineTick` owns
+       that flag and runs at the top of the very session the question is put,
+       so raising the cohesion is enough and the tick does the rest. */
+    if (choice === 'shore') {
+      var wob = (S.coalition || []).filter(function (x) {
+        var dw = (S.coalitionDeals || {})[x];
+        return x !== S.ruling && dw && (dw.satisfaction === undefined ? 60 : dw.satisfaction) < V21_PARTNER_PIVOT;
+      }).sort(function (a, b) { return (S.seats[b] || 0) - (S.seats[a] || 0); })[0];
+      if (wob) {
+        var dw2 = S.coalitionDeals[wob];
+        dw2.satisfaction = c100(Math.max(dw2.satisfaction || 0, V21_PARTNER_PIVOT + 5));
+        dw2.pressure = 0; dw2.pressureAt = S.turn;
+        shiftPartyRel(S, wob, 10);
+        logIt(S, 'The ' + PARTY[wob].short + ' were brought back into line before the question was put.');
+      } else {
+        /* the S12 defect: taking the capital and doing nothing is worse than
+           saying there was nothing to do */
+        flash('No partner is below the line at which its benches turn. The movers are counting on votes you already have.');
+        S.unity = c100(S.unity + 3);
+      }
+    }
+    if (choice === 'supply') {
+      var sup = (typeof v17Supply === 'function')
+        ? v17Supply(S, S.ruling, (S.coalition || [S.ruling]).slice(), 0, null) : null;
+      if (sup && sup.id) {
+        S.confidence = sup.id;
+        if (typeof v21SignDeal === 'function' && sup.offer) v21SignDeal(S, sup.id, sup.offer);
+        logIt(S, 'The ' + PARTY[sup.id].short + ' agreed to abstain, and were told what it would cost the programme.');
+        addNews(S, 'The Chamber', PARTY[sup.id].short + ' will abstain',
+          'No offices and no cabinet. The government has the numbers it needs for the question and has paid in statute for them.', 'watch');
+      } else {
+        flash('Nobody outside the cabinet will hold this government up at any price.');
+      }
+    }
+    if (choice === 'face') {
+      S.unity = c100(S.unity + 6);
+      S.machine[playParty(S)] = clamp((S.machine[playParty(S)] || 0) + .03, -.8, 1);
+      logIt(S, 'The government let the question be put without buying a single vote for it.');
     }
   } else if (it.type === 'opposition_conference') {
     var me = playParty(S);
@@ -13102,26 +13192,31 @@ var ACTIONS = [
          S16e's cohesion a number worth watching. A government that falls does
          not go straight to the country either: the same Assembly is asked
          whether it can produce another one, and sometimes it can. */
-      { label:'Force a vote of no confidence', cost:11,
+      /* S21g: AND IT GIVES NOTICE LIKE EVERYBODY ELSE. This put the question
+         the instant it was pressed -- no notice, no session for the
+         government, and its own inline copy of what a failed motion costs
+         (capital -4 and machine +.05, written nowhere else). So the player's
+         instrument and the engines' were two rules for one surface, and the
+         player's was both cheaper and strictly better: a government facing the
+         player could not do the one thing the whole design gives a government
+         facing an engine, which is a week to make the arithmetic wrong.
+         `v21LayMotion` lays it, `v21MotionTick` puts it, and `v21Confidence`
+         decides it and charges for it, for the player exactly as for the six
+         parties that are not theirs. */
+      { label:'Give notice of no confidence', cost:11,
         run:function (S) {
+          var me = playParty(S);
           if (!lowerSits(S)) { flash('There is no Assembly sitting to put the question to.'); return; }
-          var v = (typeof v17ConfidenceVote === 'function') ? v17ConfidenceVote(S) : null;
-          if (!v) return;
-          logIt(S, 'The question was put: ' + v.nay + ' against the government, ' + v.aye + ' for' +
-            (v.abstain ? ', ' + v.abstain + ' abstaining' : '') + '.' +
-            (v.defectors.length ? ' The ' + v.defectors.map(function (x) { return PARTY[x].short; }).join(' and ') +
-              ' voted against a government they sit in.' : ''));
-          if (v.carried) {
-            chronicle(S, 'A government fell on a vote of confidence.');
-            var out = v17Refound(S);
-            S = enrichState(S, false);
-            if (!out.ok) toast('The government fell. Nobody can replace it.');
-            else toast('The government fell.');
-          } else {
-            S.capital = clamp(S.capital - 4, -5, capCap(S));
-            S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) + .05, -.8, 1);
-            logIt(S, 'The confidence motion failed and the government is stronger for it.');
-          }
+          if (S.motion) { flash('A motion is already before the house. The question is put at the next sitting.'); return; }
+          /* no "a government does not move against itself" guard here: the
+             card's own `can` is `!inPower(S)`, and `standing` calls a supply
+             party in power too, so it could not be reached and would be a
+             guard nothing in the game can turn */
+          var c = (typeof v21Count === 'function') ? v21Count(S) : null;
+          if (!v21LayMotion(S, me)) { flash('The question cannot be put.'); return; }
+          toast(c && c.carried
+            ? 'Notice given. On your own count it carries. The government has until the next sitting.'
+            : 'Notice given. The government has until the next sitting.');
         } }
     ] }),
   A({ id:'courtLeader', cat:'Figures', name:'Court a Rival Leader', cost:6, money:6, cool:1,
@@ -13915,6 +14010,10 @@ function endTurn() {
   if (typeof v17CourtTick === 'function') v17CourtTick(S);
   /* S17q: and what the country outside the chamber is doing about it. */
   if (typeof v17StreetTick === 'function') v17StreetTick(S);
+  /* S21g: and the question, if one was given notice of last session. It runs
+     AFTER the street and the court so that everything the government did with
+     its session is on the board before the house is counted. */
+  if (typeof v21MotionTick === 'function') v21MotionTick(S);
   var fired = pickEvents();
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
@@ -16579,12 +16678,16 @@ function pv5EnsureState(st, fresh) {
      S21f: the reset is `v21Rejoin` and this is one of its two callers. It was
      written out longhand here, and the slice that added `defected` and
      `pressure` to the agreement did not know to come back and add them. */
-  (st.coalition||[]).forEach(function(pid){
+  /* S21g: `v21Signed`, not `st.coalition`. A party supplying confidence and
+     supply has an agreement with the government and does not sit in it, and
+     both of these loops meant the first thing while asking the second, so a
+     supply agreement was minted and then never backfilled or ticked again. */
+  v21Signed(st).forEach(function(pid){
     var d=st.coalitionDeals[pid];
     if(!d||!d.walkedOut)return;
     v21Rejoin(st,pid,d);
   });
-  (st.coalition||[]).forEach(function(pid){
+  v21Signed(st).forEach(function(pid){
     var wants=pv5TopWants(pid,st,4);
     if(!st.coalitionDeals[pid]){
       st.coalitionDeals[pid]={satisfaction:clamp(st.partyRel[pid]||55,20,85),councils:0,portfolios:0,
@@ -16605,7 +16708,7 @@ function pv5EnsureState(st, fresh) {
             return wants.slice(0,2).every(function(w){return w.id!==r.id;});})[0]||wants[3];
           return rub?[{kind:'refrain',ref:rub.id,due:null,met:false,broken:false}]:[];})()),
         redLines:d.redLine?[d.redLine]:[],
-        confidence:pid===st.ruling?'leads':'cabinet'
+        confidence:pid===st.ruling?'leads':pid===st.confidence?'supply':'cabinet'
       };
     }
     if(!d.ledger)d.ledger=[];
@@ -16613,7 +16716,15 @@ function pv5EnsureState(st, fresh) {
     /* the legacy scalar mirrors the list, so v16RedLineTick is unchanged */
     if(d.terms.redLines&&d.terms.redLines.length)d.redLine=d.terms.redLines[0];
   });
-  Object.keys(st.coalitionDeals).forEach(function(pid){if((st.coalition||[]).indexOf(pid)<0)st.coalitionDeals[pid].former=true;});
+  /* S21g: AND `d.former` IS GONE. It was set here for every agreement whose
+     party is not in the government, cleared in `v21Rejoin` and in
+     `v21SignDeal`, set again in `v21Leave` -- four writers, and a grep of 3.8
+     megabytes finds NO READER. `st.court.size` exactly: a field the code
+     maintains carefully and consults nowhere, which later readers reason about
+     as though it did something. Found by this slice's own poison run, where
+     making the line wrong on purpose changed nothing anywhere. What it was
+     trying to say is said by `d.walkedOut`, which `pv5EnsureState` reads to
+     decide that a party coming back signs a new agreement. */
   /* S15f: warChest is gone. It was a party purse with one earner, one
      three-point deduction and a single read capped at 30 and weighted .09,
      and nothing in the file ever paid for a party action out of it. What it
@@ -34616,8 +34727,15 @@ viewWorld = function () {
    it: one number per card, in one place. `roads.js` fails if a deck card has
    no entry or an entry names no card -- the guard `V17_MEMORY` and
    `V19_RIVAL_WORTH` already carry and this table escaped. */
+/* S21g: `topple` is the dearest thing in the deck and `bargain` sits beside
+   the pact it resembles. Moving no confidence is the most consequential act an
+   opposition party has -- it can end a government in a session -- and the
+   price is what stops a party with a full purse laying one every other week.
+   It is priced above `organise` (42), the previous ceiling, because organising
+   buys a party a slow advantage and this ends somebody else's government. */
 var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
-  pact:34, demand:16, bill:38, article:34, order:22, floor:12 };
+  pact:34, demand:16, bill:38, article:34, order:22, floor:12,
+  topple:48, bargain:30 };
 /* the cheapest thing in the deck, DERIVED rather than named. `v18Tempo` read
    `V16_AI_COST.demand` (16) under a comment calling it "the cheapest card in
    the deck" -- and `floor` costs 12, so a party holding 14 was throttled to a
@@ -35300,6 +35418,88 @@ var V16_AI_DECK = [
           (d.dir > 0 ? 'carry ' : 'withdraw ') + POL[d.policy].name +
           '. They have not said what follows if it is refused, which is itself an answer.' });
       return 'The ' + PARTY[pid].short + ' put ' + POL[d.policy].name + ' to the government in writing.';
+    } },
+  /* S21g — MOVE NO CONFIDENCE. `v17ConfidenceVote` and `v17Refound` had one
+     caller each and it was the player's own button; this is the other one.
+     Gated on `v19Thinks` per R2, so the deck at `instinct` is the eleven it
+     shipped with and a republic on the floor setting plays exactly as before.
+     THE COUNT IS MADE BEFORE THE NOTICE IS LAID and the question is put a
+     session later, so a party moves only where the house as it stands would
+     carry it -- and loses where the government spent the week making that
+     false. That is what makes a failed motion reachable at all. */
+  /* `restive` IS NOT ON THIS LIST and cannot be: `v16Posture` returns it only
+     for a party sitting IN the coalition, and `v21CanMove` refuses one. A
+     posture a card's own gate can never coincide with is the enum with one
+     value in a third place. Same for `partner` on the card below. */
+  { id:'topple', post:['attack', 'consolidate', 'organise'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (!v21CanMove(st, pid)) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.topple) return false;
+      return v21Count(st).carried;
+    },
+    run:function (st, pid) {
+      if (!v21LayMotion(st, pid)) return null;
+      v16AiPay(st, pid, V16_AI_COST.topple);
+      return 'The ' + PARTY[pid].short + ' gave notice of a motion of no confidence.';
+    } },
+  /* S21g — SELL THE GOVERNMENT ITS MAJORITY. The other half of the same
+     arithmetic: a party that can see a government short of the house can hold
+     it up instead of bringing it down. `d.terms.confidence` has carried the
+     string 'cabinet' since S17e and nothing has ever written the second value,
+     which makes it a field with one state -- the shape this file calls a mode
+     with one value. Supply is that second state, and it is paid for in policy
+     rather than in offices, which is the difference between confidence and
+     supply and a place at the table. */
+  { id:'bargain', post:['hold', 'moderate', 'consolidate'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (!pid || pid === st.ruling || st.banned[pid]) return false;
+      if ((st.coalition || []).indexOf(pid) >= 0) return false;
+      if (st.confidence) return false;                   /* somebody already supplies it */
+      if (partyPurse(st, pid) < V16_AI_COST.bargain) return false;
+      if (!(st.seats[pid] || 0)) return false;
+      /* ONE COUNT OF THE HOUSE, READ FROM BOTH SIDES. This asked whether the
+         coalition held fewer seats than a majority, which is a different
+         question from the one `topple` asks and answers it wrong in both
+         directions: a government whose partner has withdrawn the whip is
+         losing the house on a nominal majority, and a government the
+         opposition cannot unite against is safe without one. Both cards read
+         `v17ConfidenceVote` now, so the board on which one party moves to
+         bring a government down is the board on which another can sell it the
+         votes to survive -- which is what the government's session between
+         the notice and the question is FOR. */
+      if (!v17ConfidenceVote(st).carried) return false;
+      /* AND WHETHER IT IS WORTH DOING IS NOT ASKED HERE. The first build
+         demanded that this party's own benches flip the count on their own,
+         which took the card from 22 openings in 480 sessions to 7 -- and it
+         was a second rule for a surface that already has one. `v19Outcome`
+         prices the agreement through `v19Flight`, which reads the supplier's
+         SHARE of the chamber, so a party holding a twentieth of the house
+         scores it at a twentieth of a party holding a quarter and the softmax
+         does the rest. A hard gate in front of a scoring function is the
+         defect this same slice took out of `v17ConfidenceVote`. And a party
+         that supplies a government which falls anyway has made a bad bet,
+         which is the same outcome as a motion that fails: both are what the
+         price is for. */
+      /* and only where the two can live with each other at all */
+      return dist2(ppos(st, pid), ppos(st, st.ruling)) <= V17_UNBRIDGEABLE;
+    },
+    run:function (st, pid) {
+      var want = pv5TopWants(pid, st, 3)[0]; if (!want) return null;
+      v16AiPay(st, pid, V16_AI_COST.bargain);
+      /* set BEFORE the agreement is signed, because `v21SignDeal` is reached
+         from `pv5EnsureState` as well and the mode it writes is read off the
+         board -- and because a supply party whose deal is minted while
+         `st.confidence` is still null is marked `former` on the next enrich */
+      st.confidence = pid;
+      v21SignDeal(st, pid, { to:pid, from:st.ruling, share:0, portfolios:0, offices:0,
+        concessions:[v21Concede(st, want.id)], redLines:[], confidence:'supply' });
+      logIt(st, 'The ' + PARTY[pid].short + ' agreed to supply the ' + PARTY[st.ruling].short +
+        ' government with confidence, in exchange for ' + POL[want.id].name + '.');
+      addNews(st, 'The Chamber', PARTY[pid].short + ' will keep the government up',
+        'No offices and no cabinet: the price is ' + POL[want.id].name + ', and it is written down.', 'watch');
+      return 'The ' + PARTY[pid].short + ' sold the government its majority for ' + POL[want.id].name + '.';
     } }
 ];
 /* Who a party would stand down for: nearest in position, out of government,
@@ -35449,7 +35649,9 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return (g.dir > 0 ? 'Carrying ' : 'Repealing ') + (POL[g.ref] ? POL[g.ref].name : g.ref);
     },
-    worth:{ bill:1, demand:.9, floor:.8, article:.2, campaign:.35, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2 }
+    worth:{ bill:1, demand:.9, floor:.8, article:.2, campaign:.35, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2,
+      /* S21g: supply is BOUGHT with a statute, so it is the second-best road to one; ending the government is a long way round to it */
+      bargain:.55, topple:.2 }
   },
   {
     id:'office',
@@ -35471,7 +35673,9 @@ var V19_GOALS = [
     dead:function (st, pid, g) { return !DEPTS[g.ref]; },
     progress:function (st, pid, g) { return clamp(v17Share(st, pid) * 2, 0, .95); },
     say:function (st, pid, g) { return 'Taking the ' + (DEPTS[g.ref] ? DEPTS[g.ref].name : g.ref); },
-    worth:{ campaign:1, organise:.85, court:.7, platform:.5, attack:.45, bill:.15, article:.2, demand:.25, floor:.2, order:.3, pact:.6 }
+    worth:{ campaign:1, organise:.85, court:.7, platform:.5, attack:.45, bill:.15, article:.2, demand:.25, floor:.2, order:.3, pact:.6,
+      /* a government that falls is a cabinet re-formed, which is where offices come from */
+      topple:.6, bargain:.35 }
   },
   {
     id:'enter',
@@ -35485,7 +35689,9 @@ var V19_GOALS = [
     dead:function (st, pid) { return false; },
     progress:function (st, pid) { return clamp(v17Share(st, pid) * 2.4, 0, .95); },
     say:function (st, pid) { return 'Getting into the government'; },
-    worth:{ organise:1, campaign:.9, court:.75, platform:.8, pact:.7, demand:.5, bill:.2, floor:.35, article:.2, attack:.15, order:.2 }
+    worth:{ organise:1, campaign:.9, court:.75, platform:.8, pact:.7, demand:.5, bill:.2, floor:.35, article:.2, attack:.15, order:.2,
+      /* both are roads INTO a government: one re-forms it, the other buys a foot in the door without a cabinet seat */
+      bargain:.9, topple:.8 }
   },
   {
     id:'oust',
@@ -35536,7 +35742,9 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return 'Bringing down the ' + (PARTY[g.ref] ? PARTY[g.ref].short : g.ref);
     },
-    worth:{ attack:1, floor:.8, campaign:.7, pact:.65, bill:.25, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2 }
+    worth:{ attack:1, floor:.8, campaign:.7, pact:.65, bill:.25, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2,
+      /* the goal is to bring a party in the government DOWN, and this is the instrument that does it rather than one that harms them */
+      topple:1, bargain:0 }
   },
   {
     id:'ground',
@@ -35565,7 +35773,8 @@ var V19_GOALS = [
       var b = BLOCS.filter(function (x) { return x.id === g.ref; })[0];
       return 'Winning over ' + (b ? b.name.toLowerCase() : g.ref);
     },
-    worth:{ court:1, platform:.75, campaign:.6, organise:.5, bill:.2, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2 }
+    worth:{ court:1, platform:.75, campaign:.6, organise:.5, bill:.2, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2,
+      topple:.25, bargain:.15 }
   },
   {
     id:'build',
@@ -35583,7 +35792,8 @@ var V19_GOALS = [
       return clamp((have - from) / span, 0, 1);
     },
     say:function (st, pid) { return 'Building the party organisation'; },
-    worth:{ organise:1, campaign:.5, court:.45, platform:.3, demand:.25, bill:.12, floor:.2, article:.15, attack:.2, order:.2, pact:.3 }
+    worth:{ organise:1, campaign:.5, court:.45, platform:.3, demand:.25, bill:.12, floor:.2, article:.15, attack:.2, order:.2, pact:.3,
+      topple:.2, bargain:.2 }
   },
   {
     id:'charter',
@@ -35616,7 +35826,9 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return 'Carrying the ' + (V11_ART[g.ref] ? V11_ART[g.ref].name.replace(/^Article of the /, 'Article of the ') : g.ref);
     },
-    worth:{ article:1, floor:.5, campaign:.4, organise:.4, court:.35, bill:.2, demand:.3, platform:.3, attack:.2, order:.25, pact:.3 }
+    worth:{ article:1, floor:.5, campaign:.4, organise:.4, court:.35, bill:.2, demand:.3, platform:.3, attack:.2, order:.25, pact:.3,
+      /* an article needs a chamber that will carry it, which is a government question */
+      topple:.3, bargain:.35 }
   }
 ];
 function v19GoalKind(id) {
@@ -35923,7 +36135,15 @@ var V19_RIVAL_WORTH = {
   order:    .15,
   floor:    .55,
   demand:   .35,
-  bill:     .50   /* a rival's statute is contested on the order paper */
+  bill:     .50,  /* a rival's statute is contested on the order paper */
+  /* S21g: the sharpest thing on the board against a rival, because it does
+     not contest what they are doing -- it ends the government they are doing
+     it from. Above `attack` (.85), which is the previous ceiling and only
+     damages a party's machine. */
+  topple:   1,
+  /* and its opposite: propping the government up is a deal with the party in
+     office, which does nothing at all TO a rival */
+  bargain:  0
 };
 
 /* ---------- THE CHOOSER ----------
@@ -36028,6 +36248,31 @@ var V21_FLIGHT = 2.5;
 var V21_ART_TOP = 26;      /* `artAbolishUpper`, the dearest article */
 var V21_PACT_TOP = .25;    /* a partner holding a quarter of the chamber */
 var V21_PUSH_FULL = .25;   /* the compass distance a full platform step moves */
+/* S21g — AND THE THREE THE OBJECTIVE STILL COULD NOT SEE.
+
+   `order` came back a price list on 101 of its 102 rehearsals: the card signs
+   an executive order, `v19Standing` read nothing about one, so a party clever
+   enough to rehearse concluded that signing was worth exactly minus its cost.
+   That was recorded in PLAN-S21.md as a gap waiting for a slice that could pay
+   for a term. The two cards this slice adds would have arrived the same way --
+   a motion on the paper and an agreement to supply are things in flight
+   exactly as a bill and a pact are -- so all three are priced together. Two
+   new cards with no term is the flatness gate going from `<= 2` to `<= 4`,
+   which is the assertion giving up.
+
+   BOTH DENOMINATORS ARE MEASURED IN PLAY, not picked by eye, AND EACH IS
+   MEASURED THROUGH THE READING THE TERM ACTUALLY TAKES. Over 480 driven
+   sessions on twelve seeds: `v17AiOrderFor` returned NINE distinct orders in
+   618 askings, costing 3 to 7 against a book whose dearest is 8, so the term
+   takes four values rather than one; and across the 153 boards on which a
+   mover's own count carries, `(nay - aye) / (nay + aye)` runs .027 / .240 /
+   .312 / .395. The first version of this number was .4 too, and it was read
+   off the HOUSE's count over a denominator that included abstentions -- a
+   different statistic that happened to land in the same place. A denominator
+   that clipped at the median would make three motions in five worth the same,
+   which is the flat card wearing a new hat. */
+var V21_ORDER_TOP = 8;     /* the dearest orders in the book */
+var V21_MOTION_TOP = .4;   /* a motion carrying by two fifths of the house */
 function v21Price(id) { return (V16_AI_COST[id] || 0) * .012 * V21_FLIGHT; }
 /* how a bill sits with a party: +1 if it moves a statute the party's OWN table
    names toward where the party wants it, -1 if away, 0 if it is not on the
@@ -36069,6 +36314,37 @@ function v19Flight(st, pid) {
   if (ps) u += v21Price('platform') *
     Math.min(1, Math.sqrt(ps.e * ps.e + ps.a * ps.a) / V21_PUSH_FULL);
   (st.inbox || []).forEach(function (it) { if (it.from === pid) u += v21Price('demand'); });
+  /* AN ORDER THIS PARTY SIGNED, still standing. Read straight off `st.v10`
+     rather than through `v10Orders`, which is created-on-write and would
+     install the register on the LIVE campaign every time a party was scored --
+     the `v6TreatyRows` mistake, in the one function guaranteed to make it. */
+  var reg = ((st.v10 || {}).orders) || {};
+  for (var ok in reg) {
+    var rec = reg[ok];
+    if (!rec || rec.by !== pid) continue;
+    if (rec.status !== 'inforce' && rec.status !== 'laid') continue;
+    var od = v10OrderOf(ok);
+    if (od) u += v21Price('order') * Math.min(1, (od.cost || 0) / V21_ORDER_TOP);
+  }
+  /* A MOTION THIS PARTY HAS ON THE PAPER, worth the margin it was counted at.
+     The tally is the one printed on the notice, which is the tally the mover
+     could see -- what the government does with the session it has been given
+     is the thing the mover does not know yet. */
+  var mo = st.motion;
+  if (mo && mo.by === pid) {
+    var tot = (mo.countedAye || 0) + (mo.countedNay || 0);
+    u += v21Price('topple') * (tot
+      ? Math.min(1, Math.max(0, (mo.countedNay - mo.countedAye) / tot) / V21_MOTION_TOP)
+      : 0);
+  }
+  /* AND A GOVERNMENT THIS PARTY IS KEEPING ALIVE, worth the benches it is
+     doing it with. Same denominator as the pact above and the same question
+     asked of the other side of the bargain: a party supplying a government out
+     of four per cent of the house has sold very little, and one doing it out
+     of a fifth is the reason the government exists. */
+  if (st.confidence === pid) {
+    u += v21Price('bargain') * Math.min(1, (v17Share(st, pid) || 0) / V21_PACT_TOP);
+  }
   return u;
 }
 function v19Standing(st, pid) {
@@ -36632,7 +36908,11 @@ function v17DealScan(st, pid, d, kind, ref, actor, note) {
    the ledger the walkout now consults. */
 function v16RedLineTick(st) {
   if (!st.coalitionDeals) return;
-  (st.coalition || []).slice().forEach(function (pid) {
+  /* S21g: and the supply party's agreement is swept with the rest of them.
+     It was priced and accepted at the formation and then never written down,
+     so a government could break every promise it made to the party keeping it
+     alive and the party had no way to find out. */
+  v21Signed(st).slice().forEach(function (pid) {
     if (pid === st.ruling) return;
     var d = st.coalitionDeals[pid]; if (!d) return;
     /* ONE SHAPE, NORMALISED WHERE IT IS WRITTEN. A deal minted mid-session by
@@ -36643,7 +36923,8 @@ function v16RedLineTick(st) {
        This is a tick and may write; the scanner is a read and may not. */
     if (!d.terms && d.redLine) {
       d.terms = { offices:[], portfolios:d.portfolios || 0, concessions:[],
-        redLines:[d.redLine], confidence:pid === st.ruling ? 'leads' : 'cabinet' };
+        redLines:[d.redLine],
+        confidence:pid === st.ruling ? 'leads' : pid === st.confidence ? 'supply' : 'cabinet' };
     }
     var lines = (d.terms && d.terms.redLines && d.terms.redLines.length)
       ? d.terms.redLines : (d.redLine ? [d.redLine] : []);
@@ -36827,12 +37108,21 @@ function v21Pressure(st, pid, d) {
    itself walking out, the head of government putting it out, or null where the
    coalition simply dissolved and nobody is owed a grudge. */
 function v21Leave(st, pid, why, actor) {
-  if (!pid || (st.coalition || []).indexOf(pid) < 0) return false;
+  var inCo = (st.coalition || []).indexOf(pid) >= 0;
+  var supplies = !inCo && st.confidence === pid;
+  if (!pid || (!inCo && !supplies)) return false;
   var d = (st.coalitionDeals || {})[pid] || null;
+  /* S21g: WITHDRAWING SUPPLY IS LEAVING, and it goes through this door rather
+     than a second one. A party outside the cabinet that stops keeping the
+     government alive has done the same thing to the same agreement as a
+     partner walking out of the room -- and it is the sharper of the two,
+     because `v17ConfidenceVote` counts its abstention. S21f's whole finding
+     was that five ways out did half the job each; a sixth written somewhere
+     else would have been the sixth. */
+  if (supplies) st.confidence = null;
   st.coalition = (st.coalition || []).filter(function (x) { return x !== pid; });
   if (st.partner === pid) st.partner = st.coalition[1] || null;
   if (d) {
-    d.former = true;
     d.walkedOut = st.turn;
     /* ONE ENTRY, ON THE LEAVER'S OWN RECORD. `v17DealEvent(…'quit'…)` walked
        `st.coalition` and booked one `broken` per unmet concession on EVERY
@@ -36856,13 +37146,19 @@ function v17Walkout(st, pid, d) {
   var lines = (d.terms && d.terms.redLines && d.terms.redLines.length) ? d.terms.redLines : (d.redLine ? [d.redLine] : []);
   var over = lines.filter(function (r) { return POL[r]; })[0];
   var broke = v17Broken(st, pid), kept = v17Kept(st, pid);
-  if (!v21Leave(st, pid, over ? 'they walked out over ' + POL[over].name : 'they walked out of the government', st.ruling)) return;
-  logIt(st, 'The ' + PARTY[pid].short + ' left the government' +
+  /* asked BEFORE the door, because the door is what clears it */
+  var supplied = (st.coalition || []).indexOf(pid) < 0 && st.confidence === pid;
+  var verb = supplied ? 'withdrew confidence and supply' : 'left the government';
+  if (!v21Leave(st, pid, over ? 'they ' + verb + ' over ' + POL[over].name : 'they ' + verb, st.ruling)) return;
+  logIt(st, 'The ' + PARTY[pid].short + ' ' + verb +
     (over ? '. The red line was ' + POL[over].name + '.' : '.') +
     ' The agreement records ' + v8Plural(broke, 'broken promise') + ' against ' + kept + ' kept.');
-  addNews(st, 'The Coalition', PARTY[pid].short + ' leave the government',
-    'The partner has withdrawn. The arithmetic on the order paper changed this morning.', 'bad');
-  chronicle(st, 'The ' + PARTY[pid].short + ' left the government' + (over ? ' over ' + POL[over].name : '') + '.');
+  addNews(st, 'The Coalition', PARTY[pid].short + ' ' +
+    (supplied ? 'withdraw confidence and supply' : 'leave the government'),
+    supplied
+      ? 'The government is a minority again and there is nobody abstaining for it. A motion would carry this morning.'
+      : 'The partner has withdrawn. The arithmetic on the order paper changed this morning.', 'bad');
+  chronicle(st, 'The ' + PARTY[pid].short + ' ' + verb + (over ? ' over ' + POL[over].name : '') + '.');
 }
 
 /* ALTERATION. Changing an agreement is not breaking one, and the difference
@@ -38785,6 +39081,16 @@ function v17Build(st, lead, relax, pin) {
    agree not to bring it down, and it is a cheaper thing to ask for: no
    offices, no portfolios, concessions only, and a bar lowered by fourteen
    because nobody is being asked to sit in a cabinet they dislike. */
+/* S21g: THE OFFER ALREADY CAME BACK WITH THE ANSWER, and a line adding it
+   here was written and then taken out again -- `v17Accept` has returned
+   `offer:offer` since S17e, so `best.offer` was set before this slice and the
+   poison that removed the addition changed nothing. The thing that was
+   missing is one line up the stack: `v17Rotation` returned the COALITION's
+   `offers` and nothing carried this one, so the party said yes to three
+   concessions that were never written down, `v16RedLineTick` had nothing to
+   sweep, and a government could break every promise it made to the party
+   keeping it alive. What IS new here is `confidence:'supply'`, which is the
+   mode the agreement is signed under. */
 function v17Supply(st, lead, exclude, relax, pin) {
   var best = null;
   v17Eligible(st).forEach(function (pid) {
@@ -38792,7 +39098,7 @@ function v17Supply(st, lead, exclude, relax, pin) {
     var offer = { to:pid, from:lead, share:0, portfolios:0, offices:0,
       concessions:pv5TopWants(pid, st, 3).map(function (w) {
         return v21Concede(st, w.id);
-      }), redLines:[] };
+      }), redLines:[], confidence:'supply' };
     var ans = v17Accept(st, pid, lead, offer, (relax || 0) + V17_SUPPLY_RELIEF, pin);
     if (ans.yes && (!best || ans.value > best.value)) best = ans;
   });
@@ -38859,8 +39165,12 @@ function v17Rotation(st, pin) {
     rounds.push({ kind:'minority', formateur:order[i], co:r.co.slice(), seats:r.have,
       majority:maj, supply:sup.id, vote:v });
     if (v.invested) {
+      /* S21g: the supply party's own offer goes into the same envelope the
+         coalition's do, so `v17Install` signs all of them through one body */
+      var offs = {}; Object.keys(r.offers || {}).forEach(function (k) { offs[k] = r.offers[k]; });
+      if (sup.offer) offs[sup.id] = sup.offer;
       return { ok:true, how:'minority', lead:order[i], co:r.co, confidence:sup.id,
-        offers:r.offers, rounds:rounds };
+        offers:offs, rounds:rounds };
     }
   }
   var g = v17Grand(st, order, pin);
@@ -38908,9 +39218,13 @@ function v21SignDeal(st, pid, offer) {
   d.terms.portfolios = offer.portfolios;
   d.terms.concessions = offer.concessions;
   if (offer.redLines && offer.redLines.length) d.terms.redLines = offer.redLines.slice();
-  d.terms.confidence = 'cabinet';
+  /* S21g: THE MODE COMES FROM THE OFFER. It was the literal 'cabinet' here,
+     which made `d.terms.confidence` a field with one live value -- and the
+     first build of the supply card set it to 'supply' on the line AFTER this
+     one, which is a second owner of a field and how S21f's own defect
+     happened. What is agreed is decided where the offer is described. */
+  d.terms.confidence = offer.confidence || 'cabinet';
   d.redLine = (d.terms.redLines && d.terms.redLines[0]) || d.redLine || null;
-  d.former = false;
   if (typeof d.satisfaction !== 'number') d.satisfaction = c100(st.partyRel[pid] || 55);
   if (!d.ledger) d.ledger = [];
   return d;
@@ -39034,8 +39348,24 @@ function v17ConfidenceVote(st) {
     var n = st.seats[p.id] || 0; if (!n) return;
     if (co.indexOf(p.id) >= 0) {
       var d = deals[p.id];
-      var coh = (p.id === st.ruling || !d) ? 100 : (d.satisfaction === undefined ? 60 : d.satisfaction);
-      if (coh < 30) { nay += n; defectors.push(p.id); } else aye += n;
+      if (p.id === st.ruling || !d) { aye += n; return; }
+      /* S21g — THE SAME FACT THE DIVISION READS. This asked `satisfaction <
+         30`, a bare number with no relation to anything, while
+         `partyBillSupport` asks `d.defected` -- the flag S21f sets the session
+         a partner reaches its own walk floor and clears the session it is
+         bought back above it. Two rules for one surface, and they had drifted:
+         a partner that had publicly withheld the whip and was one session from
+         walking out still voted CONFIDENCE in the government, so the one week
+         in which a government is genuinely in danger was the one week this
+         count could not see it. Asked of the flag, and of the floor the flag
+         is set at -- which is `v17WalkFloor`, and moves with the record --
+         rather than of a constant. Belt and braces: a deal minted mid-session
+         by `joinCoalition` is below its floor before any tick has set the
+         flag, so removing either alone changes nothing and both are poisoned
+         together. */
+      var coh = (d.satisfaction === undefined) ? 60 : d.satisfaction;
+      var floor = (typeof v17WalkFloor === 'function') ? v17WalkFloor(st, p.id) : 30;
+      if (d.defected || coh <= floor) { nay += n; defectors.push(p.id); } else aye += n;
       return;
     }
     if (st.confidence === p.id) { abstain += n; return; }
@@ -39097,6 +39427,166 @@ function v17Refound(st) {
     logIt(st, 'The government fell and nothing could replace it. A caretaker holds office.');
   }
   return out;
+}
+
+/* ============================================================
+   S21g — A GOVERNMENT THAT CAN FALL
+   ============================================================
+   MEASURED BEFORE ANYTHING WAS WRITTEN: `v17ConfidenceVote` and `v17Refound`
+   had ONE caller each, and it was the player's own button. No engine in this
+   game could end a government. Six parties could hate a ministry, watch it
+   break every promise in the agreement, and the only thing that ever removed
+   one was a human pressing a card.
+
+   THE QUESTION IS PUT A SESSION AFTER IT IS MOVED, and that is the whole
+   design rather than a flourish. A mover with perfect information never loses
+   -- `v17ConfidenceVote` is deterministic given the board, so a party that
+   counts before it moves would carry every motion it ever laid, and "a failed
+   motion costs the mover" would be unreachable code. The notice gives the
+   GOVERNMENT a session: to keep a promise, to buy a partner back above its
+   walk floor, to lay the bill that was owed. So a motion fails when the
+   government did something about it, which is a reason rather than a dice
+   roll, and it needs no threshold picked by eye.
+
+   ONE OWNER OF THE DATE. `st.motion` owns the outcome and the paper reports
+   it: `expireInbox` clearing the notice does not cancel the question, because
+   two mechanisms holding one date is what `expireInbox` and the street taught
+   this file. */
+var V21_MOTION_COST = 9;      /* what a failed motion takes off the mover */
+var V21_MOTION_MACHINE = .07; /* and what surviving one is worth to a government */
+
+/* WHAT A MOVER COUNTS, which is not what the house does.
+
+   `v17ConfidenceVote` is the division: a coalition partner votes for the
+   government unless it has withdrawn the whip. This is the count an
+   opposition whip makes on the morning, and it is OPTIMISTIC in exactly one
+   place -- a partner whose benches have already stopped backing the
+   government's bills is a partner they think they can get. `V21_PARTNER_PIVOT`
+   is where that happens and it was measured for S21d: over 394 partner-
+   sessions cohesion runs 20 / 39.9 / 52.8 / 76, and the sign of the division
+   term flips at 38.
+
+   THE MOVER IS OFTEN WRONG AND THAT IS THE WHOLE POINT. A mover with perfect
+   information never loses and `V21_MOTION_COST` would be unreachable code.
+   Measured over 480 driven sessions on twelve seeds, three readings of one
+   house: it would ACTUALLY carry a motion on 50 sessions; counting a wavering
+   partner as HOSTILE says 153, and counting it as ABSENT says 105. The
+   hostile reading is the one here, and it was chosen on RECALL rather than
+   accuracy -- it catches 50 of the 50 boards on which a government would
+   really fall, where the absent reading is more accurate (.42 against .33)
+   and misses six of them. A government never escapes a motion it deserves,
+   and the movers pay for the two in three they get wrong: the government is
+   stronger for a failed one, on the same two channels.
+
+   The notice the government receives prints the TRUE count, because a whip's
+   office counts its own benches correctly. The asymmetry is the drama, not a
+   trick played on the player. */
+function v21Count(st) {
+  var co = st.coalition || [st.ruling], deals = st.coalitionDeals || {};
+  var aye = 0, nay = 0;
+  PARTIES.forEach(function (p) {
+    var n = st.seats[p.id] || 0; if (!n) return;
+    if (co.indexOf(p.id) >= 0) {
+      var d = deals[p.id];
+      var coh = (p.id === st.ruling || !d) ? 100 : (d.satisfaction === undefined ? 60 : d.satisfaction);
+      if (coh < V21_PARTNER_PIVOT) nay += n; else aye += n;
+      return;
+    }
+    if (st.confidence === p.id) return;        /* an abstention is not a vote either way */
+    nay += n;
+  });
+  return { aye:aye, nay:nay, carried:nay > aye };
+}
+
+/* WHO MAY PUT THE QUESTION. Not the government, not a party sitting in it,
+   not while another question is already before the house, and not where there
+   is no house sitting to put it to. */
+function v21CanMove(st, pid) {
+  if (!pid || pid === st.ruling) return false;
+  if ((st.coalition || []).indexOf(pid) >= 0) return false;
+  if (st.motion) return false;
+  if (typeof lowerSits === 'function' && !lowerSits(st)) return false;
+  return true;
+}
+
+/* LAYING THE NOTICE. The tally the mover counts is printed on it, and it is
+   the tally as it stands TODAY -- which is the point: the government has a
+   session to make it wrong. */
+function v21LayMotion(st, pid) {
+  if (!v21CanMove(st, pid)) return null;
+  var c = v21Count(st), v = v17ConfidenceVote(st);
+  st.motion = { by:pid, laid:st.turn, put:st.turn + 1,
+    countedNay:c.nay, countedAye:c.aye,                          /* what the mover counted */
+    houseNay:v.nay, houseAye:v.aye, houseAbstain:v.abstain };    /* and what the house is */
+  logIt(st, 'The ' + PARTY[pid].short + ' gave notice of a motion of no confidence. ' +
+    'On their own count it carries, ' + c.nay + ' to ' + c.aye +
+    '; the whips make it ' + v.nay + ' to ' + v.aye + '.');
+  addNews(st, 'The Chamber', PARTY[pid].short + ' move no confidence in the government',
+    'The question is put at the next sitting. The government has until then.', 'bad');
+  if (st.ruling === playParty(st)) {
+    addInbox(st, { type:'notice_of_motion', from:pid,
+      title:PARTY[pid].short + ' Give Notice of No Confidence',
+      body:'The question is put at the next sitting. Your own whips count the house ' +
+        v.nay + ' against the government to ' + v.aye + ' for' +
+        (v.abstain ? ', with ' + v.abstain + ' abstaining' : '') + ', which is ' +
+        (v.carried ? 'a defeat.' : 'a majority. The movers are counting on benches you still hold.') +
+        ' What you do between now and then is what decides it.',
+      deadline:st.turn + 1 });
+  }
+  return st.motion;
+}
+
+/* PUTTING IT. The second caller `v17ConfidenceVote` and `v17Refound` never
+   had. Counted on the board as it stands NOW, not as the notice printed it. */
+function v21Confidence(st, mover) {
+  var v = v17ConfidenceVote(st);
+  var was = st.ruling;
+  logIt(st, 'The question was put on the ' + PARTY[mover].short + '\'s motion: ' +
+    v.nay + ' against the government, ' + v.aye + ' for' +
+    (v.abstain ? ', ' + v.abstain + ' abstaining' : '') + '.' +
+    (v.defectors.length ? ' The ' + v.defectors.map(function (x) { return PARTY[x].short; }).join(' and ') +
+      ' voted against a government they sit in.' : ''));
+  if (v.carried) {
+    chronicle(st, 'A government fell on a motion moved by the ' + PARTY[mover].short + '.');
+    var out = v17Refound(st);
+    addNews(st, 'The Chamber', 'The government falls',
+      'The ' + PARTY[was].short + ' lost the confidence of the house on a motion moved by the ' +
+      PARTY[mover].short + '.' + (out.ok && out.lead !== was
+        ? ' The ' + PARTY[out.lead].short + ' formed a government out of the same Assembly.'
+        : out.ok ? ' The same arithmetic returned them to office.'
+        : ' Nothing could replace it, and a caretaker holds office.'), 'bad');
+    return { carried:true, vote:v, out:out };
+  }
+  /* A FAILED MOTION COSTS THE MOVER, which is what stops it being free to
+     try. The government is stronger for it, on the same two channels the
+     player's own card has used since S17f. */
+  st.purse = st.purse || {};
+  st.purse[mover] = Math.max(0, (st.purse[mover] || 0) - V21_MOTION_COST);
+  st.machine[st.ruling] = clamp((st.machine[st.ruling] || 0) + V21_MOTION_MACHINE, -.8, 1);
+  st.machine[mover] = clamp((st.machine[mover] || 0) - V21_MOTION_MACHINE * .5, -.8, 1);
+  if (typeof v16Resent === 'function') v16Resent(st, st.ruling, mover, 14);
+  logIt(st, 'The motion failed and the ' + PARTY[st.ruling].short + ' government is stronger for it.');
+  addNews(st, 'The Chamber', 'The government survives',
+    'The ' + PARTY[mover].short + ' counted the house wrong, or the government spent the week ' +
+    'making sure they had. Either way it stands.', 'good');
+  return { carried:false, vote:v, out:null };
+}
+
+/* THE TICK. Called from `endTurn`, and it owns the date: a notice whose paper
+   has lapsed still has its question put. */
+function v21MotionTick(st) {
+  var m = st.motion; if (!m) return null;
+  if (st.turn < m.put) return null;
+  st.motion = null;
+  /* the mover may have entered the government, been banned, or the house may
+     have been suspended between the notice and the sitting */
+  if (!m.by || st.banned[m.by] || m.by === st.ruling ||
+      (st.coalition || []).indexOf(m.by) >= 0 ||
+      (typeof lowerSits === 'function' && !lowerSits(st))) {
+    logIt(st, 'The motion of no confidence was not moved when the house sat.');
+    return null;
+  }
+  return v21Confidence(st, m.by);
 }
 
 /* ============================================================

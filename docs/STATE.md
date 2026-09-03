@@ -216,10 +216,110 @@ The four rulings a cold session most needs:
   S21d back measured .006 and .011, so .015 is the widest separation the
   measurement supports; .02 sat inside the noise.
 
-**WHAT IS OPEN:** six slices of the original twelve (S21g–S21l) plus the
-owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. S21g and S21h (a
-government that can fall, the junior partner's game) finish the coalition
-overhaul the brief names.
+- **S21g — a government that can fall.** Measured first: **`v17ConfidenceVote`
+  and `v17Refound` had ONE caller each, and it was the player's own button.**
+  Six parties could hate a ministry, watch it break every promise in the
+  agreement, and the only thing that ever removed one was a human pressing a
+  card. The deck goes to thirteen: `topple` gives notice of a motion of no
+  confidence, `bargain` sells a government the abstention that keeps it alive.
+  Both are behind `v19Thinks`, so `instinct` is still the eleven the game
+  shipped with (R2).
+
+  **The question is put a session AFTER the notice, and that is the design.**
+  `v17ConfidenceVote` is deterministic given the board, so a mover with perfect
+  information would carry every motion it ever laid and "a failed motion costs
+  the mover" would be unreachable code. The government's session is what makes
+  failure possible — and the government now has three things to do with it, on
+  the notice itself: buy the wavering benches back, go outside for confidence
+  and supply, or let the question be put. **The player's own card gives notice
+  like everybody else**; it used to put the question the instant it was pressed,
+  with no notice, no session for the government, and its own inline copy of what
+  a failed motion costs.
+
+  **Two readings of one house.** `v21Count` is the count an opposition whip
+  makes — a partner below `V21_PARTNER_PIVOT`, where its benches already stop
+  backing government bills, is a partner they think they can get — and
+  `v17ConfidenceVote` is the division. Measured over 480 driven sessions on
+  twelve seeds: the house would really carry on **50**, the hostile reading says
+  **153** and the gentler "they abstain" reading says **105**. The hostile one
+  was chosen on RECALL, catching 50 of the 50 boards on which a government would
+  really fall where the gentler one is more accurate (.42 against .33) and misses
+  six. A government never escapes a motion it deserves, and movers pay for the
+  two in three they get wrong.
+
+  **`v17ConfidenceVote` was two rules for one surface.** It asked
+  `satisfaction < 30`, a bare number with no relation to anything, while
+  `partyBillSupport` asks `d.defected` — the flag S21f sets the session a
+  partner withholds the whip. So a partner that had publicly withdrawn the whip
+  and was one session from walking out still voted CONFIDENCE, and the one week
+  in which a government is genuinely in danger was the one week the arithmetic
+  could not see.
+
+  **The supply agreement had never been written down.** `v17Supply` has built an
+  offer of three concessions, priced it and put it to the party at every
+  formation since S17e — and `v17Rotation` returned the COALITION's offers, so
+  the thing the party accepted was thrown away at the moment it said yes.
+  Nothing recorded, nothing breakable, so a party supplying confidence and
+  supply could not withdraw it for a reason. `v21Signed` is "who has an
+  agreement with the government" with a name, `d.terms.confidence` gets its
+  second live value (`'supply'`, where only `'cabinet'` ever occurred), and
+  withdrawing supply goes out through `v21Leave`, S21f's one door.
+
+  **Three more terms in the objective, and the flatness bar goes 2 → 1.**
+  `order` had been a price list at a modal share of .99 since S21c and was
+  recorded in `PLAN-S21.md` as a gap; the two new cards would have arrived the
+  same way. All three were priced together, because two new cards with no term
+  would have taken the bar to four — the assertion giving up. Denominators
+  measured in play: nine distinct orders in 618 askings costing 3 to 7 against
+  a book whose dearest is 8; the mover's margin runs .027 / .240 / .312 / .395
+  over 153 boards.
+
+  **Three things the poison run found in the code rather than the probe.**
+  `d.former` was written by four sites and read by NONE in 3.8 megabytes —
+  `st.court.size` exactly — and is deleted. The confidence threat's "reopen the
+  coalition agreement" set `S.confidence = from`, naming a party sitting IN the
+  cabinet as the one supplying the government from outside it; it calls
+  `v17Renegotiate` now, like its S21f twin. And `best.offer = offer` in
+  `v17Supply` was a change that was not a change — `v17Accept` has returned the
+  offer since S17e — so it was reverted rather than shipped.
+
+  **Five arms reddened, and the cause was one thing: this slice changes which
+  card an engine plays.** A build with the two cards and the three objective
+  terms switched off reproduces every pre-slice figure to the digit, so the
+  mechanisms those arms are about are untouched. Each was gated on a statistic
+  the deck's composition moves, and each is re-read against the claim it makes
+  in its own words — all five now pass on the build before this slice as well
+  as on this one, which is the property a re-shaped assertion has to have.
+
+  | arm | was gated on | pre → post | now |
+  |---|---|---|---|
+  | `a party moves when it has a reason to` | the unluckiest of five seeds ≥ 4 | all ≥ 4 → one at 3 | 12 seeds, the mean, and no seed at nought |
+  | `a party knows who is in its way` | `worth > p90` of a mostly-nought column | 9.8 > 9.6 → 9.3 vs 17.4 | above half the median LIVE grievance, below p75 |
+  | `the parties have characters` | a Pearson r over SIX points at .8 | .95 → .755 | the sign agreement, 4 of 6, with r reported |
+  | `a party does not wait for the season` | `clearShare > .7` | .818 → .693 | not gated: the bound has moved three times for one reason |
+  | `easy is a cakewalk` | the unluckiest of six, and a driver | see below | the mean, on a driver that holds elections |
+
+  **And the easy-tier arm was driving a republic that never went to the polls.**
+  S21g's motion is the only thing that can change a government where no election
+  runs, so seven refoundings against two elections took the tier's capital income
+  from 101.6 to 73.9 and looked exactly like a balance regression. Driven with
+  `runQueue` overridden — R9, this program's own ruling — the same two builds
+  read 61.6 and 60.1 on 120 elections each and no refoundings at all. The
+  corrected driver also says **two of S21b's easy-tier claims were measured on
+  that broken republic**: income sits at its floor on .80 of sessions rather
+  than .00, and the street reaches "most campaigns" on .167 rather than .500 —
+  both identical before and after this slice. S21b's actual defect (mean, min
+  and max all exactly 150, every term dead) is fixed and stays fixed; whether
+  `capFloor` should move again is recorded as the owner's, not taken as a rider.
+
+  **In play:** 7 notices over 960 driven sessions, 6 questions put, 1 carried;
+  the mover was right twice and wrong five times, which is what the price is
+  for. The rate is modest and conditional on a state the player controls: a
+  government whose coalition rots is a government that gets a notice.
+
+**WHAT IS OPEN:** five slices of the original twelve (S21h–S21l) plus the
+owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. S21h (the junior
+partner's game) finishes the coalition overhaul the brief names.
 
 ---
 
