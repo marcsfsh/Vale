@@ -809,6 +809,122 @@ function ppos(st, id) {
   return st.ppos[id];
 }
 function dist2(a, b) { var de = a.e - b.e, da = a.a - b.a; return Math.sqrt(de * de + da * da); }
+/* ============================================================
+   S21j — COURTING IS A RELATIONSHIP
+   ============================================================
+   MEASURED FIRST, THROUGH THE GAME'S OWN READER. `court` is one of thirteen
+   cards and the `ground` aim weights it 1.0, the highest weight any aim gives
+   any card -- it is the instrument for winning a bloc over. Read
+   `supportTargets(st)[pid]` either side of a real `court.run` over 480 driven
+   sessions and 2,678 of them:
+
+     a party IN GOVERNMENT   +0.70% mean, negative on .004 of runs
+     a party IN OPPOSITION   -0.89% mean, negative on ALL 1,683 of them
+
+   Not usually harmful. Harmful every single time, for every party out of
+   office, on its own best card. The cause is that `court.run` moves
+   `st.blocs[b]`, which is the country's ONE mood for that bloc, and
+   `supportTargets` reads a happier bloc as favouring whoever governs:
+   `appeal = .915 + (m - 50) / 80` for the ruling party against
+   `.784 - (m - 50) / 130` for a party outside it. A bloc courted by the
+   opposition is a bloc the government gets the credit for.
+
+   This file already knew: `v19Rival` carries the sentence "a bloc has one mood,
+   and two parties courting it are courting it away from each other". That is
+   the same fact read as a conflict rather than as a defect.
+
+   SO A PARTY NOW HAS ITS OWN STANDING WITH A BLOC. `st.blocLean[pid][bloc]` is
+   what courting builds, it is read in `affOf` -- the one function every bloc
+   calculation in this game goes through -- and it DECAYS SLOWLY where the
+   national mood reverts at .3 a session, which is why courting could never
+   accumulate: a season's work was two thirds gone before the next one began.
+   The national lift stays, because a party that courts a bloc really does
+   raise its mood; what changes is that the party doing the courting keeps
+   something the others do not. */
+/* SET BY SWEEPING IT, read through `supportTargets` either side of a real
+   `court.run` over 480 driven sessions on twelve seeds at each value:
+
+     gain   in government   in opposition   share of opposition runs that HELP
+     0        +0.698          -0.889          .000
+     .02      +1.281          -0.205          .450
+     .035     +1.652          +0.196          .722
+     .05      +2.026          +0.478          .742
+     .08      +2.773          +0.903          .690
+     .12      +3.626          +1.367          .634
+
+   .05 is where the share that helps is at its MAXIMUM. Above it the standing
+   feeds the national mood faster than it feeds the party, and the government's
+   share of the credit starts growing again -- the two columns keep the same
+   ratio because the slopes `supportTargets` reads are structural (+1/80 for
+   the party in office against -1/130 for one outside it) and no standing
+   closes that. What this constant has to do is make the card stop being
+   self-harming, and it does: never, at nought, against three times in four. */
+var V21_LEAN_GAIN = .05;    /* what one season of courting is worth */
+/* AND HOW FAST IT FADES, set against the CADENCE the aim is worked at rather
+   than by eye. A party holding `ground` plays `court` on .11 of its
+   aim-sessions -- about once in nine, because the aim weights that card 1.0 --
+   and the aim's own stall window is eight to sixteen sessions, so it gets ONE
+   or TWO seasons of courting and not three. Swept together with what the aim
+   asks for, over 720 driven sessions at each pair:
+
+     decay  asks for   reached / adopted   highest standing seen
+     .06      3x            .045                  .172
+     .06      2x            .327                  .161
+     .06      1.5x          .471                  .143
+     .03      3x            .129                  .242
+     .03      2x            .308                  .266
+     .03      1.5x          .500                  .220
+     .015     1.5x          .488                  .295
+     .008     1.5x          .459                  .298
+
+   An ask of one and a half seasons is best at EVERY decay, which is the
+   cadence saying so. Among those, .03 reads .500 against .426 for the aim as it
+   stood -- so it is reached about as often as before and now by the party's OWN
+   work rather than by the country's mood drifting under it. The two slower
+   decays read no better and push the highest standing to .295 against a cap of
+   .30, which is standing saturating: once every party holds every bloc the
+   number stops telling them apart. .06 is the other live option (.471) and it
+   is rejected on RANGE rather than on rate -- standing tops out at .143 there,
+   barely half the cap, and the bloc card reads standing against thirds of the
+   cap to say whether a party is listened to a little, well or closely, which
+   needs the range to exist. At .03 a standing's half-life is twenty-three
+   sessions where the national mood's is two. */
+var V21_LEAN_DECAY = .03;   /* a season's decay, against the national mood's .3 */
+var V21_LEAN_CAP = .30;     /* and where standing stops */
+
+/* A READ MUST NOT CREATE. `v6TreatyRows` installed an empty record for every
+   power it was asked about and one panel asked about all eleven every render,
+   so a record's test became "eleven powers exist". This is asked for every
+   party and every bloc on every support calculation, which is the same shape
+   several times over. */
+function v21Lean(st, pid, bid) {
+  var m = st && st.blocLean; if (!m) return 0;
+  var r = m[pid]; if (!r) return 0;
+  var v = r[bid];
+  return typeof v === 'number' && isFinite(v) ? v : 0;
+}
+function v21Court(st, pid, bid, n) {
+  if (!st.blocLean) st.blocLean = {};
+  if (!st.blocLean[pid]) st.blocLean[pid] = {};
+  var was = st.blocLean[pid][bid] || 0;
+  st.blocLean[pid][bid] = clamp(was + n, -V21_LEAN_CAP, V21_LEAN_CAP);
+  return st.blocLean[pid][bid];
+}
+/* AND IT FADES. A relationship nobody keeps up is a relationship that ends,
+   and without this the cap is the only thing standing between a long campaign
+   and every party holding every bloc. */
+function v21LeanTick(st) {
+  var m = st && st.blocLean; if (!m) return;
+  Object.keys(m).forEach(function (pid) {
+    var r = m[pid]; if (!r) { delete m[pid]; return; }
+    Object.keys(r).forEach(function (bid) {
+      var v = (r[bid] || 0) * (1 - V21_LEAN_DECAY);
+      if (Math.abs(v) < .004) delete r[bid]; else r[bid] = v;
+    });
+    if (!Object.keys(r).length) delete m[pid];
+  });
+}
+
 function affOf(st, id, bid) {
   var base = PARTY[id].aff[bid] || 0;
   var d = dist2(ppos(st, id), BLOC[bid].pos);
@@ -12018,7 +12134,24 @@ function supportTargets(st) {
     if (st.banned[p.id]) { raw[p.id] = 0; return; }
     var v = 0;
     BLOCS.forEach(function (b) {
-      var a = affOf(st, p.id, b.id);
+      /* S21j: AND WHAT THIS PARTY HAS BUILT WITH THEM, HERE AND NOT IN `affOf`.
+         The first build put the standing inside `affOf`, on the reasoning that
+         it is the one door every bloc calculation goes through and a term added
+         anywhere else would be eleven terms. It is eleven terms -- that was the
+         problem. `affOf` is read by the formation's pricing, the interests, the
+         coalition's own arithmetic and the rally, and measured over 360
+         formations the coupling took the coalition pressure ladder from 24
+         climbs to 13 and made its middle rung, which a partner passes through
+         on the way to an ultimatum, occur ZERO times against thirteen. That is
+         three slices' worth of coalition mechanism re-priced by a change whose
+         only measurement was electoral.
+         The defect this slice found is electoral -- courting a bloc LOWERED an
+         opposition party's own support, on every one of 1,683 runs -- and this
+         is where it was measured, so this is where the term goes. What a party
+         has built with a bloc is worth votes; whether a cabinet will sit with
+         it is a different question and stays the one the game already asked. */
+      var a = clamp(affOf(st, p.id, b.id) +
+        (typeof v21Lean === 'function' ? v21Lean(st, p.id, b.id) : 0), -1, 1);
       if (a <= 0) return;
       var weight = b.pop * b.fr[fr] * (.55 + st.blocs[b.id] / 100 * .95) *
         (st.acts.wealthFranchise ? BLOC_WEALTH[b.id] || 1 : 1);
@@ -12952,8 +13085,24 @@ var ACTIONS = [
     opts:[
       { label:'A sober address', cost:5, tip:'Steady, modest, believed.',
         run:function (S) { mood(S, { labour:3, prof:3, seniors:3, youth:2, smallbiz:2 }); S.unrest -= 3; logIt(S, 'The government addressed the nation.'); } },
+      /* S21j: "YOUR OWN SIDE" IS THE PLAYER'S PARTY, NOT THE GOVERNMENT'S. Both
+         readings here asked about `S.ruling`, which is the same party only
+         while the player LEADS: a junior partner pressing this held forty
+         states' worth of rallies for the senior party, chose which blocs to
+         warm by the senior party's affinities, and put the organisation on the
+         senior party's machine. `holdsDept` in a third place -- "the government
+         holds it" and "this party holds it" are different questions -- and this
+         card has no `need`, so the chair that most wanted it was the one it
+         worked against. The rally also builds the party's own standing, which
+         is the player's side of what `court` gives an engine. */
       { label:'A campaign rally', cost:8, money:6, tip:'Energises your own side, hardens the other.',
-        run:function (S) { var m = {}; BLOCS.forEach(function (b) { var a = affOf(S, S.ruling, b.id); m[b.id] = a > .3 ? 8 : (a < -.2 ? -5 : 1); }); mood(S, m); S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) + .04, -.8, 1); logIt(S, 'The party held rallies in forty states.'); } },
+        run:function (S) { var me = playParty(S), m = {}, best = null, bestA = -9;
+          BLOCS.forEach(function (b) { var a = affOf(S, me, b.id); m[b.id] = a > .3 ? 8 : (a < -.2 ? -5 : 1);
+            if (a > bestA) { bestA = a; best = b.id; } });
+          mood(S, m); S.machine[me] = clamp((S.machine[me] || 0) + .04, -.8, 1);
+          if (best) v21Court(S, me, best, V21_LEAN_GAIN);
+          logIt(S, 'The ' + PARTY[me].short + ' held rallies in forty states' +
+            (best && BLOC[best] ? ', and ' + BLOC[best].name.toLowerCase() + ' heard them.' : '.')); } },
       { label:'An emergency broadcast', cost:11, tip:'Unrest falls hard. Use it too often and it stops working.',
         run:function (S) { S.unrest -= 14; S.ind.safety += 2; mood(S, { seniors:4, veterans:3, youth:-2 }); logIt(S, 'An emergency broadcast was carried on every channel.'); } }
     ] }),
@@ -14367,6 +14516,8 @@ function endTurn() {
   if (typeof v21MotionTick === 'function') v21MotionTick(S);
   /* S21i: and every party's aim is looked at, whether or not it acted */
   if (typeof v21GoalTick === 'function') v21GoalTick(S);
+  /* S21j: and a standing nobody keeps up fades */
+  if (typeof v21LeanTick === 'function') v21LeanTick(S);
   var fired = pickEvents();
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
@@ -15825,7 +15976,27 @@ function viewNation() {
       '<div class="row"><span class="lab small">Support</span><span class="bar ' + (v > 55 ? 'b-ok' : (v < 40 ? 'b-bad' : 'b-ox')) + '"><i style="width:' + v.toFixed(0) + '%"></i></span><span class="val">' + Math.round(v) + '</span></div>' +
       '<div class="tagline"><span class="tag">' + Math.round(b.pop * 100) + '% of the people</span>' +
       '<span class="tag">' + Math.round(b.fr[fr] * 100) + '% enfranchised</span>' +
-      '<span class="tag">Leverage ' + Math.round(b.power * 100) + '</span></div></div>';
+      '<span class="tag">Leverage ' + Math.round(b.power * 100) + '</span>' +
+      /* S21j: AND WHO IS LISTENED TO HERE. A party's standing with a bloc is
+         read by everything that touches blocs, and a channel the player cannot
+         see is a channel the player cannot play against -- the objection this
+         programme keeps making about the model is the same one the page has to
+         answer. Ordered by standing and named only where there is some, so a
+         bloc nobody has courted says nothing rather than listing seven noughts. */
+      (function () {
+        var held = PARTIES.filter(function (q) { return !S.banned[q.id]; })
+          .map(function (q) { return { id:q.id, n:(typeof v21Lean === 'function' ? v21Lean(S, q.id, b.id) : 0) }; })
+          .filter(function (x) { return x.n > .01; })
+          .sort(function (x, y) { return y.n - x.n; });
+        if (!held.length) return '';
+        return held.slice(0, 3).map(function (x) {
+          return '<span class="tag">' + esc(PARTY[x.id].short) +
+            (x.id === playParty(S) ? ' &middot; yours' : '') +
+            ' listened to ' + (x.n >= V21_LEAN_CAP * .66 ? 'closely' : (x.n >= V21_LEAN_CAP * .33 ? 'well' : 'a little')) +
+            '</span>';
+        }).join('');
+      })() +
+      '</div></div>';
   }).join('');
 
   var movs = MOVEMENTS.slice().sort(function (a, b) { return movStrength(S, b.id) - movStrength(S, a.id); }).map(function (m) {
@@ -35513,7 +35684,16 @@ var V16_AI_DECK = [
       }
       if (!best) return null;
       st.blocs[best] = c100((st.blocs[best] || 50) + 2.6);
-      return 'The ' + PARTY[pid].short + ' spent the season courting ' + (BLOC[best] ? BLOC[best].name.toLowerCase() : best) + '.';
+      /* S21j: AND THE PARTY KEEPS SOMETHING. The national lift above is worth
+         -0.89% to a party in opposition, measured over 1,683 real runs, because
+         `supportTargets` reads a contented bloc as the government's doing. The
+         standing is what the season actually bought. Above the floor only:
+         `instinct` is the game as it shipped and an engine that does not think
+         does not cultivate anybody. */
+      var kept = (typeof v19Thinks === 'function' && v19Thinks(st))
+        ? v21Court(st, pid, best, V21_LEAN_GAIN) : 0;
+      return 'The ' + PARTY[pid].short + ' spent the season courting ' + (BLOC[best] ? BLOC[best].name.toLowerCase() : best) +
+        (kept ? ', and they are listened to there now.' : '.');
     } },
   { id:'attack', post:['attack', 'consolidate', 'moderate', 'hold', 'restive'],
     /* S18e: the coalition test reads the SAME predicate the posture reads. It
@@ -36134,6 +36314,17 @@ var V19_GOALS = [
     id:'ground',
     /* the bloc this party is closest to and has least of. `st.blocs` is what
        the ballot reads, and the court card is the only thing that moves it. */
+    /* S21j: AND IT IS ABOUT THE PARTY'S OWN STANDING, which is the thing it
+       can actually reach. All three predicates read `st.blocs` -- the
+       country's one mood for the bloc -- and asked for fourteen points of it,
+       against a card that adds 2.6 into a figure reverting at .3 a session:
+       a steady-state lift of about three. So the aim named a mechanism its own
+       instrument could not move, which is the shape S21b found in `oust` and
+       the shape this programme keeps finding. The standing is what courting
+       builds and what `affOf` reads, it decays at .06 rather than .3, and
+       three or four seasons of work reach the target. The BLOC is still picked
+       by where the party is short of the country's mood, because that is what
+       makes it worth courting; only what "getting there" means has moved. */
     fits:function (st, pid) { return .9; },
     target:function (st, pid) {
       var aff = (PARTY[pid] || {}).aff || {}, best = null, bestScore = -99;
@@ -36142,15 +36333,24 @@ var V19_GOALS = [
         if (a <= .2) return;
         var have = (st.blocs && st.blocs[b.id] !== undefined) ? st.blocs[b.id] : 50;
         var score = a * (100 - have);
-        if (score > bestScore) { bestScore = score; best = { ref:b.id, want:Math.min(92, Math.round(have + 14)) }; }
+        if (score > bestScore) {
+          bestScore = score;
+          /* ONE AND A HALF SEASONS OF COURTING, which is what a party gets
+             inside an aim's own life at the cadence it works one at */
+          best = { ref:b.id, want:+Math.min(V21_LEAN_CAP,
+            (typeof v21Lean === 'function' ? v21Lean(st, pid, b.id) : 0) + V21_LEAN_GAIN * 1.5).toFixed(3) };
+        }
       });
       return best;
     },
-    done:function (st, pid, g) { return (st.blocs[g.ref] || 0) >= g.want; },
+    done:function (st, pid, g) {
+      return (typeof v21Lean === 'function' ? v21Lean(st, pid, g.ref) : 0) >= g.want;
+    },
     dead:function (st, pid, g) { return !BLOCS.filter(function (b) { return b.id === g.ref; })[0]; },
     progress:function (st, pid, g) {
-      var from = g.from === undefined ? 0 : g.from, have = st.blocs[g.ref] || 0;
-      var span = Math.max(1, g.want - from);
+      var from = g.from === undefined ? 0 : g.from;
+      var have = (typeof v21Lean === 'function' ? v21Lean(st, pid, g.ref) : 0);
+      var span = Math.max(.001, g.want - from);
       return clamp((have - from) / span, 0, 1);
     },
     say:function (st, pid, g) {
@@ -36370,7 +36570,9 @@ function v19AdoptGoal(st, pid) {
      cent done the moment it is taken */
   var from = null;
   if (pick.g.kind === 'carry') from = st.pol[pick.g.ref] || 0;
-  else if (pick.g.kind === 'ground') from = st.blocs[pick.g.ref] || 0;
+  /* S21j: the standing, not the country's mood, because that is what the aim
+     is now about and `progress` measures from the same place `done` reads */
+  else if (pick.g.kind === 'ground') from = (typeof v21Lean === 'function' ? v21Lean(st, pid, pick.g.ref) : 0);
   else if (pick.g.kind === 'build') from = st.machine[pid] || 0;
   if (from !== null) pick.g.from = from;
   a.goal = pick.g;

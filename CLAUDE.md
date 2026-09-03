@@ -418,6 +418,20 @@ before touching the file.
   assertion. The same run then answers the other half: a change whose poison
   cannot redden anything is a knob nothing in the game can turn, and three of
   S18d's call sites came back out on that reading.
+- **THE ONE DOOR EVERY READER GOES THROUGH IS THE ONE PLACE A NEW TERM REACHES
+  EVERY READER.** S21j measured a defect in the BALLOT — courting a bloc lowered
+  an opposition party's own support, on every one of 1,683 runs — and put the fix
+  in `affOf`, on the reasoning that it is the single function all eleven bloc
+  calculations call, so adding the term anywhere else would be eleven terms. It
+  is eleven terms; that is the problem, not the argument for it. `affOf` prices
+  the formation, the interests, the coalition's arithmetic and the rally too,
+  and the coupling took the coalition pressure ladder from 24 climbs to 13 and
+  made its middle rung occur ZERO times against thirteen — three slices' worth
+  of mechanism re-priced by a change whose only measurement was electoral. Three
+  arms reddened and every one was about coalitions. Put a term where the defect
+  was MEASURED; a chokepoint is a reason to check what else reads it, not a
+  reason to put everything in it. And assert the narrowing as well as the
+  reading, or the next slice puts it back.
 - **`document.body.textContent` INCLUDES THE 3.9 MEGABYTES OF `<script>`, so an
   on-the-page assertion written that way matches its own subject's comment.**
   S21i's leg asked whether the page said "the SD were further along the same

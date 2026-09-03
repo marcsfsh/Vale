@@ -15660,6 +15660,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           minHeat:+Math.min.apply(null, heats).toFixed(1),
           meanHeat:+(heats.reduce((a, c) => a + c, 0) / heats.length).toFixed(1),
           unrestPeak:+Math.max.apply(null, rows.map(r => r.unrestPeak)).toFixed(1),
+          /* HOW MANY SEEDS GET WELL PAST THE BAR, which is a count with a
+             binomial error, where the MAXIMUM over those seeds is an extreme
+             value and the least stable statistic in the leg. The gate read
+             `maxHeat > bar * 2` and S21j -- which changes what a party's
+             courting is worth to its own support and nothing in the street --
+             took it from 65.1 to 43 against a bar of 44. One point. */
+          overBar:heats.filter(h => h > V17_STREET_BAR).length,
+          wellOver:heats.filter(h => h > V17_STREET_BAR * 1.5).length,
+          heats:heats.slice().sort((x, y) => x - y),
         };
       };
       /* AND THE READING IS DRIVEN, not computed from the constants. The first
@@ -15669,7 +15678,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          its poison proved it: deleting the mechanism from `v17StreetHeat`
          left the arm green because the constants were untouched. */
       return { bar:V17_STREET_BAR,
-        easy:over([4242, 90210, 7, 31337, 1, 555], 'easy'),
+        /* TWELVE SEEDS ON THE EASY TIER, NOT SIX. The share this leg gates on
+           is "the street speaks at all", and on easy that happened on ONE of
+           the six -- a coin flip standing in for a mechanism. S21j, which
+           changes only what a party's courting is worth to its own support,
+           re-phased the drive and took that one to nought; the street's own
+           machinery is untouched. Twelve seeds put the expectation at two, and
+           the heat bounds beside it are the half that carries the claim. */
+        easy:over([4242, 90210, 7, 31337, 1, 555,
+                   8080, 2024, 777, 606, 13, 99], 'easy'),
         /* `normal` needs no width -- it speaks on 8 seeds of 8 with peak heat
            96.6 to 120.7 against a bar of 22 -- and what it is here for is the
            RATIO between the tiers */
@@ -15741,7 +15758,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        the peak at 65.1, both clear of the bar, with the street speaking on
        some campaigns rather than none. */
     cake.street.easy.spokeShare > 0 && cake.street.easy.meanHeat > cake.street.bar + 5 &&
-    cake.street.easy.maxHeat > cake.street.bar * 2 &&
+    /* A COUNT OF SEEDS, NOT THE MAXIMUM OVER THEM. `maxHeat > bar * 2` is an
+       extreme value standing in for "the street gets well past the bar on
+       easy", and S21j moved it from 65.1 to 43 against a bar of 44 without
+       touching the street at all -- one point, on the least stable statistic
+       the leg computes. Over twelve seeds the number that clear the bar is 12
+       and 12 either side of that slice, and the number that clear half again
+       is 6 and 5: the mechanism is untouched and the old reading was the tail
+       of one seed. */
+    cake.street.easy.overBar >= 9 && cake.street.easy.wellOver >= 4 &&
     cake.street.normal.spokeShare === 1 &&
     cake.street.normal.meanHeat > cake.street.easy.meanHeat * 2 &&
     cake.tilts.stillGenerous === true && cake.tilts.incumbentCut === true &&
@@ -17074,6 +17099,451 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${polit.driven.caretakerShare} · the floor is untouched (${polit.floor.atInstinct} at \`instinct\`) and ` +
     `the channel is silent under \`V19_SIMULATING\` (${polit.floor.inSim}), or every card the chooser ` +
     `rehearses would leave a grievance behind`);
+
+  /* ---------- S21j: COURTING IS A RELATIONSHIP ----------
+     `court` is one of thirteen cards and the `ground` aim weights it 1.0, the
+     highest weight any aim gives any card. Read through `supportTargets`
+     either side of a real run over 2,678 of them, it was worth -0.89% to a
+     party in opposition and negative on ALL 1,683 such runs. ---------- */
+  const lean = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) A READ MUST NOT CREATE. `v6TreatyRows` installed a record for every
+       power it was asked about; this is asked for every party and every bloc
+       on every support calculation, which is that shape several times over. */
+    R.accessor = (() => {
+      fresh(4242);
+      delete S.blocLean;
+      const zero = v21Lean(S, PARTIES[0].id, BLOCS[0].id);
+      const madeNothing = S.blocLean === undefined;
+      /* and asking through the READER the game uses, on every pair */
+      PARTIES.forEach(p => BLOCS.forEach(b => { affOf(S, p.id, b.id); }));
+      const stillNothing = S.blocLean === undefined;
+      const wrote = v21Court(S, PARTIES[0].id, BLOCS[0].id, .04);
+      return { zero:zero, madeNothing:madeNothing, stillNothing:stillNothing,
+        wrote:+wrote.toFixed(3), createdOnWrite: !!S.blocLean,
+        /* and it stops where it says it does */
+        capped: (() => { for (let i = 0; i < 40; i++) v21Court(S, PARTIES[0].id, BLOCS[0].id, .05);
+          return Math.abs(v21Lean(S, PARTIES[0].id, BLOCS[0].id) - V21_LEAN_CAP) < 1e-9; })() };
+    })();
+
+    /* (b) AND `supportTargets` READS IT, WHILE `affOf` DOES NOT -- both halves,
+       because the first build put the term in `affOf` and that is read by the
+       formation's pricing, the interests, the coalition's arithmetic and the
+       rally as well as by the ballot. Measured over 360 formations the coupling
+       took the coalition pressure ladder from 24 climbs to 13 and made its
+       MIDDLE rung, which a partner passes through on the way to an ultimatum,
+       occur zero times against thirteen: three slices' worth of coalition
+       mechanism re-priced by a change whose only measurement was electoral. So
+       the narrowing is asserted, not just the reading. */
+    R.aff = (() => {
+      fresh(4242);
+      delete S.blocLean;
+      /* A PAIR THE CLAMP DOES NOT SATURATE. `supportTargets` reads
+         `clamp(affOf + lean, -1, 1)` and skips a bloc at or below nought, so a
+         party whose affinity is already .85 gains the same nothing from a
+         standing of .2 as from .3 -- and the first version of this leg picked
+         exactly such a pair and reported that nobody else's share fell, on a
+         normalised total where it must. The pair is searched: positive, and far
+         enough below one that the cap fits under it. */
+      let pid = null, bid = null;
+      PARTIES.forEach(p => BLOCS.forEach(b => {
+        if (S.banned[p.id] || pid) return;
+        const a0 = affOf(S, p.id, b.id);
+        if (a0 > .1 && a0 < 1 - V21_LEAN_CAP - .05) { pid = p.id; bid = b.id; }
+      }));
+      if (!pid) return { ran:false, why:'every affinity saturates the clamp' };
+      const affBefore = affOf(S, pid, bid);
+      const supBefore = supportTargets(S)[pid];
+      v21Court(S, pid, bid, .20);
+      const affAfter = affOf(S, pid, bid);
+      const supAfter = supportTargets(S)[pid];
+      /* and it moves nobody ELSE's share of the same country */
+      const other = PARTIES.filter(p => p.id !== pid && !S.banned[p.id])[0].id;
+      const o0 = supportTargets(S)[other];
+      v21Court(S, pid, bid, .10);
+      const o1 = supportTargets(S)[other];
+      return { ran:true, pid:pid, bid:bid,
+        affBefore:+affBefore.toFixed(4), affAfter:+affAfter.toFixed(4),
+        supBefore:+supBefore.toFixed(2), supAfter:+supAfter.toFixed(2),
+        reachesTheBallot: supAfter > supBefore,
+        /* the whole point of the narrowing: the affinity every OTHER reader
+           asks about is the one the game already had */
+        affUntouched: Math.abs(affAfter - affBefore) < 1e-9,
+        othersFall: o1 < o0 };
+    })();
+
+    /* (c) AND IT FADES SLOWER THAN THE COUNTRY'S MOOD. `tickTurn` reverts
+       `st.blocs` toward its target at .3 a session, which is why a season's
+       courting was two thirds gone before the next one began. */
+    R.decay = (() => {
+      fresh(4242);
+      const pid = PARTIES[0].id, bid = BLOCS[0].id;
+      delete S.blocLean;
+      v21Court(S, pid, bid, .20);
+      const a0 = v21Lean(S, pid, bid);
+      v21LeanTick(S);
+      const a1 = v21Lean(S, pid, bid);
+      const rate = (a0 - a1) / a0;
+      /* and it is pruned rather than kept as a long tail of noughts */
+      v21Court(S, pid, bid, -a1 + .003);
+      v21LeanTick(S);
+      const pruned = !(S.blocLean && S.blocLean[pid] && S.blocLean[pid][bid] !== undefined);
+      return { a0:+a0.toFixed(4), a1:+a1.toFixed(4), rate:+rate.toFixed(4),
+        fades: a1 < a0, slowerThanTheCountry: rate < .3 / 3, pruned:pruned };
+    })();
+
+    /* (d) THE CARD BUILDS IT, and only above the floor. R1: `instinct` is the
+       game as it shipped and an engine that does not think does not cultivate
+       anybody. */
+    R.card = (() => {
+      const run = (level) => {
+        fresh(4242, level);
+        for (let i = 0; i < 4; i++) step();
+        const card = V16_AI_DECK.filter(c => c.id === 'court')[0];
+        const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== playParty(S))[0].id;
+        if (S.purse) S.purse[pid] = Math.max(S.purse[pid] || 0, V16_AI_COST.court + 40);
+        delete S.blocLean;
+        const b0 = JSON.parse(JSON.stringify(S.blocs));
+        let said = null;
+        try { said = card.run(S, pid); } catch (e) { said = null; }
+        let top = 0;
+        BLOCS.forEach(b => { const v = v21Lean(S, pid, b.id); if (v > top) top = v; });
+        const nationalMoved = BLOCS.filter(b => (S.blocs[b.id] || 0) !== (b0[b.id] || 0)).length;
+        return { top:+top.toFixed(3), nationalMoved:nationalMoved, said:said };
+      };
+      const sharp = run('ruthless'), dumb = run('instinct');
+      return { sharp:sharp, dumb:dumb,
+        buildsStanding: sharp.top >= V21_LEAN_GAIN - 1e-9,
+        silentAtInstinct: dumb.top === 0,
+        /* the national lift is the SHIPPED behaviour and stays at both levels,
+           or this would be a slice that quietly removed a mechanism */
+        nationalAtBoth: sharp.nationalMoved > 0 && dumb.nationalMoved > 0,
+        saysSo: /listened to there now/.test(String(sharp.said || '')),
+        quietAtInstinct: !/listened to there now/.test(String(dumb.said || '')) };
+    })();
+
+    /* (e) AND THE PLAYER'S OWN RALLY WAS BUILDING SOMEBODY ELSE'S SIDE. Both
+       readings in it asked about `S.ruling`, which is the player's party only
+       while the player LEADS -- so a junior partner held forty states' worth of
+       rallies for the senior party, warmed the blocs the SENIOR party likes,
+       and put the organisation on the senior party's machine. The card carries
+       no `need`, so the chair that wanted it most was the one it worked
+       against. Driven from the JUNIOR chair, where the two readings differ. */
+    R.rally = (() => {
+      fresh(4242);
+      const me = playParty(S);
+      /* SEAT A SENIOR PARTNER WHOSE BEST BLOC IS NOT THE PLAYER'S. Both
+         readings the card got wrong choose a BLOC, and a board where the two
+         parties would court the same one cannot tell them apart -- the poison
+         that put `S.ruling` back into the affinity loop came back GREEN on the
+         first version of this leg, which asked only whether SOME standing was
+         built and not WHOSE blocs decided it. */
+      const argmax = (pid) => {
+        let best = null, bestA = -9;
+        BLOCS.forEach(b => { const a = affOf(S, pid, b.id); if (a > bestA) { bestA = a; best = b.id; } });
+        return best;
+      };
+      const mine = argmax(me);
+      const other = PARTIES.filter(p => !S.banned[p.id] && p.id !== me)
+        .map(p => p.id).filter(id => argmax(id) !== mine)[0];
+      if (!other) return { ran:false, why:'no senior partner courts a different bloc' };
+      S.ruling = other;
+      S.coalition = [other, me];
+      const theirBloc = argmax(other);
+      if (me === S.ruling) return { ran:false };
+      const act = ACTIONS.filter(a => a.id === 'address')[0];
+      const opt = act && (act.opts || []).filter(o => /rally/i.test(o.label))[0];
+      if (!opt) return { ran:false };
+      delete S.blocLean;
+      const m0 = S.machine[me] || 0, r0 = S.machine[S.ruling] || 0;
+      const n0 = (S.log || []).length;
+      try { opt.run(S); } catch (e) { return { ran:false, threw:e.message }; }
+      let mineTop = 0, theirsTop = 0, standingOn = null;
+      BLOCS.forEach(b => {
+        const v = v21Lean(S, me, b.id); if (v > mineTop) { mineTop = v; standingOn = b.id; }
+        const w = v21Lean(S, S.ruling, b.id); if (w > theirsTop) theirsTop = w;
+      });
+      const said = (S.log || []).slice(0, Math.max(1, (S.log || []).length - n0))
+        .map(e => e.text).join(' ');
+      return { ran:true, me:me, ruling:S.ruling,
+        myMachineRose: (S.machine[me] || 0) > m0,
+        theirMachineHeld: Math.abs((S.machine[S.ruling] || 0) - r0) < 1e-9,
+        myStanding:+mineTop.toFixed(3), theirStanding:+theirsTop.toFixed(3),
+        myBloc:mine, theirBloc:theirBloc, standingOn:standingOn,
+        /* AND ON THE PLAYER'S OWN BLOC, which is the half the affinity loop
+           decides and the half a standing count alone cannot see */
+        courtsMyBloc: standingOn === mine && standingOn !== theirBloc,
+        buildsMine: mineTop >= V21_LEAN_GAIN - 1e-9, buildsTheirs: theirsTop > 0,
+        namesMe: new RegExp(PARTY[me].short).test(said) };
+    })();
+
+    /* (f) AND THE AIM IS ABOUT THE STANDING, which is the thing its own card
+       can move. All three predicates read `st.blocs` and asked for fourteen
+       points of it against a card adding 2.6 into a figure reverting at .3. */
+    R.aim = (() => {
+      fresh(4242);
+      const k = v19GoalKind('ground');
+      const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== playParty(S))[0].id;
+      delete S.blocLean;
+      const t = k.target(S, pid);
+      if (!t) return { ran:false };
+      const g = { kind:'ground', ref:t.ref, want:t.want, from:0 };
+      const doneAtBirth = k.done(S, pid, g);
+      /* moving the COUNTRY's mood to the top must not finish it */
+      const was = S.blocs[t.ref];
+      S.blocs[t.ref] = 100;
+      const doneOnNational = k.done(S, pid, g);
+      const prOnNational = k.progress(S, pid, g);
+      S.blocs[t.ref] = was;
+      /* and the party's OWN standing must */
+      v21Court(S, pid, t.ref, t.want + .01);
+      const doneOnStanding = k.done(S, pid, g);
+      const prOnStanding = k.progress(S, pid, g);
+      return { ran:true, want:t.want, doneAtBirth:doneAtBirth,
+        ignoresTheCountry: doneOnNational === false && prOnNational === 0,
+        readsTheStanding: doneOnStanding === true && prOnStanding > .9,
+        /* and `v19AdoptGoal` measures progress from the same place `done` reads */
+        fromIsTheStanding: (() => {
+          fresh(4242);
+          const p2 = PARTIES.filter(p => !S.banned[p.id] && p.id !== playParty(S))[0].id;
+          v21Court(S, p2, BLOCS[0].id, .12);
+          const a2 = v16Ai(S)[p2]; if (!a2) return false;
+          for (let i = 0; i < 30; i++) {
+            a2.goal = null;
+            const g2 = v19AdoptGoal(S, p2);
+            if (g2 && g2.kind === 'ground') return g2.from !== undefined &&
+              Math.abs(g2.from - v21Lean(S, p2, g2.ref)) < 1e-9;
+          }
+          return false;
+        })() };
+    })();
+
+    /* (g) AND THE PAGE NAMES WHO IS LISTENED TO. A channel the player cannot
+       see is a channel the player cannot play against. */
+    R.page = (() => {
+      fresh(4242); for (let i = 0; i < 3; i++) step();
+      delete S.blocLean;
+      /* READ OFF THE RENDERED NODES, not off the body and not off a string.
+         `document.body.textContent` walks the 3.9 megabytes of `<script>` in
+         this document's own body, so a phrase in a COMMENT about the feature
+         reads as the feature being on the page -- S21i's `by` leg passed with
+         its clause deleted on exactly that. `innerText` fixes that and reports
+         only what is VISIBLE, and S17r folds the long panels by default, so a
+         true sentence inside a shut fold reads as absent -- which is what this
+         leg did first. Querying the cards' own tags is neither: no script node
+         is inside them, and `textContent` on a node does not care about the
+         fold above it. */
+      const tags = () => Array.from(document.querySelectorAll('.panel .card .tagline .tag'))
+        .map(e => e.textContent).join(' | ');
+      /* 'nation', not 'country'. The first version of this leg named a tab that
+         does not exist, so `render()` drew whatever was already up and the leg
+         reported the sentence absent from a page it had never rendered --
+         which reads exactly like the feature being broken. `quiet.length > 0`
+         is in the gate for that reason: a leg that finds NOTHING either side
+         is a leg that measured nothing. */
+      UI.tab = 'nation';
+      let quiet = '';
+      try { render(); quiet = tags(); } catch (e) { quiet = ''; }
+      const bid = BLOCS[0].id;
+      const pid = PARTIES.filter(p => !S.banned[p.id])[0].id;
+      v21Court(S, pid, bid, V21_LEAN_CAP);
+      let loud = '';
+      let threw = null;
+      try { render(); loud = tags(); } catch (e) { threw = e.message; }
+      const word = PARTY[pid].short + ' listened to closely';
+      return { threw:threw,
+        silentWithNoStanding: !/listened to/.test(quiet),
+        namesTheParty: loud.indexOf(word) >= 0,
+        /* and it is on the page a reader can see rather than only in the string */
+        rendered: quiet.length > 0 && loud.length > quiet.length };
+    })();
+
+    /* (h) AND IN REAL PLAY. The headline reading, taken the way the defect was
+       found: `supportTargets(st)[pid]` either side of a REAL `court.run`, never
+       `st.blocs`, with the board put back after each measurement. */
+    R.driven = (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'court')[0];
+      const gov = [], opp = [];
+      let adopted = 0, reached = 0, topLean = 0;
+      const seen = {};
+      [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+        fresh(seed);
+        for (let i = 0; i < 60; i++) {
+          step();
+          const co = S.coalition || [S.ruling];
+          PARTIES.forEach(p => {
+            if (S.banned[p.id] || p.id === playParty(S)) return;
+            const a = v16Ai(S)[p.id];
+            if (a) {
+              if (a.goal && a.goal.kind === 'ground') {
+                const k = seed + ':' + p.id + ':' + a.goal.since;
+                if (!seen[k]) { seen[k] = 1; adopted++; }
+              }
+              const lg = a.lastGoal;
+              if (lg && lg.kind === 'ground' && lg.why === 'done') {
+                const k2 = 'r' + seed + ':' + p.id + ':' + lg.since;
+                if (!seen[k2]) { seen[k2] = 1; reached++; }
+              }
+            }
+            BLOCS.forEach(b => { const v = v21Lean(S, p.id, b.id); if (v > topLean) topLean = v; });
+            const purse0 = S.purse ? S.purse[p.id] : undefined;
+            if (S.purse) S.purse[p.id] = Math.max(S.purse[p.id] || 0, V16_AI_COST.court + 20);
+            const t0 = supportTargets(S)[p.id];
+            const b0 = JSON.parse(JSON.stringify(S.blocs));
+            const l0 = JSON.parse(JSON.stringify(S.blocLean || {}));
+            let ran = null;
+            try { ran = card.run(S, p.id); } catch (e) { ran = null; }
+            const t1 = supportTargets(S)[p.id];
+            if (ran) (co.indexOf(p.id) >= 0 ? gov : opp)
+              .push((t1 - t0) / Math.max(1e-9, Math.abs(t0)) * 100);
+            S.blocs = b0; S.blocLean = l0;
+            if (S.purse && purse0 !== undefined) S.purse[p.id] = purse0;
+          });
+        }
+      });
+      const mean = a => a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(3) : null;
+      return { govN:gov.length, oppN:opp.length, gov:mean(gov), opp:mean(opp),
+        oppHelps: opp.length ? +(opp.filter(x => x > 0).length / opp.length).toFixed(3) : null,
+        adopted:adopted, reached:reached, topLean:+topLean.toFixed(3),
+        reachedShare: adopted ? +(reached / adopted).toFixed(3) : null };
+    })();
+
+    /* (i) AND A CAMPAIGN SAVED BEFORE THIS SLICE PLAYS. `st.blocLean` does not
+       exist on any save in the world; the reading accessor is what makes that
+       a nought rather than a throw, and this asks the whole board through it. */
+    R.legacy = (() => {
+      fresh(2718); for (let i = 0; i < 5; i++) step();
+      delete S.blocLean;
+      let threw = null, sup = null, aff = null, pageThrew = null;
+      try {
+        aff = affOf(S, PARTIES[0].id, BLOCS[0].id);
+        sup = supportTargets(S)[PARTIES[0].id];
+        v21LeanTick(S);
+        v19AdoptGoal(S, PARTIES.filter(p => p.id !== playParty(S))[0].id);
+      } catch (e) { threw = e.message; }
+      UI.tab = 'country';
+      try { render(); } catch (e) { pageThrew = e.message; }
+      return { threw:threw, pageThrew:pageThrew,
+        affFinite: typeof aff === 'number' && isFinite(aff),
+        supportFinite: typeof sup === 'number' && isFinite(sup),
+        stillAbsent: S.blocLean === undefined || Object.keys(S.blocLean).length === 0 };
+    })();
+    /* the constants come back with the readings: the gate runs in node and the
+       constants live on the page, and a bar that reads its own constant is the
+       check-parameterised-by-what-it-checks trap besides */
+    R.consts = { cap:V21_LEAN_CAP, gain:V21_LEAN_GAIN, decay:V21_LEAN_DECAY };
+    return R;
+  });
+
+  const leanOk =
+    lean.accessor.zero === 0 && lean.accessor.madeNothing === true &&
+    lean.accessor.stillNothing === true && lean.accessor.createdOnWrite === true &&
+    lean.accessor.capped === true &&
+    lean.aff.ran === true &&
+    lean.aff.reachesTheBallot === true && lean.aff.affUntouched === true &&
+    lean.aff.othersFall === true &&
+    lean.decay.fades === true && lean.decay.slowerThanTheCountry === true &&
+    lean.decay.pruned === true &&
+    lean.card.buildsStanding === true && lean.card.silentAtInstinct === true &&
+    lean.card.nationalAtBoth === true && lean.card.saysSo === true &&
+    lean.card.quietAtInstinct === true &&
+    lean.rally.ran === true && lean.rally.buildsMine === true &&
+    lean.rally.courtsMyBloc === true &&
+    lean.rally.buildsTheirs === false && lean.rally.myMachineRose === true &&
+    lean.rally.theirMachineHeld === true && lean.rally.namesMe === true &&
+    lean.aim.ran === true && lean.aim.doneAtBirth === false &&
+    lean.aim.ignoresTheCountry === true && lean.aim.readsTheStanding === true &&
+    lean.aim.fromIsTheStanding === true &&
+    lean.page.threw === null && lean.page.silentWithNoStanding === true &&
+    lean.page.namesTheParty === true &&
+    /* THE HEADLINE, IN THE ASSERTION'S OWN WORDS. Courting from opposition was
+       negative on ALL 1,683 real runs measured over 480 sessions; the bar is
+       the SIGN and the share, sized from a sweep that put the share's maximum
+       at this gain. The government's own figure stays positive, or the slice
+       would have paid for one chair with the other. */
+    lean.driven.oppN > 200 && lean.driven.govN > 100 &&
+    lean.driven.opp > 0 && lean.driven.oppHelps > .55 &&
+    lean.driven.gov > 0 &&
+    /* TRIPWIRES, NOT THE PROOF. The aim's CORRECTNESS is asked without dice in
+       `aim` above -- the country's mood at a hundred does not finish it and the
+       party's own standing does. What this leg adds is that the path fires in
+       real play, and it is a small count on a 360-session drive: the aim is
+       adopted 74 times per 1,440 sessions, so this drive expects about
+       eighteen with a standard error of 4.3, and the first bar of 20 sat ABOVE
+       its own mean. Eight is 2.4 errors under it. */
+    lean.driven.adopted >= 8 && lean.driven.reached > 0 &&
+    lean.driven.topLean > .1 && lean.driven.topLean < lean.consts.cap &&
+    lean.legacy.threw === null && lean.legacy.pageThrew === null &&
+    lean.legacy.affFinite === true && lean.legacy.supportFinite === true;
+  say(leanOk, 'courting is a relationship',
+    `\`court\` IS ONE OF THIRTEEN CARDS AND THE \`ground\` AIM WEIGHTS IT 1.0, the highest weight any aim ` +
+    `gives any card -- and read through \`supportTargets\` either side of a real run, it was worth -0.89% to ` +
+    `a party in opposition and NEGATIVE ON ALL 1,683 SUCH RUNS across 480 driven sessions, against +0.70% for ` +
+    `one in government. Not usually harmful: harmful every single time, for every party out of office, on its ` +
+    `own best card. \`court.run\` moves \`st.blocs\`, the country's ONE mood for that bloc, and ` +
+    `\`supportTargets\` reads a contented bloc as the government's doing (\`.915 + (m-50)/80\` against ` +
+    `\`.784 - (m-50)/130\`), so a bloc courted by the opposition is a bloc the government gets the credit ` +
+    `for. This file already knew and had written it down as a CONFLICT rather than a defect: \`v19Rival\` ` +
+    `carries "a bloc has one mood, and two parties courting it are courting it away from each other" · SO A ` +
+    `PARTY HAS ITS OWN STANDING NOW (${lean.driven.topLean} at its highest in play, against a cap of ` +
+    `${lean.consts.cap}), read AT THE BALLOT and not at every door: ${lean.aff.supBefore} to ` +
+    `${lean.aff.supAfter} on two states differing in exactly that, with \`affOf\` itself untouched ` +
+    `(${lean.aff.affUntouched}) and everybody else's share of the same country falling ` +
+    `(${lean.aff.othersFall}). The first build put the term IN \`affOf\`, on the reasoning that it is ` +
+    `the one door every bloc calculation goes through -- it is ELEVEN doors, and that was the problem. ` +
+    `Measured over 360 formations the coupling took the coalition pressure ladder from 24 climbs to 13 ` +
+    `and made its MIDDLE rung, which a partner passes through on the way to an ultimatum, occur ZERO ` +
+    `times against thirteen: three slices' worth of coalition mechanism re-priced by a change whose only ` +
+    `measurement was electoral. What a party has built with a bloc is worth votes; whether a cabinet will ` +
+    `sit with it is a different question and stays the one the game already asked) · IT IS A READING ACCESSOR: asking about every party and every bloc creates nothing ` +
+    `(${lean.accessor.madeNothing}/${lean.accessor.stillNothing}), which is \`v6TreatyRows\` -- a read that ` +
+    `installed a record for every power it was asked about -- in a place asked far more often · AND IT FADES ` +
+    `AT ${lean.decay.rate} A SESSION where the country's mood reverts at .3, which is why a season's courting ` +
+    `used to be two thirds gone before the next one began, and it is PRUNED rather than kept as a tail of ` +
+    `noughts (${lean.decay.pruned}) · THE CARD BUILDS IT ABOVE THE FLOOR ONLY (${lean.card.sharp.top} at ` +
+    `\`ruthless\`, ${lean.card.dumb.top} at \`instinct\`) while the national lift stays at both, or this ` +
+    `would be a slice that quietly removed a mechanism · AND THE PLAYER'S OWN RALLY WAS BUILDING SOMEBODY ` +
+    `ELSE'S SIDE: both readings inside "A campaign rally" asked about \`S.ruling\`, which is the player's ` +
+    `party only while the player LEADS, and the card carries no \`need\` -- so a junior partner held forty ` +
+    `states' worth of rallies for the senior party, warmed the blocs the SENIOR party likes and put the ` +
+    `organisation on the senior party's machine. \`holdsDept\` in a third place. Driven from the junior ` +
+    `chair it now builds ${lean.rally.myStanding} for the player and ${lean.rally.theirStanding} for the ` +
+    `government, on the player's own best bloc ("${lean.rally.standingOn}", where the senior party's is ` +
+    `"${lean.rally.theirBloc}") -- which is the half a standing COUNT cannot see, and the poison that put ` +
+    `\`S.ruling\` back into the affinity loop passed on the count alone -- and the machine it moves is the ` +
+    `player's (${lean.rally.myMachineRose}, theirs held ${lean.rally.theirMachineHeld}) · THE AIM IS ABOUT THE STANDING, which is the thing its own card can ` +
+    `move: all three predicates read \`st.blocs\` and asked for fourteen points of it against a card adding ` +
+    `2.6 into a figure reverting at .3 -- so taking the country's mood for that bloc to a HUNDRED does not ` +
+    `finish the aim (${lean.aim.ignoresTheCountry}) and the party's own standing does ` +
+    `(${lean.aim.readsTheStanding}), with \`v19AdoptGoal\` measuring progress from the same place \`done\` ` +
+    `reads (${lean.aim.fromIsTheStanding}) · AND THE CONSTANTS ARE SWEPT RATHER THAN PICKED. The gain was ` +
+    `read at six values through \`supportTargets\`: .02 leaves the opposition at -0.205 and helping on .450 ` +
+    `of runs, .05 at +0.478 and .742, .12 at +1.367 and .634 -- .05 is where the share that HELPS is at its ` +
+    `maximum, because above it the standing feeds the national mood faster than it feeds the party. The ` +
+    `decay was swept against what the aim asks for, on the cadence a party holding the aim actually plays ` +
+    `the card at (.11 of its aim-sessions, about one season in nine, against a stall window of eight to ` +
+    `sixteen): .06 with an ask of three seasons reaches .083 of aims and .03 with an ask of one and a half ` +
+    `reaches .476, where the two slower decays push the highest standing to .295 of a .30 cap and standing ` +
+    `stops telling parties apart · DRIVEN, courting is worth ${lean.driven.opp}% to a party in opposition ` +
+    `and helps on ${lean.driven.oppHelps} of ${lean.driven.oppN} runs where it helped on NONE of them, ` +
+    `${lean.driven.gov}% to one in government, and the aim is reached on ${lean.driven.reachedShare} of ` +
+    `${lean.driven.adopted} adoptions here and on .378 of 74 over 1,440 sessions, against .426 of 68 ` +
+    `before this slice -- the same rate, and now by the party's OWN work rather than by the country's ` +
+    `mood drifting under it. Those two counts are the TRIPWIRE and not the proof: what the aim MEANS is ` +
+    `asked without dice above, where the country's mood at a hundred does not finish it · and a campaign saved before this slice carries no ` +
+    `\`blocLean\` at all, which the reading accessor makes a nought rather than a throw ` +
+    `(${lean.legacy.affFinite}/${lean.legacy.supportFinite}, page ${lean.legacy.pageThrew === null})`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

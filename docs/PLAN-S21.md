@@ -835,6 +835,27 @@ Read `supportTargets(st)[pid]` either side of a real `court.run`, never
 `st.blocs`, and assert the sign is positive for an opposition party against the
 measured -1.08%.
 
+**AS SHIPPED, AND THE PLAN'S OWN NUMBER WAS WRONG IN THE PARTY'S FAVOUR.** This
+plan says to "assert the sign is positive for an opposition party against the
+measured -1.08%". The measurement taken here, through the same reader, is
+**-0.89% and negative on ALL 1,683 runs** — the mean was close and the share was
+the thing worth knowing, because a card that usually hurts and a card that
+always hurts are different objects.
+
+**The plan's second claim was wrong the other way.** It says the `ground` aim is
+unreachable — "the steady-state lift on `st.blocs` is +3.0 against a requirement
+of +14" — and the aim was in fact reached on **29 of 68 adoptions**. Both
+sentences are true and they do not add up: the aim was reached because
+`st.blocs` moves for every reason in the game EXCEPT the party's own courting,
+so the party was credited for the country changing its mind. Re-pointing the aim
+at the party's own standing reads 34 of 87, the same rate, earned rather than
+inherited. Measuring the thing the plan asserted is what found this.
+
+**And one thing the plan did not name.** The player's "A campaign rally" read
+`S.ruling` twice — for which blocs to warm and for whose machine to build — so a
+junior partner's rallies were the senior party's rallies. `holdsDept` in a third
+place.
+
 ### S21k — The engine works the floor, and is seen doing it  ·  1 improvement, 1 new
 
 `press` becomes a fourth verb inside `floor`, so the engine gets the persuasion
