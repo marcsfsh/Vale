@@ -737,6 +737,48 @@ driven by a real click from the junior chair, with one predicate answering for
 the button, the handler and the fold that hides them — the S18a rule. Each takes
 a cooldown and an escalating price, per S20c.
 
+**AS SHIPPED.** Five verbs as five ACTIONS rather than five buttons on one
+card, because `actionKey` is per action and the plan asks for a cooldown and a
+rising price on each; they render through `actionCard`, which is the one
+emitter every other page uses, so the pacing, the price and the refusal on a
+shut card all arrive without a second copy of any of them. The three public
+verbs unlock in the order `v21Pressure` climbs them, which the plan did not
+name and which the first build got wrong: `v21Defect` books the top rung, so
+the whip was a first move that silently skipped both rungs under it.
+
+**The government-side pairs are three, not five.** Asking for a statute and
+asking for a department have them (`v21GovWould` answers both). The whip and
+the two speaking verbs do not need one: they are things a partner does TO a
+government, and what the government does about them is the ultimatum answer.
+
+**A reopening was drafted as the engine's second answer and deleted after
+measurement.** `v17CanRenegotiate` refuses at `V17_PATIENCE` and an ultimatum
+is a late-record event by construction — the stage-2 bar is `v17WalkFloor + 4`
+and the floor is `12 + min(3, broken) * 6` — so over 240 driven sessions every
+one of the four ultimatums an engine government received arrived at exactly
+three broken promises. A branch that cannot fire is deleted rather than
+shipped, and the PLAYER's identical answer, lit on the same papers, is now shut
+with `v17CanRenegotiate`'s own sentence instead of charging four capital and
+five for a flash.
+
+**What this slice found that the plan did not name.**
+
+- **The ultimatum paper charged before it refused.** `respondInbox` takes the
+  capital and the money and then runs the branch. A paper's CHOICES had no gate
+  of their own — `v18PaperWhy` answers for the whole paper — so two of the
+  ultimatum's three answers were lit, priced and refused after taking both.
+- **A rewritten promise was born late and aimed at nothing.** `v17Renegotiate`
+  set `ref`, `kind`, `met` and `broken` on the concession it swapped and left
+  `from`, `due` and `late` — so the rung was measured from the level a
+  different statute stood at, and the date was the one the promise it replaced
+  had already gone past.
+- **The ladder had two owners.** `respondInbox`'s `deliver` arm set
+  `d.pressure = 0` by hand while `v21Pressure` owned the same field.
+- **The ladder had no price.** `V21_SAY_MACHINE` is .035, half of what
+  surviving a motion of confidence is worth, on the same channel; measured
+  over 240 driven sessions the government's machine mean moves 0.335 to 0.321
+  and nothing else in the coalition model moves at all.
+
 ### S21i — The ballot has consequences, and an aim finishes  ·  2 improvements, 2 new
 
 `v21AfterBallot(st, before, after)` runs from `runElection` after `driftParties`
