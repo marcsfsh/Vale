@@ -17572,8 +17572,14 @@ function partyPurseTick(st) {
        building an organisation spends hard; a party that has been beaten, or
        is waiting, holds on to it. `V17_BURN` is the whole table. */
     if (p.id !== playParty(st)) {
-      var rate = V17_BURN[typeof v16Posture === 'function' ? v16Posture(st, p.id) : 'hold'];
-      var spend = Math.min(partyPurse(st, p.id), inc.total * (rate === undefined ? .7 : rate));
+      var post = (typeof v16Posture === 'function') ? v16Posture(st, p.id) : 'hold';
+      var rate = V17_BURN[post];
+      /* S21m: and never below the working balance. The cap was the whole purse,
+         so a party with a high rate and a high income ran itself to nothing
+         every session and could not afford the deck it was being offered. */
+      var keep = (typeof v21WorkingBalance === 'function') ? v21WorkingBalance(post) : 0;
+      var free = Math.max(0, partyPurse(st, p.id) - keep);
+      var spend = Math.min(free, inc.total * (rate === undefined ? .7 : rate));
       if (spend > 0) partySpend(st, p.id, spend);
     }
   });
@@ -35310,6 +35316,47 @@ function v16CheapestCard() {
   for (var k in V16_AI_COST) if (V16_AI_COST[k] < lo) lo = V16_AI_COST[k];
   return isFinite(lo) ? lo : 0;
 }
+/* S21m — WHAT A PARTY KEEPS BACK TO BE ABLE TO ACT AT ALL.
+
+   `V17_BURN` says what share of its income a party spends automatically on the
+   thing the vote model reads, and at `govern: .70` the party in office spent
+   itself out of the game: measured over 998 driven government-sessions its
+   purse runs p50 20 and mean 25, against 66 and 64 for a party waiting on the
+   back benches, while the deck it draws from costs 22 to 42. Its open set was
+   1.25 cards and EMPTY on 45.6% of sessions -- and `organise`, whose only
+   condition is having the money, was refused for want of it 778 times in 998.
+   The party in office was not short of options. It was broke.
+
+   THE FIX IS NOT A NEW RATE, because a rate is the wrong instrument: dropping
+   `govern` to .46 takes the empty rate to 11.4% and the purse to a p50 of 81,
+   richer than any party on the board, and it does it by cutting the funding
+   the vote model reads -- a difficulty change to every government in the game
+   dressed up as an AI fix. What is wrong is narrower than that. A party should
+   not spend itself BELOW THE PRICE OF ACTING, whatever its rate: the automatic
+   spend is what it does with money it has no better use for, and the ability
+   to take an initiative is a better use.
+
+   DERIVED FROM THE DECK AND FROM THIS PARTY'S OWN POSTURE, NOT PICKED. The
+   first build kept back the median price across all thirteen cards -- 34 --
+   and it was not enough: it took the government's empty sessions from 45.6% to
+   40.8% and no further, because a party holding 34 can pay 22 for an order and
+   is then under the reserve again, and the cards it most needs cost 36 to 42.
+   What a party has to keep is the price of the DEAREST card its own posture
+   can draw, so that having acted it can still act. That is 42 for a government
+   and for most of the board, 48 where `topple` is on the list, and a later
+   slice that prices a new card re-derives it without touching this line --
+   which is the guard `v16CheapestCard` was written to have and the reason S21c
+   pulled three prices into one table. */
+function v21WorkingBalance(post) {
+  var hi = 0;
+  V16_AI_DECK.forEach(function (c) {
+    if (c.post.indexOf(post) < 0 &&
+        !(c.post2 && c.post2.indexOf(post) >= 0)) return;
+    var pr = V16_AI_COST[c.id] || 0;
+    if (pr > hi) hi = pr;
+  });
+  return hi;
+}
 /* WHAT AN INITIATIVE IS WORTH. Set by sweeping `tools/pacing.js` over six
    seeds, not by taste: the machine is the single largest seat lever in the
    file (S15h measured the party organisation at its ceiling as +154 Assembly
@@ -35460,6 +35507,22 @@ var V18_RESTIVE = 55;
    opposition sessions, which is not a posture but a fact about most boards;
    at .6 it is 10.2%, at .75 4.4%, at .85 2.5% and at parity 0.8%. */
 var V21_CONSOLIDATE = .75;
+/* S21m — HOW FAR BEHIND ITS OWN SEATS A GOVERNMENT HAS TO BE. `supportTargets`
+   is what the country would give this party today and `seats / CFG.seats` is
+   what it holds; the difference, in points of share, is the gap between the
+   government it is and the government the country would elect. Measured over
+   1,362 driven government-sessions it runs p10 -5.5, p25 -3.9, p50 -1.7, p75
+   +0.3, p90 +3.5 -- a government is usually a little ahead of the country by
+   the time it has governed a while, so the bar is set at the QUARTILE rather
+   than at nought: -4 catches 24.5% of government sessions where -2 catches
+   46.1% and -1 catches 59.7%, and a mood that occurs on half of all sessions
+   is not a mood, it is the default. */
+var V21_GOV_GAP = -4;
+function v21GovGap(st, pid) {
+  var sup = (typeof supportTargets === 'function') ? (supportTargets(st)[pid] || 0) : 0;
+  var share = (st.seats[pid] || 0) / Math.max(1, CFG.seats);
+  return (sup - share) * 100;
+}
 function v18Restive(st, pid) {
   var co = st.coalition || [st.ruling];
   if (pid === st.ruling || co.indexOf(pid) < 0) return false;
@@ -35470,7 +35533,17 @@ function v16PostureRaw(st, pid) {
   var seats = st.seats[pid] || 0, share = seats / Math.max(1, CFG.seats);
   var trend = (v16Ai(st)[pid].lastSeats === undefined) ? 0 : seats - v16Ai(st)[pid].lastSeats;
   var me = playParty(st);
-  if (pid === st.ruling) return 'govern';
+  /* S21m — AND A GOVERNMENT BEHIND IN THE COUNTRY IS A DIFFERENT GOVERNMENT.
+     `v16PostureRaw` returned `govern` unconditionally, before reading a single
+     fact, so the party in office behaved the same in its fiftieth session as
+     in its first whatever the country thought of it. GATED ON `v19Thinks`,
+     which is R2: no card in the shipped deck lists this posture, so a floor
+     that could reach it would find an EMPTY open set and the government would
+     stop acting altogether -- the gate goes here rather than on the deck. */
+  if (pid === st.ruling) {
+    return (typeof v19Thinks === 'function' && v19Thinks(st) &&
+      v21GovGap(st, pid) <= V21_GOV_GAP) ? 'exposed' : 'govern';
+  }
   /* S18e — A PARTNER THAT HAS HAD ENOUGH. `partner` was returned before any
      grudge was read, and the `attack` card's own `can` refused a coalition
      member as well, so a party sitting in the player's ministry could hold a
@@ -35543,13 +35616,30 @@ function v16PostureRaw(st, pid) {
    over a party that resigned this session would be the page lying about the
    constitution. They pass both ways at once. */
 var V21_POSTURE_TENURE = 3;
-var V21_POSTURE_HARD = ['govern', 'partner', 'restive'];
+/* `exposed` IS ON THIS LIST AND HAS TO BE. It is a statement about the party
+   in office, so a party that LEAVES office while settled on it would keep it
+   for the tenure -- three sessions of the page calling an opposition party a
+   government that is behind. Every posture that names who is in the room
+   passes both ways at once. */
+var V21_POSTURE_HARD = ['govern', 'exposed', 'partner', 'restive'];
+/* AND THESE TWO ARE ONE FACT WITH TWO MOODS ON IT. `govern` and `exposed` are
+   both "this party is the government"; what separates them is a threshold on
+   how far behind the country it is, and a threshold sits in the middle of a
+   distribution -- the gap's own quartile is exactly where the bar is. Passing
+   that pair through the hard gate would let the mood flip on a session's noise,
+   which is the churn S21l's tenure exists to stop, so moving BETWEEN them takes
+   the tenure like any other mood while moving into or out of office does not.
+   Being in the room is a fact; how the room is going is not. */
+var V21_POSTURE_OFFICE = ['govern', 'exposed'];
 var V21_POSTURE_URGENT = ['attack'];
 function v16Posture(st, pid) {
   var raw = v16PostureRaw(st, pid);
   var a = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
   if (!a || !a.posture) return raw;
-  if (V21_POSTURE_HARD.indexOf(raw) >= 0 || V21_POSTURE_HARD.indexOf(a.posture) >= 0) return raw;
+  var bothInOffice = V21_POSTURE_OFFICE.indexOf(raw) >= 0 &&
+    V21_POSTURE_OFFICE.indexOf(a.posture) >= 0;
+  if (!bothInOffice &&
+      (V21_POSTURE_HARD.indexOf(raw) >= 0 || V21_POSTURE_HARD.indexOf(a.posture) >= 0)) return raw;
   if (V21_POSTURE_URGENT.indexOf(raw) >= 0) return raw;
   if (a.postureSince === undefined) return raw;
   if (st.turn - a.postureSince >= V21_POSTURE_TENURE) return raw;
@@ -35760,21 +35850,31 @@ function v19BillFor(st, pid) {
   return best || top[0];
 }
 var V16_AI_DECK = [
-  { id:'organise', post:['organise', 'consolidate', 'hold', 'partner'],
+  /* S21m: a government builds its organisation like anybody else -- this is
+     the card that takes `govern`'s open set off the floor, because its `can` is
+     purse alone and a government is rarely broke. */
+  { id:'organise', post:['organise', 'consolidate', 'hold', 'partner', 'exposed'],
+    post2:['govern'],
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.organise; },
     run:function (st, pid) {
       v16AiPay(st, pid, V16_AI_COST.organise);
       st.machine[pid] = clamp((st.machine[pid] || 0) + V16_AI_ORGANISE, -.8, 1);
       return 'The ' + PARTY[pid].short + ' opened agents and halls in eleven more counties.';
     } },
-  { id:'campaign', post:['consolidate', 'moderate', 'attack', 'govern'],
+  { id:'campaign', post:['consolidate', 'moderate', 'attack', 'govern', 'exposed'],
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.campaign && pv5SessionsToBallot(st) !== null && pv5SessionsToBallot(st) <= 4; },
     run:function (st, pid) {
       partySpend(st, pid, V16_AI_COST.campaign);
       v16Ai(st)[pid].spent = (v16Ai(st)[pid].spent || 0) + V16_AI_COST.campaign;
       return 'The ' + PARTY[pid].short + ' took the campaign into the country early.';
     } },
-  { id:'court', post:['moderate', 'consolidate', 'hold', 'partner', 'restive', 'organise'],
+  /* S21m — AND THIS ONE IS THE DIFFERENCE BETWEEN THE TWO GOVERNMENTS. Going
+     out to a bloc is what a government does when the country is behind it and
+     the seats are not: `exposed` may court, `govern` may not, and that is the
+     whole of what the second mood buys. It is deliberately NOT in `post2` --
+     a comfortable government legislates and organises, and the day it slips
+     below its own seats it goes looking for people. */
+  { id:'court', post:['moderate', 'consolidate', 'hold', 'partner', 'restive', 'organise', 'exposed'],
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.court; },
     run:function (st, pid) {
       v16AiPay(st, pid, V16_AI_COST.court);
@@ -35932,7 +36032,7 @@ var V16_AI_DECK = [
      calls the same Core the player's button calls, so the gate is asked once
      and answered the same way for both -- and an AI party that is not
      entitled to an instrument is refused by the identical line. */
-  { id:'article', post:['consolidate', 'attack', 'govern', 'organise', 'moderate'],
+  { id:'article', post:['consolidate', 'attack', 'govern', 'organise', 'moderate', 'exposed'],
     can:function (st, pid) {
       /* A party with eight per cent of the chamber does not amend the
          constitution, and a deck that let it turned the document into the
@@ -35949,7 +36049,7 @@ var V16_AI_DECK = [
       v16AiPay(st, pid, V17_AI_COST_ARTICLE);
       return 'The ' + PARTY[pid].short + ' laid ' + V11_ART[id].name + ' before the country.';
     } },
-  { id:'order', post:['govern', 'partner', 'consolidate'],
+  { id:'order', post:['govern', 'partner', 'consolidate', 'exposed'],
     can:function (st, pid) {
       return partyPurse(st, pid) >= V17_AI_COST_ORDER && !!v17AiOrderFor(st, pid);
     },
@@ -35960,7 +36060,10 @@ var V16_AI_DECK = [
       v16AiPay(st, pid, V17_AI_COST_ORDER);
       return 'The ' + PARTY[pid].short + ' signed ' + v10OrderTitle(V10_ORDER[o.id], o.target) + '.';
     } },
-  { id:'floor', post:['attack', 'partner', 'restive', 'consolidate', 'moderate', 'hold', 'organise'],
+  /* S21m: and it speaks on a bill. A government had no way to say anything
+     about legislation before the House at all, its own or anybody's. */
+  { id:'floor', post:['attack', 'partner', 'restive', 'consolidate', 'moderate', 'hold', 'organise', 'exposed'],
+    post2:['govern'],
     can:function (st, pid) {
       return partyPurse(st, pid) >= V17_AI_COST_FLOOR && !!v17AiFloorFor(st, pid);
     },
@@ -37512,8 +37615,22 @@ function v16AiTurn(st) {
        two writers for one field is how `a.posture` and `v16Posture` came to be
        two answers to one question in the first place. */
     var post = v16Posture(st, p.id);
+    /* S21m — AND A SECOND LIST, READ ONLY WHEN THE PARTY THINKS. `govern`
+       appears in three of the thirteen `post:` arrays, so a government's whole
+       output was order, campaign and article on every board and every seed --
+       and measured over 1,362 driven government-sessions its open set is 0.96
+       cards, EMPTY on 52.3% of them, against 4.83 and 7.0% for a party
+       waiting on the back benches. The party in office sat out more sessions
+       than it acted in.
+
+       `post2` is how that is fixed without widening the FLOOR: R2 says the
+       eleven-card deck is part of the shipped game, so a card opened to
+       `govern` outright would give the instinct level a deck it never had.
+       Read here and nowhere else, and only above `instinct`. */
+    var thinks2 = (typeof v19Thinks === 'function') && v19Thinks(st);
     var open = V16_AI_DECK.filter(function (c) {
-      if (c.post.indexOf(post) < 0) return false;
+      if (c.post.indexOf(post) < 0 &&
+          !(thinks2 && c.post2 && c.post2.indexOf(post) >= 0)) return false;
       if (st.turn - (a.last[c.id] || -99) < 4) return false;
       try { return c.can(st, p.id); } catch (e) { return false; }
     });
@@ -38842,7 +38959,8 @@ function v16NameHeld(name, st) {
   return false;
 }
 var V16_POSTURE_SAY = {
-  govern:'Governing', partner:'In the ministry with you', attack:'Coming after the government',
+  govern:'Governing', exposed:'Governing, and behind in the country',
+  partner:'In the ministry with you', attack:'Coming after the government',
   restive:'In the ministry and working against you',
   moderate:'Moving toward the middle', consolidate:'Holding what it has',
   organise:'Building the organisation', hold:'Waiting'
@@ -41511,6 +41629,9 @@ var V17_GRUDGE_VOTE = 12;
    `govern`, because a party with the state behind it has other money. */
 var V17_BURN = {
   organise:    .88,
+  /* a government behind in the country spends like a party building one,
+     because that is what it is doing */
+  exposed:     .85,
   consolidate: .82,
   govern:      .70,
   partner:     .66,

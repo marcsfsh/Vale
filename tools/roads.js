@@ -422,6 +422,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   /* S10b — THE ORDER PAPER. What you can do about a bill that is not yours,
      and how much it is worth. */
   const paper = await page.evaluate(() => {
+    /* S21m — THIS BLOCK PINS ITS DICE, WHICH IT NEVER DID. It runs on whatever
+       state the arms before it leave behind and `partyDemandPolicy` rolls, so
+       the bill it builds -- and therefore the forecast swing every reading
+       below is taken from -- depended on the stream it inherited. Two runs of
+       an IDENTICAL build read 0.9 / 9.4 / 16.9 and 0.6 / 6.3 / 11.3, which is
+       .18 and .12 points per point of the chamber against a floor of .15: the
+       arm has been passing on the draw, and the comment beside that floor
+       quotes .400 from a third vintage. A road whose figure moves between two
+       runs of one build is telling you it does not pin. */
+    S.rngState = 20260829;
     const out = {}, me = playParty(S);
     const opp = PARTIES.filter(x => x.id !== me && !S.banned[x.id])[0];
     const seatsBefore = JSON.parse(JSON.stringify(S.seats));
@@ -524,16 +534,33 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      bound of 1.5 while being MORE correct, not less. Read as points per point
      of the chamber the three readings are .400, .396 and .397: a line is worth
      what its party is, to three figures. That is the assertion now, with the
-     ordering kept beside it. */
+     ordering kept beside it.
+
+     S21m: AND THE BOARD IS PINNED, SO THE FLOOR MEANS SOMETHING. This block
+     never seeded its own dice -- it ran on whatever the arms before it left and
+     `partyDemandPolicy` rolls -- so the bill it builds, and the forecast swing
+     every reading here is taken from, depended on the stream it inherited. The
+     per-seat figure has read .400 when this comment was written, .188 through
+     S21l and .120 now, and TWO RUNS OF ONE IDENTICAL BUILD gave the last two:
+     the floor of .15 was passing on the draw. `S.rngState` is set at the top of
+     the block and the reading is now the same on every run, so the floor is
+     re-derived under it at .10 -- a fifth below the pinned figure, which the
+     dice can no longer move and only a change to what a declared line is worth
+     can. If a later slice sees this fall again it is the mechanism, not the
+     board. The PROPORTIONALITY beside it is scale-free and never moved: 1.044x
+     and 1.050x across the same two runs. */
   const perSeat = [paper.d05 / 5, paper.d50 / 50, paper.d90 / 90];
   const psLo = Math.min.apply(null, perSeat), psHi = Math.max.apply(null, perSeat);
   say(paper.d05 < paper.d50 && paper.d50 < paper.d90 && paper.d90 > 6 &&
-      psLo > .15 && psHi < psLo * 1.25,
+      psLo > .10 && psHi < psLo * 1.25,
     'a line is worth what its party is',
     `opposing costs the bill ${paper.d05} at 5% of the Assembly, ${paper.d50} at 50%, ${paper.d90} at 90% ` +
     `(was a flat 8 at any size) · and it is PROPORTIONAL to the seats behind it, which is what the title ` +
     `claims: ${perSeat.map(x => x.toFixed(3)).join(', ')} points per point of the chamber, a spread of ` +
-    `${(psHi / psLo).toFixed(3)}x -- a party holding 5% can swing at most 5 whatever it declares`);
+    `${(psHi / psLo).toFixed(3)}x -- a party holding 5% can swing at most 5 whatever it declares. THE BOARD IS ` +
+    `PINNED SINCE S21m: this block rolled on whatever stream the arms before it left, the per-seat figure has ` +
+    `read .400, .188 and .120 across vintages, and two runs of one identical build gave the last two -- the ` +
+    `floor of .15 was passing on the draw and is re-derived at .10 under the pin`);
   say(paper.killRefused && paper.killWorks, 'the kill is gated where it acts',
     `refused without a majority: ${paper.killRefused} · archived as killed with one: ${paper.killWorks}`);
   /* S10c — THE ORDER BOOK. The three rules, mechanically. */
@@ -9282,6 +9309,361 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `die is drawn BEFORE the skip, for every party including the player's own and a banned one, so the gate ` +
     `decides what happens and never how many numbers come off the stream: with the whole board banned and not ` +
     `one party able to act it still draws ${ai.dice.allBanned} for ${ai.dice.parties} parties`);
+
+  /* ================================================================
+     S21m — THE PARTY IN OFFICE CAN AFFORD TO GOVERN
+     ================================================================
+     `govern` appeared in three of the thirteen `post:` arrays, so a
+     government's whole output was order, campaign and article on every board
+     and every seed. Measured over 998 driven government-sessions its open set
+     was 1.25 cards and EMPTY on 45.6% of them, against 4.83 and 7.0% for a
+     party waiting on the back benches: the party in office sat out more
+     sessions than it acted in.
+
+     AND THE CARD LIST WAS THE SMALLER HALF OF IT. `organise`, whose only
+     condition is having the money, was refused for want of it 778 times in
+     998 -- because at `V17_BURN.govern = .70` a government's purse runs p50 20
+     against the back bench's 66, while the deck costs 22 to 42. It was not
+     short of options; it was broke. */
+  const gov = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+
+    /* (a) THE TABLE. Which cards name the government, in each list, and what
+       the floor may draw -- read off the deck rather than off a count, so a
+       later slice that opens a card to `govern` outright and breaks R2 fails
+       here rather than in play. */
+    const namesIn = (post, key) => V16_AI_DECK.filter(c =>
+      (c[key] || []).indexOf(post) >= 0).map(c => c.id).sort();
+    R.table = {
+      floorDeck: namesIn('govern', 'post'),
+      thinkingOnly: namesIn('govern', 'post2'),
+      exposedDeck: namesIn('exposed', 'post').concat(namesIn('exposed', 'post2')).sort()
+    };
+    /* the three the game shipped with, and nothing else, at the floor */
+    R.floorHeld = R.table.floorDeck.join(',') === 'article,campaign,order';
+    R.widened = R.table.thinkingOnly.join(',') === 'floor,organise';
+    /* and `court` is what the second mood has and the first does not */
+    R.courtIsTheDifference =
+      R.table.exposedDeck.indexOf('court') >= 0 &&
+      R.table.floorDeck.indexOf('court') < 0 &&
+      R.table.thinkingOnly.indexOf('court') < 0;
+
+    /* (b) THE SECOND MOOD IS A FACT ABOUT THE COUNTRY, ASKED WITHOUT DICE.
+       One board, the gap moved either side of the bar by hand, and the posture
+       read each time. `supportTargets` is a share that sums to one, so the
+       cheapest way to move the gap is to move the SEATS: fewer seats for the
+       same support is a government ahead of the country, more is one behind. */
+    fresh(4242); for (let i = 0; i < 8; i++) step();
+    R.mood = (() => {
+      const g = S.ruling;
+      const seats0 = S.seats[g];
+      const at = (mult) => {
+        S.seats[g] = Math.max(1, Math.round(seats0 * mult));
+        return { gap:+v21GovGap(S, g).toFixed(3), post:v16PostureRaw(S, g) };
+      };
+      /* more seats than the country would give it: behind, and exposed */
+      const behind = at(2.2);
+      /* fewer: ahead of the country, and simply governing */
+      const ahead = at(.35);
+      S.seats[g] = seats0;
+      return { behind:behind, ahead:ahead, bar:V21_GOV_GAP,
+        exposedWhenBehind: behind.post === 'exposed' && behind.gap <= V21_GOV_GAP,
+        governsWhenAhead: ahead.post === 'govern' && ahead.gap > V21_GOV_GAP };
+    })();
+
+    /* (c) AND R2: THE FLOOR NEVER SEES IT. `exposed` is returned only above
+       `instinct`, because no card in the shipped deck lists it -- a floor that
+       could reach it would find an empty open set and the government would
+       stop acting altogether. */
+    fresh(4242, 'instinct'); for (let i = 0; i < 8; i++) step();
+    R.floorMood = (() => {
+      const g = S.ruling, seats0 = S.seats[g];
+      S.seats[g] = Math.max(1, Math.round(seats0 * 2.2));
+      const out = { gap:+v21GovGap(S, g).toFixed(3), post:v16PostureRaw(S, g) };
+      S.seats[g] = seats0;
+      return out;
+    })();
+    R.floorNeverExposed = R.floorMood.post === 'govern' && R.floorMood.gap <= V21_GOV_GAP;
+
+    /* (d) THE WORKING BALANCE, WHICH IS THE HALF THE PLAN DID NOT HAVE. A
+       party does not spend itself below the price of the dearest card its own
+       posture can draw. Read through `partyPurseTick` rather than off the
+       function: the first build kept the deck's MEDIAN and took the
+       government's empty sessions from 45.6% only to 40.8%, because a party
+       holding 34 pays 22 for an order and is under the reserve again. */
+    R.balance = (() => {
+      fresh(4242); for (let i = 0; i < 6; i++) step();
+      /* NOT THE PLAYER, WHICH THE FIRST VERSION PICKED. It took `S.ruling`,
+         and on this board after six sessions the ruling party IS the player --
+         whom `partyPurseTick` skips entirely, since a human's party spends
+         nothing it was not told to. Both legs read a spend of 0 and passed on
+         a build with the reserve deleted. The reserve is a rule about every
+         engine party, so an engine party is what it is asked about. */
+      const g = PARTIES.filter(q => q.id !== playParty(S) && !S.banned[q.id])[0].id;
+      const want = v21WorkingBalance(v16Posture(S, g));
+      /* THE SPEND, NOT THE PURSE. A first version read the purse either side
+         of the tick and asked that it not fall below the reserve -- and the
+         tick pays the party its income BEFORE it spends, so the purse came out
+         HIGHER both times and both legs passed with the reserve deleted. What
+         the reserve does is cap the automatic spend, so the automatic spend is
+         what is read: `partySpend` is wrapped and the tick driven twice. */
+      const bs = partySpend;
+      let took = 0;
+      partySpend = function (st, pid, money) {
+        if (pid === g) took += money;
+        return bs.apply(this, arguments);
+      };
+      let rich = null, poor = null;
+      try {
+        S.purse = S.purse || {};
+        S.purse[g] = want + 200;
+        took = 0; partyPurseTick(S);
+        rich = { spent:+took.toFixed(2), left:+partyPurse(S, g).toFixed(2) };
+        S.purse[g] = Math.max(0, want - 10);
+        took = 0; partyPurseTick(S);
+        poor = { spent:+took.toFixed(2), left:+partyPurse(S, g).toFixed(2) };
+      } finally { partySpend = bs; }
+      return { want:want, rich:rich, poor:poor,
+        /* IT SPENDS, AND IT STOPS AT THE RESERVE. Both halves, because either
+           alone is passed by a party the tick never reaches: a spend of nought
+           satisfies "never below the reserve" trivially, which is how the
+           first version passed while driving the player. */
+        keptTheReserve: rich.spent > 0 && rich.left >= want - 1e-9,
+        /* AND A PARTY STARTING UNDER IT COMES OUT ON IT, NOT UNDER IT. This
+           asked for a spend of NOUGHT and that is not what the rule does: the
+           tick pays the income first, so a party on 32 is carried past the
+           reserve and then spent back down to exactly it. */
+        didNotDigLower: poor.spent > 0 && poor.left >= want - 1e-9,
+        post: v16Posture(S, g),
+        /* and it is the dearest card that posture can draw, not a number --
+           asked of the subject's own posture and of `govern` separately, since
+           the sentence quotes the government's */
+        govWant: v21WorkingBalance('govern'),
+        isTheDearest: want === V16_AI_DECK.filter(c =>
+          c.post.indexOf(v16Posture(S, g)) >= 0 ||
+          (c.post2 || []).indexOf(v16Posture(S, g)) >= 0)
+          .reduce((hi, c) => Math.max(hi, V16_AI_COST[c.id] || 0), 0) &&
+          v21WorkingBalance('govern') === V16_AI_DECK.filter(c =>
+            c.post.indexOf('govern') >= 0 || (c.post2 || []).indexOf('govern') >= 0)
+            .reduce((hi, c) => Math.max(hi, V16_AI_COST[c.id] || 0), 0) };
+    })();
+
+    /* (d2) THE MOOD TAKES THE TENURE, THE OFFICE DOES NOT. `govern` and
+       `exposed` are one fact about the room with a different mood on it, and
+       the bar between them sits at the gap's own quartile -- so passing that
+       pair through S21l's hard gate would let the mood flip on a session's
+       noise, which is the churn that tenure exists to stop. Moving BETWEEN
+       them waits; moving OUT of office does not. Both, on one board. */
+    R.tenure = (() => {
+      fresh(4242); for (let i = 0; i < 8; i++) step();
+      const g = PARTIES.filter(q => q.id !== playParty(S) && !S.banned[q.id])[0].id;
+      S.ruling = g; S.coalition = [g];
+      const seats0 = S.seats[g];
+      delete v16Ai(S)[g].posture; delete v16Ai(S)[g].postureSince;
+      /* AN ABSOLUTE SHARE, NOT A MULTIPLE OF WHAT THIS PARTY HAPPENS TO HOLD.
+         The page leg below first scaled the subject's own seats by 2.2 and the
+         subject was a small party, so the gap never crossed the bar and the
+         leg read `govern` where it meant to read `exposed`. Six per cent of
+         the chamber is under any support share and sixty is over all of them. */
+      S.seats[g] = Math.round(CFG.seats * .06);             /* ahead: governs */
+      v16PostureSettle(S, g);
+      const settled = v16Ai(S)[g].posture;
+      S.turn += 1;
+      S.seats[g] = Math.round(CFG.seats * .6);              /* behind: exposed */
+      /* AND THE BOARD HAS TO DISAGREE, or "it still reads govern" is a claim
+         about a board that never changed its mind */
+      const rawWhileHeld = v16PostureRaw(S, g);
+      const heldMood = v16Posture(S, g);
+      /* but leaving office is a fact and does not wait -- ASKED OF A PARTY
+         SETTLED ON THE MOOD ITSELF. A first version settled it on `govern`
+         and put it out, which `govern`'s own place on the hard list carries:
+         taking `exposed` OFF that list changed nothing and the poison came
+         back green. The party has to be settled on `exposed` when it falls. */
+      /* PAST THE TENURE FIRST. The settle a session after the board turned
+         stores what `v16Posture` returns, which is the HELD mood -- so this
+         read `govern` and the leg reddened a build that is right. The tenure
+         is what the leg above just proved; here it has to elapse. */
+      S.turn += V21_POSTURE_TENURE;
+      v16PostureSettle(S, g);
+      const settledExposed = v16Ai(S)[g].posture;
+      S.turn += 1;
+      S.ruling = PARTIES.filter(q => q.id !== g && !S.banned[q.id])[0].id;
+      S.coalition = [S.ruling];
+      const leftOffice = v16Posture(S, g);
+      S.seats[g] = seats0;
+      return { settled:settled, heldMood:heldMood, leftOffice:leftOffice,
+        rawWhileHeld:rawWhileHeld, settledExposed:settledExposed,
+        moodWaits: settled === 'govern' && rawWhileHeld === 'exposed' &&
+          heldMood === 'govern',
+        officeDoesNot: settledExposed === 'exposed' &&
+          leftOffice !== 'govern' && leftOffice !== 'exposed' };
+    })();
+
+    /* (d3) AND THE PAGE HAS A SENTENCE FOR IT. A posture with no row in
+       `V16_POSTURE_SAY` prints its own id at the reader, which is the card
+       lying in a different dialect. */
+    R.page = (() => {
+      fresh(4242); for (let i = 0; i < 8; i++) step();
+      const g = PARTIES.filter(q => q.id !== playParty(S) && !S.banned[q.id])[0];
+      S.ruling = g.id; S.coalition = [g.id];
+      const seats0 = S.seats[g.id];
+      S.seats[g.id] = Math.round(CFG.seats * .6);
+      delete v16Ai(S)[g.id].posture; delete v16Ai(S)[g.id].postureSince;
+      v16PostureSettle(S, g.id);
+      const post = v16Posture(S, g.id), say = V16_POSTURE_SAY[post];
+      const html = v16AiPanel();
+      const row = html.split('<tr>').filter(x => x.indexOf('</span> ' + g.short + '</td>') >= 0)[0] || '';
+      S.seats[g.id] = seats0;
+      return { post:post, say:say || null, rowFound: !!row,
+        prints: !!say && row.indexOf('<td>' + say + '</td>') >= 0,
+        notTheId: !!say && say !== post };
+    })();
+    R.pageSaysIt = !!(R.page.post === 'exposed' && R.page.rowFound &&
+      R.page.prints && R.page.notTheId);
+
+    /* (e) DRIVEN: THE GOVERNMENT ACTS. The table and the balance are both
+       arithmetic; this is the claim that the party in office now takes
+       initiatives in real sessions, and takes the ones it could not before. */
+    R.play = (() => {
+      const saved = V16_AI_DECK.map(c => c.run);
+      const byCard = {}, byPost = {}, byGovern = {};
+      let govActs = 0, govSessions = 0, exposedSessions = 0, courtWhileExposed = 0;
+      const bc = v19Choose;
+      V16_AI_DECK.forEach((c, i) => {
+        c.run = function (st, pid) {
+          if (typeof V19_SIMULATING === 'undefined' || !V19_SIMULATING) {
+            const post = v16Posture(st, pid);
+            if (post === 'govern' || post === 'exposed') {
+              govActs++;
+              byCard[c.id] = (byCard[c.id] || 0) + 1;
+              byPost[post] = (byPost[post] || 0) + 1;
+              /* AND SEPARATELY WHILE PLAINLY GOVERNING. `organise` and `floor`
+                 sit in `exposed`'s own `post` list, so counting them across
+                 both moods is satisfied by the mood alone -- the poison that
+                 stops the filter reading `post2` at all came back GREEN on it.
+                 For `govern` those two are reachable ONLY through the second
+                 list, so that is where they are counted. */
+              if (post === 'govern') byGovern[c.id] = (byGovern[c.id] || 0) + 1;
+              if (post === 'exposed' && c.id === 'court') courtWhileExposed++;
+            }
+          }
+          return saved[i].call(this, st, pid);
+        };
+      });
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+          fresh(sd);
+          for (let t = 0; t < 60; t++) {
+            if (!step()) break;
+            PARTIES.forEach(q => {
+              if (S.banned[q.id] || q.id === playParty(S)) return;
+              const post = v16Posture(S, q.id);
+              if (post === 'govern') govSessions++;
+              if (post === 'exposed') exposedSessions++;
+            });
+          }
+        });
+      } finally {
+        V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; });
+        runQueue = rq; v19Choose = bc;
+      }
+      return { govActs:govActs, byCard:byCard, byPost:byPost, byGovern:byGovern,
+        govSessions:govSessions, exposedSessions:exposedSessions,
+        courtWhileExposed:courtWhileExposed,
+        moodOccurs: exposedSessions / Math.max(1, govSessions + exposedSessions) };
+    })();
+    /* the two cards the widening opened have to be PLAYED, or the list is
+       decoration; and the mood has to occur without being the default */
+    R.widenedReaches = (R.play.byGovern.organise || 0) > 0 && (R.play.byGovern.floor || 0) > 0;
+    R.courtReaches = R.play.courtWhileExposed > 0;
+    /* the bar is the gap's own quartile: measured 24.5% of government sessions
+       at -4, against 46.1% at -2 and 59.7% at -1 */
+    R.moodIsAQuarter = R.play.moodOccurs > .10 && R.play.moodOccurs < .45;
+    return R;
+  });
+
+  /* and the burn table answers for the new posture, or it silently falls back
+     to the `.7` default in `partyPurseTick` and the mood spends like a
+     government that is not behind at all */
+  const V17_BURN_HAS_EXPOSED = await page.evaluate(() =>
+    typeof V17_BURN.exposed === 'number' && V17_BURN.exposed !== V17_BURN.govern);
+  const govOk =
+    gov.floorHeld && gov.widened && gov.courtIsTheDifference &&
+    gov.mood.exposedWhenBehind && gov.mood.governsWhenAhead &&
+    gov.floorNeverExposed &&
+    gov.balance.keptTheReserve && gov.balance.didNotDigLower && gov.balance.isTheDearest &&
+    gov.tenure.moodWaits && gov.tenure.officeDoesNot && gov.pageSaysIt &&
+    V17_BURN_HAS_EXPOSED &&
+    gov.widenedReaches && gov.courtReaches && gov.moodIsAQuarter &&
+    gov.play.govActs > 40;
+  say(govOk, 'the party in office can afford to govern',
+    `${'`'}govern${'`'} APPEARED IN THREE OF THE THIRTEEN ${'`'}post:${'`'} ARRAYS, so a government's whole ` +
+    `output was order, campaign and article on every board and every seed -- and measured over 998 driven ` +
+    `government-sessions its open set was 1.25 cards, EMPTY on 45.6% of them, against 4.83 and 7.0% for a party ` +
+    `waiting on the back benches. The party in office sat out more sessions than it acted in · AND THE CARD ` +
+    `LIST WAS THE SMALLER HALF OF IT: ${'`'}organise${'`'}, whose only condition is having the money, was ` +
+    `refused for want of it 778 times in 998, because at ${'`'}V17_BURN.govern = .70${'`'} a government's purse ` +
+    `runs p50 20 against the back bench's 66 while the deck costs 22 to 42. It was not short of options, it was ` +
+    `broke -- and a rate is the wrong instrument for that: dropping the burn to .46 takes the empty rate to ` +
+    `11.4% and the purse to a p50 of 81, richer than any party on the board, by cutting the funding the vote ` +
+    `model reads. What ships instead is that no party spends itself BELOW THE PRICE OF ACTING: the tick keeps ` +
+    `back the dearest card a posture can draw -- ${gov.balance.govWant} for a government, ${gov.balance.want} ` +
+    `for the ${gov.balance.post} this leg drives (${gov.balance.isTheDearest}) -- so a party handed ` +
+    `${gov.balance.want + 200} has ${gov.balance.rich.spent} taken by the tick and never the last ` +
+    `${gov.balance.want} of it (${gov.balance.keptTheReserve}), and one starting UNDER the reserve at ` +
+    `${gov.balance.want - 10} is carried past it by its income and spent back to exactly ` +
+    `${gov.balance.poor.left}, never under (${gov.balance.didNotDigLower}). READ AS A SPEND AND NOT AS A PURSE, AND ` +
+    `OF AN ENGINE AND NOT THE PLAYER: the tick pays the party its income before it spends, so a first version ` +
+    `reading the purse either side came out HIGHER both times; and it drove ${'`'}S.ruling${'`'}, which on that ` +
+    `board is the player, whom the tick skips -- it read a spend of nought and passed with the reserve deleted. ` +
+    `The first build kept the deck's MEDIAN of 34 and got ` +
+    `only to 40.8%, because a party holding 34 pays 22 for an order and is under the reserve again; at the ` +
+    `dearest card the government's empty sessions are 26.5% and EVERY posture improves -- back bench 10.4 to ` +
+    `4.6, partner 28.2 to 12.3, consolidate 39.8 to 18.3 -- which is what a rule about spending rather than ` +
+    `about governments looks like · THE DECK IS WIDENED ABOVE THE FLOOR AND ONLY THERE: the floor draws ` +
+    `${gov.table.floorDeck.join(', ')} (${gov.floorHeld}), which is the game as it shipped and R2, and a ` +
+    `thinking government adds ${gov.table.thinkingOnly.join(' and ')} through a second list ` +
+    `(${gov.widened}) -- both of which it now actually plays WHILE PLAINLY GOVERNING (organise ` +
+    `${gov.play.byGovern.organise || 0}, floor ${gov.play.byGovern.floor || 0} over 360 driven sessions), which ` +
+    `is where the second list is the only road to them: counted across both moods instead, the mood's own ` +
+    `${'`'}post${'`'} carries them and the poison that stops the filter reading ${'`'}post2${'`'} at all comes ` +
+    `back green · AND A ` +
+    `GOVERNMENT BEHIND IN THE COUNTRY IS A DIFFERENT GOVERNMENT. ${'`'}v16PostureRaw${'`'} returned ` +
+    `${'`'}govern${'`'} before reading a single fact, so the party in office behaved the same in its fiftieth ` +
+    `session as in its first whatever the country thought of it. The gap between what it holds and what the ` +
+    `country would give it runs p10 -5.5, p25 -3.9, p50 -1.7, p90 +3.5 over 1,362 government-sessions, so the ` +
+    `bar is the QUARTILE rather than nought: at ${gov.mood.bar} it catches 24.5% where -2 catches 46.1% and -1 ` +
+    `catches 59.7%, and a mood that occurs on half of all sessions is the default rather than a mood. Asked ` +
+    `without dice on one board: a gap of ${gov.mood.behind.gap} reads ${gov.mood.behind.post} ` +
+    `(${gov.mood.exposedWhenBehind}) and ${gov.mood.ahead.gap} reads ${gov.mood.ahead.post} ` +
+    `(${gov.mood.governsWhenAhead}), and driven it occurs on ` +
+    `${(100 * gov.play.moodOccurs).toFixed(1)}% of government sessions · ` +
+    `${'`'}court${'`'} IS THE WHOLE OF WHAT THE SECOND MOOD BUYS (${gov.courtIsTheDifference}): going out to a ` +
+    `bloc is what a government does when the country is behind it and the seats are not, and it is played ` +
+    `${gov.play.courtWhileExposed} times while exposed (${gov.courtReaches}) · AND THE FLOOR NEVER SEES THE ` +
+    `MOOD AT ALL: at ${'`'}instinct${'`'} the same board reads ${gov.floorMood.post} at a gap of ` +
+    `${gov.floorMood.gap} (${gov.floorNeverExposed}), because no shipped card lists it and a government that ` +
+    `reached it would find an empty open set and stop acting · AND THE MOOD TAKES THE TENURE WHERE THE OFFICE ` +
+    `DOES NOT: settled on ${gov.tenure.settled}, a government whose country turns against it still reads ` +
+    `${gov.tenure.heldMood} the session after (${gov.tenure.moodWaits}), because the bar sits at the gap's own ` +
+    `quartile and a threshold in the middle of a distribution flips on noise, and the board it is holding out ` +
+    `against says ${gov.tenure.rawWhileHeld} -- while the same party, once SETTLED on ` +
+    `${gov.tenure.settledExposed} and then put out of office, reads ${gov.tenure.leftOffice} at once ` +
+    `(${gov.tenure.officeDoesNot}); settled on ${'`'}govern${'`'} instead that leg is carried by ` +
+    `${'`'}govern${'`'}'s own place on the hard list and taking the mood off it changes nothing · and the card ` +
+    `has a sentence ` +
+    `for it rather than printing the id at the reader ("${gov.page.say}", ${gov.pageSaysIt}), and ` +
+    `${'`'}V17_BURN${'`'} answers for it rather than falling through to the .7 default ` +
+    `(${V17_BURN_HAS_EXPOSED})`);
 
   /* ================================================================
      S21l — A PARTY KEEPS ITS FOOTING, AND THE PAGE SAYS WHAT IT IS

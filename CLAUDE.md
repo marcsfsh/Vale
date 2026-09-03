@@ -470,6 +470,33 @@ before touching the file.
   had, three legs earlier, called `fresh` and driven forty more sessions; it
   compared against whoever governed at the END of the arm and passed for two
   slices because the two happened to be the same party.
+- **A PARTY THAT CANNOT AFFORD ITS DECK LOOKS EXACTLY LIKE A PARTY WITH NO
+  DECK, and S21m's plan spent its whole design on the wrong one.** `govern` was
+  in three of thirteen `post:` arrays and a government's open set was 1.25 cards
+  with 45.6% of its sessions EMPTY, so "widen the list" is the obvious reading —
+  and opening three more cards moved it to 49.4%, because `organise`, whose only
+  condition is having the money, was refused for want of it 778 times in 998. At
+  `V17_BURN.govern = .70` the party in office ran a purse of p50 20 against a
+  back-bencher's 66 while the deck cost 22 to 42. When a capability looks
+  unreachable, ask what the `can` actually refused on before widening what it is
+  offered. The fix that shipped is a rule rather than a rate — no party spends
+  itself below the price of acting, the reserve being the dearest card its own
+  posture can draw — and the tell that it was the right shape is that EVERY
+  posture improved, not only the one with the defect. A rate change (`.46`) hit
+  the same number by cutting the funding the vote model reads, which is a
+  difficulty change wearing an AI fix's clothes.
+- **A PROBE THAT READS A STOCK WHERE THE RULE CAPS A FLOW MEASURES NEITHER.**
+  The reserve leg read the purse either side of `partyPurseTick` and asked that
+  it not fall below the reserve — and the tick pays the party its income BEFORE
+  it spends, so the purse came out higher both times and the leg passed with the
+  reserve deleted. Wrap the thing the rule actually governs. Its neighbour, from
+  the same leg: it drove `S.ruling`, which on that board is the PLAYER, whom the
+  tick skips entirely because a human's party spends nothing it was not told to
+  — a spend of nought, passing everything. And its other neighbour: two legs
+  pushed a threshold by scaling their subject's OWN seats, where the subject was
+  a small party and the bar was never crossed, so one read the posture it was
+  trying to disprove. Set an absolute, and record the raw reading the leg is
+  holding out against.
 - **Setting a case aside to make a claim exact can make the leg blind to the
   mechanism.** Every declared floor move at a thinking level is against the
   arithmetic — 53 of 53 — once `pressure` is excluded, and excluding it is
@@ -503,7 +530,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **212 content assertions**, the largest harness here: the
+- `tools/roads.js` — **213 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
