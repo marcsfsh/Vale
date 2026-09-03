@@ -2335,27 +2335,58 @@ async function run() {
       var verbs = Array.prototype.map.call(
         document.querySelectorAll('#view [data-bill-action]'),
         function (x) { return x.getAttribute('data-bill-action'); });
-      /* and a second is refused, because private members' time is scarce */
+      /* S21v: AND A SECOND IS OPEN, where this step used to assert it refused.
+         The owner's ruling is five bills at a time, ten on Very Easy, so the
+         button after one on the paper is the half that stands in the gap. */
+      UI.tab = 'policy'; render();
+      var next = document.querySelector('#view [data-pol][data-dir="1"]:not([disabled])');
+      return { bills:S.bills.length, owner:b.owner, sponsor:b.sponsor, me:playParty(S),
+        onPaper:!!card, verbs:verbs, secondOpen:!!next };
+    });
+    /* and the second one is DRIVEN, by the same two real clicks, because a
+       button that is merely enabled is S17b's defect read the other way round */
+    const draft2 = await op.$('#view [data-pol][data-dir="1"]:not([disabled])');
+    if (draft2) await draft2.click();
+    await op.waitForTimeout(250);
+    const sheet2 = await op.$('#modal [data-draft="clean"]');
+    if (sheet2) await sheet2.click();
+    await op.waitForTimeout(250);
+    /* then the paper is filled to the cap through the model and the card is
+       asked again: the refusal is the CAP's now, and it says how many */
+    const capped = await op.evaluate(() => {
+      var cap = (typeof v21BillCap === 'function') ? v21BillCap(S) : 1;
+      var me = playParty(S), guard = 0;
+      while (v17PrivateBillsOf(S, me).length < cap && guard++ < 40) {
+        var open = POLICIES.filter(function (x) {
+          return policyOpen(S, x) && !activeBillFor(S, x.id) && !x.needs;
+        })[0];
+        if (!open) break;
+        var bb = sponsorBill(S, open.id, 1, 'player', 'clean', true);
+        if (!bb) break;
+      }
       UI.tab = 'policy'; render();
       var next = document.querySelector('#view [data-pol][data-dir="1"]:not([disabled])');
       var shut = document.querySelector('#view [data-pol][data-dir="1"][disabled]');
-      return { bills:S.bills.length, owner:b.owner, sponsor:b.sponsor, me:playParty(S),
-        onPaper:!!card, verbs:verbs,
-        second:!next, why:(shut && shut.getAttribute('title')) || '' };
+      return { cap:cap, held:v17PrivateBillsOf(S, me).length, bills:S.bills.length,
+        shut:!next, why:(shut && shut.getAttribute('title')) || '' };
     });
     const kit = ['whip', 'bargain', 'confidence', 'urgent'];
     step('opposition-floor',
       bench.standing === 'opposition' && bench.live && bench.rec &&
       laid.bills === bench.bills + 1 && laid.owner === 'player' && laid.sponsor === laid.me &&
       laid.onPaper && kit.every(k => laid.verbs.indexOf(k) < 0) &&
-      laid.second && /already has a bill before the House/.test(laid.why),
+      laid.secondOpen && capped.cap === 5 && capped.held === capped.cap && capped.shut &&
+      new RegExp('already has ' + capped.cap + ' bills before the House').test(capped.why),
       `a real click on the statute card's own Draft button from the opposition bench opens the drafting ` +
       `sheet, and a real click on its Introduce puts the bill on the paper — owner '${laid.owner}', ` +
       `sponsored by ${laid.sponsor}, ${bench.bills} → ${laid.bills} bills — where the shipped build ` +
       `refused in \`changePolicy\` and drew the button dead · what the card offers on it is the floor and ` +
       `the arithmetic (${laid.verbs.join(', ')}) and none of the government's four instruments · "Worth ` +
-      `drafting now" is on the page from the bench too (${bench.rec}) · and the second bill is refused with ` +
-      `the reason on the button: "${laid.why.slice(0, 60)}"`);
+      `drafting now" is on the page from the bench too (${bench.rec}) · and a SECOND is open rather than ` +
+      `refused (${laid.secondOpen}), driven by the same two clicks, where this step used to assert the ` +
+      `refusal — the owner's ruling is ${capped.cap} at a time, ten on Very Easy · at ${capped.held} on the ` +
+      `paper the button is drawn shut (${capped.shut}) with the reason and the NUMBER on it: ` +
+      `"${capped.why.slice(0, 72)}"`);
     await op.close();
   }
 
