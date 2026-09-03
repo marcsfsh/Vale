@@ -729,7 +729,9 @@ var V19_TEMPER_AXIS = {
      it is `campaign` and `organise`'s appetite aimed at one constituency --
      and answering a paper is the dealer's, which is where every other card
      about replying to somebody sits. */
-  crowd:'organiser', street:'dealer'
+  crowd:'organiser', street:'dealer',
+  /* S21q: naming a price for your own benches is the dealer's whole art. */
+  trade:'dealer'
 };
 var V19_TEMPER = .6;
 /* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
@@ -762,6 +764,10 @@ function v19Temper(pid) {
 }
 var V19_MANIFESTO = 15;
 var BILL_BARS  = { committee:43, assembly:50, council:50, senate:50, decree:50 };
+/* S21q: the hinge `divisionOf` already turns on. Its logistic is centred on
+   fifty, so "which lobby this party leans to" is a question the game answers
+   at fifty and this names the number rather than repeating it. */
+var V21_HINGE = 50;
 var BILL_NOISE = { committee:14, assembly:13, council:13, senate:13, decree:13 };
 var BILL_STAGE_NAMES = { committee:'Committee', assembly:'Assembly', senate:'Senate', assent:'Assent', council:'Council', decree:'Decree', passed:'Law', failed:'Failed', withdrawn:'Withdrawn', killed:'Killed' };
 
@@ -10526,7 +10532,13 @@ var V18_PAPER_NEED = {
   confidence_threat:'leading', governors_conference:'leading',
   coalition_ultimatum:'leading', notice_of_motion:'leading',
   cross_party:'any', faction_demand:'any', party_demand:'any',
-  street_demand:'gov', opposition_conference:'any', government_offer:'any'
+  street_demand:'gov', opposition_conference:'any', government_offer:'any',
+  /* S21q: ANY chair. Selling your benches on one bill for somebody else's on
+     another is a thing an opposition party does as readily as a government --
+     more readily, because it has nothing else to sell. A NEW type rather than
+     a borrowed one, which is S16e's rule: a paper filed under another type
+     reaches into every branch that keys on it. */
+  vote_trade:'any'
 };
 /* A paper already in an old save is still answerable -- discarding one
    silently is the worst failure this file knows -- so an unknown type is
@@ -10574,6 +10586,15 @@ function inboxChoices(it) {
   /* S17q: THE STREET'S PAPER. The organisation behind it is not a party: it
      cannot be whipped, bought or invited into a coalition, so the three
      answers are carry it, buy time, or refuse it and take what follows. */
+  /* S21q: TWO ANSWERS AND NO THIRD. A trade is a price: you take it or you do
+     not. "Ask for more" would be a counter-offer, which is a second mechanism
+     and a second paper, and this file deletes a branch it cannot price. */
+  if (it.type === 'vote_trade') return [
+    { id:'accept', label:'Take the trade', cost:2,
+      tip:'Both benches go through the aye lobby, on their bill and on yours. The House will be able to read it afterwards.' },
+    { id:'decline', label:'Decline, and say so plainly', cost:0,
+      tip:'Free, and remembered. A party whose price was refused does not forget being asked to name one.' }
+  ];
   if (it.type === 'street_demand') return [
     { id:'carry', label:'Carry the measure they have asked for', cost:5, tip:'The bill goes on the paper. The demand is met and the pressure goes with it.' },
     { id:'talks', label:'Open talks and offer what can be offered', cost:3, tip:'Buys sessions rather than settling it. The deadline moves; the demand does not.' },
@@ -10699,6 +10720,25 @@ function respondInbox(id, choice) {
     }
     if (said === 'talks') logIt(S, 'Talks were opened. Nothing was conceded and the date moved.');
     if (said === 'refuse') logIt(S, 'The government answered that it would not be done. The answer was printed in full.');
+  } else if (it.type === 'vote_trade') {
+    /* S21q: THROUGH THE BODY, and the words stay here. Both lines are written
+       by `v17FloorCore`, which is the one thing that writes a line, so a trade
+       cannot put one somewhere a declaration could not go. */
+    if (choice === 'accept') {
+      var tw = (typeof v21TradeCore === 'function')
+        ? v21TradeCore(S, from, playParty(S), { give:it.give, ask:it.ask }) : 'no body';
+      if (tw) { flash(tw); S.capital += c; return; }
+      shiftPartyRel(S, from, 7);
+      if (typeof v16Resent === 'function') v16Resent(S, from, playParty(S), -10);
+      logIt(S, 'The ' + PARTY[from].short + ' will carry ' + esc(it.giveTitle || 'their side of it') +
+        ' and you will carry theirs. Both lists are in the whips\' hands.');
+      chronicle(S, 'A vote was traded with the ' + PARTY[from].short + '.');
+    }
+    if (choice === 'decline') {
+      shiftPartyRel(S, from, -4);
+      if (typeof v16Resent === 'function') v16Resent(S, from, playParty(S), 6);
+      logIt(S, 'The offer from the ' + PARTY[from].short + ' was declined, in writing.');
+    }
   } else if (it.type === 'party_demand') {
     /* S17l: and this one is answered TO THE SENDER. Carrying it puts the bill
        on the paper and spends their grudge down; declining is cheaper than
@@ -35419,6 +35459,11 @@ var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
      government's answer is priced at `demand`, because it is a reply to a
      paper rather than an initiative. */
   crowd:24, street:16,
+  /* S21q: an offer costs a party its whips and its credibility for a session
+     and nothing else -- no rallies, no organisers, no money at the printer --
+     so it is priced with `floor` at 12 and `demand` at 16, which are the other
+     two cards that are a piece of paper and a conversation. */
+  trade:14,
   /* S21n: holding a coalition together. The player pays 3 capital and 2 money
      for a council and 4 and 2 to reopen an agreement; on the engines' own
      scale that sits with `bargain` and `pact`, which are the other cards about
@@ -36483,6 +36528,48 @@ var V16_AI_DECK = [
       v16AiPay(st, pid, V16_AI_COST.descend);
       return 'The ' + PARTY[pid].short + ' signed ' + m.name + '.';
     } },
+  /* S21q — A PRICE ON THE BENCHES.
+
+     Measured over 1,440 driven sessions: two or more bills on the paper on
+     72.6% of them, and two parties and two bills where each would vote for
+     what the other is against on 12.66% of party pairs -- with the player one
+     of the two on 1,300 occasions. 44.1% of bills sit inside their own stage's
+     noise of their own bar, and ONE party's line swings the Assembly forecast
+     by 2.1 points at the median and 6.0 at the p90 against a noise of 6.5.
+
+     THE OFFER GOES TO WHOEVER CAN TAKE IT. A paper to the player, because a
+     player is asked; an immediate answer from an engine, because an engine
+     does not read papers -- and both sides of the decision are the objective's,
+     not a rule of thumb's. */
+  { id:'trade', post:['hold', 'moderate', 'consolidate', 'organise', 'attack'],
+    post2:['govern', 'exposed'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.trade) return false;
+      if ((st.bills || []).length < 2) return false;
+      return !!v21TradePick(st, pid);
+    },
+    run:function (st, pid) {
+      var t = v21TradePick(st, pid);
+      if (!t) return null;
+      v16AiPay(st, pid, V16_AI_COST.trade);
+      if (t.to === playParty(st)) {
+        /* the player is ASKED, on a paper of its own type */
+        addInbox(st, { type:'vote_trade', from:pid, give:t.offer.give, ask:t.offer.ask,
+          giveTitle:t.offer.giveTitle, askTitle:t.offer.askTitle,
+          title:'The ' + PARTY[pid].short + ' Name a Price',
+          body:'They will take their members through the aye lobby on ' +
+            t.offer.giveTitle + ' if you take yours through it on ' +
+            t.offer.askTitle + '. Neither bill is either party\'s own, which is ' +
+            'what makes it a trade rather than a favour.' });
+        return 'The ' + PARTY[pid].short + ' offered you a trade on ' + t.offer.askTitle + '.';
+      }
+      if (v21TradeCore(st, pid, t.to, t.offer)) return null;
+      shiftPartyRel(st, pid, 0);
+      if (typeof v16Resent === 'function') v16Resent(st, t.to, pid, -8);
+      return 'The ' + PARTY[pid].short + ' and the ' + PARTY[t.to].short +
+        ' traded benches on ' + t.offer.giveTitle + ' and ' + t.offer.askTitle + '.';
+    } },
   /* S21p — A PARTY AT THE HEAD OF THE CROWD.
 
      Measured over 1,440 driven sessions: 50 demands, 32 general strikes, 96
@@ -36756,7 +36843,12 @@ var V19_GOALS = [
       /* S21p: a movement's demand IS a statute, and the government answering
          it is the shortest road to one on this table -- shorter than a bill of
          your own, because somebody else has already made the case. */
-      crowd:.55, street:.9 }
+      crowd:.55, street:.9,
+      /* S21q: THE AIM IT SERVES SQUAREST. `carry` is about getting a statute
+         moved and a trade is benches on a division, which is the last thing
+         standing between a bill and the book -- above `floor` at .8, because a
+         trade buys somebody else's benches as well as declaring your own. */
+      trade:.95 }
   },
   {
     id:'office',
@@ -36929,7 +37021,9 @@ var V19_GOALS = [
          bloc and `v21Court` is the field it reads, which is exactly what
          heading a movement writes -- for the party at its head and for a
          government that concedes to it. */
-      crowd:1, street:.7 }
+      crowd:1, street:.7,
+      /* S21q: a division is not a constituency. */
+      trade:.15 }
   },
   {
     id:'build',
@@ -36955,7 +37049,9 @@ var V19_GOALS = [
       /* S21p: an aim about the machine, and a movement is not one -- but the
          organisers it puts a party in front of are how a machine gets built in
          the first place. */
-      crowd:.4, street:.15 }
+      crowd:.4, street:.15,
+      /* S21q: a trade builds nothing of its own. */
+      trade:.2 }
   },
   {
     id:'charter',
@@ -37371,6 +37467,9 @@ var V19_RIVAL_WORTH = {
      answer is a reply to the street. */
   crowd:    0,
   street:   0,
+  /* S21q: a trade is made WITH a party, not against one -- the same reading as
+     `pact` and `bargain`, which are the file's other two agreements. */
+  trade:    0,
   organise: .45,   /* build against them */
   campaign: .30,
   court:    .45,   /* the contested bloc is reached by exactly this card */
@@ -37592,6 +37691,28 @@ function v19Flight(st, pid) {
       u += v21Price('descend') * Math.min(1, (xm.power || 0) / V21_EXTRA_TOP);
     }
   }
+  /* S21q — AND WHETHER THE BILLS ITS BENCHES HAVE A SIDE ON ARE GOING TO
+     CARRY. Without this a trade is a pure loss to BOTH parties and neither
+     would ever make one: `v19Flight` reads `b.lines[pid]` for the party it is
+     scoring and nothing about the lines anybody else has declared, so the
+     benches you BUY are invisible while the ones you sell are not. That is
+     S21c's price list in the one place where the whole act is an exchange.
+     Read in the division's own terms -- which lobby this party leans to, and
+     how settled the bill is against its own stage's noise -- so it prices what
+     a trade actually buys and needs no second currency.
+
+     AND IT READS EVERY LIVE BILL, INCLUDING ONE PAST THE FLOOR. A skip for the
+     three finished stages stood here and its poison came back GREEN, because
+     `v19Standing` is read only ever as a DIFFERENCE -- by `v19Outcome` and by
+     the picker's own before/after -- and a bill nothing can move contributes
+     the same constant to both sides of every one of them. The stage matters in
+     `v21TradeFind`, where a line on an `assent` bill is a refusal, and that is
+     where it is asserted; here it was a line with no arm, so it is gone. */
+  (st.bills || []).forEach(function (b) {
+    var side = v21Lobby(st, pid, b);
+    if (!side) return;
+    u += side * v21BillEdge(st, b) * v21Price('trade');
+  });
   /* S21p — AND A MOVEMENT THIS PARTY IS AT THE HEAD OF. In flight in exactly
      this function's sense: organised, not yet settled, and worth what is behind
      it. The quality is the pressure against the bar at which the country stops
@@ -41859,6 +41980,123 @@ function v17FloorCore(st, actor, b, verb) {
   return null;
 }
 
+/* ============================================================
+   S21q — A PRICE ON THE BENCHES
+   ============================================================
+   The owner: *"A party writes offering to take its members through the aye
+   lobby on one bill if you drop your opposition to another."*
+
+   WHICH LOBBY A PARTY LEANS TO IS `partyBillSupport` AGAINST FIFTY, because
+   that is the question `divisionOf` asks: it puts a logistic centred on fifty
+   through the disciplined part of every party's benches, so fifty is the hinge
+   the game already turns on and not a number chosen here.
+
+   AND A BILL'S MARGIN IS READ AGAINST ITS OWN STAGE'S NOISE. Every stage has a
+   bar in `BILL_BARS` and a spread in `BILL_NOISE`, and a bill inside that
+   spread is one whose fate a trade can decide -- measured, 44.1% of them are.
+   So the margin over the bar divided by half the noise, clamped, is "how
+   settled this bill is": +1 safely carrying, -1 safely dead, 0 on the hinge.
+   One denominator, taken from the game's own dice rather than picked. */
+function v21BillStage(b) {
+  return b.stage === 'committee' ? 'committee'
+    : b.stage === 'senate' ? 'senate'
+    : b.stage === 'council' ? 'council'
+    : b.stage === 'decree' ? 'decree' : 'assembly';
+}
+function v21BillEdge(st, b) {
+  if (!b || typeof billForecast !== 'function') return 0;
+  var stage = v21BillStage(b);
+  var bar = BILL_BARS[stage], noise = (BILL_NOISE[stage] || 13) / 2;
+  var f;
+  try { f = billForecast(st, b); } catch (e) { return 0; }
+  var val = stage === 'committee' ? f.committee : (stage === 'senate' ? f.upper : f.lower);
+  if (typeof val !== 'number' || !isFinite(val)) return 0;
+  return clamp((val - bar) / noise, -1, 1);
+}
+/* WHICH LOBBY, and nothing about the party's authored table: a trade is about
+   benches. */
+function v21Lobby(st, pid, b) {
+  if (!b || typeof partyBillSupport !== 'function') return 0;
+  var v;
+  try { v = partyBillSupport(st, pid, b) + (typeof billPull === 'function' ? billPull(st, b, pid, 'lower') : 0); }
+  catch (e) { return 0; }
+  return v >= V21_HINGE ? 1 : -1;
+}
+/* THE CROSSED PAIR. Two bills and two parties, where each would vote for the
+   one the other is against -- which is the only shape a trade has anything in
+   it for both sides. Neither bill may be the party's OWN, because
+   `v17FloorWhy` refuses a line on a bill you sponsored and has since S17: a
+   finder that ignored that would hand `v21TradeCore` a pair it must refuse.
+   `give` is what the offerer will carry for them; `ask` is what it wants in
+   return.
+
+   AND THE CROSSED TEST CARRIES TWO GUARDS THAT WERE WRITTEN BESIDE IT. A
+   `from === to` refusal and a `bills.length < 2` early-out both stood here and
+   both came back GREEN under their own poisons, because the crossed test makes
+   each of them impossible: with one party on both sides `mine` and `theirs` are
+   the same reading, so neither `mine < 0 && theirs > 0` nor its mirror can
+   fire; and one bill can satisfy at most one of the two mirrored tests, so
+   `give` and `ask` cannot both be filled from it. They are gone rather than
+   asserted -- this file's rule about a knob nothing in the game can turn -- and
+   the crossed test's own arm is what holds all three properties now. */
+function v21TradeFind(st, from, to) {
+  if (!from || !to || !PARTY[from] || !PARTY[to]) return null;
+  var bills = (st.bills || []).filter(function (b) {
+    return b.sponsor !== from && b.sponsor !== to &&
+      ['assent', 'done', 'referendum'].indexOf(b.stage) < 0;
+  });
+  var give = null, ask = null;
+  bills.forEach(function (b) {
+    var mine = v21Lobby(st, from, b), theirs = v21Lobby(st, to, b);
+    if (!give && mine < 0 && theirs > 0) give = b;
+    if (!ask && mine > 0 && theirs < 0) ask = b;
+  });
+  if (!give || !ask || give === ask) return null;
+  return { give:give.id, ask:ask.id, giveTitle:give.title, askTitle:ask.title };
+}
+/* WHAT A TRADE DOES, with no chair in it: each side declares support on the
+   other's bill, THROUGH `v17FloorCore`, which is the one body that writes a
+   line and carries every refusal a line has. Recorded on both bills, because a
+   bench sold is a thing the House should be able to read afterwards. */
+function v21TradeCore(st, from, to, offer) {
+  if (!offer) return null;
+  var give = (st.bills || []).filter(function (b) { return b.id === offer.give; })[0];
+  var ask = (st.bills || []).filter(function (b) { return b.id === offer.ask; })[0];
+  if (!give || !ask || give === ask) return null;
+  /* BOTH REFUSALS ARE ASKED BEFORE EITHER LINE IS WRITTEN. The first build
+     called the core on one side and then the other, and a pair whose second
+     side a line cannot be declared on -- the taker's own bill, one past the
+     floor -- left the FIRST line standing and returned a refusal: half a trade
+     for nothing, with the offerer's benches sold and nothing bought. Its own
+     arm caught it. `v17FloorCore` asks `v17FloorWhy` itself, so asking it
+     here first is belt and braces and it is what makes the pair atomic. */
+  var w1 = v17FloorWhy(st, from, give, 'support');
+  if (w1) return w1;
+  var w2 = v17FloorWhy(st, to, ask, 'support');
+  if (w2) return w2;
+  v17FloorCore(st, from, give, 'support');
+  v17FloorCore(st, to, ask, 'support');
+  give.traded = give.traded || []; give.traded.push({ by:from, forWhom:to, turn:st.turn });
+  ask.traded = ask.traded || []; ask.traded.push({ by:to, forWhom:from, turn:st.turn });
+  st.v5Stats = st.v5Stats || {};
+  st.v5Stats.tradesStruck = (st.v5Stats.tradesStruck || 0) + 1;
+  return null;
+}
+/* AND WHETHER THE OTHER SIDE WOULD TAKE IT, asked through the objective. Not a
+   rule of thumb: S21o's picker maximised the cost and S21p's named a branch
+   the game could not produce, both in this same program, and both were rules
+   written by hand in front of a scoring function. */
+function v21TradeWould(st, to, from, offer) {
+  if (!offer || typeof v19Try !== 'function' || typeof v19Standing !== 'function') return false;
+  var before;
+  try { before = v19Standing(st, to); } catch (e) { return false; }
+  var out = v19Try(st, function (cl) { v21TradeCore(cl, from, to, offer); });
+  if (!out) return false;
+  var after;
+  try { after = v19Standing(out, to); } catch (e) { return false; }
+  return isFinite(after) && isFinite(before) && after > before;
+}
+
 /* --- THE ARTICLE. `v11CanPropose` is widened above to take an actor; this is
    what laying one DOES, for whoever is laying it. --- */
 function v17ArticleCore(st, actor, id, repeal, route) {
@@ -42872,19 +43110,40 @@ function v21StreetPick(st, pid) {
   ['carry', 'talks', 'refuse'].forEach(function (c) {
     var out = v19Try(st, function (cl) { v21StreetAnswerCore(cl, pid, c); });
     if (!out) return;
-    /* A GUARD AGAINST A CARRY THE HOUSE CANNOT TAKE WAS DRAFTED HERE AND
-       DELETED BY ITS OWN POISON. `v21StreetAnswerCore` returns null when
-       `sponsorBill` refuses, and the clone then comes back UNCHANGED -- which
-       looked like it would score as doing nothing and beat every real answer
-       on a board where they all cost. It cannot: `talks` takes 8 off the
-       pressure and the liability term is read off the pressure, so `talks` is
-       strictly better than the baseline on every board, and a refused `carry`
-       scoring the baseline can never win. Poisoned, the guard changed nothing
-       anywhere -- a knob nothing in the game can turn -- so it is gone rather
-       than shipped as a line a later reader would reason about. */
+    /* a `carry` the house cannot take is not an answer: `v21StreetAnswerCore`
+       returns null and the clone is unchanged, so it would otherwise score as
+       "do nothing" and win on a board where every real answer costs */
+    if (c === 'carry' && !(out.street && out.street.demand && out.street.demand.answered)) return;
     var u;
     try { u = v19Standing(out, pid); } catch (e) { return; }
     if (isFinite(u) && u > bestU) { bestU = u; best = c; }
+  });
+  return best;
+}
+/* S21q: WHOM TO OFFER IT TO. Every other party is asked whether a crossed pair
+   exists with it and, where one does, whether the OFFER IS WORTH MAKING to
+   this party -- both readings through the objective. An engine recipient also
+   has to want it, which is asked here rather than after the paper is sent: an
+   offer nobody would take is a session spent on a piece of paper.
+   The player is the exception, because a player is asked and answers for
+   itself -- so the offer goes out and the recipient's own reading is not
+   pre-empted. */
+function v21TradePick(st, pid) {
+  if (!st || !pid || typeof v19Try !== 'function') return null;
+  var me = playParty(st), best = null, bestU = -Infinity;
+  var before;
+  try { before = v19Standing(st, pid); } catch (e) { return null; }
+  PARTIES.forEach(function (p) {
+    if (p.id === pid || st.banned[p.id]) return;
+    var offer = v21TradeFind(st, pid, p.id);
+    if (!offer) return;
+    var out = v19Try(st, function (cl) { v21TradeCore(cl, pid, p.id, offer); });
+    if (!out) return;
+    var u;
+    try { u = v19Standing(out, pid); } catch (e) { return; }
+    if (!isFinite(u) || u <= before) return;
+    if (p.id !== me && !v21TradeWould(st, p.id, pid, offer)) return;
+    if (u > bestU) { bestU = u; best = { to:p.id, offer:offer }; }
   });
   return best;
 }

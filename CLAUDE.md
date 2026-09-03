@@ -317,6 +317,16 @@ before touching the file.
   a slice that re-phased the dice, check the sample size before hunting the
   mechanism. This is S16a's ruling — a pacing figure from one seed cannot tell a
   balance change from a reshuffle — applied to every arm rather than to pacing.
+  **AND THE SHARPEST FORM OF IT IS A BAR SET AT THE VALUE IT MEASURED.** The
+  `easy` tier's street leg had already made this argument in its own comment —
+  it replaced a maximum with a count, calling the maximum "the least stable
+  statistic in the leg" — and then set the count's bar at exactly the count it
+  observed, four of twelve. S21q adds a nineteenth card to the deck and touches
+  no term in `v17StreetHeat`; the count went 4 to 3, the mean peak 30.7 to 28.8
+  (one standard error of twelve seeds), and the arm went red for a reshuffle.
+  All three of that leg's bars sat within one error. A bar goes where the
+  MECHANISM's claim is — here, that heat which could not reach 22 at all now
+  averages a peak near 29 — never where today's reading happens to land.
   AND WHEN THE SAMPLE CANNOT BE MADE BIG ENOUGH, SPLIT THE CLAIM: the rare event
   keeps a tripwire that the path fires in play at all, and its CORRECTNESS moves
   to a leg with no dice in it. S21h's `oustDone >= 2` is 5 over twelve seeds and
@@ -481,6 +491,36 @@ before touching the file.
   default has to be pinned as well as the new case: `leads(st)` is exactly
   `playParty(st) === st.ruling`, which is what `st.ruling !== (actor ||
   playParty(st))` says with the actor left out.
+- **A PARTY'S AUTHORED TABLE IS NOT ITS OPINION OF WHAT IS BEFORE THE HOUSE.**
+  `v21Stance` reads `PARTY[pid].wants`, and a `wants` table of a dozen entries
+  against a book of 582 statutes names the bill before the House on 20.9% of
+  readings — so "a bill this party wants" is a rare event and "one it wants and
+  one it does not" is a vanishing one: nineteen party-sessions in 10,080. S21q's
+  plan was written on that channel and would have shipped a card that fired
+  never. What a party's benches would DO is `partyBillSupport`, and `divisionOf`
+  hinges it on a logistic centred on fifty, so which lobby a party leans to is a
+  question the game already answers — 30.7% of party-sessions have one of each.
+  Before gating a verb on an appetite, measure how often the appetite exists,
+  and prefer the reading the consequence is computed from.
+- **A LEG THAT CALLS THE ORACLE PROVES THE ORACLE, NOT THE CALLER.** S21q's
+  picker has four filters — take the best counterparty and not the first, ask
+  whether the taker would take it, `v21TradeWould`'s own reading, and the
+  offerer's own floor — and the leg called `v21TradeWould` **itself** and then
+  asked only that the picker had returned *somebody*. All four poisons came
+  back GREEN, and a fifth switched the card's `addInbox` off while the leg went
+  on counting the PICKER's answer rather than `st.inbox`. Five of the seven
+  green poisons in that slice were the probe and the game was right throughout.
+  A filter is asserted by a property of what the code CHOSE, measured against
+  every candidate it could have chosen through the game's own functions — never
+  by re-asking the question the code asks. And count an outcome where the
+  player would meet it: the inbox, the card, the log, not the picker's return.
+  Its own corollary bit the same slice twice more: **the arm a poison is judged
+  against is part of the poison** — two were run against a neighbouring arm
+  that never mentions the mechanism and were meaningless in both directions —
+  and **a measurement taken to size a bar must ask the question the code
+  asks**: the refusal rate was first measured over every counterparty
+  *including the player*, whom the picker never asks, and came out at 13.6%
+  against a true 6.2%.
 - **A RULE OF THUMB IN FRONT OF A SCORING FUNCTION CAN NAME A BRANCH THAT
   CANNOT FIRE.** S21p's government answer to the street chose between conceding,
   stalling and refusing by a hand-written rule — "concede where this
@@ -588,7 +628,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 12 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **216 content assertions**, the largest harness here: the
+- `tools/roads.js` — **217 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
