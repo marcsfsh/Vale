@@ -11971,6 +11971,407 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `holding an endorsement in an average session against a maximum of ${endo.play.maxHeld} -- where it was ` +
     'nought of eight, always');
 
+  /* ==========================================================
+     S21u — A PARTY THAT WILL NOT SIT WITH ANOTHER
+     ==========================================================
+     The player's own `cordon` card reads: "An agreement among the other parties
+     that nobody will govern with them, ever. It holds until somebody breaks
+     it." `st.cordon` has FIVE readers -- `v17Eligible`, `v6CoalitionCandidates`,
+     the deck's bill score, `partyBillSupport` and the party page's tag -- and
+     TWO writers, both of them the player's own buttons. Measured over 480
+     driven sessions at `ruthless`, it held nothing at all on 480 of them: the
+     agreement among the other parties was a thing only the player could make. */
+  const cord = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    /* every party seated, so a seat-weighted rule has something to weigh */
+    function board(seed) {
+      fresh(seed, 'ruthless');
+      for (let t = 0; t < 4; t++) step();
+      PARTIES.forEach(p => { S.banned[p.id] = false; });
+      S.cordon = {}; S.cordonMine = {};
+      PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
+      return S;
+    }
+    const others = (t) => PARTIES.filter(p => p.id !== t && !S.banned[p.id]).map(p => p.id);
+    /* set a regard by writing the ledger the reading is taken from. `v21Regard`
+       returns MINUS the grudge -- credit stored below nought reads as no grudge
+       at all -- so a hostility of 60 is a grudge of +60 and a regard of -60.
+       The first build of this leg wrote the minus itself and set every
+       constructed board to a regard of PLUS sixty, so no cordon was ever raised
+       and three legs read the mechanism as dead. */
+    const hate = (from, to, r) => { v16Ai(S)[from].grudge[to] = r; };
+
+    /* (a) THE FIELD HAD FIVE READERS AND NO WRITER AN ENGINE COULD REACH. Read
+       off the code rather than off a memory: every site that asks about
+       `st.cordon`, and the fact that the tick is the only thing that answers. */
+    R.channel = (() => {
+      board(4242);
+      const t = PARTIES.filter(p => p.id !== playParty(S))[0].id;
+      const before = v17Eligible(S).indexOf(t) >= 0;
+      S.cordon[t] = true;
+      const after = v17Eligible(S).indexOf(t) >= 0;
+      /* and the pool a formateur picks from */
+      let poolBefore = null, poolAfter = null;
+      try {
+        delete S.cordon[t];
+        poolBefore = (v6CoalitionCandidates(S, playParty(S)) || []).some(c =>
+          (c.id || c) === t || (c.parties || []).indexOf(t) >= 0);
+        S.cordon[t] = true;
+        poolAfter = (v6CoalitionCandidates(S, playParty(S)) || []).some(c =>
+          (c.id || c) === t || (c.parties || []).indexOf(t) >= 0);
+      } catch (e) { }
+      delete S.cordon[t];
+      return { ran: true, eligibleBefore: before, eligibleAfter: after,
+        poolBefore: poolBefore, poolAfter: poolAfter,
+        /* the reader that decides who the country may ask */
+        reachesFormation: before === true && after === false };
+    })();
+
+    /* (b) THE BAR IS THE CARD'S OWN SENTENCE, NOT A COUNT. A first build asked
+       for TWO parties at the tenth percentile of regard, which is a per-party
+       rate: measured, it put somebody under cordon on 66% of sessions, reached
+       all seven at once, and left a mean of 1.93 parties eligible to form a
+       government. The card says "an agreement among the other parties that
+       nobody will govern with them" -- and for that sentence to be true the
+       refusers have to be able to govern WITHOUT them. So the bar is a majority
+       of the Assembly, which is a number the game already owns.
+       Walked across the boundary on one board: the same regard held by parties
+       just under a majority, and just over it. */
+    R.bar = (() => {
+      board(90210);
+      const me = playParty(S);
+      const t = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      const rest = others(t).slice().sort((a, b) => (S.seats[b] || 0) - (S.seats[a] || 0));
+      const need = Math.floor(CFG.seats / 2) + 1;
+      /* the smallest prefix of the others that reaches a majority, and the one
+         before it -- so the two readings differ by ONE party's seats */
+      let run = 0, k = 0;
+      while (k < rest.length && run < need) { run += S.seats[rest[k]] || 0; k += 1; }
+      if (k < 1 || run < need) return { ran: false };
+      const under = rest.slice(0, k - 1), over = rest.slice(0, k);
+      const seatsOf = (l) => l.reduce((n, x) => n + (S.seats[x] || 0), 0);
+      const ask = (holders) => {
+        PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
+        holders.forEach(h => hate(h, t, 60));
+        S.cordon = {}; S.cordonMine = {};
+        v21CordonTick(S);
+        return !!S.cordon[t];
+      };
+      const shy = ask(under), maj = ask(over);
+      /* and a majority that is NOT deep enough does not hold one, which is the
+         other half of the pair: the same parties, a shallow grudge */
+      PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
+      over.forEach(h => hate(h, t, 5));
+      S.cordon = {}; S.cordonMine = {};
+      v21CordonTick(S);
+      const shallow = !!S.cordon[t];
+      return { ran: true, need: need, underSeats: seatsOf(under), overSeats: seatsOf(over),
+        shy: shy, maj: maj, shallow: shallow,
+        /* the majority is what decides, and the depth is still required */
+        turnsAtTheMajority: shy === false && maj === true,
+        depthStillCounts: shallow === false };
+    })();
+
+    /* (c) AND IT HOLDS UNTIL ENOUGH OF THEM CHANGE THEIR MINDS. The card says
+       "it holds until somebody breaks it", which in a model that recomputes
+       every session means hysteresis: raised at the deep bar, kept at the
+       shallow one, so one point of regard cannot flicker it on and off. */
+    R.holds = (() => {
+      board(7);
+      const me = playParty(S);
+      const t = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      const rest = others(t).slice().sort((a, b) => (S.seats[b] || 0) - (S.seats[a] || 0));
+      const need = Math.floor(CFG.seats / 2) + 1;
+      let run = 0, k = 0;
+      while (k < rest.length && run < need) { run += S.seats[rest[k]] || 0; k += 1; }
+      const maj = rest.slice(0, k);
+      PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
+      maj.forEach(h => hate(h, t, 60));
+      S.cordon = {}; S.cordonMine = {};
+      v21CordonTick(S);
+      const on = !!S.cordon[t];
+      /* the regard softens to BETWEEN the two depths: too shallow to raise one,
+         deep enough to keep the one standing */
+      const mid = Math.round((Math.abs(V21_CORDON_DEEP) + Math.abs(V21_CORDON_LIFT)) / 2);
+      maj.forEach(h => hate(h, t, mid));
+      v21CordonTick(S);
+      const kept = !!S.cordon[t];
+      /* and a board that arrives at that same regard from NOUGHT does not raise
+         one, which is what makes this hysteresis rather than a second bar */
+      S.cordon = {}; S.cordonMine = {};
+      v21CordonTick(S);
+      const fresh2 = !!S.cordon[t];
+      /* softened past the lift depth, it goes */
+      maj.forEach(h => hate(h, t, 2));
+      S.cordon[t] = true;
+      v21CordonTick(S);
+      const gone = !S.cordon[t];
+      return { ran: true, mid: mid, on: on, kept: kept, fromNought: fresh2, gone: gone,
+        raisesDeep: on === true, keepsShallow: kept === true,
+        andItIsHysteresis: fresh2 === false, liftsWhenItGoes: gone === true };
+    })();
+
+    /* (d) ONE WRITER. `st.cordon` is the answer all five readers ask, so the
+       player's own two buttons write their own half and then ask the tick --
+       two clocks for one fact means the one you did not write about wins. And
+       the player cannot lift what the House is holding, which is the card's own
+       sentence read the other way round. */
+    R.mine = (() => {
+      board(31337);
+      const me = playParty(S);
+      const t = PARTIES.filter(p => p.id !== me && !S.banned[p.id] && p.id !== S.ruling)[0].id;
+      const acts = () => (partyActions(t) || []);
+      const byId = (id) => acts().filter(a => a.id === id)[0];
+      S.capital = 400;
+      const c1 = byId('cordon');
+      if (!c1) return { ran: false };
+      c1.run();
+      const declared = { cordon: !!S.cordon[t], mine: !!(S.cordonMine || {})[t] };
+      /* the tick does not undo the player's own name */
+      v21CordonTick(S);
+      const survives = !!S.cordon[t];
+      /* and lifting it takes it off, because the House is not holding this one */
+      const l1 = byId('liftCordon');
+      const canLift = !!l1 && l1.can();
+      if (l1 && canLift) l1.run();
+      const lifted = !S.cordon[t];
+      /* now the HOUSE holds it, and the player's own lift is refused with a
+         reason rather than drawn live and doing nothing */
+      const rest = others(t).slice().sort((a, b) => (S.seats[b] || 0) - (S.seats[a] || 0));
+      const need = Math.floor(CFG.seats / 2) + 1;
+      let run = 0, k = 0;
+      while (k < rest.length && run < need) { run += S.seats[rest[k]] || 0; k += 1; }
+      rest.slice(0, k).forEach(h => hate(h, t, 60));
+      S.cordonMine[t] = true;
+      v21CordonTick(S);
+      const l2 = byId('liftCordon');
+      const shutWhileHeld = !!l2 && l2.can() === false;
+      const saysWhy = !!(l2 && typeof l2.why === 'function' && /majority/i.test(String(l2.why() || '')));
+      return { ran: true, declared: declared, survives: survives, lifted: lifted,
+        oneWriter: declared.cordon === true && declared.mine === true && survives === true,
+        playerMayLiftTheirOwn: lifted === true,
+        cannotLiftTheHouse: shutWhileHeld === true && saysWhy === true };
+    })();
+
+    /* (e) AND THE PLAYER CAN BE FROZEN OUT, which is the half of this the
+       report asked for: "a player can never be vetoed by a party they are not
+       asking." */
+    R.player = (() => {
+      board(555);
+      const me = playParty(S);
+      const rest = others(me).slice().sort((a, b) => (S.seats[b] || 0) - (S.seats[a] || 0));
+      const need = Math.floor(CFG.seats / 2) + 1;
+      let run = 0, k = 0;
+      while (k < rest.length && run < need) { run += S.seats[rest[k]] || 0; k += 1; }
+      rest.slice(0, k).forEach(h => hate(h, me, 60));
+      S.cordon = {}; S.cordonMine = {};
+      v21CordonTick(S);
+      const on = !!S.cordon[me];
+      const eligible = v17Eligible(S).indexOf(me) >= 0;
+      /* and the player's own lift button cannot touch it */
+      const l = (partyActions(rest[0]) || []).filter(a => a.id === 'liftCordon')[0];
+      return { ran: true, on: on, eligible: eligible,
+        frozenOut: on === true && eligible === false, hasALift: !!l };
+    })();
+
+    /* (g) THE THREE GUARDS PLAY CANNOT REACH, ASKED BY HAND. Their poisons
+       came back green because no driven game produces the state they refuse:
+       a party never holds a grudge against ITSELF, a party out of the chamber
+       is already out of `v17Eligible`, and a save written before this slice
+       does not occur in a run that starts after it. A guard nothing can reach
+       is either decoration or an assertion nobody wrote, and these are the
+       second: each is one line and each is now asked. */
+    R.guards = (() => {
+      board(8080);
+      const me = playParty(S);
+      const t = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      /* (1) A PARTY IS NOT COUNTED AMONG THOSE REFUSING TO SIT WITH ITSELF,
+         and the board is built so that counting it would be the thing that
+         TIPS THE BAR. A first version gave the party a grudge against itself on
+         an otherwise quiet board: its own seats alone are nowhere near a
+         majority, so no cordon was raised either way and the poison that
+         removes the guard came back green. The others hating it are held just
+         UNDER the majority, so the guard is the whole of the difference. */
+      const need0 = Math.floor(CFG.seats / 2) + 1;
+      /* the LARGEST party, so that its own seats are at least as big as the one
+         that would have carried the prefix over -- which is what makes counting
+         it the tipping point rather than a rounding error */
+      const t1 = PARTIES.filter(p => !S.banned[p.id] && (S.seats[p.id] || 0) > 0)
+        .sort((a, b) => (S.seats[b.id] || 0) - (S.seats[a.id] || 0))[0].id;
+      const rest0 = others(t1).slice().sort((a, b) => (S.seats[b] || 0) - (S.seats[a] || 0));
+      let run0 = 0, k0 = 0;
+      while (k0 < rest0.length && run0 < need0) { run0 += S.seats[rest0[k0]] || 0; k0 += 1; }
+      const under0 = rest0.slice(0, k0 - 1);
+      const underSeats0 = under0.reduce((n, x) => n + (S.seats[x] || 0), 0);
+      PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
+      under0.forEach(h => hate(h, t1, 60));
+      hate(t1, t1, 900);
+      S.cordon = {}; S.cordonMine = {};
+      v21CordonTick(S);
+      const itself = !!S.cordon[t1];
+      /* and counting it WOULD have tipped it, or the leg proves nothing */
+      const wouldTip = underSeats0 < need0 && underSeats0 + (S.seats[t1] || 0) >= need0;
+      /* (2) a party out of the chamber is not cordoned, whatever the House
+         thinks of it -- `v17Eligible` has it out already and a tag on the page
+         saying otherwise is a control that lies */
+      PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
+      const rest = others(t).slice().sort((a, b) => (S.seats[b] || 0) - (S.seats[a] || 0));
+      const need = Math.floor(CFG.seats / 2) + 1;
+      let run = 0, k = 0;
+      while (k < rest.length && run < need) { run += S.seats[rest[k]] || 0; k += 1; }
+      rest.slice(0, k).forEach(h => hate(h, t, 60));
+      const keptSeats = S.seats[t];
+      S.seats[t] = 0;
+      S.cordon = {}; S.cordonMine = {};
+      v21CordonTick(S);
+      const gone = !!S.cordon[t];
+      S.seats[t] = keptSeats;
+      /* (3) AND A SAVE FROM BEFORE THIS SLICE KEEPS THE PLAYER'S CORDONS. The
+         field this tick now owns is where they were kept, so the first tick
+         migrates them -- otherwise the slice quietly lifts every cordon a
+         player had agreed before they loaded it. */
+      PARTIES.forEach(p => { v16Ai(S)[p.id].grudge = {}; });
+      S.cordon = {}; S.cordon[t] = true;
+      delete S.cordonMine;
+      v21CordonTick(S);
+      const migrated = !!S.cordon[t] && !!(S.cordonMine || {})[t];
+      /* and it survives a SECOND tick, which is where a migration that only
+         reads and never writes would lose it */
+      v21CordonTick(S);
+      const stillThere = !!S.cordon[t];
+      return { ran: true, itself: itself, banned: gone, migrated: migrated, stillThere: stillThere,
+        wouldTip: wouldTip, underSeats: underSeats0, need: need0,
+        notAgainstItself: itself === false && wouldTip === true,
+        notOutOfTheChamber: gone === false,
+        oldSaveKeepsThem: migrated === true && stillThere === true };
+    })();
+
+    /* (f) DRIVEN, because calling the tick is not testing the wiring. Twelve
+       seeds of eighty sessions, the cordon read off the live board every
+       session and the news counted as the player would see it. */
+    R.play = (() => {
+      const out = { sessions: 0, held: 0, raised: 0, byParty: {}, maxAtOnce: 0,
+        eligible: [], newsRaised: 0, newsLapsed: 0 };
+      const bn = addNews;
+      /* COUNTED BY KIND. A first version counted any headline the mechanism
+         produced, and a cordon LAPSING is one -- so the poison that suppressed
+         the RAISING notice left the lapses behind and came back green. What the
+         player has to be told is that one has been agreed. */
+      addNews = function (st, t) {
+        var s2 = String(t);
+        if (/A Cordon Is Agreed|You Are Frozen Out/.test(s2)) out.newsRaised += 1;
+        if (/A Cordon Lapses/.test(s2)) out.newsLapsed += 1;
+        return bn.apply(this, arguments);
+      };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080,
+         1234, 99, 2718, 1618, 4001, 60613].forEach(sd => {
+          fresh(sd, 'ruthless');
+          let prev = {};
+          for (let t = 0; t < 80; t++) {
+            if (!step()) break;
+            out.sessions++;
+            const on = PARTIES.filter(p => (S.cordon || {})[p.id]).map(p => p.id);
+            if (on.length) {
+              out.held++;
+              out.maxAtOnce = Math.max(out.maxAtOnce, on.length);
+              out.eligible.push(v17Eligible(S).length);
+            }
+            on.forEach(k => { out.byParty[k] = (out.byParty[k] || 0) + 1; if (!prev[k]) out.raised++; });
+            prev = {}; on.forEach(k => { prev[k] = true; });
+          }
+        });
+      } finally { runQueue = rq; addNews = bn; }
+      out.meanEligibleWhenHeld = out.eligible.length
+        ? +(out.eligible.reduce((a, b) => a + b, 0) / out.eligible.length).toFixed(2) : null;
+      out.heldShare = out.sessions ? +(out.held / out.sessions).toFixed(3) : null;
+      delete out.eligible;
+      return out;
+    })();
+    /* IT FIRES, AND IT DOES NOT TAKE THE HOUSE WITH IT. The rate is the
+       measurement's own: 7 raisings across 4 parties in 960 driven sessions,
+       held on 11.1% of them, never more than 3 at once, and a formateur left
+       with a mean of 5.43 parties to ask -- against the first build's 66%,
+       seven at once and 1.93. */
+    /* the two depths, carried out of the page: the say text runs in node */
+    R.deep = V21_CORDON_DEEP; R.lift = V21_CORDON_LIFT;
+    R.fires = R.play.raised > 2 && Object.keys(R.play.byParty).length > 1 &&
+      R.play.heldShare > .02 && R.play.heldShare < .30 &&
+      R.play.meanEligibleWhenHeld > 3.5 &&
+      /* AND THE PLAYER IS TOLD THAT ONE HAS BEEN AGREED. A cordon the country
+         never hears about is a mechanism happening where nobody can see it,
+         which is what this whole programme is against -- and its own poison
+         came back green twice: once because the leg counted the Gazette and
+         gated on nothing, and again because it counted any headline the
+         mechanism produced, so suppressing the RAISING notice left the lapses
+         behind. It is counted by kind and gated on the raising. */
+      R.play.newsRaised >= R.play.raised;
+    return R;
+  });
+  const cordOk =
+    cord.channel.ran && cord.channel.reachesFormation &&
+    cord.bar.ran && cord.bar.turnsAtTheMajority && cord.bar.depthStillCounts &&
+    cord.holds.ran && cord.holds.raisesDeep && cord.holds.keepsShallow &&
+    cord.holds.andItIsHysteresis && cord.holds.liftsWhenItGoes &&
+    cord.mine.ran && cord.mine.oneWriter && cord.mine.playerMayLiftTheirOwn &&
+    cord.mine.cannotLiftTheHouse &&
+    cord.player.ran && cord.player.frozenOut &&
+    cord.guards.ran && cord.guards.notAgainstItself &&
+    cord.guards.notOutOfTheChamber && cord.guards.oldSaveKeepsThem &&
+    cord.fires;
+  say(cordOk, 'a party that will not sit with another',
+    'THE CARD ALREADY SAID WHAT THIS DOES AND THE GAME DID NONE OF IT. The player\'s own `cordon` action ' +
+    'reads "An agreement among the other parties that nobody will govern with them, ever. It holds until ' +
+    'somebody breaks it." `st.cordon` has FIVE readers -- `v17Eligible`, which decides who the country may ' +
+    'ask to form a government; `v6CoalitionCandidates`, which builds the pool a formateur picks from; the ' +
+    'deck\'s bill score; `partyBillSupport`; and the party page\'s own tag -- and TWO writers, both of them ' +
+    'the player\'s buttons. Measured over 480 driven sessions at `ruthless`, it held nothing at all on 480 ' +
+    `of them · THE READER THAT MATTERS IS FORMATION ITSELF (${cord.channel.reachesFormation}): a cordoned ` +
+    'party is not in `v17Eligible` and not in the pool · AND THE BAR IS THE CARD\'S OWN SENTENCE RATHER ' +
+    'THAN A COUNT. A first build asked for TWO parties at the tenth percentile of regard, which is a ' +
+    'PER-PARTY rate and says nothing about how often the HOUSE is in that state: driven, it put somebody ' +
+    'under cordon on 66% of sessions, reached all seven at once and left a mean of 1.93 parties eligible to ' +
+    'form a government. For "the other parties will not govern with them" to be true the refusers have to ' +
+    `be able to govern WITHOUT them, so the bar is a majority -- ${cord.bar.need} of the Assembly, a number ` +
+    'the game already owns. Walked across it on one board with the same grudge held by parties just under ' +
+    `and just over: ${cord.bar.underSeats} seats raise nothing and ${cord.bar.overSeats} raise one ` +
+    `(${cord.bar.turnsAtTheMajority}), and the same majority at a shallow grudge raises nothing either ` +
+    `(${cord.bar.depthStillCounts}) · AND IT HOLDS UNTIL ENOUGH OF THEM CHANGE THEIR MINDS: raised at ` +
+    `${cord.deep} and kept at ${cord.lift}, so a regard of -${cord.holds.mid} KEEPS a standing ` +
+    `cordon (${cord.holds.keepsShallow}) and does not raise one from nought (${cord.holds.andItIsHysteresis}) ` +
+    `-- which is what makes it hysteresis and not a second bar -- and it goes when the grudge does ` +
+    `(${cord.holds.liftsWhenItGoes}) · ONE WRITER: the player's own buttons write ${'`'}st.cordonMine${'`'} ` +
+    `and ask the tick, so a click survives the next session (${cord.mine.oneWriter}) instead of being ` +
+    'recomputed away, and the player may lift their own name ' +
+    `(${cord.mine.playerMayLiftTheirOwn}) but not what the House is holding (${cord.mine.cannotLiftTheHouse}) ` +
+    '-- drawn shut with the reason on it rather than live and doing nothing · AND THE PLAYER CAN BE FROZEN ' +
+    `OUT (${cord.player.frozenOut}), which is the half the report asked for: a majority that will not sit ` +
+    'with you takes you out of `v17Eligible` exactly as it takes anybody else · and DRIVEN over ' +
+    `${cord.play.sessions} sessions on twelve seeds it is raised ${cord.play.raised} times against ` +
+    `${Object.keys(cord.play.byParty).length} different parties, holds on ${cord.play.heldShare} of ` +
+    `sessions, reaches ${cord.play.maxAtOnce} at once at most and leaves a formateur ` +
+    `${cord.play.meanEligibleWhenHeld} parties to ask, and the country is TOLD of every one ` +
+    `(${cord.play.newsRaised} agreed, ${cord.play.newsLapsed} lapsed) ` +
+    `(${cord.fires}) · AND THE THREE GUARDS PLAY CANNOT REACH ARE ASKED BY HAND, because their poisons came ` +
+    `back green: a party is not counted among those refusing to sit with ITSELF ` +
+    `(${cord.guards.notAgainstItself}), asked on a board where counting it WOULD have tipped the bar -- ` +
+    `${cord.guards.underSeats} seats against a majority of ${cord.guards.need} -- so the guard is the whole ` +
+    `of the difference; a party out of the chamber is not cordoned ` +
+    `(${cord.guards.notOutOfTheChamber}) since ${'`'}v17Eligible${'`'} has it out already and a tag saying ` +
+    `otherwise is a control that lies, and a SAVE FROM BEFORE THIS SLICE keeps the cordons its player agreed ` +
+    `(${cord.guards.oldSaveKeepsThem}) -- the field the tick now owns is where they were kept -- where the ` +
+    `field held nothing, ever`);
+
+
   /* ================================================================
      S21q — A PRICE ON THE BENCHES
      ================================================================

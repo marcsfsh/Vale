@@ -14270,14 +14270,30 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
     list.push({ id:'cordon', name:'Isolate them', cost:10, kind:'attack',
       desc:'An agreement among the other parties that nobody will govern with them, ever. It holds until somebody breaks it.',
       can:function () { return !S.banned[pid] && !S.cordon[pid] && pid !== S.ruling; },
-      run:function () { S.cordon[pid] = true;
+      /* S21u: the player's own half of the agreement, written to `st.cordonMine`
+         and then asked of the one writer. Writing `st.cordon` here as well would
+         be two clocks for one fact. */
+      run:function () { S.cordonMine = S.cordonMine || {}; S.cordonMine[pid] = true;
+        if (typeof v21CordonTick === 'function') v21CordonTick(S); else S.cordon[pid] = true;
         S.machine[pid] = clamp((S.machine[pid] || 0) - .08, -.8, 1);
         var mm = {}; BLOCS.forEach(function (b) { if (affOf(S, pid, b.id) > .4) mm[b.id] = -5; }); mood(S, mm);
         logIt(S, 'A cordon was agreed against the ' + p.short + '.'); } });
     list.push({ id:'liftCordon', name:'Lift the cordon', cost:5, kind:'deal',
       desc:'Let them back into respectable politics, and take the credit for magnanimity.',
-      can:function () { return !!S.cordon[pid]; },
-      run:function () { delete S.cordon[pid];
+      /* S21u: AND IT CANNOT LIFT WHAT THE HOUSE IS HOLDING. The player may
+         withdraw their own name from an agreement; they cannot speak for the
+         other parties, and the card that says so is the one telling the truth.
+         `v21CordonAgainst` is asked at the LIFT depth, which is the same
+         question the tick asks of a standing cordon. */
+      can:function () { return !!S.cordon[pid] && !!(S.cordonMine || {})[pid] &&
+        !(typeof v21CordonHolds === 'function' && v21CordonHolds(S, pid, V21_CORDON_LIFT)); },
+      why:function () { return (!!S.cordon[pid] && !(S.cordonMine || {})[pid])
+        ? 'The other parties are holding this one, not you.'
+        : (typeof v21CordonHolds === 'function' && v21CordonHolds(S, pid, V21_CORDON_LIFT)
+          ? 'A majority of the Assembly is still refusing to sit with them. Yours is not the name holding it.'
+          : null); },
+      run:function () { S.cordonMine = S.cordonMine || {}; delete S.cordonMine[pid];
+        if (typeof v21CordonTick === 'function') v21CordonTick(S); else delete S.cordon[pid];
         var mm = {}; BLOCS.forEach(function (b) { if (affOf(S, pid, b.id) > .4) mm[b.id] = 6; }); mood(S, mm);
         logIt(S, 'The cordon against the ' + p.short + ' was lifted.'); } });
     list.push({ id:'splinter', name:'Sponsor a splinter party', cost:12, money:10, kind:'attack',
@@ -14799,6 +14815,33 @@ function endTurn() {
   if (typeof v21GoalTick === 'function') v21GoalTick(S);
   /* S21j: and a standing nobody keeps up fades */
   if (typeof v21LeanTick === 'function') v21LeanTick(S);
+  /* S21u: and who the House will and will not sit with. It runs AFTER the
+     memory ticks above, because the regard it reads is what those wrote this
+     session, and BEFORE the events below, so a cordon raised tonight is on the
+     board when the country is asked to form a government. */
+  if (typeof v21CordonTick === 'function') {
+    v21CordonTick(S).forEach(function (c) {
+      var nm = PARTY[c.pid] ? PARTY[c.pid].short : c.pid;
+      var mine = c.pid === playParty(S);
+      if (c.on && c.house) {
+        logIt(S, 'A majority of the Assembly has agreed it will not govern with the ' + nm + '.');
+        addNews(S, mine ? 'You Are Frozen Out' : 'A Cordon Is Agreed',
+          mine ? 'Nobody will form a government with you'
+               : 'Nobody will form a government with the ' + nm,
+          'It is not a ban and it is not the law. It is an agreement between parties who have had ' +
+          'enough of them and who hold the seats to govern without them, and it holds until enough of ' +
+          'them change their minds. Until they do, ' +
+          'the ' + nm + ' cannot be asked to form a government and nobody will take them into one.',
+          mine ? 'bad' : 'watch');
+      } else if (!c.on) {
+        logIt(S, 'The cordon against the ' + nm + ' no longer holds.');
+        addNews(S, 'A Cordon Lapses', 'The ' + nm + ' are respectable again',
+          'The agreement needed a majority of the Assembly to hold it and no longer has one. The ' + nm +
+          ' can be asked to form a government again, and taken into one.',
+          mine ? 'good' : 'watch');
+      }
+    });
+  }
   var fired = pickEvents();
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
@@ -35954,6 +35997,97 @@ var V21_COOL_ANGER = .6;
 var V21_COOL_CREDIT = .2;
 /* The signed reading: negative is a grudge, positive is credit. New readers
    take this; every reader that existed before S21a keeps `v16Grudge`. */
+/* ============================================================
+   S21u — A PARTY THAT WILL NOT SIT WITH ANOTHER
+   ============================================================
+   THE CARD ALREADY SAID WHAT THIS DOES AND THE GAME DID NONE OF IT. The
+   player's `cordon` action reads: *"An agreement among the other parties that
+   nobody will govern with them, ever. It holds until somebody breaks it."*
+   `st.cordon` has FIVE readers -- `v17Eligible`, which decides who the country
+   may ask to form a government; `v6CoalitionCandidates`, which builds the pool
+   a formateur picks from; the deck's bill score at -8; `partyBillSupport`; and
+   the party page's own tag -- and TWO writers, both of them the player's own
+   buttons. So the agreement among the other parties was a thing only the player
+   could make. Measured over 480 driven sessions at `ruthless`: `st.cordon` held
+   nothing at all on 480 of them.
+
+   IT IS A COLLECTIVE FACT, SO IT IS DERIVED RATHER THAN DECLARED. A cordon is
+   not one party's word -- the card says AGREEMENT and the five readers treat it
+   as one -- so the House's half of it is read off the regard ledger every
+   session: a party is cordoned when two or more of the others hold it in deep
+   enough contempt.
+
+   THE DEPTH IS A PERCENTILE, NOT A NUMBER PICKED BY EYE. Measured over 840
+   party-session readings and 5,040 pairwise regards, the regard between two
+   seated parties runs p50 0, p75 0, p90 0 and p10 -24.6: most pairs are neutral
+   and grudges are a long minority tail. `V21_CORDON_DEEP` is that tenth
+   percentile, and the share of party-sessions with two or more others below a
+   depth runs 16.7% at -20, 10.0% at -30 and 4.5% at -40 -- so this bar puts
+   roughly one party of seven under cordon at a time, which is a fact about the
+   House rather than the weather.
+
+   AND IT CANNOT MAKE GOVERNMENT IMPOSSIBLE, which is what makes it safe to add:
+   measured on the same drive, a formateur has a mean of 8.63 minimal winning
+   coalitions containing the largest party and a CHOICE of two or more on 100%
+   of readings, never one forced option and never none. A cordon takes options
+   away; it does not take them all.
+
+   ONE WRITER. `st.cordon` is the answer all five readers already ask, so it
+   gains no new reader and exactly one writer: this tick. The player's own two
+   buttons write their own half -- `st.cordonMine` -- and then ask the tick for
+   the answer, because two clocks for one fact means the one you did not write
+   about wins. A save from before this slice carries the player's cordons in
+   `st.cordon` itself and is migrated on the first tick. */
+var V21_CORDON_DEEP = -25;
+/* AND IT LIFTS AT HALF THE DEPTH, so a cordon cannot flicker session to
+   session on one point of regard. The card says it holds until somebody breaks
+   it; hysteresis is what "holds" means in a model that recomputes. */
+var V21_CORDON_LIFT = -12;
+/* WHO IS REFUSING, WEIGHED IN SEATS. A COUNT OF TWO WAS THE FIRST BUILD AND IT
+   WAS MEASURED OUT: at the tenth percentile of regard, two or more others hold
+   a party in contempt on ~12% of PARTY-sessions, which with seven parties is
+   somebody under cordon on 66% of sessions -- driven, it reached all seven at
+   once and left a mean of 1.93 parties eligible to form a government. A bar set
+   off a per-party rate says nothing about how often the HOUSE is in that state.
+   The card says what the right bar is: "an agreement among the other parties
+   that nobody will govern with them". For that sentence to be true the parties
+   refusing have to be able to govern WITHOUT them -- so the bar is a majority
+   of the Assembly, which is a number the game already owns rather than one
+   picked here, and which cannot freeze out a party the rest of the House needs. */
+function v21CordonAgainst(st, pid, depth) {
+  var seats = 0;
+  PARTIES.forEach(function (p) {
+    if (p.id === pid || st.banned[p.id] || (st.seats[p.id] || 0) <= 0) return;
+    if (v21Regard(st, p.id, pid) <= depth) seats += st.seats[p.id] || 0;
+  });
+  return seats;
+}
+function v21CordonHolds(st, pid, depth) {
+  return v21CordonAgainst(st, pid, depth) >= Math.floor(CFG.seats / 2) + 1;
+}
+function v21CordonTick(st) {
+  st.cordon = st.cordon || {};
+  /* the migration: a save written before this slice kept the player's own
+     cordons in `st.cordon`, and this tick is about to own that field */
+  if (!st.cordonMine) {
+    st.cordonMine = {};
+    Object.keys(st.cordon).forEach(function (k) { if (st.cordon[k]) st.cordonMine[k] = true; });
+  }
+  var news = [];
+  PARTIES.forEach(function (p) {
+    var was = !!st.cordon[p.id];
+    var mine = !!st.cordonMine[p.id];
+    var seated = !st.banned[p.id] && (st.seats[p.id] || 0) > 0;
+    /* the House's half: two or more others in deep contempt to raise one, and
+       fewer than two above the lift depth to keep it */
+    var house = seated &&
+      v21CordonHolds(st, p.id, was ? V21_CORDON_LIFT : V21_CORDON_DEEP);
+    var now = mine || house;
+    if (now) st.cordon[p.id] = true; else delete st.cordon[p.id];
+    if (now !== was) news.push({ pid: p.id, on: now, house: house && !mine });
+  });
+  return news;
+}
 function v21Regard(st, pid, toward) {
   var v = v16Ai(st)[pid].grudge[toward];
   return (typeof v === 'number' && isFinite(v)) ? -v : 0;
