@@ -50,9 +50,11 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped seventeen slices: S21a–q.** The original twelve are
+**S21 has shipped eighteen slices: S21a–q and S21v.** The original twelve are
 complete; S21m through S21q are the first five of the owner's eight-behaviour
-extension, and S21r–S21t remain.
+extension, and S21r–S21t remain. **S21v is out of order on purpose**: the owner
+interrupted mid-programme with a save and two reports from a live game, and a
+build they are playing takes precedence over the queue.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -1102,6 +1104,139 @@ extension, and S21r–S21t remain.
   mechanism. Both gates are re-set to what the mechanism claims rather than to
   what the dice produced, with the two builds' numbers in the arms' own words.
 
+- **S21v — the chair does not decide an election, and a party may lay five
+  bills.** The owner, playing the RSF in opposition on Very Easy, reported that
+  they could max every lever and still not build momentum, and that *"the ruling
+  party gets a massive boost in elections by virtue of being the ruling
+  party… it led to a situation where SD became the ruling party and started
+  growing an insurmountable lead."* Their ruling: *"whether you are a ruling
+  party, coalition partner, or opposition has no bearing on election
+  performance."*
+  **THERE WERE FIVE CHAIR TERMS, NOT ONE.** Measured on their own save through
+  `projection()`, against a government of 460 seats to their 329: the flat
+  `incumbent` add in `ballot` was worth **33 seats**, the three appeal curves in
+  `supportTargets` **102**, and the two together **135 of 1,305** — removing
+  them puts the player on 464 and the government on 346, so the chair was worth
+  more than the election. **And the appeal curve is why working hard made it
+  worse**: it read each bloc's mood — `.915 + (m-50)/80` governing, `.86 +
+  (m-50)/108` in coalition, `.784 - (m-50)/130` outside, the same value at no
+  point on the scale and the opposition's slope INVERTED — and reached **3.86 to
+  one at a bloc mood of 100**, which is the country that player had built. S12
+  had already cut `incumbent` from .12 to .05 for this reason and called it "the
+  single largest term in the vote model"; it was the smaller half of the pair.
+  **One curve now, and its value cannot matter**: `appeal` multiplies every bloc
+  term of every party and the reading is normalised, so a base that does not
+  vary factors straight out — no number was picked, because there is none left
+  to pick. Mood still reaches the count through `weight`'s own `(.55 + m/100 *
+  .95)`, where a contented bloc is worth 2.7 times an angry one, and that term
+  is differentiated by `affOf`. The `incumbent` field is **gone from all five
+  tiers rather than set to nought**, because a difficulty field nothing reads is
+  this file's most-repeated defect.
+  **A FOURTH TERM WAS ALREADY DEAD, AND WAS MEASURED RATHER THAN ASSUMED.**
+  `regionPartyFactor`'s `if (pid === st.ruling) fit *= 1 + (q.federal - 50)/850`
+  sits in a body REASSIGNED twice in later chunks. A counter placed in that base
+  reads **0 after `supportTargets`, 0 after `ballot`, 0 after `projection` and 0
+  after calling the live binding directly** — the reassignment replaces it
+  outright. Fourth instance in one day of a later-chunk body shadowing the one a
+  reader would edit.
+  **AND A PACT PAID THE GOVERNMENT FOR A DEAL THE PLAYER STRUCK.** `st.pact` is
+  the PLAYER's electoral pact and the partner stands down for it (`v *= .68`);
+  the 32 per cent they gave up was added to `adj[st.ruling]`, whoever that was.
+  On the owner's save an opposition player striking a pact with the LP moved the
+  **SD +84, the LP −81 and themselves −1** — a button that paid the government
+  to weaken your own ally. `holdsDept`'s confusion in a fourth surface.
+  **TWO CHAIR TERMS ARE KEPT, ON THE OWNER'S RULING** ("Keep it"), because both
+  are earned and both bite hardest against the government: S11's regional block
+  judges whoever governs on the regions they run, with the penalty nearly double
+  the reward, and `pv5CampaignPower` reads `inPower` for a press narrative that
+  is a story about a GOVERNMENT. Both are held at parity in the arm's first leg,
+  which is what makes it a reading of the chair rather than of what the chair
+  has done.
+  **AND A PARTY MAY HAVE FIVE BILLS BEFORE THE HOUSE, TEN ON VERY EASY** — the
+  owner's second report and their number. It was `>= 1` in three places, so the
+  number is in one place now and all four sites read one predicate, which is
+  S18b's rule kept rather than loosened. The unit is unchanged and is S17b's:
+  PRIVATE members' bills. Driven over 240 sessions a party holds up to three at
+  once, where the ceiling was one, and never past the cap.
+  **AND A THRESHOLD SET AT A DISTRIBUTION'S QUARTILE MOVES WHEN THE
+  DISTRIBUTION DOES.** `V21_GOV_GAP` is how far behind its own seats a
+  government has to be before it reads `exposed`, and S21m set it at −4 because
+  that was the quartile of the gap it measured. Taking the chair out of the vote
+  model took out the largest source of divergence between what a government
+  holds and what the country would give it, and the reading TIGHTENED: over 360
+  driven government-sessions it goes p10 −5.1/p25 −3.7/p50 −0.7/p75 +2.5/p90
+  +5.5 to **p10 −3.2/p25 −2.0/p50 −1.4/p75 −0.4/p90 +1.1**. At the old bar the
+  mood fired on **4.2%** where it had fired on 21.1% — a threshold above the
+  ceiling of what the game now produces, which is S17q's defect arriving by a
+  change of model rather than by a number picked by eye. The bar is the quartile
+  on this model: **−2**, at 25.8%, against 10.8% at −3 and 63.1% at −1.
+  `V21_CONSOLIDATE` was checked the same way and **stands** — its rate roughly
+  doubled (12.9% to 25.9% of leader-of-the-opposition readings) because
+  governments win fewer seats, but that bar is not a percentile and its sentence
+  means the same thing on either model. Both figures are in the constants' own
+  comments.
+  **AND THE FLAT MODEL HALVED THREE RATES IN S21i's DRIVEN LEG, RECORDED
+  RATHER THAN TUNED AWAY.** Over twelve seeds and 481 ballots the drift
+  sentence, the night's grudge and the leaders replaced go .383/.574/.356 to
+  **.245/.418/.179**: fewer seats move, so there are fewer landslides to drift
+  after and fewer defeats big enough to cost a leader — the party seat-loss
+  share goes p75 .0364 to .0138 and p90 .0909 to .0526 against an unchanged
+  `V21_BEATEN_BY` of .08, and a leader falls about once in five and a half
+  ballots where it fell once in three. That is the owner's constant and their
+  ruling's consequence, so it stands, with both models' figures in the arm's own
+  words. The BANDS move, because they now hold two models, and the leg goes from
+  six seeds to twelve — on the same build it reads .157 at six and .245 at
+  twelve, a spread wider than the whole movement the slice made.
+  **AND THE SHAPE OF A FAILED FORMATION CHANGED.** Over 1,600 driven sessions
+  the majority installs are unmoved (772 → 769) while minority rounds halve (23
+  → 11) and caretakers rise (3 → 14): parties sit closer together without the
+  chair in the vote model, so a formateur reaches a majority as often but the
+  boards that used to produce a minority government now more often produce
+  nobody. Recorded rather than tuned.
+  **AND IT REDDENED S21g's SUPPLY LEG, WHICH WAS SPENDING EIGHT NINTHS OF ITS
+  OWN SAMPLE.** That leg is a find-one search for a formation seating a supply
+  party and it required the party to have NO agreement already — a guard against
+  a poison passing on a re-seating. But `v17Install` writes `out.offers`
+  unconditionally, so 19 of 23 minority installs were being discarded rather
+  than read. Clearing the stale record immediately before the call answers the
+  same question and turns a skipped install into a positive test; with the round
+  itself halved, an expectation of about two drew nought. Green now, and still
+  red with the offer thrown away again.
+  **AND THREE OF FIFTEEN POISONS CAME BACK GREEN, ALL THREE THE PROBE.** One
+  asked whether the tiers carry an incumbency by DECLARING an unused variable,
+  which changes nothing and correctly proved nothing. The other two are one
+  mistake: the driven leg counted what a party HOLDS, and `pv5AiPrivateBill` is
+  a second engine road to the order paper that reads no per-party cap at all, so
+  reverting the deck's own rule to one bill left a party holding three and the
+  leg green — what only the deck can carry is the card laying for a party that
+  ALREADY HAS ONE, counted from inside `run`. And the deck's two guards could
+  not be poisoned in play at all, because an engine holds at most **three**
+  private bills in 240 driven sessions and a cap of five never binds there: the
+  card is walked across the boundary instead — one under it `can` is true and
+  `run` lays, at it `can` is false and `run` returns null — which is the wiring
+  rather than the `v21BillsAtCap` the neighbouring leg calls itself.
+  **SIX INCUMBENT SURFACES ENCODED THE SUPERSEDED RULE AND ONE HAD A DEFECT OF
+  ITS OWN.** The sixth is the easy tier's own arm, which read `e.incumbent <
+  .08` to check that S21b had CUT the landslide term from .12 to .05 — on a
+  build where the field is gone that is `undefined < .08`, which is false, so
+  the arm went red for a term that no longer exists; it asks what the two slices
+  between them did, that NO tier carries an incumbency at all. Four of the other
+  five asserted the one-bill refusal — "the floor is open to every
+  chair", "the three chairs", S19a's "the card never lays a second" and the
+  playtest's `opposition-floor` step — and all four now stand in the gap the
+  change opens: that a SECOND bill is free, which the shipped build refuses, and
+  that the one past the cap is still refused. The playtest drives its second
+  bill by the same two real clicks that lay the first, then fills the paper to
+  the cap and reads the shut button's title. The fifth, the calendar's
+  snap-dissolution leg,
+  called a REAL election to prove the door open and then adopted the Fixed Term
+  Article and called again on the same board — and an election returns a
+  government, so under the flat vote model that board's LP loses office at the
+  first ballot and the second call was refused by `callElection`'s own
+  `leads(S)` guard, one line above the article. It read the article as
+  toothless. Two boards now, with the chair READ at the moment of the call
+  rather than assumed.
+
 **WHAT IS OPEN:** the owner's extension S21r–S21t, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
 was never written, and building it is a slice rather than a paragraph, so it is
@@ -1110,6 +1245,29 @@ original twelve slices are complete, and so is the coalition overhaul the brief
 names: S21d gave the agreement teeth, S21e made the table a negotiation, S21f
 gave it one exit and a voice, S21g made a government able to fall, and S21h
 gave the junior partner a game.
+
+**AND THE OWNER COMMISSIONED A CAMPAIGN PROGRAMME WHEN THEY RULED ON THE
+CHAIR.** Asked what should decide an election now that neither the chair nor
+bloc mood reads it, they chose **all four** of: *issues decide the election*,
+*turnout differential made legible*, *regional battlegrounds*, and *a late
+campaign period* — with the note that **"Regional battlegrounds should have
+more depth added to them rather than just clicking the 'Target' button next to
+each region in the campaign tab. Regions have constituencies that have issues
+that are salient to them, for starters."** They also ruled that the ±8 per cent
+election-night swing should be **restored and shown as a range before the
+count**. That swing is authored and currently dead: the S16 pact wrapper on
+`ballot` declares one parameter, so every `ballot(st, true)` since has arrived
+as `ballot(st, undefined)` and an election has returned exactly the projection —
+**S21s is the slice that fixes it**, and the range is downstream of that.
+
+**AND ONE OPTION IS THE OWNER'S, LEFT OPEN DELIBERATELY.** Their own
+observation: *"it might make more sense to make it slightly more difficult than
+it usually would be to gain seats in elections as the ruling party; an
+observable trend in democracies is that ruling parties have a harder time
+winning elections than minority parties. but for now, it shouldn't have any
+effect."* A **negative** incumbency is therefore theirs to call, and it comes
+back as a live field with a live reader or not at all — which is why the
+`incumbent` field was deleted from all five tiers rather than set to nought.
 
 ---
 

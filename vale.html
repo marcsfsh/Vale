@@ -469,6 +469,9 @@ var DIFFS = {
        the one with the LEAST content in the game.
      - `incumbent:.12` was the single largest term in the vote model and no
        player action feeds it, which is the landslide the owner reported.
+       (S21v: the field is GONE from every tier -- the owner ruled that the
+       chair has no bearing on election performance at all -- so this line is
+       history rather than a description of the literal below it.)
      - Six hard floors in the legislature (removed in S20a) meant no bill could
        fail and no office could decline to sign.
 
@@ -483,7 +486,7 @@ var DIFFS = {
   easy: { key:'easy', name:'Very easy', tag:'A Safe Seat',
     blurb:'A full treasury, capital to spend freely, a friendly country and a following wind in every election. The houses still have to be carried and the street can still be roused, but little here can bring you down.',
     capMult:14, capFlat:18, polCost:.65, rev:1.8, exp:.62, unrest:.75, moodBonus:7, eventPain:.6,
-    incumbent:.05, noCollapse:true, treasury:640, debt:0, capital:250, capCap:750, bond:150, resist:.45, purseMult:2,
+    noCollapse:true, treasury:640, debt:0, capital:250, capCap:750, bond:150, resist:.45, purseMult:2,
     /* S12: a FLOOR under the session's capital, not another multiplier. Very
        easy is the tier whose blurb promises "capital by the cartload"; a
        government having a bad session on it should still be able to act. Only
@@ -512,11 +515,11 @@ var DIFFS = {
   normal: { key:'normal', name:'Normal', tag:'A Divided Government',
     blurb:'A three party coalition, a Senate held by the other side, a hostile court and books that do not balance.',
     capMult:1, capFlat:0, polCost:1, rev:1, exp:1, unrest:1, moodBonus:0, eventPain:1,
-    incumbent:0, noCollapse:false, treasury:110, debt:200, capital:18, capCap:70, bond:64, resist:1, purseMult:1 },
+    noCollapse:false, treasury:110, debt:200, capital:18, capCap:70, bond:64, resist:1, purseMult:1 },
   hard: { key:'hard', name:'Hard', tag:'A Hung Assembly',
     blurb:'Inherited debt, a restless country, an angrier court, and a caucus that counts every vote.',
     capMult:.85, capFlat:-.5, polCost:1.25, rev:.9, exp:1.1, unrest:1.25, moodBonus:-5, eventPain:1.3,
-    incumbent:-.03, noCollapse:false, treasury:62, debt:290, capital:12, capCap:60, bond:54, resist:1.2, purseMult:.85 }
+    noCollapse:false, treasury:62, debt:290, capital:12, capCap:60, bond:54, resist:1.2, purseMult:.85 }
 };
 function D() { return DIFFS[(S && S.diff) || 'normal']; }
 function cst(n) { return Math.max(1, Math.round(n * D().polCost)); }
@@ -9110,7 +9113,14 @@ function regionPartyFactor(st, pid) {
   REGIONS.forEach(function (r) {
     var q = st.regions[r.id], d = dist2(pos, r.lean);
     var fit = clamp(1.08 - d * .16, .82, 1.12);
-    if (pid === st.ruling) fit *= 1 + (q.federal - 50) / 850;
+    /* S21v: a chair term stood here -- `if (pid === st.ruling) fit *= 1 +
+       (q.federal - 50) / 850;` -- and it is gone. IT WAS ALSO DEAD, which is
+       worth saying out loud: this body is REASSIGNED twice in later chunks
+       (S11c's regional factor and S11's interest lift), and the first of those
+       is a reassignment rather than a wrapper -- its own comment says so --
+       so nothing above has run since S11. The live regional terms, chair ones
+       included, are in that reassignment. Fourth instance in one day of a
+       later-chunk body shadowing the one a reader would edit. */
     total += fit * r.pop; weight += r.pop;
   });
   var f = weight ? total / weight : 1;
@@ -9777,6 +9787,30 @@ function sponsorBill(st, policy, dir, owner, strategy, free, sponsorId, quiet) {
     addNews(st, 'Order Paper', b.title + ' is introduced', 'The bill begins in committee with the numbers still unsettled.', 'watch');
   }
   return b;
+}
+
+/* S21v — HOW MANY BILLS A PARTY MAY HAVE BEFORE THE HOUSE AT ONCE.
+   The owner: *"an opposition party can only propose one bill at a time. there
+   should be a global limit. each party can put forward up to 5 bills at a time
+   (10 on very easy mode)."*
+
+   It was `>= 1` in three places -- `v18FloorShut` for the player's card and
+   handler, and twice in the deck's `bill` card for an engine -- so the number
+   is here, once, and all of them read one predicate. That is S18b's rule about
+   `v18FloorShut` kept rather than loosened: one rule, asked once.
+
+   The unit is unchanged and is S17b's: PRIVATE members' bills. A government's
+   own legislation is the government's business and has never been counted
+   here, and `activeBillFor` still allows only one live bill per statute, so
+   the cap is on how many separate measures a party may be pushing at once. */
+var V21_BILL_CAP = { easy:10 };
+var V21_BILL_CAP_DEFAULT = 5;
+function v21BillCap(st) {
+  return V21_BILL_CAP[(st || S).diff] || V21_BILL_CAP_DEFAULT;
+}
+function v21BillsAtCap(st, pid) {
+  var mine = (typeof v17PrivateBillsOf === 'function') ? v17PrivateBillsOf(st, pid) : [];
+  return mine.length >= v21BillCap(st);
 }
 
 /* S17b: the private members' bills a party has live. A government's bills are
@@ -12260,10 +12294,25 @@ function supportTargets(st) {
         weight *= 1 + v17RollReach(st) * ((b.fr[2] || 1) - (b.fr[0] || 1));
       }
       var m = st.blocs[b.id];
-      var appeal;
-      if (p.id === st.ruling) appeal = .915 + (m - 50) / 80;
-      else if ((st.coalition || []).indexOf(p.id) >= 0) appeal = .86 + (m - 50) / 108;
-      else appeal = .784 - (m - 50) / 130;
+      /* S21v — ONE CURVE, AND THE CHAIR IS NOT IN IT. This read three:
+         `.915 + (m - 50) / 80` for the government, `.86 + (m - 50) / 108` for a
+         coalition partner and `.784 - (m - 50) / 130` for everybody else --
+         the same value at no point on the scale, the opposition's slope
+         INVERTED, and a ratio that reaches 3.86 to one at a bloc mood of 100.
+         Measured on the owner's own save it was worth 102 seats, three times
+         the flat incumbency beside it, and it is why a player who worked the
+         country's mood up was feeding the party in office.
+
+         A CONSTANT, AND ITS VALUE CANNOT MATTER. `appeal` multiplies every
+         bloc term of every party and the whole reading is normalised at the
+         end, so a base that does not vary factors straight out: there is no
+         number picked by eye here, because there is no number left to pick.
+         What differentiates a party is what it always was -- which blocs it
+         speaks for (`affOf`), how much each of those blocs is worth
+         (`weight`, which counts a contented bloc 2.7 times an angry one), and
+         the extremism term below, which pays a party at the edges in blocs
+         that are ANGRY and is the one mood asymmetry left in the function. */
+      var appeal = 1;
       var ext = dist2(ppos(st, p.id), { e:0, a:0 });
       appeal *= 1 + ext * Math.max(0, 60 - m) / 60 * 2.4;
       v += weight * a * appeal;
@@ -12338,7 +12387,18 @@ function allocateSeats(st, res, total, force) {
     if (st.pact && st.pact === p.id) v *= .68;
     adj[p.id] = Math.max(0, v);
   });
-  if (st.pact && PARTY[st.pact] && st.pact !== st.ruling) adj[st.ruling] += (res[st.pact] || 0) * .32;
+  /* S21v — AND A PACT PAYS THE PARTY THAT MADE IT. `st.pact` is the PLAYER's
+     electoral pact, struck from the Parties page, and the partner stands down
+     for it -- `v *= .68` above. This line handed the 32 per cent they gave up
+     to `st.ruling`, whoever that was. Measured on the owner's save, an
+     opposition player striking a pact with the LP moved the SD +84 seats, the
+     LP -81 and themselves -1: a button that paid the government to weaken your
+     own ally. It is `holdsDept`'s confusion in a fourth surface -- "the party
+     in office" standing in for "the party that acted". */
+  var pactOwner = playParty(st);
+  if (st.pact && PARTY[st.pact] && st.pact !== pactOwner) {
+    adj[pactOwner] += (res[st.pact] || 0) * .32;
+  }
   PARTIES.forEach(function (p) { tot += adj[p.id]; });
   var lead = null;
   PARTIES.forEach(function (p) { if (!lead || adj[p.id] > adj[lead]) lead = p.id; });
@@ -12350,8 +12410,39 @@ function allocateSeats(st, res, total, force) {
   return { seats: seats, lead: lead };
 }
 
+/* ============================================================
+   S21v — THE CHAIR DOES NOT DECIDE AN ELECTION
+   ============================================================
+   The owner, playing the RSF in opposition on Very Easy: *"On nearly every
+   single turn, I've been able to max out just about every lever available to
+   me... there's a weird behavior where the ruling party gets a massive boost in
+   elections by virtue of being the ruling party... it led to a situation where
+   SD became the ruling party and started growing an insurmountable lead."*
+
+   THREE TERMS, MEASURED ON THAT SAVE THROUGH `projection()`. The government
+   held 460 seats to the player's 329.
+
+     - the flat `incumbent` add below, +.05 on this tier    33 seats
+     - the three appeal curves in `supportTargets`         102 seats
+     - both together                                       135 seats
+
+   Removing them puts the player on 464 and the government on 346: the chair
+   was worth more than the election. And the appeal curve is why working hard
+   made it WORSE -- it reads each bloc's mood and hands the contented country to
+   whoever holds office, so a player who drives every bloc to 100, as this one
+   had, is feeding the government a 3.86x multiplier over their own party.
+
+   S12 had already cut `incumbent` from .12 to .05 for this reason and its own
+   note calls it "the single largest term in the vote model and no player action
+   feeds it, which is the landslide the owner reported". It was the smaller half.
+
+   What is left is not a flat election. Mood still reaches the count, through
+   `weight`'s own `(.55 + m/100 * .95)` -- a contented bloc is worth 2.7 times an
+   angry one -- and that term is differentiated by `affOf`, so a happy country
+   still lifts whoever speaks for the happy blocs. What has gone is the part
+   that read the chair rather than the party. */
 function ballot(st, noise) {
-  var res = {}, tot = 0, inc = dOf(st).incumbent;
+  var res = {}, tot = 0;
   var tgt = supportTargets(st);
   PARTIES.forEach(function (p) {
     if (st.banned[p.id]) { res[p.id] = 0; return; }
@@ -12363,7 +12454,6 @@ function ballot(st, noise) {
     base *= 1 + ((st.press && st.press[p.id]) || 0) * .6 +
       (p.id === st.ruling ? (st.apparatus || 0) * .5 : 0);
     base *= regionPartyFactor(st, p.id);
-    if (p.id === st.ruling) base += inc;
     if (noise) base *= .92 + rand() * .16;
     res[p.id] = Math.max(.001, base); tot += res[p.id];
   });
@@ -18696,11 +18786,11 @@ ENRICH_VERSION = 6;
 DIFFS.gentle = { key:'gentle', name:'Easy', tag:'A Working Majority',
   blurb:'A fuller treasury, a patient country and two houses inclined to let a reasonable programme through. Mistakes cost something, but rarely the government.',
   capMult:1.6, capFlat:4, polCost:.7, rev:1.35, exp:.8, unrest:.65, moodBonus:6, eventPain:.6,
-  incumbent:.06, noCollapse:false, treasury:300, debt:80, capital:40, capCap:110, bond:90, resist:.6, purseMult:1.7 };
+  noCollapse:false, treasury:300, debt:80, capital:40, capCap:110, bond:90, resist:.6, purseMult:1.7 };
 DIFFS.brutal = { key:'brutal', name:'Very hard', tag:'A Republic in Arrears',
   blurb:'The books are empty, the debt is ruinous, the country is angry, the Senate is hostile and every measure costs half again as much. Survival is the achievement.',
   capMult:.72, capFlat:-1, polCost:1.45, rev:.82, exp:1.2, unrest:1.45, moodBonus:-9, eventPain:1.5,
-  incumbent:-.06, noCollapse:false, treasury:30, debt:380, capital:8, capCap:52, bond:46, resist:1.4, purseMult:.72 };
+  noCollapse:false, treasury:30, debt:380, capital:8, capCap:52, bond:46, resist:1.4, purseMult:.72 };
 var V6_DIFF_ORDER = ['easy', 'gentle', 'normal', 'hard', 'brutal'];
 
 /* Forecast adjustments for the new tiers sit beside the original easy/hard lines. */
@@ -35722,19 +35812,42 @@ var V18_RESTIVE = 55;
    to hold before it is defending a position rather than building one. .75 was
    read off the measured distribution: leading the opposition alone is 26.8% of
    opposition sessions, which is not a posture but a fact about most boards;
-   at .6 it is 10.2%, at .75 4.4%, at .85 2.5% and at parity 0.8%. */
+   at .6 it is 10.2%, at .75 4.4%, at .85 2.5% and at parity 0.8%.
+
+   S21v: THE NUMBER STANDS AND ITS RATE ROUGHLY DOUBLED, which is the ruling
+   working rather than a threshold gone stale. Measured on 294 leader-of-the-
+   opposition readings, the share holding at least .75 of the government goes
+   12.9% to 25.9% -- governments win fewer seats once the chair is out of the
+   vote model, so the largest opposition party is genuinely closer to them more
+   often. Unlike `V21_GOV_GAP` below, this bar is not a percentile: it says how
+   much of a government's strength a party has to hold, and that sentence means
+   the same thing on either model. Recorded so the next reader has the figure
+   rather than having to re-derive it. */
 var V21_CONSOLIDATE = .75;
 /* S21m — HOW FAR BEHIND ITS OWN SEATS A GOVERNMENT HAS TO BE. `supportTargets`
    is what the country would give this party today and `seats / CFG.seats` is
    what it holds; the difference, in points of share, is the gap between the
    government it is and the government the country would elect. Measured over
-   1,362 driven government-sessions it runs p10 -5.5, p25 -3.9, p50 -1.7, p75
+   1,362 driven government-sessions it ran p10 -5.5, p25 -3.9, p50 -1.7, p75
    +0.3, p90 +3.5 -- a government is usually a little ahead of the country by
    the time it has governed a while, so the bar is set at the QUARTILE rather
-   than at nought: -4 catches 24.5% of government sessions where -2 catches
-   46.1% and -1 catches 59.7%, and a mood that occurs on half of all sessions
-   is not a mood, it is the default. */
-var V21_GOV_GAP = -4;
+   than at nought, and a mood that occurs on half of all sessions is not a
+   mood, it is the default.
+
+   S21v — AND THE DISTRIBUTION MOVED WHEN THE VOTE MODEL DID, so the bar moves
+   with it. Taking the chair out of `ballot` and `supportTargets` took out the
+   largest source of divergence between what a government holds and what the
+   country would give it: over 360 driven government-sessions on six seeds the
+   same reading now runs p10 -3.2, p25 -2.0, p50 -1.4, p75 -0.4, p90 +1.1,
+   against p10 -5.1, p25 -3.7, p50 -0.7, p75 +2.5, p90 +5.5 on the build
+   before. At the OLD bar of -4 the mood fired on 4.2% of government sessions
+   where it had fired on 21.1% -- a threshold left above the ceiling of what
+   the game now produces, which is S17q's defect arriving by a change of model
+   rather than by a number picked by eye. The rule is unchanged and so is the
+   instrument: the bar is the quartile, which on this model is -2 (25.8% of
+   government sessions, against 10.8% at -3 and 63.1% at -1). Re-measure it
+   with `node tools/roads.js`'s own driven leg if the vote model moves again. */
+var V21_GOV_GAP = -2;
 function v21GovGap(st, pid) {
   var sup = (typeof supportTargets === 'function') ? (supportTargets(st)[pid] || 0) : 0;
   var share = (st.seats[pid] || 0) / Math.max(1, CFG.seats);
@@ -36336,7 +36449,8 @@ var V16_AI_DECK = [
 
      It calls `sponsorBill`, which is the same function the player's own Draft
      button reaches, and it is bound by the rules S18a wrote for a private
-     member: one bill at a time, and THE PARTY'S OWN PURSE PAYS. `free` is
+     member: `v21BillCap` bills at a time -- five, or ten on Very Easy, where
+     it was one until S21v -- and THE PARTY'S OWN PURSE PAYS. `free` is
      true because the third argument from the end charges `st.capital`, which
      is the PLAYER'S capital -- an engine laying a bill out of the player's
      purse would be S16e's borrowed-paper defect wearing a new coat. The owner
@@ -36347,7 +36461,7 @@ var V16_AI_DECK = [
       /* the government has its own machinery and does not need the floor */
       if (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0) return false;
       if (partyPurse(st, pid) < V16_AI_COST.bill) return false;
-      /* ONE BILL AT A TIME, ASKED ABOUT THIS PARTY BY NAME. `v17PrivateBillsOf`
+      /* AS MANY AS THE CAP ALLOWS, ASKED ABOUT THIS PARTY BY NAME. `v17PrivateBillsOf`
          takes the actor, which is the question a gate deciding who may lay
          one has to ask.
          A CALL TO `v18FloorShut` STOOD HERE AND WAS TAKEN OUT BY ITS OWN
@@ -36366,7 +36480,7 @@ var V16_AI_DECK = [
          in the open set that returns null spends the party's whole session on
          nothing -- and on `run` because the two fire at different points of
          the same pass. */
-      if (typeof v17PrivateBillsOf === 'function' && v17PrivateBillsOf(st, pid).length >= 1) return false;
+      if (typeof v21BillsAtCap === 'function' && v21BillsAtCap(st, pid)) return false;
       return !!v19BillFor(st, pid);
     },
     run:function (st, pid) {
@@ -36378,7 +36492,7 @@ var V16_AI_DECK = [
          the largest opposition party. A guard that decides who may lay a bill
          belongs on the function that lays it, not only on the filter that
          offered it. */
-      if (typeof v17PrivateBillsOf === 'function' && v17PrivateBillsOf(st, pid).length >= 1) return null;
+      if (typeof v21BillsAtCap === 'function' && v21BillsAtCap(st, pid)) return null;
       var d = v19BillFor(st, pid); if (!d) return null;
       var b = sponsorBill(st, d.policy, d.dir, 'opposition', 'clean', true, pid, true);
       if (!b) return null;
@@ -43921,8 +44035,11 @@ function v18FloorShut(st) {
   if (inPower(st)) return null;
   var mine = (typeof v17PrivateBillsOf === 'function')
     ? v17PrivateBillsOf(st, playParty(st)) : [];
-  if (mine.length >= 1) {
-    return 'Private members\' time is short: your party already has a bill before the House.';
+  var cap = (typeof v21BillCap === 'function') ? v21BillCap(st) : 1;
+  if (mine.length >= cap) {
+    return 'Private members\' time is short: your party already has ' +
+      (typeof v8Plural === 'function' ? v8Plural(mine.length, 'bill') : mine.length + ' bills') +
+      ' before the House, which is all this session allows.';
   }
   return null;
 }

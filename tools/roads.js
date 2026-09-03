@@ -5195,13 +5195,32 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         draftBillDialog(Object.keys(POL).filter(function (k) { return !activeBillFor(S, k); })[0], 1);
         window.flash = rf; try { hideSheet(); } catch (e) { } return !f; },
       layArticle:function () { return v11CanPropose(S, V11_ART.artQuadrennial, false) === null; },
-      /* the scarcity of private members' time, asked by actually taking it */
-      secondPrivateBill:function () {
+      /* the scarcity of private members' time, asked by actually taking it.
+         S21v: IT IS A NUMBER NOW, and this stands in the gap the change opens
+         rather than on either side of it. The owner's ruling is five bills at
+         a time, ten on Very Easy, where it was one -- so it asks BOTH halves:
+         that a SECOND bill is free, which the shipped `>= 1` refused, and that
+         the one past the cap is still refused, which a build with the rule
+         deleted would allow. An assertion that passes under both the old line
+         and the new one is not testing the change. */
+      privateBillCap:function () {
         var free = Object.keys(POL).filter(function (k) { return !activeBillFor(S, k); });
+        var cap = (typeof v21BillCap === 'function') ? v21BillCap(S) : 1;
+        if (free.length < cap + 1) return 'ERR:only ' + free.length + ' open statutes';
+        /* a PERMISSION reading -- the sheet opens or it flashes a refusal --
+           so asking does not itself consume one of the party's slots */
+        function asks(id) {
+          var f = false, rf = window.flash; window.flash = function () { f = true; };
+          draftBillDialog(id, 1); window.flash = rf; try { hideSheet(); } catch (e) { }
+          return !f;
+        }
         sponsorBill(S, free[0], 1, 'player', 'clean', true, playParty(S), true);
-        var f = false, rf = window.flash; window.flash = function () { f = true; };
-        draftBillDialog(free[1], 1); window.flash = rf; try { hideSheet(); } catch (e) { }
-        return !f;
+        var second = asks(free[1]);
+        for (var i = 1; i < cap; i++) {
+          sponsorBill(S, free[i], 1, 'player', 'clean', true, playParty(S), true);
+        }
+        return { cap:cap, held:v17PrivateBillsOf(S, playParty(S)).length,
+          second:second, overCap:asks(free[cap]) };
       },
       /* The first article is laid through the REAL path, not pushed in as a
          synthetic record: a probe that supplies `by` itself proves the cap's
@@ -5301,7 +5320,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        would have entrenched the refusal it was written to remove. */
     ['the floor is open from every chair', O.draftBill === true && O.layArticle === true &&
       L.draftBill === true && L.layArticle === true && J.draftBill === true],
-    ['private members\' time is scarce, so one bill at a time', O.secondPrivateBill === false],
+    ['private members\' time is scarce, but it is five bills and not one',
+      !!O.privateBillCap && O.privateBillCap.cap === 5 && O.privateBillCap.held === 5 &&
+      O.privateBillCap.second === true && O.privateBillCap.overCap === false],
     ['and one article at a time', O.secondArticle === false]
   ];
   const matrixBad = matrixWants.filter(w => !w[1]).map(w => w[0]);
@@ -5312,7 +5333,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${J.partyOnOthers}/${O.partyOnOthers}: before S17b the head and the partner were the SAME chair (66 and 66) and ` +
     `171 party-scoped actions bypassed the gate, among them signing confidence and supply on a government's behalf and ` +
     `expelling a party from a cabinet the player was not in · the opposition keeps what is genuinely its own -- the ` +
-    `censure and no-confidence deck, the campaign, the party machine, meeting an interest, stumping for a challenger` +
+    `censure and no-confidence deck, the campaign, the party machine, meeting an interest, stumping for a challenger ` +
+    `· and private members' time is scarce by a NUMBER the owner set rather than by one: a second bill is free ` +
+    `(${O.privateBillCap && O.privateBillCap.second}) where the shipped build refused it, and the ` +
+    `${O.privateBillCap && O.privateBillCap.cap}th is still the last (${O.privateBillCap && !O.privateBillCap.overCap})` +
     (matrixBad.length ? ' · DISAGREE: ' + matrixBad.join('; ') : ''));
 
   /* S17c — WHOSE DESK IT LANDS ON. Every event declares the office it belongs
@@ -6216,18 +6240,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
     /* (c) THE ARTICLE OF THE FIXED TERM GETS ITS TEETH. Its card said the
        Assembly shall not be dissolved at the convenience of the government,
-       and it moved capital income and nothing else. */
-    S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
-    S.playAs = 'lp'; S.ruling = 'lp'; S.capital = 400; S.turn = 4;
-    var before = S.lastElection;
-    callElection();
-    R.snapOpen = S.lastElection !== before;
-    adopt(S, 'artFixedTerm', 1);
-    S.capital = 400;
-    var before2 = S.lastElection, msg = null, f = flash;
-    flash = function (x) { msg = x; };
-    try { callElection(); } finally { flash = f; }
-    R.snapShut = { moved:S.lastElection !== before2, why:String(msg || '') };
+       and it moved capital income and nothing else.
+
+       TWO BOARDS, NOT ONE BOARD ASKED TWICE. This called a real election to
+       prove the door open and then adopted the article and called again on the
+       same board -- but an election RETURNS A GOVERNMENT, and under S21v's
+       flat vote model this board's LP loses office at that first ballot. The
+       second call was then refused by `callElection`'s own `leads(S)` guard,
+       one line above the article, and the probe read the article as toothless.
+       Which refusal you get is decided by the chair at the moment of the call,
+       so the chair is READ at that moment rather than assumed. */
+    function snap(withArticle) {
+      S = enrichState(v6NewGame('normal', 'v6default', 'standard', 'lp'), false);
+      S.playAs = 'lp'; S.ruling = 'lp'; S.coalition = ['lp'];
+      S.capital = 400; S.turn = 4;
+      if (withArticle) adopt(S, 'artFixedTerm', 1);
+      var led = leads(S), before = S.lastElection, msg = null, f = flash;
+      flash = function (x) { msg = x; };
+      try { callElection(); } finally { flash = f; }
+      return { led:led, moved:S.lastElection !== before, why:String(msg || '') };
+    }
+    var snapA = snap(false), snapB = snap(true);
+    R.snapOpen = snapA.led && snapA.moved;
+    R.snapShut = { led:snapB.led, moved:snapB.moved, why:snapB.why };
 
     /* (d) AND A RESHUFFLE STAYS IN THE GOVERNMENT'S OWN OFFICES AND DRAWS FROM
        ITS OWN BENCH. Three sites replaced the holder of a RANDOMLY chosen
@@ -6274,7 +6309,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     cal.normal.exec.join() === '5,9,13,17,21,25' &&
     cal.term3.term === 3 && cal.term3.exec.join() === '5,9,13,17,21,25' &&
     cal.term3.ballots.indexOf(5) < 0 && cal.term3.ballots.indexOf(9) < 0 &&
-    cal.snapOpen && !cal.snapShut.moved && /Fixed Term/.test(cal.snapShut.why) &&
+    cal.snapOpen && cal.snapShut.led && !cal.snapShut.moved &&
+    /Fixed Term/.test(cal.snapShut.why) &&
     !cal.prose.biennialBefore && !cal.prose.biennialAfter && cal.prose.saysFour &&
     cal.reshuffle.other === 0 && cal.reshuffle.own > 0 &&
     cal.reshuffle.minted === 0 && cal.reshuffle.rivalsUntouched && cal.reshuffle.unique;
@@ -6286,7 +6322,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     normalExec:cal.normal.exec.join() === '5,9,13,17,21,25',
     term3:cal.term3.term === 3, term3Exec:cal.term3.exec.join() === '5,9,13,17,21,25',
     term3Ballots:cal.term3.ballots.indexOf(5) < 0 && cal.term3.ballots.indexOf(9) < 0,
-    snapOpen:cal.snapOpen, snapShut:!cal.snapShut.moved && /Fixed Term/.test(cal.snapShut.why),
+    snapOpen:cal.snapOpen,
+    snapShut:cal.snapShut.led && !cal.snapShut.moved && /Fixed Term/.test(cal.snapShut.why),
     prose:!cal.prose.biennialBefore && !cal.prose.biennialAfter && cal.prose.saysFour,
     reshuffleOther:cal.reshuffle.other === 0, reshuffleOwn:cal.reshuffle.own > 0,
     minted:cal.reshuffle.minted === 0, rivals:cal.reshuffle.rivalsUntouched,
@@ -6306,7 +6343,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `never contested again. Over twenty-six real sessions on a term of ${cal.term3.term} the four great offices ` +
     `are returned at ${cal.term3.exec.join(', ')} -- the same eight-year rotation as an unamended constitution ` +
     `(${cal.normal.exec.join(', ')}) · THE ARTICLE OF THE FIXED TERM HAS TEETH: the snap dissolution is open ` +
-    `without it (${cal.snapOpen}) and refused with it, in the article's own words · AND THE PAGES SAY THE TERM ` +
+    `without it (${cal.snapOpen}) and refused with it, in the article's own words, from a chair that still leads ` +
+    `(${cal.snapShut.led}) -- the refusal a probe gets is decided by which guard it reaches first · AND THE PAGES SAY THE TERM ` +
     `THE COUNTRY VOTED FOR: with the Quadrennial Article adopted the Senate and the court read ` +
     `${cal.prose.term} years (${cal.prose.saysFour}) and the word "biennial" is on neither ` +
     `(${cal.prose.biennialAfter}), where five sites printed it as a constant · AND A RESHUFFLE STAYS AT ` +
@@ -8174,22 +8212,40 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       sponsor: fresh.length ? fresh[0].sponsor : null,
       me: playParty(S) };
 
-    /* (b) ONE AT A TIME. Private members' time is scarce; the cap is the only
-       thing that refuses an opposition player, and it is asked where the
-       button is drawn as well as where the click lands. */
+    /* (b) FIVE AT A TIME, TEN ON VERY EASY. Private members' time is scarce;
+       the cap is the only thing that refuses an opposition player, and it is
+       asked where the button is drawn as well as where the click lands.
+       S21v put the owner's number on it -- it was one -- so this drives the
+       cap from BELOW it as well as at it: a build that still says one fails
+       `underCap`, and a build with the rule taken out fails everything else. */
     seat('fp');
     const s2 = openStatute();
+    /* guarded: a poisoned build can take the function out entirely, and a
+       probe that throws aborts the harness instead of failing one assertion.
+       The fallback is the OLD number, so it fails the gate rather than passing
+       a measurement of one rule while claiming another. */
+    const cap2 = (typeof v21BillCap === 'function') ? v21BillCap(S) : 1;
+    R.cap = { cap: cap2, statutes: s2.length };
     sponsorBill(S, s2[0].id, 1, 'player', 'clean', true);
+    /* the SECOND measure, which the shipped build refused: the sheet opens */
+    changePolicy(s2[1].id, 1);
+    R.cap.underCap = document.getElementById('modal').hidden === false;
+    try { hideSheet(); } catch (e) {}
+    for (let i = 1; i < cap2; i++) sponsorBill(S, s2[i].id, 1, 'player', 'clean', true);
+    R.cap.held = v17PrivateBillsOf(S, playParty(S)).length;
     const said2 = [];
     const fb2 = flash; flash = function (m) { said2.push(m); };
-    try { changePolicy(s2[1].id, 1); } finally { flash = fb2; }
-    R.cap = { refused: document.getElementById('modal').hidden !== false,
-      says: /already has a bill before the House/.test(said2.join(' ')) };
+    try { changePolicy(s2[cap2].id, 1); } finally { flash = fb2; }
+    R.cap.refused = document.getElementById('modal').hidden !== false;
+    /* and the refusal says HOW MANY rather than "a bill", because the number
+       is the rule now and a player who cannot see it cannot plan round it */
+    R.cap.says = new RegExp('already has ' + cap2 + ' bills before the House').test(said2.join(' '));
     try { hideSheet(); } catch (e) {}
     UI.tab = 'policy'; render();
     const up2 = document.querySelector('#view [data-pol][data-dir="1"]');
     R.cap.buttonShut = !!up2 && up2.disabled;
-    R.cap.buttonSaysWhy = !!up2 && /already has a bill before the House/.test(up2.getAttribute('title') || '');
+    R.cap.buttonSaysWhy = !!up2 &&
+      new RegExp('already has ' + cap2 + ' bills before the House').test(up2.getAttribute('title') || '');
 
     /* (c) AND IT IS HARDER, by arithmetic rather than by a number on a scale.
        The SAME statute, laid by the player from each chair, read through the
@@ -8302,15 +8358,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     v9Dossier(dossierId);
     R.dossier = { open: !!document.querySelector('#modal [data-v9dossier-draft]') };
     try { hideSheet(); } catch (e) {}
+    /* the cap, laid to its full height -- S21v made it five, so laying one and
+       expecting a shut door is a probe that measures the number it was written
+       against rather than the rule */
+    const capD = (typeof v21BillCap === 'function') ? v21BillCap(S) : 1;
+    const restD = openStatute().filter(function (x) { return x.id !== dossierId; });
     sponsorBill(S, dossierId, 1, 'player', 'clean', true);
+    for (let i = 0; i + 1 < capD; i++) sponsorBill(S, restD[i].id, 1, 'player', 'clean', true);
     /* a DIFFERENT statute, or the refusal would be "a bill on that measure is
        already before Parliament" rather than the private members' cap */
-    v9Dossier(openStatute().filter(function (x) { return x.id !== dossierId; })[0].id);
+    v9Dossier(restD[capD - 1].id);
     /* S18b: DRAWN AND DISABLED, NOT WITHHELD. It used to emit nothing, so the
        sheet that explains a statute could not explain why you may not lay it. */
     var db = document.querySelector('#modal [data-v9dossier-draft]');
     R.dossier.capped = !!db && !!db.disabled &&
-      /already has a bill before the House/.test(db.getAttribute('title') || '');
+      new RegExp('already has ' + capD + ' bills before the House').test(db.getAttribute('title') || '');
     try { hideSheet(); } catch (e) {}
     seat('fp'); UI.tab = 'policy'; render();
     R.rec = { opp: !!document.querySelector('#view details.rec') };
@@ -8357,6 +8419,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   const floorOk =
     floor.button.there && floor.button.live && floor.clicked.sheet && floor.clicked.choice &&
     floor.laid.count === 1 && floor.laid.owner === 'player' && floor.laid.sponsor === floor.laid.me &&
+    floor.cap.cap === 5 && floor.cap.underCap && floor.cap.held === 5 &&
     floor.cap.refused && floor.cap.says && floor.cap.buttonShut && floor.cap.buttonSaysWhy &&
     floor.gov && floor.opp && floor.opp.lower < floor.gov.lower &&
     floor.rulingTerm.opp === 0 && floor.rulingTerm.junior === 8 &&
@@ -8383,9 +8446,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `\`changePolicy\` -- the ONLY function that calls the dialog -- with the card's button rendering \`disabled\` ` +
     `besides. The door was correct and reachable by nothing · a real click on the card's own button from the ` +
     `bench opens the drafting sheet and its own Introduce button puts ${floor.laid.count} bill on the paper, `+
-    `owner '${floor.laid.owner}', sponsored by ${floor.laid.sponsor} · ONE AT A TIME, because ` +
-    `private members' time is scarce: with one on the paper the second is refused (${floor.cap.refused}) and the ` +
-    `button says why rather than dying silently (${floor.cap.buttonSaysWhy}) · AND IT IS HARDER, by arithmetic ` +
+    `owner '${floor.laid.owner}', sponsored by ${floor.laid.sponsor} · ${floor.cap.cap} AT A TIME, because ` +
+    `private members' time is scarce and the owner set the number: the SECOND measure opens its sheet ` +
+    `(${floor.cap.underCap}), where the shipped build refused it and this arm asserted the refusal; with ` +
+    `${floor.cap.held} on the paper the next is refused (${floor.cap.refused}), the sentence says how many rather ` +
+    `than "a bill" (${floor.cap.says}) and the button says why rather than dying silently ` +
+    `(${floor.cap.buttonSaysWhy}) · AND IT IS HARDER, by arithmetic ` +
     `and not by a number on a scale. The same statute, laid by the player: ${floor.gov.lower} from government ` +
     `against ${floor.opp.lower} from opposition, where it used to be 39 against 41 -- the government's own ` +
     `bill was the harder one. Two terms paid the opposition for being there, and both are read here COMPONENT-WISE ` +
@@ -11170,6 +11236,367 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `between engines across ${Object.keys(trade.play.pairs || {}).length} distinct pairs ` +
     `(${JSON.stringify(trade.play.byParty)}), with ${trade.play.recorded} recorded on the bills`);
 
+  /* ==========================================================
+     S21v — THE CHAIR DOES NOT DECIDE AN ELECTION
+     ==========================================================
+     The owner, playing the RSF in opposition on Very Easy: *"there's a weird
+     behavior where the ruling party gets a massive boost in elections by virtue
+     of being the ruling party... it led to a situation where SD became the
+     ruling party and started growing an insurmountable lead."* Measured on that
+     save through `projection()`: the chair was worth 135 seats of 1,305. */
+  const chair = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    /* A BOARD WHERE THE ONLY THING THAT MOVES IS THE CHAIR. The regional
+       accountability block is deliberately kept -- a government is judged on
+       the regions it runs -- so it is held at parity here, which is what
+       isolates the chair from what the chair has DONE. */
+    function flatBoard(seed) {
+      fresh(seed, 'ruthless');
+      for (let t = 0; t < 6; t++) step();
+      S.apparatus = 0;
+      REGIONS.forEach(r => {
+        const q = S.regions[r.id];
+        q.prosperity = 50; q.services = 50; q.order = 50; q.federal = 50;
+      });
+      /* AND THE WHOLE ACCOUNTABILITY BLOCK, not only the four region numbers.
+         S11's regional factor has FOUR chair terms and this leg found the two
+         a first version missed: a governorship is worth +.085 to a party
+         OUTSIDE the government and nothing to one inside it, and a region in
+         autonomy costs the government .07 -- both of which flip when the chair
+         moves, both of which are the accountability the owner ruled to keep.
+         Zeroing the stats alone left them live, and the arm said so. */
+      if (S.v6) { S.v6.governors = {}; S.v6.autonomy = {}; }
+      /* AND THE PRESS NARRATIVE, which is the second term the owner ruled to
+         keep. `pv5CampaignPower` is REASSIGNED in the S8 chunk and reads
+         `inPower(st)`: the story is about a GOVERNMENT -- "A government that
+         works", "A government adrift", "Chaos at the top" -- so in office it is
+         yours and out of it, at half strength, it cuts the other way, which
+         means a failing government hands the opposition a gain. Measured, 1.2
+         of campaign power against a divisor of 62, so about 1.9% of the
+         player's vote. Zeroed here, because this leg is about the CHAIR and not
+         about what the chair has been reported doing. */
+      S.v8 = null;
+      S.pact = null;
+      return S;
+    }
+
+    /* (a) MOVE THE GOVERNMENT ROUND THE HOUSE AND NOTHING MOVES. Read through
+       the game's own `projection()`, which is the number the player is shown
+       and the number the ballot is allocated from. */
+    R.blind = (() => {
+      flatBoard(4242);
+      const rows = {}, tgts = {};
+      PARTIES.forEach(p => {
+        if (S.banned[p.id]) return;
+        S.ruling = p.id; S.coalition = [p.id];
+        try { rows[p.id] = JSON.stringify(projection(S).seats); } catch (e) { rows[p.id] = 'threw'; }
+        try { tgts[p.id] = JSON.stringify(supportTargets(S)); } catch (e) { tgts[p.id] = 'threw'; }
+      });
+      const ks = Object.keys(rows);
+      const one = rows[ks[0]], oneT = tgts[ks[0]];
+      /* and the reading is a real one, not every party on nought */
+      const seats = JSON.parse(one);
+      return { ran: ks.length >= 5, n: ks.length,
+        seats: seats,
+        sameSeats: ks.every(k => rows[k] === one),
+        sameTargets: ks.every(k => tgts[k] === oneT),
+        isARealBoard: Object.keys(seats).filter(k => seats[k] > 0).length >= 4 };
+    })();
+
+    /* (b) AND THE APPEAL CURVE IS ONE CURVE. `supportTargets` read three --
+       `.915 + (m - 50)/80` governing, `.86 + (m - 50)/108` in coalition,
+       `.784 - (m - 50)/130` outside -- the same value at no point on the scale
+       and the opposition's slope INVERTED, reaching 3.86 to one at a bloc mood
+       of 100. Asked here where it bit hardest: a country at the top of the
+       scale, which is the board the owner had built. */
+    R.mood = (() => {
+      flatBoard(90210);
+      BLOCS.forEach(b => { S.blocs[b.id] = 100; });
+      const at = (ruler) => {
+        S.ruling = ruler; S.coalition = [ruler];
+        try { return +supportTargets(S)[ruler].toFixed(6); } catch (e) { return null; }
+      };
+      const a = PARTIES.filter(p => !S.banned[p.id])[0].id;
+      const b = PARTIES.filter(p => p.id !== a && !S.banned[p.id])[0].id;
+      const ownA = at(a), ownB = at(b);
+      /* the same two parties' shares with NEITHER governing */
+      S.ruling = '__nobody__'; S.coalition = [];
+      let outA = null, outB = null;
+      try { const t = supportTargets(S); outA = +t[a].toFixed(6); outB = +t[b].toFixed(6); } catch (e) { }
+      return { ran: ownA !== null && outA !== null,
+        a: a, ownA: ownA, outA: outA, ownB: ownB, outB: outB,
+        governingBuysNothing: ownA === outA && ownB === outB };
+    })();
+
+    /* (c) AND THE FIELD IS GONE, not set to nought. A tier field nothing reads
+       is this file's most-repeated defect, so the term and the five authored
+       values went together. */
+    R.field = (() => {
+      const tiers = Object.keys(DIFFS).map(k => ({ k: k, has: DIFFS[k].incumbent !== undefined }));
+      return { ran: tiers.length >= 3, tiers: tiers.map(t => t.k),
+        noneCarryIt: tiers.every(t => !t.has) };
+    })();
+
+    /* (d) AND A PACT PAYS THE PARTY THAT MADE IT. `st.pact` is the PLAYER's
+       electoral pact and the partner stands down for it (`v *= .68`); the 32
+       per cent they give up went to `st.ruling`, whoever that was. Measured on
+       the owner's save, an opposition player striking one moved the government
+       +84 seats, their ally -81 and themselves -1. */
+    R.pact = (() => {
+      flatBoard(7);
+      const me = playParty(S);
+      const gov = PARTIES.filter(p => p.id !== me && !S.banned[p.id] && (S.seats[p.id] || 0) > 0)[0].id;
+      const ally = PARTIES.filter(p => p.id !== me && p.id !== gov && !S.banned[p.id] && (S.seats[p.id] || 0) > 0)[0].id;
+      S.ruling = gov; S.coalition = [gov];
+      const before = projection(S).seats;
+      S.pact = ally;
+      const after = projection(S).seats;
+      S.pact = null;
+      return { ran: true, me: me, gov: gov, ally: ally,
+        dMe: after[me] - before[me], dGov: after[gov] - before[gov], dAlly: after[ally] - before[ally],
+        paysTheOneWhoMadeIt: (after[me] - before[me]) > 0 &&
+          (after[ally] - before[ally]) < 0 &&
+          (after[gov] - before[gov]) <= 0 };
+    })();
+
+    /* (e) AND THE ONE CHAIR TERM THAT IS KEPT IS ACCOUNTABILITY, WHICH BITES
+       BOTH WAYS. The owner ruled on this one: a government judged on the
+       regions it runs is the trend they described, and S11's own comment says
+       the penalty is nearly double the reward. */
+    R.regions = (() => {
+      flatBoard(31337);
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me];
+      const par = projection(S).seats[me];
+      REGIONS.forEach(r => { const q = S.regions[r.id]; q.prosperity = 95; q.services = 95; q.order = 95; });
+      const well = projection(S).seats[me];
+      REGIONS.forEach(r => { const q = S.regions[r.id]; q.prosperity = 5; q.services = 5; q.order = 5; });
+      const badly = projection(S).seats[me];
+      return { ran: true, parity: par, well: well, badly: badly,
+        gain: well - par, loss: par - badly,
+        stillBites: (well - par) > 0 && (par - badly) > 0,
+        penaltyIsHeavier: (par - badly) > (well - par) };
+    })();
+
+    /* (f) THE BILL CAP: one number, one predicate, four call sites. */
+    R.cap = (() => {
+      fresh(555, 'ruthless');
+      for (let t = 0; t < 4; t++) step();
+      /* guarded: a poison can take the function out, and a probe that throws
+         aborts the harness instead of failing one assertion. The fallback is
+         the OLD number, so it fails `fiveAndTen` rather than passing. */
+      const capOf = (st) => (typeof v21BillCap === 'function') ? v21BillCap(st) : 1;
+      const norm = capOf(S);
+      const kept = S.diff;
+      S.diff = 'easy';
+      const easy = capOf(S);
+      S.diff = kept;
+      /* the player's own door, from the opposition bench */
+      const me = playParty(S);
+      S.ruling = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      S.coalition = [S.ruling];
+      S.bills = [];
+      const whyAtNone = v18FloorShut(S);
+      const pol = POLICIES.filter(p => policyOpen(S, p) && (S.pol[p.id] || 0) < p.max && !activeBillFor(S, p.id));
+      const laid = [];
+      for (let i = 0; i < norm && i < pol.length; i++) {
+        const bb = sponsorBill(S, pol[i].id, 1, 'opposition', 'clean', true, me, true);
+        if (bb) { bb.sponsor = me; bb.owner = 'opposition'; laid.push(bb.id); }
+      }
+      const whyAtCap = v18FloorShut(S);
+      const heldAtCap = v17PrivateBillsOf(S, me).length;
+      /* and one under the cap is open again */
+      S.bills = S.bills.slice(0, S.bills.length - 1);
+      const whyUnder = v18FloorShut(S);
+      /* the engine's own door reads the same predicate */
+      const eng = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      S.bills = [];
+      const atCapOf = (st, p) => (typeof v21BillsAtCap === 'function') ? v21BillsAtCap(st, p) : null;
+      const engAtNone = atCapOf(S, eng);
+      for (let i = 0; i < norm && i < pol.length; i++) {
+        const bb = sponsorBill(S, pol[i].id, 1, 'opposition', 'clean', true, eng, true);
+        if (bb) { bb.sponsor = eng; bb.owner = 'opposition'; }
+      }
+      const engAtCap = atCapOf(S, eng);
+      /* AND THE DECK'S OWN CARD, WALKED ACROSS THE BOUNDARY. `engineReadsTheSame`
+         above calls `v21BillsAtCap` itself, and calling the function is not
+         testing the wiring -- both of the deck's guards were removed and it
+         stayed green, because an engine holds at most THREE private bills in
+         240 driven sessions and the cap of five never binds in play. So the
+         board is built to one under the cap and the card is asked there and
+         again at it: below, `can` is true and `run` lays; at it, `can` is false
+         and `run` returns null. The two guards are belt and braces and the
+         card's own comment says they must be poisoned together -- this is what
+         reddens when they are, and reverting `can` to the old `>= 1` reddens
+         the BELOW half. */
+      const deck = V16_AI_DECK.filter(c => c.id === 'bill')[0];
+      const deckWalk = (() => {
+        if (!deck) return { ran: false };
+        /* NOT `eng`, WHICH THIS LEG SEATS IN THE GOVERNMENT. The line above
+           picks the first unbanned party that is not the player -- and so does
+           the line that sets `S.ruling`, so they are the SAME party, and the
+           card's first refusal is "the government has its own machinery". The
+           first version read that `false` as the cap biting one bill early.
+           A card about private members' time is asked of a party on the
+           OPPOSITION benches. */
+        const who = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id] &&
+          p.id !== S.ruling && (S.coalition || []).indexOf(p.id) < 0)[0];
+        if (!who) return { ran: false };
+        const pid = who.id;
+        S.bills = [];
+        S.purse = S.purse || {}; S.purse[pid] = 900;
+        /* THE BILLS ARE ATTRIBUTED BY HAND, so this leg does not depend on
+           which vintage of `sponsorBill` is live. The S9 clause wrapper is in
+           a later chunk and declares six parameters, so the `sponsorId` this
+           call passes is dropped on the way in and the bill arrives credited
+           to the largest opposition party -- S21s is the slice that widens it.
+           Either way the question here is the CAP, so the sponsor is set
+           rather than hoped for. The leg above does the same. */
+        const fill = (n) => {
+          const room = POLICIES.filter(p => policyOpen(S, p) && (S.pol[p.id] || 0) < p.max && !activeBillFor(S, p.id));
+          for (let i = 0; i < n && i < room.length; i++) {
+            const bb = sponsorBill(S, room[i].id, 1, 'opposition', 'clean', true, pid, true);
+            if (bb) { bb.sponsor = pid; bb.owner = 'opposition'; }
+          }
+        };
+        fill(norm - 1);
+        const heldUnder = v17PrivateBillsOf(S, pid).length;
+        let canUnder = null, ranUnder = null, canAt = null, ranAt = null;
+        try { canUnder = deck.can(S, pid); } catch (e) { canUnder = 'ERR'; }
+        try { ranUnder = deck.run(S, pid); } catch (e) { ranUnder = 'ERR'; }
+        fill(norm - v17PrivateBillsOf(S, pid).length);
+        const heldAt = v17PrivateBillsOf(S, pid).length;
+        try { canAt = deck.can(S, pid); } catch (e) { canAt = 'ERR'; }
+        try { ranAt = deck.run(S, pid); } catch (e) { ranAt = 'ERR'; }
+        return { ran: true, who: pid, heldUnder: heldUnder, heldAt: heldAt,
+          canUnder: canUnder, laidUnder: typeof ranUnder === 'string',
+          canAt: canAt, laidAt: typeof ranAt === 'string',
+          /* one under the cap the card is open AND it lays -- the second half
+             matters, because a board where nothing is draftable would give a
+             null for a reason that has nothing to do with the rule */
+          openBelow: canUnder === true && typeof ranUnder === 'string' && heldUnder === norm - 1,
+          shutAt: canAt === false && ranAt === null && heldAt === norm };
+      })();
+      return { ran: true, norm: norm, easy: easy, held: heldAtCap, deck: deckWalk,
+        whyAtNone: whyAtNone, whyAtCap: whyAtCap && String(whyAtCap).slice(0, 40), whyUnder: whyUnder,
+        fiveAndTen: norm === 5 && easy === 10,
+        openBelow: whyAtNone === null && whyUnder === null,
+        shutAtTheCap: typeof whyAtCap === 'string' && heldAtCap === norm,
+        andTheNumberIsInTheSentence: typeof whyAtCap === 'string' &&
+          whyAtCap.indexOf(String(norm)) >= 0,
+        engineReadsTheSame: engAtNone === false && engAtCap === true };
+    })();
+
+    /* (g) DRIVEN: an engine actually lays more than one, which is the whole
+       point of moving the number. */
+    R.play = (() => {
+      const out = { maxHeld: 0, sessions: 0, overOne: 0, byParty: {}, deckWhileHolding: 0 };
+      /* AND THE DRIVEN HALF IS READ INSIDE THE DECK'S OWN CARD. A count of
+         what a party HOLDS cannot tell which road laid it: `pv5AiPrivateBill`
+         is a second engine road to the order paper and reads no per-party cap
+         at all, so reverting the deck's `can` to the old `>= 1` left a party
+         holding three and this leg green. What only the deck can carry is the
+         card laying a bill for a party that ALREADY HAS ONE, so that is what
+         is counted, from inside `run`. */
+      const billCard = V16_AI_DECK.filter(c => c.id === 'bill')[0];
+      const baseRun = billCard && billCard.run;
+      if (billCard) billCard.run = function (st, pid) {
+        const before = v17PrivateBillsOf(st, pid).length;
+        const r = baseRun.apply(this, arguments);
+        if (typeof r === 'string' && before > out.deckWhileHolding) out.deckWhileHolding = before;
+        return r;
+      };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337].forEach(sd => {
+          fresh(sd, 'ruthless');
+          for (let t = 0; t < 60; t++) {
+            if (!step()) break;
+            out.sessions++;
+            PARTIES.forEach(p => {
+              if (S.banned[p.id]) return;
+              const n = v17PrivateBillsOf(S, p.id).length;
+              if (n > out.maxHeld) out.maxHeld = n;
+              if (n > 1) { out.overOne++; out.byParty[p.id] = Math.max(out.byParty[p.id] || 0, n); }
+            });
+          }
+        });
+      } finally { runQueue = rq; if (billCard) billCard.run = baseRun; }
+      return out;
+    })();
+    R.fires = R.play.maxHeld > 1 && R.play.overOne > 3 &&
+      /* the deck itself laid for a party that already held one, which the old
+         `>= 1` refuses and which the other engine road cannot supply */
+      R.play.deckWhileHolding >= 1;
+    return R;
+  });
+  const chairOk = chair.blind.ran && chair.blind.sameSeats && chair.blind.sameTargets &&
+    chair.blind.isARealBoard &&
+    chair.mood.ran && chair.mood.governingBuysNothing &&
+    chair.field.ran && chair.field.noneCarryIt &&
+    chair.pact.ran && chair.pact.paysTheOneWhoMadeIt &&
+    chair.regions.ran && chair.regions.stillBites && chair.regions.penaltyIsHeavier &&
+    chair.cap.ran && chair.cap.fiveAndTen && chair.cap.openBelow && chair.cap.shutAtTheCap &&
+    chair.cap.andTheNumberIsInTheSentence && chair.cap.engineReadsTheSame &&
+    chair.cap.deck.ran && chair.cap.deck.openBelow && chair.cap.deck.shutAt &&
+    chair.fires;
+  say(chairOk, 'the chair does not decide an election',
+    'THE PARTY IN OFFICE WON THE ELECTION FOR BEING THE PARTY IN OFFICE. Measured on the owner\'s own save ' +
+    'through `projection()` -- an opposition player on Very Easy against a government of 460 seats to their ' +
+    '329 -- the flat `incumbent` add was worth 33 seats, the three appeal curves in `supportTargets` 102, and ' +
+    'the two together 135 of 1,305: removing them put the player on 464 and the government on 346, so the ' +
+    'chair was worth more than the election. AND THE APPEAL CURVE IS WHY WORKING HARD MADE IT WORSE -- it ' +
+    'reads each bloc\'s mood and hands the contented country to whoever holds office, at 3.86 to one on a ' +
+    'bloc at 100, which is the country that player had built · MOVE THE GOVERNMENT ROUND THE HOUSE AND NOTHING ' +
+    `MOVES: on one board with the regions at parity, all ${chair.blind.n} seatings give the same seats ` +
+    `(${chair.blind.sameSeats}) and the same ${'`'}supportTargets${'`'} (${chair.blind.sameTargets}), on a real ` +
+    `division rather than every party at nought (${chair.blind.isARealBoard}) · AND THE APPEAL CURVE IS ONE ` +
+    `CURVE, asked where it bit hardest -- every bloc at 100 -- where governing now buys the ${chair.mood.a} ` +
+    `${chair.mood.ownA} against ${chair.mood.outA} out of office (${chair.mood.governingBuysNothing}). Its ` +
+    'value cannot matter and none was picked: `appeal` multiplies every bloc term of every party and the ' +
+    'reading is normalised, so a base that does not vary factors straight out. What differentiates a party is ' +
+    'what it always was -- which blocs it speaks for, what each bloc is worth (a contented one counts 2.7 ' +
+    'times an angry one, still), and the extremism term, which pays the edges in blocs that are ANGRY · AND ' +
+    `THE FIELD IS GONE RATHER THAN SET TO NOUGHT: none of ${JSON.stringify(chair.field.tiers)} carries an ` +
+    `${'`'}incumbent${'`'} (${chair.field.noneCarryIt}), because a tier field nothing reads is this file's ` +
+    'most-repeated defect · AND A PACT PAYS THE PARTY THAT MADE IT. `st.pact` is the PLAYER\'s pact and the ' +
+    'partner stands down for it, and the 32 per cent they gave up went to `st.ruling`: on the owner\'s save an ' +
+    'opposition player striking one moved the government +84, their ally -81 and themselves -1, a button that ' +
+    `paid the government to weaken your own ally. It is worth ${chair.pact.dMe} to the player who struck it, ` +
+    `${chair.pact.dAlly} to the ally who stood down and ${chair.pact.dGov} to the government ` +
+    `(${chair.pact.paysTheOneWhoMadeIt}) -- ${'`'}holdsDept${'`'}'s confusion in a fourth surface · AND THE ` +
+    'ONE CHAIR TERM KEPT IS ACCOUNTABILITY, on the owner\'s ruling: a government is judged on the regions it ' +
+    `runs, and it still bites -- ${chair.regions.gain} seats for a country run well and ` +
+    `${chair.regions.loss} against one run badly (${chair.regions.stillBites}) -- with the penalty the ` +
+    `heavier of the two (${chair.regions.penaltyIsHeavier}), which is S11's own asymmetry and the trend the ` +
+    `owner named -- as is the second, the press narrative, which ${'`'}pv5CampaignPower${'`'} reads through ` +
+    `${'`'}inPower${'`'}: the story is about a GOVERNMENT, so in office it is yours and out of it it cuts the ` +
+    'other way at half strength, and a failing government hands the opposition a gain. Both are held at parity ' +
+    'in the leg above, which is what makes it a reading of the chair rather than of what the chair has done · ' +
+    `AND A PARTY MAY HAVE ${chair.cap.norm} BILLS BEFORE THE HOUSE, ${chair.cap.easy} ON VERY ` +
+    'EASY, where it was one: one number and ONE predicate, which the player\'s card, the player\'s handler, ' +
+    `the dossier and the deck's own ${'`'}bill${'`'} card all read (${chair.cap.fiveAndTen}). Below it the door ` +
+    `is open (${chair.cap.openBelow}), at it the door is shut (${chair.cap.shutAtTheCap}) and the refusal says ` +
+    `the number rather than "a bill" (${chair.cap.andTheNumberIsInTheSentence}: "${chair.cap.whyAtCap}"), and ` +
+    `an engine reads the same predicate (${chair.cap.engineReadsTheSame}) -- and the deck's own card is WALKED ` +
+    `ACROSS THE BOUNDARY rather than asked about the predicate it reads, because an engine holds at most ` +
+    `${chair.play.maxHeld} in 240 driven sessions and a cap of ${chair.cap.norm} never binds there: at ` +
+    `${chair.cap.deck.heldUnder} the card is open and lays (${chair.cap.deck.openBelow}), at ` +
+    `${chair.cap.deck.heldAt} it is shut and lays nothing (${chair.cap.deck.shutAt}) · and driven over 240 ` +
+    `sessions a party holds up to ${chair.play.maxHeld} at once on ${chair.play.overOne} party-sessions ` +
+    `(${JSON.stringify(chair.play.byParty)}), where the ceiling was one, with the DECK ITSELF laying for a ` +
+    `party already holding ${chair.play.deckWhileHolding} -- which the old rule refuses and which ` +
+    `${'`'}pv5AiPrivateBill${'`'}, the second engine road and one that reads no per-party cap at all, cannot ` +
+    `supply`);
+
   /* ================================================================
      S21m — THE PARTY IN OFFICE CAN AFFORD TO GOVERN
      ================================================================
@@ -11448,8 +11875,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        decoration; and the mood has to occur without being the default */
     R.widenedReaches = (R.play.byGovern.organise || 0) > 0 && (R.play.byGovern.floor || 0) > 0;
     R.courtReaches = R.play.courtWhileExposed > 0;
-    /* the bar is the gap's own quartile: measured 24.5% of government sessions
-       at -4, against 46.1% at -2 and 59.7% at -1 */
+    /* the bar is the gap's own quartile. S21m measured 24.5% of government
+       sessions at -4 on the vote model of the day; S21v took the chair out of
+       `ballot` and `supportTargets`, which tightened the distribution from
+       p10 -5.1/p90 +5.5 to p10 -3.2/p90 +1.1, and the same bar then fired on
+       4.2%. The quartile on this model is -2: 25.8% of government sessions,
+       against 10.8% at -3 and 63.1% at -1. The band below is what "a quartile
+       and not the default" means, and it is the reading that catches the next
+       change of model as well. */
     R.moodIsAQuarter = R.play.moodOccurs > .10 && R.play.moodOccurs < .45;
     return R;
   });
@@ -14403,15 +14836,28 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       let form = null;
       const bi = v17Install;
       v17Install = function (st, out) {
-        /* AND THE PARTY MUST NOT ALREADY HAVE ONE. Two other things in this
-           slice mint a supply agreement, so a formation that seats a party
-           which already had one would be read as the formation having written
-           it -- which is how the poison that threw the offer away again came
-           back green. The first install that seats a party with NO agreement
-           at all is the one this leg is about. */
-        const pre = !!(out && out.confidence && (st.coalitionDeals || {})[out.confidence]);
+        /* AND THE STALE AGREEMENT IS CLEARED FIRST, rather than the install
+           SKIPPED. This used to require that the party had NO agreement at
+           all: two other things in this slice mint one, so a formation seating
+           a party that already had one would be read as the formation having
+           written it -- which is how the poison that threw the offer away came
+           back green. But `v17Install` writes `out.offers` UNCONDITIONALLY, so
+           clearing the stale record immediately before the call answers the
+           same question without discarding the observation, and turns a
+           skipped install into a positive test.
+           IT WAS COSTING EIGHT NINTHS OF THE SAMPLE. Measured over 1,600
+           driven sessions on this build's own sixteen seeds, minority rounds
+           are 11 and installs qualifying under the old guard were 0; on the
+           build before S21v they are 23 and 4. The guard made the target eight
+           times rarer than the round it rides on, and S21v halved the round as
+           well -- the tighter seat distribution a vote model without the chair
+           produces turns minority rounds into caretaker ones (caretaker 3 to
+           14 over the same 1,600 sessions) -- so an expectation of about two
+           drew nought and reddened an arm about a mechanism that is fine.
+           Cleared, the expectation is the round's own rate. */
+        if (!form && out && out.confidence && st.coalitionDeals) delete st.coalitionDeals[out.confidence];
         const r = bi.apply(this, arguments);
-        if (!form && !pre && out && out.confidence) {
+        if (!form && out && out.confidence) {
           const dd = (st.coalitionDeals || {})[out.confidence] || null;
           form = { pid:out.confidence, how:out.how,
             written: !!(dd && dd.terms && (dd.terms.concessions || []).length > 0),
@@ -15749,7 +16195,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return out;
       };
       try {
-        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+        /* TWELVE SEEDS, NOT SIX, because the bands below are twelve-seed
+           figures and a six-seed drive cannot hold to them. Measured either
+           side of S21v, the drift sentence reads .157 on this leg's old six
+           seeds and .245 on twelve of the SAME build -- a spread wider than
+           the whole movement the slice made, so at six the band was a claim
+           about which seeds were in the list. */
+        [4242, 90210, 7, 31337, 555, 8080,
+         1234, 99, 2718, 1618, 4001, 60613].forEach(seed => {
           fresh(seed);
           for (let i = 0; i < 80; i++) step();
         });
@@ -15762,17 +16215,28 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         /* the drift SENTENCE fires at all, which is the half a capture taken
            after the drift kills without any other symptom */
         driftFires: drifted > 0,
-        /* THE BANDS ARE THE MEASUREMENT'S OWN WORDS. On this leg's six seeds
-           the republic speaks about its furthest mover on .342 of ballots,
-           books the night's grudge on .583 and replaces .371 leaders on each;
-           over twelve seeds and 720 ballots the same three read .308, .461 and
-           .261. The bands are set around the leg's own drive with room for the
-           wider reading inside them, so a later slice that re-phases the dice
-           does not redden this and a slice that breaks one of the three
-           mechanisms does. */
-        driftInBand: per(drifted) !== null && per(drifted) > .18 && per(drifted) < .50,
-        spiteInBand: per(spited) !== null && per(spited) > .35 && per(spited) < .75,
-        leadersInBand: per(replaced) !== null && per(replaced) > .18 && per(replaced) < .60 };
+        /* THE BANDS ARE THE MEASUREMENT'S OWN WORDS, AND THEY SPAN TWO VOTE
+           MODELS. Over twelve seeds and 481 ballots the republic speaks about
+           its furthest mover on .383 of ballots, books the night's grudge on
+           .574 and replaces .356 leaders on each; on S21v's build, which took
+           the chair out of `ballot` and `supportTargets`, the same three read
+           .245, .418 and .179.
+
+           THAT IS A REAL HALVING AND IT IS NOT TUNED HERE. A flatter vote
+           model moves fewer seats, so there are fewer landslides for a party
+           to drift after and fewer defeats big enough to cost a leader: the
+           party seat-loss share goes p75 .0364 to .0138 and p90 .0909 to
+           .0526, against a `V21_BEATEN_BY` of .08 that is unchanged. A leader
+           now falls about once in five and a half ballots where it was once in
+           three -- a consequence of the owner's ruling on the chair, recorded
+           for them rather than corrected by moving their constant.
+
+           The bands hold both readings with room either side, so a slice that
+           re-phases the dice does not redden this and a slice that BREAKS one
+           of the three -- which gives nought -- does. */
+        driftInBand: per(drifted) !== null && per(drifted) > .15 && per(drifted) < .55,
+        spiteInBand: per(spited) !== null && per(spited) > .30 && per(spited) < .75,
+        leadersInBand: per(replaced) !== null && per(replaced) > .12 && per(replaced) < .55 };
     })();
 
     /* (d4) AND NONE OF IT HAPPENS BELOW THE FLOOR. R1: `instinct` is the
@@ -16088,9 +16552,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `every party in the chamber about every five elections, because a party-ballot is a loss of some size on ` +
     `.431 of occasions and losses are correlated. Measured over 718 ballots, the bar moved to .05 (.258 of ` +
     `ballots) and a defeat became losing at least \`V21_BEATEN_BY\` of your own benches, which is the worst ` +
-    `quarter of them (.337 a ballot, a given party about every twenty-one elections). Deleting the call from ` +
-    `\`runElection\`, or capturing the positions AFTER \`driftParties\` rather than before, leaves every ` +
-    `other leg in this arm green`);
+    `quarter of them (.337 a ballot, a given party about every twenty-one elections) · AND S21v HALVED ALL ` +
+    `THREE WITHOUT TOUCHING ONE OF THEM, which is recorded rather than tuned away: taking the chair out of ` +
+    `\`ballot\` and \`supportTargets\` flattens the vote model, so over the same twelve seeds and 481 ` +
+    `ballots the party seat-loss share goes p75 .0364 to .0138 and p90 .0909 to .0526 against an unchanged ` +
+    `\`V21_BEATEN_BY\` of .08, and the three rates go .383/.574/.356 to .245/.418/.179 -- a leader falls ` +
+    `about once in five and a half ballots where it fell once in three. Fewer seats move, so there are fewer ` +
+    `landslides to drift after and fewer defeats big enough to cost a leader: a consequence of the owner's ` +
+    `ruling on the chair, and their constant to move if they want the old cadence back · Deleting the call ` +
+    `from \`runElection\`, or capturing the positions AFTER \`driftParties\` rather than before, leaves ` +
+    `every other leg in this arm green`);
 
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
@@ -16632,9 +17103,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       try { over = v19GoalKind('carry').done(S, anyCarry, g); } catch (e) { over = false; }
       R.rung.closes = over;
     }
-    /* (f) AND THE CARD NEVER LAYS A SECOND ONE. The one-at-a-time rule fires
-       often -- measured, it refuses on 1,001 party-sessions -- and nothing
-       asked about it until its poison came back green.
+    /* (f) AND THE CARD NEVER LAYS ONE PAST THE CAP. The rule fires often --
+       measured, it refuses on 1,001 party-sessions -- and nothing asked about
+       it until its poison came back green.
+       S21v MOVED THE NUMBER AND THIS LEG ASSERTED THE OLD ONE. It was one at a
+       time; the owner's ruling is five, or ten on Very Easy, so a card laying
+       for a party that already holds one is now the rule working rather than a
+       breach. The leg stands in the gap the change opens: it lays a second
+       (which the shipped build refuses) and never lays at or past the cap.
        THE FIRST VERSION OF THIS ARM ASKED WHETHER A PARTY EVER HOLDS TWO AND
        THAT IS A DIFFERENT QUESTION, which the game answers yes to for a
        reason that predates this slice: `sponsorBill` called with
@@ -16643,7 +17119,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        second by another path. Measured at 6 party-sessions in 1,080. The
        claim here is about the CARD, so it is read at the moment the card
        runs: the party it lays for held none. */
-    R.laidWhenHolding = 0; R.cardRuns = 0;
+    R.laidWhenHolding = 0; R.laidAtOrPastCap = 0; R.mostHeldAtLaying = 0; R.cardRuns = 0;
     (() => {
       const card = V16_AI_DECK.filter(c => c.id === 'bill')[0];
       if (!card) return;
@@ -16656,7 +17132,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            refused on the live path laid nothing and is not a breach */
         if (!V19_SIMULATING) {
           R.cardRuns++;
-          if ((st.bills || []).length > n0 && held >= 1) R.laidWhenHolding++;
+          if ((st.bills || []).length > n0) {
+            if (held >= 1) R.laidWhenHolding++;
+            if (held > R.mostHeldAtLaying) R.mostHeldAtLaying = held;
+            const cap = (typeof v21BillCap === 'function') ? v21BillCap(st) : 1;
+            if (held >= cap) R.laidAtOrPastCap++;
+          }
         }
         return out;
       };
@@ -16706,7 +17187,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     reach.charter.realArticle === reach.charter.target &&
     reach.rung.checked === 1 && reach.rung.oneRung === 1 && reach.rung.closes === true &&
     reach.carryGaps.length > 10 && reach.carryGaps.every(g => g === 1) &&
-    reach.cardRuns > 20 && reach.laidWhenHolding === 0 &&
+    reach.cardRuns > 20 && reach.laidAtOrPastCap === 0 && reach.laidWhenHolding > 0 &&
     reach.steer.carryOpen >= 40 && reach.steer.otherOpen >= 100 &&
     reach.steer.lift !== null && reach.steer.lift > .15;
   say(reachOk, 'a party can reach what it is after',
@@ -16731,12 +17212,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `an instrument that moves one, so it was reached 0 times in 136 adoptions -- every one of the ` +
     `${reach.carryGaps.length} aims adopted here is one rung from where the statute stood, and moving the ` +
     `statute that one rung closes it (${reach.rung.closes}), which is the convention \`build\` and \`ground\` ` +
-    `already followed · AND THE CARD NEVER LAYS A SECOND: over three driven campaigns it ran ${reach.cardRuns} ` +
-    `times and the party it laid for was already holding one on ${reach.laidWhenHolding} of them -- nothing ` +
-    `asked about that rule until its poison came back green, and the first version of this arm asked instead ` +
-    `whether a party ever HOLDS two, which the game answers yes to for a reason older than this slice: ` +
-    `\`sponsorBill\` with \`owner:'opposition'\` and no sponsor id attributes the bill to the largest ` +
-    `opposition party`);
+    `already followed · AND THE CARD NEVER LAYS ONE PAST THE CAP: over three driven campaigns it ran ` +
+    `${reach.cardRuns} times, laid for a party already holding one on ${reach.laidWhenHolding} of them -- ` +
+    `which S21v's ruling ALLOWS and the shipped build refused, so this is the half that stands in the gap -- ` +
+    `and never for one at or past the cap (${reach.laidAtOrPastCap}), the most it ever laid on top of being ` +
+    `${reach.mostHeldAtLaying}. Nothing asked about the rule at all until its poison came back green, and the ` +
+    `first version of this arm asked instead whether a party ever HOLDS two, which the game answers yes to ` +
+    `for a reason older than this slice: \`sponsorBill\` with \`owner:'opposition'\` and no sponsor id ` +
+    `attributes the bill to the largest opposition party`);
 
   /* ---------- S19d: A PARTY VOTES ITS OWN MANIFESTO ----------
      S19c gave the engines a bill and left three things wrong behind it. A
@@ -18792,9 +19275,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         stillGenerous: e.capMult > n.capMult && e.rev > n.rev && e.exp < n.exp &&
           e.polCost < n.polCost && e.treasury > n.treasury && e.capCap > n.capCap &&
           e.moodBonus > n.moodBonus && e.eventPain < n.eventPain && e.unrest < n.unrest,
-        /* the landslide term: the largest in the vote model and fed by nothing
-           the player does */
-        incumbent:e.incumbent, incumbentCut: e.incumbent < .08,
+        /* S21b cut the landslide term -- the largest in the vote model and fed
+           by nothing the player does -- from .12 to .05. S21v took it OUT: the
+           owner ruled that the chair has no bearing on election performance at
+           all, and a difficulty field nothing reads is this file's own
+           most-repeated defect, so the field is gone from every tier rather
+           than set to nought. `< .08` on an absent field reads `undefined <
+           .08`, which is false, and the arm went red for a term that no longer
+           exists. What is asserted is what the two slices between them did:
+           NO tier carries an incumbency at all. */
+        incumbent:e.incumbent,
+        incumbentCut: V6_DIFF_ORDER.every(k => DIFFS[k].incumbent === undefined),
         /* and the income floor is a floor, not the answer */
         floorBelowFormula: e.capFloor < 60,
         purseMult:e.purseMult, pursesBreathe: e.purseMult < 3,
@@ -18908,7 +19399,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `it changes nothing at all, so it was deleted rather than shipped · EVERY FIELD IS STILL A TILT IN THE DIRECTION IT ALWAYS WAS (${cake.tilts.stillGenerous}) ` +
     `and a safe seat is still safe (${cake.tilts.noCollapse}); what went is the constant -- the incumbency ` +
     `term that was the largest in the vote model and fed by nothing the player does is ` +
-    `${cake.tilts.incumbent}, and engine purses breathe again at ${cake.tilts.purseMult} where 3.6 pinned ` +
+    `gone from every tier (${cake.tilts.incumbentCut}) rather than set to nought, on the owner's ruling that ` +
+    `the chair has no bearing on an election, and engine purses breathe again at ${cake.tilts.purseMult} where 3.6 pinned ` +
     `all seven at the 2,000 ceiling · and THE CARD DOES NOT LIE: the blurb promised "two houses that pass ` +
     `whatever you send them", which S20a made false (${cake.blurb.lies})`);
 
