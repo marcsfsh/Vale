@@ -451,6 +451,34 @@ before touching the file.
   passed. When the failure mode is "this quantity does not move", the bar has to
   be a real distance and the real movement has to be measured beside it: .02
   against a measured .096.
+- **WHERE A NUMBER IS READ IS PART OF WHAT IT MEASURES, and S21l found the same
+  mistake three times in one slice — twice in a probe and once in the game.**
+  `partyPurseTick` pays every party INSIDE `endTurn` and BEFORE `v16AiTurn`, so
+  a board read from outside `endTurn` is 10% cooler than the one the gate rolls
+  against: a leg summing `v18TempoOdds` from the outside reported a budget 10%
+  over on a build that holds it, and the tempo tracker, taking its average at
+  the END of the session loop on a board every party had just spent down, ran
+  the whole campaign 10% over for the same reason. Then a wrapper installed to
+  capture what the tracker read kept the LAST value the reader returned, where
+  the reader is also called by its own fallback once per party — so it recorded
+  a board from the middle of the loop rather than the session-opening one. Read
+  the number through the game's own path, at the moment the game asks for it,
+  and when you wrap a function to catch a value, ask which of its calls you
+  mean. This is `st.turn + 1` in a different unit, and its neighbour is: **a
+  comparison written into a return object is evaluated when the OBJECT is
+  built.** `aimsAtGovernment: tgt.ref === S.ruling` sat in a return whose arm
+  had, three legs earlier, called `fresh` and driven forty more sessions; it
+  compared against whoever governed at the END of the arm and passed for two
+  slices because the two happened to be the same party.
+- **Setting a case aside to make a claim exact can make the leg blind to the
+  mechanism.** Every declared floor move at a thinking level is against the
+  arithmetic — 53 of 53 — once `pressure` is excluded, and excluding it is
+  right, because `pressure` writes the SPONSOR's line rather than the actor's.
+  But `V19_FLOOR_BAR`'s whole effect is on that verb: deleted, the declared
+  moves stay 42 of 42 and `pressure` goes from ONE move to FIFTY-FIVE. The
+  poison came back GREEN on a leg that had just been made exact. When you carve
+  a case out of an assertion, ask what the carved-out case is measuring, and
+  gate it separately.
 - **Never set `fill` on a bare `text` selector in a chart's stylesheet.** A CSS
   fill beats an SVG presentation attribute and silently greys out every label
   the chart colours by attribute.
@@ -475,7 +503,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 11 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **187 content assertions**, the largest harness here: the
+- `tools/roads.js` — **212 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

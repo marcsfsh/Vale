@@ -35454,12 +35454,18 @@ function v16Resent(st, pid, against, n) {
    set higher than the ordinary attack bar because a ministry is a reason to
    put up with more. The head of government is never restive against itself. */
 var V18_RESTIVE = 55;
+/* How much of the government's own strength the largest opposition party has
+   to hold before it is defending a position rather than building one. .75 was
+   read off the measured distribution: leading the opposition alone is 26.8% of
+   opposition sessions, which is not a posture but a fact about most boards;
+   at .6 it is 10.2%, at .75 4.4%, at .85 2.5% and at parity 0.8%. */
+var V21_CONSOLIDATE = .75;
 function v18Restive(st, pid) {
   var co = st.coalition || [st.ruling];
   if (pid === st.ruling || co.indexOf(pid) < 0) return false;
   return v16Grudge(st, pid, st.ruling) >= V18_RESTIVE;
 }
-function v16Posture(st, pid) {
+function v16PostureRaw(st, pid) {
   var co = st.coalition || [st.ruling];
   var seats = st.seats[pid] || 0, share = seats / Math.max(1, CFG.seats);
   var trend = (v16Ai(st)[pid].lastSeats === undefined) ? 0 : seats - v16Ai(st)[pid].lastSeats;
@@ -35483,9 +35489,91 @@ function v16Posture(st, pid) {
   if (co.indexOf(pid) >= 0) return v18Restive(st, pid) ? 'restive' : 'partner';
   if (v16Grudge(st, pid, me) >= 35 || v16Grudge(st, pid, st.ruling) >= 35) return 'attack';
   if (trend < 0 && share < .18) return 'moderate';
-  if (share >= .22) return 'consolidate';
+  /* S21l — AND THIS ONE ASKS A RELATIVE QUESTION. `share >= .22` is a bar on
+     the chamber and nothing else, and the chamber does not hand out 22% very
+     often: measured over 8,640 driven party-sessions the share of a party
+     outside the government runs p50 .108, p90 .174 and tops out at .291, so
+     the bar sat above the 98th percentile of its own distribution -- and by
+     the time the chain reaches it, `attack` and `moderate` have taken most of
+     what was left. `consolidate` was returned FOUR TIMES in 8,640. That is
+     S17q's defect exactly: a threshold picked by eye against a scale it does
+     not reach, and the card list behind it (`campaign`, `article`, `order`,
+     `topple`) went with it.
+
+     What the posture is ABOUT is a party with a position worth defending, and
+     that is a question about the board rather than about a number: the largest
+     party outside the government, close enough to it to be the alternative.
+     Measured the same way, that is 4.4% of opposition sessions before the
+     branches above it take their share -- rarer than `organise` at 4.3% and
+     commoner than `restive` at 0.8%, which is the band a distinct posture
+     belongs in. The old absolute bar is KEPT as an OR rather than replaced: a
+     party holding 22% of the chamber has plenty to hold whether or not
+     somebody else outside the government holds more. */
+  var top = 0;
+  PARTIES.forEach(function (q) {
+    if (st.banned[q.id] || co.indexOf(q.id) >= 0) return;
+    if ((st.seats[q.id] || 0) > top) top = st.seats[q.id] || 0;
+  });
+  if (share >= .22 ||
+      (seats > 0 && seats >= top && seats >= (st.seats[st.ruling] || 0) * V21_CONSOLIDATE))
+    return 'consolidate';
   if (partyPurse(st, pid) >= 120) return 'organise';
   return 'hold';
+}
+/* S21l — AND A POSTURE HOLDS LONG ENOUGH TO BE ONE.
+
+   `v16PostureRaw` above is a function of the board this second, so a party
+   whose grudge crosses 35 and falls back under it changes what it is trying
+   to do twice in two sessions, and the deck it draws from changes with it.
+   Measured over 8,568 consecutive pairs of party-sessions -- twelve seeds of
+   120 -- a party's posture changed from one session to the next on 22.5% of
+   them, which is not a party with a strategy, it is a party with a
+   thermometer.
+
+   THE HYSTERESIS IS ASYMMETRIC, because the two directions are not the same
+   thing. A party may pick a fight the session it is given the reason: `attack`
+   is a REACTION and holding it back would be the "answer arrives three
+   sessions late" defect this program has already fixed twice. What it may not
+   do is drop one the session after, so a posture, once settled, holds for
+   `V21_POSTURE_TENURE` sessions before the board is allowed to move it.
+
+   AND THE STRUCTURAL ONES ARE FACTS, NOT MOODS. Governing, sitting in the
+   ministry, and sitting in it while working against the party that leads it
+   are all statements about who is in the room; a tenure that held `partner`
+   over a party that resigned this session would be the page lying about the
+   constitution. They pass both ways at once. */
+var V21_POSTURE_TENURE = 3;
+var V21_POSTURE_HARD = ['govern', 'partner', 'restive'];
+var V21_POSTURE_URGENT = ['attack'];
+function v16Posture(st, pid) {
+  var raw = v16PostureRaw(st, pid);
+  var a = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
+  if (!a || !a.posture) return raw;
+  if (V21_POSTURE_HARD.indexOf(raw) >= 0 || V21_POSTURE_HARD.indexOf(a.posture) >= 0) return raw;
+  if (V21_POSTURE_URGENT.indexOf(raw) >= 0) return raw;
+  if (a.postureSince === undefined) return raw;
+  if (st.turn - a.postureSince >= V21_POSTURE_TENURE) return raw;
+  return a.posture;
+}
+/* THE ONE WRITER. `a.posture` was assigned in exactly one place -- inside the
+   branch of `v16AiTurn` that runs when a party ACTS -- and the Parties page
+   printed it as what the party is doing now. A party acts about one session in
+   four, so the column was the posture of whenever that party last moved:
+   measured stale against `v16Posture` on 27.1% of 8,640 rows, and 'Waiting'
+   for every party that had not acted yet, because `v16Ai` seeds the field with
+   'hold'. That is `st.court.size` read backwards -- not a field nothing reads,
+   but a field the page reads that nothing keeps current.
+
+   So the stamp moves to the top of the session loop, before the tempo test,
+   and runs for every party whether or not it moves. It is also what makes the
+   tenure above possible: hysteresis needs a clock, and a clock that only ticks
+   when a party acts measures something else. `postureSince` moves only when
+   the value does. */
+function v16PostureSettle(st, pid) {
+  var a = v16Ai(st)[pid], post = v16Posture(st, pid);
+  if (a.posture !== post) { a.posture = post; a.postureSince = st.turn; }
+  else if (a.postureSince === undefined) a.postureSince = st.turn;
+  return post;
 }
 /* The deck. Each entry knows what it costs the party, whether it is available,
    and what it does -- and every one of them writes a channel the vote model
@@ -37222,8 +37310,12 @@ var V18_TEMPO = {
 function v18Tempo(st, pid) {
   var w = 1, ai = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
   var purse = (typeof partyPurse === 'function') ? partyPurse(st, pid) : 0;
-  if (purse >= 120) w *= V18_TEMPO.rich;
-  else if (purse < v16CheapestCard()) w *= V18_TEMPO.broke;
+  /* S21l: GRADED, NOT A STEP. `purse >= 120` is the top tenth of the measured
+     distribution (p50 42, p75 86, p90 115, max 236) and a party at 120 weighed
+     the same as one at 236. The curve keeps both anchors the step had -- 1 at
+     the median purse and `rich` at 120 -- and carries on above it. */
+  if (purse < v16CheapestCard()) w *= V18_TEMPO.broke;
+  else w *= 1 + (V18_TEMPO.rich - 1) * clamp((purse - 42) / 78, 0, 2);
   var worst = 0;
   /* S21a: THIS RAW READ IS SAFE AND WAS LEFT ALONE. It was routed through
      `v16Grudge` and the change came back GREEN on its own poison, which for a
@@ -37234,7 +37326,13 @@ function v18Tempo(st, pid) {
      reading that took out S20g's shortlist block. A later reader who changes
      the initialiser above must route this through the accessor. */
   if (ai && ai.grudge) for (var k in ai.grudge) if (ai.grudge[k] > worst) worst = ai.grudge[k];
-  if (worst >= 35) w *= V18_TEMPO.grudge;
+  /* AND THE SAME FOR THE GRUDGE. `worst >= 35` sat between the 75th and 90th
+     percentiles of a distribution running p25 4.8, p50 13.8, p75 33.7, p90
+     85.6 -- so a party holding 35 against somebody and one holding 100 wanted
+     the session equally badly, which is the flattest possible reading of the
+     thing this game spent four slices giving a sign to. The old bar is the
+     UNIT: 35 still reads `grudge`, and a hundred reads nearly twice it. */
+  w *= 1 + (V18_TEMPO.grudge - 1) * clamp(worst / 35, 0, 2);
   if (pid === st.ruling) w *= V18_TEMPO.govern;
   /* `lastSeats` is written at the end of every `v16AiTurn`, so this is the
      move since the last session rather than since the last ballot -- which is
@@ -37248,16 +37346,122 @@ function v18Tempo(st, pid) {
    gave. A party clamped at 1 can hold the sum a little under budget, which is
    the honest direction to miss in: it means one party wanted the whole
    session and the others went without. */
-function v18TempoOdds(st, pid) {
+/* S21l — AND THE BOARD'S TEMPERATURE REACHES THE BUDGET.
+   `v18Tempo` asks how badly THIS party wants the session -- rich, broke,
+   angry, governing, losing ground -- and `v18TempoOdds` then divided by the
+   SUM of everybody's weights. Write that division out and the defect is on the
+   page: `w * n / (cadence * sum)` IS `w / (cadence * mean)`, so the old line
+   normalised every session against ITS OWN board. The expected number of
+   parties acting is the budget whatever the weights are, by construction. A
+   republic where every party was desperate produced exactly as many
+   initiatives as one where every party was content, and the correlation
+   between the board's mean weight and the initiatives taken that session
+   measured -0.245 over 1,440 driven sessions -- not nought but NEGATIVE,
+   because on a hot board every party is competing for a fixed ration.
+
+   So the change is one word in that denominator: normalise against a NORMAL
+   board rather than against tonight's. `v18TempoBase` is the mean weight this
+   republic actually runs at, tracked rather than picked, and it keeps both
+   halves of the old line's job -- the cross-section (a party hotter than its
+   rivals still acts more often than they do) and the RATE (a board at the
+   usual temperature still spends the old budget) -- while letting the board's
+   temperature move the count, which was the whole point.
+
+   GATED ON `v19Thinks`, which none of the three designs that proposed this
+   noticed. `instinct` is the game as it shipped and its budget is held flat
+   against its own board; `ai.budgetHeld` is the arm that says so. */
+/* AND THE NORMAL BOARD IS THIS REPUBLIC'S OWN, NOT A NUMBER I MEASURED ONCE.
+   The first build of this divided by a constant taken from a 120-session
+   drive, and the constant was wrong for most of a campaign: measured by block
+   of sixty sessions over six seeds of three hundred, the board's mean weight
+   runs 1.389, 1.545, 1.895, 1.902, 1.890. It is not stationary and there was
+   no reason to expect it to be -- purses and grudges both accumulate -- so a
+   fixed divisor spends 6% under the budget for the first sixty sessions and
+   28% OVER it from the hundred-and-twentieth on. That is a difficulty drift
+   the owner did not ask for, hidden inside a change that was about variance.
+
+   So the divisor follows the board instead, on an exponential average slow
+   enough to ignore a session and fast enough to follow a century: a half-life
+   near thirty-five sessions, against a drift that takes a hundred and twenty.
+   What a party's odds now say is "hotter than this republic USUALLY is", which
+   is the comparison that was meant all along -- the fixed constant was only
+   ever a way of writing it down. The budget then holds over any window of the
+   campaign rather than on average over one particular one, which is a stronger
+   claim and the one the arm makes.
+
+   THE SEED IS THE FIRST READING, AND THERE IS NO CONSTANT ANYWHERE IN IT. A
+   campaign with no history divides the board by itself and gets exactly the
+   budget; a save written before this field existed does the same on its next
+   session. Reading and writing are separate functions on purpose:
+   `v18TempoBase` is called from a render, and a read that installs state is
+   the defect `v6TreatyRows` shipped. */
+/* HOW FAST "USUALLY" IS. Slow enough that a session, or a party suddenly rich
+   or suddenly angry, passes straight through to the count -- which is the
+   whole mechanism -- and fast enough to follow the campaign's own climb. At
+   .02 the average lagged a rising board by 15% and the budget ran a fifth
+   over for the first sixty sessions; the board's steepest measured climb is
+   about .006 of weight a session, and an exponential average lags a ramp by
+   its time constant times the slope, so .08 -- a constant of twelve sessions,
+   a half-life of nine -- puts the lag under 5%. A single session's swing is
+   damped by 8% of itself and reaches the count intact. */
+var V21_TEMPO_TRACK = .08;
+/* AND THERE IS NO CONSTANT AT ALL. This shipped for an afternoon as
+   `V21_TEMPO_BASE = 1.48`, a number measured on my own seeds and used whenever
+   the store was empty -- which is the first render of a campaign, before any
+   session has been played, and nothing else. Its poison came back GREEN, which
+   for a number means either a missing arm or a value nothing turns; the answer
+   here is neither, because a board with no history has a perfectly good answer
+   to "what does this republic usually run at" and it is "what it is running at
+   now". A fresh campaign divides the board by itself and gets exactly the
+   budget, which is the right first render, and the last measured constant in
+   the mechanism is gone. The 1 is for a board with no live party on it, where
+   the question does not arise. */
+function v18TempoBase(st) {
+  var b = st && st.tempoBase;
+  if (typeof b === 'number' && isFinite(b) && b > 0) return b;
+  var now = v18TempoRead(st);
+  return now > 0 ? now : 1;
+}
+/* READ AND APPLY ARE SEPARATE BECAUSE THEY HAPPEN AT DIFFERENT MOMENTS, and
+   the first build had them at the same one and was 10% out. The board has to
+   be read where `v18TempoOdds` is actually asked -- at the top of the session
+   loop, after `partyPurseTick` has paid the parties and before they have spent
+   any of it -- and applied after the loop, so a session is judged against the
+   republic as it stood before it. Reading it at the END instead measures a
+   board every party has just spent down: the odds asked at the top of the loop
+   then run 10% above the average taken at the bottom, every session, and the
+   budget sits 10% over for the whole campaign. This is the same reading-point
+   error as `st.turn + 1`, in a different unit. */
+function v18TempoRead(st) {
   var live = PARTIES.filter(function (q) {
     return q.id !== playParty(st) && !st.banned[q.id];
   });
   if (!live.length) return 0;
   var sum = 0;
   live.forEach(function (q) { sum += v18Tempo(st, q.id); });
-  if (sum <= 0) return 0;
-  var budget = live.length / V16_AI_CADENCE;
-  return clamp(v18Tempo(st, pid) * budget / sum, 0, 1);
+  return sum / live.length;
+}
+function v18TempoTrack(st, mean) {
+  if (!(mean > 0)) return;
+  var had = typeof st.tempoBase === 'number' && isFinite(st.tempoBase) && st.tempoBase > 0;
+  st.tempoBase = had ? st.tempoBase * (1 - V21_TEMPO_TRACK) + mean * V21_TEMPO_TRACK : mean;
+  /* the first session SEEDS the average from the board rather than easing
+     toward it from a number somebody picked, which is the same argument as the
+     reader above and the reason there is no constant left to pick */
+}
+function v18TempoOdds(st, pid) {
+  var live = PARTIES.filter(function (q) {
+    return q.id !== playParty(st) && !st.banned[q.id];
+  });
+  if (!live.length) return 0;
+  var thinks = (typeof v19Thinks === 'function') && v19Thinks(st);
+  if (!thinks) {
+    var sum = 0;
+    live.forEach(function (q) { sum += v18Tempo(st, q.id); });
+    if (sum <= 0) return 0;
+    return clamp(v18Tempo(st, pid) * (live.length / V16_AI_CADENCE) / sum, 0, 1);
+  }
+  return clamp(v18Tempo(st, pid) / (V16_AI_CADENCE * v18TempoBase(st)), 0, 1);
 }
 /* A cooldown per card so a party does not do the same thing twice running.
    The die picks among what the posture allows and the money reaches, which
@@ -37265,6 +37469,8 @@ function v18TempoOdds(st, pid) {
    `partyDemandPolicy` draws rather than sorting. */
 function v16AiTurn(st) {
   var ai = v16Ai(st), me = playParty(st), lines = [];
+  /* the board as the odds below are about to see it */
+  var boardWas = v18TempoRead(st);
   PARTIES.forEach(function (p) {
     /* THE DIE IS DRAWN FOR EVERY PARTY EVERY SESSION, BEFORE ANY TEST. A gate
        in front of `rand()` decides how many numbers come off the stream, not
@@ -37274,6 +37480,9 @@ function v16AiTurn(st) {
     var roll = rand();
     if (p.id === me || st.banned[p.id]) return;
     var a = ai[p.id];
+    /* S21l: every session, before the tempo test, so the page is right about
+       the parties that sit still -- which is three sessions in four. */
+    v16PostureSettle(st, p.id);
     /* S19f: A PARTY ANSWERING A FRESH GRIEVANCE ACTS NOW AND PAYS FOR IT.
        The order matters and is the whole of the budget guarantee: the tempo
        test comes FIRST, so a debt is only ever repaid out of a session the
@@ -37298,8 +37507,11 @@ function v16AiTurn(st) {
        left in: a line later readers reason about as though it did something. */
     var answering = a.react === st.turn;
     if (!answering && !passed) return;
+    /* THROUGH THE FUNCTION, and the write is gone rather than moved: the
+       settle at the top of this iteration already stored this exact value, and
+       two writers for one field is how `a.posture` and `v16Posture` came to be
+       two answers to one question in the first place. */
     var post = v16Posture(st, p.id);
-    a.posture = post;
     var open = V16_AI_DECK.filter(function (c) {
       if (c.post.indexOf(post) < 0) return false;
       if (st.turn - (a.last[c.id] || -99) < 4) return false;
@@ -37390,6 +37602,10 @@ function v16AiTurn(st) {
     }
     ai[p.id].lastSeats = st.seats[p.id] || 0;
   });
+  /* AFTER the loop, so this session's odds were judged against the republic as
+     it stood BEFORE it. Updating first would fold the session into its own
+     baseline and damp exactly the swing the change exists to let through. */
+  v18TempoTrack(st, boardWas);
   /* The player is told what the others did. Three lines is a session's news,
      not a wall: the rest is on the Parties page. */
   lines.slice(0, 3).forEach(function (l) { logIt(st, l); });
@@ -38483,7 +38699,11 @@ function v16AiPanel() {
        grudge, so a party in credit reads as holding nothing. */
     var a = ai[p.id], reg = v21Regard(S, p.id, me), g = v16Grudge(S, p.id, me);
     return '<tr><td><span class="dot" style="background:' + p.color + '"></span> ' + esc(p.short) + '</td>' +
-      '<td>' + esc(V16_POSTURE_SAY[a.posture] || a.posture) + '</td>' +
+      /* S21l: THROUGH THE FUNCTION, NOT THE FIELD. The column read `a.posture`
+         while every other consumer -- the deck filter, `V17_BURN`, the join --
+         read `v16Posture`, which is two answers to one question, and the page
+         held the wrong one on 27.1% of rows. */
+      '<td>' + esc(V16_POSTURE_SAY[v16Posture(S, p.id)] || v16Posture(S, p.id)) + '</td>' +
       '<td class="num">' + Math.round(partyPurse(S, p.id)) + '</td>' +
       '<td class="num">' + a.acts + ' &middot; ' + fmc(-(a.spent || 0)) + '</td>' +
       /* S18e: THE ODDS THIS PARTY MOVES THIS SESSION, read from the same

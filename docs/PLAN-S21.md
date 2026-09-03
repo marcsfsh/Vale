@@ -904,7 +904,7 @@ player STARTS in: a player who begins in government and later falls into
 opposition never sees either opposition paper. That is a real defect with a
 small fix and it belongs to a slice that can measure it.
 
-### S21l — The board's temperature, and the mood the page prints  ·  3 improvements
+### S21l — The board's temperature, and the posture the page prints  ·  SHIPPED  ·  3 improvements
 
 Last, because posture decides the open set and every rate in S19b, S19c, S19f
 and S20g has an open-set denominator.
@@ -924,6 +924,53 @@ level becomes true.
 Named casualties, argued rather than dodged: `ai.budgetHeld`,
 `rank.purposeful.gain === 0`, and the four open-set denominators, re-measured
 before and after inside this slice.
+
+**AS SHIPPED. Four corrections to this section, every one of them measured.**
+
+1. **"Scales with the board's mean weight" is not enough, and the first build
+   proved it.** Dropping the normalisation and dividing by a constant measured
+   over 120 sessions gives a divisor that is wrong for most of a campaign: by
+   block of sixty over six seeds of three hundred, the board's mean weight runs
+   1.389, 1.545, 1.895, 1.902, 1.890 — purses and grudges both accumulate — so
+   the build spends 6% under the budget early and **28% over it from the
+   hundred-and-twentieth session on**, permanently, while a whole-drive average
+   reads 1.00 and calls it correct. The divisor follows the republic's own
+   history instead, on a nine-session half-life, seeded from its first reading.
+   What that settles is what "hotter" MEANS: a board hotter than it has lately
+   been reaches the count, and a century-long climb does not. The correlation
+   against the raw board level is .05 and is reported rather than gated for
+   exactly that reason; the claim is asked causally instead, one board at two
+   temperatures with the same divisor, where the old line hands the gate the
+   budget both times to the digit.
+
+2. **`ai.budgetHeld` survives, and it needed a line this plan did not mention.**
+   The arm ran at the DEFAULT level and measured the floor's rule on a board
+   that is not the floor — it passed because the two were the same line. It is
+   seated at `instinct` now, and holds to the digit.
+
+3. **`restive` needed nothing.** The plan has it "occurring 0 times in 4,320
+   party-sessions" and asks for a trapped-partner channel. Re-measured on the
+   current build it occurs **69 times in 8,640** at the default level and 158 at
+   `ruthless`: S21b, S21e, S21f and S21g have all changed what a coalition is
+   and what a grudge does since that baseline was taken. A channel for something
+   that already happens is a knob nothing turns, so none was written.
+
+4. **`purposeful` does not get a `read`, and the reason is that the sentence
+   this plan invokes does not exist.** The claim was "the sentence the page
+   already prints at the default level becomes true". The default level's note
+   promises an aim and a leaning, and the parties carry both. It is `shrewd`'s
+   note that promises a party weighing "the rival reaching for the same thing",
+   and reading the board is what that rung of the setting is FOR — widening it
+   downward would blur the ladder rather than fix a lie.
+   `rank.purposeful.gain === 0` therefore stands rather than being retired, and
+   the four open-set denominators moved with the posture work rather than with
+   the levels.
+
+**And `a.posture` did not become "last acted as".** The plan's framing assumes
+the field can only be written when a party moves; the fix is that it is written
+every session for every party, so there is nothing stale to relabel. The page
+reads `v16Posture` and the store is that function's own, which is one predicate
+for one question rather than two.
 
 ## The dossier, built incrementally
 
@@ -949,6 +996,19 @@ wearing one name. **The dossier is S21l's in full**, first instalment included,
 and it is written down here so the next reader cannot mistake silence for
 completion. What S21i does owe the Parties card it pays: the aims a party has
 reached, and who got to a failed aim first, are both rendered.
+
+**AND S21l DOES NOT TAKE IT ON EITHER, WHICH IS SAID HERE RATHER THAN LEFT TO
+SILENCE.** S21l carries the tempo divisor, two graded terms, the posture tenure,
+the stamp, the page and `consolidate` — six changes and twenty-one poisons — and
+the dossier is a surface across every card in the deck, not a paragraph. Adding
+it here would repeat exactly the mistake this correction was written about:
+a slice announcing a surface it did not build. It is recorded in `STATE.md`
+under WHAT IS OPEN as its own piece of work, to be taken alongside the owner's
+extension. The two instalments the plan attached to S21b and S21i are still
+unbuilt and are part of the same debt; what the Parties card DOES carry, after
+S21a, S21i, S21k and S21l, is the signed regard, the aim and its progress, the
+record of aims reached, what became of the last one and who got there first,
+where every party stands on a bill, and a posture that is true this session.
 
 ## The owner's extension: eight more new behaviours
 
