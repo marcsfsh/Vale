@@ -551,7 +551,75 @@ The four rulings a cold session most needs:
     installs per 640 sessions, IDENTICAL either side of this slice, and the one
     it wanted here is at session 42. Sixteen seeds of a hundred now.
 
-**WHAT IS OPEN:** three slices of the original twelve (S21j–S21l) plus the
+- **S21j — courting is a relationship.** `court` is one of thirteen cards and
+  the `ground` aim weights it **1.0**, the highest weight any aim gives any
+  card. Read through `supportTargets` either side of a real run over 2,678 of
+  them, it was worth **−0.89%** to a party in opposition and **negative on all
+  1,683 such runs**, against +0.70% for one in government. Not usually harmful:
+  harmful every single time, for every party out of office, on its own best
+  card.
+
+  The cause is that `court.run` moves `st.blocs`, the country's ONE mood for
+  that bloc, and `supportTargets` reads a contented bloc as the government's
+  doing — `.915 + (m−50)/80` for the ruling party against `.784 − (m−50)/130`
+  for a party outside it. A bloc courted by the opposition is a bloc the
+  government gets the credit for. **This file already knew and had written it
+  down as a conflict rather than a defect**: `v19Rival` carries the sentence
+  *"a bloc has one mood, and two parties courting it are courting it away from
+  each other."*
+
+  **So a party has its own standing now.** `st.blocLean[pid][bloc]` is what
+  courting builds. It is a READING accessor — asking about every party and every
+  bloc creates nothing, which is `v6TreatyRows` in a place asked far more often
+  — and it fades at .03 a session where the country's mood reverts at .3, which
+  is why a season's courting used to be two thirds gone before the next one
+  began.
+
+  **IT IS READ AT THE BALLOT AND NOT AT EVERY DOOR, and the first build got that
+  wrong.** The term went into `affOf` on the reasoning that it is the one
+  function every bloc calculation in 3.9 megabytes goes through, so adding it
+  anywhere else would be eleven terms. It IS eleven terms, and that was the
+  problem: `affOf` is read by the formation's pricing, the interests, the
+  coalition's own arithmetic and the rally as well as by the ballot. Measured
+  over 360 formations, the coupling took the coalition pressure ladder from 24
+  climbs to 13 and made its MIDDLE rung — the one a partner passes through on
+  the way to an ultimatum — occur **zero** times against thirteen. Three slices'
+  worth of coalition mechanism re-priced by a change whose only measurement was
+  electoral. The defect this slice found is electoral, so the term sits in
+  `supportTargets` where it was measured: what a party has built with a bloc is
+  worth votes, and whether a cabinet will sit with it is a different question
+  the game already asked. The arm asserts BOTH halves — that the standing
+  reaches the ballot and that `affOf` is untouched.
+
+  **Both constants were swept rather than picked.** The gain was read at six
+  values through `supportTargets`: .02 leaves the opposition at −0.205 and
+  helping on .450 of runs, **.05** at +0.478 and **.742**, .12 at +1.367 and
+  .634 — .05 is where the share that HELPS is at its maximum, because above it
+  the standing feeds the national mood faster than it feeds the party. The
+  decay was swept against what the aim asks for, on the cadence a party holding
+  the aim actually plays the card at (.11 of its aim-sessions, one season in
+  nine, against a stall window of eight to sixteen): .06 with an ask of three
+  seasons reaches .083 of aims and **.03 with an ask of one and a half reaches
+  .476**, where the two slower decays push the highest standing to .295 of a
+  .30 cap and standing stops telling parties apart.
+
+  **The aim is about the standing now**, which is the thing its own card can
+  move: all three of `ground`'s predicates read `st.blocs` and asked for
+  fourteen points of it against a card adding 2.6 into a figure reverting at
+  .3. It WAS reached — 29 of 68 adoptions — but by the country's mood drifting
+  under it rather than by the party's work, which is S17o's "the real path
+  cannot say which channel moved the number" wearing an aim. It reads 34 of 87
+  now, the same rate, earned.
+
+  **And the player's own rally was building somebody else's side.** Both
+  readings inside "A campaign rally" asked about `S.ruling`, which is the
+  player's party only while the player LEADS, and the card carries no `need` —
+  so a junior partner held forty states' worth of rallies for the senior party,
+  warmed the blocs the SENIOR party likes, and put the organisation on the
+  senior party's machine. `holdsDept` in a third place, on a card the chair
+  that wanted it most was the one it worked against.
+
+**WHAT IS OPEN:** two slices of the original twelve (S21k–S21l) plus the
 owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. The coalition
 overhaul the brief names is complete: S21d gave the agreement teeth, S21e made
 the table a negotiation, S21f gave it one exit and a voice, S21g made a
