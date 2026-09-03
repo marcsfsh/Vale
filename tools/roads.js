@@ -16090,12 +16090,63 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const tgt = kind.target(S, q.id);
       const doneAtBirth = tgt ? kind.done(S, q.id, tgt) : null;
       PARTIES.forEach(x => { delete a.grudge[x.id]; });
+      /* AND IT CAN BE REACHED, ASKED WITHOUT DICE. This half used to be gated
+         on `oustDone >= 2` in the driven leg below, and that count is 5 over
+         twelve seeds and 1,440 sessions -- EIGHT of the twelve seeds produce
+         NOUGHT. The six the leg drives caught 2 on the build before S21h and 1
+         on it, off adoption counts of 8 and 4, while twelve seeds read 15 and
+         12 adopted and 5 and 4 reached: the same number, since the standard
+         error on a count of 15 is 3.9. A slice that re-phases the dice moves it
+         either way and it reads exactly like a defect, which is the family of
+         mistake `CLAUDE.md` names first about this harness.
+         So the CORRECTNESS of the reaching path is asked here, where it is
+         arithmetic: the target is walked out of the government through S21f's
+         one door, and the kind's own predicate and the resolution that reads it
+         are both asked what they now say. The driven leg keeps a tripwire that
+         the path fires in play at all, over twelve seeds rather than six. */
+      const reach = (() => {
+        /* driven until there IS a junior partner to walk out, rather than for a
+           fixed eight sessions and a hope: a single-party government has
+           nobody to remove and the leg would report a defect in the seed */
+        fresh(4242);
+        let partner = null, co = [];
+        for (let i = 0; i < 40 && !partner; i++) {
+          step();
+          co = (S.coalition || []).slice();
+          partner = co.filter(x => x !== S.ruling && x !== playParty(S))[0] || null;
+        }
+        const q2 = PARTIES.filter(p => co.indexOf(p.id) < 0 && p.id !== playParty(S) &&
+          !S.banned[p.id])[0];
+        if (!partner || !q2) return { ran:false };
+        const a2 = v16Ai(S)[q2.id];
+        if (!a2) return { ran:false };
+        v16Resent(S, q2.id, partner, 60);
+        const g2 = { kind:'oust', ref:partner, gov:S.ruling, since:S.turn };
+        a2.goal = g2;
+        const before = kind.done(S, q2.id, g2);
+        /* out through the game's own exit, not by editing the array */
+        const left = v21Leave(S, partner, 'walked out', null);
+        const after = kind.done(S, q2.id, g2);
+        /* and the resolution, which is the half that has to say `done` rather
+           than `gone` -- the two are one ternary apart and a build that always
+           said `gone` passed everything this arm asked before */
+        a2.goal = g2;
+        a2.lastGoal = null;
+        try { v19Goal(S, q2.id); } catch (e) { }
+        const lg = a2.lastGoal || {};
+        return { ran:true, left:!!left,
+          doneInGov:before, doneWhenOut:after,
+          reaches: before === false && after === true,
+          why: lg.why === undefined ? null : lg.why,
+          saysDone: lg.kind === 'oust' && lg.ref === partner && lg.why === 'done',
+          retired: !a2.goal || a2.goal.ref !== partner || a2.goal.kind !== 'oust' };
+      })();
       return { ran:true,
         fitsOnOutsider:onOutsider, targetOnOutsider: tgtOutsider ? tgtOutsider.ref : null,
         fitsOnGov:onGov, target: tgt ? tgt.ref : null, stampsGov: !!(tgt && tgt.gov),
         ignoresOutsiders: onOutsider === 0,
         aimsAtGovernment: !!tgt && tgt.ref === S.ruling,
-        notDoneAtBirth: doneAtBirth === false };
+        notDoneAtBirth: doneAtBirth === false, reach:reach };
     })();
 
     /* (f) AND IN REAL PLAY, driven, because a channel that only fires when a
@@ -16139,7 +16190,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return out;
       };
       try {
-        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+        /* TWELVE SEEDS, NOT SIX, and the reason is `oustAdopted`: six seeds put
+           it at 8 on one build and 4 on the next with nothing between them but
+           the dice, against a bar of 4. Twelve read 15 and 12. Every other
+           figure this leg takes -- the grievance quantiles, the formation
+           branches, the reaction count -- is a larger count on the same drive,
+           so the whole leg is steadier for the 34 seconds it costs. */
+        [4242, 90210, 7, 31337, 555, 8080,
+         11, 2024, 777, 606, 13, 99].forEach(seed => {
           fresh(seed);
           for (let i = 0; i < 120; i++) {
             step();
@@ -16187,9 +16245,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     polit.oust.ran === true && polit.oust.ignoresOutsiders === true &&
     polit.oust.aimsAtGovernment === true && polit.oust.stampsGov === true &&
     polit.oust.notDoneAtBirth === true &&
+    polit.oust.reach.ran === true && polit.oust.reach.left === true &&
+    polit.oust.reach.reaches === true && polit.oust.reach.saysDone === true &&
+    polit.oust.reach.retired === true &&
     polit.driven.p90 > 15 && polit.driven.p90 < 50 &&
     polit.driven.holding > .3 &&
-    polit.driven.oustAdopted >= 4 && polit.driven.oustDone >= 2 &&
+    /* SIZED FROM TWELVE SEEDS, not from the reading of one build. Adoption is
+       15 on the build before S21h and 12 on it over 1,440 sessions; the bar at
+       6 sits 1.7 standard errors below the lower of them. Reaching it is 5 and
+       4, so the bar there is 1 -- a tripwire that the path fires in play at
+       all, with its CORRECTNESS proved without dice in `oust.reach` above.
+       Four of the twelve seeds carry a reached aim on either build. */
+    polit.driven.oustAdopted >= 6 && polit.driven.oustDone >= 1 &&
     polit.driven.reactions > 0 &&
     polit.driven.branches >= 3 && polit.driven.caretakerShare < .1;
   say(politOk, 'a party holds something against a government',
@@ -16218,8 +16285,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `was adopted about a party already in opposition -- which it was on 808 of the 880 boards that passed ` +
     `\`fits\` -- and \`v19AdoptGoal\` drops a goal already done. Hating an outsider now scores ` +
     `${polit.oust.fitsOnOutsider} and hating the government ${polit.oust.fitsOnGov}, aimed at ` +
-    `${polit.oust.target}; driven, it is adopted ${polit.driven.oustAdopted} times and REACHED ` +
-    `${polit.driven.oustDone}, against 0 in 720 sessions · THE IGNORED LETTER IS RE-DATED: \`v19React\` runs ` +
+    `${polit.oust.target}, and REACHING IT IS ASKED WITHOUT DICE: with the target in the government ` +
+    `\`done\` reads ${polit.oust.reach.doneInGov}, walked out through S21f's one door it reads ` +
+    `${polit.oust.reach.doneWhenOut}, and the resolution files it as '${polit.oust.reach.why}' rather than ` +
+    `'gone'. That half USED TO BE GATED ON THE DRIVEN COUNT, which is 5 over twelve seeds and 1,440 ` +
+    `sessions with EIGHT of the twelve seeds at NOUGHT: six seeds read 2 on the build before S21h and 1 on ` +
+    `it, off adoption counts of 8 and 4, where twelve read 15/5 and 12/4 -- the same number, on a count ` +
+    `whose standard error is 3.9. It is twelve seeds now, and the driven bars (adopted ` +
+    `${polit.driven.oustAdopted} against 6, reached ${polit.driven.oustDone} against 1) are a tripwire that ` +
+    `the path fires in play, not the proof that it is right. Against 0 in 720 sessions before S21b ` +
+    `· THE IGNORED LETTER IS RE-DATED: \`v19React\` runs ` +
     `in \`tickTurn\`, \`expireInbox\` later in \`politicsTick\`, and \`S.turn += 1\` after both, so the stamp ` +
     `sat permanently one session behind the only reader and 63% of every grievance against the player ` +
     `produced ZERO reactions (${polit.driven.reactions} now). Silence is worth ${polit.letter.weight} where ` +

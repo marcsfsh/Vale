@@ -372,6 +372,30 @@ The four rulings a cold session most needs:
   0.335 → 0.321, walkouts 6 → 6, promises broken 28 → 28, coalition size
   2.36 → 2.35.
 
+  **And one arm reddened that was an assertion sized for six seeds.** `a party
+  holds something against a government` gates `oustDone >= 2`; it read 1 here
+  and 2 on the build before. The first hypothesis — that a slice keeping
+  partners in government reaches fewer aims — was measured and is NOT
+  supported: walkouts are 9 on both builds. Over TWELVE seeds and 1,440
+  sessions the two builds read 15 adopted / 5 reached and 12 / 4, with eight of
+  the twelve seeds at nought on each: the same number, on a count whose
+  standard error is 3.9. The six seeds the leg drove caught 8/2 and 4/1.
+  Correctness moved to a leg with no dice in it — the target is walked out of
+  the government through S21f's one door and the kind's own `done` is asked
+  either side, with the resolution filing it as `'done'` rather than `'gone'`,
+  which are one ternary apart — and the driven leg went to twelve seeds and
+  keeps a tripwire that the path fires in play at all. **It passes on the build
+  before this slice as well as on it**, which is what separates a re-shaped
+  assertion from a weakened one. Both new halves are poisoned red.
+
+  Twice on the way there the probe was wrong before the game was: the first
+  diagnostic counted `lastGoal.until === S.turn` and read NOUGHT on both builds,
+  because `S.turn += 1` happens inside `endTurn` after the stamp is written —
+  the same off-by-one the arm's own reactions leg carries a comment about. The
+  second asked whether a larger statistic was hiding in the same sessions (aims
+  whose target actually left, read through the kind's own predicate) and it is
+  6 against 5: the observation is not lossy, the event is rare.
+
 **WHAT IS OPEN:** four slices of the original twelve (S21i–S21l) plus the
 owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. The coalition
 overhaul the brief names is complete: S21d gave the agreement teeth, S21e made
