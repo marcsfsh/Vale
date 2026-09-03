@@ -7019,6 +7019,26 @@ function makeName(st) {
   }
   return n;
 }
+/* S21i — A PARTY CHANGES ITS LEADER, in one place. Two branches of
+   `leaderChallenge` already wrote this out longhand -- read the old one, mint
+   a new one, log the swap -- and this slice is the third caller, so the third
+   copy is where the file's own rule says to stop. The OBITUARY is what the
+   copies both left out: `st.figures.obits` exists and a leader who is replaced
+   simply vanished from it, which is `st.court.size` in the person model. */
+function v21NewLeader(st, pid, minAge, why) {
+  if (!st.figures) seedFigures(st);
+  var was = leaderOf(st, pid);
+  var now = makeFigure(st, pid, minAge || 44);
+  st.figures.leaders[pid] = now;
+  st.figures.obits = st.figures.obits || [];
+  st.figures.obits.unshift({ name:was.name, party:pid, since:was.since,
+    until:yearOf(st.turn), why:why || 'replaced at the head of the party' });
+  if (st.figures.obits.length > 40) st.figures.obits.length = 40;
+  logIt(st, was.name + ' was replaced by ' + now.name + ' at the head of the ' +
+    PARTY[pid].short + '.');
+  return now;
+}
+
 function makeFigure(st, pid, minAge) {
   return { name: makeName(st), party: pid, age: (minAge || 42) + Math.floor(rand() * 22),
     trait: rnd(TRAITS).id, since: yearOf(st.turn), loyalty: 45 + Math.floor(rand() * 40) };
@@ -8404,8 +8424,7 @@ ev({ id:'movDemand', react:'party', office:'national', w:9, title:'The Movement 
       { l:'Fight it out', s:'Costs capital. You keep the office or you do not.',
         f:function (S) { S.capital -= 7;
           if (approval(S) > 40 || rand() < .5) { mood(S, { prof:3 }); logIt(S, 'The leadership challenge was seen off.'); }
-          else { var f = leaderOf(S, S.ruling); S.figures.leaders[S.ruling] = makeFigure(S, S.ruling, 44);
-            logIt(S, f.name + ' was replaced by ' + S.figures.leaders[S.ruling].name + ' at the head of the party.');
+          else { v21NewLeader(S, S.ruling, 44, 'lost a challenge on their own benches');
             chronicle(S, 'A change of leadership in the governing party.'); S.machine[S.ruling] = clamp((S.machine[S.ruling] || 0) - .06, -.8, 1); } } },
       { l:'Buy them off with a great office', s:'Costs capital and a department.',
         f:function (S) { S.capital -= 4;
@@ -8414,9 +8433,9 @@ ev({ id:'movDemand', react:'party', office:'national', w:9, title:'The Movement 
           logIt(S, sh ? 'The challenger was given ' + DEPTS[sh.office].name + ' instead, and ' + sh.out.name + ' left it.'
                       : 'There was no great office in the government\u2019s hands to give them.'); } },
       { l:'Stand down in their favour', s:'A new leader, and a fresh start you did not choose.',
-        f:function (S) { var f2 = leaderOf(S, S.ruling); S.figures.leaders[S.ruling] = makeFigure(S, S.ruling, 42);
+        f:function (S) { v21NewLeader(S, S.ruling, 42, 'stood down in the challenger\'s favour');
           S.capital = clamp(S.capital + 6, -5, capCap(S)); S.unrest -= 5;
-          mood(S, { prof:4, youth:3 }); logIt(S, f2.name + ' stood down. ' + S.figures.leaders[S.ruling].name + ' takes over.'); } }
+          mood(S, { prof:4, youth:3 }); } }
     ] }),
   ev({ id:'borderIncident', react:'security', office:'pres', w:8, title:'An Incident on the Northern Line',
     cond:function (S) { return relOf(S, 'ostmark') < 55 && !S.war; },
@@ -12416,6 +12435,176 @@ function execContest(st, res) {
   return execRes;
 }
 
+/* ============================================================
+   S21i — THE BALLOT HAS CONSEQUENCES
+   ============================================================
+   MEASURED FIRST. A general election moves every seat in the chamber, decides
+   who governs, and left NOTHING in any party's memory. `a.grudge` is written
+   by the player's own buttons (S17l), by the ordinary acts of governing
+   (S21b), by the coalition (S21f) and by a motion of confidence (S21g) -- and
+   the one event in this republic that every party in it cares about most wrote
+   no entry at all. A party could lose a third of its seats to the party that
+   took them and hold nothing whatever against it.
+
+   IT RUNS AFTER `v17Form`, WHICH IS NOT WHERE THE PLAN PUT IT, and the reason
+   is the `oust` half. That aim's own `target` picks the worst-grudged party
+   IN THE GOVERNMENT, and S21b's finding was that adopting it about a party
+   already out of office is a goal `v19AdoptGoal` drops on the spot -- so an
+   aim handed out before the government is formed would be aimed at the
+   OUTGOING one, which is the defect that slice fixed. The cost is that the
+   night's grudges reach the NEXT formation rather than the one concluded the
+   same evening; that is the honest reading, since a grievance that changed
+   the formation would be the count deciding the government twice.
+
+   NOTHING HERE ROLLS EXCEPT THE NEW LEADER, and that one is deliberate: a
+   person has to be made, and `makeFigure` is how this game makes one. The
+   DECISION is arithmetic -- two ballots in a row with seats lost -- because a
+   roll to decide would re-phase every campaign from the first replacement
+   onward, which is S18c's rule read forwards. */
+/* EVERY ONE OF THESE IS SET AGAINST THE DISTRIBUTION IT GATES, measured over
+   718 ballots on twelve seeds and 1,440 driven sessions, because a threshold
+   picked by eye is a mechanic that never fires -- or, as two of these three
+   were, one that fires constantly. The first draft had all three by eye and
+   two of them were wrong in opposite directions. */
+
+/* WHAT A DEFEAT IS WORTH. A party's loss runs p25 .025, p50 .050, p75 .085 and
+   tops out at .266 of its own benches, so the scale puts the median defeat at 6
+   and the worst measured one at 32 -- against a live grievance whose median is
+   about 10 and whose 99th percentile is 90. An election defeat should sit a
+   little above an ordinary grievance and far below a real one, and it does.
+   `Math.min` rather than `clamp`: the caller has already required `wLost > 0`,
+   so a lower arm at nought is a branch that cannot be taken, and this file
+   deletes those rather than shipping them. The upper arm is a guard the
+   measured range does not reach and is kept as one. */
+var V21_BALLOT_SPITE = 40;
+
+/* HOW MANY DEFEATS IN A ROW, AND WHAT COUNTS AS ONE. Both, because the first
+   version had only the first and the rate it produced was absurd: a party-ballot
+   is a loss of SOME size on .431 of occasions, and losses are correlated -- a
+   party in decline keeps losing -- so "beaten twice running" with any loss
+   counting replaced 1.348 leaders PER BALLOT, or every party in the chamber
+   about every five elections. Measured across three run-lengths and four
+   defeat bars on the same ballots:
+
+              any    >=3%    >=5%    >=8%
+     2 in a row   1.348   0.901   0.613   0.337
+     3 in a row   0.866   0.554   0.376   0.185
+     4 in a row   0.591   0.355   0.221   0.111
+
+   Two running at a bar of .08 gives .337 a ballot -- a given party about every
+   twenty-one elections -- and it keeps the phrase the card uses. The bar is
+   above the 75th percentile of losses, so "beaten" means the worst quarter of
+   defeats rather than any night that went slightly badly. */
+var V21_BEATEN_OUT = 2;
+var V21_BEATEN_BY = .08;
+
+/* HOW FAR A PARTY MOVES BEFORE THE COUNTRY NOTICES. Asked of the per-BALLOT
+   MAXIMUM, since only the furthest mover is named, and that is a different
+   distribution from the per-party one: p25 .026, p50 .037, p75 .051, p90 .104.
+   The first draft's .12 sat at the 92nd percentile of it and spoke on .086 of
+   ballots -- about one election in twelve, which is a sentence a player would
+   never see twice in a campaign and is the same defect as the street's bar
+   above its own ceiling. At .05 the ballot speaks on .258 of them, a little
+   over one in four: often enough to read as a habit of the republic, rare
+   enough to mean something when it happens. */
+var V21_DRIFT_SAY = .05;
+
+function v21AfterBallot(st, before, wasRuling, posWas) {
+  if (typeof v16Ai !== 'function' || typeof v19Thinks !== 'function' || !v19Thinks(st)) return null;
+  var ai = v16Ai(st), out = { spite:null, ousted:null, drifted:null, replaced:[] };
+  var live = PARTIES.filter(function (p) { return !st.banned[p.id]; });
+  /* WHO LOST WHAT TO WHOM. Read as a SHARE of what the party held, not as a
+     count of seats: a party of forty losing ten has lost a quarter of itself
+     and one of six hundred losing ten has lost a rounding error. */
+  var worst = null, wLost = 0, best = null, bGain = 0;
+  live.forEach(function (p) {
+    var was = before[p.id] || 0, now = st.seats[p.id] || 0;
+    var d = now - was;
+    if (was > 0 && -d / was > wLost) { wLost = -d / was; worst = p.id; }
+    if (d > bGain) { bGain = d; best = p.id; }
+  });
+  /* AND IT HAS TO BE A DEFEAT, on the SAME bar the leader rule reads. Without
+     one this fires on every ballot in the republic -- there is always somebody
+     who lost most and somebody who gained most, and the median loss is .05 of a
+     party's benches, which is a bad night and not a beating. Measured, booking
+     one every time took the grievance a party holds against a government from a
+     90th percentile of 25 to 41.9 and the share of party-government pairs
+     holding anything from .551 to .619: an election every two sessions, each
+     adding a mean of 12. One constant with two readers rather than two bars
+     that drift apart. */
+  if (worst && best && worst !== best && wLost >= V21_BEATEN_BY && typeof v16Resent === 'function') {
+    var n = Math.round(Math.min(1, wLost * 3) * V21_BALLOT_SPITE);
+    if (n > 0) {
+      v16Resent(st, worst, best, n);
+      out.spite = { by:worst, at:best, lost:+wLost.toFixed(3), n:n };
+      logIt(st, 'The ' + PARTY[worst].short + ' lost more of their benches than anybody, and most of them to the ' +
+        PARTY[best].short + '.');
+    }
+  }
+  /* AND A PARTY PUT OUT OF THE GOVERNMENT IS HANDED THE AIM THAT SAYS SO.
+     Constructed rather than adopted, because `v19AdoptGoal` rolls and this is
+     not a choice the party makes -- it is what losing office means. */
+  if (wasRuling && st.ruling !== wasRuling && !st.banned[wasRuling] &&
+      (st.coalition || []).indexOf(wasRuling) < 0 && typeof v19GoalKind === 'function') {
+    var a = ai[wasRuling];
+    var k = v19GoalKind('oust');
+    if (a && k) {
+      if (typeof v16Resent === 'function') v16Resent(st, wasRuling, st.ruling, V21_OUST_BAR);
+      var t = null;
+      try { t = k.target(st, wasRuling); } catch (e) { t = null; }
+      if (t) {
+        /* the same shape `v19AdoptGoal` builds, so a handed aim and an adopted
+           one are the same object -- it was written with a `gov` this slice
+           has just proved nothing reads */
+        a.goal = { kind:'oust', ref:t.ref, want:t.want, dir:t.dir, since:st.turn };
+        out.ousted = { by:wasRuling, at:t.ref };
+        logIt(st, 'The ' + PARTY[wasRuling].short + ' left office and said what they intended to do about it.');
+      }
+    }
+  }
+  /* AND THE PLATFORMS MOVED, WHICH NOBODY WAS TOLD. `driftParties` walks every
+     party toward the winner, toward the blocs that carry it and back toward
+     its own founding position, every ballot since v4, and printed nothing --
+     so a party could cross the compass over four elections and the only trace
+     was a dot moving on a chart nobody was asked to watch. */
+  if (posWas) {
+    var far = null, fd = 0;
+    live.forEach(function (p) {
+      var w = posWas[p.id]; if (!w) return;
+      var q = ppos(st, p.id);
+      var d = Math.sqrt((q.e - w.e) * (q.e - w.e) + (q.a - w.a) * (q.a - w.a));
+      if (d > fd) { fd = d; far = p.id; }
+    });
+    if (far && fd >= V21_DRIFT_SAY) {
+      var q2 = ppos(st, far), w2 = posWas[far];
+      out.drifted = { who:far, by:+fd.toFixed(3) };
+      logIt(st, 'The ' + PARTY[far].short + ' read the result and moved: ' +
+        (Math.abs(q2.e - w2.e) >= Math.abs(q2.a - w2.a)
+          ? (q2.e > w2.e ? 'to the right on the economy.' : 'to the left on the economy.')
+          : (q2.a > w2.a ? 'toward a firmer hand.' : 'toward a looser one.')));
+    }
+  }
+  /* AND A PARTY BEATEN TWICE RUNNING CHANGES ITS LEADER. Arithmetic, not a
+     roll: two ballots in a row with fewer members returned than it had. */
+  live.forEach(function (p) {
+    var a2 = ai[p.id]; if (!a2) return;
+    var was = before[p.id] || 0, now = st.seats[p.id] || 0;
+    /* a DEFEAT, not merely a bad night: the share of its own benches a party
+       lost, against a bar set from the measured distribution above */
+    var shed = was > 0 ? (was - now) / was : 0;
+    if (now < was && shed >= V21_BEATEN_BY) a2.beaten = (a2.beaten || 0) + 1;
+    else a2.beaten = 0;
+    if (a2.beaten >= V21_BEATEN_OUT) {
+      a2.beaten = 0;
+      v21NewLeader(st, p.id, 44, 'beaten at two elections running');
+      st.machine[p.id] = clamp((st.machine[p.id] || 0) - .05, -.8, 1);
+      out.replaced.push(p.id);
+      chronicle(st, 'A change of leadership in the ' + PARTY[p.id].short + ' after a second defeat.');
+    }
+  });
+  return out;
+}
+
 function runElection(st, early) {
   var before = {};
   PARTIES.forEach(function (p) { before[p.id] = st.seats[p.id] || 0; });
@@ -12483,6 +12672,9 @@ function runElection(st, early) {
 
   var courtSeats = courtElection(st);
 
+  /* S21i: captured BEFORE the drift, because the drift is what it measures */
+  var v21PosWas = {};
+  PARTIES.forEach(function (p) { var q = ppos(st, p.id); v21PosWas[p.id] = { e:q.e, a:q.a }; });
   driftParties(st, res, lead);
   var oldRuling = st.ruling;
   /* S17f: THE LARGEST PARTY IS NOT THE GOVERNMENT. `lead` is who won the
@@ -12496,6 +12688,8 @@ function runElection(st, early) {
      vote: the newspapers, half the boundaries and the machine pass to whoever
      took the government, which since this slice is not always whoever won. */
   if (st.ruling !== oldRuling && playParty(st) === st.ruling) carryOver(st, oldRuling, st.ruling);
+  /* S21i: and what the parties made of the night */
+  if (typeof v21AfterBallot === 'function') v21AfterBallot(st, before, oldRuling, v21PosWas);
   /* acts.consulate: every executive office is the ruling party's, whoever the
      returns favoured — the one-shot apply() is now a standing fact. */
   if (st.acts.consulate) { st.exec.pres = st.ruling; st.exec.vpres = st.ruling; st.exec.chan = st.ruling; st.exec.vchan = st.ruling; }
@@ -14171,6 +14365,8 @@ function endTurn() {
      AFTER the street and the court so that everything the government did with
      its session is on the board before the house is counted. */
   if (typeof v21MotionTick === 'function') v21MotionTick(S);
+  /* S21i: and every party's aim is looked at, whether or not it acted */
+  if (typeof v21GoalTick === 'function') v21GoalTick(S);
   var fired = pickEvents();
   if (revolt) fired.unshift(revolt);
   if (S.pendingRuling) fired.unshift(rulingEvent(S.pendingRuling));
@@ -35887,10 +36083,19 @@ var V19_GOALS = [
 
        Now the pool is the government and its partners, so a party can only
        aim at somebody it could actually bring down, and reaching it means
-       exactly what the name says. `g.gov` is stamped at adoption so a party
-       that gets what it wanted by a route it did not take -- the ballot, a
-       walkout, a motion -- still reads as done rather than switching target
-       under its own aim. */
+       exactly what the name says.
+
+       S21i: AND `gov` IS GONE, because it was never there. This comment used
+       to say the field was "stamped at adoption" and that the stamp is what
+       lets a party which gets what it wanted by a route it did not take -- the
+       ballot, a walkout, a motion -- read as done rather than switching target
+       under its own aim. `target` did return it, and `v19AdoptGoal` builds the
+       goal from `t.ref`, `t.want` and `t.dir` and DROPS it; a grep of 3.9
+       megabytes finds no reader. `st.court.size` again, and the comment
+       asserting what a line does rather than reading it, in one place.
+       The PROPERTY is real and comes from somewhere else: `done` asks about
+       `g.ref`, the name stamped when the aim was taken, and never re-runs
+       `target`. That is what the arm asks now. */
     fits:function (st, pid) {
       if (pid === st.ruling) return 0;
       var inGov = (st.coalition || [st.ruling]).filter(function (q) { return q !== pid; });
@@ -35909,7 +36114,7 @@ var V19_GOALS = [
         var g = v16Grudge(st, pid, q);
         if (g > worst) { worst = g; t = q; }
       });
-      return t ? { ref:t, gov:st.ruling } : null;
+      return t ? { ref:t } : null;
     },
     done:function (st, pid, g) {
       return g.ref !== st.ruling && (st.coalition || []).indexOf(g.ref) < 0;
@@ -36032,12 +36237,32 @@ function v19GoalKind(id) {
    needs: a party's aim has a through-line, and an aim that is abandoned was
    abandoned for a reason the page can state. `V19_GOAL_CAP` is a backstop so
    nothing runs for ever, set well above `build`'s longest observed run. */
+/* S21i: what a record of finished aims is worth, and where it stops. The
+   goal term runs 0 to 1.4 across the seven kinds, so three wins at .08 move a
+   strong aim's pull by .34 -- about a third of the gap between the best card
+   for an aim and an indifferent one, which is a party being more single-minded
+   rather than a different party. */
+var V21_WINS_CAP = 3;
+var V21_WINS_WORTH = .08;
 var V19_GOAL_IDLE = 11;
 var V19_GOAL_CAP = 60;
 var V19_GOAL_STALE = 14;   /* the old flat clock, kept for the save it rides in */
-function v19Goal(st, pid) {
-  if (!v19Thinks(st)) return null;
-  var a = v16Ai(st)[pid];
+/* S21i — THE CLOCK TICKS PER SESSION, NOT PER OBSERVATION, and the split is
+   what makes that possible. `v19Goal` both LOOKS at the aim and ADOPTS a new
+   one, and adopting rolls -- so the clock could only ever advance when
+   somebody asked, and the only thing that asks is a party taking an
+   initiative. A party too poor to act therefore never ticked; the moment it
+   could act again, `idle` was the whole silence and the aim was retired on the
+   spot, having stalled for no reason but the party's own purse. Measured, a
+   party under the cheapest card in the deck acts on .098 of its sessions
+   against .25 flat (S18e's own figure), so the poorest parties were the ones
+   whose aims died of the clock.
+
+   The observing half is here and spends NO DICE; the adopting half stays in
+   `v19Goal`, which is called when a party actually moves. `v21GoalTick` runs
+   the observing half for every party every session. */
+function v19GoalObserve(st, pid) {
+  var a = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
   if (!a) return null;
   var g = a.goal;
   if (g) {
@@ -36069,10 +36294,52 @@ function v19Goal(st, pid) {
         a.lastGoal = { kind:g.kind, ref:g.ref, best:g.best || 0, since:g.since, until:st.turn,
           why:over ? (function () { var d = false; try { d = k.done(st, pid, g); } catch (e) {} return d ? 'done' : 'gone'; })()
             : (age > V19_GOAL_CAP ? 'given up' : 'stalled') };
+        /* S21i: AND WHAT IT WAS WORTH. `a.wins` counts the aims a party has
+           actually reached, which nothing counted before -- a party could
+           finish six aims in a campaign and the game recorded no difference
+           between it and one that finished none. It is read in `v19Score`,
+           written to the log and the chronicle, and printed on the page. */
+        if (a.lastGoal.why === 'done') {
+          a.wins = (a.wins || 0) + 1;
+          logIt(st, 'The ' + PARTY[pid].short + ' got what they had been working toward: ' +
+            (function () { var t = ''; try { t = k.say(st, pid, g); } catch (e) { t = g.kind; } return t.toLowerCase(); })() + '.');
+          chronicle(st, 'The ' + PARTY[pid].short + ' reached what they set out to do.');
+        } else {
+          /* AND WHO GOT THERE FIRST, where somebody did. An aim that stalled
+             because another party was further along the same road is a
+             different story from one that simply ran out, and the page had no
+             way to tell them apart. */
+          var by = null, bestBy = (g.best || 0);
+          PARTIES.forEach(function (q) {
+            if (q.id === pid || st.banned[q.id]) return;
+            var qa = v16Ai(st)[q.id], qg = qa && qa.goal;
+            if (!qg || qg.kind !== g.kind || qg.ref !== g.ref) return;
+            if ((qg.best || 0) > bestBy) { bestBy = qg.best || 0; by = q.id; }
+          });
+          a.lastGoal.by = by;
+        }
         a.goal = null; g = null;
       }
     }
   }
+  return g;
+}
+/* AND THE TICK. Every party, every session, spending no dice: `k.progress`,
+   `k.done` and `k.dead` are reads by their own contract -- the accessor rule
+   S19b wrote after `v19GoalSeen` was found seeding the rival's aim it was
+   asked about. */
+function v21GoalTick(st) {
+  if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return;
+  PARTIES.forEach(function (p) {
+    if (st.banned[p.id]) return;
+    try { v19GoalObserve(st, p.id); } catch (e) { }
+  });
+}
+function v19Goal(st, pid) {
+  if (!v19Thinks(st)) return null;
+  var a = v16Ai(st)[pid];
+  if (!a) return null;
+  var g = v19GoalObserve(st, pid);
   if (!g) g = v19AdoptGoal(st, pid);
   return g;
 }
@@ -36596,7 +36863,15 @@ function v19Score(st, pid, card, goal, rival) {
   if (goal) {
     var k = v19GoalKind(goal.kind);
     var w = (k && k.worth && k.worth[card.id] !== undefined) ? k.worth[card.id] : .25;
-    s += w;
+    /* S21i: AND A PARTY THAT HAS FINISHED AIMS BEFORE PRESSES THE NEXT ONE
+       HARDER. `a.wins` counts what a party has actually reached and it
+       multiplies the AIM's own weight rather than adding a flat bonus -- a
+       constant would be added to every open card and cancel in the softmax,
+       which is `st.court.size`'s neighbour and the mistake S21c found three
+       weights making in `v19Standing`. Capped, because a party with a long
+       record is more single-minded and not infinitely so. */
+    var wins = Math.min(V21_WINS_CAP, ((v16Ai(st)[pid] || {}).wins) || 0);
+    s += w * (1 + wins * V21_WINS_WORTH);
   }
   /* a card it has just played is worth less than one it has not, so a party
      with an aim still varies what it does toward it */
@@ -37972,11 +38247,24 @@ function v16AiPanel() {
          to state the aim and the reasoning, so the board reads like a
          diplomacy screen rather than a list of things that happened. */
       '<td>' + (function () {
+        /* S21i: AND A PARTY BETWEEN AIMS IS STILL A PARTY WITH A HISTORY. This
+           read `if (!aim) return 'Acting on instinct'`, so the record below and
+           S19d's "what became of the last one" -- the whole reason that column
+           was rewritten -- were both behind a party HAVING a current aim.
+           Before this slice that was nearly always true, because `v19Goal`
+           retired an aim and adopted the next one in the same breath, so the
+           empty state lasted no time at all. Splitting the observing half out
+           makes it a state a party sits in: the tick retires the aim the
+           session it ends, and nothing adopts until the party next acts, which
+           is about one session in four. So the column went blank for the
+           parties that had just finished something -- exactly the ones with
+           something to say. */
         var aim = v19GoalSay(S, p.id);
-        if (!aim) return '<span class="muted">Acting on instinct</span>';
-        var pr = v19GoalProgress(S, p.id);
-        var out = esc(aim) + (pr === null ? '' :
-          ' <span class="muted">' + Math.round(pr * 100) + '%</span>');
+        var pr = aim ? v19GoalProgress(S, p.id) : null;
+        var out = aim
+          ? esc(aim) + (pr === null ? '' :
+              ' <span class="muted">' + Math.round(pr * 100) + '%</span>')
+          : '<span class="muted">Acting on instinct</span>';
         /* S19d: AND WHAT BECAME OF THE LAST ONE. An aim used to vanish and be
            replaced with nothing said, which is the "list of unrelated events"
            defect at the length of a campaign rather than a session: a reader
@@ -37984,6 +38272,13 @@ function v16AiPanel() {
            column change and had no way to know whether it had been reached,
            lost, or quietly given up on. The clock records why it ended and
            this says it. */
+        /* S21i: and the record. `a.wins` counts aims a party has actually
+           reached, and a party that has finished three is a different
+           opponent from one that has finished none -- `v19Score` reads it,
+           and so does the reader. */
+        var wns = ((v16Ai(S)[p.id] || {}).wins) || 0;
+        if (wns) out += '<div class="muted">' + wns + ' aim' + (wns === 1 ? '' : 's') +
+          ' reached since the campaign began</div>';
         var lg = (v16Ai(S)[p.id] || {}).lastGoal;
         if (lg && lg.until !== undefined && S.turn - lg.until <= 6) {
           var k = v19GoalKind(lg.kind);
@@ -37991,10 +38286,25 @@ function v16AiPanel() {
             lg.kind === 'office' ? 'an office' : lg.kind === 'enter' ? 'a seat in government' :
             lg.kind === 'oust' ? 'bringing a party down' : lg.kind === 'ground' ? 'a bloc' :
             lg.kind === 'build' ? 'the organisation' : 'an article');
+          /* S21i: AND WHO GOT THERE FIRST, where somebody did. "It was going
+             nowhere" and "the SD were further along the same road" are two
+             different stories and the page could only tell the first. It
+             REPLACES the reason rather than being appended to it: a clause
+             hung off the end with a dash is the punctuation this file's own
+             prose standard counts as residue, and it is also worse writing --
+             the rival IS the reason the aim was put down. Named on the two
+             whys where a rival explains anything: an aim that stalled and one
+             carried too long. `gone` is the aim becoming impossible, which
+             somebody else's progress does not account for. */
+          var rival = (lg.by && PARTY[lg.by]) ? esc(PARTY[lg.by].short) : null;
           out += '<div class="muted">' + (lg.why === 'done' ? 'Reached what it wanted from ' + esc(was) :
             lg.why === 'gone' ? 'Gave up on ' + esc(was) + ': it is out of reach' :
-            lg.why === 'given up' ? 'Put ' + esc(was) + ' down after a long try' :
-            'Put ' + esc(was) + ' down: it was going nowhere') +
+            lg.why === 'given up' ? (rival
+              ? 'Put ' + esc(was) + ' down after a long try: the ' + rival + ' were further along the same road'
+              : 'Put ' + esc(was) + ' down after a long try') :
+            (rival
+              ? 'Put ' + esc(was) + ' down: the ' + rival + ' were further along the same road'
+              : 'Put ' + esc(was) + ' down: it was going nowhere')) +
             ' <span class="muted">(' + Math.round((lg.best || 0) * 100) + '% of the way)</span></div>';
         }
         return out;

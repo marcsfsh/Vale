@@ -396,7 +396,162 @@ The four rulings a cold session most needs:
   whose target actually left, read through the kind's own predicate) and it is
   6 against 5: the observation is not lossy, the event is rare.
 
-**WHAT IS OPEN:** four slices of the original twelve (S21i–S21l) plus the
+- **S21i — the ballot has consequences, and an aim finishes.** A general
+  election moves every seat in the chamber and decides who governs, and it
+  wrote NOTHING in any party's memory. `a.grudge` is filled by the player's
+  buttons (S17l), by the ordinary acts of governing (S21b), by the coalition
+  (S21f) and by a motion of confidence (S21g) — and the one night every party
+  in this republic cares about most left no entry at all. A party could lose a
+  third of its benches to the party that took them and hold nothing against it.
+
+  **Four things happen when the votes are counted.** The party that lost most
+  of itself resents the party that gained most — read as a SHARE of what it
+  held, because a party of forty losing ten has lost a quarter of itself and one
+  of six hundred losing ten has lost a rounding error. A party put out of the
+  government is HANDED the aim that says so, constructed rather than adopted,
+  since `v19AdoptGoal` rolls and leaving office is not a choice the party makes.
+  `driftParties` — which has walked every party toward the winner at every
+  ballot since v4 and printed nothing, so a party could cross the compass over
+  four elections with no trace but a dot moving on a chart — now says who moved
+  and which way. And a party beaten twice running changes its leader, decided by
+  ARITHMETIC rather than a roll, because a roll here re-phases every campaign
+  from the first replacement onward.
+
+  **It runs AFTER `v17Form`, which is not where the plan put it**, and the `oust`
+  half is why: that aim's `target` picks the worst-grudged party IN the
+  government, and S21b's finding was that an aim adopted about a party already
+  out of office is one `v19AdoptGoal` drops on the spot. Handed out before the
+  government is formed it would point at the OUTGOING one — the very defect
+  S21b fixed. The cost is that the night's grudges reach the next formation
+  rather than the one concluded the same evening, which is the honest reading:
+  a grievance that changed the formation would be the count deciding the
+  government twice.
+
+  **The goal clock ticks per SESSION, not per observation.** `v19Goal` both
+  looked at a party's aim and adopted a new one, and adopting rolls — so the
+  stall clock could only advance when somebody asked, and the only thing that
+  asks is a party taking an initiative. A party too poor to act therefore never
+  ticked, and the moment it could act again `idle` was the whole silence and the
+  aim was retired on the spot, having stalled for no reason but its own purse.
+  Measured, a party under the cheapest card in the deck acts on .098 of its
+  sessions against S18e's flat .25, so the poorest parties were the ones whose
+  aims died of the clock. `v19GoalObserve` is the observing half and spends no
+  dice; `v21GoalTick` runs it for every party every session.
+
+  **And a finished aim is worth something.** `a.wins` counts what a party has
+  actually reached, which nothing counted before — a party could finish six aims
+  in a campaign and the game recorded no difference between it and one that
+  finished none. It MULTIPLIES the aim's own weight in `v19Score` rather than
+  adding a flat bonus, because a constant is added to every open card and
+  cancels in the softmax, which is the mistake S21c found three weights making
+  in `v19Standing`. Capped at three, so a long record makes a party more
+  single-minded and not infinitely so. `lastGoal.by` names the party that was
+  further along the same road, where one was: an aim that ran out and an aim
+  another party got to first are two different stories and the page could only
+  tell the first.
+
+  **Two of the slice's three constants were picked by eye and both were
+  wrong**, found by measuring the distribution each one gates over 718 ballots
+  on twelve seeds — which is the rule this file states about the street's bar,
+  applied before shipping rather than a slice later. `V21_DRIFT_SAY` at .12 sat
+  at the **92nd percentile of the per-ballot maximum drift** and spoke on .086
+  of ballots, about one election in twelve: a sentence a player would not see
+  twice in a campaign, which is the street's bar above its own ceiling in a new
+  place. And "beaten twice running", counting any loss at all, replaced **1.348
+  leaders per ballot** — every party in the chamber roughly every five
+  elections — because a party-ballot is a loss of some size on .431 of
+  occasions and losses are correlated: a party in decline keeps losing.
+
+  Measured across three run-lengths and four defeat bars on the same ballots:
+
+  |  | any | ≥3% | ≥5% | ≥8% |
+  |---|---|---|---|---|
+  | 2 in a row | 1.348 | 0.901 | 0.613 | **0.337** |
+  | 3 in a row | 0.866 | 0.554 | 0.376 | 0.185 |
+  | 4 in a row | 0.591 | 0.355 | 0.221 | 0.111 |
+
+  So the rule kept its phrase and gained a second knob: a defeat is losing at
+  least `V21_BEATEN_BY` (.08) of your own benches, which is the worst quarter of
+  them, and two of those running replaces the leader — .337 a ballot, a given
+  party about every twenty-one elections. The drift bar went to .05, which
+  speaks on .258. Both rates are in the assertion's own words so the next reader
+  cannot re-pick them by eye.
+
+  The third constant was measured and left alone: `V21_BALLOT_SPITE` at 40 puts
+  the median defeat at 6 and the worst measured one at 32, against a live
+  grievance whose median is about 10 and whose 99th percentile is 90 — an
+  election defeat a little above an ordinary grievance and far below a real one.
+  Its `clamp(…, 0, 1)` lost the lower arm: the caller has already required
+  `wLost > 0`, so that branch could not be taken.
+
+  **And a decorative field went with it.** `oust.target` returned `gov` and the
+  kind's own comment said the field was "stamped at adoption" and was what let a
+  party reaching its aim by a route it did not take still read as done.
+  `v19AdoptGoal` builds the goal from `ref`, `want` and `dir` and **drops** it,
+  and a grep of 3.9 megabytes finds no reader: `st.court.size` and a comment
+  asserting what a line does rather than reading it, in the same six lines. The
+  property is real and lives in `done`, which asks about `g.ref` and never
+  re-runs `target` — so the arm's `stampsGov` leg, which read the field off
+  `target`'s return and was green on a value the game throws away, is now
+  `keepsItsTarget`, asked where the two readings separate: with the named party
+  already out of the government and somebody still in the room the worst-grudged
+  by a mile, a `done` that re-ran `target` reads false where the real one reads
+  true.
+
+  **And the poison run found a defect behind two assertions that could not
+  fail.** Thirteen of the first forty-four poisons came back green and every one
+  was a probe gap, but two of them were tautologies. `widensTheGap` was
+  `gap1 > gap0` with no tolerance — and the thing it exists to catch, an
+  ADDITIVE term, cancels to exactly nought between two cards, so the two doubles
+  differed by 1e-16 of floating point and `>` said true. And `onThePage` read
+  `document.body.textContent`, which walks the `<script>` nodes: this game is
+  one document with 3.9 MB of source inside its body, so the leg was matching
+  the phrase in its own subject's CODE COMMENT and passed with the clause
+  deleted. `innerText` fixes that and introduces the opposite error — it reports
+  what is VISIBLE, and S17r folds the long panels, so a true sentence inside a
+  shut fold reads as absent. Both legs read `v16AiPanel()` now, which is why the
+  manifesto arm has always read it.
+
+  Read honestly, both page legs then went RED on the real build. The aim column
+  opens `if (!aim) return 'Acting on instinct'`, and the record and S19d's "what
+  became of the last one" — the whole reason that column was rewritten — both
+  sit after it. That early return was nearly harmless before this slice, because
+  `v19Goal` retired an aim and adopted the next in the same breath; **splitting
+  the observing half out is what makes "between aims" a state a party sits in**,
+  and the column went blank for exactly the parties with something to say. It is
+  gone.
+
+  **And the grudge the ballot books needed a defeat under it.** Booking one on
+  every ballot took the grievance a party holds against a government from a 90th
+  percentile of 25 to 41.9 and the share of pairs holding anything from .551 to
+  .619 — an election every two sessions, each adding a mean of 12. There is
+  always somebody who lost most and somebody who gained most, and the median
+  loss is .05 of a party's benches. It reads `V21_BEATEN_BY`, the SAME constant
+  the leader rule reads, and the 90th percentile lands at 29.2.
+
+  **Three arms reddened and none was a defect in the slice**; each is re-read
+  against the claim it makes in its own words and all three pass on the build
+  before this slice as well as on it.
+
+  - `a party votes its own manifesto` — the casualty `PLAN-S21.md` named in
+    advance — gated `byProgress.meanAt > 14`, an ABSOLUTE age, and this slice
+    took the pair from 18.7/11.7 to 10.8/6.7 with neither rule touched: the
+    measurement stopped carrying an observation lag. The RATIO is 1.60 before
+    and 1.61 after, and that is what it gates now. The same change takes
+    `byAge.afterOldClock` from 26 to NOUGHT — under a flat fourteen-session cap
+    nothing should be reachable after session fourteen, and the arm's own
+    sentence used to explain the 26 away as "a goal is only checked when its
+    party is read". That was the lag, not the rule.
+  - `a party is after something` gated a rank contrast at .05 measured on ONE
+    seed, where the contrast's standard error is .044. Pooled over four seeds at
+    320 samples a level the error is .030 and the two builds read .094 and .079
+    — half an error apart. The bar is .03 and the leg reports its own error.
+  - `a government that can fall` drove eight seeds of forty sessions for a
+    minority government seating a supply party with no prior agreement — 2 such
+    installs per 640 sessions, IDENTICAL either side of this slice, and the one
+    it wanted here is at session 42. Sixteen seeds of a hundred now.
+
+**WHAT IS OPEN:** three slices of the original twelve (S21j–S21l) plus the
 owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. The coalition
 overhaul the brief names is complete: S21d gave the agreement teeth, S21e made
 the table a negotiation, S21f gave it one exit and a voice, S21g made a
