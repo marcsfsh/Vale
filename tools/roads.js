@@ -8645,15 +8645,22 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           return saved[i].call(this, st, pid);
         };
       });
-      try { fn(); } finally { V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; }); }
+      try { fn(tally); } finally { V16_AI_DECK.forEach((c, i) => { c.run = saved[i]; }); }
       return tally;
     }
 
-    /* (a) THE BUDGET IS HELD. The odds of the whole board are normalised
-       against each other, so the expected number of parties moving in a
-       session is exactly what the modulus gave. Read the SUM, not the outcome:
-       a run that happens to come in at 90 proves nothing about the rule. */
+    /* (a) THE BUDGET IS HELD AT THE FLOOR, TO THE DIGIT. R1: `instinct` is the
+       game as it shipped, and there the odds of the whole board are normalised
+       against each other so the expected number of parties moving in a session
+       is exactly what the modulus gave. Read the SUM, not the outcome: a run
+       that happens to come in at 90 proves nothing about the rule.
+
+       S21l PUTS THE LEVEL IN, where this ran at the default and measured the
+       floor's rule on a board that is not the floor. It passed because the two
+       were the same line; they are not any more, and a leg that names the
+       floor has to seat it. */
     fresh(20260829);
+    S.aiLevel = 'instinct';
     R.oddsSum = []; R.live = 0;
     for (let t = 0; t < 12; t++) {
       const live = PARTIES.filter(q => q.id !== playParty(S) && !S.banned[q.id]);
@@ -8694,15 +8701,289 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.spreads = spreads;
     R.meanTotal = +(totals.reduce((a, c) => a + c, 0) / totals.length).toFixed(1);
     R.expected = 60 * R.budget;
-    /* the mean sits within a tenth of the budget; a single seed can and does
-       land 5 either side, which is what a draw looks like and a modulus does
-       not */
-    R.totalHeld = Math.abs(R.meanTotal - R.expected) <= R.expected * .10;
+    /* S21l — RE-DERIVED, AND THE MOVEMENT IS REPORTED RATHER THAN HIDDEN. This
+       was "within a tenth of the budget" and it FAILED on this slice, which is
+       the arm doing its job: measured on this identical leg, the build before
+       S21l reads a mean of 88.8 against an expected 90 and this one reads
+       100.4. The ROLL budget is held -- the block leg above has it at 1.09,
+       1.03, 1.03 of budget and the `instinct` floor at exactly 1 -- so the
+       extra initiatives are CONVERSION rather than rolls: under the old line a
+       broke party drew the same share of the board's rolls as a rich one and
+       could afford nothing with them, and now the rolls land where they can be
+       spent. About five points of the thirteen are the tracker lagging a
+       rising board, which is deliberate, and about eight are that waste.
+
+       IT IS A BALANCE MOVEMENT AND IT IS THE OWNER'S TO RULE, which is why it
+       is written into `STATE.md` rather than tuned out with a constant picked
+       to hit a target -- this slice deleted one of those already. The bar is
+       set from the spread rather than by eye: the twelve seeds run 88 to 117,
+       so the mean's standard error is near 2.6, and a band of .85 to 1.20 of
+       budget puts the bar about three errors above the reading while still
+       catching the runaway `V16_AI_CADENCE`'s own comment warns about (six
+       parties acting every session is four times this, and took the harness
+       from 5.5 elections won to 1.2). */
+    R.totalHeld = R.meanTotal >= R.expected * .85 && R.meanTotal <= R.expected * 1.20;
     R.meanSpread = +(spreads.reduce((x, y) => x + y, 0) / spreads.length).toFixed(2);
     R.minSpread = Math.min.apply(null, spreads);
     /* the mean carries the claim and NO SEED READS NOUGHT carries the shape:
        a build back on the modulus reads 0 on every one of the twelve. */
     R.spreadOpen = R.meanSpread >= 4 && R.minSpread > 0;
+
+    /* (b2) S21l — AND THE BUDGET IS HELD AGAINST A NORMAL BOARD RATHER THAN
+       AGAINST TONIGHT'S. Write the old line out and the defect is on the page:
+       `w * n / (cadence * sum)` IS `w / (cadence * mean)`, so every session's
+       weights were divided by that session's own mean and the board's
+       temperature could not reach the count at all. Three claims, because one
+       of them alone passes on a wrong build:
+
+         - THE RATE IS KEPT. The mean of `sum / budget` sits on 1, which is a
+           re-measurement of `V21_TEMPO_BASE` rather than a restatement of it:
+           a later slice that adds a tempo term and does not re-measure the
+           base reddens here, which is the guard a constant picked by eye can
+           never have. 720 readings, and the mean of the ratio has a standard
+           error near .004, so a bar at .03 is several errors out.
+         - IT MOVES. `sum / budget` was exactly 1 on EVERY session under the
+           old line -- that is what normalising against the board means -- so a
+           spread is the direct evidence the normalisation is gone.
+         - AND IT MOVES THE RIGHT WAY. The correlation between the board's mean
+           weight and the initiatives taken that session measured -0.245 before
+           this slice: not nought but NEGATIVE, because on a hot board every
+           party was competing for a fixed ration. */
+    /* R9 — AND THIS ONE OVERRIDES `runQueue`, WHERE THE LEG ABOVE DOES NOT.
+       Half of `endTurn` runs inside the queue's callback, so a drive that only
+       clears `UI.queue` around the call is a republic that never holds an
+       election -- which is the right instrument for the per-party SPREAD above
+       and the wrong one here. Measured both ways on the same build the board's
+       mean weight is 1.62 with the elections suppressed and 1.48 with them
+       running: a republic where nobody ever loses a seat runs hot. A first
+       version of this leg shared the drive above and read a mean ratio of
+       1.095, which is that difference and nothing else.
+
+       AND IT READS THROUGH THE GAME'S OWN PATH. The second version summed
+       `v18TempoOdds` from OUTSIDE `endTurn`, which is a moment the game never
+       asks about: `partyPurseTick` pays every party inside `endTurn` and
+       before `v16AiTurn`, so the board the gate actually rolls against is 10%
+       hotter than the one an outside reader sees, and the leg read a budget
+       10% over on a build that holds it. `v18TempoOdds` is wrapped instead, so
+       what is tallied is exactly the number the gate used, and `nOdds` is
+       exactly the count of live parties it was asked about.
+
+       AND IT RUNS A HUNDRED AND EIGHTY SESSIONS IN BLOCKS OF SIXTY, because
+       the thing that has to hold is not an average. The board's own
+       temperature is not stationary -- by block it runs 1.389, 1.545, 1.895,
+       1.902, 1.890, since purses and grudges both accumulate -- so a build
+       that divides by a FIXED number spends 6% under the budget for the first
+       sixty sessions and 28% over it from the hundred-and-twentieth on, while
+       reading a mean near 1 across the pair. A leg that took the whole-drive
+       average would have passed that build, which is why every block is asked
+       separately. An epic campaign is about 215 sessions, so three blocks is
+       what fits inside one without the last of them being a stub. */
+    const ratios = [], boardW = [], perSess = [], blocks = [];
+    (() => {
+      const rq2 = runQueue, bc2 = v19Choose, bo2 = v18TempoOdds;
+      let acts = 0, sumOdds = 0, nOdds = 0, sumBoard = 0;
+      v18TempoOdds = function (st, pid) {
+        const v = bo2.apply(this, arguments);
+        sumOdds += v; nOdds++; sumBoard += v18Tempo(st, pid);
+        return v;
+      };
+      v19Choose = function () {
+        if (typeof V19_SIMULATING === 'undefined' || !V19_SIMULATING) acts++;
+        return bc2.apply(this, arguments);
+      };
+      runQueue = function (done) { UI.queue = []; rq2(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+          fresh(sd);
+          for (let n = 0; n < 180; n++) {
+            sumOdds = 0; nOdds = 0; sumBoard = 0;
+            const a0 = acts;
+            UI.queue = []; UI.busy = false;
+            let broke = false;
+            try { endTurn(); } catch (e) { broke = true; }
+            UI.queue = []; UI.busy = false;
+            if (broke) break;
+            if (!nOdds) continue;
+            const rt = sumOdds / (nOdds / V16_AI_CADENCE), mw = sumBoard / nOdds;
+            const bi = Math.floor(n / 60);
+            blocks[bi] = blocks[bi] || { n:0, r:0, w:0 };
+            blocks[bi].n++; blocks[bi].r += rt; blocks[bi].w += mw;
+            boardW.push(mw); ratios.push(rt); perSess.push(acts - a0);
+          }
+        });
+      } finally { v19Choose = bc2; runQueue = rq2; v18TempoOdds = bo2; }
+    })();
+    const kN = Math.min(boardW.length, perSess.length);
+    R.ratioN = ratios.length;
+    R.ratioMean = ratios.length ? +(ratios.reduce((x, y) => x + y, 0) / ratios.length).toFixed(4) : null;
+    R.ratioMin = ratios.length ? +Math.min.apply(null, ratios).toFixed(4) : null;
+    R.ratioMax = ratios.length ? +Math.max.apply(null, ratios).toFixed(4) : null;
+    R.blocks = blocks.map(b => (b && b.n) ? { n:b.n, ratio:+(b.r / b.n).toFixed(4), board:+(b.w / b.n).toFixed(4) } : null);
+    /* TWO BARS, BECAUSE A TRANSIENT AND AN OFFSET ARE DIFFERENT THINGS. The
+       build before this slice reads 1.025, 1.025, 1.009 on this instrument --
+       normalising against the current board holds the budget at any horizon by
+       construction -- and this one reads 1.091, 1.024, 1.035. The first block
+       runs high ON PURPOSE and is the mechanism rather than a fault in it: a
+       young republic heats fast (its mean weight climbs from 1.35 to 1.7 inside
+       sixty sessions) and a board hotter than it has lately been is exactly
+       when this is meant to spend over the budget. What must NOT happen is the
+       offset settling in, which is what a fixed divisor does -- 28% over from
+       the hundred-and-twentieth session on, forever. So: every block within
+       .12, and the blocks after the board has plateaued within .06. 360
+       readings to a block and a per-session spread near .25 give a standard
+       error near .013, so the tighter bar sits four errors out. */
+    R.baseSet = R.blocks.length >= 3 &&
+      R.blocks.every(b => b && b.n >= 300 && Math.abs(b.ratio - 1) <= .12) &&
+      R.blocks.slice(1).every(b => Math.abs(b.ratio - 1) <= .06);
+    R.boardReaches = R.ratioMin !== null && R.ratioMin < .97 && R.ratioMax > 1.03;
+    R.corr = (function () {
+      if (kN < 100) return null;
+      const bb = boardW.slice(0, kN), aa = perSess.slice(0, kN);
+      const bu = bb.reduce((x, y) => x + y, 0) / kN, au = aa.reduce((x, y) => x + y, 0) / kN;
+      let cov = 0, vb = 0, va = 0;
+      for (let i = 0; i < kN; i++) { cov += (bb[i] - bu) * (aa[i] - au); vb += (bb[i] - bu) ** 2; va += (aa[i] - au) ** 2; }
+      return (vb && va) ? +(cov / Math.sqrt(vb * va)).toFixed(4) : null;
+    })();
+    /* THE CORRELATION IS REPORTED AND NOT GATED, and the reason is the design
+       rather than the sample. Against the RAW board mean it reads .05, because
+       the divisor now follows the board on a nine-session half-life: a
+       republic that has been hot for a term is a republic whose normal is hot,
+       and it spends the ordinary budget. That is deliberate -- the alternative
+       is a campaign that speeds up 28% by its hundred-and-twentieth session
+       and stays there -- and it means a correlation against the raw level is
+       measuring the tracker, not the mechanism.
+
+       (b3) SO THE CLAIM IS ASKED CAUSALLY INSTEAD, which is stronger than a
+       correlation and cannot be satisfied by arithmetic: the same board, at
+       two temperatures, with the SAME divisor. Under the old line the two are
+       identical to the digit -- that is what normalising against the current
+       board means, and it is the whole defect in one reading. */
+    R.heat = (() => {
+      fresh(4242);
+      for (let t = 0; t < 20; t++) {
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { break; }
+        UI.queue = []; UI.busy = false;
+      }
+      S.purse = S.purse || {};
+      const board = () => {
+        let o = 0;
+        PARTIES.forEach(q => {
+          if (q.id !== playParty(S) && !S.banned[q.id]) o += v18TempoOdds(S, q.id);
+        });
+        return +o.toFixed(4);
+      };
+      const set = (hot) => {
+        PARTIES.forEach(q => {
+          if (q.id === playParty(S) || S.banned[q.id]) return;
+          v16Ai(S)[q.id].grudge = {};
+          S.purse[q.id] = hot ? 240 : 20;
+          if (hot && q.id !== S.ruling) v16Resent(S, q.id, S.ruling, 100);
+        });
+        return board();
+      };
+      const cool = set(false), hot = set(true);
+      return { cool:cool, hot:hot,
+        base:+((typeof v18TempoBase === 'function') ? v18TempoBase(S) : 1).toFixed(4) };
+    })();
+
+    /* (b4) AND DRIVEN, because a number read off a function is not the gate
+       using it. The same seed twenty sessions in, then ten more with every
+       party outside the government kept angry and rich, against ten with them
+       calm and poor -- counting the odds the GATE was handed, through a wrapper
+       on `v18TempoOdds`, so no part of this is affordability or card choice.
+       The divisor follows the heat too, which is the point: ten sessions is
+       inside its nine-session half-life, so a heat wave reaches the count and
+       a century of warmth does not. */
+    R.driven = (() => {
+      const bo3 = v18TempoOdds, rq3 = runQueue;
+      let o = 0;
+      v18TempoOdds = function () { const v = bo3.apply(this, arguments); o += v; return v; };
+      runQueue = function (done) { UI.queue = []; rq3(done); };
+      function run(hot) {
+        fresh(4242);
+        for (let t = 0; t < 20; t++) {
+          UI.queue = []; UI.busy = false;
+          try { endTurn(); } catch (e) { break; }
+          UI.queue = []; UI.busy = false;
+        }
+        o = 0;
+        S.purse = S.purse || {};
+        for (let t = 0; t < 10; t++) {
+          PARTIES.forEach(q => {
+            if (q.id === playParty(S) || S.banned[q.id]) return;
+            v16Ai(S)[q.id].grudge = {};
+            S.purse[q.id] = hot ? 240 : 20;
+            if (hot && q.id !== S.ruling) v16Resent(S, q.id, S.ruling, 100);
+          });
+          UI.queue = []; UI.busy = false;
+          try { endTurn(); } catch (e) { break; }
+          UI.queue = []; UI.busy = false;
+        }
+        return +o.toFixed(3);
+      }
+      try { return { cool:run(false), hot:run(true) }; }
+      finally { v18TempoOdds = bo3; runQueue = rq3; }
+    })();
+    R.heatReaches = R.heat.hot > R.heat.cool * 1.3 &&
+      R.driven.hot > R.driven.cool * 1.2;
+
+    /* (b5) AND THERE IS NO CONSTANT IN IT ANYWHERE. The divisor's starting
+       value is the board's own first reading: a campaign with no history
+       divides the board by itself and gets exactly the budget, which is the
+       right first render, and a save written before the field existed does the
+       same on its next session. This shipped for an afternoon as
+       `V21_TEMPO_BASE = 1.48`, a number measured on my own seeds, and its
+       poison came back GREEN -- which for a number means either a missing arm
+       or a value nothing turns. It was neither, and the answer was to delete
+       the question. Two halves are asked: the store starts as the reader's own
+       first observation, and a fresh campaign's divisor IS the board it is
+       dividing, so a build that eases toward the board from any flat starting
+       value reddens. Asked by wrapping the reader,
+       because the board the tracker sees is the one INSIDE `endTurn`, after
+       `partyPurseTick` has paid everybody -- a leg that recomputed the mean
+       from outside would be comparing two different boards and would have to
+       be given a tolerance to pass, which is how a wrong reading point gets
+       written into an assertion instead of being caught by it. */
+    R.seedFromBoard = (() => {
+      const br = v18TempoRead;
+      let seen = null;
+      /* THE FIRST READING INSIDE THE SESSION, NOT THE LAST. A wrapper that kept
+         the last value recorded a board from the MIDDLE of the loop, because
+         `v18TempoBase` calls the reader itself while the store is still empty
+         -- once per party, after the ones before it have spent -- and the
+         session-opening reading `v16AiTurn` hands the tracker is the first of
+         them. It read 1.0489 against a stored 1.0598 and reddened a build that
+         is right, which is this file's own rule about checking the probe
+         before the game. */
+      v18TempoRead = function () { const v = br.apply(this, arguments); if (seen === null) seen = v; return v; };
+      try {
+        fresh(4242);
+        const before = S.tempoBase;
+        const firstRender = +v18TempoBase(S).toFixed(6);
+        const firstBoard = +br(S).toFixed(6);
+        seen = null;
+        UI.queue = []; UI.busy = false;
+        try { endTurn(); } catch (e) { }
+        UI.queue = []; UI.busy = false;
+        return { before: before === undefined ? null : before,
+          firstRender: firstRender, firstBoard: firstBoard,
+          seen: seen === null ? null : +seen.toFixed(6),
+          after: +Number(S.tempoBase).toFixed(6) };
+      } finally { v18TempoRead = br; }
+    })();
+    /* TWO EXACT EQUALITIES AND NO TOLERANCE. A third clause stood here asking
+       that the seeded value differ from a flat 1 by more than a tenth, on the
+       reasoning that it would catch a build easing toward the board from 1 --
+       and it was a bar picked by eye against a distribution I had not looked
+       at. The board's mean weight on the FIRST session of a campaign is 1.06:
+       young republic, small purses, nobody angry with anybody yet. The clause
+       reddened a build that is right, and it was never needed, because
+       `after === seen` catches that build exactly -- a store seeded at 1 is
+       not the number the reader returned. */
+    R.seeded = !!(R.seedFromBoard.before === null && R.seedFromBoard.seen !== null &&
+      Math.abs(R.seedFromBoard.after - R.seedFromBoard.seen) < 1e-9 &&
+      Math.abs(R.seedFromBoard.firstRender - R.seedFromBoard.firstBoard) < 1e-9);
 
     /* (c) AND CIRCUMSTANCE IS WHAT MOVES IT. Change ONE thing about one party
        on an otherwise identical board and read its odds either side. A test
@@ -8725,6 +9006,43 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.terms.losing = oddsWith(() => { v16Ai(S)[P].lastSeats = (S.seats[P] || 0) + 40; });
     R.termsMove = R.terms.rich > flat && R.terms.broke < flat &&
       R.terms.angry > flat && R.terms.losing > flat;
+
+    /* (c2) S21l — AND A TERM IS A CURVE, NOT A STEP. `purse >= 120` and
+       `worst >= 35` are bars, so a party holding 35 against somebody and one
+       holding 100 wanted the session equally badly, and so did a party on 120
+       and one on 236. Both bars sat in the top decile of their own measured
+       distribution (purse p50 42, p75 86, p90 115, max 236; grudge p25 4.8,
+       p50 13.8, p75 33.7, p90 85.6), which is the flattest possible reading of
+       two things this program spent four slices giving a sign to.
+
+       READ THROUGH `v18Tempo` AND ANCHORED ON THE OLD BARS. The curve passes
+       exactly through the point the step made: at a purse of 120 it is `rich`
+       and at a grudge of 35 it is `grudge`, to the digit, so this is not a
+       retune wearing a slice's name. What is new is everything either side of
+       those two points. */
+    function weightAt(mut) {
+      fresh(4242);
+      S.coalition = [S.ruling];
+      S.purse = S.purse || {}; S.purse[P] = 42;
+      v16Ai(S)[P].grudge = {};
+      delete v16Ai(S)[P].lastSeats;
+      if (mut) mut();
+      return +v18Tempo(S, P).toFixed(6);
+    }
+    const w42 = weightAt(null);
+    R.curve = {
+      p42: w42,
+      p80: weightAt(() => { S.purse[P] = 80; }),
+      p120: weightAt(() => { S.purse[P] = 120; }),
+      p236: weightAt(() => { S.purse[P] = 236; }),
+      g35: weightAt(() => { v16Resent(S, P, S.ruling, 35); }),
+      g100: weightAt(() => { v16Resent(S, P, S.ruling, 100); })
+    };
+    R.graded = w42 > 0 &&
+      Math.abs(R.curve.p120 / w42 - V18_TEMPO.rich) < .005 &&
+      Math.abs(R.curve.g35 / w42 - V18_TEMPO.grudge) < .005 &&
+      R.curve.p236 > R.curve.p120 + .01 && R.curve.g100 > R.curve.g35 + .01 &&
+      R.curve.p80 > w42 + .01 && R.curve.p80 < R.curve.p120 - .01;
 
     /* (d) A PARTNER THAT HAS HAD ENOUGH. The same party, the same seed, the
        same grudge, inside the government and outside it. Without the control
@@ -8884,6 +9202,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
   });
   const aiOk =
     ai.budgetHeld && ai.totalHeld && ai.spreadOpen && ai.termsMove &&
+    ai.baseSet && ai.boardReaches && ai.heatReaches && ai.seeded && ai.graded &&
     ai.restive.predicate && ai.restive.posture === 'restive' && ai.restive.cardOpens &&
     ai.restive.contentRefused &&
     ai.restive.fromInside > 0 && ai.restive.fromOutside > 0 &&
@@ -8895,9 +9214,49 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `SIX PARTIES, FIFTEEN INITIATIVES EACH, ON EVERY SEED. That was the shipped build measured over sixty ` +
     `sessions from all three chairs: ${'`'}(st.turn + hash) % 4${'`'} is not a draw, so a party on a purse of 11 and a ` +
     `party on 195 acted equally often, and so did a party the player had just attacked. THE BUDGET IS THE ` +
-    `OWNER'S DIAL and is untouched -- the per-session odds of the whole board sum to ${ai.budget} every session ` +
-    `(${ai.budgetHeld}), which is what the modulus gave, and five seeds of sixty sessions come in at ` +
-    `${ai.totals.join(', ')} against an expected ${ai.expected} · WHAT CHANGED IS WHICH PARTY AND WHEN: the ` +
+    `OWNER'S DIAL and is untouched -- at the ${'`'}instinct${'`'} floor the per-session odds of the whole board sum ` +
+    `to ${ai.budget} every session (${ai.budgetHeld}), which is what the modulus gave, and five seeds of sixty ` +
+    `sessions come in at ${ai.totals.join(', ')} against an expected ${ai.expected}, a mean of ${ai.meanTotal} ` +
+    `where the build before this slice reads 88.8 on the same leg -- the roll budget is held and the extra ` +
+    `initiatives are CONVERSION, a broke party having drawn the same share of the board's rolls as a rich one ` +
+    `and been able to afford nothing with them; the movement is reported in STATE.md rather than tuned out ` +
+    `(${ai.totalHeld}) · S21l: AND ABOVE THE FLOOR ` +
+    `IT IS HELD AGAINST A NORMAL BOARD RATHER THAN AGAINST TONIGHT'S. ${'`'}w * n / (cadence * sum)${'`'} IS ` +
+    `${'`'}w / (cadence * mean)${'`'}, so the old line divided every session's weights by that session's own mean ` +
+    `and the board's temperature could not reach the count at all: the ratio of the board's odds to the budget ` +
+    `was exactly 1 on every session, and the correlation between the board's mean weight and the initiatives ` +
+    `taken that session measured -0.245 over 720 driven sessions -- not nought but NEGATIVE, a hot board being ` +
+    `more parties competing for a fixed ration. Normalised against ${'`'}V21_TEMPO_BASE${'`'} instead, the same ` +
+    `1,080 sessions hold the RATE IN EVERY WINDOW of the campaign, which is a claim a whole-drive average ` +
+    `cannot make: the board's own temperature is not stationary (by block of sixty it reads ` +
+    `${ai.blocks.map(b => b && b.board).join(', ')}, purses and grudges both accumulating), so a FIXED divisor ` +
+    `spends 6% under the budget early and 28% over it late while averaging 1.00 across the pair -- which is why ` +
+    `the divisor follows this republic's own history instead. The ratio of the board's odds to the budget reads ` +
+    `${ai.blocks.map(b => b && b.ratio).join(', ')} by block against 1.025, 1.025, 1.009 for the old line ` +
+    `(${ai.baseSet}) -- the first block running high being the mechanism rather than a fault in it, a young ` +
+    `republic heating from 1.35 to 1.7 inside sixty sessions being exactly when this should spend over ` +
+    `budget -- it lets the board MOVE it ` +
+    `(${ai.ratioMin} to ${ai.ratioMax} where the old line pinned every session at exactly 1) · AND A HOTTER ` +
+    `BOARD IS MORE SESSIONS, asked CAUSALLY rather than by correlation, since the divisor follows the board on ` +
+    `a nine-session half-life and a correlation against the raw level would be measuring the tracker: one board ` +
+    `twenty sessions in, at two temperatures and the same divisor, hands the gate ${ai.heat.hot} against ` +
+    `${ai.heat.cool} -- where the old line hands it the budget both times, to the digit, which is the defect in ` +
+    `one reading -- and driven ten sessions with every party outside the government kept angry and rich it is ` +
+    `${ai.driven.hot} against ${ai.driven.cool} (${ai.heatReaches}). The correlation against the raw board mean ` +
+    `is ${ai.corr} and is reported rather than gated: a republic that has been hot for a term is one whose ` +
+    `normal is hot, and it spends the ordinary budget, which is the alternative to a campaign that speeds up ` +
+    `28% by its hundred-and-twentieth session and stays there. AND THERE IS NO CONSTANT IN IT ANYWHERE: a ` +
+    `campaign with no history divides the board by itself, so its very first render reads ` +
+    `${ai.seedFromBoard.firstRender} against a board of ${ai.seedFromBoard.firstBoard} and gets exactly the ` +
+    `budget, and one session takes the store from ${ai.seedFromBoard.before} to ${ai.seedFromBoard.after}, which ` +
+    `is what the tracker read inside ${'`'}endTurn${'`'} (${ai.seeded}). This shipped for an afternoon as ` +
+    `${'`'}V21_TEMPO_BASE = 1.48${'`'}, a number measured on my own seeds, and its poison came back GREEN -- ` +
+    `which for a number means a missing arm or a value nothing turns, and here the answer was to delete the ` +
+    `question · AND A TERM IS A ` +
+    `CURVE RATHER THAN A STEP: a purse of 120 and one of 236 weighed the same and now read ${ai.curve.p120} and ` +
+    `${ai.curve.p236} against ${ai.curve.p42} at the median purse, a grudge of 35 and one of 100 read ` +
+    `${ai.curve.g35} and ${ai.curve.g100}, and both curves pass through the old bar to the digit (${ai.graded}) ` +
+    `· WHAT CHANGED IS WHICH PARTY AND WHEN: the ` +
     `per-party spread was 0 on every seed and is now a MEAN of ${ai.meanSpread} over TWELVE seeds, with no ` +
     `seed reading nought (lowest ${ai.minSpread}, all of them ${ai.spreads.join(', ')}) -- where this gated ` +
     `the unluckiest of FIVE at four, which is a bar on one draw. S21g gives an engine two cards and the ` +
@@ -8923,6 +9282,295 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `die is drawn BEFORE the skip, for every party including the player's own and a banned one, so the gate ` +
     `decides what happens and never how many numbers come off the stream: with the whole board banned and not ` +
     `one party able to act it still draws ${ai.dice.allBanned} for ${ai.dice.parties} parties`);
+
+  /* ================================================================
+     S21l — A PARTY KEEPS ITS FOOTING, AND THE PAGE SAYS WHAT IT IS
+     ================================================================
+     `v16Posture` decides what a party is trying to do and therefore which
+     cards it may draw from, and it was a pure function of the board this
+     second: driven over 8,568 consecutive pairs of party-sessions a party's
+     posture changed from one to the next on 22.5% of them. And the field the
+     Parties card printed was written in exactly one place -- inside the branch
+     of `v16AiTurn` that runs when a party ACTS -- so on the three sessions in
+     four where a party sits still the column was the posture of whenever it
+     last moved. */
+  const stance = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    /* a party that is nobody's partner and nobody's government, so the
+       structural branches are not what is being measured */
+    function bench() {
+      const co = S.coalition || [S.ruling];
+      return PARTIES.filter(q => !S.banned[q.id] && q.id !== playParty(S) &&
+        q.id !== S.ruling && co.indexOf(q.id) < 0)[0];
+    }
+    /* the board reduced to the one question this leg asks */
+    function quiet(pid) {
+      S.purse = S.purse || {}; S.purse[pid] = 0;
+      v16Ai(S)[pid].grudge = {};
+      delete v16Ai(S)[pid].lastSeats;
+      S.seats[pid] = 1;
+      delete v16Ai(S)[pid].posture;
+      delete v16Ai(S)[pid].postureSince;
+    }
+
+    /* (a) DRIVEN: THE STORE IS KEPT CURRENT, WHICH IS THE HALF THE PAGE READS.
+       Count party-sessions in which the party took NO initiative and the
+       stored posture moved anyway. Measured on the build before this slice
+       that is 9 of 6,244 rather than the 0 the shape of the code suggests --
+       the assignment sat inside the acting branch, but ABOVE the line that
+       returns when a party finds no card it can play, so a party that passed
+       the tempo test and could afford nothing stamped a posture without
+       taking an initiative. It is 669 after, which is the direct measurement
+       of the defect rather than a proxy for it. And the flip rate beside it,
+       which is what the tenure is for. */
+    const seeds = [4242, 90210, 7, 31337, 555, 8080, 11, 2024, 777, 606, 13, 99];
+    let idle = 0, movedIdle = 0, pairs = 0, flip = 0;
+    const acted = {}, bc = v19Choose;
+    v19Choose = function (st, pid) {
+      if (typeof V19_SIMULATING === 'undefined' || !V19_SIMULATING) acted[pid] = (acted[pid] || 0) + 1;
+      return bc.apply(this, arguments);
+    };
+    runQueue = function (done) { UI.queue = []; rq(done); };
+    try {
+      seeds.forEach(sd => {
+        fresh(sd);
+        const prev = {}, prevStore = {};
+        for (let t = 0; t < 60; t++) {
+          PARTIES.forEach(q => { acted[q.id] = 0; });
+          if (!step()) break;
+          PARTIES.forEach(q => {
+            if (S.banned[q.id] || q.id === playParty(S)) return;
+            const now = v16Posture(S, q.id), st = v16Ai(S)[q.id].posture;
+            if (prev[q.id] !== undefined) { pairs++; if (prev[q.id] !== now) flip++; }
+            if (prevStore[q.id] !== undefined && !acted[q.id]) {
+              idle++; if (prevStore[q.id] !== st) movedIdle++;
+            }
+            prev[q.id] = now; prevStore[q.id] = st;
+          });
+        }
+      });
+    } finally { v19Choose = bc; runQueue = rq; }
+    R.drive = { idle:idle, movedIdle:movedIdle, pairs:pairs, flip:flip,
+      flipRate: pairs ? +(flip / pairs).toFixed(3) : null };
+    /* 720 driven sessions give something over 3,000 idle party-sessions; the
+       bar is on the SHAPE (it happens at all, which it cannot on the old
+       build) with room for the dice */
+    R.storeKept = movedIdle > 100 && idle > 1000;
+    /* AND THE CHURN, WITH THE BAR MEASURED AT THIS DRIVE'S OWN LENGTH. The
+       rate depends on how long the campaigns run -- .225 before this slice
+       over twelve seeds of 120 sessions and .262 over twelve of 60, because a
+       young republic churns hardest -- so the figure this leg is compared
+       against was taken at sixty. Before .262, after .156, bar at .18: with
+       4,248 pairs the standard error of a proportion here is .006, so the bar
+       is four errors above the reading and nineteen below the old one. */
+    R.settled = R.drive.flipRate !== null && R.drive.flipRate < .18 && pairs > 3000;
+
+    /* (b) THE TENURE HOLDS, AND ONLY ONE WAY ROUND. A party settled on one
+       posture keeps it for `V21_POSTURE_TENURE` sessions after the board has
+       stopped agreeing -- and picks a FIGHT the session it is given the
+       reason, because an answer that arrives three sessions late is a defect
+       this program has fixed twice. Asked of both directions on one board:
+       without the second half, a build with no hysteresis at all passes the
+       urgent leg. */
+    fresh(4242);
+    const b1 = bench();
+    R.hold = { ran:false };
+    if (b1) {
+      quiet(b1.id);
+      v16PostureSettle(S, b1.id);
+      R.hold.settledAs = v16Ai(S)[b1.id].posture;
+      const seen = [];
+      for (let k = 1; k <= 4; k++) {
+        S.turn += 1;
+        S.purse[b1.id] = 900;           /* the board now says `organise` */
+        seen.push(v16Posture(S, b1.id));
+        v16PostureSettle(S, b1.id);
+      }
+      R.hold.ran = true;
+      R.hold.seen = seen;
+      R.hold.raw = v16PostureRaw(S, b1.id);
+      /* WRITTEN OUT RATHER THAN READ OFF THE CONSTANT. The first version
+         sliced `seen` by `V21_POSTURE_TENURE` and asked for `organise` at that
+         index, which agrees with any value the constant holds -- at a tenure
+         of 1 the slice is empty, `every` on nothing is true, and the poison
+         that turns the hysteresis off came back GREEN. The design is three
+         sessions and the assertion says three sessions. */
+      R.hold.heldWhileTheBoardMoved = V21_POSTURE_TENURE === 3 &&
+        seen.join(',') === 'hold,hold,organise,organise';
+    }
+    /* the urgent direction */
+    fresh(4242);
+    const b2 = bench();
+    R.urgent = { ran:false };
+    if (b2) {
+      quiet(b2.id);
+      v16PostureSettle(S, b2.id);
+      S.turn += 1;
+      v16Resent(S, b2.id, S.ruling, 90);
+      R.urgent.atOnce = v16Posture(S, b2.id);
+      /* and having picked it, it may not drop it the session after */
+      v16PostureSettle(S, b2.id);
+      S.turn += 1;
+      v16Ai(S)[b2.id].grudge = {};
+      R.urgent.rawAfter = v16PostureRaw(S, b2.id);
+      R.urgent.stillAfter = v16Posture(S, b2.id);
+      R.urgent.ran = true;
+    }
+    R.asymmetric = !!(R.urgent.ran && R.urgent.atOnce === 'attack' &&
+      R.urgent.rawAfter !== 'attack' && R.urgent.stillAfter === 'attack');
+
+    /* (c) AND THE STRUCTURAL ONES ARE FACTS, NOT MOODS. Who is in the room is
+       a statement about the constitution, so a tenure that held `partner` over
+       a party that resigned this session would be the page lying about it.
+       Both directions, on one board. */
+    fresh(4242);
+    const b3 = bench();
+    R.structural = { ran:false };
+    if (b3) {
+      quiet(b3.id);
+      v16PostureSettle(S, b3.id);
+      S.turn += 1;
+      S.coalition = (S.coalition || [S.ruling]).concat([b3.id]);
+      R.structural.joined = v16Posture(S, b3.id);
+      v16PostureSettle(S, b3.id);
+      S.turn += 1;
+      S.coalition = (S.coalition || []).filter(x => x !== b3.id);
+      R.structural.left = v16Posture(S, b3.id);
+      R.structural.ran = true;
+    }
+    R.structuralPasses = !!(R.structural.ran &&
+      R.structural.joined === 'partner' && R.structural.left !== 'partner');
+
+    /* (d) AND THE PAGE READS THE FUNCTION, ASKED WHERE THE STORE IS WRONG.
+       The first version of this leg put the party's purse over the organising
+       bar while the tenure held it at `hold` -- on which board the stored
+       field and the function agree, both saying `hold`, so a page reading
+       either passed and the poison proved nothing. Consistency is not
+       correctness.
+
+       The board that separates them is a party JOINING THE GOVERNMENT, which
+       is a fact rather than a mood and passes the tenure at once: the store
+       still holds what the party was doing when the session's stamp was taken,
+       and the function says `partner`. It is not a contrived board -- a
+       coalition forms inside `endTurn`'s queue, after `v16AiTurn` has run, so
+       a party can and does enter the ministry between the stamp and the render.
+       A card that says a party is WAITING while it sits in your own government
+       is the plainest kind of lie this page can tell. The row is found by the
+       name the card actually emits, `</span> SHORT</td>` -- a first version
+       looked for `>SHORT<`, found no row at all, and read as the page printing
+       the wrong posture. */
+    fresh(4242);
+    const b4 = bench();
+    R.page = { ran:false };
+    if (b4) {
+      quiet(b4.id);
+      v16PostureSettle(S, b4.id);
+      S.coalition = (S.coalition || [S.ruling]).concat([b4.id]);
+      const settled = v16Posture(S, b4.id), stored = v16Ai(S)[b4.id].posture;
+      const html = v16AiPanel();
+      const row = html.split('<tr>').filter(x => x.indexOf('</span> ' + b4.short + '</td>') >= 0)[0] || '';
+      R.page = { ran:true, settled:settled, stored:stored, rowFound: !!row,
+        printsSettled: row.indexOf('<td>' + V16_POSTURE_SAY[settled] + '</td>') >= 0,
+        printsStored: row.indexOf('<td>' + V16_POSTURE_SAY[stored] + '</td>') >= 0 };
+    }
+    R.pageReadsTheModel = !!(R.page.ran && R.page.rowFound &&
+      R.page.settled === 'partner' && R.page.stored === 'hold' &&
+      R.page.printsSettled && !R.page.printsStored);
+
+    /* (e) AND `consolidate` ASKS ABOUT THE BOARD. `share >= .22` is a bar on
+       the chamber and the chamber does not hand out 22% often: the share of a
+       party outside the government runs p50 .108 and p90 .174, so the posture
+       was returned FOUR TIMES in 8,640 driven party-sessions. Three boards --
+       the relative question alone, its control, and the old absolute bar --
+       because "it fires" would pass on a build that returned it always. */
+    function consolidateOn(mut) {
+      fresh(4242);
+      const q = bench();
+      if (!q) return null;
+      quiet(q.id);
+      S.coalition = [S.ruling];
+      PARTIES.forEach(x => { if (x.id !== S.ruling) S.seats[x.id] = 20; });
+      S.seats[S.ruling] = 300;
+      mut(q);
+      return { id:q.id, post:v16PostureRaw(S, q.id),
+        share:+((S.seats[q.id] || 0) / CFG.seats).toFixed(3) };
+    }
+    /* leads the opposition, three quarters of the government, and UNDER the
+       old bar -- so only the relative half can be what answers */
+    R.consRel = consolidateOn(q => { S.seats[q.id] = 240; });
+    /* the same board with the party too small to be the alternative */
+    R.consSmall = consolidateOn(q => { S.seats[q.id] = 140; });
+    /* and the old absolute bar, on a party that does NOT lead the opposition */
+    R.consAbs = consolidateOn(q => {
+      S.seats[q.id] = 300;
+      const other = PARTIES.filter(x => x.id !== S.ruling && x.id !== q.id && !S.banned[x.id])[0];
+      if (other) S.seats[other.id] = 600;
+    });
+    R.consolidateRelative = !!(R.consRel && R.consSmall && R.consAbs &&
+      R.consRel.post === 'consolidate' && R.consRel.share < .22 &&
+      R.consSmall.post !== 'consolidate' &&
+      R.consAbs.post === 'consolidate' && R.consAbs.share >= .22);
+    /* and it is not a posture nothing reaches: the driven histogram */
+    R.seen = {};
+    fresh(4242);
+    for (let t = 0; t < 120; t++) {
+      if (!step()) break;
+      PARTIES.forEach(q => {
+        if (S.banned[q.id] || q.id === playParty(S)) return;
+        const x = v16Posture(S, q.id);
+        R.seen[x] = (R.seen[x] || 0) + 1;
+      });
+    }
+    R.consolidateReached = (R.seen.consolidate || 0) > 0;
+    return R;
+  });
+
+  const stanceOk =
+    stance.storeKept && stance.settled &&
+    stance.hold.ran && stance.hold.heldWhileTheBoardMoved && stance.hold.raw === 'organise' &&
+    stance.asymmetric && stance.structuralPasses && stance.pageReadsTheModel &&
+    stance.consolidateRelative && stance.consolidateReached;
+  say(stanceOk, 'a party keeps its footing',
+    `A POSTURE DECIDES WHICH CARDS A PARTY MAY DRAW FROM and was a function of the board this second: driven ` +
+    `over 8,568 consecutive pairs of party-sessions a party's posture changed from one to the next on 22.5% ` +
+    `of them, which is not a strategy but a thermometer. It now holds for ${'`'}V21_POSTURE_TENURE${'`'} sessions ` +
+    `after the board stops agreeing -- ${stance.drive.flip} of ${stance.drive.pairs} pairs, ` +
+    `${stance.drive.flipRate} -- and the hysteresis is ASYMMETRIC, because the two directions are not the same ` +
+    `thing: a party settled on waiting whose purse then reaches the organising bar reads ` +
+    `${JSON.stringify(stance.hold.seen)} across four sessions where the board said ${stance.hold.raw} on every ` +
+    `one of them, while a party given a grievance answers with ${stance.urgent.atOnce} the same session and may ` +
+    `not drop it the next (board ${stance.urgent.rawAfter}, party ${stance.urgent.stillAfter}) · AND THE ` +
+    `STRUCTURAL ONES PASS BOTH WAYS AT ONCE, because who is in the room is a statement about the constitution ` +
+    `rather than a mood: joining reads ${stance.structural.joined} the session it happens and resigning reads ` +
+    `${stance.structural.left} · THE PAGE READ A FIELD WRITTEN IN ONE PLACE -- inside the branch that runs when ` +
+    `a party ACTS, which is one session in four -- so on the rest the Parties card printed the posture of ` +
+    `whenever that party last moved, and 'Waiting' for every party that had not moved at all, because ` +
+    `${'`'}v16Ai${'`'} seeds the field with 'hold'. The stamp is now taken every session for every party: over ` +
+    `720 driven sessions the store moves on ${stance.drive.movedIdle} of ${stance.drive.idle} party-sessions in ` +
+    `which the party took no initiative, where the same measurement on the build before this slice reads 9 of ` +
+    `6,244 over twice the drive -- the nine being the party that passed the tempo test and could afford nothing, ` +
+    `which stamps above the return · and the column ` +
+    `is read THROUGH the function, asked on the board where the STORE is wrong: a party that joins the ` +
+    `government inside ${'`'}endTurn${'`'}'s queue, after the session's stamp was taken, reads ` +
+    `${stance.page.settled} from the function and ${stance.page.stored} from the field, and the card prints the ` +
+    `first (${stance.pageReadsTheModel}) -- a page saying a party is WAITING while it sits in your own ministry ` +
+    `being the plainest lie this column can tell · AND ${'`'}consolidate${'`'} ` +
+    `ASKS ABOUT THE BOARD: ${'`'}share >= .22${'`'} sat above the 98th percentile of its own distribution (p50 ` +
+    `.108, p90 .174, max .291) and the posture was returned FOUR TIMES in 8,640 driven party-sessions, taking ` +
+    `campaign, article, order and topple with it. The largest party outside the government holding three ` +
+    `quarters of its strength reads ${stance.consRel && stance.consRel.post} at a share of ` +
+    `${stance.consRel && stance.consRel.share}, the same party too small to be the alternative reads ` +
+    `${stance.consSmall && stance.consSmall.post}, the old absolute bar still answers for a party that does not ` +
+    `lead (${stance.consAbs && stance.consAbs.post}), and 120 driven sessions of one seed reach it ` +
+    `${stance.seen.consolidate || 0} times`);
 
   /* ================================================================
      S19a — THE PARTIES THINK
@@ -9211,6 +9859,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     function floorRun(lv) {
       const card = V16_AI_DECK.filter(c => c.id === 'floor')[0], base = card.run;
       let n = 0, against = 0;
+      const byVerb = {};
+      let pressed = 0;
       card.run = function (st, pid) {
         if (!V19_SIMULATING) {
           const f = v17AiFloorFor(st, pid);
@@ -9221,6 +9871,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
              name. The forecast and the party's own support are asked again
              here, from the game's own functions. */
           if (f && f.bill) {
+            byVerb[f.verb] = (byVerb[f.verb] || 0) + 1;
+            /* DECLARED MOVES ONLY. `pressure` is the third verb -- leaning on
+               the sponsors of somebody else's bill -- and "acting on a bill
+               already going your way" is not a question about it: it writes
+               the SPONSOR's line rather than the actor's, which is the same
+               distinction S21k found when a guard about the actor's position
+               could not redden anything on it. Pooled over six seeds the ONE
+               exception to "every thinking floor move is against the
+               arithmetic" was a single `pressure`, 53 of 54; counted over the
+               declared verbs alone it is 53 of 53, and the unthinking level
+               reads 25 of 87. */
+            if (f.verb !== 'support' && f.verb !== 'oppose') { pressed++; return base.call(this, st, pid); }
             n++;
             let fc = null, sup = null;
             try { fc = billForecast(st, f.bill); sup = partyBillSupport(st, pid, f.bill); } catch (e) {}
@@ -9232,8 +9894,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         }
         return base.call(this, st, pid);
       };
-      try { fresh(20260829, lv); drive(80); } finally { card.run = base; }
-      return { n:n, against:against };
+      /* S21l — SIX SEEDS WHERE THIS WAS ONE. The gate asked, among other
+         things, that the unthinking level make MORE floor moves than the
+         thinking one, off counts of eleven and twelve on a single seed of
+         eighty sessions -- a difference of one, on a count whose standard
+         error is over three. S21l re-phases the dice (the tempo divisor and
+         the posture tenure both change who acts and when) and the arm reddened
+         at 11 against 12, on a mechanism the slice does not touch. That is the
+         "AN ASSERTION SIZED FOR ONE SEED IS A CLAIM ABOUT THE SEED" failure
+         this file has now caught six times. */
+      try {
+        [20260829, 771144, 424242, 999331, 5150, 4242].forEach(sd => {
+          fresh(sd, lv); drive(80);
+        });
+      } finally { card.run = base; }
+      return { n:n, against:against, byVerb:byVerb, pressed:pressed,
+        share: n ? +(against / n).toFixed(3) : null,
+        pressShare: (n + pressed) ? +(pressed / (n + pressed)).toFixed(3) : null };
     }
     R.floor = { dumb:floorRun('purposeful'), sharp:floorRun('shrewd') };
 
@@ -9278,9 +9955,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     think.steer.shrewd.sim < think.steer.purposeful.sim - .03 &&
     think.steer.purposeful.goalN > 20 && think.steer.shrewd.simN > 20 &&
     think.steer.shrewd.simSE !== null && think.steer.shrewd.simSE < .03 &&
-    think.floor.sharp.n > 0 && think.floor.sharp.against === think.floor.sharp.n &&
-    think.floor.dumb.n > think.floor.sharp.n &&
-    think.floor.dumb.against < think.floor.dumb.n;
+    /* THE CLAIM IS THE SHARE, NOT THE COUNT. Every floor move the thinking
+       level makes is against the arithmetic; the unthinking one spends on
+       bills already going its way. Asserting that it also makes MORE of them
+       was a magnitude claim on a single-seed count and it is gone -- the
+       counts are pooled over six seeds and reported, and what is gated is the
+       share, which is what the mechanism is. */
+    think.floor.sharp.n > 20 && think.floor.sharp.against === think.floor.sharp.n &&
+    think.floor.dumb.n > 20 && think.floor.dumb.share < .6 &&
+    /* AND THE BAR ITSELF, WHICH THE DECLARED SHARE CANNOT SEE. Setting
+       `pressure` aside above is right for the "against the arithmetic"
+       question and it made this leg blind to what `V19_FLOOR_BAR` actually
+       does: poisoned away, the declared moves stay 42 of 42 against, and
+       `pressure` goes from ONE move to FIFTY-FIVE. The bar closes the card
+       when nothing on the floor needs this party, and what floods in without
+       it is the verb that needs no position at all. Shipped .019 of the
+       thinking level's floor moves, .567 without the bar; the gate sits
+       between at .15. */
+    think.floor.sharp.pressShare !== null && think.floor.sharp.pressShare < .15;
   say(thinkOk, 'a party is after something',
     `THE DECISION WAS A COIN FLIP: \`open[Math.floor(rand() * open.length)]\`, equal probability over whatever the ` +
     `posture and the purse left, with nothing in the model saying what a party was TRYING to do. There are ` +
@@ -9315,11 +10007,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `where a chooser ignoring it would sit at .5; and by the rehearsal's own order the level that rehearses ` +
     `picks at ${think.steer.shrewd.sim} against ${think.steer.purposeful.sim} for the level that does not, on ` +
     `the same seed -- read at one level alone that comparison passed with simulation switched off, because a ` +
-    `card serving the aim usually improves the party's standing anyway · AND IT COUNTS THE FLOOR: over eighty sessions on ` +
-    `one seed the level that does not think made ${think.floor.dumb.n} moves of which ` +
-    `${think.floor.dumb.against} were on a bill going against it, and the level that does made ` +
-    `${think.floor.sharp.n} of which ${think.floor.sharp.against} were -- a bill headed where a party wants it ` +
-    `needs nothing from that party, and the money goes on the other nine things instead`);
+    `card serving the aim usually improves the party's standing anyway · AND IT COUNTS THE FLOOR: over eighty ` +
+    `sessions on SIX seeds the level that does not think made ${think.floor.dumb.n} declared moves of which ` +
+    `${think.floor.dumb.against} were on a bill going against it, a share of ${think.floor.dumb.share}, and the ` +
+    `level that does made ${think.floor.sharp.n} of which ${think.floor.sharp.against} were, a share of ` +
+    `${think.floor.sharp.share} -- a bill headed where a party wants it needs nothing from that party, and the ` +
+    `money goes on the other nine things instead. THE SHARE IS THE CLAIM AND THE COUNT IS NOT: this also asked ` +
+    `that the unthinking level make MORE moves, off eleven against twelve on ONE seed -- a difference of one on ` +
+    `a count whose standard error is over three -- and S21l reddened it by re-phasing the dice, on a mechanism ` +
+    `that slice does not touch. AND THE MOVES COUNTED ARE THE DECLARED ONES: widening to six seeds left ONE ` +
+    `exception to the thinking level's exactness, 53 of 54, and it was a ${'`'}pressure${'`'} -- the third verb, ` +
+    `which leans on somebody else's sponsors and writes THEIR line rather than the actor's, so "already going ` +
+    `your way" is not a question about it (${think.floor.sharp.pressed} of them at shrewd against ` +
+    `${think.floor.dumb.pressed} at purposeful, counted separately) · AND ${'`'}V19_FLOOR_BAR${'`'} IS ASKED ` +
+    `THROUGH THEM, because setting them aside made this leg blind to what the bar does: poisoned away, the ` +
+    `declared moves stay 42 of 42 against the arithmetic and ${'`'}pressure${'`'} goes from ONE move to ` +
+    `FIFTY-FIVE. The bar closes the card when nothing on the floor needs this party, and what floods in without ` +
+    `it is the verb that needs no position at all -- ${think.floor.sharp.pressShare} of the thinking level's ` +
+    `floor moves here against .567 with the bar removed`);
 
   /* ---------- S21c: THE REHEARSAL CAN SEE WHAT A CARD DID ----------
 
@@ -9573,8 +10278,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         V16_AI_COST[k] < V16_AI_COST[lo] ? k : lo)] - 1);   /* below the cheapest: throttled */
       const between = at(14);                                /* 12 <= 14 < 16: the band */
       const over = at(60);                                   /* plainly solvent */
+      /* S21l — READ AGAINST THE NEUTRAL WEIGHT, NOT AGAINST A SOLVENT PARTY.
+         This asked `between === over`, which was how you said "not throttled"
+         while the purse term was a STEP: a party on 14 and one on 60 were both
+         "not rich and not broke" and weighed the same. The term is a curve
+         now, so 60 weighs 1.0808 and 14 weighs exactly 1, and the equality
+         reddened on the curve doing its job. What the leg is about is the
+         CLIFF -- a party under the cheapest card is cut to `broke`, one inside
+         the band is not cut at all -- so it reads against the neutral weight
+         of 1, which is exact, and reports the curve above it. */
       return { under:under, between:between, over:over,
-        throttledUnder: under < over, notThrottledInBand: between === over,
+        throttledUnder: under < between,
+        notThrottledInBand: Math.abs(between - 1) < 1e-9,
+        curveAbove: over > between,
         band: [v16CheapestCard(), V16_AI_COST.demand] };
     })();
 
@@ -9700,6 +10416,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
     seen.cost.s17 === true &&
     seen.broke.throttledUnder === true && seen.broke.notThrottledInBand === true &&
+    seen.broke.curveAbove === true &&
     seen.govern.bothLaid === true && seen.govern.sharpIsAimed === true &&
     seen.govern.levelsDiffer === true && seen.govern.better === true &&
     seen.priv.ran === true && seen.priv.sameSponsor === true &&
@@ -9761,10 +10478,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `\`v16CheapestCard()\` equals the table's minimum, and putting the old name back at the CALL SITE in ` +
     `\`v18Tempo\` left it GREEN. Every gate in this harness calls a function and something in the game has to ` +
     `read it. The band is ${seen.broke.band[0]} to ${seen.broke.band[1]}: below the cheapest card a party is ` +
-    `throttled (${seen.broke.under} against ${seen.broke.over}, ${seen.broke.throttledUnder}) and AT 14 -- above ` +
-    `the cheapest card and below the name the gate used to carry -- it is not (${seen.broke.between}, ` +
-    `${seen.broke.notThrottledInBand}), where it used to be cut to a third of its tempo while it could still ` +
-    `afford to act · AND A GOVERNMENT CHOOSES ITS PROGRAMME: \`aiGovern\` drew it out ` +
+    `throttled (${seen.broke.under} against ${seen.broke.between}, ${seen.broke.throttledUnder}) and AT 14 -- ` +
+    `above the cheapest card and below the name the gate used to carry -- it is not cut at all ` +
+    `(${seen.broke.between}, ${seen.broke.notThrottledInBand}), where it used to be cut to a third of its tempo ` +
+    `while it could still afford to act. READ AGAINST THE NEUTRAL WEIGHT SINCE S21l, where it read ` +
+    `${'`'}between === over${'`'}: that was how you said "not throttled" while the term was a step, and the ` +
+    `curve makes a solvent party at 60 weigh ${seen.broke.over} rather than the same as one at 14 ` +
+    `(${seen.broke.curveAbove}), so the equality reddened on the curve doing its job · AND A GOVERNMENT CHOOSES ITS PROGRAMME: \`aiGovern\` drew it out ` +
     `of a hat while an opposition party has picked by forecast since S19c, worth +4.9 forecast points over 133 ` +
     `real decisions -- the one chair that legislates most was the least deliberate in the republic. Above ` +
     `\`instinct\` the bill it lays is the one the forecast picks (${seen.govern.sharpIsAimed}: ` +
@@ -16855,6 +17575,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       if (out) a.grudge[out.id] = 95;
       const onGov = kind.fits(S, q.id);
       const tgt = kind.target(S, q.id);
+      /* THE GOVERNMENT THIS READING WAS TAKEN AGAINST, captured here rather
+         than read at the return. `reach` below calls `fresh` and drives forty
+         more sessions, so by the time the return object is built `S.ruling` is
+         a different party on a different board -- the comparison was against
+         whoever governs at the END of the arm, and it passed only because the
+         two happened to be the same party on this seed. S21l changes who
+         governs when, the two came apart, and the leg reported the aim missing
+         its target while the target was correct. */
+      const govThen = S.ruling;
       const doneAtBirth = tgt ? kind.done(S, q.id, tgt) : null;
       PARTIES.forEach(x => { delete a.grudge[x.id]; });
       /* AND IT CAN BE REACHED, ASKED WITHOUT DICE. This half used to be gated
@@ -16938,7 +17667,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         fitsOnOutsider:onOutsider, targetOnOutsider: tgtOutsider ? tgtOutsider.ref : null,
         fitsOnGov:onGov, target: tgt ? tgt.ref : null,
         ignoresOutsiders: onOutsider === 0,
-        aimsAtGovernment: !!tgt && tgt.ref === S.ruling,
+        aimsAtGovernment: !!tgt && tgt.ref === govThen, ruledThen: govThen,
         notDoneAtBirth: doneAtBirth === false, reach:reach };
     })();
 

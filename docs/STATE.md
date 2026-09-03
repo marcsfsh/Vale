@@ -50,7 +50,8 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped six slices: S21a–f.**
+**S21 has shipped twelve slices: S21a–l**, which is the whole of the original
+twelve. What remains is the owner's eight-behaviour extension, S21m–S21t.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -674,11 +675,159 @@ The four rulings a cold session most needs:
   six-seed reading of 3 against 11 said otherwise and was noise. Both are
   reported rather than claimed.
 
-**WHAT IS OPEN:** one slice of the original twelve (S21l) plus the owner's
-extension S21m–S21t, in the order `PLAN-S21.md` sets. The coalition
-overhaul the brief names is complete: S21d gave the agreement teeth, S21e made
-the table a negotiation, S21f gave it one exit and a voice, S21g made a
-government able to fall, and S21h gave the junior partner a game.
+- **S21l — the board's temperature, and the posture the page prints.** Write
+  the old tempo line out and the defect is on the page: `w * n / (cadence *
+  sum)` **is** `w / (cadence * mean)`, so `v18TempoOdds` normalised every
+  session's weights against that session's own board and the temperature could
+  not reach the count at all. Asked causally on one board twenty sessions in, at
+  two temperatures, the old line hands the gate the budget **both times, to the
+  digit**; driven, the correlation between the board's mean weight and the
+  initiatives taken that session measured **−0.245** — not nought but negative,
+  a hot board being more parties competing for a fixed ration. The divisor now
+  follows this republic's own history, so a party's odds say "hotter than this
+  republic usually is": the same two temperatures hand the gate **3.76 against
+  1.10**, and ten driven sessions with every party outside the government kept
+  angry and rich give **26.3 against 12.4**. Gated on `v19Thinks` — at
+  `instinct` the shipped normalisation is untouched, which is R1.
+
+  **A fixed constant was the first build and it was wrong for most of a
+  campaign.** 1.48 was measured over 120 driven sessions and shipped as "a
+  normal board". By block of sixty over six seeds of three hundred, the board's
+  mean weight runs **1.389, 1.545, 1.895, 1.902, 1.890** — not stationary, since
+  purses and grudges both accumulate — so a fixed divisor spends 6% under the
+  budget for the first sixty sessions and **28% over it from the
+  hundred-and-twentieth on**, while averaging 1.00 across the pair. A leg taking
+  the whole-drive average would have called that build correct, so every block
+  is asked separately. The divisor is an exponential average with a nine-session
+  half-life, seeded from its first reading, and the budget reads **1.091, 1.024,
+  1.035** by block against 1.025, 1.025, 1.009 for the old line. **The constant
+  is gone altogether, which the poison run decided:** 1.48 stayed on as the
+  fallback for a board with no stored history — the first render of a campaign,
+  before any session — and its poison came back **green**, which for a number
+  means either a missing arm or a value nothing turns. It was neither. A board
+  with no history has a perfectly good answer to "what does this republic
+  usually run at" and it is "what it is running at now", so a fresh campaign
+  divides the board by itself and gets exactly the budget.
+
+  **Which settles what "hotter" means, and the answer is deliberate.** The
+  correlation against the raw board level is **.05** and is reported rather than
+  gated: a republic that has been hot for a term is one whose normal is hot, and
+  it spends the ordinary budget. What reaches the count is a board hotter than
+  it has lately been — the thing a player causes and feels across a few sessions
+  — and what does not is the century-long climb, which is a difficulty drift
+  nobody asked for.
+
+  **Three probe defects on the way, all of families this file already names.**
+  The board was first read AFTER the session it explains. The sum of the odds
+  was read from OUTSIDE `endTurn`, which is a moment the game never asks about —
+  `partyPurseTick` pays every party inside `endTurn` and before `v16AiTurn`, so
+  the board the gate rolls against is 10% hotter than the one an outside reader
+  sees, and the leg reported a budget 10% over on a build that holds it. And the
+  first tenure assertion sliced its evidence by `V21_POSTURE_TENURE` and asked
+  for the new posture at that index, which agrees with any value the constant
+  holds: at a tenure of 1 the slice is empty, `every` on nothing is true, and the
+  poison that turns the hysteresis off came back **green**. Two more were found
+  by the green check after the poison run: the seeding leg wrapped
+  `v18TempoRead` and kept the LAST value it returned, where `v18TempoBase` calls
+  that reader itself while the store is empty — once per party, after the ones
+  before it have spent — so it recorded a board from the middle of the loop
+  rather than the session-opening one the tracker was handed; and beside it a
+  clause asking that the seeded value differ from a flat 1 by more than a tenth,
+  a bar picked by eye against a distribution I had not looked at, since the
+  board's mean weight on the FIRST session of a campaign is 1.06. Both reddened
+  a build that is right. **The same
+  reading-point error was in the game as well as the probe** — the tracker first
+  took its average at the END of `v16AiTurn`, on a board every party had just
+  spent down, and the budget sat 10% over for the whole campaign.
+
+  **And two terms stop being steps.** `purse >= 120` and `worst >= 35` are bars,
+  so a party holding 35 against somebody and one holding 100 wanted the session
+  equally badly, as did a party on 120 and one on 236 — and both bars sat in the
+  top decile of their own measured distribution. They are curves now, anchored to
+  pass exactly through the point the step made.
+
+  **A posture holds long enough to be one.** `v16Posture` decides which cards a
+  party may draw from and was a function of the board this second: over 8,568
+  consecutive pairs of party-sessions a party's posture changed from one to the
+  next on **22.5%** of them. It now holds for three sessions after the board
+  stops agreeing (.262 → .156 at the drive length the arm uses), and the
+  hysteresis is **asymmetric**: a party picks a fight the session it is given the
+  reason and may not drop it the session after. Governing, sitting in the
+  ministry and sitting in it while working against it pass both ways at once,
+  because who is in the room is a statement about the constitution, not a mood.
+
+  **And the page stops printing a field nobody kept current.** `a.posture` was
+  assigned in exactly one place — inside the branch that runs when a party ACTS
+  — and the Parties card printed it as what the party is doing now. A party acts
+  about one session in four, so the column was the posture of whenever it last
+  moved, and 'Waiting' for every party that had not moved at all, because
+  `v16Ai` seeds the field with 'hold'. The stamp is taken every session for
+  every party now — the store moves on **429 of 3,131** idle party-sessions
+  where the old build could move it on **9 of 6,244** — and the column reads the
+  function, asked on the board where the two disagree: a party that joins your
+  ministry inside `endTurn`'s queue read 'Waiting' while sitting in your own
+  government.
+
+  **And `consolidate` asks about the board.** `share >= .22` is a bar on the
+  chamber, and the share of a party outside the government runs p50 .108, p90
+  .174 and tops out at .291 — above the 98th percentile of its own distribution.
+  The posture was returned **four times in 8,640** driven party-sessions, taking
+  `campaign`, `article`, `order` and `topple` with it. It now asks whether this
+  party is the alternative to the government — the largest outside it, holding
+  three quarters of its strength — with the old absolute bar kept as an OR
+  rather than replaced, and it is returned **136 times** on the same drive.
+
+  **AND ONE BALANCE MOVEMENT, WHICH IS THE OWNER'S TO RULE.** `ai.totalHeld`
+  was "the mean sits within a tenth of the budget" and it FAILED on this slice,
+  which is the arm doing its job. Measured on the identical leg — twelve seeds
+  of sixty sessions — the build before S21l runs **88.8 initiatives against a
+  budget of 90**, and this one runs **100.4**: a rise of 13%. The ROLL budget
+  is held (1.09, 1.03, 1.03 of budget by block, and exactly 1 at the `instinct`
+  floor), so the extra is **conversion rather than rolls**: under the old line a
+  broke party drew the same share of the board's rolls as a rich one and could
+  afford nothing with them, and now the rolls land where they can be spent.
+  About five points of the thirteen are the tracker lagging a rising board,
+  which is deliberate; about eight are that waste. The bar was re-derived from
+  the seed spread (the twelve run 88 to 117, so the mean's standard error is
+  near 2.6) to a band of .85–1.20 of budget rather than tuned out with a
+  constant picked to hit a target — this slice deleted one of those already.
+  `V16_AI_CADENCE` remains the dial and is untouched; the runaway its own
+  comment warns about is four times this.
+
+  **And three arms this slice does not touch went red,** which is the harness
+  doing its job. Two were probe defects and one an assertion sized for a single
+  seed. `the rehearsal can see what a card did` asked that a party holding 14
+  and one holding 60 weigh the SAME — which was how you said "not throttled"
+  while the purse term was a step; it reads against the neutral weight now.
+  `a party is after something` asked that the unthinking level make MORE floor
+  moves than the thinking one, off eleven against twelve on ONE seed; widened to
+  six seeds the claim is the SHARE — 25 of 87 declared moves against the
+  arithmetic at `purposeful`, **53 of 53** at `shrewd`, the one exception the
+  wider sample found being a `pressure`, which writes the sponsor's line rather
+  than the actor's and is set aside. And `a party holds something against a
+  government` compared the oust aim's target with `S.ruling` IN THE RETURN
+  OBJECT, after a later leg had driven forty more sessions on a fresh state — it
+  passed only because the two were the same party on that seed.
+
+  **Two of the plan's own items were measured and declined.** `restive` was to
+  be given "the trapped-partner channel it needs to occur at all, having
+  occurred 0 times in 4,320 party-sessions"; it occurs **69 times in 8,640** at
+  the default level and 158 at `ruthless`, because four slices of coalition and
+  grudge work have happened since that baseline was taken. And `purposeful` was
+  to get "a measured non-zero `read`, so the sentence the page already prints at
+  the default level becomes true" — **there is no such sentence**: `purposeful`
+  promises an aim and a leaning and delivers both, while reading the board is
+  what the note on `shrewd` promises and what that rung of the setting is FOR.
+  `rank.purposeful.gain === 0` stands rather than being retired.
+
+**WHAT IS OPEN:** the owner's extension S21m–S21t, in the order `PLAN-S21.md`
+sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
+was never written, and building it is a slice rather than a paragraph, so it is
+recorded here as its own piece of work rather than quietly dropped. The
+original twelve slices are complete, and so is the coalition overhaul the brief
+names: S21d gave the agreement teeth, S21e made the table a negotiation, S21f
+gave it one exit and a voice, S21g made a government able to fall, and S21h
+gave the junior partner a game.
 
 ---
 
