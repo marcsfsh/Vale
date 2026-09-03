@@ -481,6 +481,26 @@ before touching the file.
   default has to be pinned as well as the new case: `leads(st)` is exactly
   `playParty(st) === st.ruling`, which is what `st.ruling !== (actor ||
   playParty(st))` says with the actor left out.
+- **A RULE OF THUMB IN FRONT OF A SCORING FUNCTION CAN NAME A BRANCH THAT
+  CANNOT FIRE.** S21p's government answer to the street chose between conceding,
+  stalling and refusing by a hand-written rule — "concede where this
+  government's own table wants the statute anyway" — and the same slice had
+  already measured that the street asks for statutes NO party's table names, 0
+  of 50 demands. So `carry` was unreachable by construction, 13 answers came out
+  8 talks, 5 refusals and 0 carries, and every movement still ended exhausted.
+  The rule read perfectly sensibly and contradicted a number measured an hour
+  earlier in the same slice. Asked through `v19Try` and `v19Standing` the same
+  board gives carry 264.3, talks 260.8, refuse 255.3. This is the entry below
+  wearing the other hat: there a picker maximised the cost, here one named a
+  case the game cannot produce. **When a card chooses among its own options,
+  the objective chooses.**
+- **AND THE TERM HAS TO BE READ OFF THE THING THAT PERSISTS, NOT OFF THE RECORD
+  OF IT.** Same slice: the government's liability was written as "a demand
+  stands", and refusing a demand CLEARS it — so the objective preferred
+  refusing because refusing made the liability vanish, when refusing a movement
+  is what turns it into a general strike. Read off the pressure, the three
+  answers price themselves. Before writing a term as "X exists", ask what the
+  action under test does to X's existence.
 - **A PICKER IN FRONT OF A SCORING FUNCTION CAN MAXIMISE THE COST.** S21o's
   first `descend` took "the most powerful measure the government can reach",
   and `power` is the one field `v19Standing` can barely see (+0.17 to +0.37
@@ -568,7 +588,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 12 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **215 content assertions**, the largest harness here: the
+- `tools/roads.js` — **216 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that

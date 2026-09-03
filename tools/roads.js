@@ -4292,6 +4292,23 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          reaches is opened by WHICH party that is -- the apparatus measures
          0.00 in 1,440 driven sessions, so `EXTREME1` is the only road there.
          The state built for it seats a party the first degree is open to. */
+      /* S21p: the crowd needs a movement to stand at the head of and a bloc
+         that would follow the party, and the government's answer needs a
+         standing demand -- which is what "a state where it can play" means for
+         two cards about the street. Both are built rather than waited for: a
+         demand stands on 14.3% of sessions. */
+      if (c.id === 'crowd' || c.id === 'street') {
+        S.aiLevel = 'ruthless';
+        const s = v17Street(S);
+        const bloc = BLOCS.filter(b => affOf(S, pid, b.id) > .2)[0] || BLOCS[0];
+        const want = POLICIES.filter(p => policyOpen(S, p) && (S.pol[p.id] || 0) < p.max &&
+          !activeBillFor(S, p.id))[0];
+        if (!want) { cardFails.push(c.id + ': no statute the house could be asked for'); return; }
+        s.pressure = 40; s.bloc = bloc.id; s.head = null;
+        s.demand = { bloc:bloc.id, policy:want.id, was:S.pol[want.id] || 0,
+          from:S.turn, due:S.turn + V17_STREET_DEADLINE };
+        if (c.id === 'street') { pid = S.ruling; S.purse[pid] = 400; }
+      }
       if (c.id === 'descend') {
         S.aiLevel = 'ruthless';
         pid = 'pnl';
@@ -4316,7 +4333,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         orders:Object.keys(v10Orders(S)).length,
         lines:S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0),
         bills:S.bills.length,
-        extra:extraActive(S)
+        extra:extraActive(S),
+        head:(S.street || {}).head || null,
+        pressure:(S.street || {}).pressure || 0,
+        hadDemand:!!((S.street || {}).demand)
       };
       if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
       const line = c.run(S, pid);
@@ -4359,6 +4379,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            the book, which is the field five things read and the one the whole
            emergency page counts. */
         : c.id === 'descend' ? extraActive(S) > before.extra
+        /* S21p: the sixteenth and seventeenth. Standing at the head of a
+           movement writes `st.street.head`; answering one either lays a bill,
+           moves the date, or ends the demand -- so what is asked of the answer
+           is that the movement is not where it was. */
+        : c.id === 'crowd' ? ((S.street || {}).head || null) === pid &&
+            before.head !== pid
+        : c.id === 'street' ? (before.hadDemand &&
+            (!(S.street || {}).demand ||
+             !!(S.street.demand.answered) ||
+             Math.abs(((S.street || {}).pressure || 0) - before.pressure) > 1e-9))
         : false;
       const paid = partyPurse(S, pid) < before.purse;
       cardWorks[c.id] = !!(line && moved && paid);
@@ -4429,7 +4459,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      house -- move no confidence in a government, or sell it the abstention
      that keeps it alive -- and both sit behind `v19Thinks`, so `instinct` is
      still the eleven the game shipped with. */
-  say(six.built && six.deck === 15 && six.cardWorks === 15 && six.cardFails.length === 0 && six.actedAll &&
+  say(six.built && six.deck === 17 && six.cardWorks === 17 && six.cardFails.length === 0 && six.actedAll &&
       six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
       six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
       six.redLineBites && six.partnerWarned && six.partnerLeaves,
@@ -10044,6 +10074,573 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `player's own chair (${desc.play.player})`);
 
   /* ================================================================
+     S21p — THE STREET HAS A HEAD, AND A GOVERNMENT THAT IS NOT YOURS CAN
+     ANSWER IT
+     ================================================================
+     Measured over 1,440 driven sessions before the slice: 50 demands, 32
+     general strikes, 96 sessions with the country shut to legislation -- and
+     every movement that ended, ended EXHAUSTED. 29 of 29. Nothing carried, no
+     strike broken, and no party's own `wants` table named the statute the
+     street asked for on any of the fifty demands.
+
+     Two things were missing and they are two halves of one surface. No party
+     could stand at the head of a movement, gain by it or lose by it. And the
+     street's own paper -- filed under 'gov' by `INBOX_CHAIR` -- had its three
+     answers written as eighteen statements inside the PLAYER's handler, naming
+     the player's chair in `sponsorBill(..., 'player', ...)`, so in the 93.8%
+     of sessions an engine leads the government could not concede, stall or
+     even refuse in words. It could only let the date pass. */
+  const crowd = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    /* A MOVEMENT IS BUILT, NOT WAITED FOR. A demand stands on 14.3% of
+       sessions and the bloc that carries it is whichever the government let
+       fall, so a probe that waits for one whose affinity suits a chosen party
+       is a probe about a lucky seed. */
+    function movement(seed, level, forParty) {
+      fresh(seed || 4242, level);
+      for (let t = 0; t < 8; t++) step();
+      const s = v17Street(S);
+      /* THE BLOC HAS TO BE ONE THIS PARTY COULD ACTUALLY LEAD. A first
+         version fell back to `BLOCS[0]` when no bloc cleared .2, and on the
+         `instinct` board that fallback was a bloc the party's own affinity
+         reads NEGATIVE -- so `can` refused for the right reason and the leg
+         read it as the floor being shut. Take the party's best bloc, and say
+         so when even that is not positive. */
+      const bloc = forParty
+        ? BLOCS.slice().sort((a, b) => affOf(S, forParty, b.id) - affOf(S, forParty, a.id))[0]
+        : BLOCS[0];
+      if (forParty && affOf(S, forParty, bloc.id) <= 0) return null;
+      const want = POLICIES.filter(p => policyOpen(S, p) && (S.pol[p.id] || 0) < p.max &&
+        !activeBillFor(S, p.id))[0];
+      if (!want) return null;
+      s.pressure = 40; s.bloc = bloc.id; s.head = null; s.strike = 0; s.rest = 0;
+      s.demand = { bloc:bloc.id, policy:want.id, was:S.pol[want.id] || 0,
+        from:S.turn, due:S.turn + V17_STREET_DEADLINE };
+      return { bloc:bloc.id, policy:want.id };
+    }
+
+    /* (a) A PARTY GETS TO THE HEAD OF IT, and the refusals are the four the
+       constitution and the constituency between them require. */
+    R.head = (() => {
+      const me = playParty(S);
+      const pid = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const m = movement(4242, 'ruthless', pid);
+      if (!m) return { ran:false };
+      const before = v21Lean(S, pid, m.bloc);
+      const ok = v21CrowdCore(S, pid);
+      const after = v21Lean(S, pid, m.bloc);
+      const twice = v21CrowdCore(S, pid);
+      /* the government, and a party sitting in it, are both refused */
+      movement(4242, 'ruthless', pid);
+      const gov = S.ruling;
+      const asGov = v21CrowdCore(S, gov);
+      const partner = PARTIES.filter(p => p.id !== gov && !S.banned[p.id])[0].id;
+      S.coalition = [gov, partner];
+      const asPartner = v21CrowdCore(S, partner);
+      /* AND A PARTY THE BLOC WOULD NOT FOLLOW -- refused for THAT and nothing
+         else. A first version filtered only on `p.id !== S.ruling`, so the
+         party it picked was sitting in the coalition and `v21CrowdCore`
+         refused it one line earlier: the poison that deletes the `affOf` test
+         entirely came back GREEN, because the leg was reading the chair test's
+         refusal and calling it the constituency's. */
+      movement(4242, 'ruthless', pid);
+      const stranger = PARTIES.filter(p => p.id !== S.ruling &&
+        (S.coalition || []).indexOf(p.id) < 0 && !S.banned[p.id] &&
+        affOf(S, p.id, S.street.demand.bloc) <= 0)[0];
+      const asStranger = stranger ? v21CrowdCore(S, stranger.id) : 'no such party';
+      /* and with nothing organised at all */
+      movement(4242, 'ruthless', pid);
+      S.street.demand = null;
+      const asNothing = v21CrowdCore(S, pid);
+      return { ran:true, pid:pid, bloc:m.bloc, ok:ok,
+        before:+before.toFixed(4), after:+after.toFixed(4),
+        twice:twice, asGov:asGov, asPartner:asPartner, asStranger:asStranger,
+        asNothing:asNothing,
+        takes: ok === true &&
+          Math.abs((after - before) - V21_LEAN_GAIN * V21_CROWD_SEASONS.head) < 1e-9,
+        oneHead: twice === false,
+        notTheGovernment: asGov === false && asPartner === false,
+        notAStranger: asStranger === false,
+        notWithoutAMovement: asNothing === false };
+    })();
+
+    /* AND A HEAD THAT HAS ENTERED THE ROOM LOSES THE FIELD. `v21CrowdCore`
+       refuses a government and its partners, and a party can be invited into
+       one the session after taking the head -- so the field would otherwise
+       say something the constitution has since made false. Driven through
+       `v17StreetTick`, which is where the drop lives. */
+    R.entered = (() => {
+      const pid = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const m = movement(4242, 'ruthless', pid);
+      if (!m) return { ran:false };
+      v21CrowdCore(S, pid);
+      const took = S.street.head === pid;
+      /* invited in, and the field is dropped at the next tick */
+      S.coalition = [S.ruling, pid];
+      v17StreetTick(S);
+      const afterPartner = S.street.head;
+      /* and again, seated at the head of the government itself */
+      const m2 = movement(4242, 'ruthless', pid);
+      let afterGov = 'no movement';
+      if (m2) {
+        v21CrowdCore(S, pid);
+        S.ruling = pid; S.coalition = [pid];
+        v17StreetTick(S);
+        afterGov = S.street.head;
+      }
+      return { ran:true, took:took, afterPartner:afterPartner, afterGov:afterGov,
+        dropsOnEntering: took === true && afterPartner === null && afterGov === null };
+    })();
+
+    /* (b) AND THE FOUR ROWS ARE PAID AT THE ONE EXIT, driven through
+       `v17StreetEnd` rather than by calling the settle -- S17p's rule, that
+       calling the function is not testing the wiring. Each row is read as the
+       standing either side, in seasons of courting, because that is the unit
+       the table is written in. */
+    R.rows = (() => {
+      const pid = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const out = {};
+      ['carried', 'broken', 'exhausted'].forEach(how => {
+        const m = movement(4242, 'ruthless', pid);
+        if (!m) return;
+        v21CrowdCore(S, pid);
+        const gov = S.ruling;
+        const h0 = v21Lean(S, pid, m.bloc), g0 = v21Lean(S, gov, m.bloc);
+        v17StreetEnd(S, how);
+        out[how] = { head:+((v21Lean(S, pid, m.bloc) - h0) / V21_LEAN_GAIN).toFixed(3),
+          gov:+((v21Lean(S, gov, m.bloc) - g0) / V21_LEAN_GAIN).toFixed(3),
+          cleared: !S.street.head };
+      });
+      /* and a movement that simply FADES, which reaches no exit at all: the
+         first build paid the head only through the strike, so a movement
+         refused and then decaying left the field set and unsettled */
+      const m2 = movement(4242, 'ruthless', pid);
+      let faded = null;
+      if (m2) {
+        v21CrowdCore(S, pid);
+        const h0 = v21Lean(S, pid, m2.bloc);
+        S.street.demand = null; S.street.strike = 0; S.street.pressure = 0;
+        S.unrest = 0;
+        v17StreetTick(S);
+        faded = { head:+((v21Lean(S, pid, m2.bloc) - h0) / V21_LEAN_GAIN).toFixed(3),
+          cleared: !S.street.head };
+      }
+      /* PINNED TO THE LITERALS, NOT TO THE TABLE. Read as
+         `out.carried.head === V21_CROWD_SEASONS.won`, the leg is parameterised
+         by the constant it is checking and agrees with any value the table
+         holds -- the caretaker clock's defect, which this file's notes already
+         carry, and three of this slice's poisons came back GREEN on it. */
+      return { out:out, faded:faded, table:V21_CROWD_SEASONS,
+        paysTheTable: !!(out.carried && out.broken && out.exhausted) &&
+          out.carried.head === 2 && out.broken.head === 1 &&
+          out.exhausted.head === -1 &&
+          out.carried.gov === 1 && out.broken.gov === -2 &&
+          out.exhausted.gov === 0,
+        clearsTheField: !!(out.carried && out.carried.cleared && out.broken.cleared &&
+          out.exhausted.cleared),
+        settlesAFade: !!(faded && faded.head === -1 && faded.cleared) };
+    })();
+
+    /* (c) THE THREE ANSWERS HAVE A BODY WITH NO CHAIR IN IT, and the player's
+       own click calls that body. Read on more than the fields an inline copy
+       would reproduce, which is S21o's poison lesson: the bill's SPONSOR is
+       the answering party rather than the string 'player', which is the whole
+       reason another chair could not reach this. */
+    R.answers = (() => {
+      const pid0 = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const out = {};
+      ['carry', 'talks', 'refuse'].forEach(c => {
+        const m = movement(4242, 'ruthless', pid0);
+        if (!m) return;
+        const gov = S.ruling;
+        /* THE DATE HAS TO BE ABLE TO MOVE. Planted at `S.turn + DEADLINE` and
+           answered in the same session, `talks` sets it to exactly the same
+           number and the delta is nought -- the probe measuring nothing and
+           reading it as the mechanism dead. The demand is planted a session
+           from expiry, so a full deadline is a real extension. */
+        S.street.demand.due = S.turn + 1;
+        const p0 = S.street.pressure, u0 = S.unrest, b0 = S.blocs[m.bloc], due0 = S.street.demand.due;
+        const said = v21StreetAnswerCore(S, gov, c);
+        const bill = (S.bills || []).filter(b => b.policy === m.policy)[0];
+        out[c] = { said:said, gov:gov, pressure:+(S.street.pressure - p0).toFixed(2),
+          unrest:+(S.unrest - u0).toFixed(2), bloc:+(S.blocs[m.bloc] - b0).toFixed(2),
+          due:S.street.demand ? S.street.demand.due - due0 : 'gone',
+          sponsor:bill ? bill.sponsor : null,
+          answered:!!(S.street.demand && S.street.demand.answered) };
+        /* and from a chair that is not the government's */
+        const other = PARTIES.filter(p => p.id !== gov)[0].id;
+        out[c].wrongChair = v21StreetAnswerCore(S, other, c);
+      });
+      /* the player's own click, from the chair that has the paper */
+      const m = movement(4242, 'ruthless', pid0);
+      let clicked = null;
+      if (m) {
+        const me = playParty(S);
+        S.ruling = me; S.coalition = [me]; S.capital = 90;
+        const it = { id:'X1', type:'street_demand', bloc:m.bloc, policy:m.policy,
+          deadline:S.turn + 2, title:'t', body:'b' };
+        S.inbox.push(it);
+        const p0 = S.street.pressure;
+        respondInbox(it.id, 'carry');
+        const bill = (S.bills || []).filter(b => b.policy === m.policy)[0];
+        clicked = { pressure:+(S.street.pressure - p0).toFixed(2),
+          sponsor:bill ? bill.sponsor : null,
+          answered:!!(S.street.demand && S.street.demand.answered) };
+      }
+      return { out:out, clicked:clicked,
+        /* THE SPONSOR IS THE ANSWERING PARTY, asked by NAME. A first version
+           asked only that it was not the literal string 'player', and the
+           poison that puts `sponsorBill(..., 'player', ...)` back came through
+           GREEN -- because that call derives the sponsor as `playParty(st)`,
+           which is not the string either. The whole point of the change is
+           whose name goes on the bill. */
+        carryLays: !!(out.carry && out.carry.said === 'carry' &&
+          out.carry.sponsor === out.carry.gov && out.carry.answered &&
+          out.carry.pressure === -12),
+        talksMovesTheDate: !!(out.talks && out.talks.said === 'talks' &&
+          out.talks.due === V17_STREET_DEADLINE - 1 && out.talks.pressure === -8),
+        refuseEndsIt: !!(out.refuse && out.refuse.said === 'refuse' &&
+          out.refuse.due === 'gone' && out.refuse.pressure === 20 && out.refuse.bloc < 0),
+        refusesAnotherChair: !!(out.carry && out.carry.wrongChair === null &&
+          out.talks.wrongChair === null && out.refuse.wrongChair === null),
+        oneBody: !!(clicked && clicked.pressure === -12 && clicked.answered &&
+          clicked.sponsor === playParty(S)) };
+    })();
+
+    /* (d) AND WHICH OF THE THREE IS ASKED THROUGH THE OBJECTIVE. The first
+       build wrote a rule of thumb -- concede where this government's own table
+       wants the statute anyway -- and its own measurement killed it: the street
+       asks for statutes NO party's table names, so `carry` was unreachable and
+       13 answers came out 8 talks, 5 refusals, 0 carries. S21o's lesson in a
+       second surface. The leg stands in the gap the change closes: it asks the
+       picker on a board where conceding is plainly best and requires `carry`. */
+    R.pick = (() => {
+      const pid0 = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const m = movement(4242, 'ruthless', pid0);
+      if (!m) return { ran:false };
+      const gov = S.ruling;
+      const worth = (c) => {
+        const out = v19Try(S, cl => { v21StreetAnswerCore(cl, gov, c); });
+        return out ? +v19Standing(out, gov).toFixed(3) : null;
+      };
+      const scores = { carry:worth('carry'), talks:worth('talks'), refuse:worth('refuse') };
+      const pick = v21StreetPick(S, gov);
+      const best = Object.keys(scores).filter(k => scores[k] !== null)
+        .sort((a, b) => scores[b] - scores[a])[0];
+      /* and the OLD rule's own reading on the same board, so the leg says what
+         it is standing in the gap of: the statute the street asked for is not
+         one this government's table names */
+      const tg = (typeof v17Want === 'function') ? v17Want(S, gov, m.policy) : undefined;
+      return { ran:true, scores:scores, pick:pick, best:best,
+        oldRuleWants: tg !== undefined && tg > (S.pol[m.policy] || 0),
+        takesTheBest: pick === best,
+        theStreetAsksForWhatNobodyWants: tg === undefined || tg <= (S.pol[m.policy] || 0) };
+    })();
+
+    /* AND A CARRY THE HOUSE CANNOT TAKE IS NOT AN ANSWER. `v21StreetAnswerCore`
+       returns null when `sponsorBill` refuses -- a statute already at its top
+       rung, or one that already carries a bill -- and the picker has to name
+       one of the other two. A GUARD FOR THIS WAS WRITTEN AND DELETED BY ITS
+       OWN POISON: the refused clone comes back unchanged and scores the
+       baseline, and `talks` takes 8 off the pressure the liability term is read
+       from, so `talks` beats the baseline on every board and the guard could
+       never bite. What is left here is the claim about the CORE, which is
+       real: an impossible carry is refused rather than half-written. */
+    R.cannot = (() => {
+      const pid0 = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const m = movement(4242, 'ruthless', pid0);
+      if (!m) return { ran:false };
+      const gov = S.ruling;
+      S.pol[m.policy] = POL[m.policy].max;
+      const said = v21StreetAnswerCore(S, gov, 'carry');
+      const pick = v21StreetPick(S, gov);
+      return { ran:true, said:said, pick:pick, at:S.pol[m.policy], max:POL[m.policy].max,
+        carryRefused: said === null,
+        picksSomethingElse: pick === 'talks' || pick === 'refuse' };
+    })();
+
+    /* (e) AND A DEMAND ANSWERED WITH A BILL WAITS FOR THE BILL, ONCE.
+       `s.demand.answered` has been written by the carry button since S17q and
+       READ BY NOTHING, which is `st.court.size`. Measured: a government bill
+       that moves a statute takes 2 to 7 sessions, median 3 and p75 4, against
+       a whole clock of four from the day they asked -- so with the answer
+       working and the clock unchanged, 9 concessions produced 0 carried
+       demands in 1,440 sessions. */
+    R.waits = (() => {
+      const pid0 = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const m = movement(4242, 'ruthless', pid0);
+      if (!m) return { ran:false };
+      const gov = S.ruling;
+      v21StreetAnswerCore(S, gov, 'carry');
+      const due0 = S.street.demand.due;
+      S.turn = due0;
+      v17StreetTick(S);
+      const extended = S.street.demand ? S.street.demand.due - due0 : 'gone';
+      const waited = !!(S.street.demand && S.street.demand.waited);
+      /* and ONCE: the same date arriving a second time is a refusal */
+      S.turn = S.street.demand ? S.street.demand.due : S.turn;
+      const ref0 = S.street.refused || 0;
+      v17StreetTick(S);
+      const second = S.street.demand ? 'still standing' : 'gone';
+      /* an UNANSWERED demand is not extended at all */
+      const m2 = movement(90210, 'ruthless', pid0);
+      let plain = null;
+      if (m2) {
+        const d0 = S.street.demand.due;
+        S.turn = d0;
+        v17StreetTick(S);
+        plain = S.street.demand ? S.street.demand.due - d0 : 'gone';
+      }
+      return { ran:true, extended:extended, waited:waited, second:second,
+        refusedAfter:(S.street.refused || 0) - ref0, plain:plain,
+        wait:V17_STREET_WAIT,
+        answeredWaits: extended === V17_STREET_WAIT && waited === true,
+        onlyOnce: second === 'gone',
+        unansweredDoesNot: plain === 'gone' };
+    })();
+
+    /* AND THE AIMS SAY WHAT THEY THINK OF THE TWO CARDS, read through
+       `v19Score` where the table is consulted rather than off the fire rate --
+       one weight among seventeen cards in a softmax is below what a driven
+       count resolves, and the poison that flattened all three rows to the .25
+       default came back GREEN against the driven leg. `ground` is the aim
+       about standing with a bloc and `v21Court` is the field it reads, which
+       is exactly what heading a movement writes; `carry` is about a statute,
+       which is what the government's answer lays. */
+    R.aims = (() => {
+      const pid0 = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const m = movement(4242, 'ruthless', pid0);
+      if (!m) return { ran:false };
+      const cc = V16_AI_DECK.filter(c => c.id === 'crowd')[0];
+      const sc = V16_AI_DECK.filter(c => c.id === 'street')[0];
+      const a = v16Ai(S)[pid0];
+      const gov = S.ruling, ag = v16Ai(S)[gov];
+      if (!cc || !sc || !a || !ag) return { ran:false };
+      const at = (who, rec, card, kind) => {
+        rec.goal = { kind:kind, ref:null, since:S.turn };
+        let v = null;
+        try { v = +v19Score(S, who, card, rec.goal, { foe:null, foeAt:0 }).toFixed(4); } catch (e) { v = null; }
+        return v;
+      };
+      const crowdGround = at(pid0, a, cc, 'ground');
+      const crowdBuild = at(pid0, a, cc, 'build');
+      const streetCarry = at(gov, ag, sc, 'carry');
+      const streetBuild = at(gov, ag, sc, 'build');
+      return { ran:true, crowdGround:crowdGround, crowdBuild:crowdBuild,
+        streetCarry:streetCarry, streetBuild:streetBuild,
+        crowdIsGround: crowdGround !== null && crowdBuild !== null &&
+          crowdGround > crowdBuild + 1e-9,
+        streetIsCarry: streetCarry !== null && streetBuild !== null &&
+          streetCarry > streetBuild + 1e-9 };
+    })();
+
+    /* (f) THE PLAYER'S OWN HALF: one predicate for the button and the handler,
+       and the button is lit exactly when the predicate is empty. `no control
+       lies, in any chair` in one place. */
+    R.player = (() => {
+      const me = playParty(S);
+      const m = movement(4242, 'ruthless', me);
+      if (!m) return { ran:false };
+      /* the player is put out of office so the head is theirs to take */
+      const gov = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      S.ruling = gov; S.coalition = [gov]; S.capital = 90;
+      const why = v21CrowdWhy(S, me);
+      const html = v17StreetPanel(S);
+      const lit = /data-crowd-head="1"(?![^>]*disabled)/.test(html);
+      const before = v21Lean(S, me, m.bloc);
+      pv21TakeHead();
+      const after = v21Lean(S, me, m.bloc);
+      /* CAPTURED HERE, NOT IN THE RETURN. A comparison written into the return
+         object is evaluated when the OBJECT is built, and the in-office leg
+         below replants the board -- so `S.street.head === me` read the fresh
+         movement's empty head and reported the click as having done nothing. */
+      const took = S.street.head === me;
+      const named = v17StreetPanel(S).indexOf('At its head: ' + PARTY[me].short) >= 0;
+      /* and the refusal is the predicate's own sentence, not a second rule */
+      const whyAfter = v21CrowdWhy(S, me);
+      const shut = /data-crowd-head="1"[^>]*disabled/.test(v17StreetPanel(S));
+      /* IN THE GOVERNMENT, THE BUTTON IS SHUT AND SAYS WHY -- asked on a
+         FRESH movement, because `v21CrowdWhy` answers with the first thing
+         that is wrong and on this board the player is already the head, so it
+         said so and the leg read it as the office test missing. */
+      const m3 = movement(4242, 'ruthless', me);
+      S.ruling = me; S.coalition = [me];
+      const whyGov = m3 ? v21CrowdWhy(S, me) : 'no movement';
+      return { ran:true, why:why, lit:lit, whyAfter:whyAfter.slice(0, 40), shut:shut,
+        moved:+((after - before) / V21_LEAN_GAIN).toFixed(3), named:named,
+        whyGov:whyGov.slice(0, 40),
+        openWhenOpen: why === '' && lit === true,
+        took:took,
+        clickTakesIt: Math.abs((after - before) - V21_LEAN_GAIN * V21_CROWD_SEASONS.head) < 1e-9 &&
+          took === true,
+        pageNamesIt: named === true,
+        shutAfterwards: whyAfter.indexOf('already at the head') >= 0 && shut === true,
+        shutInOffice: whyGov.indexOf('cannot lead a march on itself') >= 0 };
+    })();
+
+    /* (g) R2: THE FLOOR DRAWS NEITHER. */
+    R.floorShut = (() => {
+      /* THE PARTY IS CHOSEN AFTER THE BOARD IS SEATED, not before it. A first
+         version took the first party that is not the player and planted a
+         movement around ITS best bloc -- and at `instinct` that party was
+         sitting in the government, so `can` refused on the chair and the leg
+         read the floor as shut for a reason that had nothing to do with the
+         level. Every other refusal in this card's gate is tested in leg (a);
+         what this leg is about is `v19Thinks` and nothing else, so every other
+         condition has to be satisfied on purpose. */
+      const m = movement(4242, 'instinct', null);
+      if (!m) return { ran:false, why:'no statute to ask for' };
+      const cc = V16_AI_DECK.filter(c => c.id === 'crowd')[0];
+      const sc = V16_AI_DECK.filter(c => c.id === 'street')[0];
+      const pid0 = (PARTIES.filter(p => p.id !== S.ruling &&
+        (S.coalition || []).indexOf(p.id) < 0 && !S.banned[p.id] &&
+        affOf(S, p.id, m.bloc) > 0)[0] || {}).id;
+      if (!pid0) return { ran:false, why:'no party out of the room speaks for ' + m.bloc };
+      S.purse = S.purse || {}; S.purse[pid0] = 400; S.purse[S.ruling] = 400;
+      let c1 = null, s1 = null, c2 = null, s2 = null;
+      try { c1 = cc.can(S, pid0); s1 = sc.can(S, S.ruling); } catch (e) { c1 = 'threw'; }
+      S.aiLevel = 'shrewd';
+      try { c2 = cc.can(S, pid0); s2 = sc.can(S, S.ruling); } catch (e) { c2 = 'threw'; }
+      return { ran:true, pid:pid0, bloc:m.bloc, c1:c1, s1:s1, c2:c2, s2:s2,
+        shut: c1 === false && s1 === false && c2 === true && s2 === true };
+    })();
+
+    /* (h) DRIVEN: both fire, through the tempo gate, the posture and the
+       chooser, and the standings they leave move. */
+    R.play = (() => {
+      const cc = V16_AI_DECK.filter(c => c.id === 'crowd')[0];
+      const sc = V16_AI_DECK.filter(c => c.id === 'street')[0];
+      const out = { crowd:0, street:0, answers:{}, heads:{}, ends:{}, carried:0 };
+      const cb = cc.run, sb = sc.run, eb = v17StreetEnd;
+      cc.run = function (st, pid) {
+        const said = cb.call(this, st, pid);
+        if (said && !V19_SIMULATING) { out.crowd++; out.heads[pid] = (out.heads[pid] || 0) + 1; }
+        return said;
+      };
+      sc.run = function (st, pid) {
+        const pick = v21StreetPick(st, pid);
+        const said = sb.call(this, st, pid);
+        if (said && !V19_SIMULATING) { out.street++; out.answers[pick] = (out.answers[pick] || 0) + 1; }
+        return said;
+      };
+      v17StreetEnd = function (st, how) {
+        if (!V19_SIMULATING) { out.ends[how] = (out.ends[how] || 0) + 1; if (how === 'carried') out.carried++; }
+        return eb.apply(this, arguments);
+      };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080, 11, 2024, 777, 606, 13, 99].forEach(sd => {
+          fresh(sd, 'ruthless');
+          for (let t = 0; t < 120; t++) if (!step()) break;
+        });
+      } finally { cc.run = cb; sc.run = sb; v17StreetEnd = eb; runQueue = rq; }
+      return out;
+    })();
+    R.fires = R.play.crowd > 3 && R.play.street > 3 &&
+      Object.keys(R.play.answers).length >= 2;
+    R.seasons = V21_CROWD_SEASONS;
+    return R;
+  });
+
+  const crowdOk =
+    crowd.head.ran && crowd.head.takes && crowd.head.oneHead &&
+    crowd.head.notTheGovernment && crowd.head.notAStranger &&
+    crowd.head.notWithoutAMovement &&
+    crowd.rows.paysTheTable && crowd.rows.clearsTheField && crowd.rows.settlesAFade &&
+    crowd.entered.ran && crowd.entered.dropsOnEntering &&
+    crowd.answers.carryLays && crowd.answers.talksMovesTheDate &&
+    crowd.answers.refuseEndsIt && crowd.answers.refusesAnotherChair &&
+    crowd.answers.oneBody &&
+    crowd.pick.ran && crowd.pick.takesTheBest &&
+    crowd.pick.theStreetAsksForWhatNobodyWants &&
+    crowd.waits.ran && crowd.waits.answeredWaits && crowd.waits.onlyOnce &&
+    crowd.waits.unansweredDoesNot &&
+    crowd.cannot.ran && crowd.cannot.carryRefused && crowd.cannot.picksSomethingElse &&
+    crowd.aims.ran && crowd.aims.crowdIsGround && crowd.aims.streetIsCarry &&
+    crowd.player.ran && crowd.player.openWhenOpen && crowd.player.clickTakesIt &&
+    crowd.player.pageNamesIt && crowd.player.shutAfterwards &&
+    crowd.player.shutInOffice &&
+    crowd.floorShut.ran && crowd.floorShut.shut === true && crowd.fires;
+  say(crowdOk, 'the street has a head, and a government that is not yours can answer it',
+    `THE STREET WAS WEATHER. Measured over 1,440 driven sessions: 50 demands, 32 general strikes, 96 sessions ` +
+    `with the country shut to legislation -- and EVERY movement that ended, ended exhausted, 29 of 29. Nothing ` +
+    `carried, no strike broken, and no party's own ${'`'}wants${'`'} table named the statute the street asked ` +
+    `for on any of the fifty demands, so there was never a champion to be had either · A PARTY GETS TO THE ` +
+    `HEAD OF IT NOW, worth one season of courting the bloc that is organising ` +
+    `(${crowd.head.before} to ${crowd.head.after}, ${crowd.head.takes}) through ${'`'}v21Court${'`'}, which is ` +
+    `read by ${'`'}supportTargets${'`'}, the Interests page and the ${'`'}ground${'`'} aim -- and the four ` +
+    `refusals are the ones the constitution and the constituency require: a movement has ONE head ` +
+    `(${crowd.head.oneHead}), the government and its partners cannot lead a march on themselves ` +
+    `(${crowd.head.notTheGovernment}), a party the bloc would not follow is refused on ${'`'}affOf${'`'} ` +
+    `(${crowd.head.notAStranger}) and there has to be something organised to stand at the head of ` +
+    `(${crowd.head.notWithoutAMovement}) · AND THE FOUR ROWS ARE PAID AT THE ONE EXIT, in seasons of ` +
+    `courting rather than numbers picked by eye: carried ${JSON.stringify(crowd.rows.out.carried)}, broken ` +
+    `${JSON.stringify(crowd.rows.out.broken)}, exhausted ${JSON.stringify(crowd.rows.out.exhausted)} ` +
+    `(${crowd.rows.paysTheTable}) -- a BET, because a party that put itself at the head of something and ` +
+    `delivered nothing hands the season back, and the government is in the same ledger, which it was not. And ` +
+    `a movement that simply FADES settles too (${crowd.rows.settlesAFade}): ${'`'}v17StreetEnd${'`'} is reached ` +
+    `from a carried demand and from the two ways a strike stops and NOT from pressure decaying under a movement ` +
+    `that was refused, so the first build left that head set and never paid or docked it. The four rows are ` +
+    `pinned to their LITERALS here and not to ${'`'}V21_CROWD_SEASONS${'`'} -- read off the table, the leg is ` +
+    `parameterised by the constant it is checking and agrees with any value it holds, which is exactly what ` +
+    `three of this slice's poisons came back green on · AND A HEAD THAT HAS ENTERED THE ROOM LOSES THE FIELD ` +
+    `(${crowd.entered.dropsOnEntering}), invited in as a partner and seated at the head of the government ` +
+    `alike, because a government cannot lead a march on itself and the field must not outlive the fact · ` +
+    `THE THREE ANSWERS ` +
+    `HAVE A BODY WITH NO CHAIR IN IT: carrying lays the bill under the ANSWERING party's name ` +
+    `(${crowd.answers.out.carry.sponsor}) and takes ${crowd.answers.out.carry.pressure} off the pressure ` +
+    `without settling the demand (${crowd.answers.carryLays}) -- laying is not carrying, which is S17q's ` +
+    `ruling; talks move the date by ${crowd.answers.out.talks.due} and concede nothing ` +
+    `(${crowd.answers.talksMovesTheDate}); a refusal ends the demand, adds ` +
+    `${crowd.answers.out.refuse.pressure} and costs the bloc ${crowd.answers.out.refuse.bloc} ` +
+    `(${crowd.answers.refuseEndsIt}); all three refuse a chair that is not the government's ` +
+    `(${crowd.answers.refusesAnotherChair}); and the player's own click produces the same state off the same ` +
+    `body, sponsor included (${crowd.answers.oneBody}) · AND WHICH OF THE THREE IS ASKED THROUGH THE ` +
+    `OBJECTIVE. The first build wrote a rule of thumb -- concede where this government's own table wants the ` +
+    `statute anyway -- and its own measurement killed it: on this very board the street asks for something no ` +
+    `party's table names (${crowd.pick.theStreetAsksForWhatNobodyWants}), so ${'`'}carry${'`'} was unreachable ` +
+    `by construction and 13 answers came out 8 talks, 5 refusals, 0 carries. Read through ` +
+    `${'`'}v19Try${'`'} and ${'`'}v19Standing${'`'} the three score ${JSON.stringify(crowd.pick.scores)} and ` +
+    `the government takes ${crowd.pick.pick} (${crowd.pick.takesTheBest}) · AND A CARRY THE HOUSE CANNOT TAKE ` +
+    `IS NOT AN ANSWER: with the statute at its ceiling (${crowd.cannot.at} of ${crowd.cannot.max}) the core ` +
+    `refuses (${crowd.cannot.carryRefused}) and the picker names ${crowd.cannot.pick} instead ` +
+    `(${crowd.cannot.picksSomethingElse}) -- a GUARD for this was drafted and deleted by its own poison, ` +
+    `because a refused clone scores the baseline and ${'`'}talks${'`'} beats the baseline on every board · ` +
+    `AND THE AIMS SAY ` +
+    `WHAT THEY THINK OF THE TWO, read through ${'`'}v19Score${'`'} where the table is consulted: the crowd ` +
+    `scores ${crowd.aims.crowdGround} under ${'`'}ground${'`'} against ${crowd.aims.crowdBuild} under ` +
+    `${'`'}build${'`'} (${crowd.aims.crowdIsGround}) and the answer ${crowd.aims.streetCarry} under ` +
+    `${'`'}carry${'`'} against ${crowd.aims.streetBuild} (${crowd.aims.streetIsCarry}) -- read this way and ` +
+    `not off the fire rate, because the poison that flattened all three rows to the .25 default came back ` +
+    `green against the driven leg · AND A DEMAND ANSWERED WITH A BILL ` +
+    `WAITS FOR THE BILL, ONCE. ${'`'}s.demand.answered${'`'} has been written by the carry button since S17q ` +
+    `and READ BY NOTHING in three megabytes, which is ${'`'}st.court.size${'`'} -- and what it fixes is this ` +
+    `file's other rule, that the instrument the answer has to use decides the deadline: a government bill that ` +
+    `moves a statute takes 2 to 7 sessions (median 3, p75 4) against a whole clock of four from the day they ` +
+    `asked, so with the answer working and the clock unchanged 9 concessions produced 0 carried demands in ` +
+    `1,440 sessions. It waits ${crowd.waits.extended} (${crowd.waits.answeredWaits}), exactly once ` +
+    `(${crowd.waits.onlyOnce}) because a bill thrown out is still a refusal and 27 of 36 are, and an ` +
+    `UNANSWERED demand is not extended at all (${crowd.waits.unansweredDoesNot}) · THE PLAYER HAS THE SAME ` +
+    `DOOR: one predicate for the button and the handler, lit exactly when it is open ` +
+    `(${crowd.player.openWhenOpen}), a real click takes the head and pays the season ` +
+    `(${crowd.player.clickTakesIt}), the panel names who is at it (${crowd.player.pageNamesIt}), and the same ` +
+    `control is shut afterwards (${crowd.player.shutAfterwards}) and from the government's own chair with the ` +
+    `reason on it (${crowd.player.shutInOffice}) · R2: at the floor neither card can be drawn and above it ` +
+    `both can (${crowd.floorShut.c1}/${crowd.floorShut.s1} against ` +
+    `${crowd.floorShut.c2}/${crowd.floorShut.s2}) · and driven over 1,440 sessions the crowd card fires ` +
+    `${crowd.play.crowd} times (${JSON.stringify(crowd.play.heads)}) and the answer ${crowd.play.street} ` +
+    `times (${JSON.stringify(crowd.play.answers)}), with movements now ending ` +
+    `${JSON.stringify(crowd.play.ends)}`);
+
+  /* ================================================================
      S21m — THE PARTY IN OFFICE CAN AFFORD TO GOVERN
      ================================================================
      `govern` appeared in three of the thirteen `post:` arrays, so a
@@ -10085,7 +10682,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* S21n adds `keep` to the same second list, and it is listed there rather
        than in `post` so the FLOOR's table stays exactly the three the game
        shipped with -- belt and braces with the `v19Thinks` gate on its `can`. */
-    R.widened = R.table.thinkingOnly.join(',') === 'descend,floor,keep,organise';
+    R.widened = R.table.thinkingOnly.join(',') === 'descend,floor,keep,organise,street';
     /* and `court` is what the second mood has and the first does not */
     R.courtIsTheDifference =
       R.table.exposedDeck.indexOf('court') >= 0 &&
@@ -11231,6 +11828,27 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           S.purse = S.purse || {}; S.purse.tvc = 400;
           step();
         }
+        /* S21p: AND A FOURTEENTH ON A BOARD WITH A MOVEMENT ON IT. A demand
+           stands on 14.3% of sessions and the two street cards cannot be
+           rehearsed without one, so the demand is planted each session rather
+           than waited for -- the same reasoning as the constructed government
+           above, and the same consequence: without it the deck reads as
+           fifteen cards and the two new ones walk past the flatness gate. */
+        fresh(90210);
+        for (let i = 0; i < 40; i++) {
+          const s = v17Street(S);
+          if (!s.demand) {
+            const want = POLICIES.filter(p => policyOpen(S, p) && (S.pol[p.id] || 0) < p.max &&
+              !activeBillFor(S, p.id))[0];
+            const bloc = BLOCS.filter(b => (S.blocs[b.id] || 50) < 55)[0] || BLOCS[0];
+            if (want) {
+              s.pressure = 40; s.bloc = bloc.id;
+              s.demand = { bloc:bloc.id, policy:want.id, was:S.pol[want.id] || 0,
+                from:S.turn, due:S.turn + V17_STREET_DEADLINE };
+            }
+          }
+          step();
+        }
       } finally { v19Outcome = base; }
       const ids = Object.keys(rows);
       let flat = 0, n = 0;
@@ -11362,6 +11980,34 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       move('bookTheirs', () => book(other), clearBook);
       S.ruling = wasRuling; S.coalition = wasCo;
       S.extra = wasEx; S.extraBy = wasExBy;
+      /* S21p's twelfth and thirteenth: A MOVEMENT THIS PARTY HEADS, and the
+         same movement as a LIABILITY to the government it is against. Read off
+         the PRESSURE and not off the demand's existence, because refusing a
+         demand clears it -- so a term written the other way made the liability
+         vanish on the one answer that makes a movement worse. The same board
+         is read three times: for the head, for the government, and for a party
+         that is neither. */
+      const wasStreet = JSON.parse(JSON.stringify(S.street || {}));
+      const clearStreet = () => { S.street = JSON.parse(JSON.stringify(wasStreet)); };
+      /* THE CHAIR IS SET OUTSIDE THE READING, NOT INSIDE IT. A first version
+         had the helper move `S.ruling` as part of the change, and `v19Flight`
+         has two OTHER terms gated on `st.ruling === pid` -- S21n's coalition
+         and S21o's book -- so the delta attributed to a movement was the
+         movement MINUS the liability PLUS both of those, and came back +0.83
+         where the liability is negative. A term read across a change of chair
+         is three terms in a trench coat. */
+      const march = (head) => {
+        S.street = { pressure:V17_STREET_STRIKE, strike:0, won:0, refused:0, rest:0,
+          bloc:BLOCS[0].id, head:head,
+          demand:{ bloc:BLOCS[0].id, policy:POLICIES[0].id, was:0, from:S.turn,
+            due:S.turn + V17_STREET_DEADLINE } };
+      };
+      S.ruling = other; S.coalition = [other];
+      move('marchMine', () => march(pid), clearStreet);
+      move('marchTheirs', () => march(other), clearStreet);
+      S.ruling = pid; S.coalition = [pid];
+      move('marchAgainstMe', () => march(other), clearStreet);
+      S.street = wasStreet; S.ruling = wasRuling; S.coalition = wasCo;
       return { out:out, pol:pol,
         /* every kind moves it, and the two signed ones are signed */
         allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter', 'order', 'motion', 'supply']
@@ -11373,6 +12019,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         /* and the eleventh: three measures standing are worth something to the
            government that signed them and NOTHING to a party that is not it */
         bookCounts: out.bookMine > 1e-9 && out.bookTheirs === 0,
+        /* and the twelfth and thirteenth: a movement is worth something to the
+           party at its head, nothing to a party that is neither its head nor
+           the government, and is a LIABILITY to the government it is against */
+        marchCounts: out.marchMine > 1e-9 && out.marchTheirs === 0 &&
+          out.marchAgainstMe < -1e-9,
         /* and the motion is read as THIS party's: somebody else's is nought */
         motionIsMine: out.motion > 0 && out.motionTheirs === 0,
         billSigned: out.billFor > 0 && out.billAgainst < 0,
@@ -11582,13 +12233,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        reads .44 -- because two new cards arriving with no term of their own
        would have taken this bar to four, which is the assertion giving up.
        A SECOND FLAT CARD REDDENS. */
-    seen.cards.cards === 15 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
+    seen.cards.cards === 17 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
     seen.terms.allMove === true && seen.terms.roomCounts === true &&
-    seen.terms.bookCounts === true &&
+    seen.terms.bookCounts === true && seen.terms.marchCounts === true &&
     seen.terms.billSigned === true && seen.terms.lineSigned === true &&
     seen.terms.motionIsMine === true &&
     seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
-    seen.cost.deck === 15 && seen.cost.priced === 15 &&
+    seen.cost.deck === 17 && seen.cost.priced === 17 &&
     seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
     seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
     seen.cost.s17 === true &&
@@ -11632,7 +12283,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `function sums; and the ELEVENTH being S21o's -- the machinery a government has built, worth ` +
     `${seen.terms.out.bookMine} to the party at the head of it and ${seen.terms.out.bookTheirs} to a party that is not ` +
     `(${seen.terms.bookCounts}), the same book read twice, because a term that summed the book without asking ` +
-    `whose government it was would score every party on the board for one government's descent ` +
+    `whose government it was would score every party on the board for one government's descent; and S21p's ` +
+    `TWELFTH and THIRTEENTH -- a movement at the strike bar worth ${seen.terms.out.marchMine} to the party at ` +
+    `its head, ${seen.terms.out.marchTheirs} to a party that is neither its head nor the government, and ` +
+    `${seen.terms.out.marchAgainstMe} to the government it is against (${seen.terms.marchCounts}), read off ` +
+    `the PRESSURE rather than off the demand's existence because refusing a demand CLEARS it and a term ` +
+    `written the other way made the liability vanish on the one answer that makes a movement worse ` +
     `function sums -- because the ` +
     `flatness reading above says the objective can tell instances apart and NOT which term did it -- the poison ` +
     `run showed why that matters: with the bill term deleted \`bill\` still came back non-flat, since the purse ` +

@@ -1119,13 +1119,32 @@ objective cannot see and the cost it can, which put `v19Outcome` at the clamp
 floor on every rehearsal and made the card unplayable at the two levels that
 read it. The pick goes through `v19Try` and `v19Standing`.
 
-### S21p - Put a party at the head of the crowd
+### S21p - Put a party at the head of the crowd — SHIPPED
 
 A general strike shuts the country and no party stands at the head of it. The
 street is a weather system rather than a thing a party can ride.
 
 Channel: `st.street.pressure` to the demand bar at 26 and the strike bar at 58,
 then `v17StrikeBar` and `v17Barred`, the sibling of the caretaker gate.
+
+AS SHIPPED, the channel is not the one this section names and the defect was
+twice the size. `v17StrikeBar` and `v17Barred` needed nothing: what the head of
+a movement is WORTH goes through `v21Court`, S21j's bloc-standing channel,
+which is read by `supportTargets`, the Interests page and the `ground` aim. And
+"no party stands at the head of it" was only half of it — measured over 1,440
+driven sessions, every movement that ended ended EXHAUSTED, 29 of 29, because
+the street's own paper is filed under 'gov' and its three answers were written
+inside the PLAYER's inbox handler, naming the player's chair in `sponsorBill`.
+So a government that was not yours could not concede, stall or refuse in words;
+it could only let the date pass. Both halves are one surface and both ship here.
+
+Two further findings the slice's own measurements produced, each of them one of
+this file's standing rules: the answer's PICKER was written as a rule of thumb
+and could not reach `carry` at all (the street asks for statutes no party's
+table names, 0 of 50), and `s.demand.answered` had been written by the carry
+button since S17q and read by NOTHING -- which is what now makes a demand
+answered with a bill wait for the bill, because the instrument the answer has
+to use decides the deadline.
 
 ### S21q - Put a price on the benches
 
