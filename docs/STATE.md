@@ -50,8 +50,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped thirteen slices: S21a–m.** The original twelve are complete;
-S21m opens the owner's eight-behaviour extension, and S21n–S21t remain.
+**S21 has shipped fourteen slices: S21a–n.** The original twelve are complete;
+S21m and S21n are the first two of the owner's eight-behaviour extension, and
+S21o–S21t remain.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -893,7 +894,73 @@ S21m opens the owner's eight-behaviour extension, and S21n–S21t remain.
   changed nothing because `organise` and `floor` sit in `exposed`'s own `post`
   list and the counts spanned both moods.
 
-**WHAT IS OPEN:** the owner's extension S21n–S21t, in the order `PLAN-S21.md`
+- **S21n — a government that is not yours keeps its own coalition.** An engine
+  leads the government in **93.8%** of the sessions a player watches, and that
+  coalition could only decay: over 1,440 driven sessions, **559** had an engine
+  government sitting with a partner under 45 cohesion and no instrument at all,
+  and **97 partners walked out**. The player has five buttons for exactly this.
+
+  **The reopening was not a mechanism a government had — it was a button the
+  player had.** `v17CanRenegotiate` refused on `!leads(st)`, which is "does the
+  PLAYER head the government", so the agreement could be reopened on **178 of
+  178** player partner-sessions and **0 of 1,969** engine ones. That is
+  `holdsDept`'s confusion in another surface, and the fix is S17a's: the
+  predicate names an actor. The default is unchanged to the letter, because
+  `leads(st)` **is** `playParty(st) === st.ruling`.
+
+  **The council gets a body with no chair in it.** S21h had already put the
+  office trade through `v21OfficeCore` and the reopening through
+  `v21ReopenCore`; the council was still eight statements inline in the player's
+  handler. `v21CouncilCore` is that body, the player's button goes through it,
+  and the standing it moves belongs to the right pair — S21k's finding here: a
+  council the player calls warms the partner toward them, one called *with* the
+  player warms them toward the party that called it rather than the player's
+  standing with themselves, and one between two engines goes to the signed
+  ledger.
+
+  **One card and not two.** Holding a coalition together is one act with two
+  shapes — reopen when the agreement itself is what is wrong, call them in
+  otherwise — and a verb that fires only when a second rare precondition also
+  holds fires never, which S21k measured at 0 of 922. The card takes the least
+  contented partner, and the bar of 45 is the measured quartile (cohesion under
+  an engine runs p10 35.0, p25 43.1, p50 51.2, p75 75.7). R2: gated on
+  `v19Thinks`.
+
+  **And adding a card to the deck is not adding a card to the deck.** Five arms
+  this slice does not touch went red the moment `keep` existed, every one of
+  them a per-card table with a hole in it — a price, a worth against a rival, a
+  temperament axis, a state in the arm that drives every card, and the one that
+  mattered: **a term in the objective**. `v19Outcome` could not see a coalition
+  at all, so `keep` rehearsed as a **price list** — min, median and max the same
+  number, exactly minus what it cost — which is S21c's defect and the reason
+  `roads.js` counts the flat ones. `v19Flight` gains a tenth term, read only for
+  the party at the head of the government: a room holding at 85 cohesion is
+  worth **+0.90** to it and one walking at 15 is worth **−1.26**.
+
+  Driven, partners walking out go **97 → 73** and sessions with a partner under
+  45 cohesion go **559 → 482**. **One poison came back green** and was an
+  assertion gap: breaking the actor's *default* passed all three of the
+  predicate's legs, because every one of them was a refusal and a build that
+  refuses everybody satisfies a refusal.
+
+  **AND TWO PLAYTEST FLAKES WERE DIAGNOSED RATHER THAN RE-RUN UNTIL GREEN**,
+  neither of them in the game. `ladder-migrates-loud` failed 2 runs in 6 with
+  `S.pol` holding a fresh scenario's levels while `polV2` was already stamped —
+  `UI.saveTimer` schedules `saveAutosave` 160ms after every render, so a save
+  queued before the fixture is written fires *after* it and puts the live,
+  already-migrated campaign back over the old-shaped blob. Both fixture writes
+  outlast the debounce now. `constitution-page` failed once and passed six
+  further runs of the identical build: `v11ConTick` rolls a verdict per pending
+  article and the step inherits a campaign seeded from `Date.now()`, so it now
+  pins its own `rngState`. And a third is **S21's own footprint on a probe
+  written before it**: `order-book` cleared the order register on the way *out*
+  and assumed an empty one on the way *in*, which held while only the player
+  could sign an executive order — S21's engines sign them, so the step could
+  inherit the very order it was about to issue, `v10IssueOrder` no-ops and the
+  revoke removes a contribution the baseline already carried. It also checked a
+  condition it did not print, which is the flake reading itself back.
+
+**WHAT IS OPEN:** the owner's extension S21o–S21t, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
 was never written, and building it is a slice rather than a paragraph, so it is
 recorded here as its own piece of work rather than quietly dropped. The

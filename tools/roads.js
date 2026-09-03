@@ -4284,6 +4284,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       if (c.id === 'floor') {
         sponsorBill(S, 'incomeTax', 1, 'government', 'clean', true, 'fp', true);
       }
+      /* S21n: this one is the head of a government's, so the state built for
+         it puts the party AT that head with a partner who has had enough --
+         which is what "a state where it can play" means for a card whose gate
+         reads the chair. It is behind `v19Thinks` like S21g's two. */
+      if (c.id === 'keep') {
+        S.aiLevel = 'ruthless';
+        const partner = PARTIES.filter(p => p.id !== pid && p.id !== playParty(S) && !S.banned[p.id])[0].id;
+        S.ruling = pid; S.coalition = [pid, partner];
+        S.coalitionDeals = S.coalitionDeals || {};
+        S.coalitionDeals[partner] = S.coalitionDeals[partner] ||
+          { satisfaction:25, councils:0, portfolios:0 };
+        S.coalitionDeals[partner].satisfaction = 25;
+      }
       const before = {
         machine:S.machine[pid] || 0, targetMachine:S.machine[S.ruling] || 0,
         blocs:JSON.stringify(S.blocs), push:JSON.stringify(S.push || {}),
@@ -4297,6 +4310,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
       const line = c.run(S, pid);
       const moved =
+        c.id === 'keep' ? (S.coalition || []).filter(x => x !== pid)
+          .some(x => ((S.coalitionDeals || {})[x] || {}).satisfaction > 25) :
         c.id === 'organise' ? (S.machine[pid] || 0) > before.machine
         : c.id === 'campaign' ? ((S.funding || {})[pid] || 0) > before.funding
         : c.id === 'court' ? JSON.stringify(S.blocs) !== before.blocs
@@ -4399,7 +4414,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      house -- move no confidence in a government, or sell it the abstention
      that keeps it alive -- and both sit behind `v19Thinks`, so `instinct` is
      still the eleven the game shipped with. */
-  say(six.built && six.deck === 13 && six.cardWorks === 13 && six.cardFails.length === 0 && six.actedAll &&
+  say(six.built && six.deck === 14 && six.cardWorks === 14 && six.cardFails.length === 0 && six.actedAll &&
       six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
       six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
       six.redLineBites && six.partnerWarned && six.partnerLeaves,
@@ -9311,6 +9326,291 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `one party able to act it still draws ${ai.dice.allBanned} for ${ai.dice.parties} parties`);
 
   /* ================================================================
+     S21n — A GOVERNMENT THAT IS NOT YOURS KEEPS ITS OWN COALITION
+     ================================================================
+     An engine leads the government in 93.8% of the sessions a player watches,
+     and that coalition could only decay. Measured over 1,440 driven sessions:
+     559 of them had an engine government sitting with a partner under 45
+     cohesion and no instrument at all, and 97 partners walked out. The player
+     has five buttons for exactly this. */
+  const keep = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    /* a coalition an engine leads, with a partner and an agreement */
+    function room() {
+      for (let t = 0; t < 60; t++) {
+        if (!step()) break;
+        const lead = S.ruling, co = S.coalition || [];
+        if (lead === playParty(S)) continue;
+        const partner = co.filter(x => x !== lead && x !== playParty(S) &&
+          (S.coalitionDeals || {})[x] && (S.coalitionDeals || {})[x].terms)[0];
+        if (partner) return { lead, partner };
+      }
+      return null;
+    }
+
+    /* (a) THE PREDICATE ASKS ABOUT AN ACTOR, AND ITS DEFAULT IS UNCHANGED.
+       `!leads(st)` is `playParty(st) !== st.ruling`, so it refused for every
+       coalition an engine leads: the reopening was a button the player had
+       rather than a mechanism a government had. Both halves, because widening
+       it without pinning the old reading is S17k's trap -- a shared body right
+       for the new caller and wrong for the old one. */
+    fresh(4242);
+    const r1 = room();
+    R.actor = { ran:false };
+    if (r1) {
+      const asPlayer = v17CanRenegotiate(S, r1.partner);
+      const asLead = v17CanRenegotiate(S, r1.partner, r1.lead);
+      const asOther = v17CanRenegotiate(S, r1.partner, r1.partner);
+      /* AND THE DEFAULT HAS TO WORK, NOT ONLY REFUSE. Every reading above is
+         a refusal, so a build whose default is BROKEN -- `st.ruling !== actor`
+         with the actor left undefined, which refuses everybody -- passed all
+         three. The player's own chair is put at the head of the same room and
+         asked with no actor: it must come back null, which is the button
+         working. */
+      const keptRuling = S.ruling, keptCo = (S.coalition || []).slice();
+      S.ruling = playParty(S);
+      S.coalition = [playParty(S), r1.partner];
+      const asPlayerLeading = v17CanRenegotiate(S, r1.partner);
+      S.ruling = keptRuling; S.coalition = keptCo;
+      R.actor = { ran:true, lead:r1.lead, partner:r1.partner,
+        asPlayerLeading: asPlayerLeading === null ? null : String(asPlayerLeading).slice(0, 40),
+        defaultWorks: asPlayerLeading === null,
+        asPlayer: asPlayer === null ? null : String(asPlayer).slice(0, 40),
+        asLead: asLead === null ? null : String(asLead).slice(0, 40),
+        asOther: asOther === null ? null : String(asOther).slice(0, 40),
+        /* the player does not lead this government, so their own reading is
+           still a refusal -- the old behaviour, to the letter */
+        playerStillRefused: typeof asPlayer === 'string',
+        /* the party that DOES lead it is not refused on the chair */
+        leadNotRefusedOnTheChair:
+          asLead === null || String(asLead).indexOf('head of government') < 0,
+        /* and a party that leads nothing still is */
+        otherStillRefused: typeof asOther === 'string' &&
+          String(asOther).indexOf('head of government') >= 0 };
+    }
+
+    /* (b) THE COUNCIL HAS A BODY WITH NO CHAIR IN IT, and the player's button
+       calls that body rather than its own copy. Read as the LIFT the core
+       produces and the lift a real click produces, which have to be the same
+       number: two bodies that agree today drift apart, which is why S21h put
+       the office trade and the reopening through cores in the first place. */
+    R.council = (() => {
+      fresh(4242);
+      const r = room();
+      if (!r) return { ran:false };
+      const d = (S.coalitionDeals || {})[r.partner];
+      const before = d.satisfaction;
+      const ok = v21CouncilCore(S, r.lead, r.partner);
+      const core = +(d.satisfaction - before).toFixed(3);
+      /* and the player's own click, from the chair that has the button */
+      fresh(4242);
+      let clicked = null;
+      for (let t = 0; t < 60 && clicked === null; t++) {
+        if (!step()) break;
+        if (S.ruling !== playParty(S)) continue;
+        const q = (S.coalition || []).filter(x => x !== S.ruling)[0];
+        if (!q || !(S.coalitionDeals || {})[q]) continue;
+        S.capital = 90; S.money = 90;
+        const dd = (S.coalitionDeals || {})[q];
+        const b0 = dd.satisfaction, c0 = dd.councils || 0;
+        pv5CoalitionAction(q, 'council');
+        clicked = { lift:+(dd.satisfaction - b0).toFixed(3), councils:(dd.councils || 0) - c0 };
+      }
+      return { ran:true, ok:ok, core:core, clicked:clicked,
+        lifts: core === V21_COUNCIL_LIFT,
+        oneBody: !!(clicked && Math.abs(clicked.lift - core) < 1e-9 && clicked.councils === 1) };
+    })();
+
+    /* (c) AND THE STANDING A COUNCIL MOVES BELONGS TO THE RIGHT PAIR, which is
+       S21k's finding in this surface: `shiftPartyRel` writes that party's
+       standing with the PLAYER, correct while every council was the player's
+       and a write on the wrong record the moment an engine holds one. */
+    R.pair = (() => {
+      fresh(4242);
+      const r = room();
+      if (!r) return { ran:false };
+      const me = playParty(S);
+      /* two engines: the player's own ledger must not move, and the signed
+         one between them must */
+      S.partyRel = S.partyRel || {};
+      const relBefore = S.partyRel[r.partner] || 50;
+      v16Resent(S, r.partner, r.lead, 40);
+      const ledgerBefore = v16Grudge(S, r.partner, r.lead);
+      v21CouncilCore(S, r.lead, r.partner);
+      const relAfter = S.partyRel[r.partner] || 50;
+      const ledgerAfter = v16Grudge(S, r.partner, r.lead);
+      /* and a council held WITH the player moves the ACTOR's entry, not the
+         player's standing with themselves */
+      const meRelBefore = S.partyRel[r.lead] || 50;
+      S.coalitionDeals[me] = S.coalitionDeals[me] ||
+        { satisfaction:50, councils:0, portfolios:0 };
+      v21CouncilCore(S, r.lead, me);
+      const meRelAfter = S.partyRel[r.lead] || 50;
+      return { ran:true, relBefore:relBefore, relAfter:relAfter,
+        ledgerBefore:ledgerBefore, ledgerAfter:ledgerAfter,
+        meRelBefore:meRelBefore, meRelAfter:meRelAfter,
+        playerLedgerUntouched: relAfter === relBefore,
+        theirLedgerEases: ledgerAfter < ledgerBefore,
+        onThePlayerItMovesTheActor: meRelAfter > meRelBefore };
+    })();
+
+    /* (d) WHICH PARTNER, AND WHICH SHAPE. The least contented first, because
+       that is the one about to leave; and the reopening where the agreement
+       itself is what is wrong rather than the mood. Constructed, so neither is
+       a claim about a lucky board. */
+    R.pick = (() => {
+      fresh(4242);
+      const r = room();
+      if (!r) return { ran:false };
+      const co = (S.coalition || []).filter(x => x !== r.lead);
+      const others = co.filter(x => (S.coalitionDeals || {})[x]);
+      if (!others.length) return { ran:false };
+      others.forEach(x => { S.coalitionDeals[x].satisfaction = 80; });
+      const none = v21KeepTarget(S, r.lead);
+      S.coalitionDeals[r.partner].satisfaction = 30;
+      const one = v21KeepTarget(S, r.lead);
+      /* a second, unhappier partner is the one called in */
+      let worse = null;
+      const second = others.filter(x => x !== r.partner)[0];
+      if (second) {
+        S.coalitionDeals[second].satisfaction = 20;
+        worse = v21KeepTarget(S, r.lead);
+      }
+      /* the shape: a ledger with a broken promise reopens, a clean one talks */
+      const d = S.coalitionDeals[r.partner];
+      d.ledger = (d.ledger || []).filter(e => e.kind !== 'broken');
+      if (second) S.coalitionDeals[second].satisfaction = 80;
+      const clean = v21KeepTarget(S, r.lead);
+      d.ledger.push({ kind:'broken', turn:S.turn });
+      const broken = v21KeepTarget(S, r.lead);
+      return { ran:true, none:none, one:one && one.pid, worse:worse && worse.pid,
+        second:second, clean:clean && clean.how, broken:broken && broken.how,
+        contentIsLeftAlone: none === null,
+        picksTheUnhappiest: !!(one && one.pid === r.partner) &&
+          (!second || !!(worse && worse.pid === second)),
+        talksWhenTheLedgerIsClean: !!(clean && clean.how === 'council'),
+        reopensWhenItIsNot: !!(broken && broken.how === 'reopen') };
+    })();
+
+    /* (e) R2: THE FLOOR NEVER DRAWS IT. */
+    R.floorShut = (() => {
+      /* CONSTRUCTED, NOT HUNTED. A first version drove `instinct` looking for
+         an engine-led coalition carrying an agreement and did not find one
+         inside sixty sessions, so the leg returned null and asserted nothing
+         about the floor at all. The board is built here. */
+      fresh(4242, 'instinct');
+      for (let t = 0; t < 12; t++) step();
+      const card = V16_AI_DECK.filter(c => c.id === 'keep')[0];
+      const lead = PARTIES.filter(q => q.id !== playParty(S) && !S.banned[q.id])[0].id;
+      const partner = PARTIES.filter(q => q.id !== lead && !S.banned[q.id])[0].id;
+      S.ruling = lead; S.coalition = [lead, partner];
+      S.coalitionDeals = S.coalitionDeals || {};
+      S.coalitionDeals[partner] = S.coalitionDeals[partner] ||
+        { satisfaction:20, councils:0, portfolios:0 };
+      S.coalitionDeals[partner].satisfaction = 20;
+      S.purse = S.purse || {}; S.purse[lead] = 400;
+      let can = null, thinks = null;
+      try { can = card.can(S, lead); thinks = v19Thinks(S); } catch (e) { can = 'threw'; }
+      /* and the same board ABOVE the floor opens it, or "shut" is a claim
+         about a board no level could act on */
+      S.aiLevel = 'shrewd';
+      let canUp = null;
+      try { canUp = card.can(S, lead); } catch (e) { canUp = 'threw'; }
+      return { thinks:thinks, can:can, canUp:canUp, shut: can === false && canUp === true };
+    })();
+
+    /* (f) DRIVEN: IT FIRES, IN BOTH SHAPES, AND THE ROOM HOLDS BETTER. */
+    R.play = (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'keep')[0];
+      const base = card.run;
+      const out = { runs:0, council:0, reopen:0, lifted:0 };
+      card.run = function (st, pid) {
+        const t = v21KeepTarget(st, pid);
+        const d = t ? (st.coalitionDeals || {})[t.pid] : null;
+        const b0 = d ? d.satisfaction : null;
+        const said = base.call(this, st, pid);
+        if (said) {
+          out.runs++;
+          if (t) out[t.how]++;
+          if (d && b0 !== null && d.satisfaction > b0) out.lifted++;
+        }
+        return said;
+      };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+          fresh(sd);
+          for (let t = 0; t < 120; t++) if (!step()) break;
+        });
+      } finally { card.run = base; runQueue = rq; }
+      return out;
+    })();
+    /* EVERY RUN LIFTS THE PARTNER IT WAS CALLED FOR, council and reopening
+       alike -- a first version compared the lift count with the COUNCILS and
+       read 11 against 6, because `v21ReopenCore` raises cohesion too. */
+    R.fires = R.play.runs > 4 && R.play.council > 0 && R.play.reopen > 0 &&
+      R.play.lifted === R.play.runs;
+    R.bar = V21_KEEP_BAR;
+    return R;
+  });
+
+  const keepOk =
+    keep.actor.ran && keep.actor.playerStillRefused && keep.actor.defaultWorks &&
+    keep.actor.leadNotRefusedOnTheChair && keep.actor.otherStillRefused &&
+    keep.council.ran && keep.council.ok === true && keep.council.lifts &&
+    keep.council.oneBody &&
+    keep.pair.ran && keep.pair.playerLedgerUntouched && keep.pair.theirLedgerEases &&
+    keep.pair.onThePlayerItMovesTheActor &&
+    keep.pick.ran && keep.pick.contentIsLeftAlone && keep.pick.picksTheUnhappiest &&
+    keep.pick.talksWhenTheLedgerIsClean && keep.pick.reopensWhenItIsNot &&
+    keep.floorShut && keep.floorShut.shut === true && keep.fires;
+  say(keepOk, 'a government that is not yours keeps its own coalition',
+    `AN ENGINE LEADS THE GOVERNMENT IN 93.8% OF THE SESSIONS A PLAYER WATCHES, and that coalition could only ` +
+    `decay: measured over 1,440 driven sessions, 559 of them had an engine government sitting with a partner ` +
+    `under 45 cohesion and no instrument at all, and 97 partners walked out. The player has five buttons for ` +
+    `exactly this · THE REOPENING WAS A BUTTON, NOT A MECHANISM: ${'`'}v17CanRenegotiate${'`'} refused on ` +
+    `${'`'}!leads(st)${'`'}, which is "does the PLAYER head the government", so the agreement could be reopened ` +
+    `on 178 of 178 player partner-sessions and 0 of 1,969 engine ones -- ${'`'}holdsDept${'`'}'s confusion in ` +
+    `another surface. It names an actor now, and the default is unchanged to the letter, since ` +
+    `${'`'}leads(st)${'`'} IS ${'`'}playParty(st) === st.ruling${'`'}: asked with no actor about a government ` +
+    `the player does not lead it still refuses (${keep.actor.playerStillRefused}), asked about the party that ` +
+    `DOES lead it the chair is no longer the reason (${keep.actor.leadNotRefusedOnTheChair}), and asked about a ` +
+    `party that leads nothing it refuses on the chair as before (${keep.actor.otherStillRefused}). AND THE ` +
+    `DEFAULT HAS TO WORK RATHER THAN ONLY REFUSE: put at the head of the same room the player's own reading ` +
+    `comes back open (${keep.actor.defaultWorks}) -- every other reading here is a refusal, so a build whose ` +
+    `default is broken and refuses EVERYBODY passed all three of them · AND THE ` +
+    `COUNCIL HAS A BODY WITH NO CHAIR IN IT: eight statements inline in the player's handler became ` +
+    `${'`'}v21CouncilCore${'`'}, which lifts cohesion by ${keep.council.core} ` +
+    `(${keep.council.lifts}) -- and a real click from the chair that has the button produces the same number ` +
+    `off the same body (${keep.council.oneBody}), or two copies would drift the way S21h found them drifting · ` +
+    `AND THE STANDING IT MOVES BELONGS TO THE RIGHT PAIR, which is S21k's finding here: two engines holding a ` +
+    `council leave the player's own ledger where it was (${keep.pair.relBefore} to ${keep.pair.relAfter}, ` +
+    `${keep.pair.playerLedgerUntouched}) and ease what they hold against each other (${keep.pair.ledgerBefore} ` +
+    `to ${keep.pair.ledgerAfter}), while a council held WITH the player moves the ACTOR's entry rather than the ` +
+    `player's standing with themselves (${keep.pair.onThePlayerItMovesTheActor}) · IT CALLS IN THE ONE ABOUT TO ` +
+    `LEAVE: a room of contented partners is left alone (${keep.pick.contentIsLeftAlone}), the unhappiest is the ` +
+    `one picked (${keep.pick.picksTheUnhappiest}), and the bar of ${keep.bar} is the measured quartile -- ` +
+    `cohesion under an engine runs p10 35.0, p25 43.1, p50 51.2, p75 75.7 · AND WHEN THE AGREEMENT ITSELF IS ` +
+    `WHAT IS WRONG IT REOPENS RATHER THAN TALKS (${keep.pick.clean} on a clean ledger, ${keep.pick.broken} with ` +
+    `a broken promise on it) -- ONE CARD AND NOT TWO, which is S21k's lesson: a verb that fires only when a ` +
+    `second rare precondition also holds fires never · R2: on one constructed board the floor cannot draw it ` +
+    `and a thinking level can (${keep.floorShut && keep.floorShut.can} against ` +
+    `${keep.floorShut && keep.floorShut.canUp}, ${keep.floorShut && keep.floorShut.shut}) -- both, or "shut" is ` +
+    `a claim about a board no level could act on · and ` +
+    `driven over 720 sessions it fires ${keep.play.runs} times in both shapes (${keep.play.council} councils, ` +
+    `${keep.play.reopen} reopenings) and every one of them lifts the partner it was called for ` +
+    `(${keep.play.lifted}/${keep.play.runs}). Measured across twelve seeds either side, partners walking out ` +
+    `go 97 to 73 and sessions with a partner under 45 go 559 to 482`);
+
+  /* ================================================================
      S21m — THE PARTY IN OFFICE CAN AFFORD TO GOVERN
      ================================================================
      `govern` appeared in three of the thirteen `post:` arrays, so a
@@ -9349,7 +9649,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     };
     /* the three the game shipped with, and nothing else, at the floor */
     R.floorHeld = R.table.floorDeck.join(',') === 'article,campaign,order';
-    R.widened = R.table.thinkingOnly.join(',') === 'floor,organise';
+    /* S21n adds `keep` to the same second list, and it is listed there rather
+       than in `post` so the FLOOR's table stays exactly the three the game
+       shipped with -- belt and braces with the `v19Thinks` gate on its `can`. */
+    R.widened = R.table.thinkingOnly.join(',') === 'floor,keep,organise';
     /* and `court` is what the second mood has and the first does not */
     R.courtIsTheDifference =
       R.table.exposedDeck.indexOf('court') >= 0 &&
@@ -10576,10 +10879,30 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         () => { S.motion = null; });
       const wasConf = S.confidence;
       move('supply', () => { S.confidence = pid; }, () => { S.confidence = wasConf; });
+      /* S21n's tenth: A COALITION THAT IS STILL THERE. Read only for the party
+         at the head of the government, and read as a DIFFERENCE between a room
+         that is holding and one about to walk, because both readings carry
+         everything else this function sums -- asking for a positive against
+         nought would be reading the rest of the state and calling it this. */
+      const wasRuling = S.ruling, wasCo = (S.coalition || []).slice();
+      const wasDeals = S.coalitionDeals ? JSON.parse(JSON.stringify(S.coalitionDeals)) : {};
+      const mate = PARTIES.filter(q => q.id !== pid && q.id !== playParty(S) && !S.banned[q.id])[0].id;
+      const room = (sat) => {
+        S.ruling = pid; S.coalition = [pid, mate];
+        S.coalitionDeals = S.coalitionDeals || {};
+        S.coalitionDeals[mate] = { satisfaction:sat, councils:0, portfolios:0 };
+      };
+      move('roomHolding', () => room(85), () => {});
+      move('roomWalking', () => room(15), () => {});
+      S.ruling = wasRuling; S.coalition = wasCo; S.coalitionDeals = wasDeals;
       return { out:out, pol:pol,
         /* every kind moves it, and the two signed ones are signed */
         allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter', 'order', 'motion', 'supply']
           .every(k => out[k] !== undefined && Math.abs(out[k]) > 1e-9),
+        /* and the tenth: a room that is holding is worth more to the party at
+           the head of it than a room about to walk out */
+        roomCounts: out.roomHolding !== undefined && out.roomWalking !== undefined &&
+          out.roomHolding > out.roomWalking + 1e-9,
         /* and the motion is read as THIS party's: somebody else's is nought */
         motionIsMine: out.motion > 0 && out.motionTheirs === 0,
         billSigned: out.billFor > 0 && out.billAgainst < 0,
@@ -10789,11 +11112,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        reads .44 -- because two new cards arriving with no term of their own
        would have taken this bar to four, which is the assertion giving up.
        A SECOND FLAT CARD REDDENS. */
-    seen.cards.cards === 13 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
-    seen.terms.allMove === true && seen.terms.billSigned === true && seen.terms.lineSigned === true &&
+    seen.cards.cards === 14 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
+    seen.terms.allMove === true && seen.terms.roomCounts === true &&
+    seen.terms.billSigned === true && seen.terms.lineSigned === true &&
     seen.terms.motionIsMine === true &&
     seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
-    seen.cost.deck === 13 && seen.cost.priced === 13 &&
+    seen.cost.deck === 14 && seen.cost.priced === 14 &&
     seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
     seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
     seen.cost.s17 === true &&
@@ -10831,7 +11155,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `write · A THING IN FLIGHT IS WORTH THE PRICE OF THE CARD THAT PRODUCES IT, times how good this instance ` +
     `is -- ONE constant, taken from the cards that already scored rather than by eye: their median gain is 0.75, ` +
     `the median price across the six kinds is 28 and the median instance is .90, so V21_FLIGHT is ` +
-    `${seen.cost.flight} · AND EACH OF THE NINE TERMS ANSWERS FOR ITSELF (${seen.terms.allMove}), because the ` +
+    `${seen.cost.flight} · AND EACH OF THE TEN TERMS ANSWERS FOR ITSELF (${seen.terms.allMove}), the tenth ` +
+    `being S21n's -- a coalition that is still there, worth more to the party at the head of it holding than ` +
+    `walking (${seen.terms.roomCounts}), read as a difference because both readings carry everything else this ` +
+    `function sums -- because the ` +
     `flatness reading above says the objective can tell instances apart and NOT which term did it -- the poison ` +
     `run showed why that matters: with the bill term deleted \`bill\` still came back non-flat, since the purse ` +
     `term is \`min(20, purse/100) * 1.2\` and a party over 2,000 has it CLAMPED, so a card escapes flatness on ` +

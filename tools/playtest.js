@@ -460,6 +460,14 @@ async function run() {
     fs.mkdirSync(path.join(__dirname, 'fixtures'), { recursive: true });
     fs.writeFileSync(path.join(__dirname, 'fixtures', 'synthetic-turn2.v5.json'), blob);
   }
+  /* OUTLAST THE AUTOSAVE DEBOUNCE BEFORE PLANTING A FIXTURE. `UI.saveTimer`
+     schedules `saveAutosave` 160ms after every render (300ms after a
+     preference), so a save queued before this write lands AFTER it and puts
+     the live campaign back over the fixture -- and the reload below then
+     resumes the wrong thing. Diagnosed from the sibling step's failure, where
+     `S.pol` came back holding a FRESH scenario's levels with `polV2` already
+     stamped, which is not the fixture in any reading. */
+  await page.waitForTimeout(400);
   await page.evaluate(b => {
     localStorage.setItem('parliamentVale.autosave.v5', '{"corrupt":');
     localStorage.setItem('parliamentVale.autosave.v4', b);
@@ -486,6 +494,10 @@ async function run() {
     const old = JSON.parse(blob);
     delete old.polV2;
     old.pol = { universalHealthcare: 2, corporateCharters: 1, balancedBudgetRule: 1, incomeTax: 3, aRepealedMeasure: 2 };
+    /* the same debounce, and this is the step it was caught on: 2 runs in 6
+       reported the migration as never having happened because the blob written
+       here had been replaced by the live campaign's own autosave */
+    await page.waitForTimeout(400);
     await page.evaluate(b => {
       localStorage.setItem('parliamentVale.autosave.v5', b);
       localStorage.removeItem('parliamentVale.autosave.v4');
@@ -798,6 +810,11 @@ async function run() {
          only one article may be pending -- Math.max of an empty list is
          -Infinity and would take the turn counter with it. */
       const dues = list().map(p => p.due);
+      /* PIN THE DICE. `v11ConTick` rolls a verdict for each pending article and
+         this step inherits a campaign whose seed is minted from `Date.now()`,
+         so `resolved` and `docOrFailed` were a die: the step failed once in a
+         batch of seven and passed the other six on the identical build. */
+      S.rngState = 20260903;
       if (dues.length) { S.turn = Math.max.apply(null, dues); v11ConTick(S); }
       out.resolved = dues.length > 0 && list().length === 0;
       out.docOrFailed = ids.length > 0 && ids.every(id => v11Adopted(S, id) || !!S.v11.con.failed[id]);
@@ -840,6 +857,15 @@ async function run() {
       S.ruling = me; S.coalition = [me];
       ['pres', 'vpres', 'chan', 'vchan'].forEach(d => S.exec[d] = me);
       S.capital = 300;
+      /* AND THE REGISTER STARTS EMPTY. This step clears `S.v10.orders` on the
+         way OUT and assumed an empty book on the way IN, which was true while
+         only the player could sign one. S21's engines sign orders, so the
+         campaign this step inherits can already carry the very order it is
+         about to issue -- and then `v10IssueOrder` no-ops, the target does not
+         move, `bent` is false, and the revoke takes away a contribution `t0`
+         already included, so `back` is false too. All three symptoms at once,
+         2 runs in 8, and none of them in the game. */
+      if (S.v10) S.v10.orders = {};
       UI.tab = 'exec'; render();
       const panel = [...document.querySelectorAll('.panel h2')].some(h => /Order Book/.test(h.textContent));
       const buttons = document.querySelectorAll('[data-order]').length;
@@ -859,7 +885,8 @@ async function run() {
       return { panel, buttons, inForce, bent, revokeBtn, back };
     });
     step('order-book', ord.panel && ord.buttons > 20 && ord.inForce && ord.bent && ord.revokeBtn && ord.back,
-      `panel renders with ${ord.buttons} sign buttons; issuing bends the target exactly: ${ord.bent}; ` +
+      `panel renders with ${ord.buttons} sign buttons; one order stands after issuing: ${ord.inForce}; ` +
+      `issuing bends the target exactly: ${ord.bent}; ` +
       `a revoke control appears: ${ord.revokeBtn}; revoking puts it back: ${ord.back}`);
   }
 

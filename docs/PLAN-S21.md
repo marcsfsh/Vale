@@ -1074,7 +1074,7 @@ And the second mood's difference is `court` rather than a platform move.
 `g = govPos(st)`, which for the RULING party is its own position -- so the card
 would have moved nothing, which is the decoration this file deletes.
 
-### S21n - The government that is not yours keeps its own coalition
+### S21n - The government that is not yours keeps its own coalition  ·  SHIPPED
 
 Somebody else governs in about 98% of the sessions a player watches, and that
 government's coalition can only decay. No engine has ever held a council, traded
@@ -1082,6 +1082,20 @@ a department or reopened an agreement. The player has all three buttons.
 
 Channel: `d.satisfaction`, which since S21d has four live readers and needs no
 new one.
+
+**AS SHIPPED, AND THE REOPENING WAS NOT MISSING -- IT WAS REFUSED.** This
+section reads as though an engine government simply had no code for these three
+acts. Two of them it had: S21h put the office trade through `v21OfficeCore` and
+the reopening through `v21ReopenCore`, both chairless. What stopped the
+reopening was its PREDICATE -- `v17CanRenegotiate` refuses on `!leads(st)`,
+which asks whether the PLAYER heads the government, so it was open on 178 of 178
+player partner-sessions and 0 of 1,969 engine ones. The council was the only one
+genuinely inline. So the slice is one core, one predicate given an actor, and
+one card, rather than three new mechanisms.
+
+Measured either side: an engine leads 93.8% of sessions (not 98%), 559 of 1,440
+had an engine government with a partner under 45 cohesion and nothing to do
+about it, and 97 partners walked out; after, 482 and 73.
 
 ### S21o - An engine government can descend
 

@@ -470,6 +470,23 @@ before touching the file.
   had, three legs earlier, called `fresh` and driven forty more sessions; it
   compared against whoever governed at the END of the arm and passed for two
   slices because the two happened to be the same party.
+- **A CAPABILITY CAN BE PRESENT, CHAIRLESS AND STILL UNREACHABLE, BECAUSE ITS
+  PREDICATE ASKS ABOUT THE PLAYER.** S21n's plan read as though an engine
+  government had no code for reopening a coalition agreement; it had the whole
+  body, extracted chairless by S21h. What stopped it was `v17CanRenegotiate`
+  refusing on `!leads(st)` — "does the PLAYER head the government" — so the
+  reopening was open on 178 of 178 player partner-sessions and 0 of 1,969
+  engine ones. Before writing a mechanism an engine "does not have", read the
+  PREDICATE in front of the body it already has. And when you widen one, the
+  default has to be pinned as well as the new case: `leads(st)` is exactly
+  `playParty(st) === st.ruling`, which is what `st.ruling !== (actor ||
+  playParty(st))` says with the actor left out.
+- **A LEG MADE ONLY OF REFUSALS IS PASSED BY A BUILD THAT REFUSES EVERYBODY.**
+  Three legs asked that the reopening still be refused for the player, refused
+  for a party that leads nothing, and not refused on the chair for the party
+  that leads — and the poison that BREAKS the actor's default, refusing every
+  caller, came back green on all three. When you widen a gate, one leg has to
+  be the case that must come back OPEN.
 - **A PARTY THAT CANNOT AFFORD ITS DECK LOOKS EXACTLY LIKE A PARTY WITH NO
   DECK, and S21m's plan spent its whole design on the wrong one.** `govern` was
   in three of thirteen `post:` arrays and a government's open set was 1.25 cards
@@ -527,10 +544,10 @@ variable at all. Those, and the DOM slots, are guarded by playtest steps —
 Run `node checks/run.js` before every commit. Run the harness that covers what
 you touched; a SKIP is never a PASS.
 
-- `checks/run.js` — 11 static checks, <5s.
+- `checks/run.js` — 12 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **213 content assertions**, the largest harness here: the
+- `tools/roads.js` — **214 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
