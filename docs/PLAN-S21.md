@@ -1146,7 +1146,7 @@ button since S17q and read by NOTHING -- which is what now makes a demand
 answered with a bill wait for the bill, because the instrument the answer has
 to use decides the deadline.
 
-### S21q - Put a price on the benches
+### S21q - Put a price on the benches — SHIPPED
 
 A party writes offering to take its members through the aye lobby on one bill if
 you drop your opposition to another. Accept and its line changes on the card that
@@ -1154,6 +1154,20 @@ session and the forecast moves before the division.
 
 Channel: `v17FloorCore` to `b.lines[pid]` to `partyBillSupport` at 16/-18. The
 paper machinery is complete and extensible.
+
+AS SHIPPED, with one correction that would otherwise have been a card that never
+fired. Whether a party WANTS a bill cannot be asked of `v21Stance`, its authored
+`wants` table: that table names the statute on 20.9% of (party, bill) readings,
+and a party has one bill it wants and one it does not on NINETEEN party-sessions
+in 10,080. `divisionOf` hinges every party's benches on a logistic centred on
+fifty of `partyBillSupport`, which is the question the division actually asks --
+and on that reading 30.7% of party-sessions have one of each and 12.66% of party
+PAIRS have a crossed pair between them.
+
+And the objective needed a term. `v19Flight` reads `b.lines[pid]` for the party
+it is scoring and nothing about the lines anybody else declared, so the benches
+a trade BUYS were invisible while the ones it sells were not: without it a trade
+is a pure loss to both parties and neither would ever make one.
 
 ### S21r - An engine fights for the bill it laid, and the House answers yours
 

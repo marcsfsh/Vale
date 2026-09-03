@@ -50,9 +50,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped sixteen slices: S21a–p.** The original twelve are complete;
-S21m through S21p are the first four of the owner's eight-behaviour extension,
-and S21q–S21t remain.
+**S21 has shipped seventeen slices: S21a–q.** The original twelve are
+complete; S21m through S21q are the first five of the owner's eight-behaviour
+extension, and S21r–S21t remain.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -1048,7 +1048,61 @@ and S21q–S21t remain.
   off the pressure the liability term is read from, so `talks` beats the
   baseline on every board and the baseline can never win.
 
-**WHAT IS OPEN:** the owner's extension S21q–S21t, in the order `PLAN-S21.md`
+- **S21q — a party can put a price on its own benches.** The owner asked for
+  a paper offering to take a party's members through the aye lobby on one bill
+  in exchange for dropping opposition to another. Nothing in the game sold a
+  bench. Measured over 1,440 driven sessions: two or more bills on the paper on
+  **1,046** of them (72.6%), two parties and two bills where each would vote
+  for what the other is against on **3,828 of 30,240 party pairs (12.66%)** —
+  with the player one of the two on 1,300 — **44.1%** of bills inside their own
+  stage's noise of their own bar, and one party's line worth **0.66 / 2.1 /
+  6.0** Assembly points (p10/p50/p90) against a noise of 6.5.
+  **AND THE PLAN'S OWN CHANNEL WOULD HAVE BEEN A CARD THAT NEVER FIRED.** Asked
+  on `v21Stance` — a party's authored `wants` table — a party has one bill it
+  wants and one it does not on **nineteen** party-sessions in 10,080, because
+  that table names the statute on 20.9% of readings. `divisionOf` hinges every
+  party's benches on a logistic centred on **fifty** of `partyBillSupport`, so
+  which lobby a party leans to is a question the game already answers, and
+  30.7% of party-sessions have one of each.
+  `v21TradeFind` is the crossed pair, `v21TradeCore` writes both lines through
+  `v17FloorCore` — the one body that writes a line — and records the trade on
+  both bills so the House can read afterwards what was sold. The counterparty
+  and the taker's own answer both go through `v19Try`/`v19Standing`, because
+  two slices of this program had already shipped a rule of thumb in front of a
+  scoring function. **And the objective gains a term without which a trade is a
+  pure loss to BOTH parties**: `v19Flight` reads `b.lines[pid]` for the party
+  it is scoring and nothing about anybody else's lines, so the benches you buy
+  were invisible while the ones you sell were not. It reads the division's own
+  terms — which lobby this party leans to, and the bill's margin over its own
+  stage's bar divided by half its own stage's noise.
+  The player is asked on a paper of its **own** type (S16e's rule) open to any
+  chair, with two answers and no third. Driven over 1,440 sessions the card
+  fires 29 times — 7 offers to the player, all seven reaching the inbox where a
+  player would find them, and 22 struck between engines across thirteen
+  distinct pairs, all six engine parties trading.
+  **AND SEVEN OF THIRTY POISONS CAME BACK GREEN, OF WHICH FIVE WERE THE PROBE.**
+  Four filters in the picker were invisible to a leg that called
+  `v21TradeWould` itself and asked only that the picker returned somebody, and
+  a fifth switched the card's `addInbox` off while the leg counted the picker's
+  answer rather than the inbox. Two of the four were additionally judged
+  against a neighbouring arm that never mentions the mechanism, which is
+  meaningless in both directions; and the measurement taken to size the new
+  leg's bars was itself wrong in the probe's favour, asking the refusal
+  question of every counterparty *including the player*, whom the picker never
+  asks — 13.6% against a true 6.2%. The remaining three were lines that should
+  not have been written and are deleted: a `from === to` refusal and a
+  `bills.length < 2` early-out that the crossed test makes impossible, and a
+  skip of the objective's term for bills past the floor, which cancels because
+  `v19Standing` is only ever read as a difference.
+  **AND IT REDDENED A NEIGHBOURING ARM FOR A RESHUFFLE, TWICE.** S21p's driven
+  gate asked for two distinct answers out of fourteen observations and got one;
+  the `easy` tier's street leg had three bars sitting within one standard error
+  of their own readings, one of them a count set at exactly the count observed
+  (four of twelve, which went to three). This slice touches no term in either
+  mechanism. Both gates are re-set to what the mechanism claims rather than to
+  what the dice produced, with the two builds' numbers in the arms' own words.
+
+**WHAT IS OPEN:** the owner's extension S21r–S21t, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
 was never written, and building it is a slice rather than a paragraph, so it is
 recorded here as its own piece of work rather than quietly dropped. The
