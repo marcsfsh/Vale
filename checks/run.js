@@ -200,6 +200,49 @@ if (process.argv.includes('--sites')) {
     (stale.length ? `: ${stale.join('; ')}` : ''));
 }
 
+/* ---- 4c. a wrapper that eats its base's arguments ---- */
+// S21s. When a function gains a parameter, every LATER-CHUNK body of the same
+// name has to gain it too, because that later body is the one the whole game
+// calls. Twice in this file's history one did not, and both were invisible:
+//
+//   `sponsorBill` gained `sponsorId` and `quiet` in S17a -- whose own comment
+//   says it fixed exactly the mis-attribution those arguments prevent -- and
+//   the S9 clause wrapper went on declaring six parameters and passing six, so
+//   every sponsor a caller named was discarded and the bill re-attributed by
+//   the `owner` derivation instead. Asked for a bill sponsored by the RSF, the
+//   game returned one sponsored by the SD.
+//
+//   `ballot` takes `(st, noise)` and ends with an eight per cent
+//   election-night swing behind that flag. The S16 pact wrapper declares
+//   `(st)`, so `runElection`'s `ballot(st, true)` ran without any swing at all
+//   and every election result was exactly the projection.
+//
+// The rule is arity alone, and it is deliberately blunt: a body that
+// legitimately ignores a trailing argument is indistinguishable from one that
+// has forgotten it, and the cost of writing the parameter out and forwarding
+// it is one identifier. Names with a single body are never in question, so the
+// check only ever speaks about a name this file rebinds.
+{
+  const arities = {}, bodies = [];
+  const wlines = src.split('\n');
+  const arity = (params) => params.trim() ? params.split(',').length : 0;
+  for (let i = 0; i < wlines.length; i++) {
+    let m = wlines[i].match(/^function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)/);
+    if (!m) m = wlines[i].match(/^([A-Za-z_$][\w$]*)\s*=\s*function\s*\(([^)]*)\)/);
+    if (!m) continue;
+    const n = arity(m[2]);
+    bodies.push({ name: m[1], arity: n, line: i + 1 });
+    if (arities[m[1]] === undefined || n > arities[m[1]]) arities[m[1]] = n;
+  }
+  const narrow = bodies.filter(b => b.arity < arities[b.name])
+    .map(b => `${b.name} line ${b.line} declares ${b.arity} of ${arities[b.name]}`);
+  report('wrapper-arity', narrow.length === 0,
+    narrow.length
+      ? `${narrow.length} body/bodies declare fewer parameters than the widest of their own name: ${narrow.join('; ')}`
+      : `${bodies.length} top-level function bodies over ${Object.keys(arities).length} names, ` +
+        `none declaring fewer parameters than the widest body of its own name`);
+}
+
 /* ---- 4b. one door out of a coalition ---- */
 // S21f. There were five ways for a party to leave a coalition and they
 // disagreed about what leaving means. Measured over 180 driven sessions before
