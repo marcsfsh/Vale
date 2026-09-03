@@ -1029,7 +1029,7 @@ cannot do what you can is not an opponent.
 Every item below names the existing reader its effect lands in, because a
 behaviour whose effect nothing consumes is the decoration this file deletes.
 
-### S21m - The party in office gets a deck and a second mood
+### S21m - The party in office gets a deck and a second mood  ·  SHIPPED
 
 `govern` appears in three of the eleven `post:` arrays, so a government's whole
 output is order, campaign and article, on every board and every seed. It never
@@ -1049,6 +1049,30 @@ which is what S17q's failure was about.
 Channels: `st.machine` to `machineOf` to `supportTargets`; `b.lines[actor]` to
 `partyBillSupport` at 16/-18; `st.blocs` to `supportTargets`, where `court` has
 the right sign only in this chair.
+
+**AS SHIPPED, AND THE DECK WAS THE SMALLER HALF OF THE DEFECT.** Re-measured on
+the current build the figures are worse than this section's: the open set is
+1.25 cards and EMPTY on 45.6% of government-sessions, not 1.56 and 24.1%. But
+opening `court`, `organise` and `floor` moved it only to 49.4%, because
+`organise` -- whose only condition is having the money -- was refused for want of
+it **778 times in 998**. At `V17_BURN.govern = .70` a government's purse runs
+p50 20 against a back-bencher's 66 while the deck costs 22 to 42: the party in
+office was not short of options, it was broke. The slice therefore ships a
+second thing this plan did not name -- **no party spends itself below the price
+of acting**, the reserve being the dearest card its own posture can draw -- and
+that is what takes the government to 26.5% while improving every other posture
+too. A rate change was measured and rejected: `.46` reaches 11.4% by cutting the
+funding the vote model reads, which is a difficulty change wearing an AI fix's
+clothes.
+
+The support-gap bar is **-4 and not -2**: re-measured, -2 occupies 46.1% of
+government sessions rather than this section's 36.4%, and a mood that occurs on
+half of all sessions is the default. -4 is the gap's own quartile at 24.5%.
+
+And the second mood's difference is `court` rather than a platform move.
+`platform.run` reads `toward = v16Posture(...) === 'moderate' ? g : h` with
+`g = govPos(st)`, which for the RULING party is its own position -- so the card
+would have moved nothing, which is the decoration this file deletes.
 
 ### S21n - The government that is not yours keeps its own coalition
 

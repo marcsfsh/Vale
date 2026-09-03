@@ -50,8 +50,8 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped twelve slices: S21a–l**, which is the whole of the original
-twelve. What remains is the owner's eight-behaviour extension, S21m–S21t.
+**S21 has shipped thirteen slices: S21a–m.** The original twelve are complete;
+S21m opens the owner's eight-behaviour extension, and S21n–S21t remain.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -820,7 +820,80 @@ twelve. What remains is the owner's eight-behaviour extension, S21m–S21t.
   what the note on `shrewd` promises and what that rung of the setting is FOR.
   `rank.purposeful.gain === 0` stands rather than being retired.
 
-**WHAT IS OPEN:** the owner's extension S21m–S21t, in the order `PLAN-S21.md`
+- **S21m — the party in office can afford to govern.** `govern` appeared in
+  three of the thirteen `post:` arrays, so a government's whole output was
+  order, campaign and article on every board and every seed: measured over 998
+  driven government-sessions its open set was **1.25 cards, empty on 45.6%** of
+  them, against 4.83 and 7.0% for a party on the back benches. The party in
+  office sat out more sessions than it acted in.
+
+  **And the card list was the smaller half of it, which the plan did not know.**
+  `organise`, whose only condition is having the money, was refused for want of
+  it **778 times in 998** — at `V17_BURN.govern = .70` a government's purse runs
+  p50 **20** against the back bench's **66**, while the deck costs 22 to 42. It
+  was not short of options, it was broke, and opening three more cards to it
+  moved the empty rate only 52.3% → 49.4%.
+
+  **A rate is the wrong instrument, and the experiment says so.** Dropping the
+  burn to .46 takes the empty rate to 11.4% and the purse to a p50 of 81 —
+  richer than any party on the board — by cutting the funding the vote model
+  reads, which is a difficulty change to every government in the game dressed
+  up as an AI fix. What ships instead is that **no party spends itself below the
+  price of acting**, with the reserve derived from the deck and from the party's
+  own posture: the dearest card that posture can draw, so having acted it can
+  still act. The first build kept the deck's *median* of 34 and reached only
+  40.8%, because a party holding 34 pays 22 for an order and is under the
+  reserve again.
+
+  It is a rule about spending rather than about governments, and **every posture
+  improves**: back bench 10.4% → 4.6%, partner 28.2% → 12.3%, consolidate 39.8%
+  → 18.3%, restive 23.1% → 10.1%, government 45.6% → **26.5%**. It costs almost
+  nothing in rate — the initiative mean goes 100.4 → **102.8** against a budget
+  of 90, inside the seed spread — because a reserve holds a float rather than
+  creating money.
+
+  **The deck is widened above the floor and only there.** `post2` is a second
+  list read only when `v19Thinks`, so a thinking government adds `organise` and
+  `floor` while `instinct` draws exactly the three the game shipped with (R2).
+  Both are played while plainly governing, 17 and 9 over 360 driven sessions.
+
+  **And a government behind in the country is a different government.** The gap
+  between what it holds and what `supportTargets` would give it runs p10 −5.5,
+  p25 −3.9, p50 −1.7, p90 +3.5 — a government is usually a little *ahead* of the
+  country by the time it has governed a while — so the bar is the quartile
+  rather than nought: at −4 it catches 24.5% of government sessions where −2
+  catches 46.1% and −1 catches 59.7%. `court` is the whole of what the mood
+  buys: going out to a bloc is what a government does when the country is behind
+  it and the seats are not. `platform` was the first candidate and was dropped
+  on reading its `run` — `toward` is `govPos(st)` for a party that is not
+  moderating, which for the *ruling* party is its own position, so the card
+  would have moved nothing. And the mood takes S21l's tenure where the office
+  does not, because a threshold sitting at a distribution's own quartile flips
+  on a session's noise.
+
+  **And an arm this slice does not touch was found unpinned.** `a line is worth
+  what its party is` failed at .120 points per point of the chamber against a
+  floor of .15 — and **two runs of one identical build** read .188 and .120,
+  because the `paper` block never seeded its own dice: it runs on whatever the
+  arms before it leave behind and `partyDemandPolicy` rolls. The comment beside
+  that floor quotes .400 from a third vintage. `S.rngState` is set at the top of
+  the block now and the floor is re-derived under the pin at .10, so a further
+  fall is the mechanism rather than the board. The proportionality the arm's
+  title actually claims is scale-free and never moved (1.044x, 1.050x).
+
+  **Three probe defects and two green poisons, all assertion gaps.** The reserve
+  was first read as a PURSE either side of the tick — which pays the party its
+  income before it spends, so both readings rose and both legs passed with the
+  reserve deleted. That leg then drove `S.ruling`, which on its board is the
+  player, whom `partyPurseTick` skips: a spend of nought, still passing. Two
+  legs scaled their subject's own seats by 2.2 to cross the gap bar, where the
+  subject was a small party and it never crossed. Taking `exposed` off the hard
+  list changed nothing because the leg settled its party on `govern`, whose own
+  place on that list carries it. And stopping the filter reading `post2`
+  changed nothing because `organise` and `floor` sit in `exposed`'s own `post`
+  list and the counts spanned both moods.
+
+**WHAT IS OPEN:** the owner's extension S21n–S21t, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
 was never written, and building it is a slice rather than a paragraph, so it is
 recorded here as its own piece of work rather than quietly dropped. The
