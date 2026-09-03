@@ -418,6 +418,25 @@ before touching the file.
   assertion. The same run then answers the other half: a change whose poison
   cannot redden anything is a knob nothing in the game can turn, and three of
   S18d's call sites came back out on that reading.
+- **`document.body.textContent` INCLUDES THE 3.9 MEGABYTES OF `<script>`, so an
+  on-the-page assertion written that way matches its own subject's comment.**
+  S21i's leg asked whether the page said "the SD were further along the same
+  road" and passed with the whole clause deleted, because the phrase was in the
+  code comment explaining the feature. `innerText` fixes that and introduces the
+  opposite error: it reports what is VISIBLE, and S17r folds the long panels by
+  default, so a true sentence inside a shut fold reads as absent and the leg
+  reddens on a working build. Read the EMITTER — `v16AiPanel()` returns a
+  string, which no script source can reach and no fold can hide — which is what
+  the manifesto arm has always done. Both wrong readings were tried in one
+  slice, in that order.
+- **A `>` with no tolerance cannot catch a term that cancels to NOUGHT.** The
+  same slice's `widensTheGap` was `gap1 > gap0`, and the mistake it exists to
+  catch — a flat bonus added to every card instead of multiplying the aim's own
+  weight — adds the same amount to both sides and cancels exactly. The two
+  doubles differed by 1e-16 of floating point and `>` said true, so the poison
+  passed. When the failure mode is "this quantity does not move", the bar has to
+  be a real distance and the real movement has to be measured beside it: .02
+  against a measured .096.
 - **Never set `fill` on a bare `text` selector in a chart's stylesheet.** A CSS
   fill beats an SVG presentation attribute and silently greys out every label
   the chart colours by attribute.

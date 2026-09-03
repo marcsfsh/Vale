@@ -795,6 +795,34 @@ moment it can act again.
 Named casualty: `a party votes its own manifesto`, the largest single block in
 the harness. Re-derived in this slice.
 
+**AS SHIPPED.** `v21AfterBallot` runs AFTER `v17Form`, not before it as this
+plan says, and the `oust` half is the reason: the aim's `target` picks the
+worst-grudged party IN the government, so an aim handed out before the
+formation would point at the OUTGOING one — which is precisely the defect S21b
+fixed and which `v19AdoptGoal` drops on the spot. The cost, stated rather than
+hidden: the night's grudges reach the NEXT formation rather than the one
+concluded the same evening. A grievance that changed the formation it was
+created by would be the count deciding the government twice.
+
+**`v21NewLeader` is a third caller, and the obituary is what the first two left
+out.** Both branches of `leaderChallenge` wrote the swap longhand — read the old
+leader, mint a new one, log it — and `st.figures.obits` exists, so a leader who
+was replaced simply vanished from the record the game keeps of its own people.
+`st.court.size` in the person model, found by needing the body a third time.
+
+**The spite is a SHARE, not a count.** A party of forty losing ten has lost a
+quarter of itself; one of six hundred losing ten has lost a rounding error. The
+first draft read the count and the largest party in the chamber was the injured
+party at every ballot.
+
+**The goal split is what makes a per-session clock possible at all.** `v19Goal`
+looks at the aim AND adopts a new one, and adopting rolls; a tick that called it
+every session for every party would re-phase every campaign in the game.
+`v19GoalObserve` is the observing half and spends no dice, which the assertion
+checks by reading `S.rngState` either side of a tick on a settled board rather
+than by reading the source — the state rides the save, so a tick that rolled
+would be visible there and nowhere else.
+
 ### S21j — Courting is a relationship  ·  1 new
 
 `st.blocLean[pid][bloc]`, written by `court.run` above `instinct`, decayed
@@ -853,6 +881,22 @@ S21l each add their own records to `st.ai[pid].file` and their own rows to the
 Parties card. The coverage arm — every card's `run` produces exactly one record,
 and a record whose verb is not in the deck reddens — grows with the deck. The
 card is finished in S21l.
+
+**CORRECTION, FOUND IN S21i: NONE OF THIS EXISTS.** `v21Emit` was never written.
+A grep of the shipped file finds no `v21Emit` and no `st.ai[pid].file`, S21b
+shipped neither, and no entry in `STATE.md` records the omission — so a surface
+this plan allocated across three slices lost its first instalment silently, and
+would have lost its second here for the same reason. That is the shape of defect
+this programme keeps finding in the game (`st.court.size`, `a.pid`) arriving in
+the programme's own bookkeeping: a promise nobody read back.
+
+S21i does not take it on. This slice already carries four ballot consequences, a
+split goal clock, a record of reached aims and the deletion of a decorative
+goal field, and bolting a whole new surface onto it would make it two slices
+wearing one name. **The dossier is S21l's in full**, first instalment included,
+and it is written down here so the next reader cannot mistake silence for
+completion. What S21i does owe the Parties card it pays: the aims a party has
+reached, and who got to a failed aim first, are both rendered.
 
 ## The owner's extension: eight more new behaviours
 

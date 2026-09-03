@@ -9144,7 +9144,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          chooser. The cost is real and is why the cap exists at all: each
          rehearsal deep-clones a 78KB state. 150 is still bounded, and it is
          the smallest sample that separates the claim from its null. */
-      const CAP = 150;
+      /* S21i RAISED THIS FROM 150 TO 320, for the reason S21b raised it from
+         40: the CONTRAST between the two levels carries the standard error of
+         both means, and at 150 that is about .043 against a gate asking for a
+         gap of .05. S21h read .110 and S21i -- which does not touch the
+         chooser at all -- read .038 on the old one-seed leg, so the arm
+         reddened on noise. At 320 the contrast's error is near .030 and the
+         bar sits below it rather than inside it. */
+      const CAP = 320;
       v19Choose = function (st, pid, open, goal) {
         const pick = base(st, pid, open, goal);
         if (pick && open.length > 1 && !V19_SIMULATING && simRanks.length < CAP) {
@@ -9168,10 +9175,31 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         }
         return pick;
       };
-      try { fresh(20260829, level); drive(60); } finally { v19Choose = base; }
+      /* FOUR SEEDS, POOLED, AND THE STANDARD ERROR REPORTED BESIDE THE MEAN.
+         This drove ONE seed and reached about ninety samples, so a mean rank
+         carried a standard error near .031 and the CONTRAST between the two
+         levels near .044 -- against which the gate asked for a gap of .05,
+         about one error. S21h read .110 and S21i, which does not touch the
+         chooser, read .038: the same claim, and the bar sat inside its own
+         noise both times. Pooling four seeds is what "on the same seed" cost
+         and the CAP still bounds the expensive half, since each sample
+         deep-clones a 78KB state to rehearse every open card. */
+      const SEEDS = [20260829, 4242, 90210, 7];
+      try {
+        for (let si = 0; si < SEEDS.length && simRanks.length < CAP; si++) {
+          fresh(SEEDS[si], level); drive(60);
+        }
+      } finally { v19Choose = base; }
       const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+      const se = a => {
+        if (a.length < 2) return null;
+        const m = mean(a);
+        return Math.sqrt(a.reduce((t, x) => t + (x - m) * (x - m), 0) / (a.length - 1) / a.length);
+      };
       return { goal:goalRanks.length ? +mean(goalRanks).toFixed(3) : null, goalN:goalRanks.length,
-        sim:simRanks.length ? +mean(simRanks).toFixed(3) : null, simN:simRanks.length };
+        goalSE:goalRanks.length > 1 ? +se(goalRanks).toFixed(4) : null,
+        sim:simRanks.length ? +mean(simRanks).toFixed(3) : null, simN:simRanks.length,
+        simSE:simRanks.length > 1 ? +se(simRanks).toFixed(4) : null };
     }
     R.steer = { purposeful:steering('purposeful'), shrewd:steering('shrewd') };
 
@@ -9238,8 +9266,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     think.sim.untouched && think.sim.flagged &&
     think.steer.purposeful.goal !== null && think.steer.purposeful.goal < .42 &&
     think.steer.shrewd.sim !== null && think.steer.purposeful.sim !== null &&
-    think.steer.shrewd.sim < think.steer.purposeful.sim - .05 &&
+    /* THE BAR IS SET FROM THE CONTRAST'S OWN STANDARD ERROR, which the leg
+       now reports beside the mean. Pooled over four seeds at 320 samples a
+       level the error on each mean is .021 and on the CONTRAST .030; the
+       measured gap is .094 on this build and .079 on the one before it, a
+       difference of half an error and therefore nothing. A bar of .05 sat
+       INSIDE that error and reddened this arm on a slice that does not touch
+       the chooser; .03 sits 1.6 errors under the lower of the two readings and
+       still two and a half over the nought a chooser ignoring the rehearsal
+       would give. */
+    think.steer.shrewd.sim < think.steer.purposeful.sim - .03 &&
     think.steer.purposeful.goalN > 20 && think.steer.shrewd.simN > 20 &&
+    think.steer.shrewd.simSE !== null && think.steer.shrewd.simSE < .03 &&
     think.floor.sharp.n > 0 && think.floor.sharp.against === think.floor.sharp.n &&
     think.floor.dumb.n > think.floor.sharp.n &&
     think.floor.dumb.against < think.floor.dumb.n;
@@ -11255,7 +11293,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          sixty sessions -- and the leg stops on the first, because the party
          may leave again and a claim read afterwards would be read off a
          board that has moved. */
-      const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99];
+      /* SIXTEEN SEEDS, NOT EIGHT. This is a FIND-ONE search over a board the
+         republic produces about once in sixty sessions, so eight seeds of
+         forty is an expected count of five -- and S21i, which re-phases the
+         dice at every ballot without touching formation at all, drew NOUGHT
+         from it and reddened this arm. The formation mix either side of that
+         slice is identical (minority 11 of 360 ballots on both), so what the
+         leg measured was which seeds were in the list. Sixteen puts the
+         expectation at ten and the leg still stops on the first find, so a
+         build where the mechanism works pays almost nothing for it. */
+      const SEEDS = [4242, 90210, 7, 31337, 555, 8080, 1234, 99,
+                     2718, 1618, 4001, 60613, 8675309, 31415, 271828, 112358];
       /* AND IT IS THE FORMATION'S OWN PATH THAT IS READ, not whichever route
          happened to mint a supply agreement first. Two OTHER things in this
          slice write one -- the `bargain` card and the notice's own answer --
@@ -11285,7 +11333,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       try {
         for (let si = 0; si < SEEDS.length && !form; si++) {
           fresh(SEEDS[si]);
-          for (let n = 0; n < 40 && !form; n++) { step(); out.sessions = (out.sessions || 0) + 1; }
+          /* AND A HUNDRED SESSIONS A SEED, not forty. The board this leg wants
+             is not merely a minority round -- it is one that seats a supply
+             party which does NOT already have an agreement, and that guard
+             (added in S21g so a poison could not pass on a re-seating) makes
+             the target eight times rarer than the round: over 640 driven
+             sessions the rounds are 16 and the qualifying installs 2. Those 2
+             are IDENTICAL either side of S21i, and the leg still reddened on
+             it, because a first minority formation does not reliably arrive
+             inside a seed's first forty sessions. The window was the sample. */
+          for (let n = 0; n < 100 && !form; n++) { step(); out.sessions = (out.sessions || 0) + 1; }
         }
       } finally { v17Install = bi; }
       if (!form) return out;
@@ -12279,6 +12336,672 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `(${junior.cost.byTheConstant}), half of what surviving a motion of confidence is worth. The ladder had ` +
     `three rungs and no price on any of them`);
 
+  /* ---------- S21i: THE BALLOT HAS CONSEQUENCES ----------
+     A general election moves every seat in the chamber, decides who governs,
+     and wrote NOTHING in any party's memory: the grudge ledger is filled by
+     the player's buttons, by governing, by the coalition and by a motion of
+     confidence, and the one event every party in the republic cares about
+     most left no entry at all. Eight arms: the spite is a SHARE and not a
+     count; the aim a party is handed on losing office is aimed at somebody it
+     can reach; the drift is narrated; the leader change is arithmetic and goes
+     through one body; the clock ticks per SESSION; a reached aim is counted,
+     said and read; a stalled one names who got further; and none of it rolls. */
+  const ballot = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) THE SPITE IS A SHARE, NOT A COUNT. A party of forty losing ten has
+       lost a quarter of itself; one of six hundred losing ten has lost a
+       rounding error, and a probe that read the count could not tell them
+       apart. Two boards differing in exactly that. */
+    R.spite = (() => {
+      const out = {};
+      const run = (smallLoses) => {
+        fresh(4242);
+        const ids = PARTIES.filter(p => !S.banned[p.id]).map(p => p.id);
+        const small = ids[0], big = ids[1], winner = ids[2];
+        const before = {};
+        PARTIES.forEach(p => { before[p.id] = S.seats[p.id] || 0; });
+        /* BOTH BOARDS ARE REAL DEFEATS, AND SHARE AND COUNT DISAGREE ON THEM.
+           This used to lose ten seats on each -- ten of forty against ten of
+           six hundred -- and once the grudge gained a floor of `V21_BEATEN_BY`
+           the second board stopped booking anything at all, which is correct
+           and demonstrates nothing: a leg cannot compare two readings on a
+           board where one of them declines to answer. So the big party sheds
+           SIXTY of six hundred. Both clear the bar (.25 and .10); by SHARE the
+           small party is the injured one and by COUNT the big one is, six times
+           over, and the two orderings point opposite ways. */
+        before[small] = smallLoses ? 40 : (S.seats[small] || 0);
+        before[big] = smallLoses ? (S.seats[big] || 0) : 600;
+        S.seats[small] = smallLoses ? 30 : before[small];
+        S.seats[big] = smallLoses ? before[big] : 540;
+        S.seats[winner] = (S.seats[winner] || 0) + (smallLoses ? 10 : 60);
+        const g0 = { small:v16Grudge(S, small, winner), big:v16Grudge(S, big, winner) };
+        const r = v21AfterBallot(S, before, null, null);
+        return { spite:r && r.spite, small:v16Grudge(S, small, winner) - g0.small,
+          big:v16Grudge(S, big, winner) - g0.big };
+      };
+      out.smallLost = run(true);
+      out.bigLost = run(false);
+      /* the party that lost a QUARTER of itself resents more than the one that
+         lost SIX TIMES as many seats out of six hundred */
+      out.shareNotCount = out.smallLost.small > out.bigLost.big;
+      out.bothMoved = out.smallLost.small > 0 && out.bigLost.big > 0;
+      return out;
+    })();
+
+    /* (b) AND A PARTY PUT OUT OF THE GOVERNMENT IS HANDED THE AIM THAT SAYS
+       SO -- aimed at somebody IN the new government, which is S21b's own
+       finding: an `oust` adopted about a party already in opposition is a goal
+       `v19AdoptGoal` drops on the spot. */
+    R.oust = (() => {
+      fresh(90210);
+      const ids = PARTIES.filter(p => !S.banned[p.id]).map(p => p.id);
+      const wasRuling = ids[0], took = ids[1];
+      S.ruling = took; S.coalition = [took];
+      const before = {};
+      PARTIES.forEach(p => { before[p.id] = S.seats[p.id] || 0; });
+      v16Ai(S)[wasRuling].goal = null;
+      const nL = (S.log || []).length;
+      const r = v21AfterBallot(S, before, wasRuling, null);
+      /* AND IT IS SAID. The leg read the RETURN and not the log, so a build
+         that handed the aim over in silence passed -- and an aim the player is
+         never told about is a party with a plan nobody can see. */
+      const outTxt = (S.log || []).slice(0, Math.max(1, (S.log || []).length - nL))
+        .map(e => e.text).join(' ');
+      const g = (v16Ai(S)[wasRuling] || {}).goal;
+      const k = v19GoalKind('oust');
+      let doneOnAdoption = true;
+      try { doneOnAdoption = g ? k.done(S, wasRuling, g) : true; } catch (e) { }
+      /* AND A PARTY THAT LOST THE TOP JOB BUT STAYED IN THE ROOM GETS
+         NOTHING. Losing the premiership and staying on as a junior partner is
+         not being put out of the government, and an aim to bring down the
+         cabinet you are sitting in is not a thing a party holds. The board is
+         the same one, differing in exactly that fact -- without it the guard
+         reads as covered because the aim IS handed on the board above. */
+      const stayed = (() => {
+        fresh(90210);
+        const ids2 = PARTIES.filter(p => !S.banned[p.id]).map(p => p.id);
+        const wasR = ids2[0], took2 = ids2[1];
+        S.ruling = took2; S.coalition = [took2, wasR];
+        const b6 = {}; PARTIES.forEach(p => { b6[p.id] = S.seats[p.id] || 0; });
+        v16Ai(S)[wasR].goal = null;
+        const r6 = v21AfterBallot(S, b6, wasR, null);
+        const g6 = (v16Ai(S)[wasR] || {}).goal;
+        return { handed: !!(g6 && g6.kind === 'oust'), reported: !!(r6 && r6.ousted) };
+      })();
+      return { handed: !!g && g.kind === 'oust', at:g && g.ref, stayed:stayed,
+        notHandedWhenStillIn: stayed.handed === false && stayed.reported === false,
+        inTheGovernment: !!g && (g.ref === S.ruling || (S.coalition || []).indexOf(g.ref) >= 0),
+        /* and it is NOT already reached the moment it is handed over */
+        doneOnAdoption:doneOnAdoption, reported: !!(r && r.ousted),
+        saidSo: /left office and said what they intended/.test(outTxt) };
+    })();
+
+    /* (b2) AND THE NIGHT IS REPORTED. The spite leg read the RETURN and not
+       the log, so a build that booked the grievance silently passed it -- and
+       a grudge the player is never told about is a card that lies by omission,
+       which is the half of `st.court.size` that shows on the page. */
+    R.said = (() => {
+      fresh(90210);
+      const ids3 = PARTIES.filter(p => !S.banned[p.id]).map(p => p.id);
+      const b7 = {}; PARTIES.forEach(p => { b7[p.id] = S.seats[p.id] || 0; });
+      /* one party down forty and ANOTHER up twenty: `best` is picked with a
+         strict `d > bGain` from a floor of nought, so a board where nobody
+         gains has no winner to resent and the branch never runs -- which is
+         how the first version of this leg measured nothing at all. */
+      b7[ids3[0]] = (S.seats[ids3[0]] || 0) + 40;
+      b7[ids3[1]] = Math.max(0, (S.seats[ids3[1]] || 0) - 20);
+      const n7 = (S.log || []).length;
+      const r7 = v21AfterBallot(S, b7, null, null);
+      const txt = (S.log || []).slice(0, Math.max(1, (S.log || []).length - n7))
+        .map(e => e.text).join(' ');
+      return { spited: !!(r7 && r7.spite),
+        said: /lost more of their benches than anybody/.test(txt),
+        namesBoth: !!(r7 && r7.spite) &&
+          new RegExp(PARTY[r7.spite.by].short).test(txt) &&
+          new RegExp(PARTY[r7.spite.at].short).test(txt) };
+    })();
+
+    /* (c) THE DRIFT IS NARRATED. `driftParties` has walked every party toward
+       the winner every ballot since v4 and printed nothing, so a party could
+       cross the compass over four elections with no trace but a dot moving on
+       a chart nobody was asked to watch. */
+    R.drift = (() => {
+      fresh(7);
+      const before = {}; PARTIES.forEach(p => { before[p.id] = S.seats[p.id] || 0; });
+      const posWas = {};
+      const mover = PARTIES.filter(p => !S.banned[p.id])[0].id;
+      PARTIES.forEach(p => { const q = ppos(S, p.id); posWas[p.id] = { e:q.e, a:q.a }; });
+      /* one party moved a long way and nobody else at all */
+      posWas[mover] = { e:ppos(S, mover).e - .4, a:ppos(S, mover).a };
+      const n0 = (S.log || []).length;
+      const r = v21AfterBallot(S, before, null, posWas);
+      const said = (S.log || []).slice(0, Math.max(1, (S.log || []).length - n0))
+        .map(e => e.text).join(' ');
+      return { named: !!(r && r.drifted && r.drifted.who === mover),
+        said: /read the result and moved/.test(said),
+        direction: /right on the economy/.test(said) };
+    })();
+
+    /* (d) A PARTY BEATEN TWICE RUNNING CHANGES ITS LEADER, and the DECISION is
+       arithmetic: the same board twice gives the same answer, where a roll
+       would re-phase every campaign from the first replacement onward. One
+       body too -- `leaderChallenge` wrote this out longhand in both its
+       branches and this is the third caller. */
+    R.leader = (() => {
+      const run = () => {
+        fresh(31337);
+        const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== S.ruling)[0].id;
+        const before = {}; PARTIES.forEach(p => { before[p.id] = S.seats[p.id] || 0; });
+        before[pid] = (S.seats[pid] || 0) + 20;
+        const was = leaderOf(S, pid).name;
+        const m0 = S.machine[pid] || 0, c0 = (S.chron || []).length;
+        v21AfterBallot(S, before, null, null);
+        const once = (v16Ai(S)[pid] || {}).beaten;
+        const mid = leaderOf(S, pid).name;
+        v21AfterBallot(S, before, null, null);
+        const twice = (v16Ai(S)[pid] || {}).beaten;
+        return { pid:pid, was:was, mid:mid, now:leaderOf(S, pid).name,
+          once:once, twice:twice,
+          /* AND THE SWAP IS IN THE LOG. The first version of this leg read the
+             obituary and not the line, so a `v21NewLeader` that changed the
+             leader silently passed it -- and a change of leader nobody is told
+             about is the defect the whole slice is against. */
+          logged:/was replaced by/.test((S.log || []).slice(0, 6).map(e => e.text).join(' ')),
+          /* AND IT COSTS THE MACHINE AND REACHES THE CHRONICLE. Neither was
+             read: a build that changed the leader and left the party's
+             organisation and the campaign's own record untouched passed every
+             other line in this leg. */
+          machineFell: (S.machine[pid] || 0) < m0,
+          chronicled: (S.chron || []).length > c0,
+          obit:(S.figures.obits || [])[0] || null };
+      };
+      const a = run(), b = run();
+      /* AND A GOOD NIGHT BREAKS THE RUN. "Two in a row" is two knobs -- the
+         count and the reset -- and the leg above only ever drove two defeats
+         back to back, so deleting the `else` that clears the counter changed
+         nothing it measured. Here the party loses, holds its own, and loses
+         again: three ballots, two defeats, and no replacement. */
+      const broken = (() => {
+        fresh(31337);
+        const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== S.ruling)[0].id;
+        const seats0 = S.seats[pid] || 0;
+        const lose = {}, hold = {};
+        PARTIES.forEach(p => { lose[p.id] = S.seats[p.id] || 0; hold[p.id] = S.seats[p.id] || 0; });
+        lose[pid] = seats0 + 40;              /* a defeat: it held forty more */
+        const was = leaderOf(S, pid).name;
+        v21AfterBallot(S, lose, null, null);
+        const afterOne = (v16Ai(S)[pid] || {}).beaten;
+        v21AfterBallot(S, hold, null, null);  /* a night it did not lose */
+        const afterHold = (v16Ai(S)[pid] || {}).beaten;
+        v21AfterBallot(S, lose, null, null);
+        return { afterOne:afterOne, afterHold:afterHold,
+          heldTheLeader: leaderOf(S, pid).name === was };
+      })();
+      /* AND THE OBITUARY LIST IS CAPPED, which nothing in this arm could reach:
+         a leg that drives two defeats produces one obituary and a bound of
+         forty is a knob it cannot turn. Reached by asking for forty-five, which
+         a long campaign does on its own -- leaders are replaced on .337 of
+         ballots and a campaign holds hundreds -- so the bound is what keeps the
+         save from carrying every leader the republic ever had. */
+      const cap = (() => {
+        fresh(31337);
+        const pid = PARTIES.filter(p => !S.banned[p.id])[0].id;
+        for (let i = 0; i < 45; i++) v21NewLeader(S, pid, 44, 'probe');
+        return { n:(S.figures.obits || []).length,
+          newestFirst: (S.figures.obits || []).length > 1 &&
+            (S.figures.obits[0] || {}).name !== (S.figures.obits[1] || {}).name };
+      })();
+      return { first:a, cap:cap, broken:broken,
+        runBroken: broken.afterOne === 1 && broken.afterHold === 0 &&
+          broken.heldTheLeader === true,
+        machineFell: a.machineFell === true, changeChronicled: a.chronicled === true,
+        obitsCapped: cap.n === 40, obitsNewestFirst: cap.newestFirst,
+        swapLogged: a.logged === true,
+        heldAfterOne: a.mid === a.was, changedAfterTwo: a.now !== a.was,
+        counterReset: a.twice === 0,
+        /* THE SAME BOARD TWICE GIVES THE SAME ANSWER */
+        deterministic: a.now === b.now,
+        obitKept: !!a.obit && a.obit.name === a.was,
+        /* and the two event branches go through the same body */
+        oneBody: (function () {
+          const src = String(ACTIONS.length) + EVENTS.filter(e => e.id === 'leaderChallenge')
+            .map(e => e.ch.map(c => String(c.f)).join(' ')).join(' ');
+          return /v21NewLeader/.test(src) && !/figures\.leaders\[S\.ruling\] = makeFigure/.test(src);
+        })() };
+    })();
+
+    /* (d2) AND A CAMPAIGN SAVED BEFORE THIS SLICE STILL PLAYS. Three fields
+       arrive here -- `a.wins`, `a.beaten` and `st.figures.obits` -- and every
+       save in existence carries none of them. The rule this repository states
+       first about saves is that a blob may break pre-release but only LOUDLY,
+       and the failure mode of a missing counter is not loud: `undefined + 1` is
+       NaN, `NaN >= 2` is false, and a leader would simply never be replaced
+       again with nothing anywhere saying so. Asked by taking them back out of a
+       live state, which is what such a save is. */
+    R.legacy = (() => {
+      fresh(2718);
+      for (let i = 0; i < 6; i++) step();
+      const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== S.ruling)[0].id;
+      PARTIES.forEach(p => {
+        const a2 = v16Ai(S)[p.id]; if (!a2) return;
+        delete a2.wins; delete a2.beaten;
+        if (a2.lastGoal) delete a2.lastGoal.by;
+      });
+      delete S.figures.obits;
+      const before = {}; PARTIES.forEach(p => { before[p.id] = S.seats[p.id] || 0; });
+      before[pid] = (S.seats[pid] || 0) + 20;
+      let threw = null;
+      try { v21AfterBallot(S, before, null, null); v21AfterBallot(S, before, null, null); }
+      catch (e) { threw = e.message; }
+      const a3 = v16Ai(S)[pid] || {};
+      /* and the tick, and the score, on the same stripped record. THE SCORE
+         HAS TO BE ASKED WITH A GOAL: `v19Score`'s whole wins term sits inside
+         `if (goal)`, so a three-argument call skips the very line this leg is
+         about and a build with the default taken off would read finite. */
+      let tickThrew = null, scored = null;
+      try {
+        v21GoalTick(S);
+        const card = V16_AI_DECK.filter(c => c.id === 'court')[0];
+        const gk = v19GoalKind('ground'), gt = gk.target(S, pid);
+        const g4 = { kind:'ground', ref:gt.ref, want:gt.want, dir:gt.dir, since:S.turn };
+        scored = v19Score(S, pid, card, g4, null);
+      } catch (e) { tickThrew = e.message; }
+      /* and the page draws it */
+      UI.tab = 'parties';
+      let renderThrew = null;
+      try { render(); } catch (e) { renderThrew = e.message; }
+      return { threw:threw, tickThrew:tickThrew, renderThrew:renderThrew,
+        beaten:a3.beaten, counterIsANumber: typeof a3.beaten === 'number' && isFinite(a3.beaten),
+        obitsRebuilt: Array.isArray(S.figures.obits) && S.figures.obits.length > 0,
+        scoreIsFinite: typeof scored === 'number' && isFinite(scored) };
+    })();
+
+    /* (d3) AND IN REAL PLAY, THROUGH REAL ELECTIONS. Every leg above calls
+       `v21AfterBallot` by hand, which is this file's oldest probe defect
+       wearing an election: deleting the call from `runElection` leaves all of
+       them green, and so does capturing the positions AFTER `driftParties`
+       rather than before -- the drift is then nought for every party at every
+       ballot and the sentence simply never fires, silently, exactly as it did
+       for the twenty-odd versions before this slice.
+       AND THE RATES ARE THE ASSERTION'S OWN WORDS, so the next reader cannot
+       re-pick two constants by eye the way the first draft did. Measured over
+       718 ballots on twelve seeds: the ballot speaks about its furthest mover
+       on .258 of them and replaces .337 leaders on each. The bands here are
+       three standard errors wide on this leg's own smaller sample. */
+    R.driven = (() => {
+      let calls = 0, ballots = 0, drifted = 0, spited = 0, replaced = 0, ousted = 0;
+      let posSeen = 0;
+      const bA = v21AfterBallot;
+      v21AfterBallot = function (st, before, wasRuling, pw) {
+        const out = bA.apply(this, arguments);
+        if (!V19_SIMULATING) {
+          calls++;
+          if (pw) posSeen++;
+          if (out) {
+            ballots++;
+            if (out.drifted) drifted++;
+            if (out.spite) spited++;
+            if (out.ousted) ousted++;
+            if (out.replaced) replaced += out.replaced.length;
+          }
+        }
+        return out;
+      };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+          fresh(seed);
+          for (let i = 0; i < 80; i++) step();
+        });
+      } finally { v21AfterBallot = bA; }
+      const per = n => ballots ? +(n / ballots).toFixed(3) : null;
+      return { calls:calls, ballots:ballots, positionsPassed:posSeen === calls,
+        driftShare:per(drifted), spiteShare:per(spited),
+        oustShare:per(ousted), replacedPerBallot:per(replaced),
+        reachedByRealElections: calls > 0 && ballots > 20,
+        /* the drift SENTENCE fires at all, which is the half a capture taken
+           after the drift kills without any other symptom */
+        driftFires: drifted > 0,
+        /* THE BANDS ARE THE MEASUREMENT'S OWN WORDS. On this leg's six seeds
+           the republic speaks about its furthest mover on .342 of ballots,
+           books the night's grudge on .583 and replaces .371 leaders on each;
+           over twelve seeds and 720 ballots the same three read .308, .461 and
+           .261. The bands are set around the leg's own drive with room for the
+           wider reading inside them, so a later slice that re-phases the dice
+           does not redden this and a slice that breaks one of the three
+           mechanisms does. */
+        driftInBand: per(drifted) !== null && per(drifted) > .18 && per(drifted) < .50,
+        spiteInBand: per(spited) !== null && per(spited) > .35 && per(spited) < .75,
+        leadersInBand: per(replaced) !== null && per(replaced) > .18 && per(replaced) < .60 };
+    })();
+
+    /* (d4) AND NONE OF IT HAPPENS BELOW THE FLOOR. R1: `instinct` is the
+       level at which the engines are not supposed to think, and every
+       behaviour this slice adds hangs off `v16Ai`. Without the guard a build
+       would still spite, still hand out aims and still change leaders on a
+       republic the player chose for having none of that, and every other leg in
+       this arm -- all of which run at `ruthless` -- would be green. */
+    R.floor = (() => {
+      fresh(4242, 'instinct');
+      for (let i = 0; i < 4; i++) step();
+      const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== S.ruling)[0].id;
+      const before = {}; PARTIES.forEach(p => { before[p.id] = S.seats[p.id] || 0; });
+      before[pid] = (S.seats[pid] || 0) + 40;
+      const was = leaderOf(S, pid).name;
+      const n0 = (S.log || []).length;
+      const r1 = v21AfterBallot(S, before, S.ruling, null);
+      const r2 = v21AfterBallot(S, before, S.ruling, null);
+      /* THE TICK IS ASKED BY CALL COUNT, NOT BY THE DICE. `v19GoalObserve`
+         spends no rolls by design, so `rngState` cannot tell a tick that
+         refused from a tick that ran -- the first version of this line asked
+         exactly that and would have been green with the floor deleted. */
+      let observed = 0;
+      const bo = v19GoalObserve;
+      v19GoalObserve = function () { observed++; return bo.apply(this, arguments); };
+      try { v21GoalTick(S); } finally { v19GoalObserve = bo; }
+      return { returned:r1 === null && r2 === null,
+        leaderHeld: leaderOf(S, pid).name === was,
+        saidNothing: (S.log || []).length === n0,
+        tickSilent: observed === 0,
+        /* and the same board at `ruthless` DOES all of it, or the leg is
+           passing on a probe that simply never reached the code */
+        liveAtRuthless: (() => {
+          fresh(4242, 'ruthless');
+          for (let i = 0; i < 4; i++) step();
+          const p2 = PARTIES.filter(p => !S.banned[p.id] && p.id !== S.ruling)[0].id;
+          const b2 = {}; PARTIES.forEach(p => { b2[p.id] = S.seats[p.id] || 0; });
+          b2[p2] = (S.seats[p2] || 0) + 40;
+          const w2 = leaderOf(S, p2).name;
+          v21AfterBallot(S, b2, S.ruling, null); v21AfterBallot(S, b2, S.ruling, null);
+          return leaderOf(S, p2).name !== w2;
+        })() };
+    })();
+
+    /* (e) THE CLOCK TICKS PER SESSION, NOT PER OBSERVATION. `v19Goal` both
+       looks at the aim and adopts a new one, and adopting rolls -- so the
+       clock could only advance when a party ACTED, and a party too poor to act
+       lost its aim the moment it could act again, having stalled for no reason
+       but its own purse. */
+    R.clock = (() => {
+      fresh(555);
+      const seen = {}, acted = {};
+      const bo = v19GoalObserve, bc = v19Choose;
+      v19GoalObserve = function (st, pid) { seen[pid] = (seen[pid] || 0) + 1; return bo.apply(this, arguments); };
+      v19Choose = function (st, pid) { acted[pid] = (acted[pid] || 0) + 1; return bc.apply(this, arguments); };
+      const roll0 = S.rngState;
+      let tickRolls = 0;
+      try {
+        for (let i = 0; i < 20; i++) step();
+        /* AND IT SPENDS NO DICE, asked of the tick alone on a still board */
+        const r0 = S.rngState;
+        v21GoalTick(S);
+        tickRolls = (S.rngState === r0) ? 0 : 1;
+      } finally { v19GoalObserve = bo; v19Choose = bc; }
+      const live = PARTIES.filter(p => !S.banned[p.id] && p.id !== playParty(S)).map(p => p.id);
+      return { sessions:20, live:live.length,
+        seen:live.map(id => seen[id] || 0), acted:live.map(id => acted[id] || 0),
+        /* every party looked at every session, where acting is a fifth of that */
+        /* AND `v19Goal` GOES THROUGH IT. The counts above are fed by the tick,
+           so an acting half that read `a.goal` directly and skipped the
+           observing one left them untouched -- and that is the half that
+           RETIRES an aim when a party acts. Asked by call, on the live
+           function. */
+        delegates: (() => {
+          let n = 0;
+          const b2 = v19GoalObserve;
+          v19GoalObserve = function () { n++; return b2.apply(this, arguments); };
+          try { v19Goal(S, live[0]); } catch (e) { } finally { v19GoalObserve = b2; }
+          return n > 0;
+        })(),
+        everyPartyEverySession: live.every(id => (seen[id] || 0) >= 20),
+        actingIsRarer: live.some(id => (acted[id] || 0) < 20),
+        rolls:tickRolls };
+    })();
+
+    /* (f) A REACHED AIM IS COUNTED, SAID, AND READ. `a.wins` counted nothing:
+       a party that finished six aims in a campaign and one that finished none
+       were the same opponent. */
+    R.wins = (() => {
+      fresh(8080);
+      const pid = PARTIES.filter(p => !S.banned[p.id] && p.id !== playParty(S))[0].id;
+      const a = v16Ai(S)[pid];
+      const k = v19GoalKind('ground');
+      /* an aim it has already reached: the clock retires it as `done` */
+      const t = k.target(S, pid);
+      a.goal = { kind:'ground', ref:t.ref, want:0, dir:t.dir, since:S.turn - 2, best:.99 };
+      a.wins = 0;
+      const n0 = (S.log || []).length, c0 = (S.chron || []).length;
+      v19GoalObserve(S, pid);
+      const said = (S.log || []).slice(0, Math.max(1, (S.log || []).length - n0))
+        .map(e => e.text).join(' ');
+      /* AND THE PAGE SAYS IT. `v16AiPanel` is the emitter -- a STRING, so no
+         script source can contaminate the match the way `body.textContent`
+         did in the `by` leg below. */
+      let panel = '';
+      try { panel = v16AiPanel(); } catch (e) { panel = ''; }
+      const out = { wins:a.wins, said:/had been working toward/.test(said),
+        onThePage: /aims? reached since the campaign began/.test(panel),
+        chronicled:(S.chron || []).length > c0,
+        why:(a.lastGoal || {}).why };
+      /* AND `v19Score` READS IT, and it CHANGES THE RANKING rather than adding
+         a constant every open card gets -- which would cancel in the softmax,
+         the mistake S21c found three weights in `v19Standing` making. */
+      const card = V16_AI_DECK.filter(c => c.id === 'court')[0];
+      const flat = V16_AI_DECK.filter(c => c.id === 'campaign')[0];
+      a.goal = { kind:'ground', ref:t.ref, want:t.want, dir:t.dir, since:S.turn, best:0 };
+      const g = a.goal, riv = v19Rival(S, pid);
+      a.wins = 0;
+      const gap0 = v19Score(S, pid, card, g, riv) - v19Score(S, pid, flat, g, riv);
+      a.wins = V21_WINS_CAP;
+      const gap1 = v19Score(S, pid, card, g, riv) - v19Score(S, pid, flat, g, riv);
+      a.wins = V21_WINS_CAP + 40;
+      const gap2 = v19Score(S, pid, card, g, riv) - v19Score(S, pid, flat, g, riv);
+      out.gap0 = +gap0.toFixed(4); out.gap1 = +gap1.toFixed(4); out.gap2 = +gap2.toFixed(4);
+      /* A TOLERANCE, because the thing this line is against cancels to
+         NOUGHT rather than to something negative. An additive term adds the
+         same amount to both cards, so the gap is mathematically unchanged --
+         and `gap1 > gap0` on two doubles that differ by 1e-16 of floating
+         point said TRUE. Measured, the real term moves this gap by .096, so a
+         bar at .02 is a fifth of the real movement and a hundred trillion
+         times the artifact. */
+      out.widens = +(gap1 - gap0).toFixed(4);
+      out.widensTheGap = gap1 - gap0 > .02;
+      out.capped = Math.abs(gap2 - gap1) < 1e-9;
+      return out;
+    })();
+
+    /* (g) AND A STALLED AIM NAMES WHO GOT FURTHER. "It was going nowhere" and
+       "the SD were further along the same road" are two different stories and
+       the page could only tell the first. */
+    R.by = (() => {
+      fresh(1234);
+      const live = PARTIES.filter(p => !S.banned[p.id] && p.id !== playParty(S)).map(p => p.id);
+      const me = live[0], them = live[1];
+      const k = v19GoalKind('ground');
+      const t = k.target(S, me);
+      /* `best` IS PLACED ABOVE WHAT `progress` WILL REPORT, USING THE KIND'S
+         OWN `progress` TO PLACE IT. `v19GoalObserve` reads progress BEFORE it
+         reads the clock, and a reading above `best + .004` sets `g.moved` to
+         this turn -- so a fixture whose `best` sits under the aim's real
+         standing resets the very clock the leg is about, and the aim is never
+         retired. Two versions of this leg died there. The first set a
+         reachable `want`; the second set `want:200` to make it unreachable and
+         still failed, because `ground.progress` is `have / want` when `g.from`
+         is undefined, and a goal built by HAND has no `from` -- `v19AdoptGoal`
+         writes it for `carry`, `ground` and `build` after the pick, which is a
+         line a fixture bypasses -- so 200 against a bloc at 50 reports .25 and
+         cleared a floor of .2 anyway.
+         Asking the function is the only reading that cannot be re-picked by
+         eye, and the aim keeps the target's OWN `want` rather than a number
+         chosen to defeat it. */
+      const g0 = { kind:'ground', ref:t.ref, want:t.want, dir:t.dir,
+        since:S.turn - 40, moved:S.turn - 40 };
+      const pr0 = k.progress(S, me, g0);
+      g0.best = Math.min(1, pr0 + .05);
+      v16Ai(S)[me].goal = g0;
+      v16Ai(S)[them].goal = { kind:'ground', ref:t.ref, want:t.want, dir:t.dir,
+        since:S.turn - 5, moved:S.turn, best:Math.min(1, pr0 + .15) };
+      const gBefore = JSON.parse(JSON.stringify(v16Ai(S)[me].goal));
+      const turnNow = S.turn, bar = V19_GOAL_IDLE * (v19Temper(me).patient || 1);
+      v19GoalObserve(S, me);
+      const lg = (v16Ai(S)[me] || {}).lastGoal || {};
+      const gAfter = v16Ai(S)[me].goal ? JSON.parse(JSON.stringify(v16Ai(S)[me].goal)) : null;
+      /* and the page says it, read out of the rendered column rather than off
+         the field -- S21f's poison lesson */
+      UI.tab = 'parties';
+      let threw = null;
+      try { render(); } catch (e) { threw = e.message; }
+      /* THE EMITTER, WHICH IS A STRING. Two readings were tried first and each
+         was wrong in its own direction. `document.body.textContent` walks the
+         `<script>` nodes -- this game is one document with 3.9 megabytes of
+         source inside its body -- so a phrase appearing in a COMMENT about the
+         feature read as the feature being on the page, and the leg passed with
+         the clause deleted. `document.body.innerText` fixes that and
+         introduces the opposite error: it reports what is VISIBLE, and S17r
+         folds the long panels by default, so a true sentence inside a shut
+         fold reads as absent. `v16AiPanel()` is what the manifesto arm reads
+         for the same reason: no script source can reach it and no fold can
+         hide it. */
+      let txt = '';
+      try { txt = v16AiPanel(); } catch (e) { txt = ''; }
+      /* AND A PARTY BEHIND YOU IS NOT NAMED. The case above puts the rival
+         AHEAD, so a comparison deleted entirely -- naming whoever happens to
+         hold the same aim -- gives the same answer. Asked again with the rival
+         BEHIND, where the two readings separate. */
+      const behind = (() => {
+        fresh(1234);
+        const l2 = PARTIES.filter(p => !S.banned[p.id] && p.id !== playParty(S)).map(p => p.id);
+        const m2 = l2[0], t2 = l2[1];
+        const tt = k.target(S, m2);
+        const gm = { kind:'ground', ref:tt.ref, want:tt.want, dir:tt.dir,
+          since:S.turn - 40, moved:S.turn - 40 };
+        const pm = k.progress(S, m2, gm);
+        gm.best = Math.min(1, pm + .25);
+        v16Ai(S)[m2].goal = gm;
+        v16Ai(S)[t2].goal = { kind:'ground', ref:tt.ref, want:tt.want, dir:tt.dir,
+          since:S.turn - 5, moved:S.turn, best:Math.min(1, pm + .05) };
+        v19GoalObserve(S, m2);
+        const l3 = (v16Ai(S)[m2] || {}).lastGoal || {};
+        return { retired: !!l3.kind, by: l3.by === undefined ? 'missing' : l3.by,
+          namesNobody: l3.by === null };
+      })();
+      return { retired:!lg.kind ? false : true, why:lg.why, by:lg.by, behind:behind,
+        progress:+pr0.toFixed(3), best:+g0.best.toFixed(3),
+        idle:40, bar:+bar.toFixed(2), clockRan: gAfter === null,
+        namedThem: lg.by === them, threw:threw,
+        namesNobodyBehind: behind.retired === true && behind.namesNobody === true,
+        onThePage: new RegExp('were further along the same road').test(txt) };
+    })();
+    return R;
+  });
+
+  const ballotOk =
+    ballot.spite.shareNotCount === true && ballot.spite.bothMoved === true &&
+    ballot.oust.handed === true && ballot.oust.inTheGovernment === true &&
+    ballot.oust.doneOnAdoption === false && ballot.oust.reported === true &&
+    ballot.oust.notHandedWhenStillIn === true &&
+    ballot.said.spited === true && ballot.said.said === true &&
+    ballot.said.namesBoth === true &&
+    ballot.drift.named === true && ballot.drift.said === true &&
+    ballot.leader.heldAfterOne === true && ballot.leader.changedAfterTwo === true &&
+    ballot.leader.counterReset === true && ballot.leader.deterministic === true &&
+    ballot.leader.obitKept === true && ballot.leader.oneBody === true &&
+    ballot.leader.swapLogged === true && ballot.leader.obitsCapped === true &&
+    ballot.leader.obitsNewestFirst === true &&
+    ballot.floor.returned === true && ballot.floor.leaderHeld === true &&
+    ballot.floor.saidNothing === true && ballot.floor.tickSilent === true &&
+    ballot.floor.liveAtRuthless === true &&
+    ballot.clock.everyPartyEverySession === true && ballot.clock.actingIsRarer === true &&
+    ballot.clock.rolls === 0 &&
+    ballot.wins.onThePage === true && ballot.clock.delegates === true &&
+    ballot.oust.saidSo === true && ballot.leader.runBroken === true &&
+    ballot.leader.machineFell === true && ballot.leader.changeChronicled === true &&
+    ballot.by.namesNobodyBehind === true &&
+    ballot.wins.wins === 1 && ballot.wins.said === true && ballot.wins.why === 'done' &&
+    ballot.wins.chronicled === true &&
+    ballot.wins.widensTheGap === true && ballot.wins.capped === true &&
+    ballot.by.retired === true && ballot.by.namedThem === true &&
+    ballot.by.threw === null && ballot.by.onThePage === true &&
+    ballot.legacy.threw === null && ballot.legacy.tickThrew === null &&
+    ballot.legacy.renderThrew === null &&
+    ballot.legacy.counterIsANumber === true && ballot.legacy.obitsRebuilt === true &&
+    ballot.legacy.scoreIsFinite === true &&
+    ballot.driven.reachedByRealElections === true && ballot.driven.positionsPassed === true &&
+    ballot.driven.driftFires === true && ballot.driven.driftInBand === true &&
+    ballot.driven.leadersInBand === true && ballot.driven.spiteInBand === true;
+  say(ballotOk, 'the ballot has consequences',
+    `A GENERAL ELECTION MOVED EVERY SEAT IN THE CHAMBER, DECIDED WHO GOVERNS, AND WROTE NOTHING IN ANY PARTY'S ` +
+    `MEMORY. \`a.grudge\` is filled by the player's own buttons (S17l), by the ordinary acts of governing ` +
+    `(S21b), by the coalition (S21f) and by a motion of confidence (S21g) -- and the one event every party in ` +
+    `this republic cares about most left no entry at all: a party could lose a third of its benches to the ` +
+    `party that took them and hold nothing whatever against it · THE SPITE IS A SHARE AND NOT A COUNT ` +
+    `(${ballot.spite.shareNotCount}), asked of two boards differing in exactly that: a party of forty losing ` +
+    `ten takes ${ballot.spite.smallLost.small} against ${ballot.spite.bigLost.big} for one of six hundred ` +
+    `losing SIXTY -- six times as many seats and a tenth of itself rather than a quarter, so the two readings ` +
+    `point opposite ways. Both boards are real defeats on purpose: the grudge gained a floor of ` +
+    `\`V21_BEATEN_BY\` and the old pairing, ten seats against ten, stopped booking anything at all on the ` +
+    `larger board -- a leg cannot compare two readings where one of them declines to answer · AND A ` +
+    `PARTY PUT OUT OF THE GOVERNMENT IS HANDED THE AIM THAT SAYS SO (${ballot.oust.handed}), aimed at ` +
+    `"${ballot.oust.at}", who is IN the new government (${ballot.oust.inTheGovernment}) and not already ` +
+    `beaten (${ballot.oust.doneOnAdoption === false}) -- which is S21b's own finding, that an \`oust\` adopted ` +
+    `about a party already in opposition is a goal \`v19AdoptGoal\` drops on the spot, and it is why this runs ` +
+    `AFTER \`v17Form\` rather than before it as the plan said · THE DRIFT IS NARRATED (${ballot.drift.said}): ` +
+    `\`driftParties\` has walked every party toward the winner every ballot since v4 and printed NOTHING, so a ` +
+    `party could cross the compass over four elections with no trace but a dot moving on a chart nobody was ` +
+    `asked to watch · A PARTY BEATEN TWICE RUNNING CHANGES ITS LEADER, and it holds after ONE ` +
+    `(${ballot.leader.heldAfterOne}) and changes after two (${ballot.leader.changedAfterTwo}) with the counter ` +
+    `reset (${ballot.leader.counterReset}) -- "${ballot.leader.first.was}" to "${ballot.leader.first.now}", ` +
+    `with the old one kept in the obituaries (${ballot.leader.obitKept}), where a leader who was replaced ` +
+    `simply vanished from a list the game already had. THE DECISION IS ARITHMETIC AND THE SAME BOARD TWICE ` +
+    `GIVES THE SAME ANSWER (${ballot.leader.deterministic}), because a roll to decide would re-phase every ` +
+    `campaign from the first replacement onward · AND IT GOES THROUGH ONE BODY (${ballot.leader.oneBody}): ` +
+    `\`leaderChallenge\` wrote the swap out longhand in BOTH its branches and this slice was the third ` +
+    `caller · THE CLOCK TICKS PER SESSION, NOT PER OBSERVATION ` +
+    `(${ballot.clock.everyPartyEverySession}): every one of ${ballot.clock.live} parties is looked at on all ` +
+    `${ballot.clock.sessions} sessions (${JSON.stringify(ballot.clock.seen)}) where ACTING happens ` +
+    `${JSON.stringify(ballot.clock.acted)} times (${ballot.clock.actingIsRarer}). \`v19Goal\` both looks at the ` +
+    `aim and ADOPTS a new one, and adopting rolls -- so the clock could only advance when a party acted, and a ` +
+    `party too poor to act lost its aim the moment it could act again, having stalled for no reason but its ` +
+    `own purse. The tick is the observing half alone and it spends ${ballot.clock.rolls} rolls · A REACHED AIM ` +
+    `IS COUNTED (${ballot.wins.wins}), SAID (${ballot.wins.said}) AND CHRONICLED (${ballot.wins.chronicled}), ` +
+    `where \`a.wins\` counted nothing and a party that finished six aims in a campaign was the same opponent ` +
+    `as one that finished none · AND \`v19Score\` READS IT BY WIDENING THE AIM'S OWN GAP ` +
+    `(${ballot.wins.widensTheGap}: ${ballot.wins.gap0} to ${ballot.wins.gap1} between the card the aim wants ` +
+    `and one it does not), not by adding a constant every open card gets -- which would cancel in the softmax, ` +
+    `the mistake S21c found three weights in \`v19Standing\` making -- and it is CAPPED ` +
+    `(${ballot.wins.capped}), because a party with a long record is more single-minded and not infinitely ` +
+    `so · AND A STALLED AIM NAMES WHO GOT FURTHER (${ballot.by.namedThem}), read out of the RENDERED page ` +
+    `(${ballot.by.onThePage}) and not off the field: "it was going nowhere" and "the ` +
+    `${String(ballot.by.by).toUpperCase()} were further along the same road" are two different stories and the ` +
+    `page could only tell the first · AND ALL OF IT THROUGH REAL ELECTIONS RATHER THAN A HAND CALL: ` +
+    `${ballot.driven.calls} ballots driven, the positions passed forward on every one ` +
+    `(${ballot.driven.positionsPassed}), the night's spite booked on ${ballot.driven.spiteShare} of them -- ` +
+    `NOT on all of them, because the grudge reads the same \`V21_BEATEN_BY\` the leader rule does and there ` +
+    `is always somebody who lost most and somebody who gained most: booking one every time took the grievance ` +
+    `a party holds against a government from a 90th percentile of 25 to 41.9, and with a defeat under it that ` +
+    `reads 29.2 -- ` +
+    `the drift SAID on ${ballot.driven.driftShare} and ${ballot.driven.replacedPerBallot} leaders replaced ` +
+    `per ballot. Both of those last two are the assertion's own words BECAUSE THE FIRST DRAFT PICKED THEM BY ` +
+    `EYE AND BOTH WERE WRONG: \`V21_DRIFT_SAY\` at .12 sat at the 92nd percentile of the per-ballot maximum ` +
+    `drift and spoke on .086 of ballots, one election in twelve, which is the street's bar above its own ` +
+    `ceiling in a new place; and "beaten twice running" counting ANY loss replaced 1.348 leaders a ballot, ` +
+    `every party in the chamber about every five elections, because a party-ballot is a loss of some size on ` +
+    `.431 of occasions and losses are correlated. Measured over 718 ballots, the bar moved to .05 (.258 of ` +
+    `ballots) and a defeat became losing at least \`V21_BEATEN_BY\` of your own benches, which is the worst ` +
+    `quarter of them (.337 a ballot, a given party about every twenty-one elections). Deleting the call from ` +
+    `\`runElection\`, or capturing the positions AFTER \`driftParties\` rather than before, leaves every ` +
+    `other leg in this arm green`);
+
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
      asked what the OTHERS were after, so a party whose goal was being taken
@@ -13205,7 +13928,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        are gated below. Removing a clause that never carried information is not
        the same as lowering a bar, and the figures stay in the message so the
        next reader can see what they do. */
-    mani.clock.byProgress.meanAt > 14 && mani.clock.byAge.meanAt < 14 &&
+    /* THE SEPARATION, NOT THE ABSOLUTE AGE. This read `byProgress.meanAt > 14
+       && byAge.meanAt < 14`, and S21i -- which makes the goal clock tick per
+       SESSION rather than per observation -- took the pair from 18.7/11.7 to
+       10.8/6.7 and reddened it. Neither rule changed. What changed is that the
+       measurement stopped carrying an observation lag: `v19Goal` was the only
+       thing that looked at an aim and it ran when a party ACTED, about one
+       session in four, so every completion age included the wait for the party
+       to notice its own aim. The RATIO is 1.60 before that slice and 1.61
+       after, which is the claim -- an aim under the progress rule is carried
+       half again as long as under a flat age one -- where a fixed threshold in
+       sessions is a number that any change to how often the game LOOKS moves
+       without either rule being touched. The floor keeps a degenerate build
+       from passing on two numbers near nought. */
+    mani.clock.byProgress.meanAt > mani.clock.byAge.meanAt * 1.35 &&
+    mani.clock.byAge.meanAt > 3 &&
     /* S21d: THE DIRECTION, NOT THE RATIO — AND THE PARAGRAPH ABOVE PREDICTED
        THIS ONE TOO. `total` was gated at 1.5x on a reading of 32 against 16,
        and it now reads 31 against 26: the progress rule still reaches more
@@ -13253,8 +13990,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${mani.clock.byProgress.afterOldClock} of ${mani.clock.byProgress.total} reached AFTER session fourteen ` +
     `against ${mani.clock.byAge.afterOldClock} of ${mani.clock.byAge.total} under the age rule, at a mean of ` +
     `${mani.clock.byProgress.meanAt} sessions against ${mani.clock.byAge.meanAt} -- a late completion is the ` +
-    `ordinary case under one rule and the exception under the other, and it is not nought under the age rule ` +
-    `because a goal is only checked when its party is read; and the STALL rule is separable from the cap, an ` +
+    `ordinary case under one rule and the exception under the other. THE GATE IS THE RATIO AND NOT THE ` +
+    `ABSOLUTE AGE: it was a fixed fourteen sessions until S21i made the clock tick per SESSION rather than per ` +
+    `observation, which took the pair from 18.7/11.7 to 10.8/6.7 with neither rule touched -- every completion ` +
+    `age until then carried the wait for a party to next ACT and notice its own aim. The ratio reads 1.60 ` +
+    `before that slice and 1.61 after. The same change is why the age rule now reaches NOUGHT after its own ` +
+    `fourteen-session cap where it used to reach 26: a flat cap that lets aims through past it was the lag and ` +
+    `not the rule, and this arm's own sentence used to say so · and the STALL rule is separable from the cap, an ` +
     `aim whose progress never moved being put down after ${mani.clock.byProgress.deadHeldFor} sessions against ` +
     `${mani.clock.capOnly.deadHeldFor} with only the cap in play -- without that third leg a build with the ` +
     `stall rule switched off came back green -- the old number was cutting off the goal that was working and holding the one that was going ` +
@@ -16127,6 +16869,31 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         /* out through the game's own exit, not by editing the array */
         const left = v21Leave(S, partner, 'walked out', null);
         const after = kind.done(S, q2.id, g2);
+        /* AND THE AIM KEEPS ITS OWN TARGET, asked where the two readings
+           SEPARATE. This used to be `stampsGov: !!(tgt && tgt.gov)` -- the
+           `gov` field off `target`'s return -- standing for the property that a
+           party which gets what it wanted by a route it did not take still
+           reads as done rather than switching target under its own aim.
+           `v19AdoptGoal` DROPS that field and nothing in 3.9 megabytes reads
+           it, so the leg was green on a value the game throws away, and S21i
+           deletes it. The property is real and lives in `done`, which asks
+           about `g.ref` and never re-runs `target`.
+           It has to be asked WITH THE NAMED PARTY ALREADY OUT: with everyone
+           still in the government both readings say false and the leg cannot
+           tell them apart. Here the named one has walked, and somebody still in
+           the room is made the worst-grudged party by a mile -- so a `done`
+           that re-ran `target` would read FALSE where the real one reads
+           TRUE. */
+        let keeps = null;
+        const other = (S.coalition || [S.ruling]).filter(x => x !== partner &&
+          x !== q2.id && !S.banned[x])[0];
+        if (other) {
+          v16Resent(S, q2.id, other, 99);
+          const reTarget = kind.target(S, q2.id);
+          keeps = { named:partner, wouldNowPick: reTarget ? reTarget.ref : null,
+            stillAboutTheNamed: kind.done(S, q2.id, g2) === true &&
+              !!reTarget && reTarget.ref !== partner };
+        }
         /* and the resolution, which is the half that has to say `done` rather
            than `gone` -- the two are one ternary apart and a build that always
            said `gone` passed everything this arm asked before */
@@ -16134,7 +16901,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         a2.lastGoal = null;
         try { v19Goal(S, q2.id); } catch (e) { }
         const lg = a2.lastGoal || {};
-        return { ran:true, left:!!left,
+        return { ran:true, left:!!left, keeps:keeps,
+          keepsItsTarget: !!(keeps && keeps.stillAboutTheNamed),
           doneInGov:before, doneWhenOut:after,
           reaches: before === false && after === true,
           why: lg.why === undefined ? null : lg.why,
@@ -16143,7 +16911,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       })();
       return { ran:true,
         fitsOnOutsider:onOutsider, targetOnOutsider: tgtOutsider ? tgtOutsider.ref : null,
-        fitsOnGov:onGov, target: tgt ? tgt.ref : null, stampsGov: !!(tgt && tgt.gov),
+        fitsOnGov:onGov, target: tgt ? tgt.ref : null,
         ignoresOutsiders: onOutsider === 0,
         aimsAtGovernment: !!tgt && tgt.ref === S.ruling,
         notDoneAtBirth: doneAtBirth === false, reach:reach };
@@ -16243,7 +17011,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     polit.letter.ran === true && polit.letter.datedForward === true &&
     polit.letter.underMedianProvocation === true && polit.letter.clearsTheBar === true &&
     polit.oust.ran === true && polit.oust.ignoresOutsiders === true &&
-    polit.oust.aimsAtGovernment === true && polit.oust.stampsGov === true &&
+    polit.oust.aimsAtGovernment === true && polit.oust.reach.keepsItsTarget === true &&
     polit.oust.notDoneAtBirth === true &&
     polit.oust.reach.ran === true && polit.oust.reach.left === true &&
     polit.oust.reach.reaches === true && polit.oust.reach.saysDone === true &&
