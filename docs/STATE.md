@@ -317,9 +317,90 @@ The four rulings a cold session most needs:
   for. The rate is modest and conditional on a state the player controls: a
   government whose coalition rots is a government that gets a notice.
 
-**WHAT IS OPEN:** five slices of the original twelve (S21h–S21l) plus the
-owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. S21h (the junior
-partner's game) finishes the coalition overhaul the brief names.
+- **S21h — the junior partner has a game.** The coalition panel's own voice to
+  a junior partner was *"You can read it, which is worth more than it sounds."*
+  Reading was all of it: council, portfolio, programme, reopen and discipline
+  are every one gated on `leads(S)`, so a player sitting in a government they
+  did not form had a card with a meter on it and nothing to press.
+
+  **Five verbs, and every one is the engine's own act.** Ask for a statute
+  (`v21ReopenCore`, extracted from `v17Renegotiate`), ask for a department
+  (`v21OfficeCore`, extracted from the head of government's portfolio button),
+  say it in public and threaten to withdraw (`v21Say`, extracted from
+  `v21Pressure`), withhold the whip (`v21Defect`, S21f's, unchanged). Five
+  ACTIONS and not one card with five buttons, because `actionKey` is per action
+  and five options under one id would share one cooldown and one `uses` count —
+  each is paced by `v20PaceParty` off its own weight, resting 3/3/2/2/3
+  sessions at 1.12 to 1.15 a use dearer. **The three public verbs unlock in the
+  order the engine climbs them**, or a partner's road to an ultimatum is one
+  click where an engine's is three sessions.
+
+  **Three things an engine government can now do about it.** It ANSWERS an
+  ultimatum — S21f left that branch recording the grievance and nothing else
+  and said so, because the only instrument was `v17Renegotiate` and its gate
+  opens on the player's chair. It lays the bill it promised and the partner
+  comes back down the ladder, or it stands firm; the choice is READ, not
+  rolled, because this runs inside `v16RedLineTick`. And it grants or refuses a
+  statute and a department through `v21GovWould`, one question asked in two
+  places, whose refusal is the sentence on the button.
+
+  **A third answer was drafted, measured and deleted.** `v17CanRenegotiate`
+  refuses at `V17_PATIENCE`, and an ultimatum is a late-record event by
+  construction — the stage-2 bar is `v17WalkFloor + 4` and the floor is
+  `12 + min(3, broken) * 6`, so a partner with three broken promises has a bar
+  of 34 against a measured median cohesion of 39.9. Driven over 240 sessions,
+  **every one of the four ultimatums an engine government received arrived at
+  exactly three broken promises.** A road nobody can take.
+
+  **Three defects in the code the slice was standing on.** The ultimatum paper
+  CHARGED THE PLAYER BEFORE IT REFUSED: `respondInbox` takes the capital and
+  the money and then runs the branch, so "Reopen the agreement and rewrite it"
+  was lit on every ultimatum, priced at 4 capital and $5B, and refused after
+  taking both — a paper's answers carry their own `why` now, honoured by the
+  renderer and by the handler before the capital moves. A REWRITTEN PROMISE WAS
+  BORN LATE AND AIMED AT NOTHING: `v17Renegotiate` set `ref`, `kind`, `met` and
+  `broken` and left `from`, `due` and `late`, so the rung the government owed
+  was measured from the level a *different* statute stood at and the deadline
+  had already gone by. And THE LADDER HAD TWO OWNERS — `respondInbox` set
+  `d.pressure = 0` by hand while `v21Pressure` owned the field; `v21Quiet` is
+  the one body.
+
+  **And a price on the ladder.** `V21_SAY_MACHINE` is .035, half of what
+  surviving a motion of confidence is worth, on the same channel: the ladder
+  had three rungs and no price on any of them. Measured over 240 driven
+  sessions, that is the whole balance effect — the government's machine mean
+  0.335 → 0.321, walkouts 6 → 6, promises broken 28 → 28, coalition size
+  2.36 → 2.35.
+
+  **And one arm reddened that was an assertion sized for six seeds.** `a party
+  holds something against a government` gates `oustDone >= 2`; it read 1 here
+  and 2 on the build before. The first hypothesis — that a slice keeping
+  partners in government reaches fewer aims — was measured and is NOT
+  supported: walkouts are 9 on both builds. Over TWELVE seeds and 1,440
+  sessions the two builds read 15 adopted / 5 reached and 12 / 4, with eight of
+  the twelve seeds at nought on each: the same number, on a count whose
+  standard error is 3.9. The six seeds the leg drove caught 8/2 and 4/1.
+  Correctness moved to a leg with no dice in it — the target is walked out of
+  the government through S21f's one door and the kind's own `done` is asked
+  either side, with the resolution filing it as `'done'` rather than `'gone'`,
+  which are one ternary apart — and the driven leg went to twelve seeds and
+  keeps a tripwire that the path fires in play at all. **It passes on the build
+  before this slice as well as on it**, which is what separates a re-shaped
+  assertion from a weakened one. Both new halves are poisoned red.
+
+  Twice on the way there the probe was wrong before the game was: the first
+  diagnostic counted `lastGoal.until === S.turn` and read NOUGHT on both builds,
+  because `S.turn += 1` happens inside `endTurn` after the stamp is written —
+  the same off-by-one the arm's own reactions leg carries a comment about. The
+  second asked whether a larger statistic was hiding in the same sessions (aims
+  whose target actually left, read through the kind's own predicate) and it is
+  6 against 5: the observation is not lossy, the event is rare.
+
+**WHAT IS OPEN:** four slices of the original twelve (S21i–S21l) plus the
+owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. The coalition
+overhaul the brief names is complete: S21d gave the agreement teeth, S21e made
+the table a negotiation, S21f gave it one exit and a voice, S21g made a
+government able to fall, and S21h gave the junior partner a game.
 
 ---
 

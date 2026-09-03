@@ -9208,6 +9208,16 @@ var V21_PARTNER_SLOPE = .47;
    Declared here beside the other two constants this function reads: chunk 8 is
    where the coalition agreement lives and chunk 1 is where it is consulted. */
 var V21_DEFECT = 27;
+/* S21h — WHAT SAYING IT OUT LOUD COSTS THE GOVERNMENT. The ladder had three
+   rungs and no price on any of them: a partner could insist in public and
+   threaten to leave, and the only thing either did was change a number on its
+   own card. A government briefed against by its own partner governs worse, and
+   `st.machine[st.ruling]` is the channel that says so -- the same one a failed
+   motion of confidence pays into (`V21_MOTION_MACHINE`, .07) and the same one
+   `attack` writes. Half a failed motion, twice, is a rung that costs about
+   what surviving a motion is worth, which is the scale this file already has
+   rather than a number picked to feel right. */
+var V21_SAY_MACHINE = .035;
 /* WHAT A BROKEN PROMISE TAKES OFF WHERE COHESION SETTLES. Declared here for
    the same chunk reason as the two above.
 
@@ -10388,8 +10398,25 @@ function inboxChoices(it) {
      choices, its answer arm AND its ignore arm, which is exactly how S16e's
      demand letter reached into the player's own first caucus. */
   if (it.type === 'coalition_ultimatum') return [
-    { id:'deliver', label:'Lay the bill they were promised', cost:5, tip:'The outstanding promise goes on the order paper this session.' },
-    { id:'rewrite', label:'Reopen the agreement and rewrite it', cost:4, money:5, tip:'Trade a promise neither side will keep for one they still want.' },
+    { id:'deliver', label:'Lay the bill they were promised', cost:5,
+      tip:'The outstanding promise goes on the order paper this session.',
+      /* S21h: each answer says when it cannot be taken, rather than taking the
+         capital and flashing. Both of these were lit on every ultimatum and
+         both could refuse after being paid for. */
+      why:function (p) {
+        var dd = (S.coalitionDeals || {})[p.from] || null;
+        var owed = (((dd || {}).terms || {}).concessions || []).filter(function (c) {
+          return c.kind === 'adopt' && !c.met && POL[c.ref];
+        })[0];
+        if (!owed) return 'There is no outstanding promise to lay. What they want is not in the agreement.';
+        if (typeof lowerSits === 'function' && !lowerSits(S)) return 'There is no Assembly sitting to lay it before.';
+        return null;
+      } },
+    { id:'rewrite', label:'Reopen the agreement and rewrite it', cost:4, money:5,
+      tip:'Trade a promise neither side will keep for one they still want.',
+      why:function (p) {
+        return (typeof v17CanRenegotiate === 'function') ? v17CanRenegotiate(S, p.from) : null;
+      } },
     { id:'stand', label:'Tell them to go if they are going', cost:0, tip:'They may leave the government.' }
   ];
   /* S21g: THE SESSION BETWEEN THE NOTICE AND THE QUESTION, WITH BUTTONS ON
@@ -10424,6 +10451,10 @@ function respondInbox(id, choice) {
   var opt = inboxChoices(it).filter(function (x) { return x.id === choice; })[0]; if (!opt) return;
   var paperWhy = (typeof v18PaperWhy === 'function') ? v18PaperWhy(S, it) : null;
   if (paperWhy) { flash(paperWhy); return; }
+  /* S21h: the choice's own refusal, asked HERE as well as at the button and
+     BEFORE the capital moves. One predicate, both sides of the click. */
+  var choiceWhy = (typeof opt.why === 'function') ? opt.why(it) : null;
+  if (choiceWhy) { flash(choiceWhy); return; }
   var c = cst(opt.cost || 0), m = opt.money || 0;
   if (S.capital < c || (m && S.treasury < m)) { flash('The resources are not available.'); return; }
   captureUndo('Answer ' + it.title);
@@ -10515,7 +10546,11 @@ function respondInbox(id, choice) {
         var uLv = S.pol[uC.ref] || 0, uT = v17Want(S, from, uC.ref);
         sponsorBill(S, uC.ref, (uT !== undefined && uT < uLv) ? -1 : 1, 'government', 'the coalition agreement', true);
         shiftPartyRel(S, from, 12);
-        if (uD) { uD.satisfaction = c100((uD.satisfaction || 50) + 8); uD.pressure = 0; uD.pressureAt = S.turn; }
+        /* S21h: through `v21Quiet`, which owns the ladder. This set
+           `d.pressure = 0` by hand while `v21Pressure` owned the same field,
+           and an engine government answering the same ultimatum would have
+           needed a third copy. */
+        if (uD) v21Quiet(S, from, uD, 8);
         logIt(S, 'The bill the ' + PARTY[from].short + ' were promised went on the order paper.');
       } else {
         /* nothing outstanding to lay is a real answer and it says so, rather
@@ -10526,7 +10561,7 @@ function respondInbox(id, choice) {
     }
     if (choice === 'rewrite') {
       if (typeof v17Renegotiate === 'function' && v17Renegotiate(S, from)) {
-        if (uD) { uD.pressure = 1; uD.pressureAt = S.turn; }
+        if (uD) v21Quiet(S, from, uD, 0);
       }
     }
     if (choice === 'stand') {
@@ -12659,6 +12694,63 @@ function changePolicy(id, dir) {
 function scaleObj(o, k) { var r = {}; for (var x in o) r[x] = o[x] * k; return r; }
 
 function A(o) { if (o.pay === undefined) o.pay = true; return o; }
+
+/* S21h — ONE PREDICATE FOR THE JUNIOR PARTNER'S FIVE VERBS, and the sentence
+   it refuses in is the sentence the button carries. `can` and `why` are two
+   readings of THIS function and not two functions that agree today: S18a's
+   finding is that every gate in this harness calls a function while a player
+   presses a button, and five separate slices shipped the same defect in the
+   gap between them.
+
+   The ladder's own rungs are a precondition like any other. A partner cannot
+   threaten before it has said anything in public -- the engine climbs one rung
+   at a time in `v21Pressure` and the player does too, or the player's road to
+   an ultimatum is one click where the engine's is three sessions. */
+function v21PartnerWhy(kind) {
+  var me = playParty(S);
+  if (standing(S) !== 'junior') {
+    return leads(S)
+      ? 'You lead this government. The agreement is yours to keep, not to press.'
+      : 'You are not in this government.';
+  }
+  var d = (S.coalitionDeals || {})[me];
+  if (!d || !d.terms) return 'There is no agreement with you to press.';
+  /* THE THREE PUBLIC VERBS ARE ONE ESCALATION AND THEY UNLOCK IN ORDER, which
+     is the ladder the engine climbs in `v21Pressure` -- one rung at a time,
+     with a session between them -- read from the player's side. Without it a
+     partner's road to an ultimatum is one click where an engine's is three
+     sessions, and the whip, which `v21Defect` books at the top rung, would be
+     a first move that silently skipped both rungs under it. Asking for a
+     statute and asking for a department sit outside the ladder: they are what
+     a partner does BEFORE any of this, and they are refused for their own
+     reasons by `v21GovWould`. */
+  if (kind === 'publish') {
+    return (d.pressure || 0) >= 1 ? 'You have said it. What is left is the ultimatum.' : null;
+  }
+  if (kind === 'threaten') {
+    if ((d.pressure || 0) >= 2) return 'The ultimatum stands. What follows it is withdrawing the whip.';
+    if ((d.pressure || 0) < 1) return 'Say it in public first. A threat nobody saw coming is a bluff.';
+    return null;
+  }
+  if (kind === 'whip') {
+    if (d.defected) return 'Your members are already off the government\'s whip.';
+    if ((d.pressure || 0) < 2) return 'Threaten to withdraw first. The benches are the last thing you take, not the first.';
+    return null;
+  }
+  return (typeof v21GovWould === 'function') ? v21GovWould(S, me, kind) : null;
+}
+/* and the stamp: its own category so five cards that belong to one page do not
+   appear on the two pages `actionsIn('Agenda')` is rendered on, its own purse
+   because a partner's business is its party's, and S20c's derivation so each
+   verb takes a rest and a rising price from its own weight */
+function v21Partner(o) {
+  o.cat = 'Coalition';
+  o.purse = 'party';
+  o.can = function () { return !v21PartnerWhy(o.kind); };
+  o.why = function () { return v21PartnerWhy(o.kind); };
+  if (typeof v20PaceParty === 'function') v20PaceParty(o);
+  return A(o);
+}
 var ACTIONS = [
   /* ---------------- ministry ---------------- */
   A({ id:'address', cat:'Ministry', name:'Address the Nation', cost:5, cool:2,
@@ -13149,6 +13241,71 @@ var ACTIONS = [
 
      `carryOver` is NOT orphaned by this: it still runs when the player's own
      party takes the government at a ballot. */
+  /* ---------- S21h: THE JUNIOR PARTNER'S FIVE VERBS ----------
+
+     `v17MyDealCard` (S17e) gave a junior partner a first-person view of the
+     agreement and the panel's own voice said what it was worth: "You can read
+     it, which is worth more than it sounds." Reading was all of it. Every verb
+     in this game that touches a coalition agreement -- council, portfolio,
+     programme, reopen, discipline -- is gated on `leads(S)`, so a player
+     sitting in a government they did not lead had a card with a meter on it
+     and nothing to press.
+
+     FIVE ACTIONS AND NOT ONE CARD WITH FIVE BUTTONS, because `actionKey` is
+     per action and the plan asks for a cooldown and a rising price on each:
+     five options under one id would share one cooldown and one `uses` count,
+     which is the same verb pressed five ways. Each is stamped by
+     `v20PaceParty` -- S20c's derivation, taken from the verb's own weight so a
+     verb a later slice adds is paced the moment it exists.
+
+     EVERY ONE SHARES ITS BODY WITH THE ENGINE'S. `v21Defect` and `v21Say` are
+     S21f's; `v21ReopenCore` and `v21OfficeCore` are extracted here so the head
+     of government's own buttons, an engine government answering an ultimatum,
+     and the junior asking for the same thing are one act with three doors. The
+     rule this file keeps relearning is that a verb the engine has and the
+     player has must be ONE body, or the two drift and the one nobody wrote
+     about wins. */
+  v21Partner({ id:'partnerAsk', name:'Ask for a Statute in the Agreement', cost:4, money:3, verb:'Ask for it',
+    desc:'A priority of yours is written into the coalition agreement, in place of a promise neither side was going to keep.',
+    kind:'concession',
+    run:function (S) {
+      var me = playParty(S);
+      if (!v21ReopenCore(S, me, 'the partner asked and the government agreed')) {
+        flash('There is nothing outstanding to trade. The agreement stands as written.'); return;
+      }
+      logIt(S, 'The ' + PARTY[me].short + ' asked the ' + PARTY[S.ruling].short +
+        ' to write one of their own priorities into the agreement, and were not refused.');
+    } }),
+  v21Partner({ id:'partnerOffice', name:'Ask for a Department', cost:5, money:0, verb:'Ask for one',
+    desc:'A great office the government holds is handed to you. A partner with a department is a partner with a hand on something.',
+    kind:'office',
+    run:function (S) {
+      var me = playParty(S);
+      var off = v21OfficeCore(S, me);
+      if (!off) { flash('There is no office in the government\'s hands to give you.'); return; }
+      S.unity = c100((S.unity || 60) - 3);
+    } }),
+  v21Partner({ id:'partnerWhip', name:'Withhold the Whip', cost:2, money:0, verb:'Withdraw it',
+    desc:'Your members stop being bound to vote for the government. You have not left it, and you are not voting for it either.',
+    kind:'whip',
+    run:function (S) {
+      var me = playParty(S), d = (S.coalitionDeals || {})[me];
+      if (d) v21Defect(S, me, d);
+    } }),
+  v21Partner({ id:'partnerPublish', name:'Say It in Public', cost:3, money:2, verb:'Say it',
+    desc:'What has been said in the room goes on the record. A government briefed against by its own partner governs worse.',
+    kind:'publish',
+    run:function (S) {
+      var me = playParty(S), d = (S.coalitionDeals || {})[me];
+      if (d) v21Say(S, me, d, 1);
+    } }),
+  v21Partner({ id:'partnerThreaten', name:'Threaten to Withdraw', cost:4, money:0, verb:'Deliver the ultimatum',
+    desc:'An ultimatum, in as many words. The government answers it or it loses you.',
+    kind:'threaten',
+    run:function (S) {
+      var me = playParty(S), d = (S.coalitionDeals || {})[me];
+      if (d) v21Say(S, me, d, 2);
+    } }),
   A({ id:'oppositionAttack', cat:'Agenda', name:'Oppose the Government', cost:4, cool:1,
     desc:'You are out of office. This is the work: hold them to account, and make sure the country notices.',
     can:function () { return !inPower(S); },
@@ -14907,8 +15064,17 @@ function politicalInboxPanel(limit) {
     var choices = inboxChoices(it).map(function (o) {
       var c = cst(o.cost || 0), m = o.money || 0;
       var pw = (typeof v18PaperWhy === 'function') ? v18PaperWhy(S, it) : null;
-      var ok = !pw && S.capital >= c && (!m || S.treasury >= m);
-      return '<button class="btn ghost" data-inbox="' + it.id + '" data-answer="' + o.id + '"' + (ok ? '' : ' disabled') + ' title="' + esc(pw || o.tip || '') + '">' + esc(o.label) +
+      /* S21h: AND THE CHOICE'S OWN REFUSAL. `v18PaperWhy` answers for the whole
+         PAPER -- which chair may open it -- and a paper's individual answers had
+         no gate at all, so `respondInbox` charged the capital and the money and
+         THEN flashed. Measured on the ultimatum: every one of the four an
+         engine government received arrived with exactly three broken promises,
+         which is `V17_PATIENCE`, so "Reopen the agreement and rewrite it" was
+         lit, priced at 4 capital and $5B, and refused by `v17CanRenegotiate`
+         after taking both. S12's defect with the money already spent. */
+      var cw = (typeof o.why === 'function') ? o.why(it) : null;
+      var ok = !pw && !cw && S.capital >= c && (!m || S.treasury >= m);
+      return '<button class="btn ghost" data-inbox="' + it.id + '" data-answer="' + o.id + '"' + (ok ? '' : ' disabled') + ' title="' + esc(pw || cw || o.tip || '') + '">' + esc(o.label) +
         (c || m ? ' <span class="c">' + (c ? c + ' cap' : '') + (c && m ? ', ' : '') + (m ? fmc(m) : '') + '</span>' : '') + '</button>';
     }).join('');
     return '<article class="inbox-card"><div class="eyebrow">From ' + esc(sender) + '</div><h3>' + esc(it.title) + '</h3><p>' + esc(it.body) + '</p>' +
@@ -17401,7 +17567,11 @@ function pv5CoalitionAction(pid,action){
   if(action==='council'){
     if(!pv5Spend(3,2,'Coalition council with '+PARTY[pid].short))return;d.satisfaction=c100(d.satisfaction+12);d.councils++;d.lastCouncil=S.turn;shiftPartyRel(S,pid,7);S.v5Stats.coalitionCouncils++;logIt(S,'A coalition council was held with the '+PARTY[pid].short+'.');
   }else if(action==='portfolio'){
-    if(!pv5Spend(4,0,'Offer a portfolio to '+PARTY[pid].short))return;var offices=['pres','vpres','chan','vchan'],off=offices.filter(function(o){return(S.coalition||[]).indexOf(S.exec[o])>=0&&S.exec[o]!==pid;})[0];if(off){S.exec[off]=pid;d.portfolios++;d.satisfaction=c100(d.satisfaction+16);shiftPartyRel(S,pid,10);logIt(S,DEPTS[off].name+' was assigned to the '+PARTY[pid].short+'.');}
+    /* S21h: through `v21OfficeCore`, which the junior partner's own ask and an
+       engine government answering one both write through. The office moves in
+       one body or the three drift. */
+    if(!pv5Spend(4,0,'Offer a portfolio to '+PARTY[pid].short))return;
+    if(v21OfficeCore(S,pid))shiftPartyRel(S,pid,10);
   }else if(action==='programme'){
     if(!pv5Spend(5,3,'Renegotiate coalition programme'))return;d.priorities=pv5TopWants(pid,S,2).map(function(x){return x.id;});d.redLine=(pv5TopWants(pid,S,3)[2]||{}).id||null;d.satisfaction=c100(d.satisfaction+9);S.coalitionProcedure=true;S.unity=c100(S.unity-2);logIt(S,'The coalition programme was renegotiated with the '+PARTY[pid].short+'.');
   }else if(action==='renegotiate'){
@@ -17516,8 +17686,17 @@ function pv5CoalitionPanel(){
   var voice = leads(S) ? 'Coalition partners carry explicit priorities, red lines, portfolios and cohesion. Their cohesion feeds the working relationship already used in legislation and confidence.'
     : (inPower(S) ? 'You are a partner in this government. Your own terms are below, beside the partners you sit with.'
                   : 'This is somebody else\u2019s agreement. You can read it, which is worth more than it sounds.');
+  /* S21h: and what a junior partner can DO about it. Rendered through
+     `actionCard`, which is the one emitter every other page uses, so the
+     cooldown, the rising price and the refusal on a shut card all arrive
+     without a second copy of any of them. */
+  var mine = (standing(S) === 'junior')
+    ? '<div class="panel"><h2>What a Partner Can Do</h2><p class="note">' +
+      esc('You are in this government and you did not form it. These are the things a partner presses when the agreement is not being kept.') +
+      '</p><div class="cards">' + actionsIn('Coalition').map(actionCard).join('') + '</div></div>'
+    : '';
   return (typeof v17FormationPanel === 'function' ? v17FormationPanel() : '') +
-    '<div class="panel"><h2>Coalition Agreement</h2><p class="note">' + esc(voice) + '</p><div class="cards">'+(mineCard+cards||'<div class="empty-state">'+(inPower(S)?'This is a single-party government. It has no coalition agreement to administer.':'There is no coalition agreement in force.')+'</div>')+'</div></div>';
+    '<div class="panel"><h2>Coalition Agreement</h2><p class="note">' + esc(voice) + '</p><div class="cards">'+(mineCard+cards||'<div class="empty-state">'+(inPower(S)?'This is a single-party government. It has no coalition agreement to administer.':'There is no coalition agreement in force.')+'</div>')+'</div></div>' + mine;
 }
 function pv5MinisterCard(row){
   var m=S.ministers[row.key],q=cabQuality(S,row.key),controlled=holdsDept(S,row.office),sc=S.scandals.some(function(x){return x.status==='active'&&x.minister===row.key;});
@@ -37055,11 +37234,36 @@ function v21Pressure(st, pid, d) {
       st.turn - d.pressureAt < V21_PRESS_GAP) return;
   /* ONE STEP A TIME, so the three stages are three sessions of warning rather
      than one jump to the ultimatum on a bad session */
-  d.pressure = at + 1; d.pressureAt = st.turn;
-  var step = V21_PRESS_STEPS[d.pressure];
+  v21Say(st, pid, d, at + 1);
+}
+
+/* S21h — WHAT REACHING A STAGE DOES, and both chairs reach it through here.
+   `v21Pressure` decides WHEN a partner climbs the ladder; this is what
+   climbing it costs, and the junior player's own two speaking verbs call it
+   rather than carrying a second copy of the same act. The rule this file keeps
+   finding: a verb the engine has and the player has must be ONE body, or the
+   two drift and the one nobody wrote about wins. */
+function v21Say(st, pid, d, stage) {
+  d.pressure = stage; d.pressureAt = st.turn;
+  var step = V21_PRESS_STEPS[stage];
   var broke = v17Broken(st, pid);
-  logIt(st, 'The ' + PARTY[pid].short + ' ' + step.said + '.');
-  if (d.pressure === 2) {
+  if (step) logIt(st, 'The ' + PARTY[pid].short + ' ' + step.said + '.');
+  /* SAYING IT IN PUBLIC COSTS THE GOVERNMENT SOMETHING, which is the whole
+     reason a partner says it in public. The first rung is a private ask and is
+     between them; the second and third are on the record, and a government
+     whose own partner is briefing against it is a government that governs
+     worse. Both stages write the machine, so the ladder is a cost that grows
+     rather than two silent rungs and a cliff. */
+  if (stage >= 1) {
+    st.machine[st.ruling] = clamp((st.machine[st.ruling] || 0) - V21_SAY_MACHINE, -.8, 1);
+    st.unity = c100((st.unity || 60) - 2);
+  }
+  if (stage === 1) {
+    addNews(st, 'The Coalition', PARTY[pid].short + ' say in public that the agreement is not being kept',
+      'What has been said in the room for weeks was said this morning on the steps. The record shows ' +
+      v8Plural(broke, 'broken promise') + '.', 'watch');
+  }
+  if (stage === 2) {
     addNews(st, 'The Coalition', PARTY[pid].short + ' threaten to leave the government',
       'The partner has said in public what it has been saying in the room. The agreement records ' +
       v8Plural(broke, 'broken promise') + '.', 'bad');
@@ -37072,19 +37276,134 @@ function v21Pressure(st, pid, d) {
         body:'The coalition partner says the agreement has not been kept and that it will leave the government ' +
           'unless it is. The record shows ' + v8Plural(broke, 'broken promise') + ' against ' +
           v17Kept(st, pid) + ' kept, and cohesion at ' + Math.round(d.satisfaction || 50) + '.' });
-    } else if (typeof v21Answer === 'function') {
-      /* AN ENGINE GOVERNMENT WEARS THE ULTIMATUM. It cannot answer it: the only
-         instrument for answering one is `v17Renegotiate`, and `v17CanRenegotiate`
-         opens on `leads(st)` -- the player's chair -- so an engine government
-         has no door to it at all. Reaching for it here would be a branch that
-         cannot fire, which this file deletes rather than ships. What it does
-         have is the consequence, recorded through the same channel a refused
-         demand goes through, so the partner's grievance is real and the room
-         sees it. Giving the engine the renegotiation itself is S21h's, where
-         the junior partner's five verbs get their government-side pairs. */
-      v21Answer(st, 'demandRefused', pid);
+    } else {
+      /* S21h: AND AN ENGINE GOVERNMENT ANSWERS IT. S21f left this branch
+         recording the grievance and nothing else, because the only instrument
+         for answering an ultimatum was `v17Renegotiate` and `v17CanRenegotiate`
+         opens on `leads(st)` -- the player's chair. The government's three
+         answers are the three the paper offers a player, through one body. */
+      v21GovAnswer(st, pid, d);
     }
   }
+}
+
+/* S21h — QUIETING A PARTNER, from either chair. The ladder had two owners the
+   moment the player's paper could answer it: `respondInbox`'s `deliver` arm
+   set `d.pressure = 0` by hand while `v21Pressure` owned the same field, and
+   an engine government answering the same ultimatum would have needed a third
+   copy. One body: the cohesion rises and the ladder comes down one rung, which
+   is what "they were answered" means. The relationship channels are the
+   CALLER's, because `st.partyRel` is the player's relationship with a party
+   and an engine keeping a promise to another engine must not move it. */
+function v21Quiet(st, pid, d, gain) {
+  if (!d) return;
+  d.satisfaction = c100((d.satisfaction || 50) + gain);
+  var at = (typeof d.pressure === 'number') ? d.pressure : 0;
+  d.pressure = Math.max(0, at - 1);
+  d.pressureAt = st.turn;
+}
+
+/* S21h — WHETHER THE GOVERNMENT SAYS YES, and it is one question asked in two
+   places. A junior partner asking for a statute and a junior partner asking
+   for a department are the same negotiation with a different price, so the
+   refusal is derived once and both verbs read it. The head of government says
+   no when it is already angry with them, when the agreement is past saving,
+   and when it has nothing left to give -- and the sentence it says no in is
+   the sentence the button carries. */
+function v21GovWould(st, pid, kind) {
+  var lead = st.ruling;
+  if (!lead || lead === pid) return 'You lead this government. There is nobody to ask.';
+  var d = (st.coalitionDeals || {})[pid];
+  if (!d || !d.terms) return 'There is no agreement with them to reopen.';
+  if (v17GrudgeOf(st, lead, pid) >= 35) {
+    return 'The ' + PARTY[lead].short + ' will not be asked for anything by you at present.';
+  }
+  if (kind === 'office') {
+    var mine = ['pres', 'vpres', 'chan', 'vchan'].filter(function (o) { return st.exec[o] === lead; });
+    if (!mine.length) return 'The ' + PARTY[lead].short + ' hold no great office they could hand over.';
+    if (mine.length <= 1) return 'They hold one office and will not govern without it.';
+    /* a partner already carrying its share is not owed another */
+    if ((d.portfolios || 0) >= 2) return 'You have taken two offices from them already.';
+  }
+  if (kind === 'concession') {
+    if (v17Broken(st, pid) >= V17_PATIENCE) {
+      return 'The agreement already records ' + v8Plural(v17Broken(st, pid), 'broken promise') +
+        '. They are not reopening it again.';
+    }
+    if (d.altered === st.turn) return 'It was reopened this session already.';
+  }
+  return null;
+}
+
+/* AND WHAT SAYING YES DOES. Both are the government-side halves of a junior
+   verb, and both are the SAME body the head of government's own card writes
+   through -- `v21ReopenCore` and `v21OfficeCore` -- so a junior asking for a
+   department and a head handing one over are one act with two doors. */
+function v21OfficeCore(st, pid) {
+  var lead = st.ruling;
+  var offices = ['pres', 'vpres', 'chan', 'vchan'];
+  var off = offices.filter(function (o) {
+    return (st.coalition || []).indexOf(st.exec[o]) >= 0 && st.exec[o] !== pid;
+  })[0];
+  if (!off) return null;
+  var d = (st.coalitionDeals || {})[pid];
+  st.exec[off] = pid;
+  if (d) { d.portfolios = (d.portfolios || 0) + 1; d.satisfaction = c100((d.satisfaction || 50) + 16); }
+  logIt(st, DEPTS[off].name + ' was assigned to the ' + PARTY[pid].short + '.');
+  return off;
+}
+
+/* S21h — AN ENGINE GOVERNMENT ANSWERS AN ULTIMATUM. S21f left this branch
+   recording the grievance and nothing else, and said so: the only instrument
+   for answering one was `v17Renegotiate`, whose gate opens on `leads(st)` --
+   the player's chair -- so an engine government had no door to it at all. It
+   has the same three answers the player's paper offers, in the order a
+   government would actually try them, and THE CHOICE IS READ RATHER THAN
+   ROLLED: this runs inside `v16RedLineTick`, which every campaign's stream
+   sits downstream of, and S18c's rule is that a gate decides what happens and
+   never how many numbers are drawn. */
+function v21GovAnswer(st, pid, d) {
+  var lead = st.ruling;
+  if (!lead || !d || !d.terms) return null;
+  /* 1. LAY THE BILL THEY WERE PROMISED. The strongest answer and the one a
+     government reaches for first, where a promise is outstanding, the house is
+     sitting to lay it before, and the paper does not already carry it. */
+  var owed = ((d.terms.concessions) || []).filter(function (c) {
+    return c.kind === 'adopt' && !c.met && POL[c.ref];
+  })[0];
+  var already = owed && (st.bills || []).some(function (b) { return b.policy === owed.ref; });
+  if (owed && !already && typeof lowerSits === 'function' && lowerSits(st) && !st.caretaker &&
+      typeof sponsorBill === 'function') {
+    var lv = st.pol[owed.ref] || 0, tg = v17Want(st, pid, owed.ref);
+    sponsorBill(st, owed.ref, (tg !== undefined && tg < lv) ? -1 : 1, 'government', 'the coalition agreement', true);
+    v21Quiet(st, pid, d, 8);
+    logIt(st, 'The ' + PARTY[lead].short + ' put the bill the ' + PARTY[pid].short +
+      ' were promised on the order paper rather than lose them.');
+    addNews(st, 'The Coalition', PARTY[lead].short + ' answer the ultimatum with a bill',
+      'The government found the time it said it did not have.', 'good');
+    return 'deliver';
+  }
+  /* A REOPENING WAS DRAFTED HERE AS THE SECOND ANSWER AND TAKEN BACK OUT,
+     because it cannot fire at this moment. `v17CanRenegotiate` refuses at
+     `V17_PATIENCE` -- three broken promises and there is nothing left to
+     renegotiate with -- and an ultimatum is reached at a cohesion of
+     `v17WalkFloor + 4`, where the floor is `12 + min(3, broken) * 6`. A
+     partner with three broken promises has a bar of 34, just under the median
+     cohesion of 39.9 that S21d measured; a partner with none has a bar of 16,
+     which the distribution barely reaches. So an ultimatum is a late-record
+     event by construction, and driven over 240 sessions every one of the four
+     an engine government received arrived at exactly three. The branch was
+     written, measured and deleted rather than shipped as a road nobody can
+     take -- and the PLAYER's identical answer, which was lit on the same
+     papers, is now shut with `v17CanRenegotiate`'s own sentence on it instead
+     of charging four capital and five for a flash.
+
+     2. STAND FIRM, which is what a government with nothing left to give does.
+     The consequence goes through the channel a refused demand already uses. */
+  if (typeof v21Answer === 'function') v21Answer(st, 'demandRefused', pid);
+  logIt(st, 'The ' + PARTY[lead].short + ' had nothing to offer the ' + PARTY[pid].short +
+    ' and said so.');
+  return 'stand';
 }
 
 /* S21f — ONE DOOR OUT OF A COALITION, and every way out goes through it.
@@ -37178,10 +37497,16 @@ function v17CanRenegotiate(st, pid) {
   if (d.altered === st.turn) return 'It was reopened this session already.';
   return null;
 }
-function v17Renegotiate(st, pid) {
-  var why = v17CanRenegotiate(st, pid);
-  if (why) { flash(why); return false; }
-  var d = st.coalitionDeals[pid], t = d.terms;
+/* S21h — THE REOPENING ITSELF, with no chair in it. `v17Renegotiate` was the
+   head of government's button and its body; an engine government answering an
+   ultimatum, and a junior partner ASKING for the same thing, both need this
+   act and neither can reach a body that flashes at the player and refuses on
+   `leads(st)`. The gate stays with the caller and the act comes here, which is
+   the S17k rule: when you extract a Core, pin what the OLD caller was already
+   getting rather than reading it off the constant. */
+function v21ReopenCore(st, pid, why) {
+  var d = (st.coalitionDeals || {})[pid], t = d && d.terms;
+  if (!t) return null;
   var wants = pv5TopWants(pid, st, 7);
   /* not a statute already promised, and NOT their red line: a thing a party
      exists to defend is not a bargaining chip, and trading one into the
@@ -37193,14 +37518,33 @@ function v17Renegotiate(st, pid) {
   /* the outstanding promise nobody is going to keep is traded for one they
      still want, and the swap is recorded as what it is */
   var stale = (t.concessions || []).filter(function (c) { return !c.met; })[0];
-  if (!fresh || !stale) { flash('There is nothing outstanding to trade. The agreement stands as written.'); return false; }
+  if (!fresh || !stale) return null;
+  /* S21h: AND THE REWRITTEN PROMISE IS A NEW PROMISE. This set `ref`, `kind`,
+     `met` and `broken` and left `from`, `due` and `late` alone -- so the rung
+     the government owed was measured from the level the OLD statute stood at
+     when the agreement was signed, applied to a DIFFERENT statute, and the
+     date was the one the promise it replaced had already gone past. A promise
+     born late that can never book a second breach, aimed at a rung nobody
+     computed. Found by extracting the Core, which is what extracting a Core is
+     for. */
   stale.ref = fresh.id; stale.kind = 'adopt'; stale.met = false; stale.broken = false;
+  stale.from = (st.pol || {})[fresh.id] || 0;
+  stale.due = (st.turn || 0) + V21_DUE;
+  stale.late = false;
   d.altered = st.turn;
   d.satisfaction = c100((d.satisfaction || 50) + 5);
   st.partyRel[pid] = c100((st.partyRel[pid] || 50) + 3);
-  v17Ledger(st, pid, { kind:'altered', ref:fresh.id, why:'the agreement was reopened and rewritten', cost:0 });
+  v17Ledger(st, pid, { kind:'altered', ref:fresh.id,
+    why:why || 'the agreement was reopened and rewritten', cost:0 });
   logIt(st, 'The coalition agreement with the ' + PARTY[pid].short + ' was reopened and ' +
     POL[fresh.id].name + ' was written into it in place of a promise neither side was going to keep.');
+  return fresh.id;
+}
+function v17Renegotiate(st, pid) {
+  var why = v17CanRenegotiate(st, pid);
+  if (why) { flash(why); return false; }
+  var ref = v21ReopenCore(st, pid, 'the agreement was reopened and rewritten');
+  if (!ref) { flash('There is nothing outstanding to trade. The agreement stands as written.'); return false; }
   return true;
 }
 

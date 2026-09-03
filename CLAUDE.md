@@ -317,6 +317,16 @@ before touching the file.
   a slice that re-phased the dice, check the sample size before hunting the
   mechanism. This is S16a's ruling — a pacing figure from one seed cannot tell a
   balance change from a reshuffle — applied to every arm rather than to pacing.
+  AND WHEN THE SAMPLE CANNOT BE MADE BIG ENOUGH, SPLIT THE CLAIM: the rare event
+  keeps a tripwire that the path fires in play at all, and its CORRECTNESS moves
+  to a leg with no dice in it. S21h's `oustDone >= 2` is 5 over twelve seeds and
+  1,440 sessions with eight seeds at nought — no drive this harness can afford
+  makes that a count — so what the bar was groping at is now asked as
+  arithmetic: walk the target out of the government through the game's own door
+  and ask the kind's own `done` either side, and ask the resolution whether it
+  files the aim as `done` or as `gone`. They are one ternary apart and a build
+  that always said `gone` passed everything the arm asked before. A count of two
+  proves a mechanism fired twice; it never proved it was right.
 - **A book whose cards are about something the model has no channel to is a
   book of decoration, however carefully each card is authored.** Every statute
   reaches the model through `eff`, `mood`, `rev`/`exp` and `auth`, which is

@@ -11662,6 +11662,623 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `own name (${fall.player.mine}) and the government is still standing when the click returns ` +
     `(${fall.player.governmentStillStands})`);
 
+  /* ---------- S21h: THE JUNIOR PARTNER'S GAME ----------
+     `v17MyDealCard` gave a junior partner a first-person view of the agreement
+     and the panel's own voice said what it was worth: "You can read it, which
+     is worth more than it sounds." Reading was all of it -- every verb that
+     touches a coalition agreement is gated on `leads(S)`. Six arms: the five
+     verbs exist and are PACED; the ladder unlocks in the order the engine
+     climbs it; every one is pressed by a real click and moves what it says;
+     every shut one says why, read out of the RENDERED card; the engine
+     government answers an ultimatum; and the shared Cores are shared, which is
+     asked by driving BOTH doors and watching one body answer. */
+  const junior = await page.evaluate(() => {
+    const R = {};
+    function fresh(seed) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      const rq = runQueue; runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+    /* a junior chair: somebody else leads, the player sits in, and every great
+       office is the leader's so the ask has something to ask for */
+    function junior(seed) {
+      fresh(seed);
+      const me = playParty(S);
+      const lead = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      S.ruling = lead; S.coalition = [lead, me]; S.partner = me;
+      ['pres', 'vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = lead; });
+      S = enrichState(S, false);
+      S.capital = 90; S.purse = S.purse || {}; S.purse[me] = 900;
+      return me;
+    }
+    const IDS = ['partnerAsk', 'partnerOffice', 'partnerPublish', 'partnerThreaten', 'partnerWhip'];
+    const card = id => ACTIONS.filter(a => a.id === id)[0];
+
+    /* (a) FIVE VERBS, FIVE COOLDOWNS, FIVE RISING PRICES. Five options under
+       one id would share one `actionKey`, one cooldown and one `uses` count,
+       which is the same verb pressed five ways. */
+    R.deck = (() => {
+      junior(4242);
+      const cards = ACTIONS.filter(a => a.cat === 'Coalition');
+      const keys = cards.map(a => actionKey(a));
+      return { n:cards.length, ids:cards.map(a => a.id),
+        distinctKeys: new Set(keys).size,
+        allPaced: cards.every(a => a.cool > 0 && a.esc > 1),
+        derived: cards.every(a => a.tempoDerived === true),
+        cool:cards.map(a => a.cool), esc:cards.map(a => a.esc),
+        /* and the price RISES with use, which is what `esc` is for */
+        priceRises: (() => {
+          const a = card('partnerAsk'); if (!a) return false;
+          const was = actionCost(a);
+          S.uses[actionKey(a)] = (S.uses[actionKey(a)] || 0) + 3;
+          const now = actionCost(a);
+          S.uses[actionKey(a)] = 0;
+          return now > was;
+        })() };
+    })();
+
+    /* (b) THE LADDER UNLOCKS IN THE ORDER THE ENGINE CLIMBS IT, and each rung
+       is asked BEFORE and AFTER the one below it is taken -- a probe that only
+       asked afterwards would pass on a build with no order at all. */
+    R.ladder = (() => {
+      const me = junior(90210);
+      const open = id => actionOpen(card(id));
+      const said = id => { const a = card(id); return a.why ? a.why() : null; };
+      const out = { steps: [] };
+      out.steps.push({ at:'start', publish:open('partnerPublish'),
+        threaten:open('partnerThreaten'), whip:open('partnerWhip'),
+        threatenWhy:said('partnerThreaten'), whipWhy:said('partnerWhip') });
+      doAction(card('partnerPublish'), null);
+      S.capital = 90; S.purse[me] = 900;
+      out.steps.push({ at:'published', publish:open('partnerPublish'),
+        threaten:open('partnerThreaten'), whip:open('partnerWhip') });
+      doAction(card('partnerThreaten'), null);
+      S.capital = 90; S.purse[me] = 900;
+      out.steps.push({ at:'threatened', publish:open('partnerPublish'),
+        threaten:open('partnerThreaten'), whip:open('partnerWhip') });
+      const a = out.steps[0], b = out.steps[1], c = out.steps[2];
+      out.inOrder = a.publish === true && a.threaten === false && a.whip === false &&
+        b.threaten === true && b.whip === false;
+      /* the whip opens only once the ultimatum has been delivered AND the
+         government has not answered it back down -- so it is read on the board
+         the threat left behind rather than assumed */
+      out.whipAfterThreat = c.whip === true || c.threaten === false;
+      out.saysWhy = !!a.threatenWhy && !!a.whipWhy;
+      return out;
+    })();
+
+    /* (c) EVERY VERB PRESSED BY A REAL CLICK, and each moves what it says. The
+       whole family of defects this file names lives in the gap between a gate
+       that calls a function and a player who presses a button. */
+    R.press = (() => {
+      const me = junior(7);
+      const out = {};
+      const snap = () => {
+        const d = (S.coalitionDeals || {})[me] || {};
+        return JSON.stringify({ conc:(d.terms || {}).concessions, exec:S.exec,
+          def:d.defected, press:d.pressure, mach:S.machine[S.ruling], bills:S.bills.length,
+          purse:Math.round(partyPurse(S, me)) });
+      };
+      IDS.forEach(id => {
+        const a = card(id); if (!a) { out[id] = 'missing'; return; }
+        S.capital = 90; S.purse[me] = 900;
+        S.cooldown[actionKey(a)] = -99;
+        /* THE GOVERNMENT ANSWERS THE ULTIMATUM AND THAT SHUTS THE WHIP, which
+           is the mechanism working: `v21GovAnswer` lays the bill it promised
+           and `v21Quiet` takes the partner back down a rung. So the board the
+           whip is pressed on is one where the government has nothing left to
+           give -- constructed through the game's own guard rather than by
+           setting `d.pressure` and calling the verb, which would test the verb
+           and not the negotiation it sits in. */
+        if (id === 'partnerWhip') {
+          const d = (S.coalitionDeals || {})[me];
+          d.terms.concessions = [];
+          d.pressureAt = -99;
+          const t = card('partnerThreaten');
+          S.cooldown[actionKey(t)] = -99;
+          if (actionOpen(t)) doAction(t, null);
+          S.capital = 90; S.purse[me] = 900;
+        }
+        if (!actionOpen(a)) { out[id] = 'shut: ' + (a.why ? a.why() : ''); return; }
+        const before = snap();
+        try { doAction(a, null); } catch (e) { out[id] = 'threw ' + e.message; return; }
+        out[id] = (snap() === before) ? 'MOVED NOTHING' : 'moved';
+      });
+      out.allMoved = IDS.every(id => out[id] === 'moved');
+      return out;
+    })();
+
+    /* (d) AND A SHUT CARD SAYS WHY, READ OUT OF THE RENDERED PAGE. S21f's own
+       poison run caught this: the first version called `a.why()` and passed on
+       a build where the renderer printed nothing. */
+    R.rendered = (() => {
+      junior(31337);
+      UI.tab = 'government';
+      let threw = null;
+      try { render(); } catch (e) { threw = e.message; }
+      const rows = Array.from(document.querySelectorAll('[data-act^="partner"]')).map(b => {
+        const c = b.closest('.card');
+        const tag = c ? c.querySelector('.tag.down') : null;
+        return { act:b.getAttribute('data-act'), disabled:b.disabled,
+          said:tag ? tag.textContent.trim() : '' };
+      });
+      const shut = rows.filter(r => r.disabled);
+      return { threw:threw, drawn:rows.length, shut:shut.length,
+        everyShutSaysWhy: shut.length > 0 && shut.every(r => r.said && r.said !== 'Not available'),
+        sample: shut.length ? shut[0].said : '' };
+    })();
+
+    /* (e) THE ENGINE GOVERNMENT ANSWERS AN ULTIMATUM. S21f left this branch
+       recording the grievance and nothing else and said so in as many words.
+       Driven from the junior chair, because the player IS the partner and the
+       government answering is an engine. */
+    R.answer = (() => {
+      const me = junior(555);
+      const out = { calls:0, kinds:{} };
+      const bg = v21GovAnswer;
+      v21GovAnswer = function (st, pid, d) {
+        const r = bg.apply(this, arguments);
+        out.calls += 1; if (r) out.kinds[r] = (out.kinds[r] || 0) + 1;
+        return r;
+      };
+      const bn = addNews;
+      const news = [];
+      addNews = function (st, sec, head) { news.push(String(head)); return bn.apply(this, arguments); };
+      try {
+        const d = (S.coalitionDeals || {})[me];
+        /* an outstanding promise on the record, which is what a government
+           answers WITH -- constructed rather than waited for */
+        d.terms.concessions = [v21Concede(S, pv5TopWants(me, S, 1)[0].id)];
+        d.pressure = 1; d.pressureAt = -99;
+        const bills0 = S.bills.length;
+        v21Say(S, me, d, 2);
+        out.laidABill = S.bills.length > bills0;
+        out.quieted = d.pressure < 2;
+        out.pressure = d.pressure;
+        /* AND IT DOES NOT CLAIM TO LAY A BILL THAT IS ALREADY ON THE PAPER.
+           `sponsorBill` refuses a second bill on a live policy by itself, so
+           the bill COUNT is guaranteed by the game and asserting it proves
+           nothing -- the poison that removed the guard came back green on it.
+           What the guard changes is the ANSWER: without it the government
+           calls `sponsorBill`, gets null, quiets the partner anyway and
+           reports "deliver" for a bill it never laid, which is a card that
+           lies. The second answer must be `stand`. */
+        const kinds0 = JSON.parse(JSON.stringify(out.kinds));
+        d.pressure = 1; d.pressureAt = -99;
+        const billsAgain = S.bills.length;
+        v21Say(S, me, d, 2);
+        out.noDuplicate = S.bills.length === billsAgain;
+        out.secondAnswer = Object.keys(out.kinds).filter(k => out.kinds[k] > (kinds0[k] || 0))[0] || null;
+        /* and with NOTHING to lay, the same call stands firm rather than
+           silently doing nothing */
+        const d2 = (S.coalitionDeals || {})[me];
+        d2.terms.concessions = [];
+        d2.pressure = 1; d2.pressureAt = -99;
+        v21Say(S, me, d2, 2);
+        out.stoodFirm = out.kinds.stand > 0;
+      } finally { v21GovAnswer = bg; addNews = bn; }
+      /* AND THE FIRST RUNG IS SAID IN PUBLIC. `v21Say(…, 1)` is a partner
+         telling the country the agreement is not being kept, and a rung with
+         no news item is a rung nobody outside the room can see. */
+      const d3 = (S.coalitionDeals || {})[me];
+      d3.pressure = 0; d3.pressureAt = -99;
+      const n0 = news.length;
+      const bn2 = addNews;
+      addNews = function (st, sec, head) { news.push(String(head)); return bn2.apply(this, arguments); };
+      try { v21Say(S, me, d3, 1); } finally { addNews = bn2; }
+      out.saidInPublic = news.length > n0 &&
+        news.slice(n0).some(h => /say in public/.test(h));
+      out.news = news.slice(-3);
+      return out;
+    })();
+
+    /* (c2) AND THEY ARE SHUT FROM EVERY OTHER CHAIR, with the reason on them.
+       Every leg above sits in the junior chair, so a build whose `can` was
+       simply `true` would pass all of them: the claim that these are the
+       PARTNER's verbs has to be asked from the chairs that are not. */
+    R.chairs = (() => {
+      const out = {};
+      const ask = () => IDS.map(id => {
+        const a = card(id);
+        return { id:id, open:actionOpen(a), why:a.why ? a.why() : null };
+      });
+      /* leading */
+      fresh(4242);
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me];
+      S = enrichState(S, false);
+      S.capital = 90; S.purse = S.purse || {}; S.purse[me] = 900;
+      out.leading = ask();
+      /* opposition */
+      fresh(4242);
+      const other = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      S.ruling = other; S.coalition = [other];
+      S = enrichState(S, false);
+      S.capital = 90; S.purse[me] = 900;
+      out.opposition = ask();
+      out.allShut = out.leading.every(r => r.open === false) &&
+        out.opposition.every(r => r.open === false);
+      out.allSayWhy = out.leading.concat(out.opposition)
+        .every(r => typeof r.why === 'string' && r.why.length > 10);
+      out.leadingSays = out.leading[0].why;
+      out.oppositionSays = out.opposition[0].why;
+      /* and the two chairs are told DIFFERENT things, or the sentence is a
+         constant rather than a reading of where the player sits */
+      out.differentSentences = out.leadingSays !== out.oppositionSays;
+      return out;
+    })();
+
+    /* (c3) EVERY REFUSAL `v21PartnerWhy` CAN PRODUCE, ON A BOARD DIFFERING IN
+       THAT ONE FACT, and each cleared again so the sentence is a reading of
+       the board rather than a constant. A covered surface rather than a hand
+       list: each case names the verb it shuts and the thing that shuts it, and
+       a refusal a later slice adds with no case here leaves `cases` short of
+       `named`. */
+    R.refusals = (() => {
+      const me = junior(424242);
+      const d = () => (S.coalitionDeals || {})[me];
+      const lead = () => S.ruling;
+      const openOf = id => actionOpen(card(id));
+      const whyOf = id => { const a = card(id); return a.why ? a.why() : null; };
+      const rows = [];
+      /* set, read, clear, read: both halves or a constant sentence passes */
+      const one = (name, id, set, clear) => {
+        set();
+        const shut = !openOf(id), said = whyOf(id);
+        clear();
+        const open = openOf(id);
+        rows.push({ name:name, id:id, shut:shut, said:said, opensAgain:open });
+      };
+      const base = () => { const x = d(); x.pressure = 0; x.pressureAt = -99; x.defected = null;
+        x.altered = -99; x.ledger = []; v16Ai(S)[lead()].grudge[me] = 0;
+        ['pres', 'vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = lead(); });
+        x.portfolios = 0; };
+      base();
+      one('said it already', 'partnerPublish',
+        () => { d().pressure = 1; }, () => { d().pressure = 0; });
+      one('threatened already', 'partnerThreaten',
+        () => { d().pressure = 2; }, () => { d().pressure = 1; });
+      one('has not said it', 'partnerThreaten',
+        () => { d().pressure = 0; }, () => { d().pressure = 1; });
+      base(); d().pressure = 2;
+      one('whip already off', 'partnerWhip',
+        () => { d().defected = S.turn; }, () => { d().defected = null; });
+      one('has not threatened', 'partnerWhip',
+        () => { d().pressure = 1; }, () => { d().pressure = 2; });
+      base();
+      one('the government is angry', 'partnerAsk',
+        () => { v16Ai(S)[lead()].grudge[me] = 60; },
+        () => { v16Ai(S)[lead()].grudge[me] = 0; });
+      one('one office left', 'partnerOffice',
+        () => { ['vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = me; }); },
+        () => { ['vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = lead(); }); });
+      one('two offices taken already', 'partnerOffice',
+        () => { d().portfolios = 2; }, () => { d().portfolios = 0; });
+      one('the agreement is past saving', 'partnerAsk',
+        () => { for (let i = 0; i < V17_PATIENCE; i++)
+                  v17Ledger(S, me, { kind:'broken', ref:null, why:'probe', cost:0 }); },
+        () => { d().ledger = []; });
+      one('reopened this session', 'partnerAsk',
+        () => { d().altered = S.turn; }, () => { d().altered = -99; });
+      const said = rows.map(r => r.said);
+      return { n:rows.length, rows:rows,
+        allShut: rows.every(r => r.shut === true),
+        allSaidSomething: rows.every(r => typeof r.said === 'string' && r.said.length > 10),
+        allOpenAgain: rows.every(r => r.opensAgain === true),
+        /* and no two cases say the same sentence, or one of them is a fall-through */
+        distinct: new Set(said).size === said.length };
+    })();
+
+    /* (e2) AND THE LADDER REACHES THE VOICE, which is a different claim from
+       the voice working. `v21Pressure` decides WHEN a partner climbs and
+       `v21Say` is what climbing does, and the poison that put the assignment
+       back inline -- `d.pressure = at + 1` with no call -- passed on a leg
+       that only ever called `v21Say` itself. Driven through `v16RedLineTick`,
+       which is the tick the game runs. */
+    R.wired = (() => {
+      const me = junior(2718);
+      const out = { calls:0, stages:[] };
+      const bs = v21Say;
+      v21Say = function (st, pid, d, stage) {
+        out.calls += 1; out.stages.push(stage);
+        return bs.apply(this, arguments);
+      };
+      try {
+        const partner = PARTIES.filter(p => p.id !== S.ruling && p.id !== me &&
+          !S.banned[p.id])[0].id;
+        S.coalition = [S.ruling, me, partner];
+        S = enrichState(S, false);
+        const d = (S.coalitionDeals || {})[partner];
+        /* a partner whose cohesion has collapsed climbs a rung a session */
+        d.satisfaction = v17WalkFloor(S, partner) + 6;
+        d.pressure = -1; d.pressureAt = -99;
+        for (let i = 0; i < 6 && out.calls < 3; i++) {
+          d.pressureAt = -99;
+          v16RedLineTick(S);
+          S.turn += 1;
+        }
+      } finally { v21Say = bs; }
+      out.reached = out.calls > 0;
+      out.oneRungAtATime = out.stages.every((v, i) => i === 0 || v === out.stages[i - 1] + 1);
+      return out;
+    })();
+
+    /* (f) ONE BODY, TWO DOORS. The head of government's own portfolio button
+       and the junior's ask both move an office through `v21OfficeCore`; the
+       reopening is `v21ReopenCore` for the head's card, the junior's ask and
+       the engine's answer alike. Driven from BOTH chairs, because a Core
+       nobody proves is shared is two functions that happen to agree today. */
+    R.cores = (() => {
+      const out = {};
+      /* the junior's door */
+      const me = junior(8080);
+      const exec0 = JSON.stringify(S.exec);
+      S.cooldown[actionKey(card('partnerOffice'))] = -99;
+      doAction(card('partnerOffice'), null);
+      out.juniorGotOffice = JSON.stringify(S.exec) !== exec0 &&
+        ['pres', 'vpres', 'chan', 'vchan'].some(o => S.exec[o] === me);
+      /* the head's door, on a board where the player leads */
+      fresh(8080);
+      const lead = playParty(S);
+      const partner = PARTIES.filter(p => p.id !== lead && !S.banned[p.id])[0].id;
+      S.ruling = lead; S.coalition = [lead, partner]; S.partner = partner;
+      ['pres', 'vpres', 'chan', 'vchan'].forEach(o => { S.exec[o] = lead; });
+      S = enrichState(S, false);
+      S.capital = 90; S.treasury = 900;
+      const exec1 = JSON.stringify(S.exec);
+      /* WATCHED, not merely observed. The poison that put the head's own
+         inline copy back does the same thing to `S.exec`, so "the office
+         moved" passes on two bodies as readily as on one. The claim is that
+         there IS one body. */
+      let officeCalls = 0;
+      const boc = v21OfficeCore;
+      v21OfficeCore = function () { officeCalls += 1; return boc.apply(this, arguments); };
+      try { pv5CoalitionAction(partner, 'portfolio'); } finally { v21OfficeCore = boc; }
+      out.headGaveOffice = JSON.stringify(S.exec) !== exec1 &&
+        ['pres', 'vpres', 'chan', 'vchan'].some(o => S.exec[o] === partner);
+      out.headGaveThroughTheCore = officeCalls === 1;
+      /* AND IT NEVER TAKES AN OFFICE THE GOVERNMENT DOES NOT HOLD. `pres` is
+         first in the list the Core walks, so a board where an OPPOSITION party
+         holds it is the one that tells a filter from an index -- the poison
+         that replaced the filter with `offices[0]` passed on a board where the
+         first office happened to be the government's. */
+      const outsider = PARTIES.filter(q => q.id !== lead && q.id !== partner &&
+        !S.banned[q.id])[0].id;
+      S.exec.pres = outsider;
+      const third = PARTIES.filter(q => q.id !== lead && q.id !== partner &&
+        q.id !== outsider && !S.banned[q.id])[0].id;
+      const took = v21OfficeCore(S, third);
+      out.leftTheOutsiderAlone = S.exec.pres === outsider;
+      out.tookSomethingElse = took !== 'pres';
+      /* AND THE REWRITTEN PROMISE IS A NEW PROMISE: `from` on the new statute,
+         a date ahead of today, and `late` cleared. It set `ref`, `kind`, `met`
+         and `broken` and left the other three, so the rung was measured from
+         the level a DIFFERENT statute stood at and the date had already gone. */
+      const d = (S.coalitionDeals || {})[partner];
+      d.terms.concessions = [v21Concede(S, pv5TopWants(partner, S, 1)[0].id)];
+      d.terms.concessions[0].due = S.turn - 3;
+      d.terms.concessions[0].late = true;
+      d.terms.concessions[0].from = 99;
+      const wasRef = d.terms.concessions[0].ref;
+      const ref = v21ReopenCore(S, partner, 'probe');
+      const c = (d.terms.concessions || [])[0] || {};
+      out.rewrote = !!ref && ref !== wasRef;
+      /* AND THE HEAD OF GOVERNMENT'S OWN BUTTON GOES THROUGH IT. `v17Renegotiate`
+         is the door on the coalition card and it was the body as well; driven
+         by the real handler, with `v21ReopenCore` watched, because a Core its
+         first caller does not use is two functions again. */
+      const dd = (S.coalitionDeals || {})[partner];
+      dd.terms.concessions = [v21Concede(S, pv5TopWants(partner, S, 2)[1].id)];
+      dd.altered = -99;
+      let coreCalls = 0;
+      const brc = v21ReopenCore;
+      v21ReopenCore = function () { coreCalls += 1; return brc.apply(this, arguments); };
+      S.capital = 90; S.treasury = 900;
+      try { pv5CoalitionAction(partner, 'renegotiate'); } finally { v21ReopenCore = brc; }
+      out.headReopenedThroughTheCore = coreCalls === 1;
+      out.freshFrom = c.from === ((S.pol || {})[ref] || 0);
+      out.freshDue = typeof c.due === 'number' && c.due > S.turn;
+      out.notBornLate = c.late === false;
+      return out;
+    })();
+
+    /* (g) AND A PAPER'S ANSWER SAYS WHEN IT CANNOT BE TAKEN, BEFORE IT CHARGES.
+       `respondInbox` took the capital and the money and then flashed: measured
+       over 240 driven sessions, every ultimatum an engine government received
+       arrived at exactly three broken promises, which is `V17_PATIENCE`, so
+       "Reopen the agreement and rewrite it" was lit, priced and refused. */
+    R.paper = (() => {
+      const me = junior(1234);
+      /* the player leads, and a partner delivers an ultimatum */
+      fresh(1234);
+      const lead = playParty(S);
+      const partner = PARTIES.filter(p => p.id !== lead && !S.banned[p.id])[0].id;
+      S.ruling = lead; S.coalition = [lead, partner]; S.partner = partner;
+      S = enrichState(S, false);
+      const d = (S.coalitionDeals || {})[partner];
+      d.terms.concessions = [];
+      /* three broken promises, which is what an ultimatum arrives at */
+      for (let i = 0; i < 3; i++) {
+        v17Ledger(S, partner, { kind:'broken', ref:null, why:'probe', cost:0 });
+      }
+      S.inbox = [];
+      d.pressure = 1; d.pressureAt = -99;
+      v21Say(S, partner, d, 2);
+      const it = S.inbox.filter(x => x.type === 'coalition_ultimatum')[0] || null;
+      if (!it) return { posted:false };
+      const opts = inboxChoices(it) || [];
+      const why = {};
+      opts.forEach(o => { why[o.id] = (typeof o.why === 'function') ? o.why(it) : null; });
+      UI.tab = 'chamber';
+      let threw = null;
+      try { render(); } catch (e) { threw = e.message; }
+      const btns = Array.from(document.querySelectorAll('[data-answer]'))
+        .filter(b => b.getAttribute('data-inbox') === it.id)
+        .map(b => ({ id:b.getAttribute('data-answer'), disabled:b.disabled,
+          title:b.getAttribute('title') || '' }));
+      /* AND THE CLICK DOES NOT CHARGE. Pressed through `respondInbox`, which
+         is the handler the button dispatches to. */
+      S.capital = 40; S.treasury = 400;
+      const cap0 = S.capital, tre0 = S.treasury;
+      respondInbox(it.id, 'rewrite');
+      const chargedNothing = S.capital === cap0 && S.treasury === tre0;
+      const stillThere = S.inbox.some(x => x.id === it.id);
+      /* AND THE ANSWER THAT IS OPEN QUIETS THEM THROUGH `v21Quiet`, the one
+         owner of the ladder. This arm was reading the SHUT answer only, so the
+         poison that put `d.pressure = 0` back inline here passed. Given a
+         promise it can lay, "lay the bill they were promised" is open. */
+      d.terms.concessions = [v21Concede(S, pv5TopWants(partner, S, 1)[0].id)];
+      d.pressure = 2; d.pressureAt = S.turn;
+      let quietCalls = 0;
+      const bq = v21Quiet;
+      v21Quiet = function () { quietCalls += 1; return bq.apply(this, arguments); };
+      S.capital = 40; S.treasury = 400;
+      const bills0 = S.bills.length;
+      try { respondInbox(it.id, 'deliver'); } finally { v21Quiet = bq; }
+      const delivered = { laid:S.bills.length > bills0, quietCalls:quietCalls,
+        pressure:d.pressure, quieted:d.pressure < 2 };
+      return { posted:true, threw:threw, why:why, btns:btns, delivered:delivered,
+        shutInThePage: btns.filter(b => b.disabled && /rewrite|deliver/.test(b.id)).length,
+        /* and the sentence is ON THE BUTTON in the page, not merely returned by
+           `inboxChoices` -- the renderer is the half a player reads */
+        titledInThePage: btns.filter(b => b.disabled && /rewrite|deliver/.test(b.id) &&
+          b.title && b.title.length > 10).length,
+        rewriteShut: !!why.rewrite,
+        deliverShut: !!why.deliver,
+        chargedNothing: chargedNothing, stillThere: stillThere };
+    })();
+
+    /* (h) AND SAYING IT COSTS THE GOVERNMENT SOMETHING, which is why a partner
+       says it in public. Read either side of ONE call, on one board. */
+    R.cost = (() => {
+      const me = junior(2718);
+      const d = (S.coalitionDeals || {})[me];
+      d.pressure = 0; d.pressureAt = -99;
+      const m0 = S.machine[S.ruling] || 0, u0 = S.unity;
+      v21Say(S, me, d, 1);
+      const m1 = S.machine[S.ruling] || 0, u1 = S.unity;
+      return { machine0:+m0.toFixed(4), machine1:+m1.toFixed(4),
+        fell: m1 < m0, byTheConstant: Math.abs((m0 - m1) - V21_SAY_MACHINE) < 1e-9,
+        unityFell: u1 < u0 };
+    })();
+    return R;
+  });
+
+  const juniorOk =
+    junior.deck.n === 5 && junior.deck.distinctKeys === 5 &&
+    junior.deck.allPaced === true && junior.deck.derived === true &&
+    junior.deck.priceRises === true &&
+    junior.ladder.inOrder === true && junior.ladder.saysWhy === true &&
+    junior.press.allMoved === true &&
+    junior.rendered.threw === null && junior.rendered.drawn === 5 &&
+    junior.rendered.everyShutSaysWhy === true &&
+    junior.answer.calls === 3 && junior.answer.laidABill === true &&
+    junior.answer.quieted === true && junior.answer.stoodFirm === true &&
+    junior.answer.noDuplicate === true && junior.answer.secondAnswer === 'stand' &&
+    junior.answer.saidInPublic === true &&
+    junior.wired.reached === true && junior.wired.oneRungAtATime === true &&
+    junior.refusals.n === 10 && junior.refusals.allShut === true &&
+    junior.refusals.allSaidSomething === true && junior.refusals.allOpenAgain === true &&
+    junior.refusals.distinct === true &&
+    junior.chairs.allShut === true && junior.chairs.allSayWhy === true &&
+    junior.chairs.differentSentences === true &&
+    junior.cores.juniorGotOffice === true && junior.cores.headGaveOffice === true &&
+    junior.cores.headGaveThroughTheCore === true &&
+    junior.cores.leftTheOutsiderAlone === true && junior.cores.tookSomethingElse === true &&
+    junior.cores.rewrote === true && junior.cores.freshFrom === true &&
+    junior.cores.freshDue === true && junior.cores.notBornLate === true &&
+    junior.paper.posted === true && junior.paper.rewriteShut === true &&
+    junior.paper.deliverShut === true && junior.paper.shutInThePage === 2 &&
+    junior.paper.titledInThePage === 2 &&
+    junior.paper.chargedNothing === true && junior.paper.stillThere === true &&
+    !!junior.paper.delivered && junior.paper.delivered.laid === true &&
+    junior.paper.delivered.quietCalls === 1 && junior.paper.delivered.quieted === true &&
+    junior.cores.headReopenedThroughTheCore === true &&
+    junior.cost.fell === true && junior.cost.byTheConstant === true;
+  say(juniorOk, 'the junior partner has a game',
+    `"YOU CAN READ IT, WHICH IS WORTH MORE THAN IT SOUNDS" was the coalition panel's own voice to a junior ` +
+    `partner, and reading was all of it: council, portfolio, programme, reopen and discipline are gated on ` +
+    `\`leads(S)\`, so a player sitting in a government they did not form had a card with a meter on it and ` +
+    `nothing to press · FIVE VERBS AND FIVE COOLDOWNS (${junior.deck.n} cards, ` +
+    `${junior.deck.distinctKeys} distinct keys), each paced by \`v20PaceParty\` off its own weight rather ` +
+    `than from a list (${junior.deck.derived}) -- ${junior.deck.cool.join('/')} sessions of rest and ` +
+    `${junior.deck.esc.join('/')} a use dearer, and the price actually rises (${junior.deck.priceRises}). ` +
+    `Five OPTIONS under one id would have shared one \`actionKey\`, one cooldown and one \`uses\` count, ` +
+    `which is the same verb pressed five ways · THE LADDER UNLOCKS IN THE ORDER THE ENGINE CLIMBS IT ` +
+    `(${junior.ladder.inOrder}), asked before and after each rung is taken: publish, then threaten, then the ` +
+    `whip. Without it a partner's road to an ultimatum is ONE CLICK where an engine's is three sessions of ` +
+    `\`v21Pressure\` at one rung a session, and \`v21Defect\` books the top rung, so the whip was a first ` +
+    `move that silently skipped both under it. Every shut one says why in its own words ` +
+    `(${junior.ladder.saysWhy}) · AND EVERY ONE IS PRESSED BY A REAL CLICK through \`doAction\` ` +
+    `(${junior.press.allMoved}: ${JSON.stringify(junior.press)}), and the refusal is READ OUT OF THE ` +
+    `RENDERED PAGE (${junior.rendered.everyShutSaysWhy}) -- ${junior.rendered.drawn} drawn, ` +
+    `${junior.rendered.shut} shut · AND ALL FIVE ARE SHUT FROM EVERY OTHER CHAIR ` +
+    `(${junior.chairs.allShut}), each saying why in words the chair chose ` +
+    `(${junior.chairs.differentSentences}): "${junior.chairs.leadingSays}" from the head of government and ` +
+    `"${junior.chairs.oppositionSays}" from the bench -- every leg above sits in the junior chair, so a build ` +
+    `whose \`can\` was simply true would pass all of them · AND EVERY REFUSAL \`v21PartnerWhy\` CAN PRODUCE ` +
+    `IS ASKED ON A BOARD DIFFERING IN THAT ONE FACT (${junior.refusals.n} of them, all shut ` +
+    `${junior.refusals.allShut}, all saying something ${junior.refusals.allSaidSomething}, ALL OPENING AGAIN ` +
+    `when the cause is cleared ${junior.refusals.allOpenAgain}, and no two saying the same sentence ` +
+    `${junior.refusals.distinct}) -- said it already, threatened already, has not said it, whip already off, ` +
+    `has not threatened, the government is angry, one office left, two offices taken already, the agreement ` +
+    `is past saving, reopened this session. Both halves of each, because a sentence that never clears is a ` +
+    `constant rather than a reading of the board · ${junior.rendered.drawn} drawn, ` +
+    `${junior.rendered.shut} shut, "${junior.rendered.sample}" -- because S21f's poison run caught the ` +
+    `first version of that leg calling \`a.why()\` and passing on a build where the renderer printed ` +
+    `nothing · THE ENGINE GOVERNMENT ANSWERS AN ULTIMATUM (${junior.answer.calls} calls, ` +
+    `${JSON.stringify(junior.answer.kinds)}). S21f left that branch recording the grievance and nothing ` +
+    `else and said so: the only instrument for answering one was \`v17Renegotiate\`, whose gate opens on ` +
+    `\`leads(st)\`. It lays the bill it promised (${junior.answer.laidABill}) and the partner comes back ` +
+    `down the ladder (${junior.answer.quieted}, at ${junior.answer.pressure}); with nothing to lay it ` +
+    `stands firm (${junior.answer.stoodFirm}); and it does NOT lay a bill that is already before the house ` +
+    `(${junior.answer.noDuplicate}, answering "${junior.answer.secondAnswer}" instead), which is invisible on a ` +
+    `board where the first branch has nothing to collide with · AND THE LADDER REACHES THE VOICE, driven ` +
+    `through \`v16RedLineTick\` rather than by calling it (${junior.wired.reached}, stages ` +
+    `${JSON.stringify(junior.wired.stages)}, one rung at a time: ${junior.wired.oneRungAtATime}) -- the poison ` +
+    `that put \`d.pressure = at + 1\` back inline with no call passed on a leg that only ever called the voice ` +
+    `itself, which is "calling the function is not testing the wiring" in a new place · AND THE FIRST RUNG IS ` +
+    `SAID IN PUBLIC (${junior.answer.saidInPublic}): a rung with no news item is a rung nobody outside the room ` +
+    `can see, and the ladder had three of them and a price on none · ONE BODY, TWO DOORS: the junior asking for a department ` +
+    `(${junior.cores.juniorGotOffice}) and the head of government handing one over ` +
+    `(${junior.cores.headGaveOffice}) both move it through \`v21OfficeCore\`, driven from both chairs ` +
+    `because a Core nobody proves is shared is two functions that agree today, and the head's own "Reopen the ` +
+    `agreement" button goes through \`v21ReopenCore\` as well ` +
+    `(${junior.cores.headReopenedThroughTheCore}), driven by its real handler and WATCHED rather than ` +
+    `observed (${junior.cores.headGaveThroughTheCore}), because an inline copy moves \`S.exec\` exactly as a ` +
+    `shared body does and "the office moved" passes on two bodies as readily as on one · AND THE CORE NEVER ` +
+    `TAKES AN OFFICE THE GOVERNMENT DOES NOT HOLD (${junior.cores.leftTheOutsiderAlone}), asked on a board ` +
+    `where an OPPOSITION party holds \`pres\` -- first in the list the Core walks, which is what tells a ` +
+    `filter from an index · AND THE REWRITTEN PROMISE ` +
+    `IS A NEW PROMISE (${junior.cores.rewrote}): its \`from\` is the level the NEW statute stands at ` +
+    `(${junior.cores.freshFrom}), its date is ahead of today (${junior.cores.freshDue}) and it is not born ` +
+    `late (${junior.cores.notBornLate}). \`v17Renegotiate\` set \`ref\`, \`kind\`, \`met\` and \`broken\` ` +
+    `and left the other three, so the rung the government owed was measured from the level a DIFFERENT ` +
+    `statute stood at and the deadline was the one the promise it replaced had already gone past -- a ` +
+    `promise born late that could never book a second breach. Found by extracting the Core, which is what ` +
+    `extracting a Core is for · AND A PAPER'S ANSWER SAYS WHEN IT CANNOT BE TAKEN, BEFORE IT CHARGES ` +
+    `(${junior.paper.rewriteShut}/${junior.paper.chargedNothing}): "${junior.paper.why.rewrite}", and both ` +
+    `shut answers carry it ON THE BUTTON IN THE PAGE (${junior.paper.titledInThePage} of ` +
+    `${junior.paper.shutInThePage}) rather than only in what \`inboxChoices\` returns, which is the half a ` +
+    `player reads. ` +
+    `and the answer that IS open quiets them through \`v21Quiet\`, the one owner of the ladder ` +
+    `(${junior.paper.delivered ? junior.paper.delivered.quietCalls : 'n/a'} call, pressure ` +
+    `${junior.paper.delivered ? junior.paper.delivered.pressure : 'n/a'}) -- this leg read the SHUT answer ` +
+    `only and the poison that put \`d.pressure = 0\` back inline passed on it · ` +
+    `\`respondInbox\` took the capital and the money and THEN flashed, and measured over 240 driven ` +
+    `sessions every ultimatum an engine government received arrived at exactly three broken promises -- ` +
+    `\`V17_PATIENCE\`, at which \`v17CanRenegotiate\` refuses outright. So "Reopen the agreement and ` +
+    `rewrite it" was lit, priced at 4 capital and $5B, and refused after taking both · AND SAYING IT COSTS ` +
+    `THE GOVERNMENT SOMETHING, which is why a partner says it in public: the machine goes ` +
+    `${junior.cost.machine0} to ${junior.cost.machine1}, exactly \`V21_SAY_MACHINE\` ` +
+    `(${junior.cost.byTheConstant}), half of what surviving a motion of confidence is worth. The ladder had ` +
+    `three rungs and no price on any of them`);
+
   /* ---------- S19b: A PARTY KNOWS WHO IS IN ITS WAY ----------
      S19a gave every party an aim and left it alone on the board: nothing
      asked what the OTHERS were after, so a party whose goal was being taken
@@ -15473,12 +16090,63 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const tgt = kind.target(S, q.id);
       const doneAtBirth = tgt ? kind.done(S, q.id, tgt) : null;
       PARTIES.forEach(x => { delete a.grudge[x.id]; });
+      /* AND IT CAN BE REACHED, ASKED WITHOUT DICE. This half used to be gated
+         on `oustDone >= 2` in the driven leg below, and that count is 5 over
+         twelve seeds and 1,440 sessions -- EIGHT of the twelve seeds produce
+         NOUGHT. The six the leg drives caught 2 on the build before S21h and 1
+         on it, off adoption counts of 8 and 4, while twelve seeds read 15 and
+         12 adopted and 5 and 4 reached: the same number, since the standard
+         error on a count of 15 is 3.9. A slice that re-phases the dice moves it
+         either way and it reads exactly like a defect, which is the family of
+         mistake `CLAUDE.md` names first about this harness.
+         So the CORRECTNESS of the reaching path is asked here, where it is
+         arithmetic: the target is walked out of the government through S21f's
+         one door, and the kind's own predicate and the resolution that reads it
+         are both asked what they now say. The driven leg keeps a tripwire that
+         the path fires in play at all, over twelve seeds rather than six. */
+      const reach = (() => {
+        /* driven until there IS a junior partner to walk out, rather than for a
+           fixed eight sessions and a hope: a single-party government has
+           nobody to remove and the leg would report a defect in the seed */
+        fresh(4242);
+        let partner = null, co = [];
+        for (let i = 0; i < 40 && !partner; i++) {
+          step();
+          co = (S.coalition || []).slice();
+          partner = co.filter(x => x !== S.ruling && x !== playParty(S))[0] || null;
+        }
+        const q2 = PARTIES.filter(p => co.indexOf(p.id) < 0 && p.id !== playParty(S) &&
+          !S.banned[p.id])[0];
+        if (!partner || !q2) return { ran:false };
+        const a2 = v16Ai(S)[q2.id];
+        if (!a2) return { ran:false };
+        v16Resent(S, q2.id, partner, 60);
+        const g2 = { kind:'oust', ref:partner, gov:S.ruling, since:S.turn };
+        a2.goal = g2;
+        const before = kind.done(S, q2.id, g2);
+        /* out through the game's own exit, not by editing the array */
+        const left = v21Leave(S, partner, 'walked out', null);
+        const after = kind.done(S, q2.id, g2);
+        /* and the resolution, which is the half that has to say `done` rather
+           than `gone` -- the two are one ternary apart and a build that always
+           said `gone` passed everything this arm asked before */
+        a2.goal = g2;
+        a2.lastGoal = null;
+        try { v19Goal(S, q2.id); } catch (e) { }
+        const lg = a2.lastGoal || {};
+        return { ran:true, left:!!left,
+          doneInGov:before, doneWhenOut:after,
+          reaches: before === false && after === true,
+          why: lg.why === undefined ? null : lg.why,
+          saysDone: lg.kind === 'oust' && lg.ref === partner && lg.why === 'done',
+          retired: !a2.goal || a2.goal.ref !== partner || a2.goal.kind !== 'oust' };
+      })();
       return { ran:true,
         fitsOnOutsider:onOutsider, targetOnOutsider: tgtOutsider ? tgtOutsider.ref : null,
         fitsOnGov:onGov, target: tgt ? tgt.ref : null, stampsGov: !!(tgt && tgt.gov),
         ignoresOutsiders: onOutsider === 0,
         aimsAtGovernment: !!tgt && tgt.ref === S.ruling,
-        notDoneAtBirth: doneAtBirth === false };
+        notDoneAtBirth: doneAtBirth === false, reach:reach };
     })();
 
     /* (f) AND IN REAL PLAY, driven, because a channel that only fires when a
@@ -15522,7 +16190,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         return out;
       };
       try {
-        [4242, 90210, 7, 31337, 555, 8080].forEach(seed => {
+        /* TWELVE SEEDS, NOT SIX, and the reason is `oustAdopted`: six seeds put
+           it at 8 on one build and 4 on the next with nothing between them but
+           the dice, against a bar of 4. Twelve read 15 and 12. Every other
+           figure this leg takes -- the grievance quantiles, the formation
+           branches, the reaction count -- is a larger count on the same drive,
+           so the whole leg is steadier for the 34 seconds it costs. */
+        [4242, 90210, 7, 31337, 555, 8080,
+         11, 2024, 777, 606, 13, 99].forEach(seed => {
           fresh(seed);
           for (let i = 0; i < 120; i++) {
             step();
@@ -15570,9 +16245,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     polit.oust.ran === true && polit.oust.ignoresOutsiders === true &&
     polit.oust.aimsAtGovernment === true && polit.oust.stampsGov === true &&
     polit.oust.notDoneAtBirth === true &&
+    polit.oust.reach.ran === true && polit.oust.reach.left === true &&
+    polit.oust.reach.reaches === true && polit.oust.reach.saysDone === true &&
+    polit.oust.reach.retired === true &&
     polit.driven.p90 > 15 && polit.driven.p90 < 50 &&
     polit.driven.holding > .3 &&
-    polit.driven.oustAdopted >= 4 && polit.driven.oustDone >= 2 &&
+    /* SIZED FROM TWELVE SEEDS, not from the reading of one build. Adoption is
+       15 on the build before S21h and 12 on it over 1,440 sessions; the bar at
+       6 sits 1.7 standard errors below the lower of them. Reaching it is 5 and
+       4, so the bar there is 1 -- a tripwire that the path fires in play at
+       all, with its CORRECTNESS proved without dice in `oust.reach` above.
+       Four of the twelve seeds carry a reached aim on either build. */
+    polit.driven.oustAdopted >= 6 && polit.driven.oustDone >= 1 &&
     polit.driven.reactions > 0 &&
     polit.driven.branches >= 3 && polit.driven.caretakerShare < .1;
   say(politOk, 'a party holds something against a government',
@@ -15601,8 +16285,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `was adopted about a party already in opposition -- which it was on 808 of the 880 boards that passed ` +
     `\`fits\` -- and \`v19AdoptGoal\` drops a goal already done. Hating an outsider now scores ` +
     `${polit.oust.fitsOnOutsider} and hating the government ${polit.oust.fitsOnGov}, aimed at ` +
-    `${polit.oust.target}; driven, it is adopted ${polit.driven.oustAdopted} times and REACHED ` +
-    `${polit.driven.oustDone}, against 0 in 720 sessions · THE IGNORED LETTER IS RE-DATED: \`v19React\` runs ` +
+    `${polit.oust.target}, and REACHING IT IS ASKED WITHOUT DICE: with the target in the government ` +
+    `\`done\` reads ${polit.oust.reach.doneInGov}, walked out through S21f's one door it reads ` +
+    `${polit.oust.reach.doneWhenOut}, and the resolution files it as '${polit.oust.reach.why}' rather than ` +
+    `'gone'. That half USED TO BE GATED ON THE DRIVEN COUNT, which is 5 over twelve seeds and 1,440 ` +
+    `sessions with EIGHT of the twelve seeds at NOUGHT: six seeds read 2 on the build before S21h and 1 on ` +
+    `it, off adoption counts of 8 and 4, where twelve read 15/5 and 12/4 -- the same number, on a count ` +
+    `whose standard error is 3.9. It is twelve seeds now, and the driven bars (adopted ` +
+    `${polit.driven.oustAdopted} against 6, reached ${polit.driven.oustDone} against 1) are a tripwire that ` +
+    `the path fires in play, not the proof that it is right. Against 0 in 720 sessions before S21b ` +
+    `· THE IGNORED LETTER IS RE-DATED: \`v19React\` runs ` +
     `in \`tickTurn\`, \`expireInbox\` later in \`politicsTick\`, and \`S.turn += 1\` after both, so the stamp ` +
     `sat permanently one session behind the only reader and 63% of every grievance against the player ` +
     `produced ZERO reactions (${polit.driven.reactions} now). Silence is worth ${polit.letter.weight} where ` +
