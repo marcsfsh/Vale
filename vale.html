@@ -724,7 +724,12 @@ var V19_TEMPER_AXIS = {
   /* S21o: signing a measure that contends with the law is what a party does
      when it has decided to force the question, which is where `article` and
      `bill` sit. */
-  descend:'combative'
+  descend:'combative',
+  /* S21p: putting yourself at the head of a movement is the ORGANISER's move --
+     it is `campaign` and `organise`'s appetite aimed at one constituency --
+     and answering a paper is the dealer's, which is where every other card
+     about replying to somebody sits. */
+  crowd:'organiser', street:'dealer'
 };
 var V19_TEMPER = .6;
 /* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
@@ -10680,31 +10685,20 @@ function respondInbox(id, choice) {
       if (choice === 'refuse') { f.loyalty = c100(f.loyalty - 12); S.unity = c100(S.unity + 2); }
     }
   } else if (it.type === 'street_demand') {
-    var sq = (typeof v17Street === 'function') ? v17Street(S) : null;
-    if (choice === 'carry' && it.policy) {
-      /* LAYING IT IS NOT CARRYING IT. This button used to end the demand and
-         count it won the moment the bill went on the paper, so a government
-         whose bill died in the Senate had still "met" the demand -- and the
-         street's own date, which reads the statute, never got to speak. The
-         bill goes on the paper; the date decides. */
-      sponsorBill(S, it.policy, 1, 'player', 'negotiated', true);
-      if (sq && sq.demand) sq.demand.answered = true;
-      if (sq) sq.pressure = Math.max(0, sq.pressure - 12);
-      S.unrest = clamp(S.unrest - 4, 0, 110);
-      var bl = BLOC[it.bloc]; if (bl) { var mm = {}; mm[it.bloc] = 3; mood(S, mm); }
+    /* S21p: THROUGH THE BODY, and the words stay here. Eighteen statements
+       stood in this branch and named the player's own chair in
+       `sponsorBill(..., 'player', ...)`, so the street's paper -- filed under
+       'gov' by `INBOX_CHAIR` -- arrived at a desk nobody sat at in the 93.8% of
+       sessions an engine leads. LAYING IT IS STILL NOT CARRYING IT: the bill
+       goes on the paper and the street's own date reads the statute, which is
+       S17q's ruling. */
+    var said = (typeof v21StreetAnswerCore === 'function')
+      ? v21StreetAnswerCore(S, S.ruling, choice) : null;
+    if (said === 'carry') {
       logIt(S, 'The government put ' + (POL[it.policy] ? POL[it.policy].name : 'the measure') + ' on the paper, and said where it had come from.');
     }
-    if (choice === 'talks') {
-      if (sq && sq.demand) sq.demand.due = S.turn + V17_STREET_DEADLINE;
-      if (sq) sq.pressure = Math.max(0, sq.pressure - 8);
-      logIt(S, 'Talks were opened. Nothing was conceded and the date moved.');
-    }
-    if (choice === 'refuse') {
-      if (sq) { sq.pressure = clamp(sq.pressure + 20, 0, 100); sq.demand = null; sq.refused = (sq.refused || 0) + 1; }
-      var bl2 = {}; if (it.bloc) bl2[it.bloc] = -8; mood(S, bl2);
-      S.unrest = clamp(S.unrest + 4, 0, 110);
-      logIt(S, 'The government answered that it would not be done. The answer was printed in full.');
-    }
+    if (said === 'talks') logIt(S, 'Talks were opened. Nothing was conceded and the date moved.');
+    if (said === 'refuse') logIt(S, 'The government answered that it would not be done. The answer was printed in full.');
   } else if (it.type === 'party_demand') {
     /* S17l: and this one is answered TO THE SENDER. Carrying it puts the bill
        on the paper and spends their grudge down; declining is cheaper than
@@ -35419,6 +35413,12 @@ var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
      dearest card a posture can draw, and a card above 42 would move the
      reserve a government keeps rather than the deck it plays. */
   descend:38,
+  /* S21p: standing at the head of a movement costs a party its organisers and
+     its halls for a season, which is the ORGANISER's work at a discount --
+     `campaign` is 40 and this reaches one bloc rather than the country. The
+     government's answer is priced at `demand`, because it is a reply to a
+     paper rather than an initiative. */
+  crowd:24, street:16,
   /* S21n: holding a coalition together. The player pays 3 capital and 2 money
      for a council and 4 and 2 to reopen an agreement; on the engines' own
      scale that sits with `bargain` and `pact`, which are the other cards about
@@ -36483,6 +36483,71 @@ var V16_AI_DECK = [
       v16AiPay(st, pid, V16_AI_COST.descend);
       return 'The ' + PARTY[pid].short + ' signed ' + m.name + '.';
     } },
+  /* S21p — A PARTY AT THE HEAD OF THE CROWD.
+
+     Measured over 1,440 driven sessions: 50 demands, 32 general strikes, 96
+     sessions with the country shut to legislation, and every movement that
+     ended, ended EXHAUSTED -- 29 of 29. Nothing carried, no strike broken, and
+     no party's own `wants` table named the statute the street asked for on any
+     of the fifty demands. The street was weather.
+
+     The gate is `affOf`, which is this file's own answer to whether a party
+     speaks for a constituency and the same door `supportTargets` counts votes
+     through. Not the government and not its partners: a government cannot lead
+     a march on itself. */
+  { id:'crowd', post:['organise', 'restive', 'attack', 'moderate', 'hold'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.crowd) return false;
+      var s = st.street;
+      if (!s || !s.demand || s.head) return false;
+      if (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0) return false;
+      return typeof affOf === 'function' && affOf(st, pid, s.demand.bloc) > 0;
+    },
+    run:function (st, pid) {
+      var s = st.street, bloc = s && s.demand && s.demand.bloc;
+      if (!v21CrowdCore(st, pid)) return null;
+      v16AiPay(st, pid, V16_AI_COST.crowd);
+      return 'The ' + PARTY[pid].short + ' put themselves at the head of the ' +
+        (BLOC[bloc] ? BLOC[bloc].name : 'movement') + '.';
+    } },
+  /* S21p — AND A GOVERNMENT THAT IS NOT YOURS CAN ANSWER IT. `INBOX_CHAIR`
+     files the street's paper under 'gov' and its three answers were eighteen
+     statements inside the player's own handler, naming the player's chair in
+     `sponsorBill(..., 'player', ...)`. So for 93.8% of the sessions a player
+     watches the paper arrived at a desk nobody sat at, and the only thing a
+     government could do about a demand was let the date pass. */
+  { id:'street', post:[], post2:['govern', 'exposed'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (st.ruling !== pid) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.street) return false;
+      /* CHEAP HERE, because `can` runs on every government-session and the
+         pick below clones the board three times. A standing demand always has
+         at least two answers -- buy time, or say no -- so there is nothing
+         further to ask. */
+      var s = st.street;
+      return !!(s && s.demand && !s.demand.answered);
+    },
+    run:function (st, pid) {
+      var s = st.street, bloc = s && s.demand && s.demand.bloc;
+      var pol = s && s.demand && s.demand.policy;
+      var pick = v21StreetPick(st, pid);
+      if (!pick) return null;
+      var said = v21StreetAnswerCore(st, pid, pick);
+      if (!said) return null;
+      v16AiPay(st, pid, V16_AI_COST.street);
+      var who = BLOC[bloc] ? BLOC[bloc].name : 'the country';
+      if (said === 'carry') {
+        return 'The ' + PARTY[pid].short + ' put ' +
+          (POL[pol] ? POL[pol].name : 'the measure') + ' on the paper for ' + who + '.';
+      }
+      if (said === 'talks') {
+        return 'The ' + PARTY[pid].short + ' opened talks with ' + who +
+          ' and conceded nothing.';
+      }
+      return 'The ' + PARTY[pid].short + ' told ' + who + ' plainly that it would not be done.';
+    } },
   { id:'bargain', post:['hold', 'moderate', 'consolidate'],
     can:function (st, pid) {
       if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
@@ -36687,7 +36752,11 @@ var V19_GOALS = [
       /* S21o: a measure is not a statute, but impoundment and selective
          enforcement are the executive doing by decree what it could not carry
          through the houses -- a road to the same appetite, and a poor one. */
-      descend:.35 }
+      descend:.35,
+      /* S21p: a movement's demand IS a statute, and the government answering
+         it is the shortest road to one on this table -- shorter than a bill of
+         your own, because somebody else has already made the case. */
+      crowd:.55, street:.9 }
   },
   {
     id:'office',
@@ -36855,7 +36924,12 @@ var V19_GOALS = [
       /* S21o: a measure LOSES blocs -- every one in the book carries a mood
          penalty and none carries a gain -- so it is the wrong instrument for
          an aim that is about winning a bloc over. */
-      descend:.1 }
+      descend:.1,
+      /* S21p: THE AIM IT SERVES SQUAREST. `ground` is about standing with a
+         bloc and `v21Court` is the field it reads, which is exactly what
+         heading a movement writes -- for the party at its head and for a
+         government that concedes to it. */
+      crowd:1, street:.7 }
   },
   {
     id:'build',
@@ -36877,7 +36951,11 @@ var V19_GOALS = [
       topple:.2, bargain:.2,
       /* S21o: `wreck` lowers every rival's machine, which raises this party's
          standing against them without building anything of its own. */
-      descend:.2 }
+      descend:.2,
+      /* S21p: an aim about the machine, and a movement is not one -- but the
+         organisers it puts a party in front of are how a machine gets built in
+         the first place. */
+      crowd:.4, street:.15 }
   },
   {
     id:'charter',
@@ -37288,6 +37366,11 @@ var V19_RIVAL_WORTH = {
      wrecks another party's machine and one moves the count; the picker does
      not consult a rival and the book is not addressed to one. */
   descend:  0,
+  /* S21p: the crowd is a constituency, not a party, and a movement is not
+     addressed to a rival -- the same reading as `platform`. The government's
+     answer is a reply to the street. */
+  crowd:    0,
+  street:   0,
   organise: .45,   /* build against them */
   campaign: .30,
   court:    .45,   /* the contested bloc is reached by exactly this card */
@@ -37508,6 +37591,25 @@ function v19Flight(st, pid) {
       var xm = EXTRA_BY[xk]; if (!xm) continue;
       u += v21Price('descend') * Math.min(1, (xm.power || 0) / V21_EXTRA_TOP);
     }
+  }
+  /* S21p — AND A MOVEMENT THIS PARTY IS AT THE HEAD OF. In flight in exactly
+     this function's sense: organised, not yet settled, and worth what is behind
+     it. The quality is the pressure against the bar at which the country stops
+     working, which is the published threshold the panel already prints -- a
+     movement at 26 has just asked and one at 58 can shut the ports.
+     Read for the HEAD and for a government facing a standing demand, on
+     opposite signs: a demand nobody has answered is a debt on the government's
+     books, which is what makes the answer worth paying for. */
+  /* READ OFF THE PRESSURE AND NOT OFF THE DEMAND'S EXISTENCE. Written as "a
+     demand stands", `refuse` -- which clears `s.demand` -- made the
+     government's liability VANISH, so the objective preferred refusing for the
+     wrong reason. Refusing does not settle a movement; it puts 20 on the
+     pressure and takes the bloc with it. */
+  var sq21 = st.street;
+  if (sq21) {
+    var quality = Math.min(1, (sq21.pressure || 0) / V17_STREET_STRIKE);
+    if (sq21.head === pid) u += v21Price('crowd') * quality;
+    if (st.ruling === pid) u -= v21Price('street') * quality;
   }
   var pend = ((st.v11 || {}).con || {}).pending || [];
   pend.forEach(function (a) {
@@ -42470,6 +42572,38 @@ var V17_STREET_STRIKE = 58;     /* and at which it stops working */
    signs, which is a third. A deadline of three left the government one short
    of the only route it has, so every demand was refused on a bill that was
    about to carry. Four is the shortest date that can be met. */
+/* S21p — WHAT STANDING WITH A MOVEMENT IS WORTH, in the unit this channel
+   already carries. `v21Court` is S21j's, `V21_LEAN_GAIN` is what one season of
+   courting a bloc buys, and `V21_LEAN_CAP` is where standing stops -- so every
+   row here is a NUMBER OF SEASONS rather than a number picked by eye, and a
+   retune of the courting channel carries these with it.
+
+   The head's rows are a BET, and that is the point of the mechanic. Showing up
+   is worth a season at once. A movement that gets what it asked for, or that
+   the apparatus breaks, pays two more or one more; one that fizzles hands the
+   season back, because a party that put itself at the head of something and
+   delivered nothing is worse off with those people than a party that stayed
+   away. Measured before this slice, 29 of 29 movements fizzled, which is what
+   makes the government's own rows below the other half of the slice.
+
+   And the GOVERNMENT is in the same ledger, which it was not: conceding buys a
+   season with the bloc it conceded to, and breaking a strike costs two. */
+var V21_CROWD_SEASONS = { head:1, won:2, broken:1, spent:-1, govWon:1, govBroke:-2 };
+/* AND WHAT IT COSTS THE PLAYER. The only other control that buys a season of
+   standing with a bloc is the campaign rally, at 8 capital and 6 money -- and
+   that one holds rallies in forty states, sweeps every bloc's mood and builds
+   the party's own organisation. This buys the season and the movement and
+   nothing else, out of somebody else's organising, so it is priced under it.
+   `cst`-scaled like every other control, so a difficulty that moves the cost
+   of a click moves this one too. */
+var V21_CROWD_COST = 5;
+/* HOW LONG A DEMAND THAT WAS ANSWERED WAITS, measured through the game's own
+   path rather than picked: of 36 government bills laid the way the street's
+   answer lays one, 9 moved the statute in 2 to 7 sessions -- median 3, p75 4 --
+   and 27 were thrown out. Four is the p75 of the ones that arrive, so a
+   government that answered has the time the instrument actually takes and no
+   more. */
+var V17_STREET_WAIT = 4;
 var V17_STREET_DEADLINE = 4;
 var V17_STREET_MID = 35;        /* the unrest above which unrest adds heat */
 var V17_STREET_GUARD = .18;     /* and what a point of security state takes off */
@@ -42478,7 +42612,8 @@ var V17_STREET_REST = 6;        /* and before the country can be shut again */
 
 function v17Street(st) {
   if (!st.street || typeof st.street !== 'object') {
-    st.street = { pressure:0, demand:null, strike:0, won:0, refused:0, rest:0, bloc:null };
+    st.street = { pressure:0, demand:null, strike:0, won:0, refused:0, rest:0,
+      bloc:null, head:null };
   }
   if (typeof st.street.pressure !== 'number') st.street.pressure = 0;
   return st.street;
@@ -42558,6 +42693,15 @@ function v17StreetTick(st) {
   /* read BEFORE the decrement, so the window is the six sessions the constant
      names rather than five: spending the count and then asking whether any is
      left lets a strike start on the last one */
+  /* S21p: A HEAD THAT HAS ENTERED THE ROOM IS NOT AT THE HEAD OF ANYTHING.
+     `v21CrowdCore` refuses a government and its partners, and a party can be
+     invited into one the session after taking the head -- so the field is
+     dropped here rather than left to say something the constitution has since
+     made false. `V21_POSTURE_HARD`'s reasoning, in the state rather than on
+     the page. */
+  if (s.head && (s.head === st.ruling || (st.coalition || []).indexOf(s.head) >= 0)) {
+    s.head = null; s.headAt = undefined;
+  }
   var resting = s.rest > 0;
   if (s.rest > 0) s.rest -= 1;
   var over = v17StreetHeat(st).heat - V17_STREET_BAR;
@@ -42574,6 +42718,16 @@ function v17StreetTick(st) {
     return;
   }
   s.pressure = clamp(s.pressure, 0, 100);
+  /* S21p: AND A MOVEMENT THAT SIMPLY FADES SETTLES ITS HEAD. `v17StreetEnd`
+     is reached from the carried demand and from the two ways a strike stops,
+     and NOT from pressure decaying to nothing under a movement that was
+     refused -- so a party at the head of one that fizzled without ever
+     shutting the country kept the field and was never paid or docked for it.
+     The ledger is the same one `v17StreetEnd` uses; only the door is new. */
+  if (!s.demand && !s.strike && s.pressure <= 0 && s.head) {
+    if (typeof v21CrowdSettle === 'function') v21CrowdSettle(st, 'faded');
+    s.bloc = null;
+  }
   /* the demand, once, with a date on it */
   if (!s.demand && s.pressure >= V17_STREET_DEMAND) {
     var bloc = v17StreetBloc(st);
@@ -42602,6 +42756,24 @@ function v17StreetTick(st) {
     var got = (st.pol[s.demand.policy] || 0) > (s.demand.was || 0);
     var who = BLOC[s.demand.bloc] ? BLOC[s.demand.bloc].name : 'the country';
     if (got) { v17StreetEnd(st, 'carried'); return; }
+    /* S21p — AND A DEMAND THAT WAS ANSWERED WITH A BILL WAITS FOR THE BILL,
+       ONCE. `s.demand.answered` has been written by the carry button since
+       S17q and READ BY NOTHING in three megabytes, which is `st.court.size`
+       exactly: a field four writers set and no consumer consults. It is the
+       reader, and what it fixes is this file's other rule -- the instrument
+       the answer has to use decides the deadline. A bill that moves a statute
+       takes 2 to 7 sessions (median 3, p75 4) against a whole clock of four
+       from the day they asked, so a government answering in the second session
+       had two left for a three-session instrument. Measured with the answer
+       working and the clock unchanged: 9 concessions and not one demand
+       carried in 1,440 sessions.
+       ONCE, because a bill thrown out is still a refusal -- and 27 of 36 are. */
+    if (s.demand.answered && !s.demand.waited) {
+      s.demand.waited = true;
+      s.demand.due = st.turn + V17_STREET_WAIT;
+      logIt(st, who + ' gave the government the time the bill needs, and no more.');
+      return;
+    }
     s.refused = (s.refused || 0) + 1;
     s.pressure = clamp(s.pressure + 16, 0, 100);
     s.demand = null;
@@ -42629,6 +42801,131 @@ function v17StreetTick(st) {
     addNews(st, 'The Country', 'A general strike', 'What could not be got by asking is being got by stopping. The government legislates nothing while it holds.', 'bad');
     chronicle(st, 'A general strike shut the country.');
   }
+}
+/* S21p — A PARTY AT THE HEAD OF IT, with no chair in the body. The gate is
+   the party's standing with the bloc that is organising, because that is what
+   being able to lead them means: `affOf` is the file's own answer to whether a
+   party speaks for a constituency, and it is the same door `supportTargets`
+   counts votes through.
+   NOT THE GOVERNMENT AND NOT ITS PARTNERS, because a government cannot lead a
+   march on itself -- and `v17StreetTick` drops a head that ENTERS the room, so
+   the field cannot outlive the fact. */
+/* S21p — THE THREE ANSWERS TO THE STREET, WITH NO CHAIR IN THEM.
+
+   `carry` lays the bill and does NOT settle the demand: the street's own date
+   reads the statute, which is S17q's ruling and the reason a government whose
+   bill dies in the Senate has not met it. `talks` moves the date and concedes
+   nothing. `refuse` ends the demand in words and takes what follows.
+
+   The sponsor is the party ANSWERING rather than the string 'player', which is
+   the whole reason this could not be reached from another chair. */
+function v21StreetAnswerCore(st, pid, choice) {
+  var s = st && st.street;
+  if (!s || !s.demand || !pid || !PARTY[pid] || st.ruling !== pid) return null;
+  var pol = s.demand.policy, bloc = s.demand.bloc, mv = {};
+  if (choice === 'carry') {
+    if (!pol || !POL[pol]) return null;
+    if (typeof sponsorBill !== 'function') return null;
+    if (!sponsorBill(st, pol, 1, 'government', 'negotiated', true, pid, true)) return null;
+    s.demand.answered = true;
+    s.pressure = Math.max(0, s.pressure - 12);
+    st.unrest = clamp(st.unrest - 4, 0, 110);
+    if (BLOC[bloc]) { mv[bloc] = 3; mood(st, mv); }
+    return 'carry';
+  }
+  if (choice === 'talks') {
+    s.demand.due = st.turn + V17_STREET_DEADLINE;
+    s.pressure = Math.max(0, s.pressure - 8);
+    return 'talks';
+  }
+  if (choice === 'refuse') {
+    s.pressure = clamp(s.pressure + 20, 0, 100);
+    s.demand = null;
+    s.refused = (s.refused || 0) + 1;
+    if (BLOC[bloc]) { mv[bloc] = -8; mood(st, mv); }
+    st.unrest = clamp(st.unrest + 4, 0, 110);
+    return 'refuse';
+  }
+  return null;
+}
+/* WHICH OF THE THREE, ASKED THROUGH THE OBJECTIVE.
+
+   THE FIRST BUILD WROTE A RULE OF THUMB HERE AND ITS OWN MEASUREMENT KILLED
+   IT: "concede where the statute is one this government's table wants moved
+   anyway" reads sensibly and cannot fire, because the same drive that found
+   the street asks for statutes NO party's table names -- 0 of 50 demands --
+   makes that branch unreachable by construction. Measured: 13 answers, 8
+   talks, 5 refusals, 0 carries, and every movement still ending exhausted.
+   That is S21o's `descend` picker in a second surface, and a rule of thumb in
+   front of a scoring function is the defect S21g took out of
+   `v17ConfidenceVote`.
+
+   So the government asks the question it asks about everything else: WHICH OF
+   THESE LEAVES ME BEST OFF, read through the game's own path -- `v19Try` for
+   the clone and `v19Standing` for the reading. Three clones, and only where a
+   demand stands, which is 16.5% of sessions. */
+function v21StreetPick(st, pid) {
+  var s = st && st.street;
+  if (!s || !s.demand || !pid || st.ruling !== pid) return null;
+  if (typeof v19Try !== 'function' || typeof v19Standing !== 'function') return null;
+  var best = null, bestU = -Infinity;
+  ['carry', 'talks', 'refuse'].forEach(function (c) {
+    var out = v19Try(st, function (cl) { v21StreetAnswerCore(cl, pid, c); });
+    if (!out) return;
+    /* A GUARD AGAINST A CARRY THE HOUSE CANNOT TAKE WAS DRAFTED HERE AND
+       DELETED BY ITS OWN POISON. `v21StreetAnswerCore` returns null when
+       `sponsorBill` refuses, and the clone then comes back UNCHANGED -- which
+       looked like it would score as doing nothing and beat every real answer
+       on a board where they all cost. It cannot: `talks` takes 8 off the
+       pressure and the liability term is read off the pressure, so `talks` is
+       strictly better than the baseline on every board, and a refused `carry`
+       scoring the baseline can never win. Poisoned, the guard changed nothing
+       anywhere -- a knob nothing in the game can turn -- so it is gone rather
+       than shipped as a line a later reader would reason about. */
+    var u;
+    try { u = v19Standing(out, pid); } catch (e) { return; }
+    if (isFinite(u) && u > bestU) { bestU = u; best = c; }
+  });
+  return best;
+}
+function v21CrowdCore(st, pid) {
+  var s = st && st.street;
+  if (!s || !s.demand || !pid || !PARTY[pid]) return false;
+  if (s.head === pid) return false;
+  if (pid === st.ruling || (st.coalition || []).indexOf(pid) >= 0) return false;
+  if (st.banned[pid]) return false;
+  if (typeof affOf !== 'function' || affOf(st, pid, s.demand.bloc) <= 0) return false;
+  s.head = pid;
+  s.headAt = st.turn;
+  if (typeof v21Court === 'function') {
+    v21Court(st, pid, s.demand.bloc, V21_LEAN_GAIN * V21_CROWD_SEASONS.head);
+  }
+  return true;
+}
+/* WHAT A MOVEMENT LEAVES ITS CHAMPION AND THE GOVERNMENT IT WAS AGAINST. One
+   body, called from the one place a movement can end, so a third outcome added
+   later cannot be paid for in one branch and forgotten in the other two. */
+function v21CrowdSettle(st, how) {
+  var s = st && st.street; if (!s) return null;
+  var bloc = s.bloc, head = s.head;
+  var out = { head:head, bloc:bloc, how:how, headSeasons:0, govSeasons:0 };
+  if (!bloc || typeof v21Court !== 'function') { s.head = null; return out; }
+  var hs = how === 'carried' ? V21_CROWD_SEASONS.won
+    : how === 'broken' ? V21_CROWD_SEASONS.broken
+    : V21_CROWD_SEASONS.spent;
+  var gs = how === 'carried' ? V21_CROWD_SEASONS.govWon
+    : how === 'broken' ? V21_CROWD_SEASONS.govBroke
+    : 0;
+  if (head && PARTY[head] && !st.banned[head]) {
+    out.headSeasons = hs;
+    v21Court(st, head, bloc, V21_LEAN_GAIN * hs);
+  }
+  if (gs && st.ruling && PARTY[st.ruling]) {
+    out.govSeasons = gs;
+    v21Court(st, st.ruling, bloc, V21_LEAN_GAIN * gs);
+  }
+  s.head = null; s.headAt = undefined;
+  return out;
 }
 /* HOW A MOVEMENT ENDS, and what it leaves behind. A movement that ends is
    SPENT -- pressure goes to nought whichever way it went, because the people
@@ -42659,6 +42956,21 @@ function v17StreetEnd(st, how) {
     st.unrest = clamp(st.unrest - 4, 0, 110);
     logIt(st, 'The strike ran itself out. Nothing was conceded and nothing was forgotten.');
   }
+  /* S21p: AND THE LEDGER, at the one exit every movement goes through -- the
+     same reasoning S21f applied to the five ways out of a coalition. Read
+     BEFORE `s.bloc` is cleared, because the bloc is who the standing is with. */
+  if (typeof v21CrowdSettle === 'function') {
+    var st21 = v21CrowdSettle(st, how);
+    if (st21 && st21.head && PARTY[st21.head] && BLOC[st21.bloc]) {
+      logIt(st, how === 'carried'
+        ? 'The ' + PARTY[st21.head].short + ' had stood at the head of it, and ' +
+          BLOC[st21.bloc].name + ' know who did.'
+        : (how === 'broken'
+          ? 'The ' + PARTY[st21.head].short + ' were at the head of it when the marshals came.'
+          : 'The ' + PARTY[st21.head].short + ' led it nowhere, and ' +
+            BLOC[st21.bloc].name + ' noticed that too.'));
+    }
+  }
   s.bloc = null;
 }
 
@@ -42688,6 +43000,48 @@ function v17Barred(st, what) {
    thing the player did: a bloc they let fall, an unrest they let stand, an
    apparatus they built. Printed beside the movements, which are the same
    constituencies organising by a slower road. */
+/* S21p: WHETHER THE PLAYER MAY TAKE THE HEAD OF IT, in the words a player can
+   act on -- the same contract `extraWhy`, `policyWhy` and `v10OrderOpen` have
+   carried since S12. One predicate, read by the button and by the handler, so
+   the control and the refusal cannot disagree. */
+function v21CrowdWhy(st, pid) {
+  var s = st && st.street;
+  var me = pid || playParty(st);
+  if (!s || !s.demand) return 'Nothing has been organised to stand at the head of.';
+  if (s.head === me) return 'You are already at the head of it.';
+  if (s.head) return 'The ' + (PARTY[s.head] ? PARTY[s.head].short : 'another party') +
+    ' got there first. A movement has one head.';
+  if (me === st.ruling) return 'A government cannot lead a march on itself.';
+  if ((st.coalition || []).indexOf(me) >= 0) {
+    return 'You sit in the government they are asking. Leave it first, or answer them.';
+  }
+  if (typeof affOf === 'function' && affOf(st, me, s.demand.bloc) <= 0) {
+    return (BLOC[s.demand.bloc] ? BLOC[s.demand.bloc].name : 'They') +
+      ' would not follow you, and the organisers would say so.';
+  }
+  return '';
+}
+function v21CrowdCost() { return cst(V21_CROWD_COST); }
+function pv21TakeHead() {
+  var why = v21CrowdWhy(S, playParty(S));
+  if (why) { flash(why); return; }
+  var c = v21CrowdCost();
+  if (S.capital < c) { flash('Not enough political capital.'); return; }
+  var s = S.street, bloc = s.demand.bloc;
+  captureUndo('Head of the movement');
+  S.capital -= c;
+  if (!v21CrowdCore(S, playParty(S))) { S.capital += c; flash('That is not open to you.'); return; }
+  logIt(S, 'You put yourself at the head of the ' +
+    (BLOC[bloc] ? BLOC[bloc].name : 'movement') + ', and were photographed doing it.');
+  chronicle(S, 'The ' + PARTY[playParty(S)].short + ' took the head of the ' +
+    (BLOC[bloc] ? BLOC[bloc].name : 'movement') + '.');
+  render();
+}
+document.addEventListener('click', function (e) {
+  var b = e.target && e.target.closest && e.target.closest('[data-crowd-head]');
+  if (!b || b.disabled) return;
+  pv21TakeHead();
+});
 function v17StreetPanel(st) {
   var s = v17Street(st), h = v17StreetHeat(st);
   var pct = Math.round(clamp(s.pressure, 0, 100));
@@ -42708,14 +43062,30 @@ function v17StreetPanel(st) {
       : 'Heat is how far the worst-treated bloc sits below fifty, plus what unrest adds above ' + V17_STREET_MID +
         ', less what a security state takes off. Above ' + V17_STREET_BAR + ' pressure builds; at ' + V17_STREET_DEMAND +
         ' they ask, and at ' + V17_STREET_STRIKE + ' the country stops working.');
+  /* S21p: AND WHO IS AT THE HEAD OF IT. A movement with a party in front of it
+     is a different fact from weather, and the page could not say which it was
+     looking at. */
+  var me = playParty(st);
+  var headTag = s.head && PARTY[s.head]
+    ? '<span class="tag' + (s.head === me ? ' up' : ' down') + '">At its head: ' +
+      esc(PARTY[s.head].short) + (s.head === me ? ' — you' : '') + '</span>'
+    : (s.demand ? '<span class="tag">Nobody at its head</span>' : '');
+  var why = (typeof v21CrowdWhy === 'function') ? v21CrowdWhy(st, me) : 'x';
+  var cost = v21CrowdCost();
+  var headRow = s.demand
+    ? '<div class="btnrow"><button class="btn" data-crowd-head="1"' +
+      ((why === '' && st.capital >= cost) ? '' : ' disabled' + (why ? ' title="' + esc(why) + '"' : '')) +
+      '>Put yourself at the head of it <span class="c">' + cost + '</span></button></div>' +
+      (why ? '<p class="note muted">' + esc(why) + '</p>' : '')
+    : '';
   return '<div class="panel"><h2>The Street</h2>' +
     '<div class="row"><span class="lab">Pressure</span>' +
     '<span class="bar ' + (pct > 55 ? 'b-bad' : (pct > 20 ? 'b-ox' : 'b-ok')) + '"><i style="width:' + pct + '%"></i></span>' +
     '<span class="val">' + pct + '</span></div>' +
-    '<div class="tagline"><span class="tag">' + esc(state) + '</span>' + terms +
+    '<div class="tagline"><span class="tag">' + esc(state) + '</span>' + terms + headTag +
     (s.won ? '<span class="tag up">' + s.won + ' carried</span>' : '') +
     (s.refused ? '<span class="tag down">' + s.refused + ' refused</span>' : '') + '</div>' +
-    '<p class="note">' + body + '</p></div>';
+    '<p class="note">' + body + '</p>' + headRow + '</div>';
 }
 var v17ViewNationBase = viewNation;
 viewNation = function () {

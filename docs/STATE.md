@@ -50,9 +50,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped fifteen slices: S21a–o.** The original twelve are complete;
-S21m, S21n and S21o are the first three of the owner's eight-behaviour
-extension, and S21p–S21t remain.
+**S21 has shipped sixteen slices: S21a–p.** The original twelve are complete;
+S21m through S21p are the first four of the owner's eight-behaviour extension,
+and S21q–S21t remain.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -998,7 +998,57 @@ extension, and S21p–S21t remain.
   which measures **0.00 in all 1,440 sessions before this slice**, now reaches
   11, so the book's own ratchet turns for the first time.
 
-**WHAT IS OPEN:** the owner's extension S21p–S21t, in the order `PLAN-S21.md`
+- **S21p — the street has a head, and a government that is not yours can
+  answer it.** Measured over 1,440 driven sessions before the slice: 50
+  demands, 32 general strikes, 96 sessions with the country shut to
+  legislation — and **every movement that ended, ended exhausted, 29 of 29**.
+  Nothing carried, no strike broken, and **no party's own `wants` table named
+  the statute the street asked for on any of the fifty demands**, so there was
+  never a champion to be had either. Two halves of one surface were missing.
+  **No party could stand at the head of a movement.** `st.street.head` is the
+  field, `v21CrowdCore` the body, and the payoff goes through `v21Court`
+  (S21j) — read by `supportTargets`, the Interests page and the `ground` aim.
+  Four rows in `V21_CROWD_SEASONS`, every one a number of *seasons of
+  courting* rather than a number picked by eye, and the head's rows are a
+  **bet**: showing up is worth a season, a movement carried or broken pays two
+  more or one more, and one that fizzles hands the season back. The government
+  is in the same ledger, which it was not.
+  **And the street's own paper could not be answered.** `INBOX_CHAIR` files it
+  under 'gov' and its three answers were eighteen statements inside the
+  *player's* handler naming `sponsorBill(..., 'player', ...)`, so for 93.8% of
+  sessions the paper arrived at a desk nobody sat at: the government could not
+  concede, stall, or refuse in words. `v21StreetAnswerCore` is that body.
+  **THE FIRST BUILD'S PICKER WAS A RULE OF THUMB AND ITS OWN MEASUREMENT
+  KILLED IT** — "concede where this government's table wants the statute
+  anyway" cannot fire when the street asks for statutes no table names, and 13
+  answers came out 8 talks, 5 refusals, 0 carries. Asked through `v19Try` and
+  `v19Standing` instead, the same board gives carry 264.3, talks 260.8, refuse
+  255.3.
+  **AND `s.demand.answered` WAS WRITTEN BY THE PLAYER'S CARRY BUTTON SINCE S17q
+  AND READ BY NOTHING** — `st.court.size` exactly. It is the reader now, and
+  what it fixes is this file's other rule: a government bill that moves a
+  statute takes 2 to 7 sessions (median 3, p75 4) against a whole clock of four
+  from the day they asked, so with the answer working and the clock unchanged, 9
+  concessions produced **0** carried demands. A demand answered with a bill
+  waits for the bill, once — 27 of 36 government bills are thrown out, mostly
+  in the Assembly, and a bill thrown out is still a refusal.
+  Driven over 1,440 sessions at `ruthless`: the crowd card fires 15 times
+  across four parties, the answer 22 times (21 carries, 1 refusal), 72 sessions
+  have a party at the head of a movement, 104 party-bloc standings move — and
+  **one demand is carried**, which is the first time in this program's history
+  that the street has got what it asked for.
+  **Eight of thirty-six poisons came back green**, every one a rule already in
+  this file: three legs parameterised by `V21_CROWD_SEASONS` itself, a refusal
+  read off the chair test rather than the constituency test, a missing leg for
+  the head that enters the room, a sponsor asked only not to be the literal
+  string `'player'` while `sponsorBill(…, 'player', …)` derives `playParty(st)`,
+  and a goal table below what a fire count resolves. **And one guard was
+  deleted by its own poison**: a refused `carry` leaves the clone unchanged and
+  looked as though it would score as doing nothing and win, but `talks` takes 8
+  off the pressure the liability term is read from, so `talks` beats the
+  baseline on every board and the baseline can never win.
+
+**WHAT IS OPEN:** the owner's extension S21q–S21t, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
 was never written, and building it is a slice rather than a paragraph, so it is
 recorded here as its own piece of work rather than quietly dropped. The
