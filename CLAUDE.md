@@ -502,6 +502,42 @@ before touching the file.
   question the game already answers — 30.7% of party-sessions have one of each.
   Before gating a verb on an appetite, measure how often the appetite exists,
   and prefer the reading the consequence is computed from.
+- **A WRAPPER THAT DECLARES FEWER PARAMETERS THAN ITS BASE EATS THE REST,
+  SILENTLY, AT EVERY CALL IN THE GAME.** `sponsorBill` gained `sponsorId` and
+  `quiet` in S17a — whose own comment says it fixed exactly the mis-attribution
+  those arguments prevent — and the S9 clause wrapper, in a LATER chunk and
+  therefore the `sponsorBill` the whole game calls, went on declaring six
+  parameters and passing six. Four slices of callers had their sponsor
+  discarded and their bill re-attributed by the `owner` derivation instead.
+  A survey of the file found one more, and it is worse: `ballot`'s S16 pact
+  wrapper declares `(st)` against a base of `(st, noise)`, so `ballot(st, true)`
+  — the actual election — has run without its own ±8% election-night swing since
+  S16 and every result is exactly the projection. **When you add a parameter to
+  a function, grep `var xBase = fn;` and widen every wrapper**, and when you
+  write a wrapper, declare and forward what the base declares. This is
+  `MAP.md`'s "a modifier nothing reads is a lie on the card" arriving through
+  the argument list, and it is the one shape of it a static check CAN catch, so
+  S21s carries both fixes and the check together. Neither is fixed in the slice
+  that FOUND them, and the reason is the second half of the rule: widening a
+  wrapper is a correctness change with the blast radius of everything the
+  argument reaches — five arms went red on the first build that carried the
+  sponsor fix, because `v17DealEvent` is handed the sponsor — so it belongs in
+  a slice whose subject is the fix, not as a rider.
+- **A GATE THAT ASKS FOR A DECLARED POSITION EXCLUDES THE ONE PARTY WHOSE
+  POSITION IS NOT DECLARABLE.** `v20PressWhy` refuses an actor with no line on
+  the bill, and `v17FloorWhy` has refused a line on a bill you sponsored since
+  S17 — so the sponsor was the one party in the House that could not work the
+  votes on its own bill, measured at **520 refusals in 520 askings**, every one
+  the same sentence, and `bill.pull` never once written for a sponsor's own
+  benches in 757 bill-sessions. The player's half was worse: `playerPosition`
+  is written only when `owner === 'player'`, so a player leading the government
+  had no position on the government's own bill and the card drew `Support the
+  bill` ENABLED over a handler that refuses it. When a gate reads a FIELD,
+  ask which actors that field is never written for — and prefer one reader that
+  answers the question the act already settled (laying a bill is a position)
+  over a literal repeated at every call site. Two call sites here read the same
+  literal, and the second decided the DIRECTION: a build that answered the gate
+  and not the body whips a sponsor's own members against its own measure.
 - **A LEG THAT CALLS THE ORACLE PROVES THE ORACLE, NOT THE CALLER.** S21q's
   picker has four filters — take the best counterparty and not the first, ask
   whether the taker would take it, `v21TradeWould`'s own reading, and the

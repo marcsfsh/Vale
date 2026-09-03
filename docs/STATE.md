@@ -50,9 +50,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped nineteen slices: S21a–q, S21s and S21v.** The original twelve
-are complete; S21m through S21q are the first five of the owner's
-eight-behaviour extension, and S21r, S21t and S21u remain. **S21v and S21s are
+**S21 has shipped twenty slices: S21a–s and S21v.** The original twelve are
+complete; S21m through S21r are the first six of the owner's eight-behaviour
+extension, and S21t and S21u remain. **S21v and S21s are
 out of order on purpose**: the owner interrupted mid-programme with a save and
 two reports from a live game, a build they are playing takes precedence over the
 queue, and the election-night swing they asked to have back turned out to be
@@ -1238,6 +1238,121 @@ authored already and eaten by a wrapper.
   `leads(S)` guard, one line above the article. It read the article as
   toothless. Two boards now, with the chair READ at the moment of the call
   rather than assumed.
+
+- **S21r — a party fights for the bill it laid.** `v17FloorWhy` refuses a
+  line on a bill you sponsored — correctly, and since S17 — so
+  `b.lines[sponsor]` is never written, and `v20PressWhy` read that field and
+  refused the sponsor for having no position. **The party that laid a bill was
+  the one party in the House that could not lift a finger for it.** Measured
+  over 360 driven sessions at `ruthless`: 133 bills laid, 244 of the 282 that
+  reached a division thrown out, 34 presses made through `v20PressCore` across
+  all six engine parties — and `bill.pull` written for the SPONSOR's own
+  benches on **nought of 757 bill-sessions**. Asked directly, a sponsor was
+  refused permission to work its own bill on **520 of 520 askings**, and every
+  single refusal was the same sentence: *"Say where you stand on it first."*
+  **AND THIS SLICE'S OWN PROBE FOUND A WRAPPER THAT HAS BEEN EATING TWO
+  ARGUMENTS FOR FOUR SLICES.** S17a added `sponsorId` and `quiet` to
+  `sponsorBill` and fixed the base; the S9 clause wrapper is in a **later
+  chunk**, so it is the `sponsorBill` the whole game calls, and it declares six
+  parameters and passes six. Every `sponsorId` since S17a has been discarded on
+  the way in and the bill re-attributed by the `owner` derivation instead — so
+  S19c's deck card, which is how an engine lays a bill, credits it to whichever
+  party happens to be largest in opposition rather than the one that decided to
+  lay it. Asked for a bill sponsored by the RSF, the game returns one sponsored
+  by the SD. And `quiet:true` goes with it, so the generic log line prints
+  before the caller's own richer one — the exact pair of symptoms S17a's comment
+  describes as fixed.
+  **IT IS NOT FIXED HERE, AND THE HARNESS IS WHY.** The first build of this
+  slice carried the fix, and five arms went red: `v17DealEvent` is handed the
+  sponsor, so attributing a bill to the party that actually laid it moves the
+  broken-promise ledger, the divisions and the grudges — a correctness change
+  with a blast radius of its own, not a rider on a slice about the press gate.
+  It goes to **S21s** beside its twin, where the arm audit is the subject
+  rather than a distraction. Nothing here depends on it: `v20PressPos` asks
+  about `b.sponsor`, which is a fact about the bill whichever party the
+  derivation recorded.
+  **AND THE PLAYER'S HALF OF THE SAME HOLE WAS A CONTROL THAT LIES.**
+  `playerPosition` is written only when `owner === 'player'`, so a player
+  leading the government lays a bill with `owner:'government'` and has no
+  position on it: the card entered its floor block, drew `Support the bill`
+  **enabled**, and `changePolicy` has refused it since S18a — while the three
+  press buttons were drawn shut for want of a position. On the player's own
+  private member's bill the whole kit was never emitted at all, because the
+  block is `b.owner !== 'player'`.
+  `v20PressPos` is one reader for where an actor stands, read by the gate, by
+  the body that decides the DIRECTION, and by the card. It invents no field:
+  laying a bill IS the position, which is how `partyBillSupport` and
+  `divisionOf` have always read it. The three floor verbs now carry
+  `v17FloorWhy`'s own sentence as their tooltip whether they are open or shut.
+  And the engine road is a `work` card whose bill and scope come from
+  `v19Try`/`v19Standing` — **which S21q made possible**: `v19Flight` reads
+  `b.lines[pid]` and nothing else about a bill, so before S21q's term a press
+  moved no term of the objective at all. Driven over 360 sessions it fires 13
+  times across **all six engine parties**, **thirteen of them on the party's own
+  bill**, and the sponsor's benches are pulled on six bill-sessions — every one
+  of them TOWARD the bill.
+  **AND THE PLAN'S TWO CLAIMS ABOUT THIS SLICE WERE BOTH WRONG.** It said "143
+  engine bills were archived in 300 sessions and none carried"; 38 of 133 carry
+  over 360 sessions at `ruthless`. And it said "almost no bill of the player's
+  is ever spoken to before the division"; of nine such bill-sessions, four
+  carried somebody else's line or pull. The real defect is sharper than either.
+
+**WHAT IS OPEN — AND ONE OF THEM IS A DEFECT ALREADY MEASURED:**
+
+- **Two later-chunk wrappers eat arguments their bases declare, and S21s fixes
+  both.** `sponsorBill`'s is above. The second is worse: **`ballot`'s S16 pact
+  wrapper eats its second argument.** `function ballot(st,
+  noise)` ends with `if (noise) base *= .92 + rand() * .16;` — an ±8% per-party
+  election-night swing — and five call sites pass `false` or `true`
+  deliberately. `v16BallotBase = ballot; ballot = function (st) { ... }` is in a
+  later chunk and passes one argument, so **`ballot(st, true)` at `runElection`
+  has been running without any swing since S16**: every election result is
+  exactly the projection, and an election in this game can no longer surprise
+  anyone. It is `sponsorBill`'s twin, found by the same probe on the same day,
+  and it is held out of S21r because it moves every seeded campaign and deserves
+  its own arc measurement. **S21s** is that slice, and it carries both fixes and
+  a `wrapper-arity` static check so there is never a third; a survey of the whole
+  file found exactly these two, out of 1,226 top-level bodies over 1,015 names.
+- **The government concedes to the street on every board its dice reach.** Over
+  1,440 driven sessions on the S21q build the answer fires 14 times and takes
+  `carry` on all fourteen; `v21StreetPick` scores carry 264.68 against talks
+  260.83 and refuse 255.30 on a built board, so the edge looks systematic rather
+  than marginal. Fourteen observations cannot tell a balance change from a
+  reshuffle, so nothing has been retuned — this is recorded for the owner, whose
+  call the balance is.
+
+The owner's extension continues at **S21t** (an organisation endorses somebody
+other than you) and **S21u** (a party that will not sit with another), in the
+order `PLAN-S21.md`
+  **AND THE FULL HARNESS FOUND WHAT THIS SLICE'S OWN ARM COULD NOT: A CARD ADDED
+  TO THE DECK NEEDED A LINE IN FIVE PLACES AND THE SLICE WROTE ONE.** Three were
+  harness bookkeeping — `the six that are not yours act` built a state for the
+  nineteenth card and then let it fall through the `moved` chain's final
+  `: false`, so `work` was driven, paid for, logged and marked as moving nothing
+  while the gate asked for eighteen of eighteen; and the rehearsal arm held two
+  more counts of its own. `work` writes `bill.pull` through `v20PressCore`, the
+  one body that writes it, so that is what the card is asked for now — summed as
+  an ABSOLUTE, because a party working against a bill moves it the other way and
+  a signed total would cancel.
+  **THE FOURTH WAS NOT BOOKKEEPING.** `a party knows who is in its way` derives
+  its list FROM THE DECK and fails if a card arrives without a weight in
+  `V19_RIVAL_WORTH` — *"so a card a later slice adds reddens here rather than
+  scoring nought in silence"*, in the arm's own words. This slice added the
+  nineteenth card and gave it no weight, so **working the votes on your own bill
+  was worth nothing against the party standing in your way, silently.** It is
+  **.40** now, placed with a sentence rather than by eye: below `bill` (.50),
+  which puts a new contest on the order paper where there was none, and below
+  `floor` (.55), which declares a line on somebody ELSE's measure and is
+  addressed to them; above `article` (.20) and `order` (.15), because a division
+  is where parties actually meet. That guard is the `V17_MEMORY` pattern doing
+  exactly what it was built for.
+  **AND THE DECK'S SIZE IS WRITTEN DOWN ONCE NOW.** Two arms held four literals
+  between them, so the nineteenth card reddened three of them one after another,
+  each time for the same reason and each time looking like a fresh defect. They
+  read one `DECK` constant at the top of `roads.js`; what CATCHES an unpriced or
+  unweighted card stays derived from the deck. None of it was visible from arm R,
+  which is green with all 23 poisons red: an arm about a mechanism does not see
+  the arm that counts the deck.
 
 - **S21s — the two wrappers that ate their arguments.** `ballot(st, noise)` ends
   with `if (noise) base *= .92 + rand() * .16;` — a per-party swing of plus or

@@ -734,7 +734,12 @@ var V19_TEMPER_AXIS = {
      about replying to somebody sits. */
   crowd:'organiser', street:'dealer',
   /* S21q: naming a price for your own benches is the dealer's whole art. */
-  trade:'dealer'
+  trade:'dealer',
+  /* S21r: fighting for the bill you laid is `bill`'s follow-through, and
+     `bill` is combative. It is not the dealer's card -- nothing is offered and
+     nobody is asked -- and it is chamber work rather than country work, which
+     is what `organiser` means here. */
+  work:'combative'
 };
 var V19_TEMPER = .6;
 /* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
@@ -15766,30 +15771,20 @@ function billCard(b) {
      bill at all. What is offered scales with what you actually command. */
   if (b.owner !== 'player' && b.stage !== 'referendum') {
     var mySeats = Math.round(seatShare(S, [playParty(S)]) * 100);
-    if (b.playerPosition !== 'support') act('support','Support the bill',2,0,false,'Your party votes for it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.');
-    if (b.playerPosition !== 'oppose') act('oppose','Oppose the bill',2,0,false,'Your party whips against it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.');
-    act('pressure','Press the sponsor',3,5,!!(b.lines && b.lines[b.sponsor]),'Lean on the sponsoring party privately. Cheap, deniable, and it costs you standing with them.');
-    /* S20b: AND THREE WAYS TO PRESS THE POSITION HOME, drawn only once there
-       IS a position -- the owner's shape exactly: your own benches, the other
-       parties bar the one that laid it, and both. Each is dearer than the last
-       time you used it ON THIS BILL, so it is a decision and not a button to
-       hold down, and each says what it would cost before you press it. */
-    if (b.playerPosition) {
-      var pdir = b.playerPosition === 'support' ? 'behind' : 'against';
-      var pWord = b.playerPosition === 'support' ? 'support for' : 'opposition to';
-      var pOwnWhy = v20PressWhy(S, playParty(S), b, 'own');
-      var pOthWhy = v20PressWhy(S, playParty(S), b, 'others');
-      var pBothWhy = v20PressWhy(S, playParty(S), b, 'both');
-      act('pressOwn', 'Rally your own benches', v20PressCost(S, b, 'own'), 0, !!pOwnWhy,
-        pOwnWhy || ('Put your own members ' + pdir + ' it and close ranks behind the line. Worth ' +
-          V20_PRESS.own.pull + ' of ' + pWord + ' in your party, and it hardens their discipline.'));
-      act('pressOthers', 'Work the other parties', v20PressCost(S, b, 'others'), 0, !!pOthWhy,
-        pOthWhy || ('Every seated party except the ' + (PARTY[b.sponsor] || {}).short + ', who laid it. Worth ' +
-          V20_PRESS.others.pull + ' of ' + pWord + ' in each, and it moves where they stand with you.'));
-      act('pressBoth', 'Work the whole House', v20PressCost(S, b, 'both'), 0, !!pBothWhy,
-        pBothWhy || ('Your benches and every other party at once, for a price. Worth ' + V20_PRESS.both.pullOwn +
-          ' in your own and ' + V20_PRESS.both.pull + ' in each of theirs.'));
-    }
+    /* S21r: AND EACH OF THE THREE READS THE GATE THE HANDLER READS.
+       All three were drawn ENABLED with `false`, and `changePolicy` has asked
+       `v17FloorWhy` since S18a -- so on a government bill the player's own
+       party sponsored, which is every bill a player who leads the government
+       lays, `Support the bill` lit up, cost nothing and flashed "That is your
+       own party's bill". An enabled control that moves nothing and only
+       flashes is a lie, and a shut control with no title is the same dead end
+       read backwards, so the refusal is the tooltip. */
+    var supWhy = v17FloorWhy(S, playParty(S), b, 'support');
+    var oppWhy = v17FloorWhy(S, playParty(S), b, 'oppose');
+    var prsWhy = v17FloorWhy(S, playParty(S), b, 'pressure');
+    if (b.playerPosition !== 'support') act('support','Support the bill',2,0,!!supWhy,supWhy || ('Your party votes for it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.'));
+    if (b.playerPosition !== 'oppose') act('oppose','Oppose the bill',2,0,!!oppWhy,oppWhy || ('Your party whips against it. Worth roughly what your ' + mySeats + '% of the Assembly is worth.'));
+    act('pressure','Press the sponsor',3,5,!!prsWhy,prsWhy || 'Lean on the sponsoring party privately. Cheap, deniable, and it costs you standing with them.');
     if (inPower(S)) {
       act('amendIt','Table an amendment',4,4,b.concessions >= 4,'It passes more easily and delivers less of what its sponsor wanted.');
       act('delayIt','Send it back to committee',5,0,b.stage === 'committee' || (b.delayedBy || 0) >= 2,'Costs the sponsor a session and some Senate goodwill.');
@@ -15799,6 +15794,40 @@ function billCard(b) {
     if (outright(S) && inPower(S)) {
       act('kill','Kill the bill',8,0,false,'Your party holds the Assembly alone. Take it off the paper without a division — and be seen to.');
     }
+  }
+  /* S20b's THREE WAYS TO PRESS THE POSITION HOME -- the owner's shape exactly:
+     your own benches, the other parties bar the one that laid it, and both.
+     Each is dearer than the last time you used it ON THIS BILL, so it is a
+     decision and not a button to hold down, and each says what it would cost
+     before you press it.
+
+     S21r MOVED THEM OUT OF THE BLOCK ABOVE, which was `b.owner !== 'player'`.
+     A player's own private member's bill was therefore never offered the kit
+     at all -- not disabled, not emitted -- and a government bill the player's
+     party sponsored got three buttons shut for want of a position, on the
+     bill the player most wants to carry. There is one reader now and the
+     buttons, the gate and the handler all ask it. And the stage is left to
+     `v20PressWhy`: on a bill the houses have finished with the three arrive
+     SHUT, carrying the sentence that says why, rather than not arriving --
+     a shut control with a title is a dead end explained, which is what the
+     card owes a player looking at a bill stuck at assent. */
+  var pressPos = typeof v20PressPos === 'function' ? v20PressPos(S, playParty(S), b) : null;
+  if (pressPos) {
+    var pdir = pressPos === 'support' ? 'behind' : 'against';
+    var pWord = pressPos === 'support' ? 'support for' : 'opposition to';
+    var pOwnWhy = v20PressWhy(S, playParty(S), b, 'own');
+    var pOthWhy = v20PressWhy(S, playParty(S), b, 'others');
+    var pBothWhy = v20PressWhy(S, playParty(S), b, 'both');
+    var whoLaid = b.sponsor === playParty(S) ? 'you' : (PARTY[b.sponsor] || {}).short;
+    act('pressOwn', 'Rally your own benches', v20PressCost(S, b, 'own'), 0, !!pOwnWhy,
+      pOwnWhy || ('Put your own members ' + pdir + ' it and close ranks behind the line. Worth ' +
+        V20_PRESS.own.pull + ' of ' + pWord + ' in your party, and it hardens their discipline.'));
+    act('pressOthers', 'Work the other parties', v20PressCost(S, b, 'others'), 0, !!pOthWhy,
+      pOthWhy || ('Every seated party except ' + whoLaid + ', who laid it. Worth ' +
+        V20_PRESS.others.pull + ' of ' + pWord + ' in each, and it moves where they stand with you.'));
+    act('pressBoth', 'Work the whole House', v20PressCost(S, b, 'both'), 0, !!pBothWhy,
+      pBothWhy || ('Your benches and every other party at once, for a price. Worth ' + V20_PRESS.both.pullOwn +
+        ' in your own and ' + V20_PRESS.both.pull + ' in each of theirs.'));
   }
   /* S15d: the bill carried and the office will not sign it. Two ways out, one
      private and one constitutional, and the constitutional one is only open
@@ -35583,6 +35612,12 @@ var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
      so it is priced with `floor` at 12 and `demand` at 16, which are the other
      two cards that are a piece of paper and a conversation. */
   trade:14,
+  /* S21r: working the votes on a bill is a session of the whips' time and
+     nothing else, so it is the cheapest card in the deck -- and the act itself
+     is METERED on top, at `v20PressCost`, which is the same escalating price
+     per bill and per scope the player pays. Pressing the same bill twice costs
+     what it costs the player to press it twice. */
+  work:10,
   /* S21n: holding a coalition together. The player pays 3 capital and 2 money
      for a council and 4 and 2 to reopen an agreement; on the engines' own
      scale that sits with `bargain` and `pact`, which are the other cards about
@@ -36713,6 +36748,45 @@ var V16_AI_DECK = [
       return 'The ' + PARTY[pid].short + ' and the ' + PARTY[t.to].short +
         ' traded benches on ' + t.offer.giveTitle + ' and ' + t.offer.askTitle + '.';
     } },
+  /* S21r — AND A PARTY FIGHTS FOR THE BILL IT LAID.
+
+     Measured over 360 driven sessions at `ruthless`: 133 bills laid, 244 of
+     the 282 that reached a division THROWN OUT, 34 presses made through
+     `v20PressCore` across all six engine parties -- and `bill.pull` written
+     for THE SPONSOR'S OWN BENCHES on nought of 757 bill-sessions. Asked
+     directly, a sponsor was refused permission to work its own bill on 520 of
+     520 askings, and every single refusal was the same sentence: "Say where
+     you stand on it first."
+
+     `floor` is the deck's only door to the persuasion layer and it goes
+     through `v17FloorCore`, which refuses a line on a bill you sponsored --
+     correctly, and since S17. So the party that laid a bill was the one party
+     in the House that could not lift a finger for it, while S19c's `bill`
+     card has been laying them since S19.
+
+     R2: above the floor only, like every card that rehearses. Its scope is
+     `v21PressScopeFor`, the same reading `floor` uses, and it pays
+     `v20PressCost` -- the player's own metered escalating price, per bill and
+     per scope -- on top of the card, so working the same bill twice costs an
+     engine what it costs a player. */
+  { id:'work', post:['hold', 'consolidate', 'organise', 'attack', 'moderate', 'restive'],
+    post2:['govern', 'exposed'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.work) return false;
+      if (!(st.bills || []).length) return false;
+      return v21WhipOpen(st, pid);
+    },
+    run:function (st, pid) {
+      var w = v21WhipFor(st, pid);
+      if (!w) return null;
+      if (v20PressCore(st, pid, w.bill, w.scope)) return null;
+      v16AiPay(st, pid, V16_AI_COST.work + w.price);
+      var mine = w.bill.sponsor === pid;
+      return 'The ' + PARTY[pid].short + ' worked ' +
+        (w.scope === 'own' ? 'their own benches' : 'the other parties') +
+        ' on ' + (mine ? 'their own ' : 'the ') + w.bill.title + '.';
+    } },
   /* S21p — A PARTY AT THE HEAD OF THE CROWD.
 
      Measured over 1,440 driven sessions: 50 demands, 32 general strikes, 96
@@ -36991,7 +37065,13 @@ var V19_GOALS = [
          moved and a trade is benches on a division, which is the last thing
          standing between a bill and the book -- above `floor` at .8, because a
          trade buys somebody else's benches as well as declaring your own. */
-      trade:.95 }
+      trade:.95,
+      /* S21r: THE AIM IT SERVES SQUAREST. Working the votes on a bill already
+         before the House is the last thing between a statute and the book --
+         above `floor` at .8, which only declares, and below `bill` at 1, which
+         is how a statute gets onto the paper in the first place. Measured, 247
+         of 280 bills laid in 360 driven sessions are thrown out. */
+      work:.9 }
   },
   {
     id:'office',
@@ -37166,7 +37246,10 @@ var V19_GOALS = [
          government that concedes to it. */
       crowd:1, street:.7,
       /* S21q: a division is not a constituency. */
-      trade:.15 }
+      trade:.15,
+      /* S21r: and neither is a division lobby. Working the benches moves
+         `partyRel` and faction loyalty, not a bloc. */
+      work:.1 }
   },
   {
     id:'build',
@@ -37194,7 +37277,12 @@ var V19_GOALS = [
          the first place. */
       crowd:.4, street:.15,
       /* S21q: a trade builds nothing of its own. */
-      trade:.2 }
+      trade:.2,
+      /* S21r: rallying your OWN benches hardens their discipline, which is
+         `st.factions` -- the party's organisation in the sense that matters to
+         a division and to turnout, though not `st.machine`, which is what this
+         aim actually counts. */
+      work:.3 }
   },
   {
     id:'charter',
@@ -37613,6 +37701,19 @@ var V19_RIVAL_WORTH = {
   /* S21q: a trade is made WITH a party, not against one -- the same reading as
      `pact` and `bargain`, which are the file's other two agreements. */
   trade:    0,
+  /* S21r: working the votes on the bill you laid is `bill`'s follow-through and
+     it happens in the same arena as `floor` -- the division. It is placed BELOW
+     both: `bill` (.50) puts a new contest on the order paper where there was
+     none, and `floor` (.55) declares a line on somebody ELSE's measure, which
+     is addressed to them; this advances a measure already there and the rival
+     is whoever happens to be whipping the other way. Above the two orders of
+     business that barely touch a rival at all -- `article` (.20) and `order`
+     (.15) -- because a division is where parties actually meet.
+     THE TABLE IS COVERED RATHER THAN REMEMBERED: `a party knows who is in its
+     way` derives its list from the deck and fails if a card arrives without a
+     weight, which is how this one was found. S21r added the nineteenth card
+     and left it scoring nought against a rival in silence. */
+  work:     .40,
   organise: .45,   /* build against them */
   campaign: .30,
   court:    .45,   /* the contested bloc is reached by exactly this card */
@@ -42034,11 +42135,42 @@ function v20PressTargets(st, actor, b, scope) {
   }
   return out;
 }
+/* ============================================================
+   S21r — WHERE AN ACTOR STANDS ON A BILL, ASKED ONCE
+   ============================================================
+   The line below stood in TWO places, and it has a hole the size of the party
+   that laid the bill.
+
+   `v17FloorWhy` refuses a line on a bill you sponsored, and has since S17 --
+   correctly: a sponsor does not declare a position on its own measure, it IS
+   the position. So `b.lines[sponsor]` is never written, `playerPosition` is
+   written only when `owner === 'player'`, and `v20PressWhy` read both and
+   refused THE SPONSOR for having no position. Every party in the House could
+   work the votes on a bill except the one whose bill it was.
+
+   The player's half of the same hole is worse, because it is a control that
+   lies. A player leading the government lays a bill with `owner:'government'`,
+   so `playerPosition` is null: the bill card enters its floor block (the
+   owner is not `'player'`), finds no position, draws no press buttons at all,
+   and draws `Support the bill` ENABLED -- which `v17FloorWhy` then refuses at
+   the handler, exactly the "enabled control that moves nothing and only
+   flashes" this file's longest rule is about. And on the player's own private
+   member's bill the whole block is skipped, so there was no door at all.
+
+   ONE READER, and laying a bill is a position: `partyBillSupport` already
+   scores the sponsor its own bonus and `divisionOf` already whips its benches
+   for it. Nothing here invents a new field -- it reads the two that exist and
+   answers the question the sponsor's own act already settled. */
+function v20PressPos(st, actor, b) {
+  if (!b || !actor) return null;
+  if (b.sponsor === actor) return 'support';
+  return actor === playParty(st) ? b.playerPosition : (b.lines || {})[actor];
+}
 function v20PressWhy(st, actor, b, scope) {
   if (!b) return 'That bill is no longer before the House.';
   if (!V20_PRESS[scope]) return 'There is no such way to press it.';
   if (b.stage === 'assent' || b.stage === 'referendum') return 'The houses have finished with it. There is nothing left to persuade.';
-  var pos = actor === playParty(st) ? b.playerPosition : (b.lines || {})[actor];
+  var pos = v20PressPos(st, actor, b);
   if (!pos) return 'Say where you stand on it first. There is nothing to press until there is a position.';
   if (!v20PressTargets(st, actor, b, scope).length) {
     return scope === 'own' ? 'Your party holds no seats in this House.'
@@ -42057,7 +42189,7 @@ function v20PressCore(st, actor, b, scope) {
   var why = v20PressWhy(st, actor, b, scope);
   if (why) return why;
   var k = V20_PRESS[scope];
-  var pos = actor === playParty(st) ? b.playerPosition : (b.lines || {})[actor];
+  var pos = v20PressPos(st, actor, b);
   var dir = pos === 'support' ? 1 : -1;
   b.pull = b.pull || {};
   v20PressTargets(st, actor, b, scope).forEach(function (pid) {
@@ -42408,6 +42540,60 @@ function v21PressScopeFor(st, pid, b) {
   if (!v20PressWhy(st, pid, b, first)) return first;
   if (!v20PressWhy(st, pid, b, second)) return second;
   return null;
+}
+
+/* S21r — WHICH BILL, AND WHICH BENCHES, ASKED THROUGH THE OBJECTIVE.
+
+   Every bill this party may press -- its own, and any it declared a line on in
+   an earlier session -- rehearsed through `v19Try` and read through
+   `v19Standing`, exactly as S21o's measure and S21q's offer are. Three slices
+   of this program shipped a rule of thumb in front of a scoring function and
+   every one was caught by its own measurement.
+
+   AND THE BILL IS FOUND IN THE CLONE. `v20PressCore` takes a bill OBJECT and
+   writes `b.pull` on it, so handing the rehearsal the live bill would press it
+   for real and then press it again -- the rehearsal writing on the board is
+   the sharpest form of `v19Try` misuse there is. It is looked up by id inside
+   the clone.
+
+   AND WITHOUT S21q THIS PICKER WOULD BE BLIND. `v19Flight` reads `b.lines[pid]`
+   and nothing else about a bill, so a press -- which writes `b.pull` -- moved
+   no term of the objective at all. S21q's term reads `v21Lobby`, which counts
+   `billPull` beside the line, and `v21BillEdge`, which reads the forecast the
+   pull feeds: the two readings a press actually moves. */
+function v21WhipFor(st, pid) {
+  if (!st || !pid || typeof v19Try !== 'function' || typeof v20PressWhy !== 'function') return null;
+  var purse = typeof partyPurse === 'function' ? partyPurse(st, pid) : 0;
+  var before;
+  try { before = v19Standing(st, pid); } catch (e) { return null; }
+  var best = null, bestU = -Infinity;
+  (st.bills || []).forEach(function (b) {
+    var sc = v21PressScopeFor(st, pid, b);
+    if (!sc) return;
+    var price = v20PressCost(st, b, sc);
+    if (purse < V16_AI_COST.work + price) return;
+    var out = v19Try(st, function (cl) {
+      var cb = (cl.bills || []).filter(function (x) { return x.id === b.id; })[0];
+      if (cb) v20PressCore(cl, pid, cb, sc);
+    });
+    if (!out) return;
+    var u;
+    try { u = v19Standing(out, pid); } catch (e) { return; }
+    if (!isFinite(u) || u <= before) return;
+    if (u > bestU) { bestU = u; best = { bill:b, scope:sc, price:price }; }
+  });
+  return best;
+}
+/* and the cheap half of the same question, for `can`: is there a bill this
+   party could press at all? S21o's split -- a `can` that clones the state once
+   per party per session is a `can` that costs more than the card. */
+function v21WhipOpen(st, pid) {
+  if (!st || !pid || typeof v20PressWhy !== 'function') return false;
+  var purse = typeof partyPurse === 'function' ? partyPurse(st, pid) : 0;
+  return (st.bills || []).some(function (b) {
+    var sc = v21PressScopeFor(st, pid, b);
+    return !!sc && purse >= V16_AI_COST.work + v20PressCost(st, b, sc);
+  });
 }
 
 function v17AiFloorFor(st, pid) {
