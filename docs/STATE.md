@@ -50,9 +50,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped twenty slices: S21a–s and S21v.** The original twelve are
-complete; S21m through S21r are the first six of the owner's eight-behaviour
-extension, and S21t and S21u remain. **S21v and S21s are
+**S21 has shipped twenty-one slices: S21a–t and S21v.** The original twelve are
+complete; S21m through S21t are the first seven of the owner's eight-behaviour
+extension, and S21u alone remains. **S21v and S21s are
 out of order on purpose**: the owner interrupted mid-programme with a save and
 two reports from a live game, a build they are playing takes precedence over the
 queue, and the election-night swing they asked to have back turned out to be
@@ -1238,6 +1238,38 @@ authored already and eaten by a wrapper.
   `leads(S)` guard, one line above the article. It read the article as
   toothless. Two boards now, with the chair READ at the moment of the call
   rather than assumed.
+
+- **S21t — an organisation endorses somebody other than you.** `q.endorsement`
+  is a BOOLEAN and has meant "endorses the player" since v5, and
+  `endorsedTurnout` — the only way an endorsement reaches the ballot — was
+  called from inside `partyTurnout`'s `pid === playParty(st)` branch. **Eight
+  named national organisations in a seven-party republic, and six of the parties
+  could never be endorsed by any of them.** Measured over 480 driven sessions at
+  `ruthless`: no organisation endorsed anybody on any of them, because the only
+  door was the player's own button — and the door was open the whole time, with
+  `q.relation` at a median of **59.8** and **2,254 of 3,840** group-sessions at
+  or above the 58 that purchase needs. There was simply nobody on the other side
+  of it. And a claimant was waiting for almost every one: the best-placed party
+  in an organisation's own bloc is an engine on **3,506 of 3,840 readings
+  (91.3%)**, across five different parties, and above nought on every reading.
+  **ONE FIELD, ONE MIRROR, ONE WRITER.** `q.endorsedBy` owns the fact and the
+  boolean is its mirror, written in the same statement — S17g's pattern. *Two
+  clocks for one fact* is this file's own warning, so there is exactly one
+  writer, every site goes through it, and the reader **migrates a save written
+  before this slice** rather than reading a field that is not there.
+  **The claimant is comparative, not a bar** — an organisation backs whoever
+  speaks for its bloc best, on `affOf`, so no threshold was picked by eye; the
+  one absolute is nought, which is this file's own line for *speaks for this
+  constituency at all*. **The one that withdraws it is now the one that holds
+  it**: the old line asked `q.endorsement`, the player's mirror, so an
+  organisation backing anybody else could never take it back. And the term is in
+  the channel's own units — a share of the turnout the game itself allows to be
+  bought — so no constant is picked there either: all eight are worth **0.113 of
+  the turnout multiplier** against an engine's resting 1.047 and a ceiling of
+  1.34. Driven over 480 sessions the card fires **23 times across five parties**,
+  takes **all eight organisations** at least once, and **2.56 of them hold an
+  endorsement in an average session** against a maximum of seven — where it was
+  nought of eight, always.
 
 - **S21r — a party fights for the bill it laid.** `v17FloorWhy` refuses a
   line on a bill you sponsored — correctly, and since S17 — so
