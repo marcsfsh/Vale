@@ -873,6 +873,37 @@ gets a reader. `government_offer`, `opposition_conference` and
 Pins: `bill.pull` non-zero on a measured share of divisions against 0 of 22,932;
 opposition bills passed against 0 of 143.
 
+**AS SHIPPED, AND TWO OF THIS PLAN'S OWN CLAIMS WERE WRONG.**
+
+`press` does NOT become a fourth verb the picker can return. It was written that
+way, measured at 0 of 922 askings, and deleted: `floor` comes up for a given
+party about once in fifty-five party-sessions and a bill lives three to six, so
+a party pressing a bill it declared on in an earlier session is a coincidence
+rather than a plan. What ships is declaring and whipping as ONE act, which is
+also the truer reading — a party that comes out against a bill and then works
+the votes for that position has done one thing.
+
+`pressure`'s bar is NOT re-set and the branch is NOT deleted. It fires 13 of 71
+floor moves at `purposeful` and 0 of 37 at `shrewd`: not a dead branch but the
+unthinking party's third option, which the thinking levels skip because
+`V19_FLOOR_BAR` excludes a bill already going your way — the line S17o added on
+purpose after measuring a thinking party make 13 of 17 floor moves on bills
+already going its way.
+
+The pin "opposition bills passed against 0 of 143" is wrong twice: over twelve
+seeds the build before this slice lays 141 and carries 15, and this one lays 109
+and carries 12. Same rate, fewer laid, because a party that spends on working
+the votes has less left for laying one.
+
+**What is NOT in this slice**, and is named here rather than dropped quietly:
+`bill.lines` gets its renderer, but the pending-article card's author, the order
+record's `by:actor` reader, and the three inbox papers stay open. Those three
+papers — `government_offer`, `opposition_conference`, `coalition_review` — turn
+out to be posted only by `seedOpeningInbox`, so they are keyed to the standing a
+player STARTS in: a player who begins in government and later falls into
+opposition never sees either opposition paper. That is a real defect with a
+small fix and it belongs to a slice that can measure it.
+
 ### S21l — The board's temperature, and the mood the page prints  ·  3 improvements
 
 Last, because posture decides the open set and every rate in S19b, S19c, S19f

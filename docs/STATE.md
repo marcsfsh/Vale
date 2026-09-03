@@ -619,8 +619,63 @@ The four rulings a cold session most needs:
   senior party's machine. `holdsDept` in a third place, on a card the chair
   that wanted it most was the one it worked against.
 
-**WHAT IS OPEN:** two slices of the original twelve (S21k–S21l) plus the
-owner's extension S21m–S21t, in the order `PLAN-S21.md` sets. The coalition
+- **S21k — the engine works the floor.** S20b built the persuasion layer —
+  three scopes, a metered escalating price, and `bill.pull` read in `billPull`
+  beside the whip and counted through the party's seats by S20a's division — and
+  gave it **one caller, which hard-codes `playParty(S)`**. Measured over 720
+  driven sessions: `bill.pull` was non-zero on **0 of 254,492 divisions** and
+  `v20PressCore` was called **0 times**. A whole layer of the model no engine
+  had ever touched.
+
+  **Declaring and whipping are one act**, and the two-step could not be. `floor`
+  comes up for a given party about once in fifty-five party-sessions, a bill
+  lives three to six, and the party being asked held a line on any current bill
+  on **3 of 961** occasions — so a first build in which a party pressed a bill it
+  had declared on in an earlier session fired **zero** times, and a second
+  measurement after the working path existed read **0 of 922**. A separate
+  `press` verb was written, measured and deleted: a branch that cannot fire is
+  deleted rather than shipped, which is the answer to the plan's "press becomes
+  a fourth verb". A party that comes out against a bill and then works the votes
+  for that position is one act, and pricing it as two is what made the layer
+  unreachable. It pays both prices, only when it can afford both, and only above
+  the `instinct` floor.
+
+  Driven over twelve seeds and 1,440 sessions, the pull now reaches **11,526
+  divisions** where it reached **0**, on 137 presses across 156 floor moves.
+
+  **And the relation a press moves belongs to the right pair.** `shiftPartyRel`
+  writes `st.partyRel[pid]`, which is that party's standing with the PLAYER —
+  correct while every press was the player's, and a write on the wrong record
+  the moment an engine pressed. There are three cases and one question: a press
+  BY the player moves the target's entry; a press ON the player — which happens
+  on every `others` scope, because the player is a seated party that is neither
+  the actor nor the sponsor — moves the ACTOR's entry, not the player's own,
+  which would be their standing with themselves; and a press between two engines
+  moves neither and goes to the signed ledger `v21Regard` reads. No new writer:
+  `v16Resent` has stored a sign since S21a and warming is resentment with a
+  minus in front of it.
+
+  **And the page says where the other parties stand.** `b.lines` has been
+  written since S17b and read by `partyBillSupport` on every division — 16 for a
+  declared support, −18 for a declared opposition — and **rendered nowhere**, so
+  a forecast could move thirty-four points with nothing on the page saying why.
+  That is `st.court.size` inverted: not a field nothing reads, but one the model
+  reads and the reader cannot see.
+
+  **Two of the plan's own claims were measured and found wrong.** `pressure` was
+  to have its bar re-set or the branch deleted; it fires **13 of 71** floor moves
+  at `purposeful` and **0 of 37** at `shrewd`, which is not a dead branch but the
+  unthinking party's third option — the thinking levels skip it because
+  `V19_FLOOR_BAR` excludes a bill already going your way, which is the line S17o
+  added on purpose. And the slice was pinned on "opposition bills passed against
+  0 of 143": over twelve seeds the build BEFORE it lays 141 and carries 15, and
+  this one lays 109 and carries 12 — the same rate, and fewer laid, because a
+  party that spends on working the votes has less left for laying one. A
+  six-seed reading of 3 against 11 said otherwise and was noise. Both are
+  reported rather than claimed.
+
+**WHAT IS OPEN:** one slice of the original twelve (S21l) plus the owner's
+extension S21m–S21t, in the order `PLAN-S21.md` sets. The coalition
 overhaul the brief names is complete: S21d gave the agreement teeth, S21e made
 the table a negotiation, S21f gave it one exit and a voice, S21g made a
 government able to fall, and S21h gave the junior partner a game.
