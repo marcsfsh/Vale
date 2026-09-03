@@ -4288,6 +4288,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          it puts the party AT that head with a partner who has had enough --
          which is what "a state where it can play" means for a card whose gate
          reads the chair. It is behind `v19Thinks` like S21g's two. */
+      /* S21o: this one is the head of a government's too, and the book it
+         reaches is opened by WHICH party that is -- the apparatus measures
+         0.00 in 1,440 driven sessions, so `EXTREME1` is the only road there.
+         The state built for it seats a party the first degree is open to. */
+      if (c.id === 'descend') {
+        S.aiLevel = 'ruthless';
+        pid = 'pnl';
+        S.ruling = pid; S.coalition = [pid];
+        S.purse = S.purse || {}; S.purse[pid] = 400;
+      }
       if (c.id === 'keep') {
         S.aiLevel = 'ruthless';
         const partner = PARTIES.filter(p => p.id !== pid && p.id !== playParty(S) && !S.banned[p.id])[0].id;
@@ -4305,7 +4315,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         pending:(v11Con(S).pending || []).length,
         orders:Object.keys(v10Orders(S)).length,
         lines:S.bills.reduce(function (n, b) { return n + Object.keys(b.lines || {}).length; }, 0),
-        bills:S.bills.length
+        bills:S.bills.length,
+        extra:extraActive(S)
       };
       if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
       const line = c.run(S, pid);
@@ -4344,6 +4355,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         : c.id === 'topple' ? !!S.motion && S.motion.by === pid
         : c.id === 'bargain' ? S.confidence === pid &&
             (((S.coalitionDeals || {})[pid] || {}).terms || {}).confidence === 'supply'
+        /* S21o: the deck's fifteenth. A measure signed is one more standing in
+           the book, which is the field five things read and the one the whole
+           emergency page counts. */
+        : c.id === 'descend' ? extraActive(S) > before.extra
         : false;
       const paid = partyPurse(S, pid) < before.purse;
       cardWorks[c.id] = !!(line && moved && paid);
@@ -4414,7 +4429,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      house -- move no confidence in a government, or sell it the abstention
      that keeps it alive -- and both sit behind `v19Thinks`, so `instinct` is
      still the eleven the game shipped with. */
-  say(six.built && six.deck === 14 && six.cardWorks === 14 && six.cardFails.length === 0 && six.actedAll &&
+  say(six.built && six.deck === 15 && six.cardWorks === 15 && six.cardFails.length === 0 && six.actedAll &&
       six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
       six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
       six.redLineBites && six.partnerWarned && six.partnerLeaves,
@@ -9611,6 +9626,424 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `go 97 to 73 and sessions with a partner under 45 go 559 to 482`);
 
   /* ================================================================
+     S21o — AN ENGINE GOVERNMENT CAN DESCEND
+     ================================================================
+     `extraTierAllowed` and `extraWhy` both opened with `!leads(st)`, which
+     asks whether the PLAYER heads the government -- so the descent this game
+     is named for was the player's private machinery. Measured over 1,440
+     driven sessions: an engine leads in 93.8% of them, sits on 152 sessions
+     where the state of the state would allow the first degree, and signs
+     nothing. The road there is party identity alone: the apparatus measures
+     0.00 in every one of those sessions, so `ss >= 30` is unreachable and
+     `EXTREME1` is the whole of the door. */
+  const desc = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    /* a government of a party the first degree is open to, seated rather than
+       hunted: `EXTREME1` is the only road and it comes up on 11.3% of
+       engine-led sessions, so a probe that waits for one is a probe about a
+       lucky seed */
+    function seat(pid, seed, level) {
+      fresh(seed || 4242, level);
+      for (let t = 0; t < 8; t++) step();
+      S.ruling = pid; S.coalition = [pid];
+      S.purse = S.purse || {}; S.purse[pid] = 400;
+      return pid;
+    }
+
+    /* (a) THE GATE ASKS ABOUT AN ACTOR, AND ITS DEFAULT IS UNCHANGED. Both
+       halves: widening a predicate without pinning the old reading is S17k's
+       trap, and a build whose default REFUSES EVERYBODY satisfies every leg
+       made of refusals, which is what S21n's N02 poison came back green on. */
+    R.actor = (() => {
+      const pid = seat('tvc');
+      const m = EXTRA_BY.signingStatements;
+      const me = playParty(S);
+      const asPlayer = extraWhy(S, m);
+      const asLead = extraWhy(S, m, pid);
+      const asOther = extraWhy(S, m, PARTIES.filter(p => p.id !== pid && p.id !== me)[0].id);
+      const tierLead = extraTierAllowed(S, 1, pid);
+      const tierPlayer = extraTierAllowed(S, 1);
+      /* the player's own chair, at the head of a government the book is open
+         to, asked with NO actor: it has to come back open */
+      const kept = S.ruling, keptCo = S.coalition.slice();
+      S.ruling = me; S.coalition = [me];
+      const asPlayerLeading = extraWhy(S, m);
+      const tierPlayerLeading = extraTierAllowed(S, 1);
+      S.ruling = kept; S.coalition = keptCo;
+      return { asPlayer:asPlayer.slice(0, 46), asLead:asLead.slice(0, 46),
+        asOther:asOther.slice(0, 46), tierLead:tierLead, tierPlayer:tierPlayer,
+        asPlayerLeading:asPlayerLeading.slice(0, 46),
+        playerStillRefused: asPlayer.indexOf('leading the government') >= 0 && tierPlayer === false,
+        leadNotRefusedOnTheChair: asLead === '' && tierLead === true,
+        otherStillRefused: asOther.indexOf('leading the government') >= 0,
+        defaultWorks: asPlayerLeading === '' && tierPlayerLeading === true };
+    })();
+
+    /* (b) THE SIGNING HAS A BODY WITH NO CHAIR IN IT, and the player's own
+       button calls that body rather than its own copy. Read as the state the
+       core writes and the state a real click writes, which have to be the
+       same: two copies of one act drift, which is what S21h found. */
+    R.core = (() => {
+      const pid = seat('tvc');
+      const m = EXTRA_BY.classifyRecords;
+      const u0 = S.unrest, l0 = S.ind.liberties, c0 = S.ind.corruption;
+      const ok = v21ExtraCore(S, m, pid);
+      const core = { status:S.extra[m.id], unrest:+(S.unrest - u0).toFixed(3),
+        lib:+(S.ind.liberties - l0).toFixed(3), corr:+(S.ind.corruption - c0).toFixed(3) };
+      /* twice is once: a measure already in force is refused rather than
+         re-signed, which is what makes the core safe to call from a rehearsal */
+      const again = v21ExtraCore(S, m, pid);
+      /* and from a chair that is not the government's */
+      const other = PARTIES.filter(p => p.id !== pid && p.id !== playParty(S))[0].id;
+      const wrongChair = v21ExtraCore(S, EXTRA_BY.signingStatements, other);
+      /* THE PLAYER'S OWN CLICK, FROM THE CHAIR THAT HAS THE BUTTON, AND READ
+         ON MORE THAN THREE FIELDS. A first version asked only for the status,
+         the unrest and the corruption, and the poison that gives `doExtra`
+         back its own inline copy of those three lines CAME BACK GREEN: a
+         subset of the body reproduces a leg that reads the subset. The click
+         is measured on what the copy cannot fake -- the signer's record and
+         the chronicle, which are the body's own, plus the gerrymander, which
+         is why `federaliseElections` is the measure here. */
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me]; S.capital = 90;
+      S.gerry = S.gerry || {};
+      const u1 = S.unrest, c1 = S.ind.corruption, g1 = S.gerry[me] || 0;
+      const ch1 = (S.chron || []).length;
+      const m2 = EXTRA_BY.federaliseElections;
+      doExtra(m2);
+      const clicked = { status:S.extra[m2.id], unrest:+(S.unrest - u1).toFixed(3),
+        corr:+(S.ind.corruption - c1).toFixed(3),
+        gerry:+((S.gerry[me] || 0) - g1).toFixed(4),
+        by:v21ExtraSignedBy(S, m2.id),
+        chron:(S.chron || []).slice(ch1).some(e =>
+          String((e && e.line) || '').indexOf(m2.name) >= 0) };
+      return { ok:ok, core:core, again:again, wrongChair:wrongChair, clicked:clicked,
+        signs: ok === true && core.status === 'pending' &&
+          core.unrest === m.unrest && core.lib === m.eff.liberties &&
+          core.corr === m.eff.corruption,
+        refusesTwice: again === false,
+        refusesAnotherChair: wrongChair === false,
+        oneBody: clicked.status === 'pending' && clicked.unrest === m2.unrest &&
+          clicked.corr === m2.eff.corruption && clicked.gerry === m2.gerry &&
+          clicked.by === playParty(S) && clicked.chron === true };
+    })();
+
+    /* (c) WHICH MEASURE, AND ASKED THROUGH THE OBJECTIVE. The first build took
+       the most powerful measure the government could reach and that is the
+       worst row in the book on both counts: `power` is what `v19Standing` can
+       barely see, the mood a measure offends is what it sees in full, and
+       `v19Outcome` came back at the CLAMP on every rehearsal. The leg stands
+       in the gap that closes: the picker must not take the power-max when a
+       cheaper measure leaves the government better off, and the card must not
+       score -1. */
+    R.pick = (() => {
+      const pid = seat('tvc');
+      const card = V16_AI_DECK.filter(c => c.id === 'descend')[0];
+      const avail = EXTRA.filter(m => extraAvailable(S, m, pid));
+      if (!avail.length || !card) return { ran:false, n:avail.length };
+      const byPower = avail.slice().sort((a, b) => (b.power || 0) - (a.power || 0))[0];
+      const chosen = v21DescendTarget(S, pid);
+      const worth = m => {
+        const out = v19Try(S, c => { v21ExtraCore(c, m, pid); });
+        return out ? +v19Standing(out, pid).toFixed(3) : null;
+      };
+      const base = +v19Standing(S, pid).toFixed(3);
+      const wPower = worth(byPower), wChosen = chosen ? worth(chosen) : null;
+      const outcome = +v19Outcome(S, pid, card).toFixed(4);
+      return { ran:true, n:avail.length, base:base,
+        byPower:byPower.id, powerTop:byPower.power, chosen:chosen && chosen.id,
+        wPower:wPower, wChosen:wChosen, outcome:outcome,
+        /* the two differ on this board, or the leg is blind to the change */
+        differs: !!(chosen && chosen.id !== byPower.id),
+        takesTheBest: !!(chosen && wChosen !== null && wPower !== null && wChosen >= wPower),
+        notTheClamp: outcome > -1 };
+    })();
+
+    /* AND THE BOOK IS READ AT RUN TIME, NOT WHERE THE DECK IS WRITTEN. `EXTRA`
+       is pushed to twice AFTER `V16_AI_DECK` is evaluated -- two v9 measures at
+       one site and fifteen x15 measures at another -- so a picker holding a
+       list built beside the card would freeze the book at forty-five of its
+       sixty. Every universal measure is struck (which closes it without
+       adding a precedent), and what the picker returns has to come from the
+       late push. */
+    R.late = (() => {
+      const pid = seat('tvc');
+      const late = EXTRA.filter(m => /^x15/.test(m.id) || /^v9/.test(m.id)).map(m => m.id);
+      EXTRA.forEach(m => { if (late.indexOf(m.id) < 0) S.extra[m.id] = 'struck'; });
+      const got = v21DescendTarget(S, pid);
+      return { total:EXTRA.length, late:late.length, got:got && got.id,
+        reachesTheLatePush: !!(got && late.indexOf(got.id) >= 0) };
+    })();
+
+    /* AND WHOSE MEASURE IT WAS. Both places that undo one -- the government's
+       own repeal and the court's compliance branch -- debited `st.ruling`'s
+       gerrymander, which is the signer while the book is the player's alone and
+       a DIFFERENT party the moment a government that is not yours can sign. A
+       measure is signed by one government here and undone under the next, and
+       the loss has to land on the party that gained it. */
+    R.signer = (() => {
+      const pid = seat('pnl');
+      const m = EXTRA_BY.federaliseElections;      /* the one that carries `gerry` */
+      S.gerry = S.gerry || {};
+      const g0 = S.gerry[pid] || 0;
+      v21ExtraCore(S, m, pid);
+      const recorded = v21ExtraSignedBy(S, m.id);
+      const gained = +((S.gerry[pid] || 0) - g0).toFixed(4);
+      /* the government changes, and the player repeals it */
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me]; S.capital = 90;
+      const gMe0 = S.gerry[me] || 0, gThem0 = S.gerry[pid] || 0;
+      extraRepeal(m.id);
+      const lostMine = +((S.gerry[me] || 0) - gMe0).toFixed(4);
+      const lostTheirs = +((S.gerry[pid] || 0) - gThem0).toFixed(4);
+      /* and the court's compliance branch, on a second measure, asks the same */
+      const pid2 = seat('pnl');
+      const m2 = EXTRA_BY.federaliseElections;
+      S.gerry = S.gerry || {};
+      v21ExtraCore(S, m2, pid2);
+      S.pendingExtra = m2.id;
+      const me2 = playParty(S);
+      S.ruling = me2; S.coalition = [me2];
+      const cMe0 = S.gerry[me2] || 0, cThem0 = S.gerry[pid2] || 0;
+      const ev = extraEvent(m2.id);
+      ev.ch[0].f(S);
+      return { recorded:recorded, gained:gained, lostMine:lostMine, lostTheirs:lostTheirs,
+        courtMine:+((S.gerry[me2] || 0) - cMe0).toFixed(4),
+        courtTheirs:+((S.gerry[pid2] || 0) - cThem0).toFixed(4),
+        records: recorded === pid && gained === m.gerry,
+        repealDebitsTheSigner: lostTheirs === -m.gerry && lostMine === 0,
+        courtDebitsTheSigner: +((S.gerry[pid2] || 0) - cThem0).toFixed(4) === -m2.gerry &&
+          +((S.gerry[me2] || 0) - cMe0).toFixed(4) === 0 };
+    })();
+
+    /* AND THE PAGE SAYS IT. A measure you are living with and one you signed
+       are different facts, and until this slice there was only ever the
+       second, so the card had no way to tell them apart. */
+    R.page = (() => {
+      const pid = seat('tvc');
+      const m = EXTRA_BY.classifyRecords;
+      v21ExtraCore(S, m, pid);
+      const theirs = extraCard(m);
+      const me = playParty(S);
+      S.ruling = me; S.coalition = [me];
+      const m2 = EXTRA_BY.signingStatements;
+      v21ExtraCore(S, m2, me);
+      const mine = extraCard(m2);
+      const unsigned = extraCard(EXTRA_BY.impoundment);
+      return { theirsSays: theirs.indexOf('Signed by the ' + PARTY[pid].short) >= 0,
+        theirsSaysNotYou: theirs.indexOf('not by you') >= 0,
+        mineSays: mine.indexOf('Signed by the ' + PARTY[me].short) >= 0,
+        mineDoesNotSayNotYou: mine.indexOf('not by you') < 0,
+        unsignedSaysNothing: unsigned.indexOf('Signed by the') < 0,
+        names: theirs.indexOf('Signed by the ' + PARTY[pid].short) >= 0 &&
+          theirs.indexOf('not by you') >= 0 &&
+          mine.indexOf('Signed by the ' + PARTY[me].short) >= 0 &&
+          mine.indexOf('not by you') < 0 &&
+          unsigned.indexOf('Signed by the') < 0 };
+    })();
+
+    /* AND A GOVERNMENT THE BOOK IS CLOSED TO CANNOT DRAW IT AT ALL. The gate
+       asks `v21DescendOpen` and not merely "am I the government", and the
+       poison that replaces that question with `return true` CAME BACK GREEN
+       against every other leg here: the card's `run` finds no target and
+       returns null, so nothing in the state moves and the party silently
+       spends a session on a card that could not do anything. That is the
+       engine's form of an enabled control that only flashes. The centre is the
+       contrast: `EXTREME1` is the whole door while the apparatus measures nil,
+       so an FP government has the money, the chair and the thinking level and
+       the book is still shut. */
+    R.closed = (() => {
+      const pid = seat('fp', 4242, 'shrewd');
+      const card = V16_AI_DECK.filter(c => c.id === 'descend')[0];
+      let can = null, open = null, avail = 0;
+      try {
+        can = card.can(S, pid);
+        open = v21DescendOpen(S, pid);
+        avail = EXTRA.filter(m => extraAvailable(S, m, pid)).length;
+      } catch (e) { can = 'threw'; }
+      const purse = Math.round(partyPurse(S, pid));
+      /* and the same board with a party the book IS open to, or "shut" is a
+         claim about a state no party could act from */
+      const pid2 = seat('tvc', 4242, 'shrewd');
+      let canOpen = null;
+      try { canOpen = card.can(S, pid2); } catch (e) { canOpen = 'threw'; }
+      return { can:can, open:open, avail:avail, canOpen:canOpen, purse:purse,
+        shutToTheCentre: can === false && open === false && avail === 0 &&
+          canOpen === true };
+    })();
+
+    /* AND THE AIMS SAY WHAT THEY THINK OF IT. Read through `v19Score`, which
+       is where the table is consulted, and asked of ONE card under TWO aims:
+       an extraordinary measure is the executive contending with the
+       constitution rather than amending it, so `charter` values it and
+       `ground` -- an aim about winning a bloc over, which every measure in the
+       book LOSES -- does not. Read this way rather than off the fire rate,
+       because one weight among fifteen cards in a softmax is below what a
+       driven count can resolve: the poison that flattens all six rows to the
+       .25 default came back GREEN against the driven leg. */
+    R.aims = (() => {
+      const pid = seat('tvc', 4242, 'ruthless');
+      const card = V16_AI_DECK.filter(c => c.id === 'descend')[0];
+      const a = v16Ai(S)[pid];
+      if (!card || !a) return { ran:false };
+      const at = (kind) => {
+        a.goal = { kind:kind, ref:null, since:S.turn };
+        let v = null;
+        try { v = +v19Score(S, pid, card, a.goal, { foe:null, foeAt:0 }).toFixed(4); } catch (e) { v = null; }
+        return v;
+      };
+      const charter = at('charter'), ground = at('ground'), oust = at('oust');
+      const w = V19_GOALS.filter(g => g.id === 'charter')[0];
+      const wG = V19_GOALS.filter(g => g.id === 'ground')[0];
+      return { ran:true, charter:charter, ground:ground, oust:oust,
+        wCharter:w && w.worth && w.worth.descend, wGround:wG && wG.worth && wG.worth.descend,
+        charterBeatsGround: charter !== null && ground !== null && charter > ground + 1e-9,
+        oustBetween: oust !== null && oust > ground + 1e-9 && oust < charter - 1e-9 };
+    })();
+
+    /* (d) R2: THE FLOOR NEVER DRAWS IT, and a thinking level does -- both, or
+       "shut" is a claim about a board no level could act on. */
+    R.floorShut = (() => {
+      const pid = seat('tvc', 4242, 'instinct');
+      const card = V16_AI_DECK.filter(c => c.id === 'descend')[0];
+      let can = null, canUp = null, thinks = null;
+      try { can = card.can(S, pid); thinks = v19Thinks(S); } catch (e) { can = 'threw'; }
+      S.aiLevel = 'shrewd';
+      try { canUp = card.can(S, pid); } catch (e) { canUp = 'threw'; }
+      return { thinks:thinks, can:can, canUp:canUp, shut: can === false && canUp === true };
+    })();
+
+    /* (e) DRIVEN: IT FIRES, THE MEASURE STANDS, AND THE PLAYER CAN SEE IT.
+       Not called directly -- S17p's lesson is that calling the function is not
+       testing the wiring -- so the whole path runs: the tempo gate, the
+       posture, the deck filter, `v19Choose` and the card's own `run`. */
+    R.play = (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'descend')[0];
+      const out = { runs:0, byParty:{}, byMeasure:{}, stood:0, chron:0, player:0 };
+      const base = card.run;
+      card.run = function (st, pid) {
+        const m = v21DescendTarget(st, pid);
+        /* the chronicle is capped at sixty entries, so it is counted AT THE
+           SIGNATURE rather than swept at the end of a hundred and twenty
+           sessions -- a count taken off a ring buffer is S17g's running-record
+           mistake wearing a different hat */
+        const ch0 = (st.chron || []).length;
+        const said = base.call(this, st, pid);
+        if (said && !V19_SIMULATING) {
+          out.runs++;
+          out.byParty[pid] = (out.byParty[pid] || 0) + 1;
+          if (m) out.byMeasure[m.id] = (out.byMeasure[m.id] || 0) + 1;
+          if (m && (st.extra[m.id] === 'pending' || st.extra[m.id] === 'upheld')) out.stood++;
+          if ((st.chron || []).slice(ch0).concat((st.chron || []).slice(-1))
+              .some(e => String((e && e.line) || '').indexOf('signed into effect') >= 0)) out.chron++;
+          if (pid === playParty(st)) out.player++;
+        }
+        return said;
+      };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080, 11, 2024, 777, 606, 13, 99].forEach(sd => {
+          fresh(sd, 'ruthless');
+          for (let t = 0; t < 120; t++) if (!step()) break;
+        });
+      } finally { card.run = base; runQueue = rq; }
+      return out;
+    })();
+    R.fires = R.play.runs > 3 && R.play.stood === R.play.runs && R.play.player === 0 &&
+      R.play.chron === R.play.runs;
+    R.top = V21_EXTRA_TOP;
+    return R;
+  });
+
+  const descOk =
+    desc.actor.playerStillRefused && desc.actor.leadNotRefusedOnTheChair &&
+    desc.actor.otherStillRefused && desc.actor.defaultWorks &&
+    desc.core.signs && desc.core.refusesTwice && desc.core.refusesAnotherChair &&
+    desc.core.oneBody &&
+    desc.pick.ran && desc.pick.differs && desc.pick.takesTheBest && desc.pick.notTheClamp &&
+    desc.late.reachesTheLatePush && desc.late.total === 60 &&
+    desc.signer.records && desc.signer.repealDebitsTheSigner &&
+    desc.signer.courtDebitsTheSigner && desc.page.names &&
+    desc.closed.shutToTheCentre && desc.aims.ran &&
+    desc.aims.charterBeatsGround && desc.aims.oustBetween &&
+    desc.floorShut.shut === true && desc.fires;
+  say(descOk, 'a government that is not yours can descend',
+    `THE EMERGENCY BOOK WAS THE PLAYER'S PRIVATE MACHINERY. ${'`'}extraTierAllowed${'`'} and ` +
+    `${'`'}extraWhy${'`'} both opened with ${'`'}!leads(st)${'`'}, which asks whether the PLAYER heads the ` +
+    `government -- so a Vanguard or Restoration government could not open an investigation, federalise the ` +
+    `count or licence the press, and the descent this game is named for could only ever be yours. Measured ` +
+    `over 1,440 driven sessions an engine leads 93.8% of them, sits on 152 where the state of the state ` +
+    `would allow the first degree, and signs NOTHING. The road there is party identity alone: the apparatus ` +
+    `measures 0.00 in every one of those sessions, so ${'`'}ss >= 30${'`'} is unreachable to an engine and ` +
+    `${'`'}EXTREME1${'`'} is the whole door · IT NAMES AN ACTOR NOW, and the default is the shipped line to ` +
+    `the letter, since ${'`'}leads(st)${'`'} IS ${'`'}playParty(st) === st.ruling${'`'}: asked with no actor ` +
+    `about a government the player does not lead it still refuses (${desc.actor.playerStillRefused}), asked ` +
+    `about the party that DOES lead it the chair is no longer the reason (${desc.actor.leadNotRefusedOnTheChair}), ` +
+    `a party leading nothing is refused as before (${desc.actor.otherStillRefused}), and the player put at the ` +
+    `head of the same government has the book OPEN (${desc.actor.defaultWorks}) -- that last one, because every ` +
+    `other reading here is a refusal and a build that refuses everybody satisfies a leg made of refusals · ` +
+    `THE SIGNING HAS A BODY WITH NO CHAIR IN IT: eighteen statements inside a handler that reads the global ` +
+    `state, spends the player's capital and renders became ${'`'}v21ExtraCore${'`'}, which puts the measure ` +
+    `before the courts and moves unrest by ${desc.core.core.unrest} and corruption by ${desc.core.core.corr} ` +
+    `(${desc.core.signs}); it refuses a measure already in force (${desc.core.refusesTwice}) and a chair that ` +
+    `is not the government's (${desc.core.refusesAnotherChair}); and a real click from the chair that has the ` +
+    `button produces the same state off the same body (${desc.core.oneBody}) -- READ ON SIX FIELDS AND NOT ` +
+    `THREE, because the poison that gives the handler back an inline copy of the status, the unrest and the ` +
+    `corruption came back GREEN against a leg that read exactly those three: a subset of a body satisfies a leg ` +
+    `made of the subset, so the click is measured on the signer's record (${desc.core.clicked.by}), the ` +
+    `chronicle (${desc.core.clicked.chron}) and the gerrymander (${desc.core.clicked.gerry}) as well · ` +
+    `AND WHICH MEASURE IS ASKED ` +
+    `THROUGH THE OBJECTIVE RATHER THAN BY A RULE OF THUMB. The first build took the most powerful measure ` +
+    `available, which is the worst row in the book on both counts at once -- ${'`'}power${'`'} is what ` +
+    `${'`'}v19Standing${'`'} can barely see (+0.17 to +0.37 through the flight term) and the mood a measure ` +
+    `offends is what it sees in full, so on one measured board the three open measures cost -15.478, -1.479 ` +
+    `and -2.168 of ${'`'}v17Utility${'`'} and "most powerful" took the -15.478 every time. ` +
+    `${'`'}v19Outcome${'`'} came back at exactly -1, THE CLAMP, on every rehearsal, against +0.01 to +0.05 for ` +
+    `every other card in the same open set: at ${'`'}ruthless${'`'}, where ${'`'}sim${'`'} is 1.9, a card no ` +
+    `government could ever play. Here the power-max is ${desc.pick.byPower} at ${desc.pick.powerTop} and the ` +
+    `government takes ${desc.pick.chosen} instead (${desc.pick.differs}), leaving it at ${desc.pick.wChosen} ` +
+    `against ${desc.pick.wPower} (${desc.pick.takesTheBest}), and the card scores ${desc.pick.outcome} rather ` +
+    `than the clamp (${desc.pick.notTheClamp}) · AND THE BOOK IS READ AT RUN TIME: ${'`'}EXTRA${'`'} is pushed ` +
+    `to twice after the deck literal is evaluated, so with every universal measure struck the picker still ` +
+    `reaches ${desc.late.got} out of ${desc.late.total} (${desc.late.reachesTheLatePush}) -- a list built ` +
+    `beside the card would have frozen the book at forty-five · AND WHOSE MEASURE IT WAS. Both places that ` +
+    `undo one -- the government's own repeal and the court's compliance branch -- debited ` +
+    `${'`'}st.ruling${'`'}'s gerrymander, which is the signer while the book is the player's alone and a ` +
+    `DIFFERENT party the moment a government that is not yours can sign. Signed under one government and ` +
+    `undone under the next, the ${desc.signer.gained} it gained comes off the party that gained it ` +
+    `(${desc.signer.lostTheirs}) and not off the one in office (${desc.signer.lostMine}), by repeal ` +
+    `(${desc.signer.repealDebitsTheSigner}) and by the court's own order (${desc.signer.courtDebitsTheSigner}) · ` +
+    `AND THE PAGE SAYS IT: a measure signed by a government that is not yours reads "Signed by the ` +
+    `TVC, not by you" and one of your own drops the second half (${desc.page.names}), where the card could ` +
+    `not tell the two apart · AND A GOVERNMENT THE BOOK IS CLOSED TO CANNOT DRAW IT AT ALL: an FP government ` +
+    `with ${desc.closed.purse} in the purse, the chair and a thinking level reaches ${desc.closed.avail} of ` +
+    `the sixty measures and the card is shut (${desc.closed.can}), while the same board under a party the book ` +
+    `IS open to draws it (${desc.closed.canOpen}) -- the poison that makes the gate ${'`'}return true${'`'} came ` +
+    `back GREEN against every other leg, because the card then enters the open set, finds no target and spends ` +
+    `the party's session on nothing · AND THE AIMS SAY WHAT THEY THINK OF IT, read through ` +
+    `${'`'}v19Score${'`'} where the table is consulted: the same card scores ${desc.aims.charter} under ` +
+    `${'`'}charter${'`'} at ${desc.aims.wCharter} -- an extraordinary measure being the executive contending ` +
+    `with the constitution rather than amending it -- against ${desc.aims.ground} under ${'`'}ground${'`'} at ` +
+    `${desc.aims.wGround}, an aim about winning a bloc over that every measure in this book LOSES ` +
+    `(${desc.aims.charterBeatsGround}), with ${'`'}oust${'`'} between them at ${desc.aims.oust} ` +
+    `(${desc.aims.oustBetween}). Read this way and not off the fire rate, because one weight among fifteen ` +
+    `cards in a softmax is below what a driven count resolves -- the poison that flattened all six rows to the ` +
+    `.25 default came back GREEN against the driven leg · R2: on one constructed board the floor cannot ` +
+    `draw it and a thinking level can (${desc.floorShut.can} against ${desc.floorShut.canUp}) · and driven ` +
+    `over 1,440 sessions it fires ${desc.play.runs} times ` +
+    `(${JSON.stringify(desc.play.byParty)}), every one leaves a measure standing ` +
+    `(${desc.play.stood}/${desc.play.runs}) and in the chronicle the player reads, and never once from the ` +
+    `player's own chair (${desc.play.player})`);
+
+  /* ================================================================
      S21m — THE PARTY IN OFFICE CAN AFFORD TO GOVERN
      ================================================================
      `govern` appeared in three of the thirteen `post:` arrays, so a
@@ -9652,7 +10085,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* S21n adds `keep` to the same second list, and it is listed there rather
        than in `post` so the FLOOR's table stays exactly the three the game
        shipped with -- belt and braces with the `v19Thinks` gate on its `can`. */
-    R.widened = R.table.thinkingOnly.join(',') === 'floor,keep,organise';
+    R.widened = R.table.thinkingOnly.join(',') === 'descend,floor,keep,organise';
     /* and `court` is what the second mood has and the first does not */
     R.courtIsTheDifference =
       R.table.exposedDeck.indexOf('court') >= 0 &&
@@ -10783,6 +11216,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            wide enough that the reading is the card's and not the seed's. */
         [4242, 90210, 7, 31337, 555, 8080, 1234, 99, 2718, 161803, 42, 77]
           .forEach(s => { fresh(s); for (let i = 0; i < 40; i++) step(); });
+        /* S21o: AND A THIRTEENTH PASS ON A CONSTRUCTED BOARD. The fifteenth
+           card needs a government the constitution opens the emergency book
+           to, and the first degree is open on 7.1% of engine-led sessions --
+           forty sessions from a default start do not reliably produce one, so
+           twelve seeds of waiting reported the deck as fourteen cards and let
+           the new one past the flatness gate entirely. The government is
+           SEATED each session rather than waited for, because a ballot moves
+           it back. Everything else in the pass is an ordinary drive and its
+           samples count for every other card too. */
+        fresh(4242);
+        for (let i = 0; i < 40; i++) {
+          S.ruling = 'tvc'; S.coalition = ['tvc'];
+          S.purse = S.purse || {}; S.purse.tvc = 400;
+          step();
+        }
       } finally { v19Outcome = base; }
       const ids = Object.keys(rows);
       let flat = 0, n = 0;
@@ -10895,6 +11343,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       move('roomHolding', () => room(85), () => {});
       move('roomWalking', () => room(15), () => {});
       S.ruling = wasRuling; S.coalition = wasCo; S.coalitionDeals = wasDeals;
+      /* S21o's eleventh: THE MACHINERY IT HAS BUILT. Read only for the party at
+         the head of the government -- the same shape as the motion above, and
+         asked the same way: the identical book, read once for the government
+         and once for a party that is not it, so a term that summed
+         `st.extra` without asking whose government it was would score every
+         party on the board for one government's descent. */
+      const wasEx = JSON.parse(JSON.stringify(S.extra || {}));
+      const wasExBy = JSON.parse(JSON.stringify(S.extraBy || {}));
+      const book = (who) => {
+        S.ruling = who; S.coalition = [who];
+        S.extra = {}; S.extraBy = {};
+        EXTRA.slice(0, 3).forEach(m => { S.extra[m.id] = 'upheld'; S.extraBy[m.id] = who; });
+      };
+      const clearBook = () => { S.extra = JSON.parse(JSON.stringify(wasEx));
+        S.extraBy = JSON.parse(JSON.stringify(wasExBy)); };
+      move('bookMine', () => book(pid), clearBook);
+      move('bookTheirs', () => book(other), clearBook);
+      S.ruling = wasRuling; S.coalition = wasCo;
+      S.extra = wasEx; S.extraBy = wasExBy;
       return { out:out, pol:pol,
         /* every kind moves it, and the two signed ones are signed */
         allMove: ['billFor', 'lineFor', 'article', 'pact', 'push', 'letter', 'order', 'motion', 'supply']
@@ -10903,6 +11370,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            the head of it than a room about to walk out */
         roomCounts: out.roomHolding !== undefined && out.roomWalking !== undefined &&
           out.roomHolding > out.roomWalking + 1e-9,
+        /* and the eleventh: three measures standing are worth something to the
+           government that signed them and NOTHING to a party that is not it */
+        bookCounts: out.bookMine > 1e-9 && out.bookTheirs === 0,
         /* and the motion is read as THIS party's: somebody else's is nought */
         motionIsMine: out.motion > 0 && out.motionTheirs === 0,
         billSigned: out.billFor > 0 && out.billAgainst < 0,
@@ -11112,12 +11582,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        reads .44 -- because two new cards arriving with no term of their own
        would have taken this bar to four, which is the assertion giving up.
        A SECOND FLAT CARD REDDENS. */
-    seen.cards.cards === 14 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
+    seen.cards.cards === 15 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
     seen.terms.allMove === true && seen.terms.roomCounts === true &&
+    seen.terms.bookCounts === true &&
     seen.terms.billSigned === true && seen.terms.lineSigned === true &&
     seen.terms.motionIsMine === true &&
     seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
-    seen.cost.deck === 14 && seen.cost.priced === 14 &&
+    seen.cost.deck === 15 && seen.cost.priced === 15 &&
     seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
     seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
     seen.cost.s17 === true &&
@@ -11158,6 +11629,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${seen.cost.flight} · AND EACH OF THE TEN TERMS ANSWERS FOR ITSELF (${seen.terms.allMove}), the tenth ` +
     `being S21n's -- a coalition that is still there, worth more to the party at the head of it holding than ` +
     `walking (${seen.terms.roomCounts}), read as a difference because both readings carry everything else this ` +
+    `function sums; and the ELEVENTH being S21o's -- the machinery a government has built, worth ` +
+    `${seen.terms.out.bookMine} to the party at the head of it and ${seen.terms.out.bookTheirs} to a party that is not ` +
+    `(${seen.terms.bookCounts}), the same book read twice, because a term that summed the book without asking ` +
+    `whose government it was would score every party on the board for one government's descent ` +
     `function sums -- because the ` +
     `flatness reading above says the objective can tell instances apart and NOT which term did it -- the poison ` +
     `run showed why that matters: with the bill term deleted \`bill\` still came back non-flat, since the purse ` +

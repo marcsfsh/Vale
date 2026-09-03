@@ -50,9 +50,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped fourteen slices: S21a–n.** The original twelve are complete;
-S21m and S21n are the first two of the owner's eight-behaviour extension, and
-S21o–S21t remain.
+**S21 has shipped fifteen slices: S21a–o.** The original twelve are complete;
+S21m, S21n and S21o are the first three of the owner's eight-behaviour
+extension, and S21p–S21t remain.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -960,7 +960,45 @@ S21o–S21t remain.
   revoke removes a contribution the baseline already carried. It also checked a
   condition it did not print, which is the flake reading itself back.
 
-**WHAT IS OPEN:** the owner's extension S21o–S21t, in the order `PLAN-S21.md`
+- **S21o — a government that is not yours can descend.** `extraTierAllowed`
+  and `extraWhy` both opened with `!leads(st)`, which asks whether the PLAYER
+  heads the government, so the emergency book was a page the player had rather
+  than a mechanism a government had: measured over 1,440 driven sessions an
+  engine leads **93.8%** of them, sits on **152** where the state of the state
+  would allow the first degree, and signs **nothing**. `holdsDept`'s confusion
+  in a third surface, after `officeMine` (S17a) and `v17CanRenegotiate` (S21n).
+  The predicate names an actor; the default is `leads(st)` to the letter.
+  `v21ExtraCore` is the signing body with no chair in it — the fourth Core in
+  this program — and the player's own button goes through it.
+  **THE PICKER WAS CHOOSING THE WORST ROW IN THE BOOK.** The first build took
+  the most powerful measure available, which is a rule of thumb in front of a
+  scoring function: `power` is what `v19Standing` can barely see (+0.17 to
+  +0.37 through the new flight term) and the mood a measure offends is what it
+  sees in full, so on one measured board the three open measures cost -15.478,
+  -1.479 and -2.168 of `v17Utility` and "most powerful" took the -15.478 every
+  time. `v19Outcome` came back at exactly **-1, the clamp**, on every
+  rehearsal, against +0.01 to +0.05 for every other card in the same open set —
+  at `ruthless`, where `sim` is 1.9, a card no government could ever play. The
+  pick is asked through `v19Try` and `v19Standing` now, and the government
+  signs fifteen different measures across twelve seeds where the first build
+  signed one.
+  The objective gains an eleventh term on S21n's reading (`V21_EXTRA_TOP` 3.4,
+  the dearest measure in the book, read off all sixty rather than the eighteen
+  an engine can reach today); the seven aims say what they think of it, except
+  `enter`, whose row could never be read. And **whose measure it was** —
+  both places that undo one debited `st.ruling`'s gerrymander, which is a
+  different party from the signer the moment this slice lands, so the signer is
+  recorded, one reader answers for both, and the card says "Signed by the TVC,
+  not by you".
+  Driven over 1,440 sessions it fires **4 times at `purposeful` and 18 at
+  `ruthless`**, across three parties, every one leaving a measure standing and
+  in the chronicle and never once from the player's chair; four of the eighteen
+  were struck down by the courts. It is rare because the constitution makes it
+  rare — the card is open on 7.1% of engine-led sessions — and the apparatus,
+  which measures **0.00 in all 1,440 sessions before this slice**, now reaches
+  11, so the book's own ratchet turns for the first time.
+
+**WHAT IS OPEN:** the owner's extension S21p–S21t, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
 was never written, and building it is a slice rather than a paragraph, so it is
 recorded here as its own piece of work rather than quietly dropped. The

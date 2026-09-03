@@ -720,7 +720,11 @@ var V19_TEMPER_AXIS = {
   /* S21n: calling your partners in and reopening the agreement with them is
      the dealer's move, which is what every other card about talking to another
      party is filed under. */
-  keep:'dealer'
+  keep:'dealer',
+  /* S21o: signing a measure that contends with the law is what a party does
+     when it has decided to force the question, which is where `article` and
+     `bill` sit. */
+  descend:'combative'
 };
 var V19_TEMPER = .6;
 /* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
@@ -7857,12 +7861,22 @@ var EXTRA_BY = {}; EXTRA.forEach(function (x) { EXTRA_BY[x.id] = x; });
       mods:{ polCost:{ Justice:.82, Authority:.84 }, ind:{ liberties:-3 } } })
 ].forEach(function (m) { if (!EXTRA_BY[m.id]) { EXTRA.push(m); EXTRA_BY[m.id] = m; } });
 
-function extraTierAllowed(st, tier) {
+function extraTierAllowed(st, tier, actor) {
   /* Until S9d this was gated by ruling party alone: an FP, CUP or SD
      government could NEVER sign one, at any liberties level, under any form —
      including as Emperor — while a PNL government could sign on turn one of a
-     healthy republic. The door now also opens by the state of the STATE. */
-  if (!leads(st)) return false;
+     healthy republic. The door now also opens by the state of the STATE.
+
+     S21o: AND IT IS ASKED OF AN ACTOR RATHER THAN OF THE PLAYER. `leads(st)`
+     is "does the PLAYER head the government", which is a different question
+     from "does THIS party head it" -- `holdsDept`'s confusion in a third
+     surface, after `officeMine` (S17a) and `v17CanRenegotiate` (S21n). It made
+     the descent this game is named for the player's private machinery: a
+     Vanguard or Restoration government could not open an investigation,
+     federalise the count or licence the press, whoever it was.
+     THE DEFAULT IS THE SHIPPED LINE TO THE LETTER, because `leads(st)` is
+     `standing(st) === 'leading'`, which is `playParty(st) === st.ruling`. */
+  if (st.ruling !== (actor || playParty(st))) return false;
   if (st.acts.conventionLimits && tier === 2) return false;
   var ss = securityState(st);
   if (tier === 1) return EXTREME1.indexOf(st.ruling) >= 0 || ss >= 30 ||
@@ -7873,8 +7887,8 @@ function extraTierAllowed(st, tier) {
 /* S15g: WHY a measure is closed, in words the player can act on -- the same
    contract policyWhy has carried since S12 and v10OrderOpen since S10c. One
    refusal string for five different reasons is a gate that reads as a bug. */
-function extraWhy(st, m) {
-  if (!leads(st)) return 'Only the party leading the government may sign one.';
+function extraWhy(st, m, actor) {
+  if (st.ruling !== (actor || playParty(st))) return 'Only the party leading the government may sign one.';
   if (st.extra[m.id] === 'upheld') return 'It is already in force, and settled law.';
   if (st.extra[m.id] === 'pending') return 'It is signed and before the courts.';
   if (st.extra[m.id] === 'struck') return 'The court struck it down. It cannot be signed again.';
@@ -7897,7 +7911,7 @@ function extraWhy(st, m) {
   if (m.tier === 2 && (st.precedents || 0) < 2) {
     return 'Two upheld measures of the first degree are needed first. You have ' + (st.precedents || 0) + '.';
   }
-  if (!extraTierAllowed(st, m.tier)) {
+  if (!extraTierAllowed(st, m.tier, actor)) {
     return m.tier === 1
       ? 'The state has not moved far enough: a security apparatus of 30 (it stands at ' + Math.round(securityState(st)) +
         '), a constitution on the authority road, or no elections at all.'
@@ -7905,7 +7919,7 @@ function extraWhy(st, m) {
   }
   return '';
 }
-function extraAvailable(st, m) { return extraWhy(st, m) === ''; }
+function extraAvailable(st, m, actor) { return extraWhy(st, m, actor) === ''; }
 /* What the measures in force add to the apparatus. The ratchet ran one way
    before S15g and it compounds now: legislating the security state opens the
    measures, and the measures build the security state. Capped, so a book of
@@ -7938,6 +7952,16 @@ function extraMods(st) {
   }
   return m;
 }
+/* S21o: WHOSE MEASURE WAS IT. Both places that undo one -- the government's
+   own repeal and the court's compliance branch -- debited `st.ruling`'s
+   gerrymander, which is the signer while the book is the player's alone and a
+   DIFFERENT party the moment a government that is not yours can sign: a
+   measure signed by one government and struck under the next took the loss out
+   of the successor's count. One reader, and it falls back to the government
+   for a save written before this slice. */
+function v21ExtraSignedBy(st, id) {
+  return ((st.extraBy || {})[id]) || st.ruling;
+}
 function extraActive(st) {
   var n = 0;
   for (var k in st.extra) { if (st.extra[k] === 'pending' || st.extra[k] === 'upheld') n++; }
@@ -7951,28 +7975,58 @@ function extraPower(st) {
   return v;
 }
 
+/* S21o — THE SIGNING BODY, WITH NO CHAIR IN IT. Eighteen statements sat inside
+   `doExtra`, which reads the global `S`, spends the PLAYER's capital, takes an
+   undo snapshot and renders -- so a government that was not the player's could
+   not sign a measure even once the gate above let it. Same extraction as
+   `v21OfficeCore` (S21h), `v21ReopenCore` (S21h) and `v21CouncilCore` (S21n),
+   and for the same reason: two copies of one act drift, and the copy nobody
+   plays is the one that rots.
+
+   THE PAYMENT STAYS WITH THE CALLER, because the two chairs do not pay in the
+   same coin: the player spends political capital, an engine spends its purse
+   through `v16AiPay`. The one word both share is the CHRONICLE -- a measure
+   signed into effect is a fact about the republic whoever signed it, and the
+   sentence is the one the player has always been given, unchanged.
+
+   `st.gerry` and `m.wreck` are keyed on `pid` rather than on `st.ruling`: the
+   same value while the gate holds, and the gate is what says so. */
+function v21ExtraCore(st, m, pid) {
+  if (!m || !st || st.ruling !== pid) return false;
+  var was = (st.extra || {})[m.id];
+  if (was === 'pending' || was === 'upheld') return false;
+  st.extra[m.id] = 'pending';
+  /* AND WHO SIGNED IT, which nothing had to record while the book was the
+     player's alone and two different parties need the moment it is not:
+     `m.gerry` credits the signer's own map and `extraRepeal` debited
+     `S.ruling`, so a government inheriting a predecessor's measure would have
+     taken the loss out of its own count. Created on write, never on read. */
+  if (!st.extraBy) st.extraBy = {};
+  st.extraBy[m.id] = pid;
+  if (m.money) st.treasury += m.money;
+  for (var k in (m.eff || {})) st.ind[k] = c100(st.ind[k] + m.eff[k]);
+  if (m.mood) mood(st, m.mood);
+  if (m.states) st.crown = c100(st.crown + m.states);
+  if (m.army) st.armyLoyalty = c100(st.armyLoyalty + m.army);
+  if (m.gerry) st.gerry[pid] = (st.gerry[pid] || 0) + m.gerry;
+  if (m.wreck) {
+    PARTIES.forEach(function (q) {
+      if (q.id === pid) return;
+      st.machine[q.id] = clamp((st.machine[q.id] || 0) - m.wreck, -.8, 1);
+    });
+  }
+  st.unrest = clamp(st.unrest + m.unrest, 0, 110);
+  chronicle(st, m.name + ' was signed into effect.');
+  return true;
+}
 function doExtra(m) {
   if (!extraAvailable(S, m)) { flash('That is not open to this government.'); return; }
   var c = cst(m.cost);
   if (S.capital < c) { flash('Not enough political capital.'); return; }
   captureUndo('Sign ' + m.name);
   S.capital -= c;
-  S.extra[m.id] = 'pending';
-  if (m.money) S.treasury += m.money;
-  for (var k in (m.eff || {})) S.ind[k] = c100(S.ind[k] + m.eff[k]);
-  if (m.mood) mood(S, m.mood);
-  if (m.states) S.crown = c100(S.crown + m.states);
-  if (m.army) S.armyLoyalty = c100(S.armyLoyalty + m.army);
-  if (m.gerry) S.gerry[S.ruling] = (S.gerry[S.ruling] || 0) + m.gerry;
-  if (m.wreck) {
-    PARTIES.forEach(function (q) {
-      if (q.id === S.ruling) return;
-      S.machine[q.id] = clamp((S.machine[q.id] || 0) - m.wreck, -.8, 1);
-    });
-  }
-  S.unrest = clamp(S.unrest + m.unrest, 0, 110);
+  v21ExtraCore(S, m, S.ruling);
   logIt(S, m.name + '. The question of its legality is now open.');
-  chronicle(S, m.name + ' was signed into effect.');
   render();
 }
 
@@ -8009,7 +8063,10 @@ function extraEvent(id) {
           for (var k in (m.eff || {})) S.ind[k] = c100(S.ind[k] - m.eff[k]);
           if (m.mood) mood(S, scaleObj(m.mood, -1));
           if (m.states) S.crown = c100(S.crown - m.states);
-          if (m.gerry) S.gerry[S.ruling] = Math.max(0, (S.gerry[S.ruling] || 0) - m.gerry);
+          if (m.gerry) {
+            var byC = v21ExtraSignedBy(S, id);
+            S.gerry[byC] = Math.max(0, (S.gerry[byC] || 0) - m.gerry);
+          }
           S.capital = clamp(S.capital - 4, -5, capCap(S));
           logIt(S, m.name + ' was withdrawn on the order of the court.');
         } },
@@ -16436,6 +16493,15 @@ function extraCard(m) {
     '<span class="tag up">Capital +' + (m.power || 0).toFixed(1) + ' a year</span>' +
     '<span class="tag">Unrest +' + m.unrest + ' on signature</span>' +
     (m.book !== 'universal' ? '<span class="tag">' + esc(PARTY[m.book] ? PARTY[m.book].name : m.book) + '</span>' : '') +
+    /* S21o: and whose signature is on it. A measure you are living with and one
+       you signed are different facts, and until a government that is not yours
+       could sign one there was only ever the second. */
+    (function () {
+      var by = (S.extraBy || {})[m.id];
+      if (!by || !PARTY[by] || (stat !== 'pending' && stat !== 'upheld')) return '';
+      return '<span class="tag">Signed by the ' + esc(PARTY[by].short) +
+        (by === playParty(S) ? '' : ', not by you') + '</span>';
+    })() +
     '</div><div class="tagline">' + effs.join('') + '</div>' +
     (stands.length ? '<p class="note">While it stands: ' + esc(stands.join('; ')) + '.</p>' : '') +
     (why ? '<p class="note muted">' + esc(why) + '</p>' : '') +
@@ -16464,7 +16530,10 @@ function extraRepeal(id) {
   for (var k in (m.eff || {})) S.ind[k] = c100(S.ind[k] - m.eff[k]);
   if (m.mood) mood(S, scaleObj(m.mood, -1));
   if (m.states) S.crown = c100(S.crown - m.states);
-  if (m.gerry) S.gerry[S.ruling] = Math.max(0, (S.gerry[S.ruling] || 0) - m.gerry);
+  if (m.gerry) {
+    var by = v21ExtraSignedBy(S, id);
+    S.gerry[by] = Math.max(0, (S.gerry[by] || 0) - m.gerry);
+  }
   S.unrest = clamp(S.unrest - m.unrest * .4, 0, 110);
   mood(S, { prof:3, youth:2 });
   S.ind.liberties = c100(S.ind.liberties + Math.max(1, m.unrest * .3));
@@ -35344,6 +35413,12 @@ viewWorld = function () {
 var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
   pact:34, demand:16, bill:38, article:34, order:22, floor:12,
   topple:48, bargain:30,
+  /* S21o: signing an extraordinary measure is the heaviest single act of
+     government short of legislating, so it is priced at `bill`. Under
+     `organise` at 42 on purpose, for S21n's reason: `v21WorkingBalance` is the
+     dearest card a posture can draw, and a card above 42 would move the
+     reserve a government keeps rather than the deck it plays. */
+  descend:38,
   /* S21n: holding a coalition together. The player pays 3 capital and 2 money
      for a council and 4 and 2 to reopen an agreement; on the engines' own
      scale that sits with `bargain` and `pact`, which are the other cards about
@@ -35439,6 +35514,58 @@ var V16_AI_CADENCE = 4;
    Initiatives are paid for out of the purse and land in their own channels;
    only the campaign card writes funding, because only the campaign card is a
    campaign. */
+/* S21o: IS THERE ONE AT ALL. Asked through the shipped refusal chain with the
+   actor named -- `extraAvailable` runs the book, the `only` list, the required
+   statute, the form, the precedent it stands on, the measure's own `req` and
+   both tier gates -- so the card's gate adds no second rule for a surface that
+   already has one. It stops at the first, because `can` runs on every
+   government-session and the pick below does not. */
+function v21DescendOpen(st, pid) {
+  if (!st || st.ruling !== pid) return false;
+  if (typeof EXTRA === 'undefined' || typeof extraAvailable !== 'function') return false;
+  for (var i = 0; i < EXTRA.length; i++) {
+    if (extraAvailable(st, EXTRA[i], pid)) return true;
+  }
+  return false;
+}
+/* AND WHICH ONE, ASKED THROUGH THE OBJECTIVE RATHER THAN BY A RULE OF THUMB.
+
+   The first build took the most powerful measure the government could reach,
+   and that is the worst row in the book on both counts at once: `power` is the
+   one thing `v19Standing` can barely see (+0.17 to +0.37 through the flight
+   term) while the mood a measure offends is the thing it sees in full. On one
+   measured board the three open measures cost the government -15.478, -1.479
+   and -2.168 of `v17Utility`, and "most powerful" took the -15.478 every time
+   -- so `v19Outcome` came back at exactly -1, the clamp, on every rehearsal,
+   against +0.01 to +0.05 for every other card in the same open set. At
+   `ruthless`, where `sim` is 1.9, that is a card no government could ever
+   play. A hard picker in front of a scoring function is the defect S21g took
+   out of `v17ConfidenceVote`; this is the same mistake one layer down.
+
+   So the government asks the question it asks about everything else: WHICH OF
+   THESE LEAVES ME BEST OFF. Read through the game's own path -- `v19Try` for
+   the clone, `v19Standing` for the reading -- rather than by reassembling the
+   arithmetic here, which is the mistake this file's notes call reproducing the
+   formula. It costs one clone per AVAILABLE measure and only where one exists
+   at all, which is 2.8% of government-sessions.
+
+   The consequence is a government that reaches for the machinery its own
+   people will bear: the measure whose price falls on somebody else's blocs
+   rather than the one with the largest number on it. */
+function v21DescendTarget(st, pid) {
+  if (!v21DescendOpen(st, pid)) return null;
+  if (typeof v19Try !== 'function' || typeof v19Standing !== 'function') return null;
+  var best = null, bestU = -Infinity;
+  EXTRA.forEach(function (m) {
+    if (!extraAvailable(st, m, pid)) return;
+    var out = v19Try(st, function (c) { v21ExtraCore(c, m, pid); });
+    if (!out) return;
+    var u;
+    try { u = v19Standing(out, pid); } catch (e) { return; }
+    if (isFinite(u) && u > bestU) { bestU = u; best = m; }
+  });
+  return best;
+}
 function v16AiPay(st, pid, money) {
   if (!money) return;
   if (!st.purse) st.purse = {};
@@ -36324,6 +36451,38 @@ var V16_AI_DECK = [
       return 'The ' + PARTY[pid].short + ' called the ' + PARTY[t.pid].short +
         ' in for a coalition council.';
     } },
+  /* S21o — A GOVERNMENT THAT IS NOT YOURS CAN DESCEND.
+
+     Measured over 1,440 driven sessions: an engine leads the government in
+     93.8% of them, sits on 152 sessions where the state of the state would
+     allow the first degree, and signs NOTHING -- because `extraTierAllowed`
+     and `extraWhy` both opened with `!leads(st)`, which asks about the player.
+     The one road there is party identity: the apparatus measures 0.00 in every
+     one of those 1,440 sessions, so `ss >= 30` is unreachable to an engine and
+     `EXTREME1` is the whole of it.
+
+     THE PICKER READS THE BOOK AT RUN TIME, NOT AT LITERAL TIME. `EXTRA` is
+     pushed to twice after this deck is evaluated -- the v9 measures at one site
+     and the fifteen x15 measures at another -- so a list built where the card
+     is written would freeze the book at forty-five of its sixty. That is the
+     nine-diplomacy-list defect this file has found twice.
+
+     R2: gated on `v19Thinks`, and `post:[]` -- the shipped eleven-card floor
+     draws nothing new. */
+  { id:'descend', post:[], post2:['govern', 'exposed'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (st.ruling !== pid) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.descend) return false;
+      return v21DescendOpen(st, pid);
+    },
+    run:function (st, pid) {
+      var m = v21DescendTarget(st, pid);
+      if (!m) return null;
+      if (!v21ExtraCore(st, m, pid)) return null;
+      v16AiPay(st, pid, V16_AI_COST.descend);
+      return 'The ' + PARTY[pid].short + ' signed ' + m.name + '.';
+    } },
   { id:'bargain', post:['hold', 'moderate', 'consolidate'],
     can:function (st, pid) {
       if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
@@ -36524,7 +36683,11 @@ var V19_GOALS = [
     },
     worth:{ bill:1, demand:.9, floor:.8, article:.2, campaign:.35, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2,
       /* S21g: supply is BOUGHT with a statute, so it is the second-best road to one; ending the government is a long way round to it */
-      bargain:.55, topple:.2 }
+      bargain:.55, topple:.2,
+      /* S21o: a measure is not a statute, but impoundment and selective
+         enforcement are the executive doing by decree what it could not carry
+         through the houses -- a road to the same appetite, and a poor one. */
+      descend:.35 }
   },
   {
     id:'office',
@@ -36548,7 +36711,10 @@ var V19_GOALS = [
     say:function (st, pid, g) { return 'Taking the ' + (DEPTS[g.ref] ? DEPTS[g.ref].name : g.ref); },
     worth:{ campaign:1, organise:.85, court:.7, platform:.5, attack:.45, bill:.15, article:.2, demand:.25, floor:.2, order:.3, pact:.6,
       /* a government that falls is a cabinet re-formed, which is where offices come from */
-      topple:.6, bargain:.35 }
+      topple:.6, bargain:.35,
+      /* S21o: the mass recess appointment is in this book, but a great office
+         is taken through `st.exec` and no measure touches it. */
+      descend:.2 }
   },
   {
     id:'enter',
@@ -36565,6 +36731,11 @@ var V19_GOALS = [
     worth:{ organise:1, campaign:.9, court:.75, platform:.8, pact:.7, demand:.5, bill:.2, floor:.35, article:.2, attack:.15, order:.2,
       /* both are roads INTO a government: one re-forms it, the other buys a foot in the door without a cabinet seat */
       bargain:.9, topple:.8 }
+      /* S21o DELIBERATELY HAS NO ROW HERE. A party aiming to ENTER a
+         government is not leading one, `descend`'s gate needs
+         `st.ruling === pid`, and this aim's own `done` fires the moment the
+         party is in the room -- so the weight could never be read. A number on
+         a row that cannot occur is `st.court.size` in a goal table. */
   },
   {
     id:'oust',
@@ -36626,7 +36797,11 @@ var V19_GOALS = [
     },
     worth:{ attack:1, floor:.8, campaign:.7, pact:.65, bill:.25, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2,
       /* the goal is to bring a party in the government DOWN, and this is the instrument that does it rather than one that harms them */
-      topple:1, bargain:0 }
+      topple:1, bargain:0,
+      /* S21o: investigating the opposition and wrecking its machine is what
+         `wreck` does, and it is the one thing in this book aimed at another
+         party rather than at the state. */
+      descend:.55 }
   },
   {
     id:'ground',
@@ -36676,7 +36851,11 @@ var V19_GOALS = [
       return 'Winning over ' + (b ? b.name.toLowerCase() : g.ref);
     },
     worth:{ court:1, platform:.75, campaign:.6, organise:.5, bill:.2, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2,
-      topple:.25, bargain:.15 }
+      topple:.25, bargain:.15,
+      /* S21o: a measure LOSES blocs -- every one in the book carries a mood
+         penalty and none carries a gain -- so it is the wrong instrument for
+         an aim that is about winning a bloc over. */
+      descend:.1 }
   },
   {
     id:'build',
@@ -36695,7 +36874,10 @@ var V19_GOALS = [
     },
     say:function (st, pid) { return 'Building the party organisation'; },
     worth:{ organise:1, campaign:.5, court:.45, platform:.3, demand:.25, bill:.12, floor:.2, article:.15, attack:.2, order:.2, pact:.3,
-      topple:.2, bargain:.2 }
+      topple:.2, bargain:.2,
+      /* S21o: `wreck` lowers every rival's machine, which raises this party's
+         standing against them without building anything of its own. */
+      descend:.2 }
   },
   {
     id:'charter',
@@ -36730,7 +36912,13 @@ var V19_GOALS = [
     },
     worth:{ article:1, floor:.5, campaign:.4, organise:.4, court:.35, bill:.2, demand:.3, platform:.3, attack:.2, order:.25, pact:.3,
       /* an article needs a chamber that will carry it, which is a government question */
-      topple:.3, bargain:.35 }
+      topple:.3, bargain:.35,
+      /* S21o: THE AIM IT SERVES SQUAREST. An extraordinary measure is the
+         executive contending with the constitution rather than amending it,
+         which is the same appetite the article is for and the reason the book
+         exists. Under `article` at 1, because an article is the lawful road
+         and this one is not. */
+      descend:.85 }
   }
 ];
 function v19GoalKind(id) {
@@ -37095,6 +37283,11 @@ var V19_RIVAL_WORTH = {
      nothing against the party standing in your way -- the same reading as
      `platform`, which is a party talking to its own members. */
   keep:     0,
+  /* S21o: the descent is about the STATE, not about the party in the way. Of
+     the eighteen measures an engine government can reach today exactly one
+     wrecks another party's machine and one moves the count; the picker does
+     not consult a rival and the book is not addressed to one. */
+  descend:  0,
   organise: .45,   /* build against them */
   campaign: .30,
   court:    .45,   /* the contested bloc is reached by exactly this card */
@@ -37243,6 +37436,15 @@ var V21_PUSH_FULL = .25;   /* the compass distance a full platform step moves */
    which is the flat card wearing a new hat. */
 var V21_ORDER_TOP = 8;     /* the dearest orders in the book */
 var V21_MOTION_TOP = .4;   /* a motion carrying by two fifths of the house */
+/* S21o: the dearest measure in the emergency book, which is `soleExpression`
+   at 3.4. Read off the sixty measures rather than off the eighteen an engine
+   government can reach TODAY -- sizing it to the reachable set would be an
+   assertion about the sample, and the reachable set is exactly what this slice
+   widens. It puts one signature of the reachable book at .16 to .37 of a card
+   against a measured median gain of .75, which is the claim: a signing
+   statement is a smaller thing than abolishing free expression, and the
+   objective should say so. */
+var V21_EXTRA_TOP = 3.4;
 function v21Price(id) { return (V16_AI_COST[id] || 0) * .012 * V21_FLIGHT; }
 /* how a bill sits with a party: +1 if it moves a statute the party's OWN table
    names toward where the party wants it, -1 if away, 0 if it is not on the
@@ -37288,6 +37490,24 @@ function v19Flight(st, pid) {
       if (!dd || typeof dd.satisfaction !== 'number') return;
       u += v21Price('keep') * clamp((dd.satisfaction - 35) / 50, -1, 1);
     });
+  }
+  /* S21o — AND THE MACHINERY IT HAS BUILT. Every measure standing is a thing
+     in flight in exactly the sense this function means: signed, contended
+     with, and paying the government that signed it. Without it `descend`
+     rehearses as a PRICE LIST -- `v19Standing` reads indicators, blocs, the
+     machine and the purse, and a measure's whole point is the `power` field,
+     which reaches the player's capital income at one call site and reaches
+     NOTHING an engine can see. Same defect and same repair as S21n's coalition
+     term one paragraph up.
+     Priced per measure rather than off `extraPower`, which is the `order`
+     term's shape: a stock read through one clamp would saturate after two
+     signatures and make the third worth nothing. */
+  if (st.ruling === pid) {
+    for (var xk in (st.extra || {})) {
+      if (st.extra[xk] !== 'pending' && st.extra[xk] !== 'upheld') continue;
+      var xm = EXTRA_BY[xk]; if (!xm) continue;
+      u += v21Price('descend') * Math.min(1, (xm.power || 0) / V21_EXTRA_TOP);
+    }
   }
   var pend = ((st.v11 || {}).con || {}).pending || [];
   pend.forEach(function (a) {

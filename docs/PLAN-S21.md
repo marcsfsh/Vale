@@ -1097,7 +1097,7 @@ Measured either side: an engine leads 93.8% of sessions (not 98%), 559 of 1,440
 had an engine government with a partner under 45 cohesion and nothing to do
 about it, and 97 partners walked out; after, 482 and 73.
 
-### S21o - An engine government can descend
+### S21o - An engine government can descend — SHIPPED
 
 The emergency book is player-only. A Vanguard or Restoration government cannot
 open an investigation, federalise a count, license the press or classify a
@@ -1106,6 +1106,18 @@ record, so the descent the game is named for can only ever be the player's.
 Channel: `st.extra[id]`, five live readers, all reached through S15 wrappers
 rather than the base bodies. `securityState` is reassigned at 33720, so the
 guard goes on the live function.
+
+AS SHIPPED, three corrections to the plan. The guard is not on `securityState`
+at all: the player-only clause was on `extraTierAllowed` and `extraWhy`, and
+`securityState` is read by the FIRST of them without needing a guard of its own.
+The apparatus road turned out to be unreachable — it measures 0.00 in every one
+of 1,440 driven sessions, because no engine bill carries and no Authority
+statute moves — so `EXTREME1` is the whole of the door until the slice's own
+ratchet starts turning. And the hard part was not the gate: it was that a
+picker written as "the most powerful measure available" maximises what the
+objective cannot see and the cost it can, which put `v19Outcome` at the clamp
+floor on every rehearsal and made the card unplayable at the two levels that
+read it. The pick goes through `v19Try` and `v19Standing`.
 
 ### S21p - Put a party at the head of the crowd
 
