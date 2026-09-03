@@ -481,6 +481,27 @@ before touching the file.
   default has to be pinned as well as the new case: `leads(st)` is exactly
   `playParty(st) === st.ruling`, which is what `st.ruling !== (actor ||
   playParty(st))` says with the actor left out.
+- **A PICKER IN FRONT OF A SCORING FUNCTION CAN MAXIMISE THE COST.** S21o's
+  first `descend` took "the most powerful measure the government can reach",
+  and `power` is the one field `v19Standing` can barely see (+0.17 to +0.37
+  through a flight term) while the mood a measure offends is what it sees in
+  full — so the rule picked the row costing -15.478 of `v17Utility` over ones
+  costing -1.479 and -2.168, and `v19Outcome` came back at exactly -1, THE
+  CLAMP, on every rehearsal against +0.01 to +0.05 for every other card in the
+  same open set. At `ruthless`, where `sim` is 1.9, that is a card no
+  government could ever play, and the whole slice would have shipped as
+  decoration with a green assertion in front of it. When a card has a target,
+  ask WHICH ONE through the objective the game already has — `v19Try` for the
+  clone, `v19Standing` for the reading — rather than by a rule of thumb over
+  one authored field. S21g had already ruled that a hard gate in front of a
+  scoring function is a defect; this is the same mistake one layer down, and
+  the tell is a rehearsal that returns the clamp rather than a spread.
+- **A number on a row that cannot occur is `st.court.size` in a lookup table.**
+  Same slice: `descend` was given a weight under the `enter` aim, and a party
+  aiming to enter a government is not leading one while the card's gate needs
+  `st.ruling === pid` — so the row could never be read. Deleted rather than
+  shipped, which is what the poison run is for; the same run kept the six rows
+  that can be.
 - **A LEG MADE ONLY OF REFUSALS IS PASSED BY A BUILD THAT REFUSES EVERYBODY.**
   Three legs asked that the reopening still be refused for the player, refused
   for a party that leads nothing, and not refused on the chair for the party
@@ -547,7 +568,7 @@ you touched; a SKIP is never a PASS.
 - `checks/run.js` — 12 static checks, <5s.
 - `tools/playtest.js` — scripted turn, reload/resume, corrupt-save behaviour,
   all 15 views, 3 viewport screenshots (`--quick` for boot-only).
-- `tools/roads.js` — **214 content assertions**, the largest harness here: the
+- `tools/roads.js` — **215 content assertions**, the largest harness here: the
   descent, the constitution, the ministry, the interests, the regional term, the
   capital floor, what a bill does when the chamber it was laid before no longer
   exists, that every one of the 582 statutes carries four distinct rungs, that
