@@ -24873,13 +24873,35 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          the state it describes has been put back is `A counter read after it
          is spent` wearing a render. */
       const note = /ranks first is worth more/.test(document.getElementById('view').textContent);
+      /* AND THE BUTTON GOES THROUGH THE ONE WRITER. Every gate in this harness
+         calls a function and a player presses a control, so this presses it:
+         with `v22TargetSet` stubbed a real click on Target must move nothing,
+         and with it back the same click must move the dots by one. The poison
+         that had the handler write `st.campaign.targets` itself came back
+         GREEN before this leg existed -- the two are equivalent in their
+         effect today, so nothing else in the arm could tell them apart. */
+      const baseSet = v22TargetSet;
+      const btn = document.querySelector('#view [data-campaign-action="target"]');
+      const brid = btn ? btn.getAttribute('data-campaign-id') : null;
+      let blocked = null, allowed = null;
+      if (brid) {
+        const before = v22TargetDots(S, me, brid);
+        try { v22TargetSet = function () { return 0; }; btn.click(); }
+        finally { v22TargetSet = baseSet; }
+        blocked = v22TargetDots(S, me, brid) === before;
+        const btn2 = document.querySelector('#view [data-campaign-action="target"][data-campaign-id="' + brid + '"]');
+        const mid = v22TargetDots(S, me, brid);
+        if (btn2) btn2.click();
+        allowed = v22TargetDots(S, me, brid) === mid + 1;
+      }
       UI.tab = keep; try { render(); } catch (e) {}
       return { ran:true, threw:threw, sels:sels.length, rows:rows.length,
         regions:REGIONS.length, optCount:optCount,
         threeEach:optCount.length > 0 && optCount.every(n => n === 3),
         marked:marked, moved:moved, subtitle:subtitle.slice(0, 80),
         subtitleFollows:!!(third && ISSUE[third] && subtitle.indexOf(ISSUE[third].name) >= 0),
-        free:costCap === 0 && costMoney === 0, note:note };
+        free:costCap === 0 && costMoney === 0, note:note,
+        writerBlocks:blocked, writerAllows:allowed };
     })();
 
     /* (j) THE ENGINE'S SIDE. Gated on `v19Thinks` per R2, and its picker never
@@ -25023,6 +25045,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     target22.page.ran && !target22.page.threw && target22.page.sels === target22.page.regions &&
     target22.page.threeEach && target22.page.marked && target22.page.moved &&
     target22.page.subtitleFollows && target22.page.free && target22.page.note &&
+    target22.page.writerBlocks === true && target22.page.writerAllows === true &&
     target22.card.ran && target22.card.atInstinct === false && target22.card.atRuthless === true &&
     target22.card.spent > 0 && target22.card.capital === 0 &&
     target22.card.namesRegion && target22.card.namesIssue &&
@@ -25067,7 +25090,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `chosen one marked (${target22.page.marked}), and a REAL change event moves the model ` +
     `(${target22.page.moved}) and the row's own subtitle with it (${target22.page.subtitleFollows}: ` +
     `"${target22.page.subtitle}") for nothing (${target22.page.free}) -- the dots are the purchase and this ` +
-    `is the pitch, and it is still a choice without a price because a region ranks its own three · THE ` +
+    `is the pitch, and it is still a choice without a price because a region ranks its own three. AND THE ` +
+    `TARGET BUTTON GOES THROUGH THE ONE WRITER, pressed for real: with \`v22TargetSet\` stubbed the click ` +
+    `moves nothing (${target22.page.writerBlocks}) and with it back the same click buys a dot ` +
+    `(${target22.page.writerAllows}) -- the poison that had the handler write the store itself came back ` +
+    `GREEN before this leg existed, because the two are equivalent in their effect today and nothing else ` +
+    `in the arm could tell them apart · THE ` +
     `ENGINE HAS THE SAME LEVER: the card is absent at instinct (${target22.card.atInstinct}) and open above ` +
     `it (${target22.card.atRuthless}) per R2, it pays ${target22.card.spent} out of the party purse and ` +
     `${target22.card.capital} of the reader's capital, and it says where and on what -- ` +
