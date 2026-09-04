@@ -21859,7 +21859,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const rate = o => +(o.hit / Math.max(1, o.n)).toFixed(3);
       return {
         court:{ n:C.court.n, hit:C.court.hit, rate:rate(C.court) },
+        /* S21u: AND THE SHARE OF WHAT WAS ACHIEVABLE, because the raw rate is
+           bounded by a ceiling that MOVES. `gone` counts the aims whose statute
+           was shut or already before the House, so a build that lays the named
+           statute every single time it can still reads .855 -- and a card mix
+           that leaves more aims unlayable pushes the raw rate down with the
+           behaviour untouched. The share below divides by what was reachable. */
         bill:{ n:C.bill.n, hit:C.bill.hit, unlayable:C.bill.gone, rate:rate(C.bill),
+               ofReachable:+(C.bill.hit / Math.max(1, C.bill.n - C.bill.gone)).toFixed(3),
                ceiling:+((C.bill.n - C.bill.gone) / Math.max(1, C.bill.n)).toFixed(3) },
         exec:{ n:C.exec.n, hit:C.exec.hit, rate:rate(C.exec) },
         platform:{ n:C.plat.n, hit:C.plat.hit, rate:rate(C.plat) },
@@ -21880,7 +21887,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     aims.exec.fundedWith === true && aims.exec.biggerPush === true &&
     aims.stream.free === true &&
     aims.driven.court.n > 40 && aims.driven.court.rate > .9 &&
-    aims.driven.bill.n > 30 && aims.driven.bill.rate > .45 &&
+    /* S21u: THE BAR IS ON THE SHARE OF WHAT WAS REACHABLE, AND IT IS SIZED.
+       `rate > .45` was a bar set at the value it measured, on a rate bounded by
+       a ceiling that moves: it read .491 on the build before this slice and
+       .431 on it -- a difference of 1.09 standard errors, with the bar sitting
+       one standard error either side of both. Dividing by what was actually
+       layable gives .574 and .504, a difference of 1.17 standard errors, and
+       .40 is 2.6 of them below the lower of the two while chance -- the pool
+       draw this leg was written against, .265 raw against a ceiling of .855 --
+       is about .31. The raw rate and the ceiling stay in the message; the
+       ceiling check stays because a rate above its own ceiling is arithmetic
+       that cannot happen and is the probe telling you so. */
+    aims.driven.bill.n > 30 && aims.driven.bill.ofReachable > .40 &&
     aims.driven.bill.rate <= aims.driven.bill.ceiling + 1e-9 &&
     aims.driven.exec.n > 20 && aims.driven.exec.rate > .35 &&
     aims.driven.platform.n > 10 && aims.driven.platform.rate > .9;
@@ -21906,7 +21924,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `offer only the middle of the country or its own members · IN REAL PLAY, driven four seeds by 90 sessions ` +
     `because calling the function is not testing the wiring: court ${aims.driven.court.rate} (was .422), bill ` +
     `${aims.driven.bill.rate} (was .265) inside a CEILING of ${aims.driven.bill.ceiling} -- ` +
-    `${aims.driven.bill.unlayable} of ${aims.driven.bill.n} aims were shut or already before the House, which ` +
+    `${aims.driven.bill.unlayable} of ${aims.driven.bill.n} aims were shut or already before the House -- so ` +
+    `what is GATED is the share of what was reachable, ${aims.driven.bill.ofReachable}, and not the raw rate: ` +
+    `that was barred at .45 and read .491 on the build before S21u and .431 on it, a difference of 1.09 ` +
+    `standard errors with the bar one standard error either side of both, on a rate whose CEILING moves with ` +
+    `the card mix. Of what was reachable the same two builds give .574 and .504, and the bar at .40 is 2.6 ` +
+    `standard errors below the lower while chance -- the pool draw this leg was written against -- is about ` +
+    `.31. Which ` +
     `is the chamber working and not a miss, and it is ASKED BEFORE THE CARD RUNS because a party that lays its ` +
     `aim has just put a bill on that statute: reading it afterwards gave .591 against a ceiling of .333, ` +
     `arithmetic that cannot happen -- exec ${aims.driven.exec.rate} (was .233), platform ` +

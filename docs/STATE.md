@@ -1318,6 +1318,21 @@ authored already and eaten by a wrapper.
   left somebody to ask), and the correctness proved without dice in the five
   constructed legs, every one exact and **all eighteen poisons red**.
 
+  **AND A SIXTH ARM WAS A BAR SET AT THE VALUE IT MEASURED, on a rate whose
+  ceiling moves.** `the verb reads the aim` gates how often the `bill` card lays
+  the statute its aim names, at `rate > .45` — and `rate` divides by every
+  chance, including the ones where the named statute was **shut or already before
+  the House**. The leg computes that ceiling (.855) and does not divide by it, so
+  a card mix that leaves more aims unlayable pushes the rate down with the
+  behaviour untouched. It reads **.491 on the build before this slice and .431 on
+  it — 1.09 standard errors apart, with the bar sitting one standard error either
+  side of both.** Of what was actually reachable the same two builds give **.574
+  and .504**, and the bar is **.40** there: 2.6 standard errors below the lower,
+  where chance — the pool draw the leg was written against, .265 raw — is about
+  .31. Poisoned by taking `V20_AIM_BILL`'s thumb off the named statute, the share
+  goes to **.143**, so the bar now sits between a working build and a broken one
+  rather than between two draws of the same one.
+
 - **S21t — an organisation endorses somebody other than you.** `q.endorsement`
   is a BOOLEAN and has meant "endorses the player" since v5, and
   `endorsedTurnout` — the only way an endorsement reaches the ballot — was
