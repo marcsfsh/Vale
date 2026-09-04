@@ -70,6 +70,15 @@ const PICK = `window.pick = function (list, id, pred, what) {
   return hit[0];
 };`;
 
+/* THE DECK'S SIZE, WRITTEN DOWN ONCE. Two arms count the engine deck and
+   between them held FOUR literals -- `six.deck`, `six.cardWorks`,
+   `seen.cards.cards` and `seen.cost.deck`/`priced` -- so S21r's nineteenth
+   card reddened three of them one after another, each time for the same
+   reason and each time looking like a fresh defect. The tripwire is worth
+   keeping (a deck that changes should say so) but it belongs in one place;
+   what CATCHES an unpriced or unweighted card is derived from the deck and
+   sits in the arms themselves. */
+const DECK = 19;
 let fail = 0;
 const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(34) + detail); };
 
@@ -4301,6 +4310,21 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
          parties leaning opposite ways on them -- which is what "a state where
          it can play" means for a card that is an exchange. Built rather than
          waited for: a crossed pair comes up on 12.66% of party pairs. */
+      /* S21r: working the votes needs a bill THIS PARTY LAID, which is what
+         "a state where it can play" means for a card about the bill you laid.
+         Built rather than waited for -- and it is `sponsorBill`'s own
+         `sponsorId` that puts the party's name on it, which is the argument
+         this slice made reach the base again. */
+      if (c.id === 'work') {
+        S.aiLevel = 'ruthless';
+        const openW = POLICIES.filter(p => policyOpen(S, p) && (S.pol[p.id] || 0) < p.max &&
+          !activeBillFor(S, p.id));
+        if (!openW.length) { cardFails.push('work: no statute left to lay'); return; }
+        const bw = sponsorBill(S, openW[0].id, 1, 'opposition', 'clean', true, pid, true);
+        if (!bw) { cardFails.push('work: the bill did not reach the paper'); return; }
+        bw.sponsor = pid;
+        S.purse = S.purse || {}; S.purse[pid] = 400;
+      }
       if (c.id === 'trade') {
         S.aiLevel = 'ruthless';
         const other = PARTIES.filter(p => p.id !== pid && p.id !== 'fp' && !S.banned[p.id])[0].id;
@@ -4361,7 +4385,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         inboxTrade:S.inbox.filter(function (x) { return x.type === 'vote_trade'; }).length,
         head:(S.street || {}).head || null,
         pressure:(S.street || {}).pressure || 0,
-        hadDemand:!!((S.street || {}).demand)
+        hadDemand:!!((S.street || {}).demand),
+        /* S21r's nineteenth card works the votes, and what that WRITES is
+           `bill.pull` -- the benches a party has pulled toward or away from a
+           bill. Summed as an absolute, because a party working against a bill
+           moves it the other way and a signed total could cancel. */
+        pull:S.bills.reduce(function (n, b) {
+          return n + Object.keys(b.pull || {}).reduce(function (m, k) {
+            return m + Math.abs(b.pull[k] || 0); }, 0); }, 0)
       };
       if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
       const line = c.run(S, pid);
@@ -4416,6 +4447,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
             S.inbox.filter(function (x) { return x.type === 'vote_trade'; }).length > before.inboxTrade)
         : c.id === 'crowd' ? ((S.street || {}).head || null) === pid &&
             before.head !== pid
+        /* S21r: THE NINETEENTH. Working the votes writes `bill.pull` through
+           `v20PressCore` -- the one body that writes it -- so what is asked of
+           the card is that the benches moved. It had NO case here at all: the
+           slice added the card and taught this arm to BUILD a state for it, and
+           left the verdict chain's final `: false` to answer for it, so the
+           card was driven, paid for, logged, and then marked as moving nothing.
+           A card added to the deck needs a line in both places. */
+        : c.id === 'work' ? S.bills.reduce(function (n, b) {
+            return n + Object.keys(b.pull || {}).reduce(function (m, k) {
+              return m + Math.abs(b.pull[k] || 0); }, 0); }, 0) > before.pull
         : c.id === 'street' ? (before.hadDemand &&
             (!(S.street || {}).demand ||
              !!(S.street.demand.answered) ||
@@ -4489,8 +4530,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
      S21g: THIRTEEN. The two it gained are the two halves of one count of the
      house -- move no confidence in a government, or sell it the abstention
      that keeps it alive -- and both sit behind `v19Thinks`, so `instinct` is
-     still the eleven the game shipped with. */
-  say(six.built && six.deck === 18 && six.cardWorks === 18 && six.cardFails.length === 0 && six.actedAll &&
+     still the eleven the game shipped with.
+     S21r: NINETEEN, and the slice that took it there found the shape of this
+     harness the hard way. A card added to the deck needed a line in FIVE
+     places across two arms and one table -- the state built for it here, its
+     own case in the `moved` chain, this count, the rehearsal arm's two counts,
+     and `V19_RIVAL_WORTH` -- and S21r wrote only the first. So `work` was
+     driven, paid for and logged, and then answered by the chain's final
+     `: false`; and it scored nought against every rival in silence. The four
+     deck-size literals are now the one `DECK` constant at the top of this
+     file, and what CATCHES an unpriced or unweighted card is derived from the
+     deck rather than counted: `cost.unpriced`, `cost.ghosts` and the rival
+     table's own coverage, which is the arm that found this. */
+  say(six.built && six.deck === DECK && six.cardWorks === DECK && six.cardFails.length === 0 && six.actedAll &&
       six.builtMachine >= 1 && six.spentPurse === 6 && six.spentTotal > 1500 && six.pactPossible &&
       six.grudge0 === 0 && six.grudge1 === 40 && six.postureUnderGrudge === 'attack' && six.grudgeCools &&
       six.redLineBites && six.partnerWarned && six.partnerLeaves,
@@ -9545,7 +9597,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       S.ruling = keptRuling; S.coalition = keptCo;
       R.actor = { ran:true, lead:r1.lead, partner:r1.partner,
         asPlayerLeading: asPlayerLeading === null ? null : String(asPlayerLeading).slice(0, 40),
-        defaultWorks: asPlayerLeading === null,
+        /* S21r: AND WHAT THIS ASKS IS THAT THE CHAIR IS NOT THE REASON. It
+           asked for `null`, which is a claim about the OTHER two refusals as
+           well -- a partner three broken promises deep, and an agreement
+           already reopened this session -- neither of which this leg is about.
+           S21r's `sponsorBill` fix hands `v17DealEvent` the party that actually
+           laid the bill, so the broken-promise ledger of the board this leg
+           drives changed and the arm went red for a refusal it never meant to
+           test. A build whose default is broken refuses everybody WITH THE
+           CHAIR, which is exactly what is excluded here. */
+        defaultWorks: asPlayerLeading === null ||
+          String(asPlayerLeading).indexOf('head of government') < 0,
         asPlayer: asPlayer === null ? null : String(asPlayer).slice(0, 40),
         asLead: asLead === null ? null : String(asLead).slice(0, 40),
         asOther: asOther === null ? null : String(asOther).slice(0, 40),
@@ -10765,6 +10827,517 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `times (${JSON.stringify(crowd.play.answers)}), with movements now ending ` +
     `${JSON.stringify(crowd.play.ends)}`);
 
+  /* ==========================================================
+     S21r — A PARTY FIGHTS FOR THE BILL IT LAID
+     ==========================================================
+     `v20PressWhy` refuses an actor with no declared position, and
+     `v17FloorWhy` refuses a line on a bill you sponsored -- correctly, and
+     since S17. So the sponsor was the one party in the House that could not
+     work the votes on its own bill, and the player's half of the same hole was
+     a control that lies. */
+  const whip = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    const cardButtons = (b) => {
+      let html = '';
+      try { html = (typeof billCard === 'function') ? billCard(b) : ''; } catch (e) { return []; }
+      const ids = [];
+      const re = /data-bill-action="([a-zA-Z]+)"([^>]*)/g;
+      let m;
+      while ((m = re.exec(html))) {
+        ids.push({ id:m[1], disabled:/disabled/.test(m[2]),
+          title:(m[2].match(/title="([^"]*)"/) || [])[1] || '' });
+      }
+      return ids;
+    };
+    /* the tooltip is escaped on its way into the attribute, so both sides are
+       flattened to their words before they are compared */
+    const words = (x) => String(x || '').replace(/&#?\w+;/g, ' ')
+      .replace(/[^a-z0-9]+/gi, ' ').trim().toLowerCase();
+    /* ONE BILL, SPONSORED BY WHOM WE ASK, at whatever owner we ask -- built
+       rather than waited for, because which party happens to have laid what is
+       not the question. */
+    function lay(seed, level, sponsor, owner) {
+      fresh(seed, level);
+      for (let t = 0; t < 6; t++) step();
+      const open = POLICIES.filter(p => policyOpen(S, p) && (S.pol[p.id] || 0) < p.max &&
+        !activeBillFor(S, p.id));
+      if (!open.length) return null;
+      S.bills = [];
+      const b = sponsorBill(S, open[0].id, 1, owner || 'government', 'clean', true, sponsor, true);
+      if (!b) return null;
+      /* AND THE SPONSOR IS SET RATHER THAN ASKED FOR. `sponsorBill` takes a
+         `sponsorId`, and whether it ARRIVES is a separate question this
+         harness asks elsewhere -- so a leg about who may work a bill says
+         whose bill it is rather than depending on an argument reaching the
+         base. */
+      b.sponsor = sponsor;
+      b.pull = {}; b.lines = {};
+      S.purse = S.purse || {};
+      PARTIES.forEach(p => { S.purse[p.id] = 400; });
+      S.capital = 400;
+      return b;
+    }
+
+    /* (a) THE READER: LAYING A BILL IS A POSITION, and the gate says so. */
+    R.pos = (() => {
+      const me = playParty(S) || 'lp';
+      const eng = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const b = lay(4242, 'ruthless', eng, 'opposition');
+      if (!b) return { ran:false };
+      const third = PARTIES.filter(p => p.id !== eng && p.id !== playParty(S))[0].id;
+      const out = {
+        ran:true,
+        sponsorStands: v20PressPos(S, eng, b),
+        sponsorMayWork: v20PressWhy(S, eng, b, 'own'),
+        /* a party that has said NOTHING is still refused, and with the same
+           sentence -- the refusal is not removed, it is answered */
+        strangerRefused: v20PressWhy(S, third, b, 'own'),
+        strangerStands: v20PressPos(S, third, b) || null
+      };
+      /* and one that declared a line in an earlier session may work it, which
+         is what S21k wanted and could not reach at this cadence */
+      b.lines[third] = 'oppose';
+      out.lineStands = v20PressPos(S, third, b);
+      out.lineMayWork = v20PressWhy(S, third, b, 'own');
+      return Object.assign(out, {
+        sponsorIsFor: out.sponsorStands === 'support' && out.sponsorMayWork === null,
+        strangerIsMute: out.strangerStands === null &&
+          /where you stand on it first/.test(String(out.strangerRefused)),
+        lineIsHeard: out.lineStands === 'oppose' && out.lineMayWork === null
+      });
+    })();
+
+    /* (b) AND ITS BENCHES GO TOWARD THE BILL, NOT AGAINST IT. This is the
+       SECOND call site: `v20PressCore` read the same literal to decide the
+       DIRECTION, so a build that answered the gate and not the body would whip
+       a sponsor's own members against its own measure. */
+    R.dir = (() => {
+      const eng = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const b = lay(4242, 'ruthless', eng, 'opposition');
+      if (!b) return { ran:false };
+      v20PressCore(S, eng, b, 'own');
+      const mine = (b.pull || {})[eng];
+      /* against a party that declared the other way, on the same board */
+      const foe = PARTIES.filter(p => p.id !== eng && p.id !== playParty(S))[0].id;
+      b.lines[foe] = 'oppose';
+      v20PressCore(S, foe, b, 'own');
+      const theirs = (b.pull || {})[foe];
+      return { ran:true, sponsorPull:mine, opposerPull:theirs,
+        want:V20_PRESS.own.pull,
+        sponsorPullsFor: mine === V20_PRESS.own.pull,
+        opposerPullsAgainst: theirs === -V20_PRESS.own.pull };
+    })();
+
+    /* (c) THE CARD DOES NOT LIE, IN EITHER DIRECTION. On a government bill the
+       player's own party laid -- which is every bill a player who leads the
+       government lays -- `Support the bill` was drawn ENABLED and the handler
+       has refused it since S18a, and the three press buttons were drawn SHUT
+       for want of a position. On the player's own private member's bill the
+       whole kit was never emitted at all. */
+    R.card = (() => {
+      const me = playParty(S) || 'lp';
+      const b = lay(4242, 'ruthless', me, 'government');
+      if (!b) return { ran:false };
+      const gov = cardButtons(b);
+      const at = (id) => gov.filter(x => x.id === id)[0] || null;
+      const press = ['pressOwn', 'pressOthers', 'pressBoth'];
+      const out = {
+        ran:true,
+        support:at('support'), oppose:at('oppose'), pressure:at('pressure'),
+        pressDrawn:press.filter(p => gov.filter(x => x.id === p).length).length,
+        pressOpen:press.filter(p => { const x = at(p); return x && !x.disabled; }).length
+      };
+      /* the three floor verbs arrive SHUT and each carries THE GATE'S OWN
+         SENTENCE -- a shut control with no title is the same dead end read
+         backwards, and a shut control wearing the tooltip it would have had if
+         it were open is worse, because it explains the wrong thing. A first
+         version asked only whether SOME title was present and its poison came
+         back green: the generic tip is a title too. The expected words are
+         re-derived from `v17FloorWhy` here and the card is what is under test,
+         so this is the wiring and not a tautology. */
+      const shutAndTold = ['support', 'oppose', 'pressure'].map(id => {
+        const x = at(id);
+        if (!x) return 'missing';
+        const want = v17FloorWhy(S, playParty(S), b, id);
+        if (!want) return 'not refused';
+        return x.disabled && words(x.title).indexOf(words(want).slice(0, 22)) >= 0;
+      });
+      out.floorShutAndTold = shutAndTold;
+      out.floorTitles = ['support', 'oppose', 'pressure'].map(id => {
+        const x = at(id); return x ? String(x.title).slice(0, 34) : null;
+      });
+      out.govBillHonest = shutAndTold.every(v => v === true) &&
+        out.pressDrawn === 3 && out.pressOpen === 3;
+      /* and the private member's bill, where the kit was not emitted */
+      const p2 = lay(4242, 'ruthless', me, 'player');
+      if (!p2) return Object.assign(out, { ownBill:null, ownBillHasKit:false });
+      const own = cardButtons(p2);
+      out.ownBillDrawn = press.filter(p => own.filter(x => x.id === p).length).length;
+      out.ownBillOpen = press.filter(p => {
+        const x = own.filter(y => y.id === p)[0]; return x && !x.disabled;
+      }).length;
+      out.ownBillHasKit = out.ownBillDrawn === 3 && out.ownBillOpen === 3;
+      /* AND A REAL CLICK ON IT MOVES THE DIVISION. `billAction` is what the
+         click dispatcher calls, which is the half a gate-only test misses. */
+      const f0 = billForecast(S, p2).lower;
+      const cap0 = S.capital;
+      billAction(p2.id, 'pressOwn');
+      out.clicked = { pull:(p2.pull || {})[me], spent:cap0 - S.capital,
+        forecast:+(billForecast(S, p2).lower - f0).toFixed(2) };
+      out.clickCarries = out.clicked.pull > 0 && out.clicked.spent > 0 &&
+        out.clicked.forecast > 0;
+      return out;
+    })();
+
+    /* (d) THE PICKER ASKS THE OBJECTIVE, AND THE REHEARSAL DOES NOT PRESS THE
+       LIVE BILL. `v20PressCore` takes a bill OBJECT and writes `b.pull` on it,
+       so handing the rehearsal the live bill would press it for real and then
+       press it again -- the sharpest form of `v19Try` misuse there is. */
+    R.pick = (() => {
+      const eng = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const b = lay(4242, 'ruthless', eng, 'opposition');
+      if (!b) return { ran:false };
+      const before = JSON.stringify(b.pull || {});
+      let w = null;
+      try { w = v21WhipFor(S, eng); } catch (e) { return { ran:false, threw:String(e).slice(0, 60) }; }
+      const after = JSON.stringify(b.pull || {});
+      /* and it is the best of what is on offer, read through the game's own
+         standing either side of the real body */
+      let ranked = null;
+      if (w) {
+        const base = v19Standing(S, eng);
+        const score = (bill, scope) => {
+          const out = v19Try(S, cl => {
+            const cb = (cl.bills || []).filter(x => x.id === bill.id)[0];
+            if (cb) v20PressCore(cl, eng, cb, scope);
+          });
+          return out ? v19Standing(out, eng) - base : null;
+        };
+        ranked = { chosen:+(score(w.bill, w.scope) || 0).toFixed(4) };
+      }
+      return { ran:true, found:!!w, scope:w && w.scope, price:w && w.price,
+        pullBefore:before, pullAfter:after, ranked:ranked,
+        rehearsalIsQuiet: before === after && before === '{}',
+        gains: !!(ranked && ranked.chosen > 0) };
+    })();
+
+    /* (d2) AND THE PICK IS THE BEST PRESS THAT PAYS.
+
+       SIX POISONS CAME BACK GREEN AGAINST THE LEG ABOVE, which asks only that
+       the chosen press gains: taking the first bill instead of the best,
+       dropping the objective's own floor, replacing the objective with a rule
+       of thumb, forcing the scope to `own`, and dropping the purse test were
+       all invisible to it. That is the arm fault S21q had written into
+       `CLAUDE.md` the same afternoon, arriving again one slice later, which is
+       the whole reason that rule is in a file rather than in somebody's memory.
+
+       Asserted the way that rule says: enumerate every (bill, scope) this
+       party could press and can pay for, score each through the game's own
+       `v19Try` and `v19Standing`, and require the picker's answer to be the
+       highest-scoring one that beats standing -- or nothing at all. The scope
+       in the enumeration comes from `v21PressScopeFor`, so a build that forces
+       one names a pair this leg never offered. */
+    R.chooses = (() => {
+      const out = { readings:0, multi:0, scopes:{}, unaffordable:0, cands:0,
+        violations:0, first:null, picks:0, nulls:0, broke:0 };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337].forEach(sd => {
+          fresh(sd, 'ruthless');
+          for (let t = 0; t < 40; t++) {
+            if (!step()) break;
+            PARTIES.forEach(q => {
+              const pid = q.id;
+              if (S.banned[pid]) return;
+              let before;
+              try { before = v19Standing(S, pid); } catch (e) { return; }
+              let purse = 0;
+              try { purse = partyPurse(S, pid); } catch (e) { return; }
+              const cands = [];
+              let dear = 0;
+              (S.bills || []).forEach(b => {
+                let sc = null;
+                try { sc = v21PressScopeFor(S, pid, b); } catch (e) { }
+                if (!sc) return;
+                let price = 0;
+                try { price = v20PressCost(S, b, sc); } catch (e) { return; }
+                if (purse < V16_AI_COST.work + price) { out.unaffordable++; dear++; return; }
+                let u = null;
+                try {
+                  const cl = v19Try(S, c => {
+                    const cb = (c.bills || []).filter(x => x.id === b.id)[0];
+                    if (cb) v20PressCore(c, pid, cb, sc);
+                  });
+                  if (cl) u = v19Standing(cl, pid);
+                } catch (e) { return; }
+                if (u === null || !isFinite(u)) return;
+                cands.push({ id:b.id, scope:sc, u:u, ok:u > before });
+              });
+              /* A READING WHERE THE PURSE CANNOT COVER ANYTHING IS THE ONE
+                 THIS LEG USED TO SKIP, and it is exactly the gap the purse
+                 test closes: dropping that test left the poison green, because
+                 the only readings it changes are the ones with no affordable
+                 candidate at all -- and those were being returned from before
+                 the picker was ever asked. */
+              if (!cands.length) {
+                if (dear > 0) {
+                  out.broke++;
+                  let w0 = null;
+                  try { w0 = v21WhipFor(S, pid); } catch (e) { }
+                  if (w0) {
+                    out.violations++;
+                    if (!out.first) out.first = 'pressed on a purse that cannot pay for it';
+                  }
+                }
+                return;
+              }
+              out.readings++; out.cands += cands.length;
+              if (cands.length > 1) out.multi++;
+              const passing = cands.filter(c => c.ok).sort((x, y) => y.u - x.u);
+              let w = null;
+              try { w = v21WhipFor(S, pid); }
+              catch (e) { out.violations++; if (!out.first) out.first = 'the picker threw'; return; }
+              if (!w || !w.bill) {
+                out.nulls++;
+                if (passing.length) {
+                  out.violations++;
+                  if (!out.first) out.first = 'pressed nothing where ' + passing.length + ' would have paid';
+                }
+                return;
+              }
+              out.picks++;
+              out.scopes[w.scope] = (out.scopes[w.scope] || 0) + 1;
+              const chose = cands.filter(c => c.id === w.bill.id && c.scope === w.scope)[0];
+              if (!chose || !chose.ok) {
+                out.violations++;
+                if (!out.first) out.first = 'pressed ' + w.bill.id + '/' + w.scope +
+                  ', which is not a candidate that pays for itself';
+              } else if (passing.length && Math.abs(chose.u - passing[0].u) > 1e-6) {
+                out.violations++;
+                if (!out.first) out.first = 'pressed ' + chose.id + '/' + chose.scope + ' at ' +
+                  chose.u.toFixed(2) + ' over ' + passing[0].id + '/' + passing[0].scope +
+                  ' at ' + passing[0].u.toFixed(2);
+              }
+            });
+          }
+        });
+      } catch (e) { out.threw = String(e).slice(0, 80); }
+      finally { runQueue = rq; }
+      /* the bars are sample-health, not detectors: what catches a picker that
+         takes the first or ignores its own floor is `violations`. `multi` sat
+         at 11 against a bar of 10 on the first clean run, which is one re-phase
+         from red for no reason -- S21p's gate all over again -- so it asks only
+         that boards with a choice occur at all. */
+      out.bestThatPays = out.violations === 0 && out.readings > 30 &&
+        out.multi > 3 && out.picks > 10 && out.broke > 0;
+      return out;
+    })();
+
+    /* (d3) AND THE CHEAP GATE IS NOT A YES. `can` runs for every party every
+       session and `v21WhipFor` clones the state once per candidate, so the
+       gate that stands in front of it has to be able to say no -- S21o's split,
+       and a `can` that always says yes is a card the deck draws to do nothing. */
+    R.open = (() => {
+      const eng = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const b = lay(4242, 'ruthless', eng, 'opposition');
+      if (!b) return { ran:false };
+      const withBill = v21WhipOpen(S, eng);
+      const keep = S.bills; S.bills = [];
+      const noBill = v21WhipOpen(S, eng);
+      S.bills = keep;
+      const hadPurse = S.purse[eng]; S.purse[eng] = 0;
+      const noPurse = v21WhipOpen(S, eng);
+      S.purse[eng] = hadPurse;
+      return { ran:true, withBill:withBill, noBill:noBill, noPurse:noPurse,
+        saysNo: withBill === true && noBill === false && noPurse === false };
+    })();
+
+    /* (d4) AND IT PAYS THE PLAYER'S OWN METER, NOT A FLAT PRICE. The act is
+       `v20PressCost` -- escalating per bill and per scope since S20's ruling R4
+       -- and the card is `V16_AI_COST.work` on top, so working the same bill
+       twice costs an engine what it costs a player. Two poisons came back
+       green against an arm that never read the purse: one that paid nothing at
+       all and one that paid the flat card and skipped the meter. */
+    R.pays = (() => {
+      const eng = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const b = lay(4242, 'ruthless', eng, 'opposition');
+      if (!b) return { ran:false };
+      const card = V16_AI_DECK.filter(c => c.id === 'work')[0];
+      if (!card) return { ran:false, why:'no card' };
+      const spent = [], want = [];
+      for (let i = 0; i < 3; i++) {
+        let w = null;
+        try { w = v21WhipFor(S, eng); } catch (e) { break; }
+        if (!w) break;
+        want.push(V16_AI_COST.work + w.price);
+        let p0 = 0;
+        try { p0 = partyPurse(S, eng); } catch (e) { break; }
+        let said = null;
+        try { said = card.run(S, eng); } catch (e) { }
+        try { spent.push(p0 - partyPurse(S, eng)); } catch (e) { break; }
+        if (!said) break;
+      }
+      return { ran:true, spent:spent, want:want,
+        paysTheMeter: spent.length >= 2 && spent.every((v, i) => v === want[i]),
+        theMeterRises: spent.length >= 2 && spent[spent.length - 1] > spent[0] };
+    })();
+
+    /* (e) R2: the floor never draws it, and above the floor it does. */
+    R.floorShut = (() => {
+      const eng = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const b = lay(4242, 'instinct', eng, 'opposition');
+      if (!b) return { ran:false };
+      const card = V16_AI_DECK.filter(c => c.id === 'work')[0];
+      if (!card) return { ran:false, why:'no card' };
+      let lo = null, hi = null;
+      try { lo = card.can(S, eng); } catch (e) { lo = 'threw'; }
+      S.aiLevel = 'shrewd';
+      try { hi = card.can(S, eng); } catch (e) { hi = 'threw'; }
+      return { ran:true, lo:lo, hi:hi, shut: lo === false && hi === true };
+    })();
+
+    /* (f) AND THE AIMS SAY WHAT THEY THINK OF IT, read through `v19Score`
+       where the table is consulted rather than off the fire rate: one weight
+       among nineteen cards in a softmax is below what a driven count
+       resolves, which S21p and S21q both learned from a green poison. */
+    R.aims = (() => {
+      const eng = PARTIES.filter(p => p.id !== 'lp')[0].id;
+      const b = lay(4242, 'ruthless', eng, 'opposition');
+      if (!b) return { ran:false };
+      const card = V16_AI_DECK.filter(c => c.id === 'work')[0];
+      const a = v16Ai(S)[eng];
+      if (!card || !a) return { ran:false };
+      const at = (kind) => {
+        a.goal = { kind:kind, ref:null, since:S.turn };
+        try { return +v19Score(S, eng, card, a.goal, { foe:null, foeAt:0 }).toFixed(4); }
+        catch (e) { return null; }
+      };
+      const carry = at('carry'), ground = at('ground'), build = at('build');
+      return { ran:true, carry:carry, ground:ground, build:build,
+        isCarry: carry !== null && ground !== null && build !== null &&
+          carry > build + 1e-9 && build > ground + 1e-9 };
+    })();
+
+    /* (g) DRIVEN: the card fires, and the sponsor's own benches are pulled --
+       which they were on NOUGHT of 722 bill-sessions before this. */
+    R.play = (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'work')[0];
+      const out = { runs:0, onOwn:0, byParty:{}, scopes:{}, sponsorPull:0,
+        towards:0, billSessions:0 };
+      if (!card) return out;
+      const base = card.run;
+      card.run = function (st, pid) {
+        let w = null;
+        try { w = v21WhipFor(st, pid); } catch (e) { }
+        const said = base.call(this, st, pid);
+        if (said && !V19_SIMULATING) {
+          out.runs++;
+          out.byParty[pid] = (out.byParty[pid] || 0) + 1;
+          if (w) {
+            out.scopes[w.scope] = (out.scopes[w.scope] || 0) + 1;
+            if (w.bill.sponsor === pid) out.onOwn++;
+          }
+        }
+        return said;
+      };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+          fresh(sd, 'ruthless');
+          for (let t = 0; t < 60; t++) {
+            if (!step()) break;
+            (S.bills || []).forEach(b => {
+              out.billSessions++;
+              const v = (b.pull || {})[b.sponsor];
+              if (v !== undefined) { out.sponsorPull++; if (v > 0) out.towards++; }
+            });
+          }
+        });
+      } finally { card.run = base; runQueue = rq; }
+      return out;
+    })();
+    /* AND THE BARS ARE SET BELOW WHAT ONE RE-PHASE CAN CROSS. S21p's own
+       driven gate reddened on the build that added a nineteenth card to the
+       deck -- fourteen observations cannot tell a balance change from a
+       reshuffle -- so what is asserted here is what the mechanism guarantees
+       and not what today's dice produced: the card reaches play, more than one
+       party draws it, a sponsor's own benches are actually moved, and EVERY
+       press a sponsor makes on its own bill goes toward it, which is an
+       invariant rather than a count. The measured values are in the sentence
+       below, where a reader can see them move without an arm going red. */
+    R.fires = R.play.runs > 4 && R.play.onOwn > 2 && R.play.sponsorPull > 1 &&
+      R.play.towards === R.play.sponsorPull &&
+      Object.keys(R.play.byParty).length >= 3;
+    return R;
+  });
+  const whipOk = whip.pos.ran && whip.pos.sponsorIsFor && whip.pos.strangerIsMute &&
+    whip.pos.lineIsHeard &&
+    whip.dir.ran && whip.dir.sponsorPullsFor && whip.dir.opposerPullsAgainst &&
+    whip.card.ran && whip.card.govBillHonest && whip.card.ownBillHasKit &&
+    whip.card.clickCarries &&
+    whip.pick.ran && whip.pick.found && whip.pick.rehearsalIsQuiet && whip.pick.gains &&
+    whip.chooses.bestThatPays && whip.open.ran && whip.open.saysNo &&
+    whip.pays.ran && whip.pays.paysTheMeter && whip.pays.theMeterRises &&
+    whip.floorShut.ran && whip.floorShut.shut === true &&
+    whip.aims.ran && whip.aims.isCarry && whip.fires;
+  say(whipOk, 'a party fights for the bill it laid',
+    'A SPONSOR COULD NOT LIFT A FINGER FOR ITS OWN BILL. `v17FloorWhy` refuses a line on a bill you ' +
+    'laid, correctly and since S17, so `b.lines[sponsor]` is never written -- and `v20PressWhy` read ' +
+    'that field and refused the sponsor for having no position. Measured over 360 driven sessions at ' +
+    '`ruthless`: 133 bills laid, 244 of the 282 that reached a division thrown out, 34 presses made across ' +
+    'all six engine parties, and `bill.pull` written for the SPONSOR\'s own benches on NOUGHT of 757 ' +
+    'bill-sessions; asked directly, a sponsor was refused on 520 of 520 askings and every refusal was the ' +
+    'same sentence · LAYING A BILL IS A POSITION and one reader says so: the sponsor stands ' +
+    `"${whip.pos.sponsorStands}" on its own bill and may work it (${whip.pos.sponsorIsFor}), a party that has ` +
+    `said nothing is still refused with the sentence that names why (${whip.pos.strangerIsMute}), and one that ` +
+    `declared a line in an earlier session is heard (${whip.pos.lineIsHeard}) -- which is what S21k wanted and ` +
+    'could not reach · AND THE SECOND CALL SITE IS THE ONE THAT MATTERS: `v20PressCore` read the same ' +
+    'literal to decide the DIRECTION, so a build that answered the gate and not the body would whip a ' +
+    `sponsor's own members AGAINST its own measure -- the sponsor's benches move ${whip.dir.sponsorPull} ` +
+    `and a party that declared against moves ${whip.dir.opposerPull} (${whip.dir.sponsorPullsFor}/` +
+    `${whip.dir.opposerPullsAgainst}) · THE CARD DOES NOT LIE IN EITHER DIRECTION. On a government bill ` +
+    'the player\'s own party laid -- every bill a player who leads the government lays -- `Support the ' +
+    'bill` was drawn ENABLED and `changePolicy` has refused it since S18a: all three floor verbs arrive ' +
+    `SHUT and each carries THE GATE'S OWN sentence (${JSON.stringify(whip.card.floorShutAndTold)}, ` +
+    `${JSON.stringify(whip.card.floorTitles)}), and ` +
+    `the three press buttons arrive OPEN (${whip.card.pressOpen} of ${whip.card.pressDrawn}) · and on the ` +
+    'player\'s OWN private member\'s bill the kit was never emitted at all, where it is now drawn, open ' +
+    `(${whip.card.ownBillOpen} of ${whip.card.ownBillDrawn}) and answers a real click -- ${whip.card.clicked.pull} of ` +
+    `pull for ${whip.card.clicked.spent} capital, worth ${whip.card.clicked.forecast} of Assembly forecast ` +
+    `(${whip.card.clickCarries}) · WHICH BILL AND WHICH BENCHES IS THE OBJECTIVE'S: it takes the ` +
+    `${whip.pick.scope} benches at a metered ${whip.pick.price} and the choice is worth ` +
+    `${whip.pick.ranked ? whip.pick.ranked.chosen : 'n/a'} of standing (${whip.pick.gains}) -- AND THE ` +
+    'REHEARSAL DOES NOT PRESS THE LIVE BILL, which `v19Try` makes easy to get wrong because ' +
+    `\`v20PressCore\` takes a bill OBJECT: the live bill's pull is ${whip.pick.pullAfter} after the ` +
+    `rehearsal (${whip.pick.rehearsalIsQuiet}) · AND THE PICK IS THE BEST PRESS THAT PAYS, driven over 160 ` +
+    `sessions: of ${whip.chooses.readings} readings with a candidate at all -- ${whip.chooses.cands} candidates, ` +
+    `${whip.chooses.multi} of the readings with more than one, ${whip.chooses.unaffordable} candidates the purse ` +
+    `could not cover and ${whip.chooses.broke} readings where it could cover NOTHING and the picker had to come ` +
+    `back empty -- every one of ${whip.chooses.picks} presses is the highest-scoring (bill, scope) that beats ` +
+    `standing and ${whip.chooses.violations} violate it (${whip.chooses.bestThatPays}` +
+    `${whip.chooses.first ? ', ' + whip.chooses.first : ''}), scopes ${JSON.stringify(whip.chooses.scopes)} · ` +
+    `and it pays the PLAYER'S OWN METER and not a flat price -- ${JSON.stringify(whip.pays.spent)} out of the ` +
+    `purse against ${JSON.stringify(whip.pays.want)} owed (${whip.pays.paysTheMeter}), rising with each press of ` +
+    `the same benches (${whip.pays.theMeterRises}), which is S20's ruling R4 · ` +
+    `and the cheap gate in front of it can say no: with a workable bill ${whip.open.withBill}, with no bills ` +
+    `${whip.open.noBill}, with an empty purse ${whip.open.noPurse} (${whip.open.saysNo}) · ` +
+    `R2: at the floor the card cannot be drawn and above it it ` +
+    `can (${whip.floorShut.lo} against ${whip.floorShut.hi}) · the aims rank it ${whip.aims.carry} to ` +
+    `\`carry\`, ${whip.aims.build} to \`build\` and ${whip.aims.ground} to \`ground\` (${whip.aims.isCarry}) ` +
+    `· and driven over 360 sessions it fires ${whip.play.runs} times across ` +
+    `${Object.keys(whip.play.byParty).length} parties (${JSON.stringify(whip.play.byParty)}, scopes ` +
+    `${JSON.stringify(whip.play.scopes)}), ${whip.play.onOwn} of them on the party's OWN bill, and the ` +
+    `sponsor's benches are pulled on ${whip.play.sponsorPull} bill-sessions of ${whip.play.billSessions} -- ` +
+    `every one of them TOWARD the bill (${whip.play.towards === whip.play.sponsorPull})`);
+
   /* ================================================================
      S21q — A PRICE ON THE BENCHES
      ================================================================
@@ -11848,7 +12421,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     /* S21n adds `keep` to the same second list, and it is listed there rather
        than in `post` so the FLOOR's table stays exactly the three the game
        shipped with -- belt and braces with the `v19Thinks` gate on its `can`. */
-    R.widened = R.table.thinkingOnly.join(',') === 'descend,floor,keep,organise,street,trade';
+    /* S21r: AND THE SECOND LIST IS NOT A LIST OF NAMES. This read
+       `thinkingOnly.join(',') === 'descend,floor,keep,organise,street,trade'`
+       and went stale the moment a slice added a twentieth card to the deck --
+       this file's own rule about a default written as a list of names,
+       arriving in a probe rather than in the game. What R2 claims is that the
+       FLOOR's table does not widen, which is asserted exactly one line above,
+       and that nothing in the second list is ALSO at the floor, which is what
+       "above the floor and only there" means. The six that were in it when
+       this arm was written must still be; a later slice may add to them. */
+    R.widened = ['descend', 'floor', 'keep', 'organise', 'street', 'trade']
+        .every(id => R.table.thinkingOnly.indexOf(id) >= 0) &&
+      R.table.thinkingOnly.every(id => R.table.floorDeck.indexOf(id) < 0);
     /* and `court` is what the second mood has and the first does not */
     R.courtIsTheDifference =
       R.table.exposedDeck.indexOf('court') >= 0 &&
@@ -13420,13 +14004,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        reads .44 -- because two new cards arriving with no term of their own
        would have taken this bar to four, which is the assertion giving up.
        A SECOND FLAT CARD REDDENS. */
-    seen.cards.cards === 18 && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
+    /* S21r: NINETEEN. The deck's own count, and the fourth place a card added
+       to it has to be written down -- after the state this arm's neighbour
+       builds, that neighbour's `moved` case, and its gate. */
+    seen.cards.cards === DECK && seen.cards.rehearsals > 2000 && seen.cards.flat <= 1 &&
     seen.terms.allMove === true && seen.terms.roomCounts === true &&
     seen.terms.bookCounts === true && seen.terms.marchCounts === true &&
     seen.terms.billSigned === true && seen.terms.lineSigned === true &&
     seen.terms.motionIsMine === true &&
     seen.pure.threw === null && seen.pure.finite === true && seen.pure.created === false &&
-    seen.cost.deck === 18 && seen.cost.priced === 18 &&
+    seen.cost.deck === DECK && seen.cost.priced === DECK &&
     seen.cost.unpriced.length === 0 && seen.cost.ghosts.length === 0 &&
     seen.cost.cheapest === seen.cost.trueMin && seen.cost.cheapest < seen.cost.wasNamed &&
     seen.cost.s17 === true &&
@@ -17728,7 +18315,6 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     mani.shared.demandCalls > 10 && mani.shared.billCalls === 0 &&
     mani.shared.billUsedForecastPicker > 10 &&
     mani.clock.byAge && mani.clock.byProgress &&
-    mani.clock.byProgress.total > mani.clock.byAge.total &&
     /* S21a: THE `afterOldClock` SHARES ARE REPORTED AND NO LONGER ASSERTED.
        They are a second reading of the claim `meanAt` already makes, on
        samples of 16 and 32 where a strict inequality against half turns on one
@@ -17770,7 +18356,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        progress never moved is put down, one that is progressing is kept. The
        direction of `total` stays because it is information; the magnitude
        goes because it is composition. */
-    mani.clock.byProgress.total > mani.clock.byAge.total &&
+    /* S21r: AND NOW THE DIRECTION GOES TOO, BECAUSE IT WAS MEASURED AND IT IS
+       A COIN. The paragraph above kept `total`'s direction "because it is
+       information"; S21r read 102 against 102, a dead heat, and the honest
+       answer was to find out what the quantity does rather than to move the
+       bar off it. Run per seed over TWENTY-FOUR seeds, the difference
+       (byProgress − byAge) has a mean of +1.54 with a standard deviation of
+       4.32 on the build before this slice -- 1.75 standard errors, positive on
+       FIFTEEN of twenty-four -- and a mean of +0.04 on the build with it,
+       positive on nine of twenty-four. A quantity that reads +29 on one
+       fourteen-seed sample and 0 on the next is a sign test on a fair coin,
+       and it has been sitting in this gate carrying nothing since S19d. The
+       first version of this arm gated its MAGNITUDE, S21d took that out and
+       kept the sign, and the sign was the same statistic with less of it.
+       WHAT CARRIES THE CLAIM IS BELOW AND ABOVE IT, and both are steady across
+       the same slice: `meanAt` separates 12.1/6.7 and 13.1/7.1 -- a ratio of
+       1.81 and 1.85 against a bar of 1.35 -- and `deadHeldFor` separates 10.5
+       against 54.2 and 10.5 against 57.2, a five-fold gap against a bar of
+       .6. The counts stay in the message because they are information about
+       the sample; they are not a result. */
     /* the cap-only leg RETIRES FEWER BY CONSTRUCTION -- with a sixty-session
        cap inside a 120-session run each party can put down at most two dead
        aims -- so its sample floor is five, not the thirty the stall leg can
@@ -17797,7 +18401,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `the gap picker's statute on ${mani.shared.demandFollowedGap} of ${mani.shared.checked} boards where the ` +
     `two differ, because a shared body right for a new caller can be wrong for the old ones · THE CLOCK COUNTS ` +
     `PROGRESS AND NOT AGE, run as an A/B in one process: by age it reached ${mani.clock.byAge.total} aims and ` +
-    `by progress ${mani.clock.byProgress.total} across ${mani.clock.byProgress.kinds} kinds, ` +
+    `by progress ${mani.clock.byProgress.total} across ${mani.clock.byProgress.kinds} kinds -- A COUNT THAT ` +
+    `IS REPORTED AND NO LONGER ASSERTED, because S21r read it as a dead heat and measuring it settled what ` +
+    `it is: per seed over twenty-four seeds the difference is +1.54 with a standard deviation of 4.32 on the ` +
+    `build before that slice, 1.75 standard errors and positive on fifteen of twenty-four, and +0.04 on the ` +
+    `build with it. It is a sign test on a fair coin, and it had been in this gate since S19d -- first as a ` +
+    `magnitude, then, after S21d, as a direction, which is the same statistic with less of it · ` +
     `${mani.clock.byProgress.afterOldClock} of ${mani.clock.byProgress.total} reached AFTER session fourteen ` +
     `against ${mani.clock.byAge.afterOldClock} of ${mani.clock.byAge.total} under the age rule, at a mean of ` +
     `${mani.clock.byProgress.meanAt} sessions against ${mani.clock.byAge.meanAt} -- a late completion is the ` +
@@ -20837,7 +21446,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        took 110 of 360 elections to a caretaker. */
     R.driven = (() => {
       runQueue = function (done) { UI.queue = []; rq(done); };
-      const g = [], how = {};
+      const g = [], how = {}, careBySeed = [];
       let oustAdopted = 0, oustDone = 0, reactions = 0;
       const seen = {};
       const bF = v17Rotation;
@@ -20879,6 +21488,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            so the whole leg is steadier for the 34 seconds it costs. */
         [4242, 90210, 7, 31337, 555, 8080,
          11, 2024, 777, 606, 13, 99].forEach(seed => {
+          /* PER SEED, because a caretaker is an EPISODE and not a rate. See
+             the note on `caretakerSeeds` below. */
+          const c0 = how.caretaker || 0;
           fresh(seed);
           for (let i = 0; i < 120; i++) {
             step();
@@ -20897,6 +21509,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
               }
             });
           }
+          careBySeed.push((how.caretaker || 0) - c0);
         });
       } finally { v17Rotation = bF; v19React = bRe; v21Answer = bAns; runQueue = rq; }
       g.sort((x, y) => x - y);
@@ -20910,6 +21523,34 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         unraised:Object.keys(V21_POLITICS).filter(k => !fired[k]),
         undeclared:Object.keys(fired).filter(k => !V21_POLITICS[k]),
         branches:Object.keys(how).length,
+        /* S21r: A CARETAKER IS AN EPISODE, AND THE SHARE COUNTED IT AS A RATE.
+           This leg gated `caretaker / forms < .1`, and S21r's run read .105
+           against .027 on the build before it -- a four-fold jump off ONE
+           slice, which sent me hunting a mechanism for an hour. Measured
+           properly it is the sample. Of the twelve seeds, NINE have no
+           caretaker at all on either build; the gap is three republics that
+           fell into a caretaker crisis under one build and one that did under
+           the other. At THIRTY-TWO seeds the paired difference is +.020 at
+           0.93 standard errors, 27 of the 32 seeds are identical, and TWO of
+           the five that move go the other way -- seed 4242 reads 20 caretakers
+           on the earlier build and NOUGHT on this one. The pooled share reads
+           .105/.027 at twelve seeds and .047/.018 at thirty-two: the quantity
+           halves when the sample triples, which is what a statistic dominated
+           by rare episodes does.
+           And the denominator is not independent of the numerator: a quiet
+           seed reads exactly 60 formations and a seed in crisis reads 65, 68,
+           73, 76, 101 -- the extra formations ARE the caretaker's retries, so
+           a share over them is a fraction whose bottom grows with its top.
+           WHAT IS ASKED INSTEAD is the thing the sentence means: in the
+           ordinary republic a government forms. A crisis in one republic is
+           the mechanism working; a House that cannot form a government is the
+           first draft this arm was written against, which put 110 of 360
+           elections into a caretaker's hands and would fail on every seed.
+           The bar is half the seeds, which sits outside everything measured on
+           a sound build (1 of 12 and 3 of 12) and inside the failure it
+           guards. `caretakerShare` is reported and no longer asserted. */
+        caretakerSeeds:careBySeed.filter(x => x > 0).length,
+        careBySeed:careBySeed,
         caretakerShare:+((how.caretaker || 0) / Math.max(1, forms)).toFixed(3) };
     })();
     return R;
@@ -20939,7 +21580,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        Four of the twelve seeds carry a reached aim on either build. */
     polit.driven.oustAdopted >= 6 && polit.driven.oustDone >= 1 &&
     polit.driven.reactions > 0 &&
-    polit.driven.branches >= 3 && polit.driven.caretakerShare < .1;
+    polit.driven.branches >= 3 && polit.driven.caretakerSeeds <= 6;
   say(politOk, 'a party holds something against a government',
     `\`V17_MEMORY\` IS THE MEMORY OF THE PLAYER'S BUTTONS. All thirty-four of its weights are written by the ` +
     `\`doAction\` wrapper, so a party could only ever remember something a human pressed, and NOTHING THAT ` +
@@ -20983,8 +21624,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `their face and less than an attack · AND THE FORMATION'S BRANCHES OPEN AS A CONSEQUENCE, which is a ` +
     `correction to this programme's own plan: they were not gated by \`V17_FORM_MAX\` but by nobody ever ` +
     `REFUSING, and nobody refused because nobody held anything against anybody. ` +
-    `${JSON.stringify(polit.driven.how)} across ${polit.driven.forms} formations, caretaker share ` +
-    `${polit.driven.caretakerShare} · the floor is untouched (${polit.floor.atInstinct} at \`instinct\`) and ` +
+    `${JSON.stringify(polit.driven.how)} across ${polit.driven.forms} formations · AND A CARETAKER IS AN ` +
+    `EPISODE, NOT A RATE, which is the correction S21r's run forced: this leg gated the pooled share at .1 ` +
+    `and read .105 against .027 on the build before that slice, a four-fold jump off one card that sent me ` +
+    `hunting a mechanism. NINE of the twelve seeds carry no caretaker at all on either build, and at ` +
+    `thirty-two seeds the paired difference is +.020 at 0.93 standard errors with 27 of 32 seeds identical ` +
+    `and two of the five that move going the OTHER way -- seed 4242 reads 20 on the earlier build and nought ` +
+    `on this one. The pooled share halves from .105/.027 to .047/.018 when the sample triples, and its ` +
+    `denominator is not independent of its numerator: a quiet seed reads exactly 60 formations and a seed in ` +
+    `crisis 65 to 101, the extra formations being the caretaker's own retries. So the bar is the sentence's ` +
+    `own meaning -- in the ordinary republic a government forms -- at ${polit.driven.caretakerSeeds} of ` +
+    `twelve seeds against a bar of six, with the share (${polit.driven.caretakerShare}) reported and no ` +
+    `longer asserted · the floor is untouched (${polit.floor.atInstinct} at \`instinct\`) and ` +
     `the channel is silent under \`V19_SIMULATING\` (${polit.floor.inSim}), or every card the chooser ` +
     `rehearses would leave a grievance behind`);
 

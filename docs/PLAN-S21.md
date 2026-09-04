@@ -1171,9 +1171,15 @@ is a pure loss to both parties and neither would ever make one.
 
 ### S21r - An engine fights for the bill it laid, and the House answers yours
 
-143 engine bills were archived in 300 sessions and none carried. An engine lays a
-bill and is then mute about it for the rest of its life. And almost no bill of
-the player's is ever spoken to before the division.
+**SHIPPED, and both of this section's claims were wrong.** "143 engine bills
+were archived in 300 sessions and none carried" — 38 of 133 carry over 360
+sessions at `ruthless`. "Almost no bill of the player's is ever spoken to before
+the division" — of nine such bill-sessions, four carried somebody else's line or
+pull. What was actually wrong was one line: `v20PressWhy` asks for a declared
+position, `v17FloorWhy` refuses a line on a bill you sponsored, and so a sponsor
+was refused permission to work its own bill on **520 of 520 askings**, every
+refusal the same sentence. `bill.pull` had never once been written for a
+sponsor's own benches. See `docs/STATE.md`.
 
 Channels: `v20PressCore` writes `b.pull[pid]`, `billPull` counts it through that
 party's seats; `b.lines[actor]` reaches `partyBillSupport` and the forecast.
