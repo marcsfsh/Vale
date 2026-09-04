@@ -243,6 +243,23 @@ answer has to use decides the deadline.
 *Open for the owner:* whether the late campaign suspends ordinary business (a
 dissolution, which is what really happens) or runs alongside it.
 
+**COUNTED, AND THE ANSWER IS THAT THERE IS NO WINDOW.** `isBallotTurn(t)` is
+`t > 1 && t % 2 === 1` and only a constitutional article lengthens it. Over 720
+driven sessions on twelve seeds the term is **2 on every one**, so
+`pv5SessionsToBallot` answers only 1 or 2 and a window of the last N sessions is
+**every session, for any N**. The calendar has two states, not a window, and
+nothing in the game read them — while three pieces of arithmetic assumed a
+calendar it does not have: `pv5CampaignRaw`'s decay ladder (1 on every session
+ever produced, two of its three rungs unreachable), the *"Between elections"*
+phase label (printed 0 times in 720) and the `campaign` card's four-session gate
+(true on every session).
+
+**And the open question is answered by that measurement rather than by taste.**
+With a two-session term, suspending ordinary business on alternate sessions
+would halve the game, so the writ session runs alongside it. The alternative —
+lengthening the cadence itself, which halves the number of elections in a
+campaign and re-times every arc — is a balance decision and **the owner's**.
+
 ### S22f — The range before the count
 
 The projection panel shows a **band** rather than a point: `ballot(st, true)`
@@ -250,6 +267,15 @@ sampled enough times to give the shape of the night, printed as the range each
 party could land in. The point estimate stays — it is what the numbers say — and
 the band is what the night could do to it. This is the smallest slice of the
 five and it depends only on S21s.
+
+**And it turned out to have a defect under it.** The Parties page already
+printed a range, and it was authored: `2.1 + min(2.4, max(0, nextBallot - turn)
+* .45)`, so ±2.55 or ±3.0, with the same kind of unreachable rung S22e found
+three of. Measured over 30 boards at 200 draws each, the night moves a share by
+**2.73 points** end to end at the median — so the card was describing a window
+nearly twice what the game produces. The band replaces it, and the Campaign page
+gains the reading nothing printed at all: the **seat** range, a median of 37 of
+1,305.
 
 ---
 

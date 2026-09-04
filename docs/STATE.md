@@ -183,6 +183,67 @@ their own party."*
   one-writer poison was equivalent in effect, so the arm presses the real Target
   button with `v22TargetSet` stubbed instead.
 
+- **S22e — the writ session, and the quiet one.** The plan asked for a window of
+  the last N sessions before a ballot and **the calendar has no room for one**.
+  `isBallotTurn(t)` is `t > 1 && t % 2 === 1`, and the only thing that lengthens
+  it is a constitutional article moving the term. Measured over 720 driven
+  sessions on twelve seeds the term is **2 on every one**, `pv5SessionsToBallot`
+  answers 1 on half the sessions and 2 on the other half, and a window of the
+  last N sessions is every session for any N.
+
+  **So the calendar has exactly two states and nothing read them.** Which one
+  holds the ballot is measured rather than reasoned, because `endTurn` does
+  `S.turn += 1` and *then* asks `isBallotTurn(S.turn)`: over 240 driven sessions
+  the reading of 1 held **120 elections out of 120** and the reading of 2 held
+  none.
+
+  **Three pieces of arithmetic assumed a calendar this game does not have**, and
+  all three are replaced by the two it does: `pv5CampaignRaw`'s decay ladder,
+  which answered 1 on every session ever produced with two of its three rungs
+  unreachable; the Campaign page's *"Between elections"* phase, printed 0 times
+  in 720; and the `campaign` card's four-session gate, true on every session.
+
+  **Neither constant is picked.** The quiet session's score keeps the dead
+  ladder's own authored **.82**, and the build multiplier is derived as its
+  **reciprocal**, so what you build while nobody is listening goes exactly as
+  much further as the quiet session is worth less. One rule, read by the
+  player's four build buttons and by the engine's campaign card.
+
+  **And the `hidden` attribute does not hide in this file.** A note drawn with
+  it computes `display:flow-root` and lays out at 42px, and no author rule in
+  four megabytes sets display on it. Nothing shipped uses the attribute, so this
+  is a note rather than a defect — but a slice reaching for `hidden` should
+  measure before trusting it.
+
+- **S22f — the range before the count.** The Parties page has printed *"a
+  modelled vote intention with a ±N point planning range"* since v5, and N is
+  `2.1 + min(2.4, max(0, nextBallot - turn) * .45)` — 2.55 or 3.0, with an
+  unreachable rung inside it for the same reason S22e's three were. **Nothing
+  ever asked what `ballot(st, true)` does.**
+
+  Measured over 30 boards on six seeds at 200 draws each: the night moves a
+  party's share by **2.73 points** end to end at the median and 4.05 at the
+  ninetieth, with a standard deviation of .62. The printed ±2.55 is a 5.1-point
+  window around a night that produces 2.7. **And in seats, which is what a
+  player reads, nothing printed it at all**: the same draws move a party by a
+  median of **37 seats** of a 1,305-seat chamber.
+
+  The band is sampled through `v6Sandbox`, so the campaign's dice survive it —
+  `rand()` rides `S` and the sandbox swaps `S` for a clone. It is a
+  tenth-to-ninetieth span rather than lowest-to-highest, because a min-to-max
+  range grows with the number of draws and would report the sample size as much
+  as the night. And it is **cached on the noiseless result**, which is a
+  deterministic function of every input the noisy draw reads: 35.1ms warm
+  against 37.1ms on the build before the slice.
+
+  **One shipped defect, found by measuring the cost.** `band22f` was declared
+  below the row builder that reads it, and `var` hoists — so the Range column
+  printed an em dash for every party while its own title, which falls back to
+  asking for the band again, printed the numbers. The seven fallback calls were
+  also the whole of the page's 35ms regression. This file has been bitten by
+  `var` hoisting before: a local named `seed` inside `newGame` shadowed the
+  campaign seed and the state literal was built with `seed: undefined`.
+
 **S21 — All-out AI** is **COMPLETE**. The owner's brief: *"an all-out focus on AI
 behavior, AI logic, and AI improvements… at least 4 improvements to existing AI
 behaviors and logic, and at least 8 new behaviors/logic — each being
