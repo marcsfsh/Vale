@@ -1,6 +1,9 @@
 # S22 — What decides an election
 
-**Status: DRAFT, awaiting the owner's rulings.** Commissioned by the owner in
+**Status: IN PROGRESS. S22a has shipped.** The three questions this plan left
+open for the owner are answered inside the slice that reaches each of them,
+from a measurement rather than by preference, and each is flagged in
+`docs/STATE.md` as theirs to overturn. Commissioned by the owner in
 the same exchange that produced S21v, immediately after they ruled that the
 chair has no bearing on election performance:
 
@@ -132,11 +135,25 @@ election move has to be something a player did, and something they can see.
 
 ## The programme
 
+**Six slices. The first is S21's one unpaid debt** — the party dossier
+`PLAN-S21.md` allocated across three slices and none of them built — which is
+here rather than in S21 because S21 is closed and the surface is a slice rather
+than a paragraph. The campaign programme the owner commissioned is the other
+five, renumbered by one so the sequence reads straight.
+
+### S22a — A party has a record you can read
+
+`a.why` is one slot per party, overwritten the next time that party acts, and
+`v16AiTurn` posts three lines a session under a comment saying *"the rest is on
+the Parties page"*. Measured over 720 driven sessions on twelve seeds: 1,161
+initiatives, 4.1% of them recoverable afterwards. `v22Emit` files every one, the
+Parties card prints the record, and the verbs are covered from the deck.
+
 Five slices. Each is independently shippable and each is measured the way S21's
 were: a driven distribution first, a threshold read off it second, and a poison
 per changed line.
 
-### S22a — An issue is a thing the model has
+### S22b — An issue is a thing the model has
 
 **The channel first, because a book of cards about something the model has no
 channel to is a book of decoration.** One table: every issue named in `REGIONS`
@@ -155,7 +172,7 @@ a hand-kept list can never have.
 *Open for the owner:* whether an issue's weight in a region is uniform across
 its three, or ranked.
 
-### S22b — Turnout is everybody's, and it is legible
+### S22c — Turnout is everybody's, and it is legible
 
 Take the `pid === playParty(st)` branch off `partyTurnout` so every party's
 organisation, unity and endorsements reach the count — which is the S21 brief
@@ -169,7 +186,7 @@ they get one (a purse-priced field operation, which S21j's courting already
 prices) or their turnout reads only from factions and endorsements. The first is
 more work and a fairer election; the second is a smaller slice.
 
-### S22c — A battleground is a choice, not a dot
+### S22d — A battleground is a choice, not a dot
 
 The Target button becomes: **choose a region, and choose which of its three
 issues you are running on there.** A region rewards a party that runs on an
@@ -183,7 +200,7 @@ distribution rather than picked by eye. S17q's bar sat above its own ceiling;
 S21v's `V21_GOV_GAP` was set at a quartile that moved. This one gets its
 distribution printed in the assertion's own words.
 
-### S22d — The late campaign
+### S22e — The late campaign
 
 A window of the last N sessions before a ballot in which the campaign is what
 the session is about: channels cost less or count more, the papers turn to the
@@ -195,7 +212,7 @@ answer has to use decides the deadline.
 *Open for the owner:* whether the late campaign suspends ordinary business (a
 dissolution, which is what really happens) or runs alongside it.
 
-### S22e — The range before the count
+### S22f — The range before the count
 
 The projection panel shows a **band** rather than a point: `ballot(st, true)`
 sampled enough times to give the shape of the night, printed as the range each
