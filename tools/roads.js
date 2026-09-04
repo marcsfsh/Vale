@@ -25249,6 +25249,47 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         isTheConstant:Math.abs(onQuiet / onWrit - V22_QUIET_POWER) < 1e-6 };
     })();
 
+    /* (e2) AND THE PAGE SAYS WHICH SESSION IT IS AND WHAT IT COSTS. The phase
+       label alone is a name; the note is the sentence a reader acts on, and
+       its poison came back green because nothing asked for it. */
+    R.note = (() => {
+      fresh(2024);
+      const seen = { writ:'', quiet:'' };
+      let shown = null;
+      for (let i = 0; i < 10; i++) {
+        const k = UI.tab; UI.tab = 'campaign';
+        let txt = '', vis = false;
+        try {
+          render();
+          /* MEASURED WITH A RECT, NOT WITH `textContent`. Hidden text is still
+             in `textContent`, so the poison that drew the note `hidden` came
+             back GREEN against a string test -- the sentence was in the DOM
+             and on no screen. This file's own rule: measure visibility with a
+             rect, not with `offsetParent`. */
+          const el = [...document.querySelectorAll('#view p.note')].filter(x =>
+            /writ falls when you end this session|not listening yet|No ballot is scheduled/.test(x.textContent))[0];
+          if (el) {
+            const r = el.getBoundingClientRect();
+            vis = r.height > 0 && r.width > 0;
+            txt = el.textContent || '';
+          }
+        } catch (e) {}
+        UI.tab = k;
+        const slot = v22Writ(S) ? 'writ' : 'quiet';
+        if (!seen[slot]) { seen[slot] = txt; if (shown === null) shown = vis; else shown = shown && vis; }
+        if (seen.writ && seen.quiet) break;
+        step();
+      }
+      try { render(); } catch (e) {}
+      const w = seen.writ, q = seen.quiet;
+      return { ran:!!(w && q), visible:shown === true,
+        writSays:/writ falls when you end this session/.test(w),
+        quietSays:/not listening yet/.test(q) && /per cent further/.test(q),
+        crossed:!/writ falls when you end this session/.test(q) &&
+          !/not listening yet/.test(w),
+        sample:(q.match(/The country is not listening yet[^]{0,90}/) || [''])[0] };
+    })();
+
     /* (e) THE ENGINE READS THE SAME RULE. Driven through the card's own run
        rather than by re-deriving the picker. */
     R.card = (() => {
@@ -25291,8 +25332,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     writ22.pair.reciprocal && writ22.pair.power > 0 && writ22.pair.power < 1 &&
     writ22.buttons.ran && writ22.buttons.allMoreQuiet && writ22.buttons.matchesConstant &&
     writ22.score.ran && writ22.score.isTheConstant &&
+    writ22.note.ran && writ22.note.visible && writ22.note.writSays && writ22.note.quietSays && writ22.note.crossed &&
     writ22.card.ran && writ22.card.moreQuiet && writ22.card.matchesConstant &&
     writ22.card.openWithABallot && writ22.card.shutWithout;
+  /* NO LOOKUP THE SAY MAKES CAN BE EMPTY. A poison that leaves a leg unable
+     to run -- "every session is the writ session" gives the button leg no
+     quiet session to press in -- made this read `buttons.quiet.field` off an
+     absent object and THREW, which aborts the harness instead of failing one
+     assertion. */
+  const wq = (o, k, d) => (o && o[k] !== undefined && o[k] !== null ? o[k] : (d === undefined ? '\u2014' : d));
+  const wb = k => wq(writ22.buttons.quiet, k), wv = k => wq(writ22.buttons.writ, k);
   say(writOk, 'the writ session, and the quiet one',
     `PLAN-S22 ASKED FOR A WINDOW OF THE LAST N SESSIONS BEFORE A BALLOT AND THE CALENDAR HAS NO ROOM FOR ` +
     `ONE. \`isBallotTurn(t)\` is \`t > 1 && t % 2 === 1\` and the only thing that lengthens it is a ` +
@@ -25315,8 +25364,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `as the quiet session is worth less -- one fact rather than two knobs · THE BUTTONS ARE PRESSED FOR ` +
     `REAL in both sessions and every one of the four puts more in when the country is not listening ` +
     `(${writ22.buttons.allMoreQuiet}), at the constant to three places (${writ22.buttons.matchesConstant}): ` +
-    `field ${writ22.buttons.quiet.field} against ${writ22.buttons.writ.field}, media ` +
-    `${writ22.buttons.quiet.media} against ${writ22.buttons.writ.media} · AND THE SCORE ON THE SAME ASSETS ` +
+    `field ${wb('field')} against ${wv('field')}, media ` +
+    `${wb('media')} against ${wv('media')} · AND THE PAGE SAYS WHICH SESSION IT IS AND WHAT IT COSTS ` +
+    `(${writ22.note.writSays}/${writ22.note.quietSays}), on a screen rather than only in the document ` +
+    `(${writ22.note.visible}, measured with a rect because hidden text is still in \`textContent\` and the ` +
+    `poison that drew it \`hidden\` came back green against a string test), on the right session and not the other one ` +
+    `(${writ22.note.crossed}): "${writ22.note.sample}" · AND THE SCORE ON THE SAME ASSETS ` +
     `goes ${writ22.score.onWrit} in the writ session to ${writ22.score.onQuiet} in the quiet one, a ratio ` +
     `of ${writ22.score.ratio} · THE ENGINE READS THE SAME RULE through its own card: ` +
     `${writ22.card.quiet} of field bought in a quiet session against ${writ22.card.writ} in a writ one, a ` +
