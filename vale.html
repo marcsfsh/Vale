@@ -18006,13 +18006,60 @@ function pv5CoalitionTick(st){
 
 /* ---------- campaigning ---------- */
 function pv5SessionsToBallot(st){return electionsOn(st)?Math.max(0,nextBallot(st.turn)-st.turn):null;}
+/* ============================================================
+   S22e - THE WRIT SESSION, AND THE QUIET ONE
+   ============================================================
+   THE PLAN ASKED FOR A WINDOW OF THE LAST N SESSIONS BEFORE A BALLOT AND THE
+   CALENDAR HAS NO ROOM FOR ONE. `isBallotTurn(t)` is `t > 1 && t % 2 === 1`,
+   and the only thing that lengthens it is a constitutional article moving the
+   term. Measured over 720 driven sessions on twelve seeds: the term is TWO on
+   every one of them, `pv5SessionsToBallot` answers 1 on half and 2 on the
+   other half, and nothing else. A window of the last N sessions is every
+   session, for any N.
+
+   SO THE CALENDAR HAS EXACTLY TWO STATES AND NOTHING IN THE GAME READ THEM.
+   `endTurn` does `S.turn += 1` and THEN asks `isBallotTurn(S.turn)`, so the
+   session that produces a ballot is the one where the reading is 1 -- measured
+   rather than reasoned, because this is the countdown mistake this file has
+   made six times: over 240 driven sessions the reading of 1 held 120 elections
+   out of 120 and the reading of 2 held none.
+
+   AND THREE PIECES OF ARITHMETIC ASSUMED A CALENDAR THIS GAME DOES NOT HAVE:
+   `pv5CampaignRaw`'s decay ladder (`near<=2?1:near<=5?.82:.62`, which is 1 on
+   every session the game produces, so two of its three rungs are unreachable),
+   the Campaign page's "Between elections" phase (printed 0 times in 720), and
+   the `campaign` card's four-session gate (true on every session). Each is
+   replaced here by the two states the calendar actually has. */
+function v22Writ(st) { return pv5SessionsToBallot(st) === 1; }
+/* WHAT ORGANISATION BUILT WHILE NOBODY IS LISTENING IS WORTH. The Campaign
+   page's own headline is "Build the Majority Before the Writ Is Issued" and
+   until this slice nothing made that true: an asset bought in the session the
+   writ falls was worth exactly what one bought a year earlier was worth. It is
+   read by the player's four build buttons and by the engine's `campaign` card,
+   so it is one rule and both chairs. */
+/* THE AUTHORED NUMBER, MADE REACHABLE. The dead ladder's own middle rung was
+   .82 for a ballot that is not close, and that is the number this keeps -- the
+   slice makes an authored figure live rather than inventing a second one. */
+var V22_QUIET_POWER = .82;
+/* AND THE OTHER HALF IS DERIVED FROM IT, not picked: what you build while
+   nobody is listening goes exactly as much further as the quiet session's
+   score is worth less. So the two halves are one fact rather than two knobs,
+   and the net of them is that an asset built early is worth the same THIS
+   session and more at the count -- which is what the page's own headline,
+   "Build the Majority Before the Writ Is Issued", has promised since v5. */
+var V22_QUIET_BUILD = 1 / V22_QUIET_POWER;
+function v22BuildMul(st) { return v22Writ(st) ? 1 : V22_QUIET_BUILD; }
 /* S15h: the score is computed unclamped and clamped separately, so the page can
    say how much of what the player bought is being carried and how much is being
    left at the ceiling. The ceiling itself went from 12 to 26 against a raw
    score that measured 18.34 with the deck full and no endorsement held at all;
    the campaign was discarding better than a third of itself in silence. */
 function pv5CampaignRaw(st){
-  var c=st.campaign||{},near=pv5SessionsToBallot(st),decay=near===null?.45:(near<=2?1:near<=5?.82:.62);
+  /* S22e: THE TWO STATES THE CALENDAR HAS. This read
+     `near<=2?1:near<=5?.82:.62`, and `near` is only ever 1 or 2, so the ladder
+     answered 1 on every session the game has ever produced and two of its
+     three rungs were unreachable arithmetic. */
+  var c=st.campaign||{},near=pv5SessionsToBallot(st),decay=near===null?.45:(v22Writ(st)?1:V22_QUIET_POWER);
   var assets=(c.field||0)*.28+(c.media||0)*.25+(c.data||0)*.18+(c.debate||0)*.2+Math.min(30,partyPurse(st,playParty(st))*.35)*.09;
   var issue=ISSUE[c.message||'jobs'],fit=issue?(st.salience[issue.id]||40)/100:0;
   var targetWeight=0;REGIONS.forEach(function(r){targetWeight+=Math.min(3,(c.targets&&c.targets[r.id])||0)*r.pop/100;});
@@ -18545,17 +18592,17 @@ function pv5CampaignAction(action,id){
        what it was always trying to be. */
     if(!pv5Spend(2,0,'Hold a fundraising drive',myPurse()))return;
     var raise=Math.round(14*((DIFFS[S.diff]||DIFFS.normal).rev||1)+partyIncome(S,playParty(S)).donors*.5);
-    partyEarn(S,playParty(S),raise);c.field=clamp(c.field+2,0,100);
+    partyEarn(S,playParty(S),raise);c.field=clamp(c.field+2*v22BuildMul(S),0,100);
     S.ind.corruption=c100(S.ind.corruption+1);mood(S,{tech:1,smallbiz:1,labour:-1});
     logIt(S,'The '+PARTY[playParty(S)].short+' raised '+fmc(raise)+' at a national fundraising drive.');
   }else if(action==='field'){
-    if(!pv5Spend(3,5,'Build the ground game',myPurse()))return;c.field=clamp(c.field+12,0,100);S.machine[playParty(S)]=clamp((S.machine[playParty(S)]||0)+.035,-.8,1);logIt(S,'The party opened organisers\' offices across the federation.');
+    if(!pv5Spend(3,5,'Build the ground game',myPurse()))return;c.field=clamp(c.field+12*v22BuildMul(S),0,100);S.machine[playParty(S)]=clamp((S.machine[playParty(S)]||0)+.035,-.8,1);logIt(S,'The party opened organisers\' offices across the federation.');
   }else if(action==='media'){
-    if(!pv5Spend(3,7,'Launch media campaign',myPurse()))return;c.media=clamp(c.media+15,0,100);logIt(S,'A national media campaign went on air.');
+    if(!pv5Spend(3,7,'Launch media campaign',myPurse()))return;c.media=clamp(c.media+15*v22BuildMul(S),0,100);logIt(S,'A national media campaign went on air.');
   }else if(action==='data'){
-    if(!pv5Spend(3,6,'Build voter data',myPurse()))return;c.data=clamp(c.data+12,0,100);S.ind.technology=c100(S.ind.technology+1);logIt(S,'The campaign completed a new national voter file.');
+    if(!pv5Spend(3,6,'Build voter data',myPurse()))return;c.data=clamp(c.data+12*v22BuildMul(S),0,100);S.ind.technology=c100(S.ind.technology+1);logIt(S,'The campaign completed a new national voter file.');
   }else if(action==='debate'){
-    if(!pv5Spend(3,1,'Prepare for debates',myPurse()))return;c.debate=clamp(c.debate+18,0,100);logIt(S,'The leader withdrew for debate preparation.');
+    if(!pv5Spend(3,1,'Prepare for debates',myPurse()))return;c.debate=clamp(c.debate+18*v22BuildMul(S),0,100);logIt(S,'The leader withdrew for debate preparation.');
   }
   c.lastAction=S.turn;render();
 }
@@ -18799,7 +18846,10 @@ function v22TurnoutWhy(st, pid) {
   return out + '. A party at 1.00 turns out an average share of its own vote.';
 }
 function viewCampaign(){
-  var proj=projection(S),next=pv5SessionsToBallot(S),phase=next===null?'Elections suspended':(next<=1?'Ballot campaign':next<=4?'Pre-election campaign':'Between elections');
+  /* S22e: THE TWO STATES, AND THE THIRD LABEL IS GONE. "Between elections"
+     needed a ballot more than four sessions away and the republic votes every
+     second session, so it was printed 0 times in 720 driven sessions. */
+  var proj=projection(S),next=pv5SessionsToBallot(S),phase=next===null?'Elections suspended':(v22Writ(S)?'The writ session':'The quiet session');
   /* S22c: AND HOW MANY OF THEM COME. `partyTurnout` has multiplied every
      party's vote since v5 and no screen in the game printed it, so a player
      polling level and being out-voted had nothing to read. The title says
@@ -18824,7 +18874,7 @@ function viewCampaign(){
       '</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+
       '>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
   var messages=topIssues(S,6).map(function(i){return '<button class="strategy-choice" data-campaign-action="message" data-campaign-id="'+i.id+'" aria-pressed="'+(S.campaign.message===i.id)+'"><b>'+esc(i.name)+'</b><small>Salience '+Math.round(S.salience[i.id])+' · '+esc(i.source)+'</small></button>';}).join('');
-  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise. Turnout multiplies a party\'s vote before the count is shared out, so the gap between two parties is what decides anything and the level is not.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th><th class="num">Turnout</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority, and a campaign there runs on one of the region\'s own three issues. Targets persist through the ballot but draw organisers away from an untargeted national campaign. Running on an issue a region ranks first is worth more than running on the one it ranks third, whatever your record on either.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p><p class="note">'+(next===null?'No ballot is scheduled, so the campaign is worth less than half of what it would be.':(v22Writ(S)?'The writ falls when you end this session. The country is listening, so the campaign you have counts for everything it is worth \u2014 and anything you build now buys less than it would have.':'The country is not listening yet, so what you build this session goes '+Math.round((V22_QUIET_BUILD-1)*100)+' per cent further, and the campaign score is worth '+Math.round(V22_QUIET_POWER*100)+' per cent of what it will be when the writ falls.'))+'</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise. Turnout multiplies a party\'s vote before the count is shared out, so the gap between two parties is what decides anything and the level is not.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th><th class="num">Turnout</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority, and a campaign there runs on one of the region\'s own three issues. Targets persist through the ballot but draw organisers away from an untargeted national campaign. Running on an issue a region ranks first is worth more than running on the one it ranks third, whatever your record on either.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
 }
 function pv5FiscalPanel(){
   var f=S.fiscal,b=budget(S);function options(kind){return Object.keys(PV5_FISCAL[kind]).map(function(id){var q=PV5_FISCAL[kind][id];return '<button class="strategy-choice" data-fiscal-kind="'+kind+'" data-fiscal-id="'+id+'" aria-pressed="'+(f[kind]===id)+'"><b>'+esc(q.name)+'</b><small>'+esc(q.note)+'</small></button>';}).join('');}
@@ -37025,14 +37075,19 @@ var V16_AI_DECK = [
         ' and pitched the campaign there on ' + ISSUE[b.iid].name.toLowerCase() + '.';
     } },
   { id:'campaign', post:['consolidate', 'moderate', 'attack', 'govern', 'exposed'],
-    can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.campaign && pv5SessionsToBallot(st) !== null && pv5SessionsToBallot(st) <= 4; },
+    /* S22e: the four-session window was true on every session the game
+       produces, so the gate asked nothing. What it meant is that a party
+       campaigns where there is a ballot to campaign for. */
+    can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.campaign && pv5SessionsToBallot(st) !== null; },
     run:function (st, pid) {
       partySpend(st, pid, V16_AI_COST.campaign);
       v16Ai(st)[pid].spent = (v16Ai(st)[pid].spent || 0) + V16_AI_COST.campaign;
       /* S22c: AND IT BUYS THE SAME THING THE PLAYER'S OWN BUTTON BUYS. Before
          this line the card spent the purse and moved nothing in the model, so
          the sentence below was the whole of it. */
-      var f22 = v22FieldAdd(st, pid, V22_AI_FIELD);
+      /* S22e: and it goes further in the quiet session, on the same rule the
+         player's own build buttons read. */
+      var f22 = v22FieldAdd(st, pid, V22_AI_FIELD * v22BuildMul(st));
       return 'The ' + PARTY[pid].short + ' took the campaign into the country early, and put ' +
         Math.round(f22) + ' of organisation behind it.';
     } },
