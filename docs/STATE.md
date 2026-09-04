@@ -1282,6 +1282,20 @@ authored already and eaten by a wrapper.
   leg — which reads the live board rather than one it built — was green
   throughout and is what said the constructed ones were lying.
 
+  **AND THE "ONE WRITER" SENTENCE ABOVE WAS NOT TRUE OF THE BUTTONS THEMSELVES**
+  until the S21t harness sent me back to look. Each carried
+  `if (typeof v21CordonTick === 'function') v21CordonTick(S); else S.cordon[pid] = true;`
+  — **a `typeof` fallback that writes the shared field is the same second writer
+  wearing a guard**, and since `v21CordonTick` is a top-level declaration in this
+  file while a button handler runs long after every chunk has evaluated, the
+  branch could not fire and the claim would have been untrue anyway. S21t shipped
+  exactly that shape in the same programme. Both are gone, and grep now says one
+  writer. **And two comments outlived the lines they describe** — the tick's said
+  *"two or more others in deep contempt"* and the lift button's named
+  `v21CordonAgainst`; both are the first build's per-party bar, which this slice
+  measured its way off, where the code asks `v21CordonHolds` for a majority of
+  the Assembly's seats.
+
 - **S21t — an organisation endorses somebody other than you.** `q.endorsement`
   is a BOOLEAN and has meant "endorses the player" since v5, and
   `endorsedTurnout` — the only way an endorsement reaches the ballot — was
