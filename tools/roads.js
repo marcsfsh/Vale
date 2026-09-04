@@ -25417,6 +25417,39 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         authored:2.55 * 2 };
     })();
 
+    /* (b2) AND THE SPAN DOES NOT GROW WITH THE SAMPLE. That is the whole
+       reason it is a tenth-to-ninetieth rather than the lowest draw to the
+       highest: a min-to-max range widens with every extra draw, so it would
+       report the sample size as much as the night. Nothing in the arm could
+       tell the two apart until this leg -- the poison that swapped the
+       percentiles for the ends came back GREEN, because a wider band is still
+       a band and still narrower than the authored window it replaced. */
+    R.stable = (() => {
+      fresh(1234);
+      for (let t = 0; t < 6; t++) step();
+      const keepN = V22_BAND_N;
+      const span = n => {
+        V22_BAND_N = n;
+        UI.bandKey = null; UI.band = null;
+        const b = v22Band(S);
+        if (!b) return null;
+        let tot = 0, k = 0;
+        PARTIES.forEach(p => {
+          if (S.banned[p.id] || !b.vote[p.id]) return;
+          tot += b.vote[p.id].hi - b.vote[p.id].lo; k++;
+        });
+        return k ? tot / k : null;
+      };
+      let at20, at60, at120;
+      try { at20 = span(20); at60 = span(60); at120 = span(120); }
+      finally { V22_BAND_N = keepN; UI.bandKey = null; UI.band = null; }
+      if (at20 === null || at120 === null) return { ran:false };
+      return { ran:true, at20:+at20.toFixed(3), at60:+at60.toFixed(3), at120:+at120.toFixed(3),
+        growth:+(at120 / at20).toFixed(3),
+        /* six times the draws must not widen the band by a quarter */
+        steady:at120 / at20 < 1.25 && at120 / at20 > .8 };
+    })();
+
     /* (c) THE CACHE IS EXACT, not a second clock: it is keyed on the noiseless
        result, which is a deterministic function of every input the noisy draw
        reads. So an unchanged board reuses it and a moved one does not. */
@@ -25476,6 +25509,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     band22.size.ran && band22.size.n > 100 &&
     band22.size.voteP50 > 0 && band22.size.voteP90 < band22.size.authored &&
     band22.size.seatP50 > 0 && band22.size.insideShare > 95 &&
+    band22.stable.ran && band22.stable.steady &&
     band22.cache.ran && band22.cache.holds && band22.cache.moves &&
     band22.page.ran && !band22.page.threw && band22.page.header &&
     band22.page.cells === band22.page.parties && band22.page.allRanges &&
@@ -25492,7 +25526,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `draws move a party by ${band22.size.seatP50} seats of a 1,305-seat chamber at the median and ` +
     `${band22.size.seatP90} at the ninetieth · THE POINT ESTIMATE SITS INSIDE ITS OWN BAND on ` +
     `${band22.size.insideShare} per cent of them, because a band that does not contain the number beside it ` +
-    `is two clocks for one fact · A FORECAST DOES NOT SPEND THE CAMPAIGN'S DICE (${band22.dice.held}): ` +
+    `is two clocks for one fact · AND THE SPAN DOES NOT GROW WITH THE SAMPLE, which is the whole reason it is ` +
+    `a tenth-to-ninetieth rather than the lowest draw to the highest: at twenty draws it is ` +
+    `${band22.stable.at20} points, at sixty ${band22.stable.at60} and at a hundred and twenty ` +
+    `${band22.stable.at120}, a growth of ${band22.stable.growth} across six times the sample. The poison ` +
+    `that swapped the percentiles for the ends came back GREEN before this leg, because a wider band is ` +
+    `still a band and still narrower than the authored window it replaced · A FORECAST DOES NOT SPEND THE CAMPAIGN'S DICE (${band22.dice.held}): ` +
     `\`rand()\` rides \`S\` and \`v6Sandbox\` swaps \`S\` for a clone, so the draws advance the clone's stream ` +
     `and leave the campaign's at ${band22.dice.before}. AND TWO UNCACHED SAMPLINGS OF ONE BOARD ARE THE SAME ` +
     `BAND (${band22.dice.sameBoardSameBand}), which is the opposite of what the first version of this leg ` +
