@@ -739,7 +739,10 @@ var V19_TEMPER_AXIS = {
      `bill` is combative. It is not the dealer's card -- nothing is offered and
      nobody is asked -- and it is chamber work rather than country work, which
      is what `organiser` means here. */
-  work:'combative'
+  work:'combative',
+  /* S21t: courting an organisation until it puts its name to yours is the
+     ORGANISER's whole art -- it is `court` and `campaign` aimed at one body. */
+  endorse:'organiser'
 };
 var V19_TEMPER = .6;
 /* R2: WHAT KIND OF PARTY THIS IS, in its own words. Derived from the authored
@@ -12174,15 +12177,91 @@ function machineOf(st, pid) {
   return clamp((st.machine && st.machine[pid]) || 0, -.8, 1) * V15_MACHINE_GAIN;
 }
 
+/* ============================================================
+   S21t — AN ORGANISATION ENDORSES SOMEBODY OTHER THAN YOU
+   ============================================================
+   The owner: *"Eight named national organisations exist in a seven-party
+   republic and six of the parties can never be endorsed by any of them."*
+
+   `q.endorsement` is a BOOLEAN and it has meant "endorses the player" since
+   v5, and `endorsedTurnout` was called from inside `partyTurnout`'s
+   `pid === playParty(st)` branch -- so the eight organisations were a shop the
+   player alone could enter, and nobody else in the republic could be endorsed
+   at all. Measured over 480 driven sessions at `ruthless`: NO organisation
+   endorsed anybody on any of them, because the only door is the player's own
+   button. Meanwhile `q.relation` sits at a median of 59.8 and 2,254 of 3,840
+   group-sessions are at or above the 58 the player's purchase needs, so the
+   door was open the whole time and had nobody on the other side.
+
+   ONE FIELD, ONE MIRROR, ONE WRITER. `q.endorsedBy` owns the fact now and the
+   boolean is its mirror, written in the same statement -- S17g's pattern,
+   where the legacy scalar still mirrors the list so that nothing downstream
+   had to move. Two clocks for one fact is this file's own warning, so there is
+   exactly one writer and every site goes through it, and the reader migrates a
+   save written before this slice rather than reading a field that is not
+   there.
+
+   AND THE CLAIMANT IS COMPARATIVE, NOT A BAR. Who speaks for a constituency is
+   `affOf` -- the same door `v21CrowdCore` gates the street on and the same
+   reading `endorsedTurnout` itself already counts through -- and an
+   organisation backs whoever speaks for its bloc best. Measured, the
+   best-placed party in an organisation's own bloc is an ENGINE on 3,506 of
+   3,840 readings (91.3%) across five different parties, and it is above nought
+   on every single one. So no threshold was picked by eye: there is nothing to
+   pick. */
+function v21EndorseSet(st, gid, pid) {
+  var q = st.interests && st.interests[gid];
+  if (!q) return null;
+  q.endorsedBy = pid || null;
+  q.endorsement = !!pid && pid === playParty(st);
+  return q.endorsedBy;
+}
+function v21EndorsedBy(st, gid) {
+  var q = st.interests && st.interests[gid];
+  if (!q) return null;
+  /* a save from before this slice carries the boolean and no id */
+  if (q.endorsedBy === undefined) return q.endorsement ? playParty(st) : null;
+  return q.endorsedBy || null;
+}
+/* how well a party speaks for the bloc an organisation organises: its own
+   affinity, plus the standing S21j's courting writes. Both are readings the
+   game already turns on. */
+function v21EndorseWorth(st, g, pid) {
+  if (!g || !pid || typeof affOf !== 'function') return -99;
+  var v = affOf(st, pid, g.bloc);
+  if (typeof v21Lean === 'function') v += v21Lean(st, pid, g.bloc);
+  return v;
+}
+function v21EndorseBest(st, g) {
+  var best = null, bv = -99;
+  PARTIES.forEach(function (p) {
+    if (st.banned[p.id]) return;
+    var v = v21EndorseWorth(st, g, p.id);
+    if (v > bv) { bv = v; best = p.id; }
+  });
+  /* AND THERE IS NO FLOOR HERE. A `bv > 0` refusal stood on this line and its
+     poison came back green: measured over 3,840 readings, the best-placed party
+     is above nought on EVERY one, so "no party speaks for this bloc at all" is
+     a board this game does not produce. Nought does bite, in the WITHDRAWAL
+     below, where it asks about the party that actually holds the endorsement --
+     and that one is asserted and reddens. */
+  return best ? { id:best, worth:bv } : null;
+}
+
 /* an endorsement turns its own members out, in proportion to how much of that
    bloc the party can claim in the first place. Guarded because PV5_INTERESTS is
-   a v5 table and this is v4 code. */
+   a v5 table and this is v4 code.
+   S21t: and it counts the organisations backing THIS party rather than the ones
+   backing the player, which is what it was always written to mean. */
 function endorsedTurnout(st, pid) {
   if (typeof PV5_INTERESTS === 'undefined' || !st.interests) return 0;
   var v = 0;
   PV5_INTERESTS.forEach(function (g) {
     var q = st.interests[g.id];
-    if (!q || !q.endorsement) return;
+    if (!q) return;
+    var by = (typeof v21EndorsedBy === 'function') ? v21EndorsedBy(st, g.id)
+      : (q.endorsement ? playParty(st) : null);
+    if (by !== pid) return;
     v += Math.max(0, affOf(st, pid, g.bloc)) * ((q.influence || 50) / 100) * .17;
   });
   return v;
@@ -12194,8 +12273,14 @@ function partyTurnout(st, pid) {
     v += ((st.unity === undefined ? 60 : st.unity) - 60) / 130;
     var c = st.campaign;
     if (c) v += Math.min(100, c.field || 0) / 330 + Math.min(100, c.data || 0) / 660;
-    v += endorsedTurnout(st, pid);
   }
+  /* S21t: OUT OF THE PLAYER-ONLY BRANCH. The unity, the field and the data are
+     the player's own campaign machinery and stay where they are; an
+     endorsement is a fact about an organisation and belongs to whoever holds
+     it. Worth measuring: all eight are 0.245 of `endorsedTurnout` to a party,
+     which is 0.113 of the multiplier at `V15_TURNOUT_GAIN` -- uncapped, since
+     an engine's turnout sits at 1.047 against a ceiling of 1.34. */
+  v += endorsedTurnout(st, pid);
   var out = clamp(1 + v * V15_TURNOUT_GAIN, V15_TURNOUT_SPAN[0], V15_TURNOUT_SPAN[1]);
   /* S17n: and the three statutes about whether people vote. Compulsory Voting
      did not touch turnout; it is the whole of what the card promises. Applied
@@ -12254,7 +12339,13 @@ function v15CampaignSeats(st) {
     if (typeof PV5_INTERESTS === 'undefined' || !st.interests) return;
     PV5_INTERESTS.forEach(function (g) {
       var q = st.interests[g.id]; if (!q) return;
-      q.endorsement = false; q.relation = 50; q.influence = 50;
+      /* S21t: THROUGH THE ONE WRITER, or this readout under-reports its own
+         channel. Taking the endorsement away by clearing the MIRROR leaves
+         `q.endorsedBy` standing, and `endorsedTurnout` -- which is how an
+         endorsement reaches the ballot at all -- reads the field, so the
+         seats it buys stayed in the count on both sides of the difference
+         and the Campaign page printed a smaller number than the truth. */
+      v21EndorseSet(st, g.id, null); q.relation = 50; q.influence = 50;
     });
   });
   out.total = out.machine + out.money + out.campaign + out.caucus + out.orgs;
@@ -17434,7 +17525,7 @@ function pv5EnsureState(st, fresh) {
   });
   st.interests=st.interests||{};
   PV5_INTERESTS.forEach(function(g){
-    if(!st.interests[g.id]) st.interests[g.id]={relation:clamp((st.blocs[g.bloc]||50)+affOf(st,playParty(st),g.bloc)*12,18,82),influence:g.base,access:0,endorsement:false,lastMet:-99,demand:null};
+    if(!st.interests[g.id]) st.interests[g.id]={relation:clamp((st.blocs[g.bloc]||50)+affOf(st,playParty(st),g.bloc)*12,18,82),influence:g.base,access:0,endorsement:false,endorsedBy:null,lastMet:-99,demand:null};
   });
   /* S17e: THE AGREEMENT IS A DOCUMENT, AND EVERY SIGNATORY IS IN IT.
      The seed returned early for the ruling party, so the head of government
@@ -17695,7 +17786,21 @@ function pv5InterestTick(st){
     var q=st.interests[g.id],target=(st.blocs[g.bloc]||50)+affOf(st,playParty(st),g.bloc)*9+(q.access||0)*.25;
     q.relation=c100(q.relation+(target-q.relation)*.08);
     q.access=Math.max(0,(q.access||0)-1.2);
-    if(q.endorsement&&q.relation<42){q.endorsement=false;logIt(st,g.name+' withdrew its endorsement.');}
+    /* S21t: THE ONE THAT WITHDRAWS IT IS THE ONE THAT HOLDS IT. This asked
+       `q.endorsement` -- the player's mirror -- so an organisation backing
+       anybody else could never take it back. The player's own road stays as it
+       was, a relationship gone cold; and for anybody, an organisation drops a
+       party that no longer speaks for its bloc at all, which is `affOf` above
+       nought, the same line `v21CrowdCore` gates the street on. */
+    var eby=(typeof v21EndorsedBy==='function')?v21EndorsedBy(st,g.id):(q.endorsement?playParty(st):null);
+    if(eby){
+      var cold=(eby===playParty(st)&&q.relation<42);
+      var mute=(typeof v21EndorseWorth==='function'&&v21EndorseWorth(st,g,eby)<=0);
+      if(cold||mute){
+        v21EndorseSet(st,g.id,null);
+        logIt(st,g.name+' withdrew its endorsement of the '+(PARTY[eby]?PARTY[eby].short:eby)+'.');
+      }
+    }
   });
   if(st.inbox.length<5&&st.turn%3===0&&rand()<.62){
     var g=PV5_INTERESTS.slice().sort(function(a,b){return st.interests[b.id].influence-st.interests[a.id].influence;})[Math.floor(rand()*3)];
@@ -17776,7 +17881,18 @@ runElection=function(st,early){
   st.campaign.history.unshift({turn:st.turn,share:share,seats:r.seats[me]||0,power:before});if(st.campaign.history.length>12)st.campaign.history.length=12;
   st.campaign.field*=.58;st.campaign.media*=.36;st.campaign.data*=.72;st.campaign.debate=0;
   REGIONS.forEach(function(reg){st.campaign.targets[reg.id]=Math.max(0,Math.floor((st.campaign.targets[reg.id]||0)/2));});
-  PV5_INTERESTS.forEach(function(g){if(st.interests[g.id])st.interests[g.id].endorsement=false;});
+  /* S21t: THROUGH THE ONE WRITER, AND IT IS THE PLAYER'S CLOCK. This wrote
+     `q.endorsement=false` directly. Since `endorsedBy` owns the fact, that
+     left the field standing while the mirror went false, so the player's
+     endorsement was cleared in the half of the pair the ballot reads and NOT
+     in the half the panel, the turnout and the objective read -- two clocks
+     for one fact, in the slice whose own note says there is one writer. The
+     v5 rule it implements is about the player's purchase (the mirror has meant
+     "endorses the player" since v5), so it clears the player's and leaves an
+     organisation's standing choice to the per-session withdrawal above, which
+     is party-aware and asks the right question every session rather than every
+     ballot. */
+  PV5_INTERESTS.forEach(function(g){if(st.interests[g.id]&&v21EndorsedBy(st,g.id)===playParty(st))v21EndorseSet(st,g.id,null);});
   st.v5Stats.campaigns++;return r;
 };
 /* S15f: every party is paid its own income at the close of every session,
@@ -18165,9 +18281,9 @@ function pv5InterestAction(id,action){
   }else if(action==='access'){
     if(!pv5Spend(3,3,'Grant access to '+g.name,myPurse()))return;q.relation=c100(q.relation+14);q.access+=10;S.ind.corruption=c100(S.ind.corruption+2);logIt(S,g.name+' was given formal access to the policy process.');
   }else if(action==='endorse'){
-    if(q.relation<58){flash('The relationship is not strong enough for an endorsement.');return;}if(!pv5Spend(3,5,'Seek endorsement from '+g.name,myPurse()))return;q.endorsement=true;q.relation-=5;S.v5Stats.endorsements++;logIt(S,g.name+' endorsed the '+PARTY[playParty(S)].short+'.');
+    if(q.relation<58){flash('The relationship is not strong enough for an endorsement.');return;}if(!pv5Spend(3,5,'Seek endorsement from '+g.name,myPurse()))return;var was=(typeof v21EndorsedBy==='function')?v21EndorsedBy(S,g.id):null;v21EndorseSet(S,g.id,playParty(S));q.relation-=5;S.v5Stats.endorsements++;logIt(S,g.name+(was&&was!==playParty(S)?' switched from the '+(PARTY[was]?PARTY[was].short:was)+' and endorsed the ':' endorsed the ')+PARTY[playParty(S)].short+'.');
   }else if(action==='distance'){
-    if(!pv5Spend(1,0,'Distance the government from '+g.name))return;q.relation=c100(q.relation-13);q.access=0;q.endorsement=false;S.ind.corruption=c100(S.ind.corruption-2);mood(S,{prof:2});logIt(S,'The government closed privileged access for '+g.name+'.');
+    if(!pv5Spend(1,0,'Distance the government from '+g.name))return;q.relation=c100(q.relation-13);q.access=0;if(v21EndorsedBy(S,g.id)===playParty(S))v21EndorseSet(S,g.id,null);S.ind.corruption=c100(S.ind.corruption-2);mood(S,{prof:2});logIt(S,'The government closed privileged access for '+g.name+'.');
   }
   render();
 }
@@ -18374,7 +18490,7 @@ var pv5ViewHousesV4=viewHouses;
 viewHouses=function(){var html=pv5ViewHousesV4();return html.replace('<div class="grid"><div>','<div class="grid"><div>'+pv5CommitteePanel());};
 
 function viewInterests(){
-  var cards=PV5_INTERESTS.map(function(g){var q=S.interests[g.id],d=q.demand;return '<article class="interest-card"><div class="influence-ring" style="--value:'+Math.round(q.influence)+'"><span>'+Math.round(q.influence)+'</span></div><div class="eyebrow">'+esc(g.kind)+'</div><h3>'+esc(g.name)+'</h3><p>'+esc(g.note)+'</p><div class="statusline"><strong>Relationship '+Math.round(q.relation)+'</strong><span>Access '+Math.round(q.access||0)+'</span></div><div class="meter '+(q.relation<35?'bad':(q.relation>65?'good':''))+'"><i style="width:'+Math.round(q.relation)+'%"></i></div><div class="tagline"><span class="tag">'+esc(BLOC[g.bloc].name)+'</span>'+(q.endorsement?'<span class="endorsement">◆ Endorsed</span>':'')+(d&&POL[d.policy]?'<span class="tag down">Demand: '+esc(POL[d.policy].name)+'</span>':'')+'</div><div class="btnrow"><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="meet">Meet <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="access">Grant access <span class="c">'+cst(3)+', '+fmc(3)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="endorse"'+(q.relation<58?' disabled':'')+'>Seek endorsement <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="distance">Close access <span class="c">'+cst(1)+'</span></button></div></article>';}).join('');
+  var cards=PV5_INTERESTS.map(function(g){var q=S.interests[g.id],d=q.demand;return '<article class="interest-card"><div class="influence-ring" style="--value:'+Math.round(q.influence)+'"><span>'+Math.round(q.influence)+'</span></div><div class="eyebrow">'+esc(g.kind)+'</div><h3>'+esc(g.name)+'</h3><p>'+esc(g.note)+'</p><div class="statusline"><strong>Relationship '+Math.round(q.relation)+'</strong><span>Access '+Math.round(q.access||0)+'</span></div><div class="meter '+(q.relation<35?'bad':(q.relation>65?'good':''))+'"><i style="width:'+Math.round(q.relation)+'%"></i></div><div class="tagline"><span class="tag">'+esc(BLOC[g.bloc].name)+'</span>'+(function(){var by=(typeof v21EndorsedBy==='function')?v21EndorsedBy(S,g.id):(q.endorsement?playParty(S):null);if(!by)return '';return '<span class="endorsement"'+(by===playParty(S)?'':' style="color:'+(PARTY[by]?PARTY[by].color:'inherit')+'"')+'>◆ Endorsing '+(by===playParty(S)?'you':(PARTY[by]?PARTY[by].short:by))+'</span>';})()+(d&&POL[d.policy]?'<span class="tag down">Demand: '+esc(POL[d.policy].name)+'</span>':'')+'</div><div class="btnrow"><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="meet">Meet <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="access">Grant access <span class="c">'+cst(3)+', '+fmc(3)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="endorse"'+(q.relation<58?' disabled':'')+'>Seek endorsement <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-interest="'+g.id+'" data-interest-action="distance">Close access <span class="c">'+cst(1)+'</span></button></div></article>';}).join('');
   var influence=PV5_INTERESTS.reduce(function(n,g){return n+S.interests[g.id].influence;},0),endorsed=PV5_INTERESTS.filter(function(g){return S.interests[g.id].endorsement;}).length;
   return '<div class="command-deck"><div class="eyebrow">Organised society</div><div class="brief-head"><div><h2>Votes Are Counted. Influence Is Negotiated.</h2><p>Eight permanent organisations now pursue their own access, policy demands and endorsements. Their relationship feeds the public bloc they organise; their endorsement feeds the campaign.</p></div><div class="headline"><div class="eyebrow">Balance of influence</div><b>'+influence+' combined influence</b><span>'+endorsed+' current endorsement'+(endorsed===1?'':'s')+' · integrity '+Math.round(100-S.ind.corruption)+'</span></div></div></div><div class="grid"><div><div class="panel"><h2>National Organisations</h2><div class="interest-grid">'+cards+'</div></div></div><div>'+issuePanel()+'</div></div>';
 }
@@ -34636,17 +34752,31 @@ policyCost = function (id, dir) {
    rather than a receipt. */
 var v11RunElectionBase = runElection;
 runElection = function (st, early) {
-  var held = {};
+  /* S21t: AND IT GOES THROUGH THE ONE WRITER TOO. Both halves read and wrote
+     `q.endorsement`, the mirror, so between the clear inside the base and the
+     restore out here the player's endorsement lived in the mirror alone and
+     `v21EndorsedBy` -- which the panel, the turnout and the objective all read
+     -- went on naming the player after it had lapsed. This is the PLAYER's
+     clock and stays one: `q.relation` is the organisation's standing with the
+     player and with nobody else, so the two-ballot rule and the cold-relation
+     rule are both about a purchase. The SNAPSHOT asks the field rather than
+     the mirror for consistency and not for behaviour -- the two agree by the
+     invariant `one field, one mirror, one writer` asserts, and a poison that
+     puts the mirror back comes up green for that reason; what the poisons
+     catch is the two WRITES. An organisation's own standing choice ends where
+     S21t put it, in the per-session withdrawal above, which asks
+     the same question of an engine, every session rather than every ballot. */
+  var held = {}, me = playParty(st);
   PV5_INTERESTS.forEach(function (g) {
-    var q = st.interests && st.interests[g.id];
-    if (q && q.endorsement) held[g.id] = (q.ballots || 0) + 1;
+    var q = st.interests && st.interests[g.id]; if (!q) return;
+    if (v21EndorsedBy(st, g.id) === me) held[g.id] = (q.ballots || 0) + 1;
   });
   var r = v11RunElectionBase(st, early);
   PV5_INTERESTS.forEach(function (g) {
     var q = st.interests && st.interests[g.id]; if (!q) return;
     if (held[g.id] === undefined) return;
-    if (held[g.id] >= 2 || q.relation < 42) { q.endorsement = false; q.ballots = 0; return; }
-    q.endorsement = true; q.ballots = held[g.id];
+    if (held[g.id] >= 2 || q.relation < 42) { q.ballots = 0; return; }
+    v21EndorseSet(st, g.id, me); q.ballots = held[g.id];
   });
   return r;
 };
@@ -35618,6 +35748,10 @@ var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
      per bill and per scope the player pays. Pressing the same bill twice costs
      what it costs the player to press it twice. */
   work:10,
+  /* S21t: an endorsement is bought with access, meetings and a season of
+     courting one organisation -- `court` at 36 is the same work aimed at a
+     whole bloc, so this is under it. */
+  endorse:30,
   /* S21n: holding a coalition together. The player pays 3 capital and 2 money
      for a council and 4 and 2 to reopen an agreement; on the engines' own
      scale that sits with `bargain` and `pact`, which are the other cards about
@@ -36748,6 +36882,32 @@ var V16_AI_DECK = [
       return 'The ' + PARTY[pid].short + ' and the ' + PARTY[t.to].short +
         ' traded benches on ' + t.offer.giveTitle + ' and ' + t.offer.askTitle + '.';
     } },
+  /* S21t — AND AN ORGANISATION ENDORSES SOMEBODY OTHER THAN YOU.
+
+     Measured over 480 driven sessions: NO organisation endorsed anybody on any
+     of them, because the only door was the player's own button and
+     `endorsedTurnout` was called from inside `partyTurnout`'s player-only
+     branch. The best-placed party in an organisation's own bloc is an ENGINE
+     on 3,506 of 3,840 readings (91.3%), across five different parties, so there
+     was a natural claimant for almost every organisation and no way for it to
+     ask. */
+  { id:'endorse', post:['organise', 'campaign', 'consolidate', 'moderate', 'hold'],
+    post2:['govern', 'exposed'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.endorse) return false;
+      return v21EndorseOpen(st, pid);
+    },
+    run:function (st, pid) {
+      var e = v21EndorseFor(st, pid); if (!e) return null;
+      var was = v21EndorsedBy(st, e.gid);
+      v21EndorseSet(st, e.gid, pid);
+      v16AiPay(st, pid, V16_AI_COST.endorse);
+      if (was && was !== pid && typeof v16Resent === 'function') v16Resent(st, was, pid, 8);
+      return e.name + (was && was !== pid
+        ? ' switched its endorsement from the ' + (PARTY[was] ? PARTY[was].short : was) + ' to the '
+        : ' endorsed the ') + PARTY[pid].short + '.';
+    } },
   /* S21r — AND A PARTY FIGHTS FOR THE BILL IT LAID.
 
      Measured over 360 driven sessions at `ruthless`: 133 bills laid, 244 of
@@ -37071,7 +37231,11 @@ var V19_GOALS = [
          above `floor` at .8, which only declares, and below `bill` at 1, which
          is how a statute gets onto the paper in the first place. Measured, 247
          of 280 bills laid in 360 driven sessions are thrown out. */
-      work:.9 }
+      work:.9,
+      /* S21t: an endorsement makes the statutes its own bloc wants cheaper,
+         which is a road to a statute -- a slow one, and only for the bloc it
+         speaks for. */
+      endorse:.3 }
   },
   {
     id:'office',
@@ -37249,7 +37413,10 @@ var V19_GOALS = [
       trade:.15,
       /* S21r: and neither is a division lobby. Working the benches moves
          `partyRel` and faction loyalty, not a bloc. */
-      work:.1 }
+      work:.1,
+      /* S21t: THE AIM IT SERVES SQUAREST. `ground` is standing with a bloc, and
+         an organisation putting its name to yours is that in one act. */
+      endorse:1 }
   },
   {
     id:'build',
@@ -37282,7 +37449,9 @@ var V19_GOALS = [
          `st.factions` -- the party's organisation in the sense that matters to
          a division and to turnout, though not `st.machine`, which is what this
          aim actually counts. */
-      work:.3 }
+      work:.3,
+      /* S21t: an endorsement turns a bloc out; it does not build the party. */
+      endorse:.35 }
   },
   {
     id:'charter',
@@ -37701,6 +37870,20 @@ var V19_RIVAL_WORTH = {
   /* S21q: a trade is made WITH a party, not against one -- the same reading as
      `pact` and `bargain`, which are the file's other two agreements. */
   trade:    0,
+  /* S21t: an endorsement is a CONSTITUENCY, not a party -- the same reading as
+     `crowd` and `street`, which take the leadership of a movement and are
+     nought for the same reason. The switching path exists (`v21EndorseSet`
+     records who held it and books the grievance on the party it was taken
+     from) and the player's own Seek button reaches it, but an ENGINE only
+     claims an organisation it is the best-placed claimant for, and the
+     best-placed claimant is stable once it has claimed one. MEASURED over
+     1,440 driven sessions on twelve seeds: the card fires 42 times and NOUGHT
+     of the 42 take an endorsement off another party -- every one is a free
+     claim on an unheld organisation. A card that is never addressed to a rival
+     is not worth anything against one, and the entry is written down at nought
+     rather than left out, so the coverage guard can tell "asked and answered"
+     from "forgotten". */
+  endorse:  0,
   /* S21r: working the votes on the bill you laid is `bill`'s follow-through and
      it happens in the same arena as `floor` -- the division. It is placed BELOW
      both: `bill` (.50) puts a new contest on the order paper where there was
@@ -37957,6 +38140,17 @@ function v19Flight(st, pid) {
     if (!side) return;
     u += side * v21BillEdge(st, b) * v21Price('trade');
   });
+  /* S21t — AND THE ORGANISATIONS BACKING THIS PARTY. `endorsedTurnout` is
+     exactly what an endorsement is worth to a party at the ballot, in the
+     game's own units, so the term is the channel's own reading rather than a
+     second currency. It is read as a share of the turnout the game itself
+     allows to be bought -- `V15_TURNOUT_SPAN`'s own ceiling above 1 -- so
+     there is no constant picked here either. */
+  if (typeof endorsedTurnout === 'function' && typeof V15_TURNOUT_GAIN !== 'undefined') {
+    var eg21 = endorsedTurnout(st, pid) * V15_TURNOUT_GAIN;
+    var ec21 = Math.max(.01, V15_TURNOUT_SPAN[1] - 1);
+    u += clamp(eg21 / ec21, 0, 1) * v21Price('endorse');
+  }
   /* S21p — AND A MOVEMENT THIS PARTY IS AT THE HEAD OF. In flight in exactly
      this function's sense: organised, not yet settled, and worth what is behind
      it. The quality is the pressure against the bar at which the country stops
@@ -43491,6 +43685,41 @@ function v21TradePick(st, pid) {
     if (u > bestU) { bestU = u; best = { to:p.id, offer:offer }; }
   });
   return best;
+}
+/* S21t — WHICH ORGANISATION, ASKED THROUGH THE OBJECTIVE. Only one this party
+   is the best-placed claimant for, and only one it does not already hold, and
+   only where the rehearsal says it is worth having. */
+function v21EndorseFor(st, pid) {
+  if (!st || !pid || typeof PV5_INTERESTS === 'undefined' || !st.interests) return null;
+  if (typeof v19Try !== 'function') return null;
+  var before;
+  try { before = v19Standing(st, pid); } catch (e) { return null; }
+  var best = null, bestU = -Infinity;
+  PV5_INTERESTS.forEach(function (g) {
+    /* AND IT DOES NOT NEED A SKIP FOR ONE IT ALREADY HOLDS. That refusal stood
+       here and came back green under its own poison, because the rehearsal
+       below already answers it: setting an endorsement a party already has
+       changes nothing, so `u` equals `before` and the floor drops it. One
+       predicate, and it is the objective's. */
+    var top = v21EndorseBest(st, g);
+    if (!top || top.id !== pid) return;
+    var out = v19Try(st, function (cl) { v21EndorseSet(cl, g.id, pid); });
+    if (!out) return;
+    var u;
+    try { u = v19Standing(out, pid); } catch (e) { return; }
+    if (!isFinite(u) || u <= before) return;
+    if (u > bestU) { bestU = u; best = { gid:g.id, name:g.name, worth:top.worth }; }
+  });
+  return best;
+}
+/* and the cheap half, for `can` */
+function v21EndorseOpen(st, pid) {
+  if (!st || !pid || typeof PV5_INTERESTS === 'undefined' || !st.interests) return false;
+  return PV5_INTERESTS.some(function (g) {
+    if (v21EndorsedBy(st, g.id) === pid) return false;
+    var top = v21EndorseBest(st, g);
+    return !!top && top.id === pid;
+  });
 }
 function v21CrowdCore(st, pid) {
   var s = st && st.street;

@@ -50,9 +50,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped twenty slices: S21a–s and S21v.** The original twelve are
-complete; S21m through S21r are the first six of the owner's eight-behaviour
-extension, and S21t and S21u remain. **S21v and S21s are
+**S21 has shipped twenty-one slices: S21a–t and S21v.** The original twelve are
+complete; S21m through S21t are the first seven of the owner's eight-behaviour
+extension, and S21u alone remains. **S21v and S21s are
 out of order on purpose**: the owner interrupted mid-programme with a save and
 two reports from a live game, a build they are playing takes precedence over the
 queue, and the election-night swing they asked to have back turned out to be
@@ -1238,6 +1238,169 @@ authored already and eaten by a wrapper.
   `leads(S)` guard, one line above the article. It read the article as
   toothless. Two boards now, with the chair READ at the moment of the call
   rather than assumed.
+
+- **S21t — an organisation endorses somebody other than you.** `q.endorsement`
+  is a BOOLEAN and has meant "endorses the player" since v5, and
+  `endorsedTurnout` — the only way an endorsement reaches the ballot — was
+  called from inside `partyTurnout`'s `pid === playParty(st)` branch. **Eight
+  named national organisations in a seven-party republic, and six of the parties
+  could never be endorsed by any of them.** Measured over 480 driven sessions at
+  `ruthless`: no organisation endorsed anybody on any of them, because the only
+  door was the player's own button — and the door was open the whole time, with
+  `q.relation` at a median of **59.8** and **2,254 of 3,840** group-sessions at
+  or above the 58 that purchase needs. There was simply nobody on the other side
+  of it. And a claimant was waiting for almost every one: the best-placed party
+  in an organisation's own bloc is an engine on **3,506 of 3,840 readings
+  (91.3%)**, across five different parties, and above nought on every reading.
+  **ONE FIELD, ONE MIRROR, ONE WRITER.** `q.endorsedBy` owns the fact and the
+  boolean is its mirror, written in the same statement — S17g's pattern. *Two
+  clocks for one fact* is this file's own warning, so there is exactly one
+  writer, every site goes through it, and the reader **migrates a save written
+  before this slice** rather than reading a field that is not there.
+  **The claimant is comparative, not a bar** — an organisation backs whoever
+  speaks for its bloc best, on `affOf`, so no threshold was picked by eye; the
+  one absolute is nought, which is this file's own line for *speaks for this
+  constituency at all*. **The one that withdraws it is now the one that holds
+  it**: the old line asked `q.endorsement`, the player's mirror, so an
+  organisation backing anybody else could never take it back. And the term is in
+  the channel's own units — a share of the turnout the game itself allows to be
+  bought — so no constant is picked there either: all eight are worth **0.113 of
+  the turnout multiplier** against an engine's resting 1.047 and a ceiling of
+  1.34. Driven over 480 sessions the card fires **23 times across five parties**,
+  takes **all eight organisations** at least once, and **2.56 of them hold an
+  endorsement in an average session** against a maximum of seven — where it was
+  nought of eight, always.
+
+  **AND THE SENTENCE ABOVE ABOUT ONE WRITER WAS NOT TRUE OF THREE SITES, which
+  the full harness read and the slice's own note did not.** *A comment asserting
+  what a line does is not a reading of the line*, arriving in the slice that
+  wrote the comment.
+
+  **The election clock was the worst of them, and it is two clocks for one fact
+  in the slice built to avoid exactly that.** `runElection`'s v5 wrapper cleared
+  `q.endorsement` — the *mirror* — for every organisation, and S11's wrapper
+  around it snapshotted the same boolean and wrote it back if the endorsement
+  had held fewer than two ballots. Since `q.endorsedBy` owns the fact, **the
+  player's endorsement lapsed in the half the ballot reads and stood forever in
+  the half the panel, `endorsedTurnout` and the objective read**: constructed and
+  driven through the game's own `runElection`, after the second ballot the pair
+  read `by: "lp"` with `mirror: false`, the Interests page still printing
+  *Endorsing you* on an endorsement the rule had just ended. It reads
+  `by: null` now.
+
+  **And the v5 clear is the player's clock, which is why it is not widened.** The
+  first repair took both halves through the writer for everybody and measured
+  what that costs: engine-held group-sessions **1,066 → 84** over 720 driven
+  sessions and the longest holding **44 ballots → 1**, because this republic
+  holds an election every second session and *survives one ballot, lapses at the
+  second* is four sessions. That is not the rule this slice wrote: `q.relation`
+  is the organisation's standing with the **player** and with nobody else, and an
+  organisation's own standing choice ends in the per-session withdrawal, which is
+  party-aware and asks `v21EndorseWorth` every session rather than every ballot.
+  The clear asks who holds it and clears the player's, through the writer; the
+  engine road re-measures at 1,066 and 44, identical to before.
+
+  **And the Campaign page under-reported its own channel.** `v15CampaignSeats`
+  prints what each channel is worth in seats by removing it and re-reading the
+  projection, and it removed the organisations by clearing the mirror — so
+  `endorsedTurnout`, which reads the field, kept counting them on **both** sides
+  of the difference. **And `endorsedAt` was written twice and read by nothing**
+  in four megabytes: `st.court.size` at the size of one field, deleted rather
+  than left to rot.
+
+  **And the probe was wrong before the game was, again.**
+  `the campaign and the organisations are worth seats` grants every organisation
+  an endorsement by writing the boolean, so since this slice it was granting one
+  the turnout cannot see: the orgs leg read **+43** against a bar of 50 where the
+  game's own road gives **+79**. It writes through `v21EndorseSet` now and reads
+  +79 on this build and **+79 on the build before the slice** — nothing the
+  player buys is worth less than it was, measured rather than asserted.
+
+  **And the twentieth card needed a line in three more places.** `endorse` fell
+  through the `moved` chain's final `: false`, so it was driven, paid for, logged
+  and marked as moving nothing; and `DECK` — the constant S21r added *so that a
+  new card is written down once* — was still 19. One slice after the rule was
+  written down, and the tripwire caught it exactly as intended — **and then a
+  fourth time, on the same guard S21r's own record praises**: `endorse` had no
+  weight in `V19_RIVAL_WORTH`, so *"an organisation endorses somebody other than
+  you"* scored nought against the party standing in your way, silently. It is
+  **nought now, and measured rather than assumed**: over 1,440 driven sessions
+  on twelve seeds the card fires 42 times and **nought of the 42 take an
+  endorsement off another party** — every one is a free claim on an unheld
+  organisation, because an engine only claims an organisation it is the
+  best-placed claimant for and that claimant is stable once it has claimed one.
+  So it reads as `crowd` and `street` do: a constituency, not a party. Written
+  down at nought rather than left out, so the guard can tell *asked and
+  answered* from *forgotten*.
+
+  **AND THE FULL RUN FOUND A THIRD ARM MEASURING A COIN, which makes five in
+  two slices.** `a party does not wait for the season` failed on two clauses of
+  one leg, and both are sample, not mechanism. `bar.deliberateN > 100` read
+  **91** where the build before this slice reads 110 — and every count in that
+  block moved with it (rises 539 → 457, ambient 415 → 352, all within a point
+  of the same **−15%**), which is a card mix moving the whole drive. The arm's
+  own budget leg already records the size of that effect: a per-seed spread of
+  **−10.3% to +15.0%** on the initiative count, measured after *"three builds
+  were rewritten chasing single samples from that band"*. The floor is 60 now —
+  below the lowest reading a legitimate re-phase produces, and still a real
+  floor, because the share gated beside it has a standard error of .063 at that
+  sample and its bar is 2.7 of them away.
+
+  And `bar.bar < bar.medianRise` is **an integer compared strictly with an
+  integer**: 10 < 11 before the slice and 10 < 10 on it, the median of ninety-odd
+  discrete rises clustered on 9, 10 and 11, moved one place by a card mix that
+  left the population alone — **mean 11.56 → 11.27, minimum 9 on both**. It says
+  the same thing as the share (more than half of deliberate acts clearing the bar
+  *is* the median sitting above it), and the share can be sized against its own
+  error where a median cannot. So the share comes back — **the fourth time it has
+  been written here, and the first at a value taken from the standard error
+  rather than from the reading**: .85 on a reading of .902, .8 on .798, .7 on
+  .693, each a hair under the number it measured, each lasting one slice. At
+  n=91 and p=.571 the standard error is .052, so **.40** is three to four of them
+  below both readings. The two conditions either side are *tightened* rather than
+  loosened, because both had enormous headroom: the bar is 10 against an ambient
+  median of 1.8, and the ambient clears it on nought of 352 and nought of 415.
+  Poisoned at 1 and at 40 — the bar too low for the ambient to miss and too high
+  for a deliberate act to reach — and **red both ways**.
+
+  **AND A FOURTH ARM WAS NOT PINNED AT ALL, which is how three of its four
+  routing conditions came to be checking an empty set.** `whose desk it lands
+  on` compares the two chairs *"over the SAME fixed stream"* — and it set
+  `rngState` on the way **out** of `v6NewGame`, which fixes the dice from that
+  point and fixes nothing about the chamber they were rolled into, because
+  `mintSeed` reads `Date.now()`. Two consecutive runs of the same build read
+  lead/opp/ledFor at **26/47/47** and at **20/1/0**: in the first the
+  "opposition" player was led-for on every question it was asked — not an
+  opposition run at all — so `notMine.length === 0` and `nationalAsked === 0`,
+  both about a player *out* of office, had nothing to check, and the gate that
+  reddened (`lead > opp`) was comparing two runs rather than two chairs.
+
+  `SEED_OVERRIDE` is set before every `v6NewGame` in the arm now, and two runs
+  give the identical reading. **What is gated is per question, pooled over both
+  runs**: six arrive while the player is out of office and none is about an
+  office their party does not hold; seven arrive to a leader and *are* about a
+  department they do not hold, which is `v17Decides` giving the head of
+  government everything. Poisoned both ways — everybody decides everything, and
+  a leader is asked only its own — **red both times**. This is S18c's rule and
+  `mintSeed`'s, arriving together in one leg.
+
+  **AND THE ASSERTION THAT SHOULD HAVE CAUGHT ALL OF IT EXISTED AND WAS GREEN,
+  because it was reading the derived side.** `an endorsement buys three things
+  and survives its ballot` drives the game's own `runElection` and asks whether
+  the endorsement lapses at the second — and it grants the endorsement by
+  writing `q.endorsement`, so it kept measuring the mirror, which is the half
+  that still worked. It writes through `v21EndorseSet` now, and arm T gains the
+  two legs it did not have: **both halves of the pair at both ballots** (either
+  write alone is a defect — put the clear back on the mirror and the second
+  ballot leaves `by` naming the player; put the restore back on it and the
+  *first* ballot leaves `by` null under a true mirror), and **the readout
+  against the projection**, which prints 75 against a truth of 75 where the
+  mirror kill printed less. **Four poisons from the diff, all four red.** The
+  `endorsedAt` deletion has none, because removing a field no line reads is
+  justified by the grep and not by an assertion; and the clock's *snapshot* half
+  reads the field for consistency rather than behaviour — it agrees with the
+  mirror by the invariant leg (a) asserts, so its poison is green and the
+  comment says so rather than pretending otherwise.
 
 - **S21r — a party fights for the bill it laid.** `v17FloorWhy` refuses a
   line on a bill you sponsored — correctly, and since S17 — so

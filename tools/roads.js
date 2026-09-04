@@ -78,7 +78,7 @@ const PICK = `window.pick = function (list, id, pred, what) {
    keeping (a deck that changes should say so) but it belongs in one place;
    what CATCHES an unpriced or unweighted card is derived from the deck and
    sits in the arms themselves. */
-const DECK = 19;
+const DECK = 20;
 let fail = 0;
 const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(34) + detail); };
 
@@ -1955,7 +1955,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     const usable = PV5_INTERESTS.filter(g => { const v = pv5BlocTargetV4(S, BLOC[g.bloc]); return v > 5 && v < 95; });
     out.usableBlocs = usable.length;
     const g0 = usable[0], q = S.interests[g0.id];
-    q.endorsement = false;
+    /* S21t: THROUGH THE GAME'S OWN WRITER. `q.endorsement` is the MIRROR of
+       `q.endorsedBy` since S21t, and this block's ballot leg below RUNS THE
+       GAME'S OWN `runElection` -- which since that slice reads the field. A
+       probe that sets the boolean grants an endorsement the election clock
+       cannot see, so the leg went on measuring the half that still worked and
+       was GREEN across the slice that broke the other half. It is the fifth
+       stale probe in this programme and the sharpest: the assertion existed
+       and was testing the derived side. */
+    const setEnd = (gid, pid) => {
+      if (typeof v21EndorseSet === 'function') v21EndorseSet(S, gid, pid);
+      else S.interests[gid].endorsement = !!pid;
+    };
+    setEnd(g0.id, null);
     const b0 = S.blocs[g0.bloc], before = v11RelationTarget(S, g0);
     S.blocs[g0.bloc] = clamp(b0 + 35, 0, 100);
     out.blocDoesNotDriveRelation = Math.abs(v11RelationTarget(S, g0) - before) < 1e-9;
@@ -1975,11 +1987,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        for. It was worth six tenths of one per cent of the vote and was
        cleared for every group at every election. */
     const noEnd = blocTarget(S, BLOC[g0.bloc]);
-    q.endorsement = true;
+    setEnd(g0.id, me);
     out.endMobilises = blocTarget(S, BLOC[g0.bloc]) - noEnd > .5;
     const pol = POLICIES.filter(x => x.mood && (x.mood[g0.bloc] || 0) > 0)[0];
-    q.endorsement = false; const pc0 = pol ? policyCost(pol.id, 1) : 0;
-    q.endorsement = true; const pc1 = pol ? policyCost(pol.id, 1) : 0;
+    setEnd(g0.id, null); const pc0 = pol ? policyCost(pol.id, 1) : 0;
+    setEnd(g0.id, me); const pc1 = pol ? policyCost(pol.id, 1) : 0;
     out.endCheapens = pol ? pc1 < pc0 : false;
     q.relation = 70; q.ballots = 0;
     runElection(S, false);
@@ -1992,11 +2004,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        rides on top of the S11c regional term, so what it is worth in SEATS is
        reported rather than asserted loosely. */
     const seats = () => ((projection(S) || {}).seats || {})[me] || 0;
-    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 50; S.interests[g.id].endorsement = false; });
+    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 50; setEnd(g.id, null); });
     const mid = seats(), fMid = regionPartyFactor(S, me);
-    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 92; S.interests[g.id].endorsement = true; });
+    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 92; setEnd(g.id, me); });
     const close = seats(), fClose = regionPartyFactor(S, me);
-    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 8; S.interests[g.id].endorsement = false; });
+    PV5_INTERESTS.forEach(g => { S.interests[g.id].relation = 8; setEnd(g.id, null); });
     const shut = seats(), fShut = regionPartyFactor(S, me);
     out.regionSeats = { close:close - mid, shutOut:mid - shut };
     out.regionMoves = fClose > fMid && fMid > fShut;
@@ -3539,6 +3551,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       psupport: JSON.parse(JSON.stringify(S.psupport || {}))
     };
     const seats = () => ((projection(S) || {}).seats || {})[me] || 0;
+    /* S21t: THROUGH THE GAME'S OWN WRITER. `q.endorsement` is the MIRROR and
+       `q.endorsedBy` owns the fact since S21t, so a probe that writes the
+       boolean grants an endorsement `endorsedTurnout` cannot see -- the orgs
+       leg read +43 where the game's own road gives +79, and this arm went red
+       on the probe rather than on the game. The legacy mirror is still written
+       where the writer does not exist, so the block runs against an older
+       build to prove it reddens. */
+    const setEnd = (gid, pid) => {
+      if (typeof v21EndorseSet === 'function') v21EndorseSet(S, gid, pid);
+      else S.interests[gid].endorsement = !!pid;
+    };
     const settle = () => { for (let i = 0; i < 20; i++) updatePartySupport(S); };
     const neutral = () => {
       PARTIES.forEach(p => { S.machine[p.id] = 0; S.funding[p.id] = 0; if (S.press) S.press[p.id] = 0; });
@@ -3546,7 +3569,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const c = S.campaign;
       c.field = 0; c.media = 0; c.data = 0; c.debate = 0; c.message = null;
       REGIONS.forEach(r => { c.targets[r.id] = 0; });
-      PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = false; q.relation = 50; q.influence = 50; });
+      PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; setEnd(g.id, null); q.relation = 50; q.influence = 50; });
       PARTIES.forEach(p => (S.factions[p.id] || []).forEach(f => { f.loyalty = 55; }));
       S.purse[me] = 0;
       settle();
@@ -3562,7 +3585,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     neutral(); fullDeck(); settle(); out.campaign = seats() - base;
     /* the ceiling, asked honestly: the dearest campaign anyone can buy -- the
        whole deck AND every organisation endorsing -- against what is carried */
-    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = true; q.influence = 100; });
+    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; setEnd(g.id, me); q.influence = 100; });
     /* degrade rather than throw on a build without them, so this whole block
        can be run against HEAD to prove it reddens */
     out.raw = typeof pv5CampaignRaw === 'function' ? Math.round(pv5CampaignRaw(S) * 100) / 100 : 18.34;
@@ -3573,12 +3596,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     neutral(); (S.factions[me] || []).forEach(f => { f.loyalty = 0; }); S.unity = 20; settle();
     out.caucusLow = seats() - base;
     neutral();
-    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = true; q.relation = 100; q.influence = 100; });
+    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; setEnd(g.id, me); q.relation = 100; q.influence = 100; });
     settle(); out.orgs = seats() - base;
     neutral(); S.funding[me] = .35; settle(); out.money = seats() - base;
     neutral(); S.machine[me] = 1; S.funding[me] = .35; fullDeck();
     (S.factions[me] || []).forEach(f => { f.loyalty = 100; });
-    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; q.endorsement = true; q.relation = 100; q.influence = 100; });
+    PV5_INTERESTS.forEach(g => { const q = S.interests[g.id]; setEnd(g.id, me); q.relation = 100; q.influence = 100; });
     settle(); out.all = seats() - base;
     out.base = base;
 
@@ -4392,7 +4415,13 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
            moves it the other way and a signed total could cancel. */
         pull:S.bills.reduce(function (n, b) {
           return n + Object.keys(b.pull || {}).reduce(function (m, k) {
-            return m + Math.abs(b.pull[k] || 0); }, 0); }, 0)
+            return m + Math.abs(b.pull[k] || 0); }, 0); }, 0),
+        /* S21t's twentieth card puts an organisation's name behind a party.
+           `v21EndorseSet` is the one body that writes it, and what it writes is
+           read back through `v21EndorsedBy` rather than off `q.endorsement`,
+           which is the OLD boolean and means "endorses the player". */
+        endorsed:PV5_INTERESTS.filter(function (g) {
+          return v21EndorsedBy(S, g.id) === pid; }).length
       };
       if (!c.can(S, pid)) { cardFails.push(c.id + ': can() false on a state built for it'); return; }
       const line = c.run(S, pid);
@@ -4457,6 +4486,15 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         : c.id === 'work' ? S.bills.reduce(function (n, b) {
             return n + Object.keys(b.pull || {}).reduce(function (m, k) {
               return m + Math.abs(b.pull[k] || 0); }, 0); }, 0) > before.pull
+        /* S21t: THE TWENTIETH, AND THE SAME MISS ONE SLICE LATER. S21r's own
+           record says a card added to the deck needs a line in BOTH places and
+           S21t wrote one of them, so `endorse` was driven, paid for, logged and
+           marked as moving nothing by the chain's final `: false`. What it
+           moves is which organisations stand behind THIS party -- counted, not
+           read as a boolean, because switching one away from another party is
+           the case the card exists for. */
+        : c.id === 'endorse' ? PV5_INTERESTS.filter(function (g) {
+            return v21EndorsedBy(S, g.id) === pid; }).length > before.endorsed
         : c.id === 'street' ? (before.hadDemand &&
             (!(S.street || {}).demand ||
              !!(S.street.demand.answered) ||
@@ -5419,6 +5457,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
     /* 2. THE ROUTING, over forty sessions from each chair. */
     function run(pid, turns) {
+      /* S21t: pinned, for the reason written out at `sessions` below */
+      SEED_OVERRIDE = 20260827;
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
       S.playAs = pid;
       var asked = 0, offices = {};
@@ -5444,6 +5484,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        the split falls out of each party's own blocs. */
     var strike = EVENTS.filter(function (x) { return x.id === 'strike'; })[0];
     function decideAs(rul) {
+      SEED_OVERRIDE = 20260827;
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
       S.playAs = 'lp'; S.ruling = rul; S.capital = 200; S.treasury = 3000;
       var pick = v17AiDecide(S, strike);
@@ -5453,6 +5494,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
     /* 4. DECIDING SPENDS NO LIVE DICE. The choices are weighed on sandboxed
        clones, so the stream the campaign rides must be exactly where it was. */
+    SEED_OVERRIDE = 20260827;
     S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
     S.playAs = 'lp'; S.capital = 200; S.treasury = 3000;
     var rngBefore = S.rngState;
@@ -5470,6 +5512,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        asked everything, the opposition only its own, and if the routing is not
        wired the two numbers are equal. */
     function sessions(pid, n) {
+      /* S21t: AND THE REPUBLIC IS PINNED, NOT JUST THE STREAM. This set
+         `rngState` on the way OUT of `v6NewGame`, which fixes the dice from
+         that point and fixes nothing about the board they were rolled into --
+         `mintSeed` reads `Date.now()` deliberately, so every run built a
+         different chamber. Two consecutive runs of the SAME build read
+         lead/opp/ledFor at 26/47/47 and at 20/1/0: in the first the
+         "opposition" player was led-for on every question it was asked, and in
+         the second it was asked one. This file's own rule, and the whole point
+         of the leg is that the two chairs are compared over one fixed
+         stream. */
+      SEED_OVERRIDE = 20260827;
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
       S.playAs = pid; S.capital = 300; S.treasury = 4000; S.rngState = 20260827;
       var got = [], rq = runQueue;
@@ -5499,8 +5552,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return got;
     }
     var asLead = sessions('fp', 45), asOpp = sessions('lp', 45);
+    /* S21t: AND THE TWO NUMBERS ARE REPORTED, NOT COMPARED. `lead > opp` was
+       the gate and it is a comparison between two RUNS, in a probe whose own
+       comment three lines up says forty-five sessions contain ballots that move
+       the player between chairs. On this build the opposition run's player is
+       led-for on 47 of its 47 questions -- it is not an opposition run at all --
+       so the comparison read 26 against 47 and reddened, and worse, the three
+       conditions beside it (`notMine`, `nationalAsked`, both about a player OUT
+       of office) were VACUOUS: there were no such questions to check. A gate
+       that can be satisfied by an empty set is the trap this file calls "a
+       probe that drives far enough for something else to do the job".
+       WHAT DISCRIMINATES IS PER QUESTION AND NOT PER RUN, pooled over both:
+       there must BE questions to a player out of office (or the two conditions
+       below check nothing), and the head of government must be asked about a
+       department it does NOT hold (which is the whole of `v17Decides` giving
+       the leader everything). Unwire the routing and the second goes to nought
+       while `notMine` fills up; neither depends on which chair a ballot
+       produces. */
+    var all = asLead.concat(asOpp);
     R.wired = {
       lead:asLead.length, opp:asOpp.length,
+      outAsked:all.filter(function (c) { return !c.leads; }).length,
+      inOfficeNotMine:all.filter(function (c) {
+        return c.leads && c.office !== 'national' && c.holder !== c.me; }).length,
       /* asked WHILE OUT OF OFFICE about an office this party does not hold */
       notMine:asOpp.filter(function (c) { return !c.leads && c.office !== 'national' && c.holder !== c.me; })
         .map(function (c) { return c.id + ':' + c.office; }).slice(0, 4),
@@ -5528,7 +5602,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     desk.opp.asked > 0 && desk.opp.governed > 0 &&
     desk.opp.offices.length === 1 && desk.opp.offices[0] === 'vchan' && desk.opp.holds &&
     distinctGov >= 2 && desk.rngUnmoved && !desk.endTurnErr &&
-    desk.wired.lead > 0 && desk.wired.lead > desk.wired.opp &&
+    desk.wired.lead > 0 && desk.wired.opp > 0 &&
+    desk.wired.outAsked > 0 && desk.wired.inOfficeNotMine > 0 &&
     desk.wired.notMine.length === 0 && desk.wired.nationalAsked === 0 &&
     desk.digest.renders && desk.digest.namesTheOffice && desk.digest.namesTheChoice &&
     desk.digestSilentWhenNothing;
@@ -5542,13 +5617,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${distinctGov} ways (${Object.keys(desk.byGovernment).map(k => k + ': ' + desk.byGovernment[k]).join(' · ')}), ` +
     `which falls out of each party's own blocs rather than a table · weighing the choices spends no live dice ` +
     `(${desk.rngUnmoved}) and the digest is silent when the player decided everything themselves · and the routing is ` +
-    `WIRED: forty-five real sessions closed on one fixed stream put ${desk.wired.lead} questions to the head of ` +
-    `government and ${desk.wired.opp} to an opposition player, none of them about an office that player's party does ` +
-    `not hold WHILE THEY SAT IN OPPOSITION -- forty-five sessions contain ballots, and ${desk.wired.ledFor} of the ` +
+    `WIRED, AND ASKED PER QUESTION RATHER THAN PER RUN: of the ${desk.wired.lead + desk.wired.opp} questions two ` +
+    `forty-five-session runs produce, ${desk.wired.outAsked} arrive while the player is OUT of office and none of ` +
+    `them is about an office that player's party does not hold, while ${desk.wired.inOfficeNotMine} arrive to a ` +
+    `player who LEADS and are about a department they do not hold -- which is `+"\`v17Decides\`"+` giving the head ` +
+    `of government everything. THE GATE USED TO BE ${'`'}lead > opp${'`'}, a comparison between two runs: ` +
+    `${desk.wired.lead} against ${desk.wired.opp} here, and the opposition run's player was led-for on ` +
+    `${desk.wired.ledFor} of its ${desk.wired.opp} questions -- it was not an opposition run, so the two ` +
+    `conditions beside it were checking an empty set · forty-five sessions contain ballots, and ${desk.wired.ledFor} of the ` +
     `second run's questions arrived after one had put that player IN office, where the head of government is asked ` +
     `everything and an event about somebody else's department is the rule working. Seating the chair once and ` +
     `reading it as fixed is S18c's own defect, and it was invisible here until S21s gave the night its dice back ` +
-    `-- and with the routing unwired the two numbers are the same` +
+    `-- and with the routing unwired the count of questions a leader is asked about somebody ELSE's department ` +
+    `goes to nought while the leaked list below fills up` +
     (desk.wired.notMine.length ? ' (LEAKED: ' + desk.wired.notMine.join(', ') + ')' : '') +
     (desk.endTurnErr ? ' · endTurn threw: ' + desk.endTurnErr : ''));
 
@@ -11337,6 +11418,558 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${JSON.stringify(whip.play.scopes)}), ${whip.play.onOwn} of them on the party's OWN bill, and the ` +
     `sponsor's benches are pulled on ${whip.play.sponsorPull} bill-sessions of ${whip.play.billSessions} -- ` +
     `every one of them TOWARD the bill (${whip.play.towards === whip.play.sponsorPull})`);
+
+  /* ==========================================================
+     S21t — AN ORGANISATION ENDORSES SOMEBODY OTHER THAN YOU
+     ==========================================================
+     `q.endorsement` is a boolean meaning "endorses the player", and
+     `endorsedTurnout` was called from inside `partyTurnout`'s
+     `pid === playParty(st)` branch -- so eight named organisations were a shop
+     the player alone could enter and nobody else in the republic could be
+     endorsed at all. */
+  const endo = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      if (level) S.aiLevel = level;
+      S.rngState = seed;
+      return S;
+    }
+    function step() { UI.queue = []; UI.busy = false; try { endTurn(); } catch (e) { return false; } UI.queue = []; UI.busy = false; return true; }
+    function board(seed, level) {
+      fresh(seed, level);
+      for (let t = 0; t < 6; t++) step();
+      S.purse = S.purse || {};
+      PARTIES.forEach(p => { S.purse[p.id] = 400; });
+      S.capital = 400;
+      PV5_INTERESTS.forEach(g => v21EndorseSet(S, g.id, null));
+      return PV5_INTERESTS[0];
+    }
+
+    /* (a) ONE FIELD, ONE MIRROR, ONE WRITER -- and a save from before the
+       slice reads back as the player's, which is what the boolean meant. */
+    R.store = (() => {
+      const g = board(4242, 'ruthless');
+      const me = playParty(S);
+      const eng = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      v21EndorseSet(S, g.id, eng);
+      const asEngine = { by:v21EndorsedBy(S, g.id), mirror:S.interests[g.id].endorsement };
+      v21EndorseSet(S, g.id, me);
+      const asPlayer = { by:v21EndorsedBy(S, g.id), mirror:S.interests[g.id].endorsement };
+      v21EndorseSet(S, g.id, null);
+      const cleared = { by:v21EndorsedBy(S, g.id), mirror:S.interests[g.id].endorsement };
+      /* the old shape: a boolean and no id at all */
+      delete S.interests[g.id].endorsedBy;
+      S.interests[g.id].endorsement = true;
+      const legacy = v21EndorsedBy(S, g.id);
+      v21EndorseSet(S, g.id, null);
+      return { ran:true, asEngine:asEngine, asPlayer:asPlayer, cleared:cleared, legacy:legacy,
+        engineHoldsItWithoutTheMirror: asEngine.by === eng && asEngine.mirror === false,
+        theMirrorIsThePlayers: asPlayer.by === me && asPlayer.mirror === true,
+        clearsBoth: cleared.by === null && cleared.mirror === false,
+        anOldSaveReadsAsThePlayers: legacy === me };
+    })();
+
+    /* (b) AND THE TURNOUT IT FEEDS IS THE HOLDER'S. `endorsedTurnout` counted
+       the organisations backing the PLAYER whoever it was asked about, and
+       `partyTurnout` only asked for the player at all. */
+    R.turnout = (() => {
+      const g = board(90210, 'ruthless');
+      const me = playParty(S);
+      const eng = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      const before = { eng:+endorsedTurnout(S, eng).toFixed(4), me:+endorsedTurnout(S, me).toFixed(4) };
+      const tBefore = +partyTurnout(S, eng).toFixed(5);
+      PV5_INTERESTS.forEach(x => v21EndorseSet(S, x.id, eng));
+      const after = { eng:+endorsedTurnout(S, eng).toFixed(4), me:+endorsedTurnout(S, me).toFixed(4) };
+      const tAfter = +partyTurnout(S, eng).toFixed(5);
+      PV5_INTERESTS.forEach(x => v21EndorseSet(S, x.id, null));
+      return { ran:true, before:before, after:after, tBefore:tBefore, tAfter:tAfter,
+        gain:+(tAfter - tBefore).toFixed(5),
+        theHoldersOwn: before.eng === 0 && after.eng > 0 && after.me === 0,
+        andItReachesTheBallot: tAfter > tBefore };
+    })();
+
+    /* (c) THE CLAIMANT IS COMPARATIVE, NOT A BAR: whoever speaks for the bloc
+       best, on the reading `endorsedTurnout` itself counts through and
+       `v21CrowdCore` already gates the street on. */
+    R.claimant = (() => {
+      const g = board(7, 'ruthless');
+      const top = v21EndorseBest(S, g);
+      if (!top) return { ran:false };
+      const worths = {};
+      PARTIES.forEach(p => { if (!S.banned[p.id]) worths[p.id] = +v21EndorseWorth(S, g, p.id).toFixed(3); });
+      const best = Object.keys(worths).sort((a, b) => worths[b] - worths[a])[0];
+      return { ran:true, worths:worths, top:top.id,
+        namesTheBest: top.id === best,
+        aboveNought: top.worth > 0 };
+    })();
+
+    /* (d) AND THE ONE THAT WITHDRAWS IT IS THE ONE THAT HOLDS IT. This asked
+       the PLAYER's mirror, so an organisation backing anybody else could never
+       take it back. */
+    R.withdraw = (() => {
+      const g = board(31337, 'ruthless');
+      const me = playParty(S);
+      /* A HOLDER THE BOARD ITSELF PUTS BELOW NOUGHT, rather than a position
+         edited by hand: `affOf` is a reading of where a party stands against a
+         bloc, and on any real board some party is on the wrong side of every
+         organisation. Taking one the game already produced keeps this a
+         statement about the game. */
+      const mute = PARTIES.filter(p => !S.banned[p.id] && v21EndorseWorth(S, g, p.id) <= 0)[0];
+      let engGone = 'no party below nought on this board';
+      if (mute) {
+        v21EndorseSet(S, g.id, mute.id);
+        pv5InterestTick(S);
+        engGone = v21EndorsedBy(S, g.id);
+      }
+      /* and the player's own road, a relationship gone cold */
+      v21EndorseSet(S, g.id, me);
+      S.interests[g.id].relation = 20;
+      pv5InterestTick(S);
+      const meGone = v21EndorsedBy(S, g.id);
+      /* while a warm one is kept */
+      v21EndorseSet(S, g.id, me);
+      S.interests[g.id].relation = 80;
+      pv5InterestTick(S);
+      const meKept = v21EndorsedBy(S, g.id);
+      v21EndorseSet(S, g.id, null);
+      return { ran:!!mute, mute:mute && mute.id, engGone:engGone, meGone:meGone, meKept:meKept,
+        dropsAHolderItNoLongerSpeaksFor: engGone === null,
+        dropsAColdPlayer: meGone === null,
+        keepsAWarmOne: meKept === me };
+    })();
+
+    /* (e) AND IT CAN BE TAKEN OFF SOMEBODY. The whole point of the slice from
+       the player's side is that an organisation they are not watching can go
+       to somebody else -- and that the party it left minds. */
+    R.taken = (() => {
+      const g = board(555, 'ruthless');
+      const me = playParty(S);
+      const top = v21EndorseBest(S, g);
+      if (!top) return { ran:false };
+      const loser = PARTIES.filter(p => p.id !== top.id && !S.banned[p.id])[0].id;
+      v21EndorseSet(S, g.id, loser);
+      const card = V16_AI_DECK.filter(c => c.id === 'endorse')[0];
+      if (!card) return { ran:false, why:'no card' };
+      const grudge0 = (typeof v21Regard === 'function') ? v21Regard(S, loser, top.id) : null;
+      const said = card.can(S, top.id) ? card.run(S, top.id) : null;
+      const grudge1 = (typeof v21Regard === 'function') ? v21Regard(S, loser, top.id) : null;
+      const now = v21EndorsedBy(S, g.id);
+      v21EndorseSet(S, g.id, null);
+      return { ran:true, said:said && said.slice(0, 70), now:now, top:top.id, loser:loser,
+        grudge0:grudge0, grudge1:grudge1,
+        switchesHands: now === top.id,
+        andTheLoserMinds: grudge0 !== null && grudge1 !== null && grudge1 < grudge0 };
+    })();
+
+    /* (f) WHICH ORGANISATION IS THE OBJECTIVE'S, and it does not court one it
+       already holds. */
+    R.pick = (() => {
+      const g = board(8080, 'ruthless');
+      const top = v21EndorseBest(S, g);
+      if (!top) return { ran:false };
+      const first = v21EndorseFor(S, top.id);
+      /* hand it every organisation it could claim and there is nothing left */
+      PV5_INTERESTS.forEach(x => {
+        const t = v21EndorseBest(S, x);
+        if (t && t.id === top.id) v21EndorseSet(S, x.id, top.id);
+      });
+      const after = v21EndorseFor(S, top.id);
+      const open = v21EndorseOpen(S, top.id);
+      PV5_INTERESTS.forEach(x => v21EndorseSet(S, x.id, null));
+      return { ran:true, first:first && first.gid, after:after, open:open,
+        findsOne: !!first,
+        notOneItHolds: after === null && open === false };
+    })();
+
+    /* (f2) AND THE PLAYER'S OWN KIT GOES THROUGH THE SAME WRITER AND SAYS THE
+       SAME THING. Every gate in this harness calls a function and a player
+       presses a button: the panel has to name who is holding each endorsement,
+       the Seek button has to take one off whoever holds it, and Close access
+       has to give it up -- all three through `v21EndorseSet`, so the player's
+       half cannot drift from the engines'. */
+    R.player = (() => {
+      const g = board(606, 'ruthless');
+      const me = playParty(S);
+      const eng = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      v21EndorseSet(S, g.id, eng);
+      let held = '';
+      try { held = typeof viewInterests === "function" ? viewInterests() : ''; } catch (e) { held = 'threw'; }
+      const namesTheHolder = held.indexOf('Endorsing ' + (PARTY[eng] || {}).short) >= 0;
+      /* the button: the relationship is warm enough and the purse can pay */
+      S.interests[g.id].relation = 80;
+      S.capital = 400;
+      if (S.purse) S.purse[me] = 400;
+      S.treasury = 400;
+      let took = null, threw = null;
+      try { pv5InterestAction(g.id, 'endorse'); } catch (e) { threw = String(e).slice(0, 60); }
+      took = v21EndorsedBy(S, g.id);
+      let mine = '';
+      try { mine = typeof viewInterests === "function" ? viewInterests() : ''; } catch (e) { }
+      const namesYou = mine.indexOf('Endorsing you') >= 0;
+      /* and closing access gives it up */
+      S.capital = 400;
+      try { pv5InterestAction(g.id, 'distance'); } catch (e) { }
+      const after = v21EndorsedBy(S, g.id);
+      v21EndorseSet(S, g.id, null);
+      return { ran:true, threw:threw, held:(PARTY[eng] || {}).short, took:took, after:after,
+        namesTheHolder:namesTheHolder, namesYou:namesYou,
+        theButtonTakesIt: took === me,
+        closingGivesItUp: after === null };
+    })();
+
+    /* (f3) AND THE COURTING S21j WRITES IS PART OF SPEAKING FOR A BLOC. A first
+       version asked only that `v21EndorseBest` names the party with the highest
+       `v21EndorseWorth` -- which is the same function on both sides, so
+       dropping `v21Lean` from the worth left it green. The wiring is asserted
+       here instead: court a party through the game's own `v21Court` and the
+       worth has to move by exactly what the lean moved. */
+    R.lean = (() => {
+      const g = board(13, 'ruthless');
+      const eng = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      if (typeof v21Court !== 'function' || typeof v21Lean !== 'function') return { ran:false };
+      const w0 = v21EndorseWorth(S, g, eng), l0 = v21Lean(S, eng, g.bloc);
+      for (let i = 0; i < 8; i++) v21Court(S, eng, g.bloc, V21_LEAN_GAIN);
+      const w1 = v21EndorseWorth(S, g, eng), l1 = v21Lean(S, eng, g.bloc);
+      return { ran:true, w0:+w0.toFixed(4), w1:+w1.toFixed(4),
+        l0:+l0.toFixed(4), l1:+l1.toFixed(4),
+        leanMoved: (l1 - l0) > 1e-6,
+        andTheWorthMovedWithIt: Math.abs((w1 - w0) - (l1 - l0)) < 1e-9 && (w1 - w0) > 1e-6 };
+    })();
+
+    /* (f4) AND THE PICK IS THE BEST ORGANISATION THE OBJECTIVE WANTS. Two
+       poisons -- replacing the rehearsal with a rule of thumb, and taking the
+       first claimable organisation rather than the best -- came back green
+       against legs that asked only whether the picker found ONE. Third slice in
+       a row: a filter is asserted by a property of what the code CHOSE,
+       measured against every candidate it could have chosen through the game's
+       own functions. */
+    R.chooses = (() => {
+      const out = { readings:0, multi:0, cands:0, picks:0, nulls:0, violations:0, first:null };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337].forEach(sd => {
+          fresh(sd, 'ruthless');
+          for (let t = 0; t < 40; t++) {
+            if (!step()) break;
+            PARTIES.forEach(q => {
+              const pid = q.id;
+              if (S.banned[pid]) return;
+              let before;
+              try { before = v19Standing(S, pid); } catch (e) { return; }
+              const cands = [];
+              PV5_INTERESTS.forEach(g => {
+                const top = v21EndorseBest(S, g);
+                if (!top || top.id !== pid) return;
+                let u = null;
+                try {
+                  const cl = v19Try(S, c => { v21EndorseSet(c, g.id, pid); });
+                  if (cl) u = v19Standing(cl, pid);
+                } catch (e) { return; }
+                if (u === null || !isFinite(u)) return;
+                cands.push({ gid:g.id, u:u, ok:u > before });
+              });
+              if (!cands.length) return;
+              out.readings++; out.cands += cands.length;
+              if (cands.length > 1) out.multi++;
+              const passing = cands.filter(c => c.ok).sort((x, y) => y.u - x.u);
+              let e = null;
+              try { e = v21EndorseFor(S, pid); }
+              catch (err) { out.violations++; if (!out.first) out.first = 'the picker threw'; return; }
+              if (!e) {
+                out.nulls++;
+                if (passing.length) {
+                  out.violations++;
+                  if (!out.first) out.first = 'courted nobody where ' + passing.length + ' would have paid';
+                }
+                return;
+              }
+              out.picks++;
+              const chose = cands.filter(c => c.gid === e.gid)[0];
+              if (!chose || !chose.ok) {
+                out.violations++;
+                if (!out.first) out.first = 'courted ' + e.gid + ', which is not a candidate that pays';
+              } else if (passing.length && Math.abs(chose.u - passing[0].u) > 1e-6) {
+                out.violations++;
+                if (!out.first) out.first = 'courted ' + chose.gid + ' at ' + chose.u.toFixed(2) +
+                  ' over ' + passing[0].gid + ' at ' + passing[0].u.toFixed(2);
+              }
+            });
+          }
+        });
+      } catch (e) { out.threw = String(e).slice(0, 80); }
+      finally { runQueue = rq; }
+      out.bestThatPays = out.violations === 0 && out.readings > 20 &&
+        out.multi > 3 && out.picks > 5;
+      return out;
+    })();
+
+    /* (f5) AND THE TERM IS READ AGAINST THE TURNOUT THE GAME ALLOWS TO BE
+       BOUGHT, so eight organisations are worth more than one. A denominator
+       small enough saturates the clamp and one is worth all eight, which its
+       own poison found. */
+    R.worth = (() => {
+      const g = board(99, 'ruthless');
+      const eng = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      const base = v19Standing(S, eng);
+      v21EndorseSet(S, g.id, eng);
+      const one = v19Standing(S, eng);
+      PV5_INTERESTS.forEach(x => v21EndorseSet(S, x.id, eng));
+      const all = v19Standing(S, eng);
+      PV5_INTERESTS.forEach(x => v21EndorseSet(S, x.id, null));
+      return { ran:true, one:+(one - base).toFixed(5), all:+(all - base).toFixed(5),
+        oneIsWorthSomething: (one - base) > 1e-9,
+        eightAreWorthMore: (all - base) > (one - base) * 1.5 };
+    })();
+
+    /* (f6) AND THE CARD IS PAID FOR. */
+    R.pays = (() => {
+      const g = board(2024, 'ruthless');
+      const card = V16_AI_DECK.filter(c => c.id === 'endorse')[0];
+      if (!card) return { ran:false };
+      const top = v21EndorseBest(S, g);
+      const who = top ? top.id : PARTIES.filter(p => p.id !== playParty(S))[0].id;
+      const p0 = partyPurse(S, who);
+      let said = null;
+      try { said = card.can(S, who) ? card.run(S, who) : null; } catch (e) { }
+      const spent = p0 - partyPurse(S, who);
+      PV5_INTERESTS.forEach(x => v21EndorseSet(S, x.id, null));
+      return { ran:!!said, spent:spent, owed:V16_AI_COST.endorse,
+        paysTheCard: spent === V16_AI_COST.endorse };
+    })();
+
+    /* (g) R2: the floor never draws it. */
+    R.floorShut = (() => {
+      const g = board(4242, 'instinct');
+      const card = V16_AI_DECK.filter(c => c.id === 'endorse')[0];
+      if (!card) return { ran:false };
+      const eng = PARTIES.filter(p => p.id !== playParty(S))[0].id;
+      const top = v21EndorseBest(S, g);
+      const who = top ? top.id : eng;
+      let lo = null, hi = null;
+      try { lo = card.can(S, who); } catch (e) { lo = 'threw'; }
+      S.aiLevel = 'shrewd';
+      try { hi = card.can(S, who); } catch (e) { hi = 'threw'; }
+      return { ran:true, lo:lo, hi:hi, shut: lo === false && hi === true };
+    })();
+
+    /* (h) AND THE AIMS SAY WHAT THEY THINK OF IT, read through `v19Score`
+       where the table is consulted rather than off the fire rate. */
+    R.aims = (() => {
+      board(4242, 'ruthless');
+      const card = V16_AI_DECK.filter(c => c.id === 'endorse')[0];
+      const eng = PARTIES.filter(p => p.id !== 'lp' && !S.banned[p.id])[0].id;
+      const a = v16Ai(S)[eng];
+      if (!card || !a) return { ran:false };
+      const at = (kind) => {
+        a.goal = { kind:kind, ref:null, since:S.turn };
+        try { return +v19Score(S, eng, card, a.goal, { foe:null, foeAt:0 }).toFixed(4); }
+        catch (e) { return null; }
+      };
+      const ground = at('ground'), build = at('build'), carry = at('carry');
+      return { ran:true, ground:ground, build:build, carry:carry,
+        isGround: ground !== null && build !== null && carry !== null &&
+          ground > build + 1e-9 && build > carry + 1e-9 };
+    })();
+
+    /* (i) DRIVEN: the layer exists in play at all, which it did not. */
+    R.play = (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'endorse')[0];
+      const out = { runs:0, byParty:{}, groups:{}, heldMean:0, none:0, sessions:0,
+        turnoutSeen:0, maxHeld:0 };
+      if (!card) return out;
+      const base = card.run;
+      let held = 0;
+      card.run = function (st, pid) {
+        const e = v21EndorseFor(st, pid);
+        const said = base.call(this, st, pid);
+        if (said && !V19_SIMULATING) {
+          out.runs++;
+          out.byParty[pid] = (out.byParty[pid] || 0) + 1;
+          if (e) out.groups[e.gid] = (out.groups[e.gid] || 0) + 1;
+        }
+        return said;
+      };
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+          fresh(sd, 'ruthless');
+          for (let t = 0; t < 80; t++) {
+            if (!step()) break;
+            let n = 0;
+            PV5_INTERESTS.forEach(g => { if (v21EndorsedBy(S, g.id)) n++; });
+            held += n; out.sessions++;
+            if (!n) out.none++;
+            if (n > out.maxHeld) out.maxHeld = n;
+            if (t % 10 === 0) {
+              PARTIES.forEach(p => { if (!S.banned[p.id] && endorsedTurnout(S, p.id) > 0) out.turnoutSeen++; });
+            }
+          }
+        });
+      } finally { card.run = base; runQueue = rq; }
+      out.heldMean = +(held / Math.max(1, out.sessions)).toFixed(2);
+      return out;
+    })();
+    R.fires = R.play.runs > 6 && Object.keys(R.play.byParty).length >= 3 &&
+      Object.keys(R.play.groups).length >= 4 && R.play.heldMean > .8 &&
+      R.play.turnoutSeen > 5;
+
+    /* (m) AND THE BALLOT'S OWN CLOCK, WHICH IS THE LEG THIS ARM DID NOT HAVE
+       AND WHERE "one writer" TURNED OUT NOT TO BE TRUE. Two sites wrote
+       `q.endorsement` without going through `v21EndorseSet` and BOTH are the
+       election: the v5 wrapper cleared the mirror for every organisation, and
+       S11's wrapper around it snapshotted the same boolean and wrote it back
+       if the endorsement had held fewer than two ballots. So the player's
+       endorsement lapsed in the half the ballot reads and stood forever in the
+       half the panel, `endorsedTurnout` and the objective read -- and no
+       assertion in this file drove a ballot and looked at the pair.
+       BOTH HALVES AT BOTH BALLOTS, because either write alone is a defect: put
+       the clear back on the mirror and the second ballot leaves `by` naming
+       the player; put the restore back on it and the FIRST ballot leaves `by`
+       null under a true mirror. And the engine's is asked in the same breath,
+       because widening the clock to everybody is the other way to get this
+       wrong -- measured, it takes engine-held group-sessions from 1,066 to 84
+       over 720 driven sessions and the longest holding from 44 ballots to 1,
+       on a republic that holds an election every second session. */
+    R.ballot = (() => {
+      const out = { ran:false };
+      const g = board(4242, 'ruthless');
+      const me = playParty(S), q = S.interests[g.id];
+      const eng = PARTIES.filter(p => p.id !== me && !S.banned[p.id])[0].id;
+      const g2 = PV5_INTERESTS[1];
+      const read = (gid) => ({ by:v21EndorsedBy(S, gid), mirror:!!S.interests[gid].endorsement });
+      /* the relationship is kept warm so only the BALLOT COUNT can end it --
+         the per-session withdrawal is asked in (d) and is not this leg */
+      q.relation = 80;
+      v21EndorseSet(S, g.id, me);
+      v21EndorseSet(S, g2.id, eng);
+      out.start = read(g.id); out.engStart = read(g2.id);
+      try { runElection(S, false); } catch (e) { out.threw = e.message; return out; }
+      q.relation = 80;
+      out.first = read(g.id); out.engFirst = read(g2.id);
+      try { runElection(S, false); } catch (e) { out.threw = e.message; return out; }
+      q.relation = 80;
+      out.second = read(g.id); out.engSecond = read(g2.id);
+      out.ran = true;
+      out.survivesOneBallot = out.first.by === me && out.first.mirror === true;
+      out.lapsesAtTheSecond = out.second.by === null && out.second.mirror === false;
+      out.aBallotDoesNotTouchAnEngine =
+        out.engFirst.by === eng && out.engSecond.by === eng &&
+        out.engFirst.mirror === false && out.engSecond.mirror === false;
+      return out;
+    })();
+
+    /* (n) AND THE PAGE'S OWN SEAT READOUT REMOVES THE WHOLE CHANNEL.
+       `v15CampaignSeats` prints what each channel is worth by removing it and
+       re-reading the projection, and its `orgs` kill cleared the MIRROR -- so
+       `endorsedTurnout`, which reads the field, went on counting the
+       endorsements on both sides of its own difference and the Campaign page
+       printed a smaller number than the truth. Asked against the same kill
+       carried out properly, through the writer, and read off `projection`
+       rather than off the readout's own arithmetic. */
+    R.readout = (() => {
+      const out = { ran:false };
+      board(4242, 'ruthless');
+      const me = playParty(S);
+      const seats = () => { try { return ((projection(S) || {}).seats || {})[me] || 0; } catch (e) { return null; } };
+      PV5_INTERESTS.forEach(gg => { const qq = S.interests[gg.id];
+        v21EndorseSet(S, gg.id, me); qq.relation = 100; qq.influence = 100; });
+      const withThem = seats();
+      const printed = v15CampaignSeats(S).orgs;
+      PV5_INTERESTS.forEach(gg => { const qq = S.interests[gg.id];
+        v21EndorseSet(S, gg.id, null); qq.relation = 50; qq.influence = 50; });
+      const without = seats();
+      if (withThem === null || without === null) return out;
+      out.ran = true; out.printed = printed; out.truth = withThem - without;
+      out.worthSomething = out.truth > 10;
+      out.printedIsTheTruth = printed === out.truth;
+      return out;
+    })();
+    return R;
+  });
+  const endoOk = endo.ballot.ran && endo.ballot.survivesOneBallot &&
+    endo.ballot.lapsesAtTheSecond && endo.ballot.aBallotDoesNotTouchAnEngine &&
+    endo.readout.ran && endo.readout.worthSomething && endo.readout.printedIsTheTruth &&
+    endo.store.ran && endo.store.engineHoldsItWithoutTheMirror &&
+    endo.store.theMirrorIsThePlayers && endo.store.clearsBoth &&
+    endo.store.anOldSaveReadsAsThePlayers &&
+    endo.turnout.ran && endo.turnout.theHoldersOwn && endo.turnout.andItReachesTheBallot &&
+    endo.claimant.ran && endo.claimant.namesTheBest && endo.claimant.aboveNought &&
+    endo.withdraw.ran && endo.withdraw.dropsAHolderItNoLongerSpeaksFor &&
+    endo.withdraw.dropsAColdPlayer && endo.withdraw.keepsAWarmOne &&
+    endo.taken.ran && endo.taken.switchesHands && endo.taken.andTheLoserMinds &&
+    endo.pick.ran && endo.pick.findsOne && endo.pick.notOneItHolds &&
+    endo.player.ran && endo.player.namesTheHolder && endo.player.namesYou &&
+    endo.player.theButtonTakesIt && endo.player.closingGivesItUp &&
+    endo.lean.ran && endo.lean.leanMoved && endo.lean.andTheWorthMovedWithIt &&
+    endo.chooses.bestThatPays &&
+    endo.worth.ran && endo.worth.oneIsWorthSomething && endo.worth.eightAreWorthMore &&
+    endo.pays.ran && endo.pays.paysTheCard &&
+    endo.floorShut.ran && endo.floorShut.shut === true &&
+    endo.aims.ran && endo.aims.isGround && endo.fires;
+  say(endoOk, 'an organisation endorses somebody other than you',
+    'EIGHT NAMED ORGANISATIONS IN A SEVEN-PARTY REPUBLIC AND SIX OF THE PARTIES COULD NEVER BE ENDORSED BY ANY ' +
+    `OF THEM · AND THE BALLOT'S OWN CLOCK IS THE LEG THIS ARM DID NOT HAVE, which is how two sites that ` +
+    `never went through the one writer shipped: the player's endorsement survives one ballot in BOTH halves ` +
+    `(${endo.ballot.survivesOneBallot}) and is gone from both at the second (${endo.ballot.lapsesAtTheSecond}) ` +
+    `where it used to lapse in the mirror and stand forever in \`endorsedBy\`, the half the panel, the turnout ` +
+    `and the objective read; and a ballot does not touch an engine's (${endo.ballot.aBallotDoesNotTouchAnEngine}), ` +
+    `because the two-ballot rule is a PURCHASE decaying and \`q.relation\` is the organisation's standing with ` +
+    `the player and with nobody else -- widening it to everybody takes engine-held group-sessions from 1,066 ` +
+    `to 84 over 720 driven sessions and the longest holding from 44 ballots to 1 · AND THE CAMPAIGN PAGE ` +
+    `PRINTS THE WHOLE CHANNEL: \`v15CampaignSeats\` removed the organisations by clearing the mirror, so the ` +
+    `turnout counted them on both sides of its own difference; it prints ${endo.readout.printed} against a ` +
+    `projection read either side of the same kill at ${endo.readout.truth} · ` +
+    '`q.endorsement` is a BOOLEAN and it has meant "endorses the player" since v5, and ' +
+    '`endorsedTurnout` was called from inside `partyTurnout`\'s `pid === playParty(st)` branch. Measured over ' +
+    '480 driven sessions at `ruthless`: NO organisation endorsed anybody on any of them, because the only door ' +
+    'was the player\'s own button -- while `q.relation` sat at a median of 59.8 and 2,254 of 3,840 ' +
+    'group-sessions were at or above the 58 that purchase needs, so the door was open the whole time and had ' +
+    'nobody on the other side · ONE FIELD, ONE MIRROR, ONE WRITER, on S17g\'s pattern: an engine holds it ' +
+    `without the player's boolean moving (${endo.store.engineHoldsItWithoutTheMirror}), the boolean is exactly ` +
+    `"the player holds it" (${endo.store.theMirrorIsThePlayers}), clearing clears both ` +
+    `(${endo.store.clearsBoth}), and a save written before this slice -- a boolean and no id -- reads back as ` +
+    `the player's (${endo.store.anOldSaveReadsAsThePlayers}), which is what the boolean meant · AND THE ` +
+    'TURNOUT IT FEEDS IS THE HOLDER\'S, where it counted the organisations backing the PLAYER whoever it was ' +
+    `asked about: an engine holding all eight reads ${endo.turnout.after.eng} of \`endorsedTurnout\` against ` +
+    `${endo.turnout.before.eng} with none, the player reads ${endo.turnout.after.me} ` +
+    `(${endo.turnout.theHoldersOwn}), and it reaches the ballot -- that engine's turnout goes ` +
+    `${endo.turnout.tBefore} to ${endo.turnout.tAfter} (${endo.turnout.andItReachesTheBallot}) · THE CLAIMANT ` +
+    'IS COMPARATIVE AND NOT A BAR: the organisation backs whoever speaks for its bloc best, on `affOf` plus ' +
+    'S21j\'s courting -- the same door `v21CrowdCore` gates the street on -- so no threshold was picked by eye ' +
+    `here, because there is nothing to pick (${JSON.stringify(endo.claimant.worths)} names ` +
+    `${endo.claimant.top}, ${endo.claimant.namesTheBest}) · AND THE ONE THAT WITHDRAWS IT IS THE ONE THAT ` +
+    'HOLDS IT, where the old line asked the player\'s mirror and an organisation backing anybody else could ' +
+    `never take it back: a holder that no longer speaks for the bloc at all loses it ` +
+    `(the ${endo.withdraw.mute}, ${endo.withdraw.dropsAHolderItNoLongerSpeaksFor}), a player whose relationship has gone cold loses it ` +
+    `(${endo.withdraw.dropsAColdPlayer}) and a warm one keeps it (${endo.withdraw.keepsAWarmOne}) · AND IT CAN ` +
+    `BE TAKEN OFF SOMEBODY, which is the whole point from the player's side: ${endo.taken.said} ` +
+    `(${endo.taken.switchesHands}), and the party it left minds (${endo.taken.andTheLoserMinds}) · WHICH ` +
+    `ORGANISATION IS THE OBJECTIVE'S (${endo.pick.findsOne}) and it does not court one it already holds ` +
+    `(${endo.pick.notOneItHolds}) · AND THE PLAYER'S OWN KIT GOES THROUGH THE SAME WRITER: the panel names ` +
+    `who is holding each one rather than only whether it is yours (${endo.player.held}, ` +
+    `${endo.player.namesTheHolder}), the Seek button takes it off them by a real click ` +
+    `(${endo.player.theButtonTakesIt}) and the panel then says so (${endo.player.namesYou}), and closing access ` +
+    `gives it up (${endo.player.closingGivesItUp}) · AND S21j'S COURTING IS PART OF SPEAKING FOR A BLOC: ` +
+    `eight seasons of it move the lean ${endo.lean.l0} to ${endo.lean.l1} (${endo.lean.leanMoved}) and the ` +
+    `worth ${endo.lean.w0} to ${endo.lean.w1}, by exactly that much and not by a coincidence ` +
+    `(${endo.lean.andTheWorthMovedWithIt}) · AND THE PICK IS THE BEST ORGANISATION THE OBJECTIVE WANTS, driven ` +
+    `over 160 sessions: of ${endo.chooses.readings} readings with a claim at all -- ${endo.chooses.cands} ` +
+    `claims, ${endo.chooses.multi} of the readings with more than one -- every one of ${endo.chooses.picks} ` +
+    `is the highest-scoring that beats standing and ${endo.chooses.violations} violate it ` +
+    `(${endo.chooses.bestThatPays}${endo.chooses.first ? ', ' + endo.chooses.first : ''}) · and the term is ` +
+    `read against the turnout the game allows to be BOUGHT, so one organisation is worth ${endo.worth.one} of ` +
+    `standing (${endo.worth.oneIsWorthSomething}) and all eight ${endo.worth.all}, which is more ` +
+    `(${endo.worth.eightAreWorthMore}) · the card costs ${endo.pays.spent} of ${endo.pays.owed} ` +
+    `(${endo.pays.paysTheCard}) · R2: at the floor the card cannot be drawn and above it it can ` +
+    `(${endo.floorShut.lo} against ${endo.floorShut.hi}) · the aims rank it ${endo.aims.ground} to ` +
+    `\`ground\`, ${endo.aims.build} to \`build\` and ${endo.aims.carry} to \`carry\` (${endo.aims.isGround}) ` +
+    `· and driven over 480 sessions the card fires ${endo.play.runs} times across ` +
+    `${Object.keys(endo.play.byParty).length} parties (${JSON.stringify(endo.play.byParty)}), taking ` +
+    `${Object.keys(endo.play.groups).length} of the eight organisations, with ${endo.play.heldMean} of them ` +
+    `holding an endorsement in an average session against a maximum of ${endo.play.maxHeld} -- where it was ` +
+    'nought of eight, always');
 
   /* ================================================================
      S21q — A PRICE ON THE BENCHES
@@ -19201,7 +19834,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     answr.bar.rises > 150 && answr.bar.maxFall < answr.bar.bar &&
     /* the bar sits BETWEEN the two populations: above the ambient grievance
        governing produces and below the deliberate act it exists to answer */
-    answr.bar.deliberateN > 100 && answr.bar.ambientN > 100 &&
+    /* S21t: THE SAMPLE FLOOR IS SIZED FOR A RE-PHASE, because it was not.
+       `deliberateN > 100` read 91 on this slice against 110 on the build
+       before it -- and every count in this block moved with it (rises 539 to
+       457, ambient 415 to 352, all within a point of the same -15%), which is
+       a card mix moving the whole drive and not the mechanism. This arm's own
+       budget leg already records the size of that effect: a per-seed spread of
+       -10.3% to +15.0% on the initiative count, measured after "three builds
+       were rewritten chasing single samples from that band". A floor must sit
+       BELOW the lowest reading a legitimate re-phase can produce, and 60 does
+       -- while still being a real floor, because the share gated below has a
+       standard error of .063 at that sample and its bar is 2.7 of them away. */
+    answr.bar.deliberateN > 60 && answr.bar.ambientN > 100 &&
     /* S21d: THE MEDIANS CARRY THE CLAIM AND THE SHARE IS A CONSEQUENCE. The
        bound was .85, on a reading of .902; it now reads .798 while nothing
        about the bar or the player's buttons changed. What moved is WHICH
@@ -19232,8 +19876,32 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        It is reported and not gated. What the arm is about is gated and
        untouched: the bar sits ABOVE the ambient median and BELOW the
        deliberate one, and the ambient does not clear it. */
-    answr.bar.bar < answr.bar.medianRise &&
-    answr.bar.bar > answr.bar.ambientMedian && answr.bar.ambientClearShare < .35 &&
+    /* S21t: AND THE MEDIAN GOES, BECAUSE IT IS AN INTEGER COMPARED STRICTLY
+       WITH AN INTEGER. `bar.bar < bar.medianRise` is 10 < 11 on the build
+       before this slice and 10 < 10 on it -- the median of ninety-odd discrete
+       rises whose values cluster on 9, 10 and 11, moved one place by a card mix
+       that left the population itself alone: mean 11.56 to 11.27, minimum 9 on
+       both. A strict inequality between two integers on a sample that small is
+       decided by one observation, which is this file's own rule about `min ===
+       max` wearing the other hat.
+       IT SAYS THE SAME THING AS THE SHARE, and the share can be sized against
+       its own error where a median cannot: more than half of the deliberate
+       acts clear the bar IS the median sitting above it. So the share comes
+       back -- the fourth time it has been written here, and the first time at a
+       value taken from the standard error rather than from the reading. It was
+       .85 on a reading of .902, .8 on .798, .7 on .693, and each of those sat
+       a hair under the number it was measuring, which is why each lasted one
+       slice. At n=91 and p=.571 the standard error is .052, so .40 is between
+       three and four of them below the two readings this build and its
+       predecessor give (.571 and .627) and far above what the arm says a
+       broken bar produces -- "a build where the bar stopped separating would
+       take the share toward the ambient's nought".
+       AND THE TWO CONDITIONS EITHER SIDE ARE TIGHTENED rather than loosened,
+       because both had enormous headroom: the bar is 10 against an ambient
+       median of 1.8 on both builds, and the ambient clears it on NOUGHT of
+       352 and nought of 415. */
+    answr.bar.clearShare > .40 &&
+    answr.bar.bar > answr.bar.ambientMedian * 2 && answr.bar.ambientClearShare < .05 &&
     answr.floor.instinct === null && answr.floor.shrewd === true &&
     answr.said.found === true && answr.said.promisesRiposte === false;
   say(answrOk, 'a party does not wait for the season',
