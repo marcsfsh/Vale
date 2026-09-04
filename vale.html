@@ -16589,6 +16589,7 @@ function viewParties() {
       (btns('deal') ? '<div class="subhead">Arrangements</div><div class="btnrow">' + btns('deal') + '</div>' : '') +
       (btns('attack') ? '<div class="subhead">Undermine them</div><div class="btnrow">' + btns('attack') + '</div>' : '') +
       (btns() ? '<div class="subhead">Other measures</div><div class="btnrow">' + btns() + '</div>' : '') +
+      v22Dossier(S, p.id) +
       '</div>';
   }).join('');
 
@@ -16624,7 +16625,7 @@ function viewParties() {
         '<div class="tagline"><span class="tag">' + (p.id === S.ruling ? 'In power' : (S.banned[p.id] ? 'Dissolved' : 'Tolerated')) + '</span>' +
         '<span class="tag">' + (S.seats[p.id] || 0) + ' seats on paper</span>' +
         (S.coopted[p.id] ? '<span class="tag up">Leader co-opted</span>' : '') + '</div>' +
-        '<div class="btnrow">' + acts + '</div></div>';
+        '<div class="btnrow">' + acts + '</div>' + v22Dossier(S, p.id) + '</div>';
     }).join('');
     return politicalInboxPanel() + partyFundsPanel() + factionPanel() + closedPanel + '<div class="panel"><h2>The Other Parties</h2>' +
       '<p class="note">They cannot be beaten at a poll because there is no poll. They can be funded, split, absorbed or dissolved.</p>' +
@@ -18949,6 +18950,12 @@ S=enrichState(S,false);
 details.fold{border:1px solid rgba(191,161,78,.18);background:rgba(0,0,0,.15);padding:0 10px;margin:8px 0}
 details.fold summary{cursor:pointer;font-family:var(--font-u);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--party);padding:8px 0;list-style:none}
 details.fold summary::-webkit-details-marker{display:none}
+/* S22a: the dossier's own summary is a control a reader presses, so it clears
+   the 44px thumb the phone tier asks for rather than the 27px the fold's own
+   padding gives it. Three classes deep, because `details.fold summary` above
+   is two and last-in-source only wins at equal specificity. */
+details.fold.dossier>summary{min-height:44px;display:flex;align-items:center}
+details.fold.dossier .tagline{margin:2px 0 6px}
 details.fold summary:before{content:"+ ";color:var(--slate)}
 details.fold[open] summary:before{content:"\2212  "}
 details.fold .btnrow{padding-bottom:10px}
@@ -37210,6 +37217,140 @@ var V16_AI_DECK = [
       return 'The ' + PARTY[pid].short + ' sold the government its majority for ' + POL[want.id].name + '.';
     } }
 ];
+
+/* ============================================================
+   S22a - THE PARTY DOSSIER
+   ============================================================
+   THE CODE'S OWN COMMENT SAID WHERE THIS WAS AND IT WAS NOWHERE. `v16AiTurn`
+   posts `lines.slice(0, 3)` to the Gazette under the sentence *"Three lines is
+   a session's news, not a wall: the rest is on the Parties page"*, and the rest
+   was on no page at all: `a.why` is ONE SLOT, overwritten the next time that
+   party acts, and the panel prints four of them.
+
+   MEASURED FIRST, over 720 driven sessions on twelve seeds at `ruthless`: the
+   engines take 1,161 initiatives and all twenty cards act. 96.7% of them are
+   printed once, 6.3% are still in `st.log` at the end (it holds sixty entries
+   and shares them with everything else), and 4.1% can be recovered afterwards
+   -- 48 of 1,161, which is exactly four records a seed, the panel's own cap. A
+   player who wants to know what the RSF has been doing can see one act by each
+   of four parties and nothing older.
+
+   PLAN-S21 CALLED THIS `v21Emit` AND ALLOCATED IT ACROSS THREE SLICES, none of
+   which built it; the name is written here so a grep from that plan or from
+   STATE.md lands somewhere. It ships in S22 and carries the S22 prefix.
+
+   ONE STORE, ONE WRITER. `a.why` had one writer and one reader in four
+   megabytes, so it becomes the file's head rather than a second copy of it:
+   `v22Emit` is the only thing that writes, `v22File` is the only thing that
+   reads, and a save from before this slice carries the one slot and no file, so
+   the reader migrates it. Sixty records, the bound `st.log` and `st.chron`
+   already use -- at the measured rate of 0.269 initiatives a party a session
+   that is about 223 sessions of one party's record. */
+var V22_FILE_MAX = 60;
+/* WHAT A READER CALLS EACH OF THEM. A count of card ids is a debugging dump;
+   the summary line on the card says "four bills laid, two attacks" because that
+   is the shape of a party's term. Covered from the DECK rather than remembered:
+   `roads.js` fails if a card arrives without an entry, which is the guard
+   `V19_RIVAL_WORTH` has and a hand-kept list can never have. */
+var V22_VERB = {
+  organise: { one:'organising drive',     many:'organising drives' },
+  campaign: { one:'campaign swing',       many:'campaign swings' },
+  court:    { one:'courtship',            many:'courtships' },
+  attack:   { one:'attack',               many:'attacks' },
+  platform: { one:'platform move',        many:'platform moves' },
+  pact:     { one:'electoral pact',       many:'electoral pacts' },
+  article:  { one:'article laid',         many:'articles laid' },
+  order:    { one:'executive order',      many:'executive orders' },
+  floor:    { one:'floor speech',         many:'floor speeches' },
+  bill:     { one:'bill laid',            many:'bills laid' },
+  demand:   { one:'demand',               many:'demands' },
+  topple:   { one:'confidence motion',    many:'confidence motions' },
+  keep:     { one:'coalition repair',     many:'coalition repairs' },
+  descend:  { one:'extraordinary measure',many:'extraordinary measures' },
+  trade:    { one:'trade of benches',     many:'trades of benches' },
+  endorse:  { one:'endorsement taken',    many:'endorsements taken' },
+  work:     { one:'whipping round',       many:'whipping rounds' },
+  crowd:    { one:'movement led',         many:'movements led' },
+  street:   { one:'answer to the street', many:'answers to the street' },
+  bargain:  { one:'bargain struck',       many:'bargains struck' }
+};
+/* THE READING ACCESSOR, AND IT DOES NOT CREATE. `v6TreatyRows` installed a
+   record for every power it was asked about and a panel asked about all eleven
+   every render; this is asked about every party on every Parties page. */
+function v22File(st, pid) {
+  var a = (st && st.ai) ? st.ai[pid] : null;
+  if (!a) return [];
+  if (a.file && a.file.length) return a.file;
+  /* a save written before this slice carries the one slot and no file */
+  return (a.why && a.why.line) ? [a.why] : [];
+}
+/* AND THE WRITING ONE, WHICH IS THE ONLY THING THAT WRITES. Guarded on
+   `V19_SIMULATING` per R8: `v19Outcome` plays every open card against a clone
+   to score it, so an unguarded emit would file a party's whole rehearsal. */
+function v22Emit(st, pid, rec) {
+  if (typeof V19_SIMULATING !== 'undefined' && V19_SIMULATING) return null;
+  if (!rec || !rec.line) return null;
+  var a = v16Ai(st)[pid];
+  if (!a) return null;
+  if (!a.file) {
+    a.file = [];
+    if (a.why && a.why.line) a.file.push(a.why);
+  }
+  a.file.unshift(rec);
+  if (a.file.length > V22_FILE_MAX) a.file.length = V22_FILE_MAX;
+  /* one store: the head IS what `a.why` was, so the old slot goes */
+  if (a.why) delete a.why;
+  return rec;
+}
+/* what the file adds up to: how many, of what kind, and how many of them had
+   the reader in the way. The last is the question the intake report asked --
+   5.1% of the sentences an engine emits name the player at all -- answered off
+   the rival the party actually read rather than off the words of the line. */
+function v22Ledger(st, pid) {
+  var f = v22File(st, pid), by = {}, aimed = 0, me = playParty(st);
+  f.forEach(function (r) {
+    by[r.card] = (by[r.card] || 0) + 1;
+    if (r.foe && r.foe === me) aimed += 1;
+  });
+  return { file:f, n:f.length, by:by, aimed:aimed,
+    since:f.length ? f[f.length - 1].turn : null,
+    full:f.length >= V22_FILE_MAX };
+}
+function v22DossierSay(st, pid) {
+  var L = v22Ledger(st, pid);
+  if (!L.n) return null;
+  return 'Their record: ' + (L.full ? 'the last ' : '') + L.n +
+    (L.n === 1 ? ' initiative' : ' initiatives') +
+    (L.since === null ? '' : ' since ' + dateLabel(L.since)) +
+    (L.aimed ? ', ' + L.aimed + ' with you in the way' : '');
+}
+function v22Dossier(st, pid) {
+  /* A `pid === playParty(st)` REFUSAL STOOD HERE AND CAME OUT ON ITS OWN
+     POISON. `v16AiTurn` builds `live` as the parties that are not the player,
+     so nothing can ever file for the player's own party and the line below
+     already answers: an empty file prints nothing. A knob nothing in the game
+     can turn is decoration, and the poison run is where you find that out. */
+  var L = v22Ledger(st, pid);
+  if (!L.n) return '';
+  var tags = Object.keys(L.by).sort(function (a, b) {
+    return L.by[b] - L.by[a] || (a < b ? -1 : 1);
+  }).map(function (k) {
+    var v = V22_VERB[k], n = L.by[k];
+    return '<span class="tag">' + n + ' ' + esc(v ? (n === 1 ? v.one : v.many) : k) + '</span>';
+  }).join('');
+  var items = L.file.slice(0, 12).map(function (r) {
+    var foe = r.foe && PARTY[r.foe] ? PARTY[r.foe].short : null;
+    return '<li><span class="muted">' + esc(dateLabel(r.turn)) + '</span> ' + esc(r.line) +
+      (r.aim ? ' <span class="muted">' + esc(r.aim.charAt(0).toLowerCase() + r.aim.slice(1)) + '</span>' : '') +
+      (foe ? ' <span class="muted">with the ' + esc(foe) + ' in the way</span>' : '') +
+      '</li>';
+  }).join('');
+  return '<details class="fold dossier"><summary>' + esc(v22DossierSay(st, pid)) + '</summary>' +
+    '<div class="tagline">' + tags + '</div><ul class="tight">' + items + '</ul>' +
+    (L.n > 12 ? '<p class="note">The twelve most recent are shown. The file holds ' +
+      V22_FILE_MAX + '.</p>' : '') + '</details>';
+}
+
 /* Who a party would stand down for: nearest in position, out of government,
    not somebody it holds a grudge against, and not already in a pact. */
 /* S19b WROTE AN ALIGNMENT PULL HERE AND MEASURED IT BACK OUT. The idea was
@@ -38857,12 +38998,16 @@ function v16AiTurn(st) {
       /* R2: WHY THIS, THIS SESSION. The panel says what the party did and what
          it was for, so a reader can follow a party across a campaign instead
          of reading a list of unrelated events. */
-      a.why = { card:pick.id, goal:goal ? goal.kind : null,
+      /* S22a: AND IT IS FILED RATHER THAN OVERWRITTEN. This was `a.why = {...}`,
+         one slot per party, so the sentence two lines below -- "the rest is on
+         the Parties page" -- was true of nothing. `v22Emit` is the one writer
+         and the head of the file is what `a.why` was. */
+      v22Emit(st, p.id, { card:pick.id, goal:goal ? goal.kind : null,
         aim:goal ? v19GoalSay(st, p.id) : null, turn:st.turn, line:line,
         /* S19b: AND WHO IT HAD IN MIND. R2 asks the page to state the
            reasoning, and from this slice on a party's reasoning includes the
            other parties, so the record carries the rival it read. */
-        foe:rival.foe };
+        foe:rival.foe });
       lines.push(line);
     }
   });
@@ -40107,7 +40252,7 @@ function v16AiPanel() {
   }).join('');
   /* and what each of them did last, with what it was for */
   var whys = PARTIES.filter(function (p) { return p.id !== me && !S.banned[p.id]; })
-    .map(function (p) { return { p:p, w:(ai[p.id] || {}).why }; })
+    .map(function (p) { return { p:p, w:v22File(S, p.id)[0] }; })
     .filter(function (r) { return r.w && r.w.line; })
     .sort(function (a, b) { return (b.w.turn || 0) - (a.w.turn || 0); })
     .slice(0, 4)

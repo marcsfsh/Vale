@@ -14,8 +14,42 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S21 — All-out AI** is **COMPLETE** with this slice; what is open is below,
-and none of it is S21. The owner's brief: *"an all-out focus on AI
+**S22 — What decides an election** is **OPEN**, and it opens with the one piece
+of debt S21 left: the party dossier. `docs/PLAN-S22.md` is the programme, and
+the owner commissioned it in the exchange that produced S21v — *"since
+incumbency & mood no longer apply, something has to add some variance, and it
+needs to be something the player can pick up on and attempt to influence for
+their own party."*
+
+- **S22a — a party has a record you can read.** `v16AiTurn` posts three lines a
+  session to the Gazette under a comment reading *"the rest is on the Parties
+  page"*, and the rest was on no page: `a.why` is **one slot per party**,
+  overwritten the next time that party acts, and the panel prints four of them.
+  Measured over 720 driven sessions on twelve seeds: the engines take **1,161
+  initiatives** and all twenty cards act; 96.7% are printed once, **6.3% are
+  still in `st.log`** at the end (it holds sixty entries, shared with
+  everything), and **4.1% can be recovered afterwards** — 48 of 1,161, which is
+  four records a seed. `v22Emit` is the one writer and `v22File` the one reader,
+  the head of the file **is** what `a.why` was rather than a second copy of it,
+  a save from before the slice migrates, and the record is bounded at 60 — the
+  bound `st.log` and `st.chron` already use, which at the measured rate of 0.269
+  initiatives a party a session is about 223 sessions of one party's record.
+  Every card carries a reader's word for what it did, covered **from the deck**,
+  so a card a later slice adds reddens rather than printing its own id. The card
+  prints the count, the date it starts from, how many had the reader in the way,
+  a verb tally and the twelve most recent lines.
+
+  **PLAN-S21 called this `v21Emit` and allocated it across three slices, none of
+  which built it.** That correction is recorded in `PLAN-S21.md` and the name is
+  written into the code so a grep from either document lands somewhere.
+
+  **And one line came out on its own poison.** `v22Dossier` refused the player's
+  own party — and `v16AiTurn` builds its list as the parties that are *not* the
+  player, so nothing can ever file for them and the empty-file branch already
+  answered. Thirteen poisons from the diff, all thirteen red; the fourteenth was
+  that line, and it is deleted rather than shipped.
+
+**S21 — All-out AI** is **COMPLETE**. The owner's brief: *"an all-out focus on AI
 behavior, AI logic, and AI improvements… at least 4 improvements to existing AI
 behaviors and logic, and at least 8 new behaviors/logic — each being
 significant and receiving equal attention. In addition, the coalition building

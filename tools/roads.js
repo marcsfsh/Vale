@@ -18619,7 +18619,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       for (let i = 0; i < 120; i++) {
         drive(1);
         PARTIES.forEach(p => {
-          const w = (v16Ai(S)[p.id] || {}).why;
+          /* S22a: THROUGH THE FILE'S HEAD, which is where `a.why` went. That
+             field was one slot with one writer and one reader; the dossier made
+             the head of `v22File` the same fact, so a probe still reading the
+             slot counts nought and reports a working record as dead. */
+          const w = (typeof v22File === 'function' ? v22File(S, p.id)[0] : (v16Ai(S)[p.id] || {}).why);
           if (!w || seenAt[p.id] === w.turn + ':' + w.card) return;
           seenAt[p.id] = w.turn + ':' + w.card;
           R.panel.acts++;
@@ -23547,6 +23551,289 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `the branch deleted; it fires 13 of 71 floor moves at \`purposeful\` and 0 of 37 at \`shrewd\`, which is ` +
     `not a dead branch but the UNTHINKING party's third option -- the thinking levels skip it because ` +
     `\`V19_FLOOR_BAR\` excludes a bill already going your way, which is the line S17o added on purpose`);
+
+  /* ---------- S22a: THE PARTY DOSSIER ----------
+     `v16AiTurn` posts `lines.slice(0, 3)` to the Gazette under the sentence
+     "Three lines is a session's news, not a wall: the rest is on the Parties
+     page", and the rest was on no page: `a.why` is ONE SLOT per party,
+     overwritten the next time that party acts, and the panel prints four of
+     them. Measured over 720 driven sessions on twelve seeds: 1,161 initiatives,
+     4.1% of them recoverable afterwards -- 48, which is four records a seed. */
+  const file22 = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) COVERED FROM THE DECK, not from a list somebody keeps. A card a later
+       slice adds reddens here rather than printing its own id at a reader. */
+    R.cover = {
+      deck:V16_AI_DECK.length,
+      unnamed:V16_AI_DECK.map(c => c.id).filter(id => !V22_VERB[id]),
+      ghosts:Object.keys(V22_VERB).filter(id => V16_AI_DECK.every(c => c.id !== id)),
+      misshaped:Object.keys(V22_VERB).filter(id => {
+        const v = V22_VERB[id];
+        return !v || typeof v.one !== 'string' || typeof v.many !== 'string' ||
+          !v.one.length || !v.many.length || v.one === v.many;
+      })
+    };
+
+    /* (b) A READ MUST NOT CREATE. This is asked about every party on every
+       render of the Parties page; `v6TreatyRows` is the reason the rule exists. */
+    R.accessor = (() => {
+      fresh(4242);
+      delete S.ai;
+      const empty = v22File(S, PARTIES[0].id);
+      const madeNothing = S.ai === undefined;
+      S.ai = {};
+      const empty2 = v22File(S, PARTIES[0].id);
+      const stillNothing = Object.keys(S.ai).length === 0;
+      return { ran:true, empty:Array.isArray(empty) && empty.length === 0,
+        madeNothing:madeNothing, empty2:empty2.length === 0, stillNothing:stillNothing };
+    })();
+
+    /* (c) ONE STORE. `a.why` had one writer and one reader in four megabytes,
+       so the head of the file IS what it was -- keeping both would be two
+       clocks for one fact, which is the warning this file repeats most. */
+    R.store = (() => {
+      fresh(4242);
+      const pid = PARTIES.filter(p => p.id !== playParty(S))[0].id;
+      const a = v16Ai(S)[pid];
+      /* AND THE OLD SLOT IS SET FIRST, or `whyGone` is vacuous: a fresh party
+         has no `a.why` and the leg passed with the delete removed. */
+      a.why = { card:'court', turn:S.turn, line:'The slot.', foe:null };
+      v22Emit(S, pid, { card:'bill', turn:S.turn, line:'A test line.', foe:null });
+      const head = v22File(S, pid)[0];
+      const whyGone = a.why === undefined;
+      v22Emit(S, pid, { card:'attack', turn:S.turn + 1, line:'A second line.', foe:null });
+      const f = v22File(S, pid);
+      /* the most recent first, which is what every other ledger here does.
+         Guarded, because a poisoned build can empty any of these and a probe
+         that THROWS aborts the harness instead of failing one assertion. */
+      return { ran:true, filed:!!head && head.line === 'A test line.',
+        whyGone:whyGone, three:f.length === 3, newestFirst:!!f[0] && f[0].card === 'attack',
+        slotKept:f.some(r => r.line === 'The slot.'),
+        oldestLast:!!f[2] && f[2].card === 'court' };
+    })();
+
+    /* (d) AND A SAVE FROM BEFORE THIS SLICE READS BACK. It carries the one slot
+       and no file; a build that read `a.file` alone would show a blank record
+       for every party in a campaign already in progress. */
+    R.legacy = (() => {
+      fresh(4242);
+      const pid = PARTIES.filter(p => p.id !== playParty(S))[0].id;
+      const a = v16Ai(S)[pid];
+      delete a.file;
+      a.why = { card:'court', turn:3, line:'An old line.', foe:null };
+      const before = v22File(S, pid);
+      /* and the first emit folds it in rather than dropping it */
+      v22Emit(S, pid, { card:'bill', turn:4, line:'A new line.', foe:null });
+      const after = v22File(S, pid);
+      return { ran:true, readsTheSlot:before.length === 1 && !!before[0] && before[0].line === 'An old line.',
+        keepsIt:after.some(r => r.line === 'An old line.'),
+        newestFirst:!!after[0] && after[0].line === 'A new line.' };
+    })();
+
+    /* (e) THE REHEARSAL DOES NOT FILE. R8: `v19Outcome` plays every open card
+       against a clone to score it, so an unguarded writer would file a party's
+       whole deliberation as things it did. */
+    R.sim = (() => {
+      fresh(4242);
+      const pid = PARTIES.filter(p => p.id !== playParty(S))[0].id;
+      const n0 = v22File(S, pid).length;
+      const was = V19_SIMULATING;
+      V19_SIMULATING = true;
+      v22Emit(S, pid, { card:'bill', turn:S.turn, line:'A rehearsed line.', foe:null });
+      V19_SIMULATING = was;
+      const n1 = v22File(S, pid).length;
+      /* and through the game's own rehearsal, which is the wiring rather than
+         the flag: `v19Try` clones, so the LIVE file must not move */
+      const out = v19Try(S, function (cl) {
+        const card = V16_AI_DECK.filter(c => c.id === 'organise')[0];
+        try { card.run(cl, pid); } catch (e) {}
+      });
+      const n2 = v22File(S, pid).length;
+      return { ran:!!out, flagHeld:n1 === n0, cloneHeld:n2 === n0 };
+    })();
+
+    /* (f) THE BOUND. Sixty, the one `st.log` and `st.chron` already use. */
+    R.bound = (() => {
+      fresh(4242);
+      const pid = PARTIES.filter(p => p.id !== playParty(S))[0].id;
+      for (let i = 0; i < V22_FILE_MAX + 25; i++) {
+        v22Emit(S, pid, { card:'bill', turn:i, line:'Line ' + i + '.', foe:null });
+      }
+      const f = v22File(S, pid);
+      return { ran:true, held:f.length, max:V22_FILE_MAX,
+        /* AND THE BOUND IS DEEP ENOUGH TO BE A RECORD. One is the slot this
+           slice replaced, so a build that kept one would satisfy every other
+           reading here and change nothing at all. The floor is the sample the
+           card shows. */
+        capped:f.length === V22_FILE_MAX && V22_FILE_MAX >= 12,
+        keptTheNewest:!!f[0] && f[0].line === 'Line ' + (V22_FILE_MAX + 24) + '.',
+        droppedTheOldest:f.every(r => r.line !== 'Line 0.') };
+    })();
+
+    /* (g) DRIVEN, AND COUNTED AT THE ONE PLACE AN ACT HAPPENS: a card's `run`
+       returning a sentence. Wrapped rather than recomputed, because a probe
+       that reproduces the rule under test measures the change against itself. */
+    R.play = (() => {
+      const out = { acts:0, filed:0, sessions:0, byCard:{}, ghostCards:[],
+        blank:0, outOfOrder:0, recoverableBefore:0 };
+      const bases = {};
+      V16_AI_DECK.forEach(c => { bases[c.id] = c.run; });
+      V16_AI_DECK.forEach(c => {
+        c.run = function (st, pid) {
+          const l = bases[c.id].call(this, st, pid);
+          if (l && !V19_SIMULATING && pid !== playParty(st)) {
+            out.acts++; out.byCard[c.id] = (out.byCard[c.id] || 0) + 1;
+          }
+          return l;
+        };
+      });
+      try {
+        [4242, 90210, 7, 31337].forEach(sd => {
+          fresh(sd);
+          for (let t = 0; t < 60; t++) { step(); out.sessions++; }
+          const me = playParty(S);
+          PARTIES.forEach(p => {
+            if (p.id === me) return;
+            const f = v22File(S, p.id);
+            out.filed += f.length;
+            f.forEach((r, i) => {
+              if (!r.line) out.blank++;
+              if (V16_AI_DECK.every(c => c.id !== r.card) && out.ghostCards.indexOf(r.card) < 0) {
+                out.ghostCards.push(r.card);
+              }
+              if (i && f[i - 1].turn < r.turn) out.outOfOrder++;
+            });
+            /* what the shipped build could recover: one slot a party, four of
+               them on the panel */
+            if (f.length) out.recoverableBefore += 1;
+          });
+        });
+      } finally { V16_AI_DECK.forEach(c => { c.run = bases[c.id]; }); runQueue = rq; }
+      out.recoverableBefore = Math.min(out.recoverableBefore, 4 * 4);
+      out.share = out.acts ? +(out.filed / out.acts).toFixed(3) : null;
+      out.wasShare = out.acts ? +(out.recoverableBefore / out.acts).toFixed(3) : null;
+      out.cards = Object.keys(out.byCard).length;
+      return out;
+    })();
+
+    /* (h) AND THE PAGE PRINTS IT. Through the renderer: calling `v22Dossier`
+       tests the function and nothing about the wiring, and this file has had
+       four separate slices whose own arm passed while the card said nothing. */
+    R.page = (() => {
+      fresh(4242);
+      for (let t = 0; t < 40; t++) step();
+      UI.tab = 'parties';
+      let html = '';
+      try { html = viewParties(); } catch (e) { return { ran:false, threw:e.message }; }
+      const d = document.createElement('div'); d.innerHTML = html;
+      const folds = [].slice.call(d.querySelectorAll('details.fold.dossier'));
+      const me = playParty(S);
+      const withFile = PARTIES.filter(p => p.id !== me && v22File(S, p.id).length).length;
+      const sums = folds.map(f => (f.querySelector('summary') || {}).textContent || '');
+      const items = folds.reduce((n, f) => n + f.querySelectorAll('li').length, 0);
+      const tags = folds.reduce((n, f) => n + f.querySelectorAll('.tagline .tag').length, 0);
+      /* the summary carries the count and the date, which is what makes it a
+         record rather than a list of unrelated events */
+      const counted = sums.filter(s => /\d+ initiative/.test(s)).length;
+      const dated = sums.filter(s => /since /.test(s)).length;
+      /* AND THE VERBS ON IT ARE THE TABLE'S OWN WORDS. The first version of this
+         asked whether a tag's text was a CARD ID, to catch `v22Dossier`'s
+         fallback branch -- and `attack` and `demand` are both the id and the
+         right English word, so it counted four correct tags as failures. The
+         probe was wrong before the game was. What is asked instead is exact:
+         every tag is one of the strings the table holds. */
+      const words = {};
+      Object.keys(V22_VERB).forEach(k => { words[V22_VERB[k].one] = 1; words[V22_VERB[k].many] = 1; });
+      const rawIds = folds.reduce((n, f) => n + [].slice.call(f.querySelectorAll('.tagline .tag'))
+        .filter(t => !words[t.textContent.replace(/^\d+\s+/, '')]).length, 0);
+      /* the player's own party has no dossier: this is what the OTHERS did */
+      const mineHasOne = folds.some(f => {
+        const card = f.closest ? f.closest('.card') : null;
+        const h = card ? card.querySelector('h3') : null;
+        return h && h.textContent.indexOf(PARTY[me].name) >= 0;
+      });
+      return { ran:true, folds:folds.length, withFile:withFile, items:items, tags:tags,
+        counted:counted, dated:dated, rawIds:rawIds, mineHasOne:mineHasOne,
+        oneEach:folds.length === withFile, sample:sums[0] || '' };
+    })();
+
+    /* (i) AND THE PANEL'S OWN LINE STILL WORKS, because `a.why` was its reader
+       and the head of the file replaces it. */
+    R.panel = (() => {
+      fresh(4242);
+      for (let t = 0; t < 30; t++) step();
+      let h = '';
+      try { h = v16AiPanel(); } catch (e) { return { ran:false, threw:e.message }; }
+      const d = document.createElement('div'); d.innerHTML = h;
+      return { ran:true, list:d.querySelectorAll('ul.tight li').length };
+    })();
+    runQueue = rq;
+    return R;
+  });
+
+  const fileOk =
+    file22.cover.unnamed.length === 0 && file22.cover.ghosts.length === 0 &&
+    file22.cover.misshaped.length === 0 && file22.cover.deck > 15 &&
+    file22.accessor.ran && file22.accessor.empty && file22.accessor.madeNothing &&
+    file22.accessor.empty2 && file22.accessor.stillNothing &&
+    file22.store.ran && file22.store.filed && file22.store.whyGone &&
+    file22.store.three && file22.store.newestFirst && file22.store.oldestLast &&
+    file22.store.slotKept &&
+    file22.legacy.ran && file22.legacy.readsTheSlot && file22.legacy.keepsIt &&
+    file22.legacy.newestFirst &&
+    file22.sim.ran && file22.sim.flagHeld && file22.sim.cloneHeld &&
+    file22.bound.ran && file22.bound.capped && file22.bound.keptTheNewest &&
+    file22.bound.droppedTheOldest &&
+    /* the driven claim: EVERY act is filed, and none of the file is anything
+       else. The share is 1 by construction of the one call site, which is the
+       point -- there is one place an act happens and one place it is written. */
+    file22.play.acts > 200 && file22.play.filed === file22.play.acts &&
+    file22.play.blank === 0 && file22.play.ghostCards.length === 0 &&
+    file22.play.outOfOrder === 0 && file22.play.cards > 12 &&
+    file22.page.ran && file22.page.folds > 3 && file22.page.oneEach &&
+    file22.page.items > 20 && file22.page.tags > 10 &&
+    file22.page.counted === file22.page.folds && file22.page.dated === file22.page.folds &&
+    file22.page.rawIds === 0 && file22.page.mineHasOne === false &&
+    file22.panel.ran && file22.panel.list > 0;
+  say(fileOk, 'a party has a record you can read',
+    `\`v16AiTurn\` POSTS THREE LINES A SESSION UNDER A COMMENT SAYING "the rest is on the Parties page", AND ` +
+    `THE REST WAS ON NO PAGE. \`a.why\` is one slot per party, overwritten the next time that party acts, ` +
+    `and the panel prints four of them. Measured over 720 driven sessions on twelve seeds: the engines take ` +
+    `1,161 initiatives and all twenty cards act; 96.7% are printed once, 6.3% are still in \`st.log\` at the ` +
+    `end -- it holds sixty entries and shares them with everything else -- and 4.1% can be recovered ` +
+    `afterwards, which is 48 of 1,161, or four records a seed · NOW EVERY ONE IS FILED: over ` +
+    `${file22.play.sessions} driven sessions the engines take ${file22.play.acts} initiatives across ` +
+    `${file22.play.cards} cards and the files hold ${file22.play.filed} of them ` +
+    `(${file22.play.share} against ${file22.play.wasShare}), none blank ` +
+    `(${file22.play.blank}), none naming a card the deck has not (${file22.play.ghostCards.length}) and none ` +
+    `out of order (${file22.play.outOfOrder}) · ONE STORE, ONE WRITER, ONE READER: \`a.why\` had exactly one ` +
+    `of each in four megabytes, so the head of the file IS what it was (${file22.store.filed}, and the slot ` +
+    `is gone: ${file22.store.whyGone}, and its record kept: ${file22.store.slotKept}) rather than a second ` +
+    `copy of it, which would be two clocks for one fact · A READ DOES NOT CREATE (${file22.accessor.madeNothing}/${file22.accessor.stillNothing}), because ` +
+    `this is asked about every party on every render of the page · A REHEARSAL DOES NOT FILE ` +
+    `(${file22.sim.flagHeld} under the flag, ${file22.sim.cloneHeld} through \`v19Try\`'s own clone), which ` +
+    `is R8: \`v19Outcome\` plays every open card to score it, so an unguarded writer would file a party's ` +
+    `deliberation as things it did · A SAVE FROM BEFORE THIS SLICE READS BACK (${file22.legacy.readsTheSlot}) ` +
+    `and its one slot is kept rather than dropped on the first emit (${file22.legacy.keepsIt}) · THE BOUND IS ` +
+    `${file22.bound.max}, the one \`st.log\` and \`st.chron\` already use, which at the measured rate of 0.269 ` +
+    `initiatives a party a session is about 223 sessions of one party's record ` +
+    `(${file22.bound.capped}/${file22.bound.keptTheNewest}) · AND THE CARD PRINTS IT, read through the ` +
+    `renderer rather than off the function: ${file22.page.folds} dossiers for ${file22.page.withFile} parties ` +
+    `with a file, ${file22.page.items} entries and ${file22.page.tags} verb counts between them, every ` +
+    `summary carrying the count (${file22.page.counted}) and the date it starts from (${file22.page.dated}), ` +
+    `no card ID printed where a reader's word belongs (${file22.page.rawIds}) and nothing on the player's ` +
+    `own card (${file22.page.mineHasOne === false}) -- "${file22.page.sample}"`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
