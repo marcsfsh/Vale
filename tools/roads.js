@@ -25486,6 +25486,24 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       UI.tab = keep; try { render(); } catch (e) {}
       const cells = camp.match(/<td class="num" title="\d+ sampled counts of this same board[^"]*">([^<]*)<\/td>/g) || [];
       const values = cells.map(c => (c.match(/>([^<]*)<\/td>/) || [0, ''])[1]);
+      /* AND THE PARTIES PAGE'S OWN CELLS, not only its note. The poison that
+         put the authored `pollError` back left the note untouched and came
+         back GREEN: the sentence said the range was sampled while the numbers
+         beside it were 2.55 either side of the point, which is the card
+         lying in the one place this slice exists to stop it. The authored
+         range is SYMMETRIC about the point by construction and the night's is
+         not, so that is what is asked, along with the numbers themselves. */
+      const band = v22Band(S);
+      const pr = parties.match(/<td class="num">(\d+\.\d)–(\d+\.\d)%<\/td>/g) || [];
+      let matched = 0, symmetric = 0;
+      pr.forEach(c => {
+        const m = c.match(/(\d+\.\d)–(\d+\.\d)/);
+        if (!m) return;
+        const lo = +m[1], hi = +m[2];
+        if (Math.abs((hi - lo) - 5.1) < .05) symmetric++;
+        if (band && PARTIES.some(p => band.vote[p.id] &&
+          Math.abs(band.vote[p.id].lo - lo) < .06 && Math.abs(band.vote[p.id].hi - hi) < .06)) matched++;
+      });
       return { ran:true, threw:threw,
         header:/<th class="num">Range<\/th>/.test(camp),
         cells:cells.length, parties:PARTIES.length,
@@ -25497,6 +25515,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         sample:values[0] || '',
         note:/what the night itself did across \d+ sampled counts/.test(camp),
         partiesNote:/sampled counts of this same board actually produced/.test(parties),
+        partyCells:pr.length, partyMatched:matched, partySymmetric:symmetric,
+        partiesAreTheBand:pr.length > 0 && matched === pr.length && symmetric === 0,
         authoredGone:!/point planning range/.test(parties) };
     })();
     runQueue = rq;
@@ -25513,7 +25533,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     band22.cache.ran && band22.cache.holds && band22.cache.moves &&
     band22.page.ran && !band22.page.threw && band22.page.header &&
     band22.page.cells === band22.page.parties && band22.page.allRanges &&
-    band22.page.note && band22.page.partiesNote && band22.page.authoredGone;
+    band22.page.note && band22.page.partiesNote && band22.page.partiesAreTheBand &&
+    band22.page.authoredGone;
   say(bandOk, 'the range before the count',
     `THE RANGE THIS GAME PRINTED WAS AUTHORED AND THE NIGHT WAS NEVER ASKED. The Parties page has said "a ` +
     `modelled vote intention with a ±N point planning range" since v5, and N is ` +
@@ -25545,8 +25566,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${band22.page.cells} Range cells for ${band22.page.parties} parties, every one a range rather than an ` +
     `em dash (${band22.page.allRanges}, "${band22.page.sample}") -- the first build declared the band BELOW ` +
     `the row that reads it and \`var\` hoists, so the column printed a dash for every party while its own ` +
-    `title, which falls back to asking again, printed the numbers -- and the Parties page's authored ` +
-    `sentence is gone (${band22.page.authoredGone})`);
+    `title, which falls back to asking again, printed the numbers · AND THE PARTIES PAGE'S OWN CELLS ARE THE ` +
+    `BAND, not only its sentence: ${band22.page.partyMatched} of ${band22.page.partyCells} match it and ` +
+    `${band22.page.partySymmetric} are the authored ±2.55 window, which is SYMMETRIC about the point by ` +
+    `construction where the night's is not -- the poison that restored \`pollError\` left the sentence ` +
+    `untouched and came back GREEN, a card saying the range was sampled above numbers that were not · and ` +
+    `the authored sentence is gone (${band22.page.authoredGone})`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
