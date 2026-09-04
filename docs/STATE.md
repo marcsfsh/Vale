@@ -1354,6 +1354,53 @@ order `PLAN-S21.md`
   which is green with all 23 poisons red: an arm about a mechanism does not see
   the arm that counts the deck.
 
+  **AND THE FULL RUN REDDENED TWO OLDER ARMS, BOTH OF THEM MEASURING A COIN.**
+  Neither is a defect in this slice, and the only reason neither was repaired
+  the wrong way round is that both were read on the build BEFORE it first.
+
+  `a party holds something against a government` gated the caretaker's share of
+  formations at .1 and read **.105 against .027** on the build before the
+  slice — a four-fold jump off one card, which cost an hour of hunting a
+  mechanism. It is the sample. **A caretaker is an EPISODE, not a rate:** of
+  the arm's twelve seeds, NINE carry no caretaker at all on either build, and
+  the whole gap is three republics that fell into a crisis under one build
+  against one under the other. At **thirty-two seeds the paired difference is
+  +.020 at 0.93 standard errors**, twenty-seven of the thirty-two seeds are
+  identical, and two of the five that move go the OTHER way — seed 4242 reads
+  20 caretakers on the earlier build and NOUGHT on this one. The pooled share
+  halves, from .105/.027 to .047/.018, when the sample triples, which is what a
+  statistic dominated by rare episodes does. And its denominator is not
+  independent of its numerator: a quiet seed reads exactly 60 formations and a
+  seed in crisis 65, 68, 73, 76, 101 — the extra formations ARE the caretaker's
+  own retries, so the share is a fraction whose bottom grows with its top. The
+  bar is now the sentence's own meaning — *in the ordinary republic a government
+  forms* — at half the seeds: outside everything measured on a sound build (1 of
+  12 and 3 of 12) and inside the failure it was written against, the first draft
+  that put 110 of 360 elections into a caretaker's hands and would fail on every
+  seed. The share is reported and no longer asserted.
+
+  `a party votes its own manifesto` gated `byProgress.total > byAge.total` and
+  read **102 against 102**. Per seed over twenty-four seeds that difference has
+  a mean of **+1.54 with a standard deviation of 4.32** on the build before this
+  slice — 1.75 standard errors, positive on FIFTEEN of twenty-four — and +0.04
+  on the build with it, positive on nine of twenty-four. It is a sign test on a
+  fair coin, and it had been in that gate since S19d: first as a magnitude, and
+  after S21d took the magnitude out, as a direction, which is the same statistic
+  with less of it. S21a and S21d had each already retreated from a neighbouring
+  clause of this one leg for exactly this reason and each time kept a smaller
+  piece of the same quantity; this is the third and last of them. What carries
+  the claim is steady across the same slice: `meanAt` separates 12.1/6.7 and
+  13.1/7.1 against a bar of 1.35, and `deadHeldFor` 10.5 against 54.2 and 10.5
+  against 57.2 against a bar of .6.
+
+  **AND ONE MEASUREMENT MADE BOTH REPAIRS SAFE.** A build carrying the whole
+  slice with the `work` card's `can` returning false reproduces the pre-slice
+  republic *exactly* — the same 691/13/13/20 formation branches over the same
+  twelve seeds — so every other line this slice adds is inert in a driven game
+  and what both arms were reading was the card being played, nothing else. That
+  is also why the repairs are to the arms and not to the slice: there is no
+  third thing they could have been measuring.
+
 - **S21s — the two wrappers that ate their arguments.** `ballot(st, noise)` ends
   with `if (noise) base *= .92 + rand() * .16;` — a per-party swing of plus or
   minus eight per cent on the night — and its two callers choose deliberately:
