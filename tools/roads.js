@@ -24669,9 +24669,26 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         v22TargetSet(S, eng, r.id, 0, null);
         back = factor(S, eng);
       } finally { V22_TARGET_GAIN = keepGain; }
+      /* AND THE CEILING IS ASKED THE WAY A SAVE ASKS IT. Both writers already
+         respect it -- the button is drawn shut at three and the card passes a
+         literal three -- so no play can trip the cap and its poison came back
+         GREEN. What CAN carry a hundred is a blob, which is why the cap is
+         there at all, so the store is written raw and the reader is asked. */
+      const bad = {};
+      S.ai[eng].targets = S.ai[eng].targets || {}; S.ai[eng].targets[r.id] = 99;
+      S.campaign.targets = S.campaign.targets || {}; S.campaign.targets[r.id] = 99;
+      bad.engine = v22TargetDots(S, eng, r.id);
+      bad.mine = v22TargetDots(S, me, r.id);
+      v22TargetSet(S, eng, r.id, 99, null);
+      bad.writtenEngine = (S.ai[eng].targets || {})[r.id];
+      v22TargetSet(S, me, r.id, 99, null);
+      bad.writtenMine = (S.campaign.targets || {})[r.id];
+      v22TargetSet(S, eng, r.id, 0, null); v22TargetSet(S, me, r.id, 0, null);
       return { ran:true, bare:bare, one:one, three:three, back:back,
         engineIsRead:three !== bare, scales:Math.abs(three - bare) > Math.abs(one - bare),
-        reversible:back === bare, neighbourStill:mineBare === mineAfter };
+        reversible:back === bare, neighbourStill:mineBare === mineAfter,
+        blob:bad, capped:bad.engine === 3 && bad.mine === 3 &&
+          bad.writtenEngine === 3 && bad.writtenMine === 3 };
     })();
 
     /* (c) AND WHAT THEY ARE SAYING THERE. Held at the same dots, the same
@@ -25033,7 +25050,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     target22.deflt.ran && target22.deflt.allFirst && target22.deflt.allReal &&
     target22.deflt.n === 8 &&
     target22.dots.ran && target22.dots.engineIsRead && target22.dots.scales &&
-    target22.dots.reversible && target22.dots.neighbourStill &&
+    target22.dots.reversible && target22.dots.neighbourStill && target22.dots.capped &&
     target22.lift.ran && target22.lift.rightIsBetter && target22.lift.wrongIsWorseThanNothing &&
     target22.ranked.ran && target22.ranked.firstCountsMore && target22.ranked.bothPositive &&
     target22.salient.ran && target22.salient.loudCountsMore &&
@@ -25070,7 +25087,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `engine's factor goes ${target22.dots.bare} bare to ${target22.dots.one} at one dot and ` +
     `${target22.dots.three} at three (${target22.dots.scales}), back to ${target22.dots.back} when the ` +
     `dots go (${target22.dots.reversible}), and the player's own number does not move for it ` +
-    `(${target22.dots.neighbourStill}) · AND WHAT YOU ARE SAYING THERE: with the dots, the region and the ` +
+    `(${target22.dots.neighbourStill}). THE CEILING IS ASKED THE WAY A SAVE ASKS IT, because both writers ` +
+    `already respect it -- the button is drawn shut at three and the card passes a literal three -- so no ` +
+    `play can trip the cap and its poison came back GREEN: a store written raw at 99 reads back as ` +
+    `${target22.dots.blob.engine} for an engine and ${target22.dots.blob.mine} for the player, and 99 ` +
+    `offered to the writer is stored as ${target22.dots.blob.writtenEngine} and ` +
+    `${target22.dots.blob.writtenMine} · AND WHAT YOU ARE SAYING THERE: with the dots, the region and the ` +
     `party held, the ${target22.lift.pid} running on an issue it stands ${target22.lift.standingUp} on ` +
     `reads ${target22.lift.good} against ${target22.lift.bad} on one it stands ${target22.lift.standingDown} ` +
     `on, and the WRONG side is worse than not fighting there at all (${target22.lift.none} untargeted, ` +
