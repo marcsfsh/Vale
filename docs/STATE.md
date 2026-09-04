@@ -1296,34 +1296,6 @@ authored already and eaten by a wrapper.
   over 360 sessions at `ruthless`. And it said "almost no bill of the player's
   is ever spoken to before the division"; of nine such bill-sessions, four
   carried somebody else's line or pull. The real defect is sharper than either.
-
-**WHAT IS OPEN — AND ONE OF THEM IS A DEFECT ALREADY MEASURED:**
-
-- **Two later-chunk wrappers eat arguments their bases declare, and S21s fixes
-  both.** `sponsorBill`'s is above. The second is worse: **`ballot`'s S16 pact
-  wrapper eats its second argument.** `function ballot(st,
-  noise)` ends with `if (noise) base *= .92 + rand() * .16;` — an ±8% per-party
-  election-night swing — and five call sites pass `false` or `true`
-  deliberately. `v16BallotBase = ballot; ballot = function (st) { ... }` is in a
-  later chunk and passes one argument, so **`ballot(st, true)` at `runElection`
-  has been running without any swing since S16**: every election result is
-  exactly the projection, and an election in this game can no longer surprise
-  anyone. It is `sponsorBill`'s twin, found by the same probe on the same day,
-  and it is held out of S21r because it moves every seeded campaign and deserves
-  its own arc measurement. **S21s** is that slice, and it carries both fixes and
-  a `wrapper-arity` static check so there is never a third; a survey of the whole
-  file found exactly these two, out of 1,226 top-level bodies over 1,015 names.
-- **The government concedes to the street on every board its dice reach.** Over
-  1,440 driven sessions on the S21q build the answer fires 14 times and takes
-  `carry` on all fourteen; `v21StreetPick` scores carry 264.68 against talks
-  260.83 and refuse 255.30 on a built board, so the edge looks systematic rather
-  than marginal. Fourteen observations cannot tell a balance change from a
-  reshuffle, so nothing has been retuned — this is recorded for the owner, whose
-  call the balance is.
-
-The owner's extension continues at **S21t** (an organisation endorses somebody
-other than you) and **S21u** (a party that will not sit with another), in the
-order `PLAN-S21.md`
   **AND THE FULL HARNESS FOUND WHAT THIS SLICE'S OWN ARM COULD NOT: A CARD ADDED
   TO THE DECK NEEDED A LINE IN FIVE PLACES AND THE SLICE WROTE ONE.** Three were
   harness bookkeeping — `the six that are not yours act` built a state for the
@@ -1499,7 +1471,7 @@ order `PLAN-S21.md`
   of the first and the leg reported that a build with a working swing does not
   roll. Third slice running in which the probe was wrong before the game was.
 
-**WHAT IS OPEN:** the owner's extension S21r–S21t, in the order `PLAN-S21.md`
+**WHAT IS OPEN:** the owner's extension S21t and S21u, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
 was never written, and building it is a slice rather than a paragraph, so it is
 recorded here as its own piece of work rather than quietly dropped. The
@@ -1507,6 +1479,16 @@ original twelve slices are complete, and so is the coalition overhaul the brief
 names: S21d gave the agreement teeth, S21e made the table a negotiation, S21f
 gave it one exit and a voice, S21g made a government able to fall, and S21h
 gave the junior partner a game.
+
+**AND ONE BALANCE READING IS THE OWNER'S TO RULE ON, NOT MINE.**
+
+- **The government concedes to the street on every board its dice reach.** Over
+  1,440 driven sessions on the S21q build the answer fires 14 times and takes
+  `carry` on all fourteen; `v21StreetPick` scores carry 264.68 against talks
+  260.83 and refuse 255.30 on a built board, so the edge looks systematic rather
+  than marginal. Fourteen observations cannot tell a balance change from a
+  reshuffle, so nothing has been retuned — this is recorded for the owner, whose
+  call the balance is.
 
 **AND THE OWNER COMMISSIONED A CAMPAIGN PROGRAMME WHEN THEY RULED ON THE
 CHAIR.** Asked what should decide an election now that neither the chair nor
