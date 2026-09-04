@@ -24653,13 +24653,22 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       for (let t = 0; t < 6; t++) step();
       const eng = engineOf(S), me = playParty(S), r = REGIONS[0];
       if (!eng) return { ran:false };
-      const bare = factor(S, eng), mineBare = factor(S, me);
-      v22TargetSet(S, eng, r.id, 3, v22IssueOf(r.issues[0]));
-      const three = factor(S, eng), mineAfter = factor(S, me);
-      v22TargetSet(S, eng, r.id, 1, null);
-      const one = factor(S, eng);
-      v22TargetSet(S, eng, r.id, 0, null);
-      const back = factor(S, eng);
+      /* WITH THE PITCH SWITCHED OFF, so this leg is about the DOTS and nothing
+         else. Read with both terms live it cannot tell them apart: the poison
+         that put the dots back behind `pid === me` came back GREEN because the
+         engine's factor still moved, through the lift. */
+      const keepGain = V22_TARGET_GAIN;
+      let bare, mineBare, three, mineAfter, one, back;
+      try {
+        V22_TARGET_GAIN = 0;
+        bare = factor(S, eng); mineBare = factor(S, me);
+        v22TargetSet(S, eng, r.id, 3, v22IssueOf(r.issues[0]));
+        three = factor(S, eng); mineAfter = factor(S, me);
+        v22TargetSet(S, eng, r.id, 1, null);
+        one = factor(S, eng);
+        v22TargetSet(S, eng, r.id, 0, null);
+        back = factor(S, eng);
+      } finally { V22_TARGET_GAIN = keepGain; }
       return { ran:true, bare:bare, one:one, three:three, back:back,
         engineIsRead:three !== bare, scales:Math.abs(three - bare) > Math.abs(one - bare),
         reversible:back === bare, neighbourStill:mineBare === mineAfter };
@@ -25019,9 +25028,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     target22.card.namesRegion && target22.card.namesIssue &&
     target22.card.negatives === 0 && target22.card.full === 0 &&
     target22.play.ran && target22.play.enginesHoldGround && target22.play.on.parties >= 2 &&
+    /* THE BAR DOES NOT READ THE CONSTANT IT IS CHECKING. The first version
+       compared the term's maximum against a ceiling computed FROM
+       `V22_TARGET_GAIN`, which agrees with any value the gain holds -- the
+       poison that set it to .5, five times what the whole regional block
+       carries, came back GREEN on exactly that. It is the caretaker's clock
+       reading `V17_CARETAKER_MAX` and passing at 99, in a second place. The
+       bar is the block's own deviations, which are literals here: an organiser
+       dot at .019 and three of them at .057. */
     target22.size.ran && target22.size.n > 20 &&
-    target22.size.max <= target22.size.ceiling + 1e-6 &&
-    target22.size.p99 > target22.size.dotTerm * .5;
+    target22.size.p90 > .019 && target22.size.p90 < 2 * target22.size.dotTerm &&
+    target22.size.max < 3 * target22.size.dotTerm;
   say(targetOk, 'a battleground is a choice',
     `\`st.campaign.targets[r.id]\` WAS ONE NUMBER BOUGHT THREE TIMES, worth .019 of a region's factor per ` +
     `dot, and read behind \`if (pid === me)\` -- so the one lever in this game that says "fight for this ` +
@@ -25062,8 +25079,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${target22.play.off.dots} with the writer at nought · AND SIZED AGAINST THE BLOCK'S OWN DEVIATIONS -- ` +
     `a governor of your colour at ${target22.size.governor}, an opposition governorship at ` +
     `${target22.size.oppGovernor}, three organiser dots at ${target22.size.dotTerm} -- the term reads ` +
-    `${target22.size.p50} at its median and ${target22.size.p99} at its 99th over ${target22.size.n} live ` +
-    `readings, with a ceiling of ${target22.size.ceiling} at a gain of ${target22.size.gain}`);
+    `${target22.size.p50} at its median, ${target22.size.p90} at its ninetieth and ${target22.size.p99} at ` +
+    `its 99th over ${target22.size.n} live readings, at a gain of ${target22.size.gain} whose own ceiling is ` +
+    `${target22.size.ceiling} -- and the BAR here is those deviations rather than that ceiling, because a ` +
+    `ceiling computed from the constant under test agrees with any value it holds, which is how the poison ` +
+    `at five times the block came back green`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
