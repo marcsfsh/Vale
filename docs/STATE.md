@@ -1333,6 +1333,36 @@ authored already and eaten by a wrapper.
   down at nought rather than left out, so the guard can tell *asked and
   answered* from *forgotten*.
 
+  **AND THE FULL RUN FOUND A THIRD ARM MEASURING A COIN, which makes five in
+  two slices.** `a party does not wait for the season` failed on two clauses of
+  one leg, and both are sample, not mechanism. `bar.deliberateN > 100` read
+  **91** where the build before this slice reads 110 — and every count in that
+  block moved with it (rises 539 → 457, ambient 415 → 352, all within a point
+  of the same **−15%**), which is a card mix moving the whole drive. The arm's
+  own budget leg already records the size of that effect: a per-seed spread of
+  **−10.3% to +15.0%** on the initiative count, measured after *"three builds
+  were rewritten chasing single samples from that band"*. The floor is 60 now —
+  below the lowest reading a legitimate re-phase produces, and still a real
+  floor, because the share gated beside it has a standard error of .063 at that
+  sample and its bar is 2.7 of them away.
+
+  And `bar.bar < bar.medianRise` is **an integer compared strictly with an
+  integer**: 10 < 11 before the slice and 10 < 10 on it, the median of ninety-odd
+  discrete rises clustered on 9, 10 and 11, moved one place by a card mix that
+  left the population alone — **mean 11.56 → 11.27, minimum 9 on both**. It says
+  the same thing as the share (more than half of deliberate acts clearing the bar
+  *is* the median sitting above it), and the share can be sized against its own
+  error where a median cannot. So the share comes back — **the fourth time it has
+  been written here, and the first at a value taken from the standard error
+  rather than from the reading**: .85 on a reading of .902, .8 on .798, .7 on
+  .693, each a hair under the number it measured, each lasting one slice. At
+  n=91 and p=.571 the standard error is .052, so **.40** is three to four of them
+  below both readings. The two conditions either side are *tightened* rather than
+  loosened, because both had enormous headroom: the bar is 10 against an ambient
+  median of 1.8, and the ambient clears it on nought of 352 and nought of 415.
+  Poisoned at 1 and at 40 — the bar too low for the ambient to miss and too high
+  for a deliberate act to reach — and **red both ways**.
+
   **AND THE ASSERTION THAT SHOULD HAVE CAUGHT ALL OF IT EXISTED AND WAS GREEN,
   because it was reading the derived side.** `an endorsement buys three things
   and survives its ballot` drives the game's own `runElection` and asks whether

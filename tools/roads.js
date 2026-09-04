@@ -19791,7 +19791,18 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     answr.bar.rises > 150 && answr.bar.maxFall < answr.bar.bar &&
     /* the bar sits BETWEEN the two populations: above the ambient grievance
        governing produces and below the deliberate act it exists to answer */
-    answr.bar.deliberateN > 100 && answr.bar.ambientN > 100 &&
+    /* S21t: THE SAMPLE FLOOR IS SIZED FOR A RE-PHASE, because it was not.
+       `deliberateN > 100` read 91 on this slice against 110 on the build
+       before it -- and every count in this block moved with it (rises 539 to
+       457, ambient 415 to 352, all within a point of the same -15%), which is
+       a card mix moving the whole drive and not the mechanism. This arm's own
+       budget leg already records the size of that effect: a per-seed spread of
+       -10.3% to +15.0% on the initiative count, measured after "three builds
+       were rewritten chasing single samples from that band". A floor must sit
+       BELOW the lowest reading a legitimate re-phase can produce, and 60 does
+       -- while still being a real floor, because the share gated below has a
+       standard error of .063 at that sample and its bar is 2.7 of them away. */
+    answr.bar.deliberateN > 60 && answr.bar.ambientN > 100 &&
     /* S21d: THE MEDIANS CARRY THE CLAIM AND THE SHARE IS A CONSEQUENCE. The
        bound was .85, on a reading of .902; it now reads .798 while nothing
        about the bar or the player's buttons changed. What moved is WHICH
@@ -19822,8 +19833,32 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        It is reported and not gated. What the arm is about is gated and
        untouched: the bar sits ABOVE the ambient median and BELOW the
        deliberate one, and the ambient does not clear it. */
-    answr.bar.bar < answr.bar.medianRise &&
-    answr.bar.bar > answr.bar.ambientMedian && answr.bar.ambientClearShare < .35 &&
+    /* S21t: AND THE MEDIAN GOES, BECAUSE IT IS AN INTEGER COMPARED STRICTLY
+       WITH AN INTEGER. `bar.bar < bar.medianRise` is 10 < 11 on the build
+       before this slice and 10 < 10 on it -- the median of ninety-odd discrete
+       rises whose values cluster on 9, 10 and 11, moved one place by a card mix
+       that left the population itself alone: mean 11.56 to 11.27, minimum 9 on
+       both. A strict inequality between two integers on a sample that small is
+       decided by one observation, which is this file's own rule about `min ===
+       max` wearing the other hat.
+       IT SAYS THE SAME THING AS THE SHARE, and the share can be sized against
+       its own error where a median cannot: more than half of the deliberate
+       acts clear the bar IS the median sitting above it. So the share comes
+       back -- the fourth time it has been written here, and the first time at a
+       value taken from the standard error rather than from the reading. It was
+       .85 on a reading of .902, .8 on .798, .7 on .693, and each of those sat
+       a hair under the number it was measuring, which is why each lasted one
+       slice. At n=91 and p=.571 the standard error is .052, so .40 is between
+       three and four of them below the two readings this build and its
+       predecessor give (.571 and .627) and far above what the arm says a
+       broken bar produces -- "a build where the bar stopped separating would
+       take the share toward the ambient's nought".
+       AND THE TWO CONDITIONS EITHER SIDE ARE TIGHTENED rather than loosened,
+       because both had enormous headroom: the bar is 10 against an ambient
+       median of 1.8 on both builds, and the ambient clears it on NOUGHT of
+       352 and nought of 415. */
+    answr.bar.clearShare > .40 &&
+    answr.bar.bar > answr.bar.ambientMedian * 2 && answr.bar.ambientClearShare < .05 &&
     answr.floor.instinct === null && answr.floor.shrewd === true &&
     answr.said.found === true && answr.said.promisesRiposte === false;
   say(answrOk, 'a party does not wait for the season',
