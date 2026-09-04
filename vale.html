@@ -14272,9 +14272,14 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
       can:function () { return !S.banned[pid] && !S.cordon[pid] && pid !== S.ruling; },
       /* S21u: the player's own half of the agreement, written to `st.cordonMine`
          and then asked of the one writer. Writing `st.cordon` here as well would
-         be two clocks for one fact. */
+         be two clocks for one fact -- and a `typeof` FALLBACK that writes it is
+         the same second writer wearing a guard: `v21CordonTick` is a top-level
+         declaration in this file and a button handler runs long after every
+         chunk has evaluated, so the branch could not fire and the sentence
+         above would have been untrue anyway. S21t shipped exactly that shape
+         and it cost a slice. */
       run:function () { S.cordonMine = S.cordonMine || {}; S.cordonMine[pid] = true;
-        if (typeof v21CordonTick === 'function') v21CordonTick(S); else S.cordon[pid] = true;
+        v21CordonTick(S);
         S.machine[pid] = clamp((S.machine[pid] || 0) - .08, -.8, 1);
         var mm = {}; BLOCS.forEach(function (b) { if (affOf(S, pid, b.id) > .4) mm[b.id] = -5; }); mood(S, mm);
         logIt(S, 'A cordon was agreed against the ' + p.short + '.'); } });
@@ -14283,8 +14288,11 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
       /* S21u: AND IT CANNOT LIFT WHAT THE HOUSE IS HOLDING. The player may
          withdraw their own name from an agreement; they cannot speak for the
          other parties, and the card that says so is the one telling the truth.
-         `v21CordonAgainst` is asked at the LIFT depth, which is the same
-         question the tick asks of a standing cordon. */
+         `v21CordonHolds` is asked at the LIFT depth, which is the same
+         question the tick asks of a standing cordon -- a MAJORITY of the
+         Assembly's seats, not a count of parties, which is the bar this slice
+         measured its way to and the reason this sentence names `Holds` and not
+         the `Against` the first build called. */
       can:function () { return !!S.cordon[pid] && !!(S.cordonMine || {})[pid] &&
         !(typeof v21CordonHolds === 'function' && v21CordonHolds(S, pid, V21_CORDON_LIFT)); },
       why:function () { return (!!S.cordon[pid] && !(S.cordonMine || {})[pid])
@@ -14293,7 +14301,7 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
           ? 'A majority of the Assembly is still refusing to sit with them. Yours is not the name holding it.'
           : null); },
       run:function () { S.cordonMine = S.cordonMine || {}; delete S.cordonMine[pid];
-        if (typeof v21CordonTick === 'function') v21CordonTick(S); else delete S.cordon[pid];
+        v21CordonTick(S);
         var mm = {}; BLOCS.forEach(function (b) { if (affOf(S, pid, b.id) > .4) mm[b.id] = 6; }); mood(S, mm);
         logIt(S, 'The cordon against the ' + p.short + ' was lifted.'); } });
     list.push({ id:'splinter', name:'Sponsor a splinter party', cost:12, money:10, kind:'attack',
@@ -36078,8 +36086,13 @@ function v21CordonTick(st) {
     var was = !!st.cordon[p.id];
     var mine = !!st.cordonMine[p.id];
     var seated = !st.banned[p.id] && (st.seats[p.id] || 0) > 0;
-    /* the House's half: two or more others in deep contempt to raise one, and
-       fewer than two above the lift depth to keep it */
+    /* the House's half: a MAJORITY OF THE ASSEMBLY in deep enough contempt to
+       raise one, and a majority still above the lift depth to keep it. This
+       sentence said "two or more others" until the first build's per-party bar
+       was measured -- it put somebody under cordon on 66% of sessions, reached
+       all seven at once and left a mean of 1.93 parties able to form a
+       government -- and a comment that survives the line it describes is this
+       file's own defect, so it is written from the code and not from the plan. */
     var house = seated &&
       v21CordonHolds(st, p.id, was ? V21_CORDON_LIFT : V21_CORDON_DEEP);
     var now = mine || house;
