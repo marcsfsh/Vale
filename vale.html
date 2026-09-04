@@ -16432,7 +16432,7 @@ function viewFederation() {
       '<div class="mini-kpi"><b>Services</b><span class="'+(q.services<40?'neg':'')+'">'+Math.round(q.services)+'</span></div>'+
       '<div class="mini-kpi"><b>Order</b><span class="'+(q.order<40?'neg':'')+'">'+Math.round(q.order)+'</span></div>'+
       '<div class="mini-kpi"><b>Federal trust</b><span class="'+(q.federal<38?'neg':'')+'">'+Math.round(q.federal)+'</span></div></div>'+
-      '<div class="tagline"><span class="tag">'+r.urban+'% urban</span><span class="tag">Leans '+esc(PARTY[lead].short)+'</span>'+r.issues.map(function(i){return '<span class="tag">'+esc(i)+'</span>';}).join('')+
+      '<div class="tagline"><span class="tag">'+r.urban+'% urban</span><span class="tag">Leans '+esc(PARTY[lead].short)+'</span>'+r.issues.map(function(i,ix){return v22IssueTag(S,r,i,ix);}).join('')+
       (S.turn-q.lastVisit<3?'<span class="tag up">Leadership visited</span>':'')+'</div><div class="btnrow">'+
       rb('visit','Visit',3,0)+rb('grant','Targeted grant',5,10)+rb('compact','Regional compact',6,4)+rb('inspect','Federal inspection',5,3)+'</div></article>';
   }).join('');
@@ -18657,7 +18657,7 @@ function pv5PollChart(){
 function viewCampaign(){
   var proj=projection(S),next=pv5SessionsToBallot(S),phase=next===null?'Elections suspended':(next<=1?'Ballot campaign':next<=4?'Pre-election campaign':'Between elections');
   var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td></tr>';}).join('');
-  var regionRows=REGIONS.map(function(r){var n=S.campaign.targets[r.id]||0;return '<div class="region-target"><div><b>'+esc(r.name)+'</b><div class="small muted">'+r.pop+'% of Vale · '+esc(r.issues[0])+'</div></div><div class="target-dots">'+[0,1,2].map(function(i){return '<i class="'+(i<n?'on':'')+'"></i>';}).join('')+'</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+'>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
+  var regionRows=REGIONS.map(function(r){var n=S.campaign.targets[r.id]||0;return '<div class="region-target"><div><b>'+esc(r.name)+'</b><div class="small muted">'+r.pop+'% of Vale · '+esc(r.issues[0])+' · '+esc(v22IssueSay(v22Standing(S,playParty(S),v22IssueOf(r.issues[0])||'jobs')))+'</div></div><div class="target-dots">'+[0,1,2].map(function(i){return '<i class="'+(i<n?'on':'')+'"></i>';}).join('')+'</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+'>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
   var messages=topIssues(S,6).map(function(i){return '<button class="strategy-choice" data-campaign-action="message" data-campaign-id="'+i.id+'" aria-pressed="'+(S.campaign.message===i.id)+'"><b>'+esc(i.name)+'</b><small>Salience '+Math.round(S.salience[i.id])+' · '+esc(i.source)+'</small></button>';}).join('');
   return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
 }
@@ -32517,6 +32517,157 @@ viewRecord = function () {
    allocation amplifies again, so the naive coefficients overshot the owner's
    forty by more than three times. Tuned against tools/pacing.js and the
    measurement in the PR. */
+/* ============================================================
+   S22b - AN ISSUE IS A THING THE MODEL HAS
+   ============================================================
+   `REGIONS` GIVES EACH OF THE EIGHT REGIONS THREE NAMED ISSUES AND NOTHING IN
+   THE MODEL READS THEM. Twenty-four authored strings -- 'Housing costs',
+   'Trade', 'Civil liberties' for the Somnium Coast, 'Agriculture',
+   'Federalism', 'Energy' for the Rigel Plains -- and grep finds exactly two
+   readers, both render sites: a tag row on the region card and one line of
+   subtitle under the Target button. That is this file's most-repeated defect,
+   a modifier nothing reads, sitting in the place the owner pointed at when
+   they asked for regional battlegrounds with depth.
+
+   THE CHANNEL ALREADY EXISTS AND NOTHING JOINED IT TO THEM. `ISSUES` is twelve
+   entries, each carrying the indicator it is read from (`key`) and the statute
+   categories it covers (`cats`); `issueValue` reads the indicators, `issueTick`
+   moves `st.salience` every session, and the campaign message already asks for
+   one. So no new channel is invented here. What is written is the join: every
+   string a region names resolves to one of the twelve, and `roads.js` fails if
+   one does not -- covered from `REGIONS` rather than from a list somebody
+   keeps, which is the guard `V19_RIVAL_WORTH` has.
+
+   THE MAP IS TO WHAT THE MODEL HAS, not to what a farmer would say. There is no
+   Agriculture category in the statute book, so the Rigel Plains' first issue
+   reads through the business cycle, which is the reading the model owns. Two of
+   a region's three can land on one issue -- Tenebris names Jobs and Wages and
+   both are about a household's money -- and that is a region caring about one
+   thing twice rather than a collision. */
+var V22_REGION_ISSUE = {
+  'Housing costs':   'prices',    /* household costs, which is what `prices` is */
+  'Cost of living':  'prices',
+  'Wages':           'prices',    /* what a wage buys, beside the cost of living */
+  'Jobs':            'jobs',
+  'Infrastructure':  'jobs',      /* `jobs` carries the Infrastructure category */
+  'Agriculture':     'jobs',      /* no Agriculture category exists; the rural
+                                     economy reaches the model as the cycle */
+  'Technology':      'schools',   /* Thaxia's research institutes; `schools`
+                                     carries the Technology category too */
+  'Skills':          'schools',
+  'Schools':         'schools',
+  'Public services': 'health',
+  'Public safety':   'safety',
+  'Energy':          'climate',
+  'Civil liberties': 'rights',
+  'Local control':   'federal',
+  'Federalism':      'federal',
+  'Integrity':       'integrity',
+  'Institutions':    'integrity',
+  'Trade':           'world',
+  'Defence':         'defence',
+  'Veterans':        'defence',
+  'Border security': 'migration'  /* `migration` is "the border, labour demand
+                                     and national identity" in its own words */
+};
+/* AND THE ORDER OF A REGION'S THREE IS ALREADY MEANINGFUL. The Campaign page
+   has printed `r.issues[0]` as a region's subtitle since v9, so the array is
+   authored as a ranking and the model reads it as one rather than inventing a
+   second field to say the same thing. */
+var V22_ISSUE_RANK = [1, .66, .4];
+/* WHAT A STATUTE A PARTY CARRIED IS WORTH AGAINST ONE IT MERELY DECLARED. A
+   third, so that three of them -- the cap -- carry a party the whole way from a
+   book that is against it on an issue to a book that is its own. Measured over
+   8,064 party-issue readings on eight seeds, a party has actually carried
+   something in a given issue's categories on 5.2% of them: `st.billArchive`
+   holds twenty-eight resolved bills across every party and every category, so
+   this is a rare and earned half rather than a term. It moves mean standing
+   from -.118 to -.092, about 3% of the between-party spread, which is why the
+   driven leg REPORTS it and a constructed leg proves it is read. */
+var V22_CARRIED = .34;
+/* THE SIZE OF THE TERM, AND IT IS A DIVISION RATHER THAN A GUESS. The block
+   below sums every regional term as a deviation from 1 and scales the sum by
+   ONE constant -- its own stated rule, because the factor is applied twice on a
+   ballot and the allocation amplifies again. So the question is how big a
+   DEVIATION this should be, and the answer is read against the deviations
+   already there: a governor of your own colour is +.055, an opposition
+   governorship +.085, the federal term about +-.08, the three care terms about
+   +-.04 and an organiser dot .019.
+
+   MEASURED AT GAIN 1 over 5,376 party-region readings on eight seeds, the term
+   runs p10 -.677, p50 -.103, p90 +.244, and the spread BETWEEN parties in one
+   region has a median of .932. So a gain of .091 makes that spread equal to the
+   opposition governorship, which is the largest deviation the block carries,
+   and .09 is what it is set to: standing on a region's own three issues is
+   worth about what a well-regarded governorship there is worth to a party out
+   of office. The first draft was .42, five times the largest term it sits
+   beside, and the measurement is what said so. */
+var V22_ISSUE_GAIN = 0.09;
+function v22IssueOf(name) { return V22_REGION_ISSUE[name] || null; }
+/* WHERE A PARTY STANDS ON AN ISSUE, read off its own record and nothing else.
+   Two halves, and both are readings this file already had: what it SAID, which
+   is `wants` against where the statute book actually sits, and what it DID,
+   which is the statutes it carried out of `st.billArchive`. No office is read
+   here -- the owner's ruling is that a chair has no bearing on an election, and
+   a term that asked which department a party holds would put it back. */
+function v22Standing(st, pid, iid) {
+  var iss = ISSUE[iid];
+  if (!iss || !PARTY[pid]) return 0;
+  var w = PARTY[pid].wants || {}, n = 0, v = 0;
+  POLICIES.forEach(function (p) {
+    if (iss.cats.indexOf(p.cat) < 0 || w[p.id] === undefined) return;
+    var lv = st.pol[p.id] || 0, tg = Math.min(w[p.id], p.max), span = Math.max(1, p.max);
+    n += 1;
+    /* +1 where the book is where this party said it should be, -1 where it is
+       as far from it as the ladder allows */
+    v += 1 - Math.min(1, Math.abs(tg - lv) / span) * 2;
+  });
+  var said = n ? v / n : 0;
+  var did = 0;
+  (st.billArchive || []).forEach(function (b) {
+    if (b.sponsor !== pid || b.stage !== 'passed') return;
+    var p = POL[b.policy];
+    if (p && iss.cats.indexOf(p.cat) >= 0) did += 1;
+  });
+  return clamp(said + Math.min(3, did) * V22_CARRIED, -1, 1);
+}
+/* and what one region's own three issues are worth to one party: how much the
+   country is thinking about each, times where that party stands on it, ranked
+   by the order the region names them in. */
+/* AND THE PAGE SAYS IT, or an issue that decides an election and cannot be
+   seen deciding it is `st.court.size` inverted -- a term the model reads that
+   the reader cannot. The tag the region card has printed since v9 carries the
+   standing now, in the words the rest of this file uses for a record. */
+function v22IssueSay(v) {
+  return v >= .5 ? 'strong here' : v >= .15 ? 'with you' :
+         v <= -.5 ? 'against you' : v <= -.15 ? 'wanting' : 'level';
+}
+function v22IssueTag(st, r, name, ix) {
+  var me = playParty(st), iid = v22IssueOf(name);
+  if (!iid) return '<span class="tag">' + esc(name) + '</span>';
+  var v = v22Standing(st, me, iid);
+  var sal = Math.round((st.salience || {})[iid] === undefined ? 40 : st.salience[iid]);
+  return '<span class="tag ' + (v >= .15 ? 'up' : (v <= -.15 ? 'down' : '')) + '" title="' +
+    esc(ISSUE[iid].name + ', ' + sal + ' out of 100 on the country\'s mind' +
+      (ix === 0 ? ', and the first thing this region is about' : '') +
+      '. Your record on it is ' + v.toFixed(2) + '.') + '">' +
+    esc(name) + ' &middot; ' + esc(v22IssueSay(v)) + '</span>';
+}
+function v22RegionIssueLift(st, r, pid) {
+  if (!r || !r.issues || !r.issues.length) return 0;
+  var v = 0, w = 0;
+  r.issues.forEach(function (name, i) {
+    var iid = v22IssueOf(name);
+    if (!iid) return;
+    var rank = V22_ISSUE_RANK[i] === undefined ? V22_ISSUE_RANK[V22_ISSUE_RANK.length - 1] : V22_ISSUE_RANK[i];
+    /* the national salience is what makes an issue worth running on at all,
+       and it is the reading `issueTick` already moves every session */
+    var sal = ((st.salience || {})[iid] === undefined ? 40 : st.salience[iid]) / 100;
+    v += rank * sal * v22Standing(st, pid, iid);
+    w += rank * sal;
+  });
+  return w ? (v / w) * V22_ISSUE_GAIN : 0;
+}
 var V11_REGION_GAIN = 0.23;
 var V11_REGION_SPAN = [.80, 1.22];
 var v11RegionFactorBase = regionPartyFactor;
@@ -32574,6 +32725,13 @@ regionPartyFactor = function (st, pid) {
     if (!govSide && g && g.party === pid) bonus += .085;
     /* a region outside federal authority is not listening to the centre */
     if (auto[r.id] && govSide) bonus -= .07;
+    /* S22b: AND THE THREE ISSUES THE REGION IS AUTHORED WITH. A deviation from
+       1 like every term above it, scaled by the same single constant, so the
+       seat target this block was tuned against still holds. It is the first
+       term here that DIFFERS BETWEEN PARTIES for a reason a player can act on:
+       S21v measured that a curve every party shares cancels in the
+       normalisation, and only one that differs spreads them. */
+    bonus += v22RegionIssueLift(st, r, pid);
     fit *= 1 + bonus * V11_REGION_GAIN;
     var w = v11RegionWeight(st, r, q);
     total += fit * w; weight += w;
