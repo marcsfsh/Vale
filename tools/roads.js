@@ -24599,6 +24599,451 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `a term that lifts the party at the BOTTOM of a session narrows that session's spread and "the widest ` +
     `gap rises" would be a claim about which party happened to campaign`);
 
+  /* ==========================================================
+     S22d -- A BATTLEGROUND IS A CHOICE, NOT A DOT
+
+     `st.campaign.targets[r.id]` was one number bought three times, worth .019
+     of a region's factor per dot, and read behind `if (pid === me)` -- so the
+     one lever in the game that says "fight for this region" belonged to the
+     human alone, and its whole content was WHERE and HOW MANY.
+
+     THE POISON LIST CAME FROM THE DIFF: the gain, the two readers, the writer,
+     the lift, the factor, the row, the note, the handler, the free choice, the
+     wiring, the ballot, the price, the picker and the card.                   */
+  const target22 = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+    const engineOf = st => {
+      let out = null;
+      PARTIES.forEach(p => { if (!out && p.id !== playParty(st) && !st.banned[p.id]) out = p.id; });
+      return out;
+    };
+    /* the factor read through the game's own path, never recomputed */
+    const factor = (st, pid) => { try { return +regionPartyFactor(st, pid).toFixed(6); } catch (e) { return null; } };
+
+    /* (a) THE DEFAULT IS THE REGION'S OWN FIRST ISSUE, and it is one reading
+       rather than two: a page showing a chosen issue while the model scored
+       nought for it is this file's oldest defect wearing a select. */
+    R.deflt = (() => {
+      fresh(4242);
+      for (let t = 0; t < 4; t++) step();
+      const me = playParty(S), eng = engineOf(S);
+      const rows = REGIONS.map(r => ({
+        rid:r.id, first:v22IssueOf(r.issues[0]),
+        mine:v22TargetIssue(S, me, r.id), theirs:v22TargetIssue(S, eng, r.id) }));
+      return { ran:true, n:rows.length,
+        allFirst:rows.every(x => x.first && x.mine === x.first && x.theirs === x.first),
+        allReal:rows.every(x => !!ISSUE[x.mine]) };
+    })();
+
+    /* (b) AN ENGINE'S DOTS REACH THE FACTOR. Read by moving the STORE and
+       asking `regionPartyFactor`, which is the function the ballot calls --
+       not by re-deriving .019, which would prove the coefficient. */
+    R.dots = (() => {
+      fresh(90210);
+      for (let t = 0; t < 6; t++) step();
+      const eng = engineOf(S), me = playParty(S), r = REGIONS[0];
+      if (!eng) return { ran:false };
+      const bare = factor(S, eng), mineBare = factor(S, me);
+      v22TargetSet(S, eng, r.id, 3, v22IssueOf(r.issues[0]));
+      const three = factor(S, eng), mineAfter = factor(S, me);
+      v22TargetSet(S, eng, r.id, 1, null);
+      const one = factor(S, eng);
+      v22TargetSet(S, eng, r.id, 0, null);
+      const back = factor(S, eng);
+      return { ran:true, bare:bare, one:one, three:three, back:back,
+        engineIsRead:three !== bare, scales:Math.abs(three - bare) > Math.abs(one - bare),
+        reversible:back === bare, neighbourStill:mineBare === mineAfter };
+    })();
+
+    /* (c) AND WHAT THEY ARE SAYING THERE. Held at the same dots, the same
+       region and the same party, so the only thing that moves is the issue. */
+    R.lift = (() => {
+      fresh(7);
+      for (let t = 0; t < 8; t++) step();
+      const me = playParty(S), r = REGIONS.filter(x => (x.issues || []).length === 3)[0];
+      if (!r) return { ran:false };
+      /* FIND a region and two issues this party is on opposite sides of,
+         rather than naming one: only a minority of party-issue pairs have any
+         `wants` entry at all, and a probe that assumes a pair it did not look
+         for reports the mechanism as absent. */
+      let pid = null, rr = null, up = null, down = null;
+      REGIONS.forEach(x => {
+        if (pid) return;
+        PARTIES.forEach(p => {
+          if (pid || S.banned[p.id]) return;
+          const ids = (x.issues || []).map(v22IssueOf);
+          const hi = ids.filter(i => i && v22Standing(S, p.id, i) > .1)[0];
+          const lo = ids.filter(i => i && v22Standing(S, p.id, i) < -.1)[0];
+          if (hi && lo) { pid = p.id; rr = x; up = hi; down = lo; }
+        });
+      });
+      if (!pid) return { ran:false, why:'no region gave one party a positive and a negative issue' };
+      v22TargetSet(S, pid, rr.id, 3, up);
+      const good = factor(S, pid);
+      v22TargetSet(S, pid, rr.id, 3, down);
+      const bad = factor(S, pid);
+      v22TargetSet(S, pid, rr.id, 0, null);
+      const none = factor(S, pid);
+      return { ran:true, pid:pid, rid:rr.id, up:up, down:down,
+        good:good, bad:bad, none:none,
+        rightIsBetter:good > bad,
+        /* AND THE WRONG SIDE IS A PUNISHMENT, not merely a smaller reward --
+           the plan's word. Three dots on an issue you are against is worth
+           LESS than not fighting there at all. */
+        wrongIsWorseThanNothing:bad < none,
+        standingUp:+v22Standing(S, pid, up).toFixed(3),
+        standingDown:+v22Standing(S, pid, down).toFixed(3) };
+    })();
+
+    /* (d) THE REGION'S OWN RANKING, with the salience held EQUAL -- the weight
+       is rank TIMES salience, so a leg that lets the country's mind stand in
+       for the order proves nothing about the order. (S22b's rank leg came back
+       green on its poison for exactly this.) */
+    R.ranked = (() => {
+      fresh(31337);
+      for (let t = 0; t < 6; t++) step();
+      let pid = null, rr = null, ids = null;
+      REGIONS.forEach(x => {
+        if (pid) return;
+        const list = (x.issues || []).map(v22IssueOf);
+        if (list.length < 3 || list.some(i => !i) || list[0] === list[2]) return;
+        PARTIES.forEach(p => {
+          if (pid || S.banned[p.id]) return;
+          if (v22Standing(S, p.id, list[0]) > .1 && v22Standing(S, p.id, list[2]) > .1) {
+            pid = p.id; rr = x; ids = list;
+          }
+        });
+      });
+      if (!pid) return { ran:false };
+      const keepSal = JSON.parse(JSON.stringify(S.salience || {}));
+      S.salience[ids[0]] = 60; S.salience[ids[2]] = 60;
+      /* and the standings held equal too, or the ranking is being read through
+         two moving parts */
+      const base = v22Standing;
+      let first, third, none;
+      /* RESTORED IN A FINALLY. A probe that stubs a top-level function and
+         throws before it puts it back leaves every later road measuring the
+         stub, and this one is read by four of them. */
+      try {
+        v22Standing = function () { return 1; };
+        v22TargetSet(S, pid, rr.id, 3, ids[0]);
+        first = factor(S, pid);
+        v22TargetSet(S, pid, rr.id, 3, ids[2]);
+        third = factor(S, pid);
+        v22TargetSet(S, pid, rr.id, 0, null);
+        none = factor(S, pid);
+      } finally { v22Standing = base; S.salience = keepSal; }
+      return { ran:true, first:first, third:third, none:none,
+        firstCountsMore:first > third, bothPositive:first > none && third > none };
+    })();
+
+    /* (e) AND THE COUNTRY'S MIND, with the RANK held equal: the same issue, the
+       same slot, two saliences. */
+    R.salient = (() => {
+      fresh(555);
+      for (let t = 0; t < 6; t++) step();
+      let pid = null, rr = null, iid = null;
+      REGIONS.forEach(x => {
+        if (pid) return;
+        const first = v22IssueOf((x.issues || [])[0]);
+        if (!first) return;
+        PARTIES.forEach(p => {
+          if (pid || S.banned[p.id]) return;
+          if (v22Standing(S, p.id, first) > .1) { pid = p.id; rr = x; iid = first; }
+        });
+      });
+      if (!pid) return { ran:false };
+      const keepSal = JSON.parse(JSON.stringify(S.salience || {}));
+      v22TargetSet(S, pid, rr.id, 3, iid);
+      S.salience[iid] = 90; const loud = factor(S, pid);
+      S.salience[iid] = 10; const quiet = factor(S, pid);
+      v22TargetSet(S, pid, rr.id, 0, null);
+      S.salience = keepSal;
+      return { ran:true, loud:loud, quiet:quiet, loudCountsMore:loud > quiet };
+    })();
+
+    /* (f) AN ISSUE THE REGION DOES NOT NAME IS NOT A BATTLEGROUND THERE, and
+       the refusal is at the WRITER rather than only in the control that offers
+       the three -- anything a blob can carry is reachable without ever passing
+       a control. */
+    R.foreign = (() => {
+      fresh(8080);
+      for (let t = 0; t < 4; t++) step();
+      const eng = engineOf(S), r = REGIONS[0];
+      const own = (r.issues || []).map(v22IssueOf);
+      const alien = ISSUES.map(i => i.id).filter(i => own.indexOf(i) < 0)[0];
+      v22TargetSet(S, eng, r.id, 3, alien);
+      const stored = v22TargetIssue(S, eng, r.id);
+      return { ran:true, alien:alien, stored:stored, refused:stored !== alien,
+        fellBackToTheRegions:own.indexOf(stored) >= 0 };
+    })();
+
+    /* (g) A READ DOES NOT CREATE, and the writer is the door that does. */
+    R.noCreate = (() => {
+      fresh(1234);
+      for (let t = 0; t < 3; t++) step();
+      const eng = engineOf(S), r = REGIONS[1];
+      delete S.ai;
+      const d = v22TargetDots(S, eng, r.id);
+      const madeByDots = !!S.ai;
+      const i = v22TargetIssue(S, eng, r.id);
+      const madeByIssue = !!S.ai;
+      const l = v22TargetLift(S, r, eng);
+      const madeByLift = !!S.ai;
+      v22TargetSet(S, eng, r.id, 2, null);
+      const madeByWrite = !!S.ai && ((S.ai[eng] || {}).targets || {})[r.id] === 2;
+      return { ran:true, dots:d, issue:i, lift:l,
+        madeByDots:madeByDots, madeByIssue:madeByIssue, madeByLift:madeByLift,
+        madeByWrite:madeByWrite };
+    })();
+
+    /* (h) THE BALLOT SPENDS THE ORGANISATION AND NOT THE PARTY'S MIND. */
+    R.ballot = (() => {
+      fresh(99);
+      for (let t = 0; t < 8; t++) step();
+      const eng = engineOf(S), me = playParty(S), r = REGIONS[2];
+      const iid = (r.issues || []).map(v22IssueOf)[1];
+      v22TargetSet(S, eng, r.id, 3, iid);
+      v22TargetSet(S, me, r.id, 3, iid);
+      try { runElection(S, false); } catch (e) { R.ballotThrew = e.message; }
+      UI.queue = []; UI.busy = false;
+      return { ran:true, engineDots:v22TargetDots(S, eng, r.id), mineDots:v22TargetDots(S, me, r.id),
+        engineIssue:v22TargetIssue(S, eng, r.id), wanted:iid,
+        halvedBoth:v22TargetDots(S, eng, r.id) === 1 && v22TargetDots(S, me, r.id) === 1,
+        keptTheIssue:v22TargetIssue(S, eng, r.id) === iid };
+    })();
+
+    /* (i) THE PAGE, and a REAL change event rather than a call to the handler:
+       every gate in this harness calls a function and a player presses a
+       control. */
+    R.page = (() => {
+      fresh(2718);
+      for (let t = 0; t < 6; t++) step();
+      const me = playParty(S);
+      const keep = UI.tab;
+      UI.tab = 'campaign';
+      let threw = null;
+      try { render(); } catch (e) { threw = e.message; }
+      const sels = [...document.querySelectorAll('#view select[data-campaign-issue]')];
+      const rows = [...document.querySelectorAll('#view .region-target')];
+      const optCount = sels.map(s => s.options.length);
+      const marked = sels.every(s => {
+        const rid = s.getAttribute('data-campaign-issue');
+        return s.value === v22TargetIssue(S, me, rid);
+      });
+      /* the subtitle reads the issue that is CHOSEN, not the region's first */
+      const one = sels[0];
+      const rid = one ? one.getAttribute('data-campaign-issue') : null;
+      const third = rid ? v22IssueOf(REGION[rid].issues[2]) : null;
+      let moved = false, subtitle = '', costCap = null, costMoney = null;
+      if (one && third && third !== v22TargetIssue(S, me, rid)) {
+        costCap = S.capital; costMoney = partyPurse(S, me);
+        one.value = third;
+        one.dispatchEvent(new Event('change', { bubbles:true }));
+        moved = v22TargetIssue(S, me, rid) === third;
+        const row = [...document.querySelectorAll('#view .region-target')]
+          .filter(x => (x.querySelector('select') || {}).getAttribute &&
+            x.querySelector('select').getAttribute('data-campaign-issue') === rid)[0];
+        subtitle = row ? (row.querySelector('.small') || {}).textContent || '' : '';
+        costCap = S.capital - costCap; costMoney = partyPurse(S, me) - costMoney;
+      }
+      UI.tab = keep; try { render(); } catch (e) {}
+      return { ran:true, threw:threw, sels:sels.length, rows:rows.length,
+        regions:REGIONS.length, optCount:optCount,
+        threeEach:optCount.length > 0 && optCount.every(n => n === 3),
+        marked:marked, moved:moved, subtitle:subtitle.slice(0, 80),
+        subtitleFollows:!!(third && ISSUE[third] && subtitle.indexOf(ISSUE[third].name) >= 0),
+        free:costCap === 0 && costMoney === 0,
+        note:/ranks first is worth more/.test(document.getElementById('view').textContent) };
+    })();
+
+    /* (j) THE ENGINE'S SIDE. Gated on `v19Thinks` per R2, and its picker never
+       spends the purse to make its own party weaker. */
+    R.card = (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'target')[0];
+      if (!card) return { ran:false };
+      fresh(1618);
+      for (let t = 0; t < 6; t++) step();
+      const eng = engineOf(S);
+      S.purse = S.purse || {}; S.purse[eng] = 4000;
+      S.aiLevel = 'instinct';
+      const atInstinct = card.can(S, eng);
+      S.aiLevel = 'ruthless';
+      const atRuthless = card.can(S, eng);
+      const purseBefore = partyPurse(S, eng), capBefore = S.capital;
+      const line = card.run(S, eng);
+      const spent = purseBefore - partyPurse(S, eng);
+      /* THE PICK IS NEVER A LOSS: an issue the party is on the wrong side of
+         is a NEGATIVE term, so a card that bought one would spend the purse to
+         make its own party weaker. */
+      let negatives = 0, full = 0;
+      [4242, 90210, 7].forEach(sd => {
+        fresh(sd); S.aiLevel = 'ruthless';
+        for (let t = 0; t < 20; t++) {
+          step();
+          PARTIES.forEach(p => {
+            if (p.id === playParty(S) || S.banned[p.id]) return;
+            const b = v22AiBattleground(S, p.id);
+            if (!b) return;
+            if (v22Standing(S, p.id, b.iid) <= 0) negatives++;
+            if (v22TargetDots(S, p.id, b.rid) >= 3) full++;
+          });
+        }
+      });
+      return { ran:true, atInstinct:atInstinct, atRuthless:atRuthless,
+        line:line, spent:spent, capital:S.capital - capBefore,
+        namesRegion:!!(line && REGIONS.some(r => line.indexOf(r.name) >= 0)),
+        namesIssue:!!(line && ISSUES.some(i => line.toLowerCase().indexOf(i.name.toLowerCase()) >= 0)),
+        negatives:negatives, full:full };
+    })();
+
+    /* (k) AND IT IS LIVE IN PLAY: driven, engines hold ground of their own and
+       the factor differs between the parties that hold it and the ones that do
+       not. An A/B on the same seeds, because a rate in play is a joint fact
+       about the whole model. */
+    R.play = (() => {
+      const baseSet = v22TargetSet;
+      const run = () => {
+        const held = {}; let dots = 0, parties = {}, regions = {}, sessions = 0;
+        [4242, 90210, 7, 31337].forEach(sd => {
+          fresh(sd); S.aiLevel = 'ruthless';
+          for (let t = 0; t < 40; t++) {
+            step(); sessions++;
+            PARTIES.forEach(p => {
+              if (p.id === playParty(S) || S.banned[p.id]) return;
+              REGIONS.forEach(r => {
+                const n = v22TargetDots(S, p.id, r.id);
+                if (n > 0) { dots += n; parties[p.id] = 1; regions[r.id] = 1; }
+              });
+            });
+          }
+        });
+        return { dots:dots, parties:Object.keys(parties).length,
+          regions:Object.keys(regions).length, sessions:sessions };
+      };
+      const on = run();
+      let off;
+      try { v22TargetSet = function () { return 0; }; off = run(); }
+      finally { v22TargetSet = baseSet; }
+      return { ran:true, on:on, off:off,
+        enginesHoldGround:on.dots > 0 && off.dots === 0 };
+    })();
+
+    /* (l) AND THE SIZE, against the deviations the block already carries: a
+       governor of your own colour at .055, an opposition governorship at .085,
+       the federal term at about .08 and an organiser dot at .019. */
+    R.size = (() => {
+      const at = [];
+      [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+        fresh(sd); S.aiLevel = 'ruthless';
+        for (let t = 0; t < 40; t++) {
+          /* EVERY session, not every fourth: a party holds ground for about
+             four sessions after it buys it -- the ballot halves what it holds
+             and a ballot falls every other session -- so a probe that samples
+             on a four-session stride reads a live mechanism as almost empty. */
+          step();
+          PARTIES.forEach(p => {
+            if (S.banned[p.id]) return;
+            REGIONS.forEach(r => {
+              const v = v22TargetLift(S, r, p.id);
+              if (v !== 0) at.push(Math.abs(v));
+            });
+          });
+        }
+      });
+      at.sort((a, b) => a - b);
+      const q = pp => at.length ? +at[Math.min(at.length - 1, Math.floor(at.length * pp))].toFixed(4) : 0;
+      /* AND ITS OWN CEILING, which is what a full target on a region's first
+         issue with the country's mind on it is worth */
+      /* the hard arithmetic ceiling: rank 1, the whole country thinking about
+         it, a perfect record, a full target */
+      const ceiling = +(1 * 1 * 1 * 1 * V22_TARGET_GAIN).toFixed(4);
+      return { ran:true, n:at.length, p50:q(.5), p90:q(.9), p99:q(.99),
+        max:at.length ? +at[at.length - 1].toFixed(4) : 0,
+        gain:V22_TARGET_GAIN, ceiling:ceiling,
+        dotTerm:.057, governor:.055, oppGovernor:.085 };
+    })();
+    runQueue = rq;
+    return R;
+  });
+
+  const targetOk =
+    target22.deflt.ran && target22.deflt.allFirst && target22.deflt.allReal &&
+    target22.deflt.n === 8 &&
+    target22.dots.ran && target22.dots.engineIsRead && target22.dots.scales &&
+    target22.dots.reversible && target22.dots.neighbourStill &&
+    target22.lift.ran && target22.lift.rightIsBetter && target22.lift.wrongIsWorseThanNothing &&
+    target22.ranked.ran && target22.ranked.firstCountsMore && target22.ranked.bothPositive &&
+    target22.salient.ran && target22.salient.loudCountsMore &&
+    target22.foreign.ran && target22.foreign.refused && target22.foreign.fellBackToTheRegions &&
+    target22.noCreate.ran && target22.noCreate.dots === 0 && target22.noCreate.lift === 0 &&
+    target22.noCreate.madeByDots === false && target22.noCreate.madeByIssue === false &&
+    target22.noCreate.madeByLift === false && target22.noCreate.madeByWrite === true &&
+    target22.ballot.ran && target22.ballot.halvedBoth && target22.ballot.keptTheIssue &&
+    target22.page.ran && !target22.page.threw && target22.page.sels === target22.page.regions &&
+    target22.page.threeEach && target22.page.marked && target22.page.moved &&
+    target22.page.subtitleFollows && target22.page.free && target22.page.note &&
+    target22.card.ran && target22.card.atInstinct === false && target22.card.atRuthless === true &&
+    target22.card.spent > 0 && target22.card.capital === 0 &&
+    target22.card.namesRegion && target22.card.namesIssue &&
+    target22.card.negatives === 0 && target22.card.full === 0 &&
+    target22.play.ran && target22.play.enginesHoldGround && target22.play.on.parties >= 2 &&
+    target22.size.ran && target22.size.n > 20 &&
+    target22.size.max <= target22.size.ceiling + 1e-6 &&
+    target22.size.p99 > target22.size.dotTerm * .5;
+  say(targetOk, 'a battleground is a choice',
+    `\`st.campaign.targets[r.id]\` WAS ONE NUMBER BOUGHT THREE TIMES, worth .019 of a region's factor per ` +
+    `dot, and read behind \`if (pid === me)\` -- so the one lever in this game that says "fight for this ` +
+    `region" belonged to the human alone, and its whole content was WHERE and HOW MANY · IT IS EVERY ` +
+    `PARTY'S NOW, read through \`regionPartyFactor\` rather than by re-deriving the coefficient: an ` +
+    `engine's factor goes ${target22.dots.bare} bare to ${target22.dots.one} at one dot and ` +
+    `${target22.dots.three} at three (${target22.dots.scales}), back to ${target22.dots.back} when the ` +
+    `dots go (${target22.dots.reversible}), and the player's own number does not move for it ` +
+    `(${target22.dots.neighbourStill}) · AND WHAT YOU ARE SAYING THERE: with the dots, the region and the ` +
+    `party held, the ${target22.lift.pid} running on an issue it stands ${target22.lift.standingUp} on ` +
+    `reads ${target22.lift.good} against ${target22.lift.bad} on one it stands ${target22.lift.standingDown} ` +
+    `on, and the WRONG side is worse than not fighting there at all (${target22.lift.none} untargeted, ` +
+    `${target22.lift.wrongIsWorseThanNothing}) -- a punishment rather than a smaller reward, which is what ` +
+    `makes it a choice · RANKED BY THE ORDER THE REGION NAMES THEM IN (${target22.ranked.first} against ` +
+    `${target22.ranked.third}), with the salience AND the standing held equal, because the weight is rank ` +
+    `times salience and a leg that lets one stand in for the other proves neither · AND THE COUNTRY'S MIND ` +
+    `is the other half: the same issue in the same slot reads ${target22.salient.loud} at a salience of 90 ` +
+    `and ${target22.salient.quiet} at 10 · AN ISSUE THE REGION DOES NOT NAME IS REFUSED AT THE WRITER ` +
+    `(${target22.foreign.refused}), not only in the control that offers the three, because anything a blob ` +
+    `can carry is reachable without ever passing a control · A READ DOES NOT CREATE (${target22.noCreate.madeByDots}/` +
+    `${target22.noCreate.madeByIssue}/${target22.noCreate.madeByLift}) and the writer is the door that does ` +
+    `(${target22.noCreate.madeByWrite}) · THE BALLOT SPENDS THE ORGANISATION AND NOT THE PARTY'S MIND: ` +
+    `three dots become one for the engine and for the player alike (${target22.ballot.halvedBoth}) and the ` +
+    `issue survives (${target22.ballot.keptTheIssue}) · THE PAGE IS THE CHOICE: ${target22.page.sels} ` +
+    `selects for ${target22.page.regions} regions, three options each (${target22.page.threeEach}), the ` +
+    `chosen one marked (${target22.page.marked}), and a REAL change event moves the model ` +
+    `(${target22.page.moved}) and the row's own subtitle with it (${target22.page.subtitleFollows}: ` +
+    `"${target22.page.subtitle}") for nothing (${target22.page.free}) -- the dots are the purchase and this ` +
+    `is the pitch, and it is still a choice without a price because a region ranks its own three · THE ` +
+    `ENGINE HAS THE SAME LEVER: the card is absent at instinct (${target22.card.atInstinct}) and open above ` +
+    `it (${target22.card.atRuthless}) per R2, it pays ${target22.card.spent} out of the party purse and ` +
+    `${target22.card.capital} of the reader's capital, and it says where and on what -- ` +
+    `"${target22.card.line}" · AND ITS PICKER NEVER SPENDS THE PURSE TO MAKE ITS OWN PARTY WEAKER: over ` +
+    `sixty driven sessions it returned an issue the party is on the wrong side of ${target22.card.negatives} ` +
+    `times and a region already at three dots ${target22.card.full} times · LIVE IN PLAY as an A/B over four ` +
+    `seeds: ${target22.play.on.dots} dots held by ${target22.play.on.parties} engines across ` +
+    `${target22.play.on.regions} regions over ${target22.play.on.sessions} sessions, against ` +
+    `${target22.play.off.dots} with the writer at nought · AND SIZED AGAINST THE BLOCK'S OWN DEVIATIONS -- ` +
+    `a governor of your colour at ${target22.size.governor}, an opposition governorship at ` +
+    `${target22.size.oppGovernor}, three organiser dots at ${target22.size.dotTerm} -- the term reads ` +
+    `${target22.size.p50} at its median and ${target22.size.p99} at its 99th over ${target22.size.n} live ` +
+    `readings, with a ceiling of ${target22.size.ceiling} at a gain of ${target22.size.gain}`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
