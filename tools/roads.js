@@ -24454,18 +24454,25 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const head = /<th class="num">Turnout<\/th>/.test(html);
       const cells = html.match(/<td class="num" title="Caucus [^"]*">[0-9.]+<\/td>/g) || [];
       const nums = cells.map(c => +(c.match(/>([0-9.]+)<\/td>/) || [0, 0])[1]);
-      const live = PARTIES.filter(p => !S.banned[p.id])
-        .map(p => +partyTurnout(S, p.id).toFixed(2)).sort((a, b) => a - b);
+      /* the table draws every party, banned or not, so the comparison is
+         against the same set rather than against the live ones -- a probe that
+         counts a different population reads a working column as short */
+      const live = PARTIES.map(p => +partyTurnout(S, p.id).toFixed(2)).sort((a, b) => a - b);
       const shown = nums.slice().sort((a, b) => a - b);
       const why = v22TurnoutWhy(S, eng);
+      const mine = v22TurnoutWhy(S, playParty(S));
       /* the sentence has to MOVE with the thing it describes, or it is a label */
       v22FieldAdd(S, eng, -999);
       const whyBare = v22TurnoutWhy(S, eng);
       v22FieldAdd(S, eng, 100);
       return { ran:true, head:head, cells:cells.length, parties:live.length,
         matches:shown.length === live.length && shown.every((v, i) => Math.abs(v - live[i]) < .005),
-        why:why, movesWithIt:why !== whyBare,
+        why:why, mine:mine, movesWithIt:why !== whyBare,
         namesAll:/Caucus /.test(why) && /organisation /.test(why) && /endorsements /.test(why),
+        /* EVERY term `partyTurnout` reads is named, including the one the
+           player alone has -- a breakdown that leaves a term out would lie
+           about exactly the term this slice ruled on */
+        unityOnMine:/, unity /.test(mine), unityOffTheirs:!/, unity /.test(why),
         note:/turns out an average share/.test(why) && /gap between two parties/.test(html) };
     })();
 
@@ -24476,26 +24483,45 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     R.play = (() => {
       const baseAdd = v22FieldAdd;
       const run = () => {
-        const t = [];
+        const t = [], every = [];
         [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
           fresh(sd);
           for (let i = 0; i < 40; i++) {
             step();
             if (i % 4) continue;
             const seen = [];
-            PARTIES.forEach(p => { if (!S.banned[p.id]) seen.push(partyTurnout(S, p.id)); });
+            PARTIES.forEach(p => {
+              if (S.banned[p.id]) { every.push(null); return; }
+              const v = partyTurnout(S, p.id);
+              seen.push(v); every.push(+v.toFixed(6));
+            });
             if (seen.length > 1) t.push(Math.max.apply(null, seen) - Math.min.apply(null, seen));
           }
         });
         t.sort((a, b) => a - b);
-        return { n:t.length, p50:+t[Math.floor(t.length / 2)].toFixed(4),
+        return { n:t.length, every:every,
+          mean:+(t.reduce((a, b) => a + b, 0) / t.length).toFixed(4),
+          p50:+t[Math.floor(t.length / 2)].toFixed(4),
           p90:+t[Math.floor(t.length * .9)].toFixed(4), max:+t[t.length - 1].toFixed(4) };
       };
       const on = run();
       v22FieldAdd = function () { return 0; };
       const off = run();
       v22FieldAdd = baseAdd;
-      return { ran:true, on:on, off:off, wider:on.max > off.max };
+      /* THE SPREAD IS THE HEADLINE AND THE COUNT IS THE ASSERTION. Adding to a
+         party that was at the BOTTOM of a session narrows that session's
+         spread, so "the widest gap rises" is a claim about which party
+         happened to campaign; how many readings the term moved at all is the
+         claim about the term. */
+      let changed = 0, same = 0;
+      on.every.forEach((v, i) => {
+        if (v === null || off.every[i] === null) return;
+        if (v === off.every[i]) same++; else changed++;
+      });
+      delete on.every; delete off.every;
+      return { ran:true, on:on, off:off, changed:changed, same:same,
+        readings:changed + same, moved:changed > 20,
+        wider:on.max > off.max, meanWider:on.mean > off.mean };
     })();
     runQueue = rq;
     return R;
@@ -24523,8 +24549,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     field22.seats.ran && field22.seats.moved > 0 && field22.seats.worst < 0 &&
     field22.page.ran && field22.page.head && field22.page.cells === field22.page.parties &&
     field22.page.matches && field22.page.movesWithIt && field22.page.namesAll &&
-    field22.page.note &&
-    field22.play.ran && field22.play.wider;
+    field22.page.unityOnMine && field22.page.unityOffTheirs && field22.page.note &&
+    field22.play.ran && field22.play.moved;
   say(fieldOk, 'a field operation is everybody\'s',
     `THE ENGINES HAD BEEN PAYING FOR A CAMPAIGN AND BUYING NOTHING. \`V16_AI_DECK\` carries a card called ` +
     `\`campaign\` -- "took the campaign into the country early" -- whose \`run\` spent ` +
@@ -24562,9 +24588,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `MOVES SEATS through the game's own projection, ${field22.seats.share} per cent of ` +
     `${field22.seats.n} readings and up to ${field22.seats.worst} off the player · THE PAGE SAYS IT: ` +
     `${field22.page.cells} cells for ${field22.page.parties} parties, each holding the number the model ` +
-    `reads (${field22.page.matches}), with the terms named behind it -- "${field22.page.why}" · AND IT IS ` +
-    `LIVE IN PLAY as an A/B over six seeds: the widest turnout gap between two parties in one session goes ` +
-    `${field22.play.off.max} to ${field22.play.on.max} with the card's purchase restored`);
+    `reads (${field22.page.matches}), with EVERY term named behind it -- "${field22.page.why}" for an ` +
+    `engine and "${field22.page.mine}" for the player, whose unity term is named on theirs ` +
+    `(${field22.page.unityOnMine}) and on nobody else's (${field22.page.unityOffTheirs}), because a ` +
+    `breakdown that leaves a term out would lie about exactly the term this slice ruled on · AND IT IS ` +
+    `LIVE IN PLAY as an A/B over six seeds, the same seeds driven twice with the card's purchase at nought ` +
+    `and restored: ${field22.play.changed} of ${field22.play.readings} party-readings move, the mean turnout ` +
+    `gap between two parties in one session goes ${field22.play.off.mean} to ${field22.play.on.mean} and the ` +
+    `widest goes ${field22.play.off.max} to ${field22.play.on.max} -- the COUNT is what is asserted, because ` +
+    `a term that lifts the party at the BOTTOM of a session narrows that session's spread and "the widest ` +
+    `gap rises" would be a claim about which party happened to campaign`);
 
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable

@@ -12331,7 +12331,13 @@ var V22_FIELD_DECAY = .58;
 /* THE READING ACCESSOR, AND IT DOES NOT CREATE. `v16Ai` installs a record for
    every party when it is called, and this is asked about all seven every time
    the page draws a projection -- which is the shape that made the Peacemaker
-   record award itself on every seed. */
+   record award itself on every seed.
+   THE CEILING IS HERE AND AT THE WRITER, deliberately: the writer keeps the
+   store sane and the reader holds the line against a save that carries
+   anything, which is the rule `typeof x === 'string' is not validation` states
+   for blobs. They are belt and braces, so the poison run takes them TOGETHER --
+   removing either alone changes nothing, which reads as a dead guard and is
+   not one. */
 function v22FieldOf(st, pid) {
   var a = (st && st.ai) ? st.ai[pid] : null;
   return a ? clamp(a.field || 0, 0, 100) : 0;
@@ -18744,17 +18750,21 @@ function pv5PollChart(){
     value:function(v){return (v*max*100).toFixed(1)+'%';}
   })+'</div>';
 }
-/* S22c: what the turnout column is made of, in the reader's own units. The
-   three terms are named in the order `partyTurnout` reads them. */
+/* S22c: what the turnout column is made of, in the reader's own units, named in
+   the order `partyTurnout` reads them. EVERY term it reads is named, including
+   the one the player alone has -- a breakdown that leaves a term out is a card
+   that lies, and it would lie about exactly the term this slice ruled on. */
 function v22TurnoutWhy(st, pid) {
-  var f = (factionAverage(st, pid) - 55) / 42, c = v22FieldTerm(st, pid);
-  var e = (typeof endorsedTurnout === 'function') ? endorsedTurnout(st, pid) : 0;
   var g = (typeof V15_TURNOUT_GAIN === 'undefined') ? .46 : V15_TURNOUT_GAIN;
   var say = function (n) { return (n >= 0 ? '+' : '\u2212') + Math.abs(n * g).toFixed(3); };
+  var f = (factionAverage(st, pid) - 55) / 42, c = v22FieldTerm(st, pid);
+  var e = (typeof endorsedTurnout === 'function') ? endorsedTurnout(st, pid) : 0;
   var law = (typeof v17TurnoutStatutes === 'function') ? v17TurnoutStatutes(st) : 1;
-  return 'Caucus ' + say(f) + ', organisation ' + say(c) + ', endorsements ' + say(e) +
-    (Math.abs(law - 1) > .0005 ? ', election law \u00d7' + law.toFixed(2) : '') +
-    '. A party at 1.00 turns out an average share of its own vote.';
+  var out = 'Caucus ' + say(f);
+  if (pid === playParty(st)) out += ', unity ' + say(((st.unity === undefined ? 60 : st.unity) - 60) / 130);
+  out += ', organisation ' + say(c) + ', endorsements ' + say(e);
+  if (Math.abs(law - 1) > .0005) out += ', election law \u00d7' + law.toFixed(2);
+  return out + '. A party at 1.00 turns out an average share of its own vote.';
 }
 function viewCampaign(){
   var proj=projection(S),next=pv5SessionsToBallot(S),phase=next===null?'Elections suspended':(next<=1?'Ballot campaign':next<=4?'Pre-election campaign':'Between elections');
