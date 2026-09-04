@@ -14,7 +14,8 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S21 — All-out AI** is **OPEN**. The owner's brief: *"an all-out focus on AI
+**S21 — All-out AI** is **COMPLETE** with this slice; what is open is below,
+and none of it is S21. The owner's brief: *"an all-out focus on AI
 behavior, AI logic, and AI improvements… at least 4 improvements to existing AI
 behaviors and logic, and at least 8 new behaviors/logic — each being
 significant and receiving equal attention. In addition, the coalition building

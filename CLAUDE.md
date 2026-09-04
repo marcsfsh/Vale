@@ -337,6 +337,23 @@ before touching the file.
   files the aim as `done` or as `gone`. They are one ternary apart and a build
   that always said `gone` passed everything the arm asked before. A count of two
   proves a mechanism fired twice; it never proved it was right.
+  **AND SOME QUANTITIES ARE EPISODES WEARING A RATE'S CLOTHES, which is worse
+  than a small sample because the pooled figure LOOKS large.** Three arms in one
+  run: the caretaker's share of formations read .105 against .027 either side of
+  one card, and nine of twelve seeds carry no caretaker at all -- the whole gap
+  is three republics that fell into a crisis against one that did, the paired
+  difference over thirty-two seeds is +.020 at 0.93 standard errors, and two of
+  the five seeds that move go the OTHER way. The pooled share HALVES when the
+  sample triples, which is what a statistic dominated by rare episodes does. And
+  its denominator is not independent of its numerator: a quiet seed reads
+  exactly 60 formations and a seed in crisis 65 to 101, because the extra
+  formations ARE the caretaker's own retries. The cordon is the same shape --
+  0.306 raisings a seed with a standard deviation of 0.624, and three
+  twelve-seed blocks of ONE build reading 1, 4 and 6 against a bar of 2. Before
+  gating a count of a rare event, ask whether the thing is a rate at all: count
+  the SEEDS that carry any, take the median rather than the pooled share, or
+  make it a tripwire and move the correctness to a leg with no dice. A fraction
+  whose bottom grows with its top is not a rate.
 - **A book whose cards are about something the model has no channel to is a
   book of decoration, however carefully each card is authored.** Every statute
   reaches the model through `eff`, `mood`, `rev`/`exp` and `auth`, which is
@@ -354,6 +371,19 @@ before touching the file.
   different coat: **a test that a number ROSE is not a test that it moved the
   way the card says** — equalisation was checked by "the poor state rises",
   which a statute that simply added to every state would also pass.
+- **A `typeof` FALLBACK THAT WRITES A SHARED FIELD IS A SECOND WRITER WEARING A
+  GUARD, and two slices in one programme shipped it under a comment promising
+  one writer.** S21t wrote "exactly ONE writer, every site goes through it" and
+  three sites did not; two of them were the election's own clock, so the player's
+  endorsement lapsed in `q.endorsement` -- the MIRROR -- and stood forever in
+  `q.endorsedBy`, the half the panel, the turnout and the objective read. S21u
+  wrote the same sentence and each of its two buttons carried
+  `if (typeof v21CordonTick === 'function') v21CordonTick(S); else S.cordon[pid] = true;`.
+  A top-level declaration in this file is always defined by the time a button
+  handler runs, so the branch cannot fire -- which makes it not a safety net but
+  a line that falsifies the claim above it and would silently own the field if it
+  ever did. Call the function. And a comment asserting that every site goes
+  through one writer is not a reading of the sites: grep for the field.
 - **A relation declared on one card and not the other is a one-way door.**
   S17m's conflict table is ONE central symmetric array rather than a
   `conflicts:` field on each card, for exactly that reason: with per-card
