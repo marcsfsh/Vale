@@ -24857,14 +24857,20 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         subtitle = row ? (row.querySelector('.small') || {}).textContent || '' : '';
         costCap = S.capital - costCap; costMoney = partyPurse(S, me) - costMoney;
       }
+      /* READ BEFORE THE TAB GOES BACK. The first version of this leg put the
+         note's reading in the returned object, which is evaluated AFTER
+         `UI.tab = keep; render()` -- so it asked the LANDING page whether the
+         Campaign page's note was on it, and answered no. A value read after
+         the state it describes has been put back is `A counter read after it
+         is spent` wearing a render. */
+      const note = /ranks first is worth more/.test(document.getElementById('view').textContent);
       UI.tab = keep; try { render(); } catch (e) {}
       return { ran:true, threw:threw, sels:sels.length, rows:rows.length,
         regions:REGIONS.length, optCount:optCount,
         threeEach:optCount.length > 0 && optCount.every(n => n === 3),
         marked:marked, moved:moved, subtitle:subtitle.slice(0, 80),
         subtitleFollows:!!(third && ISSUE[third] && subtitle.indexOf(ISSUE[third].name) >= 0),
-        free:costCap === 0 && costMoney === 0,
-        note:/ranks first is worth more/.test(document.getElementById('view').textContent) };
+        free:costCap === 0 && costMoney === 0, note:note };
     })();
 
     /* (j) THE ENGINE'S SIDE. Gated on `v19Thinks` per R2, and its picker never
@@ -24873,8 +24879,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const card = V16_AI_DECK.filter(c => c.id === 'target')[0];
       if (!card) return { ran:false };
       fresh(1618);
-      for (let t = 0; t < 6; t++) step();
-      const eng = engineOf(S);
+      /* FIND a party with somewhere to fight rather than naming one: 18 per
+         cent of party-sessions give a party no region where its standing on
+         any of the three issues is positive, and a probe that names the first
+         engine reports the card as shut on those. */
+      let eng = null;
+      for (let t = 0; t < 20 && !eng; t++) {
+        step();
+        PARTIES.forEach(p => {
+          if (eng || p.id === playParty(S) || S.banned[p.id]) return;
+          if (v22AiBattleground(S, p.id)) eng = p.id;
+        });
+      }
+      if (!eng) return { ran:false, why:'no engine had anywhere to fight in twenty sessions' };
       S.purse = S.purse || {}; S.purse[eng] = 4000;
       S.aiLevel = 'instinct';
       const atInstinct = card.can(S, eng);
@@ -24883,6 +24900,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       const purseBefore = partyPurse(S, eng), capBefore = S.capital;
       const line = card.run(S, eng);
       const spent = purseBefore - partyPurse(S, eng);
+      /* AND THE CAPITAL IS READ HERE, not in the returned object: the loop
+         below calls `fresh` and replaces `S`, so a reading taken at return
+         time subtracts one campaign's capital from another's. */
+      const capital = S.capital - capBefore;
       /* THE PICK IS NEVER A LOSS: an issue the party is on the wrong side of
          is a NEGATIVE term, so a card that bought one would spend the purse to
          make its own party weaker. */
@@ -24901,7 +24922,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         }
       });
       return { ran:true, atInstinct:atInstinct, atRuthless:atRuthless,
-        line:line, spent:spent, capital:S.capital - capBefore,
+        eng:eng, line:line, spent:spent, capital:capital,
         namesRegion:!!(line && REGIONS.some(r => line.indexOf(r.name) >= 0)),
         namesIssue:!!(line && ISSUES.some(i => line.toLowerCase().indexOf(i.name.toLowerCase()) >= 0)),
         negatives:negatives, full:full };
