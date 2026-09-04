@@ -12267,13 +12267,99 @@ function endorsedTurnout(st, pid) {
   return v;
 }
 
+/* ============================================================
+   S22c - A FIELD OPERATION IS EVERYBODY'S, AND THE PAGE SAYS SO
+   ============================================================
+   THE ENGINES HAVE BEEN PAYING FOR A CAMPAIGN AND BUYING NOTHING. `V16_AI_DECK`
+   carries a card called `campaign` -- "took the campaign into the country
+   early" -- whose `run` spends `V16_AI_COST.campaign` of the party purse,
+   adds the money to the ledger line the Parties page prints, and touches
+   NOTHING ELSE. Measured over 360 driven sessions on six seeds it plays 252
+   times, so about ten thousand of party money a campaign goes on a sentence.
+   That is `st.court.size` in the deck: a card whose promise no reader of the
+   state can find, and the tenth time this file has produced one.
+
+   AND THE TURNOUT IT SHOULD HAVE REACHED WAS THE PLAYER'S ALONE. `partyTurnout`
+   is read for every party by the ballot, and two of its three terms sat inside
+   `if (pid === playParty(st))` -- so the only field operation in the republic
+   that turned a voter out was the human's. S21t took the endorsement out of
+   that branch for the same reason; this takes the field out of it and gives
+   the engines the store the branch was reading.
+
+   ONE ANSWER, READ BY EVERYBODY. `v22FieldTerm` is the whole of what a field
+   operation is worth to turnout, for the player and for an engine alike, and
+   `partyTurnout` calls it once. The player's side is the expression that was
+   in the branch, unchanged and worth exactly what it was; the engine's side is
+   the same 0-100 asset, capped at the same 100, divided by the same 330, and
+   decayed at the ballot by the same factor at the same site. The two sit on one
+   scale; what differs is the shopping. The player presses a button every
+   session for three of capital and five of money and buys 12; an engine plays
+   one card in nine of its sessions and pays the whole of `V16_AI_COST.campaign`
+   for it, so the card buys more per purchase and far less per campaign. The
+   size of that purchase is the one number this slice picks, and it is measured
+   below rather than chosen.
+
+   WHAT IS NOT OPENED, AND WHY. `st.unity` stays where it is. It reads like a
+   fourth player-only capability and it is not one: `factionTick` moves it
+   toward `factionAverage(st, playParty(st))` every session, so it is a lagged
+   mirror of the term on the line ABOVE, which every party already gets. There
+   is no per-party unity to open it to, and inventing one would be inventing a
+   second name for a number `partyTurnout` already reads. */
+/* WHAT ONE CARD BUYS, SIZED AGAINST THE TERMS IT SITS BESIDE RATHER THAN
+   PICKED. `partyTurnout` is a sum of deviations scaled by one constant, so the
+   question is how big a deviation, and this file already carries three rulers
+   for it: every organisation in the country backing one party is .11 of the
+   multiplier (S21t measured that), a single endorsement tops out at .064, and
+   the player's own field and data fully built are worth .139. The asset is also
+   spent at the count -- `runElection` counts first and decays after -- so the
+   reading that matters is what a party is CARRYING at a ballot, not what it
+   holds on an average session, which is mostly nought because the store halves
+   every two sessions and a ballot falls every two.
+
+   Driven over 360 sessions on six seeds, at 181 elections and 1,086
+   party-ballots: at 12 a campaign is worth .017 at the 99th percentile and .020
+   at its top, which is a fifth of an endorsement and not worth the sentence on
+   the card. At 55 it reaches .105, which is every interest group in the republic
+   for one card. At 40 it is .057 and .077 against an endorsement's .064, and a
+   party arrives at a count carrying a campaign on 21 per cent of party-ballots
+   -- so a campaign is worth about one endorsement, on the ballots where a party
+   has just run one, and never the whole bloc. */
+var V22_AI_FIELD = 40;
+/* the ballot's own decay, which `runElection` has applied to the player's field
+   since v5. One writer of the number, read at both sites, or the two drift. */
+var V22_FIELD_DECAY = .58;
+/* THE READING ACCESSOR, AND IT DOES NOT CREATE. `v16Ai` installs a record for
+   every party when it is called, and this is asked about all seven every time
+   the page draws a projection -- which is the shape that made the Peacemaker
+   record award itself on every seed. */
+function v22FieldOf(st, pid) {
+  var a = (st && st.ai) ? st.ai[pid] : null;
+  return a ? clamp(a.field || 0, 0, 100) : 0;
+}
+/* and the writing one */
+function v22FieldAdd(st, pid, n) {
+  var a = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
+  if (!a) return 0;
+  a.field = clamp((a.field || 0) + n, 0, 100);
+  return a.field;
+}
+/* WHAT A FIELD OPERATION IS WORTH TO TURNOUT. One function, both chairs. */
+function v22FieldTerm(st, pid) {
+  if (pid === playParty(st)) {
+    var c = st.campaign;
+    /* the player buys two assets and an engine buys one, because the deck has
+       one card and the Campaign page has five buttons. The scale is shared;
+       the shopping list is not. */
+    return c ? Math.min(100, c.field || 0) / 330 + Math.min(100, c.data || 0) / 660 : 0;
+  }
+  return v22FieldOf(st, pid) / 330;
+}
 function partyTurnout(st, pid) {
   var v = (factionAverage(st, pid) - 55) / 42;
-  if (pid === playParty(st)) {
-    v += ((st.unity === undefined ? 60 : st.unity) - 60) / 130;
-    var c = st.campaign;
-    if (c) v += Math.min(100, c.field || 0) / 330 + Math.min(100, c.data || 0) / 660;
-  }
+  /* S22c: the player's party cohesion, which is the one term that stays in the
+     branch. See the note above `V22_AI_FIELD`. */
+  if (pid === playParty(st)) v += ((st.unity === undefined ? 60 : st.unity) - 60) / 130;
+  v += v22FieldTerm(st, pid);
   /* S21t: OUT OF THE PLAYER-ONLY BRANCH. The unity, the field and the data are
      the player's own campaign machinery and stay where they are; an
      endorsement is a fact about an organisation and belongs to whoever holds
@@ -17931,7 +18017,11 @@ var pv5RunElectionV4=runElection;
 runElection=function(st,early){
   var before=pv5CampaignPower(st),r=pv5RunElectionV4(st,early),me=playParty(st),share=r.res[me]||0;
   st.campaign.history.unshift({turn:st.turn,share:share,seats:r.seats[me]||0,power:before});if(st.campaign.history.length>12)st.campaign.history.length=12;
-  st.campaign.field*=.58;st.campaign.media*=.36;st.campaign.data*=.72;st.campaign.debate=0;
+  st.campaign.field*=V22_FIELD_DECAY;st.campaign.media*=.36;st.campaign.data*=.72;st.campaign.debate=0;
+  /* S22c: AND EVERY OTHER PARTY'S, AT THE SAME SITE AND BY THE SAME FACTOR. A
+     second decay somewhere else is two clocks for one fact; this is the one
+     place in the game where a ballot spends a campaign. */
+  PARTIES.forEach(function(p){var a=(st.ai||{})[p.id];if(a&&a.field)a.field*=V22_FIELD_DECAY;});
   REGIONS.forEach(function(reg){st.campaign.targets[reg.id]=Math.max(0,Math.floor((st.campaign.targets[reg.id]||0)/2));});
   /* S21t: THROUGH THE ONE WRITER, AND IT IS THE PLAYER'S CLOCK. This wrote
      `q.endorsement=false` directly. Since `endorsedBy` owns the fact, that
@@ -18654,12 +18744,29 @@ function pv5PollChart(){
     value:function(v){return (v*max*100).toFixed(1)+'%';}
   })+'</div>';
 }
+/* S22c: what the turnout column is made of, in the reader's own units. The
+   three terms are named in the order `partyTurnout` reads them. */
+function v22TurnoutWhy(st, pid) {
+  var f = (factionAverage(st, pid) - 55) / 42, c = v22FieldTerm(st, pid);
+  var e = (typeof endorsedTurnout === 'function') ? endorsedTurnout(st, pid) : 0;
+  var g = (typeof V15_TURNOUT_GAIN === 'undefined') ? .46 : V15_TURNOUT_GAIN;
+  var say = function (n) { return (n >= 0 ? '+' : '\u2212') + Math.abs(n * g).toFixed(3); };
+  var law = (typeof v17TurnoutStatutes === 'function') ? v17TurnoutStatutes(st) : 1;
+  return 'Caucus ' + say(f) + ', organisation ' + say(c) + ', endorsements ' + say(e) +
+    (Math.abs(law - 1) > .0005 ? ', election law \u00d7' + law.toFixed(2) : '') +
+    '. A party at 1.00 turns out an average share of its own vote.';
+}
 function viewCampaign(){
   var proj=projection(S),next=pv5SessionsToBallot(S),phase=next===null?'Elections suspended':(next<=1?'Ballot campaign':next<=4?'Pre-election campaign':'Between elections');
-  var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td></tr>';}).join('');
+  /* S22c: AND HOW MANY OF THEM COME. `partyTurnout` has multiplied every
+     party's vote since v5 and no screen in the game printed it, so a player
+     polling level and being out-voted had nothing to read. The title says
+     which of the three terms is doing it, because a bare multiplier is a
+     number rather than a reason. */
+  var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td><td class="num" title="'+esc(v22TurnoutWhy(S,p.id))+'">'+partyTurnout(S,p.id).toFixed(2)+'</td></tr>';}).join('');
   var regionRows=REGIONS.map(function(r){var n=S.campaign.targets[r.id]||0;return '<div class="region-target"><div><b>'+esc(r.name)+'</b><div class="small muted">'+r.pop+'% of Vale · '+esc(r.issues[0])+' · '+esc(v22IssueSay(v22Standing(S,playParty(S),v22IssueOf(r.issues[0])||'jobs')))+'</div></div><div class="target-dots">'+[0,1,2].map(function(i){return '<i class="'+(i<n?'on':'')+'"></i>';}).join('')+'</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+'>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
   var messages=topIssues(S,6).map(function(i){return '<button class="strategy-choice" data-campaign-action="message" data-campaign-id="'+i.id+'" aria-pressed="'+(S.campaign.message===i.id)+'"><b>'+esc(i.name)+'</b><small>Salience '+Math.round(S.salience[i.id])+' · '+esc(i.source)+'</small></button>';}).join('');
-  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise. Turnout multiplies a party\'s vote before the count is shared out, so the gap between two parties is what decides anything and the level is not.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th><th class="num">Turnout</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
 }
 function pv5FiscalPanel(){
   var f=S.fiscal,b=budget(S);function options(kind){return Object.keys(PV5_FISCAL[kind]).map(function(id){var q=PV5_FISCAL[kind][id];return '<button class="strategy-choice" data-fiscal-kind="'+kind+'" data-fiscal-id="'+id+'" aria-pressed="'+(f[kind]===id)+'"><b>'+esc(q.name)+'</b><small>'+esc(q.note)+'</small></button>';}).join('');}
@@ -36706,7 +36813,12 @@ var V16_AI_DECK = [
     run:function (st, pid) {
       partySpend(st, pid, V16_AI_COST.campaign);
       v16Ai(st)[pid].spent = (v16Ai(st)[pid].spent || 0) + V16_AI_COST.campaign;
-      return 'The ' + PARTY[pid].short + ' took the campaign into the country early.';
+      /* S22c: AND IT BUYS THE SAME THING THE PLAYER'S OWN BUTTON BUYS. Before
+         this line the card spent the purse and moved nothing in the model, so
+         the sentence below was the whole of it. */
+      var f22 = v22FieldAdd(st, pid, V22_AI_FIELD);
+      return 'The ' + PARTY[pid].short + ' took the campaign into the country early, and put ' +
+        Math.round(f22) + ' of organisation behind it.';
     } },
   /* S21m — AND THIS ONE IS THE DIFFERENCE BETWEEN THE TWO GOVERNMENTS. Going
      out to a bloc is what a government does when the country is behind it and
