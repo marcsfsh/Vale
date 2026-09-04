@@ -12214,7 +12214,6 @@ function v21EndorseSet(st, gid, pid) {
   if (!q) return null;
   q.endorsedBy = pid || null;
   q.endorsement = !!pid && pid === playParty(st);
-  q.endorsedAt = pid ? st.turn : null;
   return q.endorsedBy;
 }
 function v21EndorsedBy(st, gid) {
@@ -12340,7 +12339,13 @@ function v15CampaignSeats(st) {
     if (typeof PV5_INTERESTS === 'undefined' || !st.interests) return;
     PV5_INTERESTS.forEach(function (g) {
       var q = st.interests[g.id]; if (!q) return;
-      q.endorsement = false; q.relation = 50; q.influence = 50;
+      /* S21t: THROUGH THE ONE WRITER, or this readout under-reports its own
+         channel. Taking the endorsement away by clearing the MIRROR leaves
+         `q.endorsedBy` standing, and `endorsedTurnout` -- which is how an
+         endorsement reaches the ballot at all -- reads the field, so the
+         seats it buys stayed in the count on both sides of the difference
+         and the Campaign page printed a smaller number than the truth. */
+      v21EndorseSet(st, g.id, null); q.relation = 50; q.influence = 50;
     });
   });
   out.total = out.machine + out.money + out.campaign + out.caucus + out.orgs;
@@ -17520,7 +17525,7 @@ function pv5EnsureState(st, fresh) {
   });
   st.interests=st.interests||{};
   PV5_INTERESTS.forEach(function(g){
-    if(!st.interests[g.id]) st.interests[g.id]={relation:clamp((st.blocs[g.bloc]||50)+affOf(st,playParty(st),g.bloc)*12,18,82),influence:g.base,access:0,endorsement:false,endorsedBy:null,endorsedAt:null,lastMet:-99,demand:null};
+    if(!st.interests[g.id]) st.interests[g.id]={relation:clamp((st.blocs[g.bloc]||50)+affOf(st,playParty(st),g.bloc)*12,18,82),influence:g.base,access:0,endorsement:false,endorsedBy:null,lastMet:-99,demand:null};
   });
   /* S17e: THE AGREEMENT IS A DOCUMENT, AND EVERY SIGNATORY IS IN IT.
      The seed returned early for the ruling party, so the head of government
@@ -17876,7 +17881,18 @@ runElection=function(st,early){
   st.campaign.history.unshift({turn:st.turn,share:share,seats:r.seats[me]||0,power:before});if(st.campaign.history.length>12)st.campaign.history.length=12;
   st.campaign.field*=.58;st.campaign.media*=.36;st.campaign.data*=.72;st.campaign.debate=0;
   REGIONS.forEach(function(reg){st.campaign.targets[reg.id]=Math.max(0,Math.floor((st.campaign.targets[reg.id]||0)/2));});
-  PV5_INTERESTS.forEach(function(g){if(st.interests[g.id])st.interests[g.id].endorsement=false;});
+  /* S21t: THROUGH THE ONE WRITER, AND IT IS THE PLAYER'S CLOCK. This wrote
+     `q.endorsement=false` directly. Since `endorsedBy` owns the fact, that
+     left the field standing while the mirror went false, so the player's
+     endorsement was cleared in the half of the pair the ballot reads and NOT
+     in the half the panel, the turnout and the objective read -- two clocks
+     for one fact, in the slice whose own note says there is one writer. The
+     v5 rule it implements is about the player's purchase (the mirror has meant
+     "endorses the player" since v5), so it clears the player's and leaves an
+     organisation's standing choice to the per-session withdrawal above, which
+     is party-aware and asks the right question every session rather than every
+     ballot. */
+  PV5_INTERESTS.forEach(function(g){if(st.interests[g.id]&&v21EndorsedBy(st,g.id)===playParty(st))v21EndorseSet(st,g.id,null);});
   st.v5Stats.campaigns++;return r;
 };
 /* S15f: every party is paid its own income at the close of every session,
@@ -34736,17 +34752,31 @@ policyCost = function (id, dir) {
    rather than a receipt. */
 var v11RunElectionBase = runElection;
 runElection = function (st, early) {
-  var held = {};
+  /* S21t: AND IT GOES THROUGH THE ONE WRITER TOO. Both halves read and wrote
+     `q.endorsement`, the mirror, so between the clear inside the base and the
+     restore out here the player's endorsement lived in the mirror alone and
+     `v21EndorsedBy` -- which the panel, the turnout and the objective all read
+     -- went on naming the player after it had lapsed. This is the PLAYER's
+     clock and stays one: `q.relation` is the organisation's standing with the
+     player and with nobody else, so the two-ballot rule and the cold-relation
+     rule are both about a purchase. The SNAPSHOT asks the field rather than
+     the mirror for consistency and not for behaviour -- the two agree by the
+     invariant `one field, one mirror, one writer` asserts, and a poison that
+     puts the mirror back comes up green for that reason; what the poisons
+     catch is the two WRITES. An organisation's own standing choice ends where
+     S21t put it, in the per-session withdrawal above, which asks
+     the same question of an engine, every session rather than every ballot. */
+  var held = {}, me = playParty(st);
   PV5_INTERESTS.forEach(function (g) {
-    var q = st.interests && st.interests[g.id];
-    if (q && q.endorsement) held[g.id] = (q.ballots || 0) + 1;
+    var q = st.interests && st.interests[g.id]; if (!q) return;
+    if (v21EndorsedBy(st, g.id) === me) held[g.id] = (q.ballots || 0) + 1;
   });
   var r = v11RunElectionBase(st, early);
   PV5_INTERESTS.forEach(function (g) {
     var q = st.interests && st.interests[g.id]; if (!q) return;
     if (held[g.id] === undefined) return;
-    if (held[g.id] >= 2 || q.relation < 42) { q.endorsement = false; q.ballots = 0; return; }
-    q.endorsement = true; q.ballots = held[g.id];
+    if (held[g.id] >= 2 || q.relation < 42) { q.ballots = 0; return; }
+    v21EndorseSet(st, g.id, me); q.ballots = held[g.id];
   });
   return r;
 };
