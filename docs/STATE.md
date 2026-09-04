@@ -43,6 +43,47 @@ their own party."*
   which built it.** That correction is recorded in `PLAN-S21.md` and the name is
   written into the code so a grep from either document lands somewhere.
 
+- **S22b — a region votes on the issues it is authored with.** `REGIONS` gives
+  each of the eight regions three named issues — **24 authored strings**, 21 of
+  them distinct — and grep found exactly two readers, both render sites: a tag
+  row on the region card and one line of subtitle under the Target button.
+  Nothing in the model consulted them, in the place the owner pointed at when
+  they asked for regional battlegrounds with depth.
+
+  **The channel already existed and nothing joined it to them.** `ISSUES` is
+  twelve entries carrying the indicator each is read from and the statute
+  categories it covers, and `issueTick` has moved `st.salience` every session
+  since v8. What this slice writes is the **join**, covered from `REGIONS` so a
+  renamed string reddens rather than scoring nought, and it reaches all twelve.
+
+  **Where a party stands is its own record and nothing else.** What it *said* —
+  its `wants` against where the statute book sits — reads **+1** with the book
+  where it asked and **−1** with the book as far away as the ladder allows. What
+  it *did* — the statutes it carried, out of `st.billArchive` — takes it a third
+  of the way for each, capped at three, and somebody else's statute or one that
+  failed is not this party's record. **No office is read**: the owner's ruling is
+  that a chair has no bearing on an election, and a term asking which department
+  a party holds would put it back.
+
+  **Sized as a division rather than a guess.** The block it joins sums every
+  regional term as a deviation from 1 and scales the sum by one constant, and the
+  deviations already there are a governor at .055, an opposition governorship at
+  .085, the federal term at about .08 and an organiser dot at .019. Measured at
+  gain 1 over 5,376 party-region readings on eight seeds, the term's median
+  spread between parties in one region is **.885**, so the shipped gain of **.09**
+  makes it .080 — the opposition governorship, the largest the block carries.
+  **The first draft was .42, five times that**, and the measurement is what said
+  so. The carried half fires on **5.2%** of party-issue readings, which is why
+  the driven leg reports it and a constructed leg proves it is read.
+
+  **And the page says it**, because a term the model reads and the reader cannot
+  see is `st.court.size` inverted: the tag the region card has printed since v9
+  carries where you stand and what the country thinks of the issue. Fifteen
+  poisons from the diff, all fifteen red — **two of them green first**, and both
+  were legs the arm did not have: the rank test let the country's mind stand in
+  for the order the region names its issues in, and nothing asked whether the
+  salience was read at all.
+
   **And one line came out on its own poison.** `v22Dossier` refused the player's
   own party — and `v16AiTurn` builds its list as the parties that are *not* the
   player, so nothing can ever file for them and the empty-file branch already

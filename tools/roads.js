@@ -23835,6 +23835,370 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `no card ID printed where a reader's word belongs (${file22.page.rawIds}) and nothing on the player's ` +
     `own card (${file22.page.mineHasOne === false}) -- "${file22.page.sample}"`);
 
+  /* ---------- S22b: AN ISSUE IS A THING THE MODEL HAS ----------
+     `REGIONS` gives each of the eight regions three named issues -- 24 authored
+     strings -- and grep finds exactly two readers, both render sites. Nothing
+     in the model consulted them, in the place the owner pointed at. */
+  const issue22 = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+    const named = [];
+    REGIONS.forEach(r => (r.issues || []).forEach(i => { if (named.indexOf(i) < 0) named.push(i); }));
+
+    /* (a) COVERED FROM `REGIONS`, not from a list somebody keeps. A region a
+       later slice adds, or an issue string one renames, reddens here rather
+       than quietly scoring nought -- the guard `V19_RIVAL_WORTH` has. */
+    R.cover = {
+      strings:named.length,
+      slots:REGIONS.reduce((n, r) => n + (r.issues || []).length, 0),
+      regions:REGIONS.length,
+      unresolved:named.filter(i => !v22IssueOf(i)),
+      ghostIssues:Object.keys(V22_REGION_ISSUE).filter(k => !ISSUE[V22_REGION_ISSUE[k]]),
+      ghostStrings:Object.keys(V22_REGION_ISSUE).filter(k => named.indexOf(k) < 0),
+      reached:(() => { const s = {}; named.forEach(i => { s[v22IssueOf(i)] = 1; }); return Object.keys(s).length; }),
+      issues:ISSUES.length
+    };
+    R.cover.reached = R.cover.reached();
+
+    /* (b) WHAT IT SAID: the party's own `wants` against where the book sits.
+       Driven at the ends by moving the BOOK, which is the input, rather than by
+       recomputing the formula -- a probe that reassembles the formula proves
+       the function and not the wiring. */
+    R.said = (() => {
+      fresh(4242);
+      /* THE PAIR IS FOUND, NOT NAMED. The first version of this named the LP
+         and `climate` and came back `ran:false`, because a party's `wants`
+         table does not reach every issue's categories -- 38% of party-issue
+         pairs have an entry at all. A probe that assumes a pair it did not
+         look for reports the mechanism as absent. */
+      let pid = null, iid = null, iss = null, w = null, pols = [];
+      PARTIES.forEach(p => {
+        if (pid) return;
+        ISSUES.forEach(i => {
+          if (pid) return;
+          const ww = (PARTY[p.id] || {}).wants || {};
+          const ps = POLICIES.filter(x => ISSUE[i.id].cats.indexOf(x.cat) >= 0 && ww[x.id] !== undefined);
+          if (ps.length >= 2) { pid = p.id; iid = i.id; iss = ISSUE[i.id]; w = ww; pols = ps; }
+        });
+      });
+      if (!pols.length) return { ran:false };
+      S.billArchive = [];
+      pols.forEach(p => { S.pol[p.id] = Math.min(w[p.id], p.max); });
+      const met = v22Standing(S, pid, iid);
+      pols.forEach(p => {
+        const tg = Math.min(w[p.id], p.max);
+        S.pol[p.id] = tg > p.max / 2 ? 0 : p.max;
+      });
+      const against = v22Standing(S, pid, iid);
+      return { ran:true, pid:pid, iid:iid, n:pols.length, met:+met.toFixed(3),
+        against:+against.toFixed(3),
+        metIsHigh:met > .6, againstIsLow:against < -.3, separates:met - against > .8 };
+    })();
+
+    /* (c) AND WHAT IT DID: a statute this party carried in that issue's own
+       categories. The book is held still, so only the archive moves. */
+    R.carried = (() => {
+      fresh(4242);
+      const pid = 'lp', iid = 'climate', iss = ISSUE[iid];
+      /* the carried half needs a policy in the issue's categories and nothing
+         about the party's own table, so `climate` is fine here */
+      const pol = POLICIES.filter(p => iss.cats.indexOf(p.cat) >= 0)[0];
+      if (!pol) return { ran:false };
+      S.billArchive = [];
+      const none = v22Standing(S, pid, iid);
+      S.billArchive = [{ sponsor:pid, stage:'passed', policy:pol.id }];
+      const one = v22Standing(S, pid, iid);
+      S.billArchive = [{ sponsor:pid, stage:'passed', policy:pol.id },
+                       { sponsor:pid, stage:'passed', policy:pol.id },
+                       { sponsor:pid, stage:'passed', policy:pol.id },
+                       { sponsor:pid, stage:'passed', policy:pol.id }];
+      const three = v22Standing(S, pid, iid);
+      /* somebody else's statute, and one that failed, are not this party's
+         record: both of those are the write landing on the wrong party */
+      S.billArchive = [{ sponsor:'rsf', stage:'passed', policy:pol.id }];
+      const theirs = v22Standing(S, pid, iid);
+      S.billArchive = [{ sponsor:pid, stage:'failed', policy:pol.id }];
+      const failed = v22Standing(S, pid, iid);
+      return { ran:true, none:+none.toFixed(3), one:+one.toFixed(3), three:+three.toFixed(3),
+        rises:one > none + .2, capped:Math.abs(three - (none + 3 * V22_CARRIED)) < .02 || three >= .999,
+        notTheirs:Math.abs(theirs - none) < 1e-9, notFailed:Math.abs(failed - none) < 1e-9 };
+    })();
+
+    /* (d) AND IT DIFFERS BETWEEN PARTIES, which is the whole reason this term
+       exists: S21v measured that a curve every party SHARES cancels in the
+       normalisation, and only one that differs spreads them. */
+    R.differs = (() => {
+      fresh(4242);
+      for (let t = 0; t < 20; t++) step();
+      const seen = {};
+      let spread = 0;
+      ISSUES.forEach(i => {
+        const v = PARTIES.filter(p => !S.banned[p.id]).map(p => v22Standing(S, p.id, i.id));
+        const d = Math.max.apply(null, v) - Math.min.apply(null, v);
+        if (d > spread) spread = d;
+        v.forEach(x => { seen[x.toFixed(2)] = 1; });
+      });
+      return { ran:true, widest:+spread.toFixed(3), distinct:Object.keys(seen).length,
+        parties:PARTIES.filter(p => !S.banned[p.id]).length };
+    })();
+
+    /* (e) AND THE FACTOR READS IT, through the game's own `regionPartyFactor`
+       rather than by adding the term up here. Calling `v22RegionIssueLift`
+       would test the function and nothing about the wiring, which is the
+       mistake three S17o poisons found. */
+    R.reaches = (() => {
+      fresh(4242);
+      for (let t = 0; t < 12; t++) step();
+      const pid = 'lp';
+      const before = regionPartyFactor(S, pid);
+      const keepGain = V22_ISSUE_GAIN;
+      V22_ISSUE_GAIN = 0;
+      const off = regionPartyFactor(S, pid);
+      V22_ISSUE_GAIN = keepGain;
+      /* and it moves when the BOOK moves, which is the input a player has */
+      const keepPol = JSON.parse(JSON.stringify(S.pol));
+      const w = PARTY[pid].wants || {};
+      Object.keys(w).forEach(k => { if (POL[k]) S.pol[k] = Math.min(w[k], POL[k].max); });
+      const delivered = regionPartyFactor(S, pid);
+      Object.keys(w).forEach(k => {
+        if (!POL[k]) return;
+        const tg = Math.min(w[k], POL[k].max);
+        S.pol[k] = tg > POL[k].max / 2 ? 0 : POL[k].max;
+      });
+      const denied = regionPartyFactor(S, pid);
+      S.pol = keepPol;
+      return { ran:true, before:+before.toFixed(4), off:+off.toFixed(4),
+        delivered:+delivered.toFixed(4), denied:+denied.toFixed(4),
+        termIsLive:Math.abs(before - off) > 1e-6,
+        bookMovesIt:delivered - denied > .002,
+        rightWayRound:delivered > denied };
+    })();
+
+    /* (f) AND IT IS THE REGION'S OWN THREE. The Rigel Plains name Agriculture,
+       Federalism and Energy; the Far Marches name Defence, Veterans and Border
+       security, and the two sets share nothing -- so a book moved on one must
+       move one lift and not the other. */
+    R.itsOwn = (() => {
+      fresh(4242);
+      const rigel = REGION.rigel, marches = REGION.marches;
+      const a = (rigel.issues || []).map(v22IssueOf), b = (marches.issues || []).map(v22IssueOf);
+      const overlap = a.filter(x => b.indexOf(x) >= 0);
+      const pid = 'lp', w = PARTY[pid].wants || {};
+      const cats = {};
+      a.forEach(iid => { if (ISSUE[iid]) ISSUE[iid].cats.forEach(c => { cats[c] = 1; }); });
+      const keepPol = JSON.parse(JSON.stringify(S.pol));
+      const r0 = v22RegionIssueLift(S, rigel, pid), m0 = v22RegionIssueLift(S, marches, pid);
+      Object.keys(w).forEach(k => {
+        if (POL[k] && cats[POL[k].cat]) S.pol[k] = Math.min(w[k], POL[k].max);
+      });
+      const r1 = v22RegionIssueLift(S, rigel, pid), m1 = v22RegionIssueLift(S, marches, pid);
+      S.pol = keepPol;
+      return { ran:true, overlap:overlap.length, rigelMoved:Math.abs(r1 - r0) > 1e-6,
+        marchesHeld:Math.abs(m1 - m0) < 1e-9, r0:+r0.toFixed(4), r1:+r1.toFixed(4) };
+    })();
+
+    /* (g) RANKED BY THE ORDER THE REGION NAMES THEM IN, which the Campaign page
+       has treated as a ranking since v9 by printing `issues[0]` as the
+       subtitle. Asked by standing on one issue at a time, through the lift. */
+    R.ranked = (() => {
+      fresh(4242);
+      const r = REGION.somnium, pid = 'lp';
+      const ids = (r.issues || []).map(v22IssueOf);
+      if (ids.length < 3 || ids[0] === ids[2]) return { ran:false };
+      /* AND THE SALIENCE IS HELD EQUAL, or this leg is not about the rank at
+         all: the weight is rank TIMES salience, so a flat rank still separates
+         whenever the country happens to care about the first issue more. The
+         poison that flattened the ranks came back GREEN for exactly that. */
+      ids.forEach(iid => { S.salience[iid] = 50; });
+      const base = v22Standing;
+      const one = (k) => {
+        v22Standing = function (st, p, iid) { return iid === ids[k] ? 1 : 0; };
+        const v = v22RegionIssueLift(S, r, pid);
+        v22Standing = base;
+        return v;
+      };
+      const first = one(0), third = one(2);
+      return { ran:true, first:+first.toFixed(4), third:+third.toFixed(4),
+        firstCountsMore:first > third * 1.3, bothPositive:first > 0 && third > 0 };
+    })();
+
+    /* (g2) AND THE COUNTRY'S MIND IS THE OTHER HALF OF THE WEIGHT. An issue a
+       region names but nobody is thinking about should be worth less there than
+       one the country is arguing over, which is what joins `issueTick`'s model
+       to the regions. Asked with the ranks held OUT of it, by standing on the
+       region's SECOND issue only and moving its salience. */
+    R.salient = (() => {
+      fresh(4242);
+      const r = REGION.somnium, pid = 'lp';
+      const ids = (r.issues || []).map(v22IssueOf);
+      if (ids.length < 3) return { ran:false };
+      const base = v22Standing;
+      v22Standing = function (st, p, iid) { return iid === ids[1] ? 1 : 0; };
+      ids.forEach(i => { S.salience[i] = 50; });
+      S.salience[ids[1]] = 90;
+      const loud = v22RegionIssueLift(S, r, pid);
+      S.salience[ids[1]] = 10;
+      const quiet = v22RegionIssueLift(S, r, pid);
+      v22Standing = base;
+      return { ran:true, loud:+loud.toFixed(4), quiet:+quiet.toFixed(4),
+        loudCountsMore:loud > quiet * 1.5, bothPositive:loud > 0 && quiet > 0 };
+    })();
+
+    /* (h) THE SIZE, AGAINST THE DEVIATIONS IT SITS BESIDE. The block sums every
+       regional term as a deviation from 1 and scales the sum by one constant,
+       so a term five times the largest of them would own the factor -- which is
+       what the first draft of this one was. */
+    R.size = (() => {
+      fresh(4242);
+      const at1 = [];
+      const keep = V22_ISSUE_GAIN;
+      V22_ISSUE_GAIN = 1;
+      for (let t = 0; t < 40; t++) {
+        step();
+        if (t % 5) continue;
+        REGIONS.forEach(r => {
+          const v = PARTIES.filter(p => !S.banned[p.id]).map(p => v22RegionIssueLift(S, r, p.id));
+          at1.push(Math.max.apply(null, v) - Math.min.apply(null, v));
+        });
+      }
+      V22_ISSUE_GAIN = keep;
+      at1.sort((a, b) => a - b);
+      const med = at1.length ? at1[Math.floor(at1.length / 2)] : 0;
+      return { ran:true, spreadAtGain1:+med.toFixed(4), gain:V22_ISSUE_GAIN,
+        spreadShipped:+(med * V22_ISSUE_GAIN).toFixed(4),
+        /* the largest deviation the block already carries is the opposition
+           governorship at .085; this one is set to match it and must not
+           exceed it by much, or every other regional term stops mattering */
+        notLargerThanTheBlock:med * V22_ISSUE_GAIN <= .105,
+        notDecoration:med * V22_ISSUE_GAIN >= .04 };
+    })();
+
+    /* (i) AND THE PAGE SAYS IT. Read through the renderer: a term the model
+       reads and the reader cannot see is `st.court.size` inverted. */
+    R.page = (() => {
+      fresh(4242);
+      for (let t = 0; t < 12; t++) step();
+      UI.tab = 'federation';
+      let html = '';
+      try { html = viewFederation(); } catch (e) { return { ran:false, threw:e.message }; }
+      const d = document.createElement('div'); d.innerHTML = html;
+      const tags = [].slice.call(d.querySelectorAll('.region-card .tagline .tag'));
+      const words = ['strong here', 'with you', 'against you', 'wanting', 'level'];
+      const said = tags.filter(t => words.some(w => t.textContent.indexOf(w) >= 0));
+      const titled = said.filter(t => /out of 100 on the country/.test(t.getAttribute('title') || ''));
+      const first = said.filter(t => /first thing this region is about/.test(t.getAttribute('title') || ''));
+      return { ran:true, tags:tags.length, said:said.length, titled:titled.length,
+        first:first.length, regions:REGIONS.length,
+        sample:said.length ? said[0].textContent : '' };
+    })();
+
+    /* (j) AND IT IS LIVE IN PLAY, as an A/B in one process over the same seeds:
+       the spread of the factor BETWEEN parties, which is the dispersion this
+       whole programme exists to put back. */
+    R.play = (() => {
+      const run = (g) => {
+        const keep = V22_ISSUE_GAIN;
+        V22_ISSUE_GAIN = g;
+        const spread = [], lift = [];
+        try {
+          [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+            fresh(sd);
+            for (let t = 0; t < 40; t++) {
+              step();
+              if (t % 4) continue;
+              const f = PARTIES.filter(p => !S.banned[p.id]).map(p => regionPartyFactor(S, p.id));
+              spread.push(Math.max.apply(null, f) - Math.min.apply(null, f));
+              REGIONS.forEach(r => PARTIES.forEach(p => {
+                if (!S.banned[p.id]) lift.push(v22RegionIssueLift(S, r, p.id));
+              }));
+            }
+          });
+        } finally { V22_ISSUE_GAIN = keep; }
+        spread.sort((a, b) => a - b);
+        const nz = lift.filter(x => Math.abs(x) > 1e-9).length;
+        return { n:spread.length, p50:+spread[Math.floor(spread.length / 2)].toFixed(4),
+          mean:+(spread.reduce((a, b) => a + b, 0) / spread.length).toFixed(4),
+          liftNonZero:+(nz / Math.max(1, lift.length)).toFixed(3) };
+      };
+      const off = run(0), on = run(V22_ISSUE_GAIN);
+      return { ran:true, off:off, on:on,
+        wider:on.p50 > off.p50, fires:on.liftNonZero > .5, quietOff:off.liftNonZero === 0 };
+    })();
+    runQueue = rq;
+    return R;
+  });
+
+  const issueOk =
+    issue22.cover.unresolved.length === 0 && issue22.cover.ghostIssues.length === 0 &&
+    issue22.cover.ghostStrings.length === 0 && issue22.cover.slots === 24 &&
+    issue22.cover.regions === 8 && issue22.cover.reached === issue22.cover.issues &&
+    issue22.said.ran && issue22.said.metIsHigh && issue22.said.againstIsLow &&
+    issue22.said.separates &&
+    issue22.carried.ran && issue22.carried.rises && issue22.carried.capped &&
+    issue22.carried.notTheirs && issue22.carried.notFailed &&
+    issue22.differs.ran && issue22.differs.widest > .5 && issue22.differs.distinct > 6 &&
+    issue22.reaches.ran && issue22.reaches.termIsLive && issue22.reaches.bookMovesIt &&
+    issue22.reaches.rightWayRound &&
+    issue22.itsOwn.ran && issue22.itsOwn.overlap === 0 && issue22.itsOwn.rigelMoved &&
+    issue22.itsOwn.marchesHeld &&
+    issue22.ranked.ran && issue22.ranked.firstCountsMore && issue22.ranked.bothPositive &&
+    issue22.salient.ran && issue22.salient.loudCountsMore && issue22.salient.bothPositive &&
+    issue22.size.ran && issue22.size.notLargerThanTheBlock && issue22.size.notDecoration &&
+    issue22.page.ran && issue22.page.said >= 3 * issue22.page.regions &&
+    issue22.page.titled === issue22.page.said && issue22.page.first === issue22.page.regions &&
+    issue22.play.ran && issue22.play.wider && issue22.play.fires && issue22.play.quietOff;
+  say(issueOk, 'a region votes on the issues it is authored with',
+    `\`REGIONS\` GIVES EACH OF THE EIGHT REGIONS THREE NAMED ISSUES AND NOTHING IN THE MODEL READ THEM. ` +
+    `${issue22.cover.slots} authored strings, ${issue22.cover.strings} of them distinct, and grep found ` +
+    `exactly two readers -- a tag row on the region card and one line of subtitle under the Target button. ` +
+    `That is a modifier nothing reads, sitting in the place the owner pointed at · THE CHANNEL ALREADY ` +
+    `EXISTED: \`ISSUES\` is ${issue22.cover.issues} entries carrying the indicator each is read from and the ` +
+    `statute categories it covers, and \`issueTick\` has moved \`st.salience\` every session since v8. What is ` +
+    `written here is the JOIN, covered from \`REGIONS\` rather than from a list (${issue22.cover.unresolved.length} ` +
+    `unresolved, ${issue22.cover.ghostStrings.length} naming a string no region uses), and it reaches all ` +
+    `${issue22.cover.reached} of the twelve · WHERE A PARTY STANDS IS ITS OWN RECORD AND NOTHING ELSE: what it ` +
+    `SAID, its \`wants\` against where the book sits, reads ${issue22.said.met} with the book where it asked ` +
+    `and ${issue22.said.against} with the book as far away as the ladder allows; what it DID, the statutes it ` +
+    `carried, takes ${issue22.carried.none} to ${issue22.carried.one} for one and ${issue22.carried.three} for ` +
+    `three, and somebody else's statute (${issue22.carried.notTheirs}) or one that failed ` +
+    `(${issue22.carried.notFailed}) is not this party's record. NO OFFICE IS READ: the owner's ruling is that a ` +
+    `chair has no bearing on an election, and a term asking which department a party holds would put it back · ` +
+    `AND IT DIFFERS BETWEEN PARTIES (widest ${issue22.differs.widest} across ${issue22.differs.parties}), which ` +
+    `is the whole reason it can do what the chair did: S21v measured that a curve every party SHARES cancels in ` +
+    `the normalisation and only one that differs spreads them · THE FACTOR READS IT THROUGH ITS OWN PATH ` +
+    `(${issue22.reaches.termIsLive}), and the BOOK moves it -- ${issue22.reaches.delivered} with this party's ` +
+    `whole table delivered against ${issue22.reaches.denied} with it denied -- which is the lever a player has ` +
+    `· AND IT IS THE REGION'S OWN THREE: the Rigel Plains and the Far Marches share no issue ` +
+    `(${issue22.itsOwn.overlap}), and a book moved on Rigel's moves Rigel (${issue22.itsOwn.rigelMoved}) and ` +
+    `leaves the Marches alone (${issue22.itsOwn.marchesHeld}) · RANKED BY THE ORDER THE REGION NAMES THEM IN, ` +
+    `which the Campaign page has treated as a ranking since v9 (${issue22.ranked.first} against ` +
+    `${issue22.ranked.third}, with the salience held EQUAL -- the weight is rank TIMES salience, so the ` +
+    `poison that flattened the ranks came back green until this leg stopped letting the country's mind ` +
+    `stand in for the order) · AND THE COUNTRY'S MIND IS THAT OTHER HALF: the same issue at a salience of ` +
+    `90 is worth ${issue22.salient.loud} against ${issue22.salient.quiet} at 10, which is what joins ` +
+    `\`issueTick\`'s model to the regions · SIZED AS A DIVISION RATHER THAN A GUESS: the block sums every regional term as ` +
+    `a deviation from 1 and scales the sum by ONE constant, and the deviations already there are a governor at ` +
+    `.055, an opposition governorship at .085, the federal term at about .08 and an organiser dot at .019. At ` +
+    `gain 1 the term's median spread between parties in one region is ${issue22.size.spreadAtGain1}, so the ` +
+    `shipped gain of ${issue22.size.gain} makes it ${issue22.size.spreadShipped} -- the opposition ` +
+    `governorship, the largest the block carries. THE FIRST DRAFT WAS .42, five times that, and the ` +
+    `measurement is what said so · THE PAGE SAYS IT (${issue22.page.said} tags across ${issue22.page.regions} ` +
+    `regions, every one carrying what the country thinks of the issue: "${issue22.page.sample}"), because a ` +
+    `term the model reads and the reader cannot see is \`st.court.size\` inverted · AND IT IS LIVE IN PLAY, as ` +
+    `an A/B in one process over six seeds: the spread of the factor between parties goes ` +
+    `${issue22.play.off.p50} to ${issue22.play.on.p50}, and the lift is non-zero on ` +
+    `${issue22.play.on.liftNonZero} of party-region readings against ${issue22.play.off.liftNonZero} with the ` +
+    `gain at nought`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
