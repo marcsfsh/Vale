@@ -18619,7 +18619,11 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       for (let i = 0; i < 120; i++) {
         drive(1);
         PARTIES.forEach(p => {
-          const w = (v16Ai(S)[p.id] || {}).why;
+          /* S22a: THROUGH THE FILE'S HEAD, which is where `a.why` went. That
+             field was one slot with one writer and one reader; the dossier made
+             the head of `v22File` the same fact, so a probe still reading the
+             slot counts nought and reports a working record as dead. */
+          const w = (typeof v22File === 'function' ? v22File(S, p.id)[0] : (v16Ai(S)[p.id] || {}).why);
           if (!w || seenAt[p.id] === w.turn + ':' + w.card) return;
           seenAt[p.id] = w.turn + ':' + w.card;
           R.panel.acts++;
