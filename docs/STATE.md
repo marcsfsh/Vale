@@ -14,12 +14,35 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S22 — What decides an election** is **OPEN**, and it opens with the one piece
-of debt S21 left: the party dossier. `docs/PLAN-S22.md` is the programme, and
-the owner commissioned it in the exchange that produced S21v — *"since
-incumbency & mood no longer apply, something has to add some variance, and it
-needs to be something the player can pick up on and attempt to influence for
-their own party."*
+**S22 — What decides an election** is **COMPLETE**, at six slices. It opened
+with the one piece of debt S21 left, the party dossier. `docs/PLAN-S22.md` is
+the programme, and the owner commissioned it in the exchange that produced
+S21v — *"since incumbency & mood no longer apply, something has to add some
+variance, and it needs to be something the player can pick up on and attempt to
+influence for their own party."*
+
+**What the six added, in one line each.** A party's record is filed rather than
+overwritten, so you can read what the others have been doing and why. A region's
+three authored issues reach the model instead of only the page. Turnout is every
+party's and the projection prints it. A battleground names the issue you are
+running on there, and engines can fight for one. The calendar's two states are
+real and the page says which you are in. And the range before the count is the
+night's own rather than an authored figure.
+
+**Three of the programme's plan sections asked for something the file could not
+give, and the measurement said so rather than taste.** Party unity is not a
+fourth player-only capability: `factionTick` makes it a lagged mirror of a term
+every party already gets. There is no window of N sessions before a ballot,
+because the republic votes every second session. And the range the game already
+printed was authored at nearly twice what the night produces. All three are
+recorded above, and the second's alternative — lengthening the cadence — is the
+owner's to call.
+
+**Nine pieces of arithmetic in the election model turned out to be unreachable**
+and were replaced or removed across S22e and S22f: a decay ladder whose two
+upper rungs no session could reach, a phase label printed 0 times in 720 driven
+sessions, a four-session card gate true on every session, and a poll-error cap
+that needed a ballot six sessions away.
 
 - **S22a — a party has a record you can read.** `v16AiTurn` posts three lines a
   session to the Gazette under a comment reading *"the rest is on the Parties
