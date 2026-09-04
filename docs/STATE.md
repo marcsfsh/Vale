@@ -14,7 +14,8 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
-**S21 — All-out AI** is **OPEN**. The owner's brief: *"an all-out focus on AI
+**S21 — All-out AI** is **COMPLETE** with this slice; what is open is below,
+and none of it is S21. The owner's brief: *"an all-out focus on AI
 behavior, AI logic, and AI improvements… at least 4 improvements to existing AI
 behaviors and logic, and at least 8 new behaviors/logic — each being
 significant and receiving equal attention. In addition, the coalition building
@@ -50,9 +51,9 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped twenty-one slices: S21a–t and S21v.** The original twelve are
-complete; S21m through S21t are the first seven of the owner's eight-behaviour
-extension, and S21u alone remains. **S21v and S21s are
+**S21 has shipped twenty-two slices: S21a–v.** The original twelve are complete
+and so is the owner's eight-behaviour extension: S21m through S21u are its eight,
+and S21v is the slice their live game asked for out of order. **S21v and S21s are
 out of order on purpose**: the owner interrupted mid-programme with a save and
 two reports from a live game, a build they are playing takes precedence over the
 queue, and the election-night swing they asked to have back turned out to be
@@ -1239,6 +1240,99 @@ authored already and eaten by a wrapper.
   toothless. Two boards now, with the chair READ at the moment of the call
   rather than assumed.
 
+- **S21u — a party that will not sit with another.** The player's own `cordon`
+  action reads, in as many words: *"An agreement among the other parties that
+  nobody will govern with them, ever. It holds until somebody breaks it."*
+  `st.cordon` has **five readers** — `v17Eligible`, which decides who the country
+  may ask to form a government; `v6CoalitionCandidates`, which builds the pool a
+  formateur picks from; the deck's bill score at −8; `partyBillSupport`; and the
+  party page's own tag — and **two writers, both of them the player's buttons**.
+  Measured over 480 driven sessions at `ruthless`, `st.cordon` held nothing at
+  all on **480 of them**: `st.court.size` inverted — not a field nothing reads,
+  but a field nothing an engine can reach ever writes.
+  **AND THE BOARD HAS ROOM FOR IT.** On the same drive a formateur has a mean of
+  **8.63** minimal winning coalitions containing the largest party, a choice of
+  two or more on **100%** of readings, and never one forced option or none — so a
+  refusal to sit removes options rather than making government impossible. 266 of
+  the 1,821 pairs a formateur needs together (**14.6%**) hold a real grudge.
+  **AND THE BAR IS THE CARD'S OWN SENTENCE, WHICH THE FIRST BUILD WAS NOT.** That
+  build asked for TWO parties at the tenth percentile of regard (−24.6, over
+  5,040 pairwise readings whose p50, p75 and p90 are all nought — grudges are a
+  long minority tail). Two-at-that-depth is a PER-PARTY rate of about 12%, and a
+  per-party rate says nothing about how often the HOUSE is in that state: driven,
+  it put somebody under cordon on **66% of sessions**, reached **all seven at
+  once**, and left a mean of **1.93** parties eligible to form a government. For
+  "the other parties will not govern with them" to be true, the refusers have to
+  be able to govern WITHOUT them — so the bar is a **majority of the Assembly**, a
+  number the game already owns. Re-measured over **2,880 driven sessions on
+  thirty-six seeds**: raised **11 times**, a mean of **0.306 a seed**, never more
+  than **2** at once, a formateur left **6** parties to ask. (The twelve-seed
+  figures this slice was first written against — 7 raisings across 4 parties,
+  11.1% held — are one draw from that distribution; see the correction below.)
+  **AND IT HOLDS UNTIL ENOUGH OF THEM CHANGE THEIR MINDS** — hysteresis, raised
+  at −25 and kept at −12, walked by the arm: a regard of −19 KEEPS a standing
+  cordon and does not raise one from nought.
+  **ONE WRITER.** The player's two buttons write their own half, `st.cordonMine`,
+  and then ask the tick, because two clocks for one fact means the one you did
+  not write about wins; a save from before this slice is migrated on the first
+  tick. The player may lift their own name and **not** the House's — drawn shut
+  with the reason on it rather than live and doing nothing. And **the player can
+  be frozen out**, which is the half the plan asked for.
+  **AND THE PROBE WAS WRONG BEFORE THE GAME WAS, for the fourth slice running.**
+  `v21Regard` returns MINUS the grudge and the arm's helper wrote the minus
+  itself, so every constructed board was set to a regard of PLUS sixty, no cordon
+  was ever raised, and three legs read a working mechanism as dead. The driven
+  leg — which reads the live board rather than one it built — was green
+  throughout and is what said the constructed ones were lying.
+
+  **AND THE "ONE WRITER" SENTENCE ABOVE WAS NOT TRUE OF THE BUTTONS THEMSELVES**
+  until the S21t harness sent me back to look. Each carried
+  `if (typeof v21CordonTick === 'function') v21CordonTick(S); else S.cordon[pid] = true;`
+  — **a `typeof` fallback that writes the shared field is the same second writer
+  wearing a guard**, and since `v21CordonTick` is a top-level declaration in this
+  file while a button handler runs long after every chunk has evaluated, the
+  branch could not fire and the claim would have been untrue anyway. S21t shipped
+  exactly that shape in the same programme. Both are gone, and grep now says one
+  writer. **And two comments outlived the lines they describe** — the tick's said
+  *"two or more others in deep contempt"* and the lift button's named
+  `v21CordonAgainst`; both are the first build's per-party bar, which this slice
+  measured its way off, where the code asks `v21CordonHolds` for a majority of
+  the Assembly's seats.
+
+  **AND THE DRIVEN COUNT WAS A RATE WHERE IT SHOULD HAVE BEEN A TRIPWIRE, which
+  took measuring to see.** The gate read `raised > 2` and four distinct parties
+  off twelve seeds — 7 raisings when the slice was written, and **one** after
+  S21t's endorsement clock fix moved every election downstream of it. Neither is
+  the mechanism. Over **thirty-six seeds** the same build gives **11 raisings, a
+  mean of 0.306 a seed with a standard deviation of 0.624**, and nine of the
+  thirty-six carrying any; as three twelve-seed blocks it reads **1, 4 and 6**
+  across 1, 4 and 4 parties, so the old bar passes on two blocks of three and
+  fails on the other, and the seven the slice was written against is +1.5
+  standard errors while the one is −1.25. A cordon is a **threshold crossing on
+  a long-tailed ledger** — the caretaker's shape from S21r wearing another coat:
+  the deepest hostile coalition any party faces averages **561 seats against the
+  653 a majority needs** (sd 180), so the House is usually just short of one and
+  crosses on about a quarter of republics. The driven leg is a tripwire now —
+  the path fires in play at all — with what it must NOT do asserted beside it
+  where the numbers are steady (never mostly under cordon, a formateur always
+  left somebody to ask), and the correctness proved without dice in the five
+  constructed legs, every one exact and **all eighteen poisons red**.
+
+  **AND A SIXTH ARM WAS A BAR SET AT THE VALUE IT MEASURED, on a rate whose
+  ceiling moves.** `the verb reads the aim` gates how often the `bill` card lays
+  the statute its aim names, at `rate > .45` — and `rate` divides by every
+  chance, including the ones where the named statute was **shut or already before
+  the House**. The leg computes that ceiling (.855) and does not divide by it, so
+  a card mix that leaves more aims unlayable pushes the rate down with the
+  behaviour untouched. It reads **.491 on the build before this slice and .431 on
+  it — 1.09 standard errors apart, with the bar sitting one standard error either
+  side of both.** Of what was actually reachable the same two builds give **.574
+  and .504**, and the bar is **.40** there: 2.6 standard errors below the lower,
+  where chance — the pool draw the leg was written against, .265 raw — is about
+  .31. Poisoned by taking `V20_AIM_BILL`'s thumb off the named statute, the share
+  goes to **.143**, so the bar now sits between a working build and a broken one
+  rather than between two draws of the same one.
+
 - **S21t — an organisation endorses somebody other than you.** `q.endorsement`
   is a BOOLEAN and has meant "endorses the player" since v5, and
   `endorsedTurnout` — the only way an endorsement reaches the ballot — was
@@ -1634,14 +1728,45 @@ authored already and eaten by a wrapper.
   of the first and the leg reported that a build with a working swing does not
   roll. Third slice running in which the probe was wrong before the game was.
 
-**WHAT IS OPEN:** the owner's extension S21t and S21u, in the order `PLAN-S21.md`
-sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
-was never written, and building it is a slice rather than a paragraph, so it is
-recorded here as its own piece of work rather than quietly dropped. The
-original twelve slices are complete, and so is the coalition overhaul the brief
-names: S21d gave the agreement teeth, S21e made the table a negotiation, S21f
+**WHAT IS OPEN: S21 IS COMPLETE.** All twenty-two slices have shipped —
+the original twelve, the owner's eight-behaviour extension (S21m–S21u), and
+S21v, which their live game asked for out of order. What remains is not S21:
+**the party dossier** the plan attached to S21b/S21i/S21l — `v21Emit` was never
+written, and building it is a slice rather than a paragraph, so it is recorded
+here as its own piece of work rather than quietly dropped — and the campaign
+programme below. The coalition overhaul the brief names is done: S21d gave the agreement teeth, S21e made the table a negotiation, S21f
 gave it one exit and a voice, S21g made a government able to fall, and S21h
 gave the junior partner a game.
+
+**AND THE CHAIR *WAS* THE CONCENTRATION — MEASURED AFTER S21v MERGED, AND THE
+SINGLE MOST IMPORTANT THING ON THIS PAGE FOR WHOEVER PICKS UP S22.** Largest
+party's seat share over 720 driven sessions on twelve seeds:
+
+| build | easy p50 | easy >50% | normal p50 |
+|---|---|---|---|
+| before S21v | **0.448** | 8.9% | 0.316 |
+| minus the flat incumbency only | 0.422 | 7.5% | 0.316 |
+| minus the appeal curves only | **0.269** | 0.0% | 0.235 |
+| S21v (both gone) | 0.247 | 0.0% | 0.235 |
+
+The flat incumbency was worth almost nothing to the shape of the chamber; the
+three appeal curves were worth nearly all of it — and they concentrated *because
+they differed between parties by chair* (1.54 for the government against 0.40 for
+the opposition at a bloc mood of 100). **No chair-blind curve brings it back, and
+that was tested rather than assumed**: one curve applied identically to every
+party, and the government's own curve applied to everyone, both drive a
+largest-party p50 of 0.24 over the same 720 sessions, because a curve every party
+shares largely cancels in the normalisation. Only a curve that DIFFERS between
+parties spreads them, and the only such curve the model had read the chair.
+
+So the owner's ruling, taken literally, necessarily produces a flatter chamber:
+with seven parties an even split is 0.143 and the largest party now sits at 1.7×
+that, where it sat at 3.1× on easy. **No party wins outright any more, on any
+tier.** Nothing is broken — coalitions still form at a mean size of 3.02,
+governments still fall, the arithmetic of the House is unchanged — but the
+dispersion the chair used to supply has no replacement yet, and that is what the
+campaign programme below is FOR. It is not decoration on top of S21v; it is the
+other half of it.
 
 **AND ONE BALANCE READING IS THE OWNER'S TO RULE ON, NOT MINE.**
 
@@ -1664,8 +1789,13 @@ that are salient to them, for starters."** They also ruled that the ±8 per cent
 election-night swing should be **restored and shown as a range before the
 count**. That swing is authored and currently dead: the S16 pact wrapper on
 `ballot` declares one parameter, so every `ballot(st, true)` since has arrived
-as `ballot(st, undefined)` and an election has returned exactly the projection —
-**S21s is the slice that fixes it**, and the range is downstream of that.
+as `ballot(st, undefined)` and an election has returned exactly the projection.
+**S21s fixed it** and the swing is live again, so the range is the one piece of
+that ruling still to build. `docs/PLAN-S22.md` is the drafted programme — five slices, awaiting the owner's
+rulings on the four questions it flags — and its spine is a measurement: `REGIONS` carries **24 authored issue strings** across
+eight regions and grep finds **exactly two readers, both render sites** — they
+are printed to the player and decide nothing, which is the very place the owner
+pointed at.
 
 **AND ONE OPTION IS THE OWNER'S, LEFT OPEN DELIBERATELY.** Their own
 observation: *"it might make more sense to make it slightly more difficult than

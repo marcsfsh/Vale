@@ -1192,7 +1192,10 @@ the parties can never be endorsed by any of them.
 Channel: `endorsedTurnout` to `partyTurnout` to `ballot`, where every party's
 base is multiplied by it.
 
-### S21t - A party that will not sit with another
+### S21u - A party that will not sit with another
+(shipped as S21u: the owner's live game produced S21v out of order, and the
+`sponsorBill` wrapper S21r's probe turned up became S21s, so the plan's last two
+slices moved along one.)
 
 `st.cordon` has five readers and two writers, both player buttons. Parties
 cannot refuse each other, so a formateur is never forced to choose between two
