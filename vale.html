@@ -37870,6 +37870,20 @@ var V19_RIVAL_WORTH = {
   /* S21q: a trade is made WITH a party, not against one -- the same reading as
      `pact` and `bargain`, which are the file's other two agreements. */
   trade:    0,
+  /* S21t: an endorsement is a CONSTITUENCY, not a party -- the same reading as
+     `crowd` and `street`, which take the leadership of a movement and are
+     nought for the same reason. The switching path exists (`v21EndorseSet`
+     records who held it and books the grievance on the party it was taken
+     from) and the player's own Seek button reaches it, but an ENGINE only
+     claims an organisation it is the best-placed claimant for, and the
+     best-placed claimant is stable once it has claimed one. MEASURED over
+     1,440 driven sessions on twelve seeds: the card fires 42 times and NOUGHT
+     of the 42 take an endorsement off another party -- every one is a free
+     claim on an unheld organisation. A card that is never addressed to a rival
+     is not worth anything against one, and the entry is written down at nought
+     rather than left out, so the coverage guard can tell "asked and answered"
+     from "forgotten". */
+  endorse:  0,
   /* S21r: working the votes on the bill you laid is `bill`'s follow-through and
      it happens in the same arena as `floor` -- the division. It is placed BELOW
      both: `bill` (.50) puts a new contest on the order paper where there was

@@ -1320,7 +1320,18 @@ authored already and eaten by a wrapper.
   through the `moved` chain's final `: false`, so it was driven, paid for, logged
   and marked as moving nothing; and `DECK` — the constant S21r added *so that a
   new card is written down once* — was still 19. One slice after the rule was
-  written down, and the tripwire caught it exactly as intended.
+  written down, and the tripwire caught it exactly as intended — **and then a
+  fourth time, on the same guard S21r's own record praises**: `endorse` had no
+  weight in `V19_RIVAL_WORTH`, so *"an organisation endorses somebody other than
+  you"* scored nought against the party standing in your way, silently. It is
+  **nought now, and measured rather than assumed**: over 1,440 driven sessions
+  on twelve seeds the card fires 42 times and **nought of the 42 take an
+  endorsement off another party** — every one is a free claim on an unheld
+  organisation, because an engine only claims an organisation it is the
+  best-placed claimant for and that claimant is stable once it has claimed one.
+  So it reads as `crowd` and `street` do: a constituency, not a party. Written
+  down at nought rather than left out, so the guard can tell *asked and
+  answered* from *forgotten*.
 
   **AND THE ASSERTION THAT SHOULD HAVE CAUGHT ALL OF IT EXISTED AND WAS GREEN,
   because it was reading the derived side.** `an endorsement buys three things
