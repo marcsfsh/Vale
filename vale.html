@@ -25778,9 +25778,38 @@ draftBillDialog = function (id, dir) {
 var v9HideSheetBase = hideSheet;
 hideSheet = function () { v9HideSheetBase(); UI.v9Clauses = {}; };
 
+/* S21s — AND THIS WRAPPER ATE TWO ARGUMENTS FOR FOUR SLICES.
+
+   S17a added `sponsorId` and `quiet` to `sponsorBill`, and its own comment
+   says why: "the derivation below knew three owners and fell through to
+   `playParty` for the fourth, so every private member's bill was RECORDED as
+   sponsored by the player's own party -- and logged that way too, a line the
+   private-members path then contradicted with a second, correct one."
+
+   It fixed the base. This wrapper is in a LATER chunk, so it is the
+   `sponsorBill` the whole game calls, and it declared six parameters and
+   passed six. Every `sponsorId` since S17a has been discarded on the way in
+   and the bill re-attributed by the `owner` derivation instead -- so S19c's
+   deck card, which is how an engine party lays a bill, credited it to
+   whichever party happened to be largest in opposition rather than to the
+   party that decided to lay it. Measured directly: asked for a bill sponsored
+   by the RSF, the game returns one sponsored by the SD. And every `quiet:true`
+   was discarded with it, so the generic line printed before the caller's own
+   richer one -- the exact pair of symptoms S17a's comment describes as fixed.
+
+   It matters most here, because this slice makes "the party that laid it" the
+   thing a press is permitted by.
+
+   ITS TWIN IS IN THIS SLICE TOO: `ballot`'s S16 pact wrapper declares `(st)`
+   against a base of `(st, noise)`, so `ballot(st, true)` -- the actual
+   election -- has been running without its own ±8% election-night swing since
+   S16. Both are fixed here, together, because they are one defect and because
+   `wrapper-arity` -- the static check added with them, which fails if any
+   top-level body declares fewer parameters than the widest body of its own
+   name -- names exactly these two in 1,225 bodies over 1,014 names. */
 var v9SponsorBillBase = sponsorBill;
-sponsorBill = function (st, policy, dir, owner, strategy, free) {
-  var b = v9SponsorBillBase(st, policy, dir, owner, strategy, free);
+sponsorBill = function (st, policy, dir, owner, strategy, free, sponsorId, quiet) {
+  var b = v9SponsorBillBase(st, policy, dir, owner, strategy, free, sponsorId, quiet);
   if (!b || !st.v9 || owner !== 'player' || st !== S) return b;
   var set = UI.v9Clauses || {}, any = false;
   if (set.sunset) { b.sunset = true; b.upperDeal += 6; b.notes.push('Sunset clause'); if (!free) { var back = Math.round(b.cost * .2); st.capital = Math.max(st.capital, Math.min(capCap(st), st.capital + back)); } any = true; }
@@ -38421,10 +38450,26 @@ function v16AiTurn(st) {
   if (lines.length) st.aiLast = lines;
 }
 /* Two AI parties in a pact pool their vote at the count, which is what the
-   player's own `st.pact` has always done. */
+   player's own `st.pact` has always done.
+
+   S21s — AND IT ATE THE SECOND ARGUMENT FOR FIVE PROGRAM-YEARS OF COMMITS.
+   `ballot(st, noise)` ends with `if (noise) base *= .92 + rand() * .16;` -- a
+   plus-or-minus eight per cent per-party swing on the night -- and its callers
+   choose deliberately: `projection` asks with `false` because a projection is
+   what the numbers say, and `runElection` asks with `true` because an election
+   is not. This wrapper is in a later chunk, so it is the `ballot` the whole
+   game calls, and it declared one parameter and passed one. Every
+   `ballot(st, true)` since arrived as `ballot(st, undefined)`: the result was
+   exactly the projection, every time, and an election in this game could not
+   surprise anybody.
+
+   It is `sponsorBill`'s twin, found by the same survey on the same day and
+   fixed one slice later because this one moves every seeded campaign. The
+   `wrapper-arity` check below it in `checks/run.js` is what makes a third
+   impossible. */
 var v16BallotBase = ballot;
-ballot = function (st) {
-  var res = v16BallotBase(st);
+ballot = function (st, noise) {
+  var res = v16BallotBase(st, noise);
   if (!st.aiPacts) return res;
   for (var pid in st.aiPacts) {
     var o = st.aiPacts[pid].with;

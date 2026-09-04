@@ -50,11 +50,13 @@ The four rulings a cold session most needs:
   override `runQueue`,** not clear `UI.queue` around `endTurn`. See the S20
   correction below.
 
-**S21 has shipped eighteen slices: S21a–q and S21v.** The original twelve are
-complete; S21m through S21q are the first five of the owner's eight-behaviour
-extension, and S21r–S21t remain. **S21v is out of order on purpose**: the owner
-interrupted mid-programme with a save and two reports from a live game, and a
-build they are playing takes precedence over the queue.
+**S21 has shipped nineteen slices: S21a–q, S21s and S21v.** The original twelve
+are complete; S21m through S21q are the first five of the owner's
+eight-behaviour extension, and S21r, S21t and S21u remain. **S21v and S21s are
+out of order on purpose**: the owner interrupted mid-programme with a save and
+two reports from a live game, a build they are playing takes precedence over the
+queue, and the election-night swing they asked to have back turned out to be
+authored already and eaten by a wrapper.
 
 - **S21a — the regard, signed.** A party's view of another party was a
   one-sided grudge that could only ever go up: `v16Resent` clamped at 0, so
@@ -1236,6 +1238,104 @@ build they are playing takes precedence over the queue.
   `leads(S)` guard, one line above the article. It read the article as
   toothless. Two boards now, with the chair READ at the moment of the call
   rather than assumed.
+
+- **S21s — the two wrappers that ate their arguments.** `ballot(st, noise)` ends
+  with `if (noise) base *= .92 + rand() * .16;` — a per-party swing of plus or
+  minus eight per cent on the night — and its two callers choose deliberately:
+  `projection` asks with `false`, because a projection is what the numbers say,
+  and `runElection` asks with `true`, because an election is not. **The S16 pact
+  wrapper is in a LATER chunk, so it is the `ballot` the whole game calls, and it
+  declared one parameter and passed one.** Every `ballot(st, true)` since arrived
+  as `ballot(st, undefined)`. Measured before the fix: `ballot.length` reads 1 as
+  the game runs it, and on **36 of 36** boards asked both ways from the same dice
+  the two came back IDENTICAL — worst per-party gap 0.000 points of vote share,
+  and the swing changed who leads on NOUGHT of them. The result was exactly the
+  projection, every time. This is the swing the owner asked to have back when
+  they ruled on the chair (*"Restore, and show it before the count"*); it was
+  never removed, only unreachable.
+  **AND ITS TWIN IS IN THIS SLICE TOO.** S17a added `sponsorId` and `quiet` to
+  `sponsorBill` — its own comment says it fixed exactly the mis-attribution those
+  arguments prevent — and the S9 clause wrapper, also in a later chunk and
+  therefore the `sponsorBill` the whole game calls, went on declaring six
+  parameters and passing six. Every `sponsorId` since S17a was discarded on the
+  way in and the bill re-attributed by the `owner` derivation instead, so S19c's
+  deck card credited an engine's bill to whichever party happened to be largest
+  in opposition: **asked for a bill sponsored by the RSF, the game returned one
+  sponsored by the SD.**
+  **S21r FOUND IT AND DID NOT FIX IT, WHICH IS THE POINT.** The first build of
+  that slice carried the fix and FIVE arms went red: `v17DealEvent` is handed the
+  sponsor, so attributing a bill to the party that actually laid it moves the
+  broken-promise ledger, the divisions and the grudges. Widening a wrapper is a
+  correctness change with the blast radius of everything the argument reaches.
+  **AND THE COVERAGE IS A CHECK RATHER THAN A MEMORY.** `wrapper-arity` fails if
+  any top-level body declares fewer parameters than the widest body of its own
+  name — which is exactly these two and nothing else in 1,225 bodies over 1,014
+  names. Against the build before this slice it names both; against this one it
+  names none. The rule is deliberately blunt: a body that legitimately ignores a
+  trailing argument is indistinguishable from one that has forgotten it, and the
+  cost of writing the parameter out and forwarding it is one identifier. The arm
+  reads the arity off the LIVE binding — `Function.prototype.length` is the one
+  reading a later chunk cannot make stale.
+  **AND RESTORING THE SWING REDDENED FOUR ARMS, EVERY ONE OF THEM A PROBE THAT
+  HAD ASSUMED A BOARD ELECTIONS COULD NOT MOVE.** That is the finding, and it is
+  what a dead ±8% had been hiding: with every election returning exactly the
+  projection, a driven board was effectively deterministic in the one dimension
+  that decides who governs, and four arms had come to depend on it.
+  `whose desk it lands on` seated an opposition player once and drove 45
+  sessions — a ballot put them INTO office, where the head of government is
+  asked about every department by design, and two questions were tallied as
+  routing leaks; it records `leads(S)` at the moment each question arrives now,
+  which is S18c's own defect arriving a fifth time. `the rehearsal can see what
+  a card did` asked what a government's extraordinary book is worth to a party
+  that is not its head and expected exactly nought — `v19Flight` reads a party's
+  coalition and its book only when `st.ruling === pid`, and the probe's own
+  apply flips the chair, so on a board that seated the reader the flip stripped
+  terms that have nothing to do with the book; the chair is held fixed across
+  both readings now. `a government that can fall` stopped its search at the
+  install and asserted in a comment that "the drive stops on the install, so the
+  party is still supplying" — `endTurn` runs ON past a formation, sometimes
+  straight into another election, so the search now requires the agreement to
+  survive the session it was made in. And `a party can put a price on its own
+  benches` read a bill's edge at `pull = 0` and called it the hinge, which is a
+  claim about where the board's parties happen to sit; the hinge is BISECTED for
+  now, which the two clamps either side make exact.
+  **None of the four was a defect in the game.** Every one would have gone on
+  being green over a build with the mechanism it names deleted, because the
+  board it drove could not vary.
+  **AND RUNNING THE HARNESS ON THIS BUILD FOUND A BALANCE MOVEMENT S21v HAD MADE
+  AND NOBODY HAD SEEN, ON THE OWNER'S OWN TIER.** `capitalIncome` pays +1.4 when
+  the ruling party holds an OUTRIGHT majority, and taking the chair out of the
+  vote model took away the term that manufactured those majorities. Over 240
+  driven sessions on `easy`, across the three builds (before S21v → S21v →
+  S21s):
+
+  | reading | before | S21v | S21s |
+  |---|---|---|---|
+  | a single party holds more than half the house | **15.0%** | **0.0%** | 0.0% |
+  | the player's own party rules | 13.3% | 3.3% | 3.3% |
+  | capital income, max of 240 readings | 103.5 | 86.9 | 80.7 |
+  | sessions above the floor × 1.5 | 19 | 5 | 0 |
+
+  **S21v is where the movement is.** S21s only re-phased the dice under a bar
+  S21v had already left standing on FIVE readings of 240 — `max > capFloor *
+  1.5`, a bar inside its own margin — which is why S21v's own harness passed it
+  and this one did not. The clause is **reported rather than re-picked** and the
+  tier is not retuned: moving `capFloor` is a balance decision on the tier the
+  owner plays, and this is their ruling's consequence rather than a defect. What
+  S21b's income work was FOR is still gated — income VARIES and is not the floor
+  on every session, which is what "mean, min and max all exactly 150" was.
+  **AND THE STREET'S SPEAKING SHARE IS UNGATED FOR THE SAME REASON.**
+  `spokeShare > 0` over twelve seeds of forty sessions is a coin: over 24 seeds
+  the street speaks within forty sessions on **1 of 24** and within a hundred on
+  **4 of 24**, so the expectation is about a half and drawing nought is the
+  likelier outcome. It drew 2 before this slice and 0 after, and this slice
+  touches no term in `v17StreetHeat`. The heat is what that leg was for and the
+  heat is still gated three ways.
+  **AND THE FIRST BUILD OF THE ARM PUT THE DICE BACK BEFORE THE CALL IT WAS
+  MEASURING THE ADVANCE OF.** The leg that asks whether the night actually rolls
+  reset `S.rngState` before its third `ballot`, so the third reading was a copy
+  of the first and the leg reported that a build with a working swing does not
+  roll. Third slice running in which the probe was wrong before the game was.
 
 **WHAT IS OPEN:** the owner's extension S21r–S21t, in the order `PLAN-S21.md`
 sets, plus the party dossier the plan attached to S21b/S21i/S21l — `v21Emit`
