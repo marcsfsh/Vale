@@ -90,6 +90,49 @@ their own party."*
   answered. Thirteen poisons from the diff, all thirteen red; the fourteenth was
   that line, and it is deleted rather than shipped.
 
+- **S22c — a field operation is everybody's, and the page says so.** Two defects
+  in one place. `V16_AI_DECK` carries a card called `campaign` — *"took the
+  campaign into the country early"* — whose `run` spent `V16_AI_COST.campaign`
+  of the party purse, added the money to the ledger line the Parties page
+  prints, and **touched nothing else**. Driven over 360 sessions on six seeds it
+  plays **252 times**, so about ten thousand of party money a campaign went on a
+  sentence: `st.court.size` in the deck. And the turnout it should have reached
+  was the player's alone — `partyTurnout` is read for **every** party by the
+  ballot, and two of its three terms sat inside `if (pid === playParty(st))`.
+
+  **One answer, read by both chairs.** `v22FieldTerm` is the whole of what a
+  field operation is worth to turnout and `partyTurnout` calls it once. The
+  player's side is the expression that was in the branch, worth exactly what it
+  was; an engine's is the same 0–100 asset, the same cap, the same divisor, and
+  the same decay applied at the same site by one constant, so the two cannot
+  drift.
+
+  **`st.unity` stays where it is, and the plan's table was wrong about it.**
+  PLAN-S22 lists party unity as a fourth player-only capability. It is not one:
+  `factionTick` moves `st.unity` toward `factionAverage(st, playParty(st))`
+  every session, so it is a lagged mirror of the term on the line **above**,
+  which every party already gets. There is no per-party unity to open it to, and
+  inventing one would be a second name for a number `partyTurnout` already
+  reads. **This is the owner's to overturn.**
+
+  **And the plan's open question is settled by the file rather than by taste.**
+  It asked whether engines should get a campaign state at all. They already had
+  one: a card they pay for. This joins the payment to the model.
+
+  **Sized at the count, not at an average session.** The store halves at every
+  ballot and a ballot falls every other session, so what decides the constant is
+  what a party is **carrying** when the writ is answered. Over 181 elections and
+  1,086 party-ballots a party arrives with a campaign on **21%** of them; at 12
+  that is worth .017 at the 99th percentile, a fifth of an endorsement; at 55 it
+  is .105, every interest group in the republic for one card; at the shipped
+  **40** it is **.057**, against an endorsement's .064 and the player fully built
+  at .139.
+
+  **And the projection panel prints it.** `partyTurnout` has multiplied every
+  party's vote since v5 and no screen in the game showed it, so a player polling
+  level and being out-voted had nothing to read. The column carries the number
+  the model reads, for every party, with the three terms named behind it.
+
 **S21 — All-out AI** is **COMPLETE**. The owner's brief: *"an all-out focus on AI
 behavior, AI logic, and AI improvements… at least 4 improvements to existing AI
 behaviors and logic, and at least 8 new behaviors/logic — each being
