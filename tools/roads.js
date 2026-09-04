@@ -5457,6 +5457,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
     /* 2. THE ROUTING, over forty sessions from each chair. */
     function run(pid, turns) {
+      /* S21t: pinned, for the reason written out at `sessions` below */
+      SEED_OVERRIDE = 20260827;
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
       S.playAs = pid;
       var asked = 0, offices = {};
@@ -5482,6 +5484,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        the split falls out of each party's own blocs. */
     var strike = EVENTS.filter(function (x) { return x.id === 'strike'; })[0];
     function decideAs(rul) {
+      SEED_OVERRIDE = 20260827;
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
       S.playAs = 'lp'; S.ruling = rul; S.capital = 200; S.treasury = 3000;
       var pick = v17AiDecide(S, strike);
@@ -5491,6 +5494,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
 
     /* 4. DECIDING SPENDS NO LIVE DICE. The choices are weighed on sandboxed
        clones, so the stream the campaign rides must be exactly where it was. */
+    SEED_OVERRIDE = 20260827;
     S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', 'lp'), false);
     S.playAs = 'lp'; S.capital = 200; S.treasury = 3000;
     var rngBefore = S.rngState;
@@ -5508,6 +5512,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
        asked everything, the opposition only its own, and if the routing is not
        wired the two numbers are equal. */
     function sessions(pid, n) {
+      /* S21t: AND THE REPUBLIC IS PINNED, NOT JUST THE STREAM. This set
+         `rngState` on the way OUT of `v6NewGame`, which fixes the dice from
+         that point and fixes nothing about the board they were rolled into --
+         `mintSeed` reads `Date.now()` deliberately, so every run built a
+         different chamber. Two consecutive runs of the SAME build read
+         lead/opp/ledFor at 26/47/47 and at 20/1/0: in the first the
+         "opposition" player was led-for on every question it was asked, and in
+         the second it was asked one. This file's own rule, and the whole point
+         of the leg is that the two chairs are compared over one fixed
+         stream. */
+      SEED_OVERRIDE = 20260827;
       S = enrichState(v6NewGame('normal', 'hungAssembly', 'standard', pid), false);
       S.playAs = pid; S.capital = 300; S.treasury = 4000; S.rngState = 20260827;
       var got = [], rq = runQueue;
@@ -5537,8 +5552,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       return got;
     }
     var asLead = sessions('fp', 45), asOpp = sessions('lp', 45);
+    /* S21t: AND THE TWO NUMBERS ARE REPORTED, NOT COMPARED. `lead > opp` was
+       the gate and it is a comparison between two RUNS, in a probe whose own
+       comment three lines up says forty-five sessions contain ballots that move
+       the player between chairs. On this build the opposition run's player is
+       led-for on 47 of its 47 questions -- it is not an opposition run at all --
+       so the comparison read 26 against 47 and reddened, and worse, the three
+       conditions beside it (`notMine`, `nationalAsked`, both about a player OUT
+       of office) were VACUOUS: there were no such questions to check. A gate
+       that can be satisfied by an empty set is the trap this file calls "a
+       probe that drives far enough for something else to do the job".
+       WHAT DISCRIMINATES IS PER QUESTION AND NOT PER RUN, pooled over both:
+       there must BE questions to a player out of office (or the two conditions
+       below check nothing), and the head of government must be asked about a
+       department it does NOT hold (which is the whole of `v17Decides` giving
+       the leader everything). Unwire the routing and the second goes to nought
+       while `notMine` fills up; neither depends on which chair a ballot
+       produces. */
+    var all = asLead.concat(asOpp);
     R.wired = {
       lead:asLead.length, opp:asOpp.length,
+      outAsked:all.filter(function (c) { return !c.leads; }).length,
+      inOfficeNotMine:all.filter(function (c) {
+        return c.leads && c.office !== 'national' && c.holder !== c.me; }).length,
       /* asked WHILE OUT OF OFFICE about an office this party does not hold */
       notMine:asOpp.filter(function (c) { return !c.leads && c.office !== 'national' && c.holder !== c.me; })
         .map(function (c) { return c.id + ':' + c.office; }).slice(0, 4),
@@ -5566,7 +5602,8 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     desk.opp.asked > 0 && desk.opp.governed > 0 &&
     desk.opp.offices.length === 1 && desk.opp.offices[0] === 'vchan' && desk.opp.holds &&
     distinctGov >= 2 && desk.rngUnmoved && !desk.endTurnErr &&
-    desk.wired.lead > 0 && desk.wired.lead > desk.wired.opp &&
+    desk.wired.lead > 0 && desk.wired.opp > 0 &&
+    desk.wired.outAsked > 0 && desk.wired.inOfficeNotMine > 0 &&
     desk.wired.notMine.length === 0 && desk.wired.nationalAsked === 0 &&
     desk.digest.renders && desk.digest.namesTheOffice && desk.digest.namesTheChoice &&
     desk.digestSilentWhenNothing;
@@ -5580,13 +5617,19 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${distinctGov} ways (${Object.keys(desk.byGovernment).map(k => k + ': ' + desk.byGovernment[k]).join(' · ')}), ` +
     `which falls out of each party's own blocs rather than a table · weighing the choices spends no live dice ` +
     `(${desk.rngUnmoved}) and the digest is silent when the player decided everything themselves · and the routing is ` +
-    `WIRED: forty-five real sessions closed on one fixed stream put ${desk.wired.lead} questions to the head of ` +
-    `government and ${desk.wired.opp} to an opposition player, none of them about an office that player's party does ` +
-    `not hold WHILE THEY SAT IN OPPOSITION -- forty-five sessions contain ballots, and ${desk.wired.ledFor} of the ` +
+    `WIRED, AND ASKED PER QUESTION RATHER THAN PER RUN: of the ${desk.wired.lead + desk.wired.opp} questions two ` +
+    `forty-five-session runs produce, ${desk.wired.outAsked} arrive while the player is OUT of office and none of ` +
+    `them is about an office that player's party does not hold, while ${desk.wired.inOfficeNotMine} arrive to a ` +
+    `player who LEADS and are about a department they do not hold -- which is `+"\`v17Decides\`"+` giving the head ` +
+    `of government everything. THE GATE USED TO BE ${'`'}lead > opp${'`'}, a comparison between two runs: ` +
+    `${desk.wired.lead} against ${desk.wired.opp} here, and the opposition run's player was led-for on ` +
+    `${desk.wired.ledFor} of its ${desk.wired.opp} questions -- it was not an opposition run, so the two ` +
+    `conditions beside it were checking an empty set · forty-five sessions contain ballots, and ${desk.wired.ledFor} of the ` +
     `second run's questions arrived after one had put that player IN office, where the head of government is asked ` +
     `everything and an event about somebody else's department is the rule working. Seating the chair once and ` +
     `reading it as fixed is S18c's own defect, and it was invisible here until S21s gave the night its dice back ` +
-    `-- and with the routing unwired the two numbers are the same` +
+    `-- and with the routing unwired the count of questions a leader is asked about somebody ELSE's department ` +
+    `goes to nought while the leaked list below fills up` +
     (desk.wired.notMine.length ? ' (LEAKED: ' + desk.wired.notMine.join(', ') + ')' : '') +
     (desk.endTurnErr ? ' · endTurn threw: ' + desk.endTurnErr : ''));
 

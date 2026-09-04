@@ -1363,6 +1363,27 @@ authored already and eaten by a wrapper.
   Poisoned at 1 and at 40 — the bar too low for the ambient to miss and too high
   for a deliberate act to reach — and **red both ways**.
 
+  **AND A FOURTH ARM WAS NOT PINNED AT ALL, which is how three of its four
+  routing conditions came to be checking an empty set.** `whose desk it lands
+  on` compares the two chairs *"over the SAME fixed stream"* — and it set
+  `rngState` on the way **out** of `v6NewGame`, which fixes the dice from that
+  point and fixes nothing about the chamber they were rolled into, because
+  `mintSeed` reads `Date.now()`. Two consecutive runs of the same build read
+  lead/opp/ledFor at **26/47/47** and at **20/1/0**: in the first the
+  "opposition" player was led-for on every question it was asked — not an
+  opposition run at all — so `notMine.length === 0` and `nationalAsked === 0`,
+  both about a player *out* of office, had nothing to check, and the gate that
+  reddened (`lead > opp`) was comparing two runs rather than two chairs.
+
+  `SEED_OVERRIDE` is set before every `v6NewGame` in the arm now, and two runs
+  give the identical reading. **What is gated is per question, pooled over both
+  runs**: six arrive while the player is out of office and none is about an
+  office their party does not hold; seven arrive to a leader and *are* about a
+  department they do not hold, which is `v17Decides` giving the head of
+  government everything. Poisoned both ways — everybody decides everything, and
+  a leader is asked only its own — **red both times**. This is S18c's rule and
+  `mintSeed`'s, arriving together in one leg.
+
   **AND THE ASSERTION THAT SHOULD HAVE CAUGHT ALL OF IT EXISTED AND WAS GREEN,
   because it was reading the derived side.** `an endorsement buys three things
   and survives its ballot` drives the game's own `runElection` and asks whether
