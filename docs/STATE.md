@@ -1263,9 +1263,11 @@ authored already and eaten by a wrapper.
   once**, and left a mean of **1.93** parties eligible to form a government. For
   "the other parties will not govern with them" to be true, the refusers have to
   be able to govern WITHOUT them — so the bar is a **majority of the Assembly**, a
-  number the game already owns. Re-measured over 960 driven sessions on twelve
-  seeds: raised **7 times against 4 parties**, held on **11.1%** of sessions,
-  never more than **3** at once, a formateur left **5.43** parties to ask.
+  number the game already owns. Re-measured over **2,880 driven sessions on
+  thirty-six seeds**: raised **11 times**, a mean of **0.306 a seed**, never more
+  than **2** at once, a formateur left **6** parties to ask. (The twelve-seed
+  figures this slice was first written against — 7 raisings across 4 parties,
+  11.1% held — are one draw from that distribution; see the correction below.)
   **AND IT HOLDS UNTIL ENOUGH OF THEM CHANGE THEIR MINDS** — hysteresis, raised
   at −25 and kept at −12, walked by the arm: a regard of −19 KEEPS a standing
   cordon and does not raise one from nought.
