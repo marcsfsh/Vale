@@ -12297,15 +12297,35 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
       delete out.eligible;
       return out;
     })();
-    /* IT FIRES, AND IT DOES NOT TAKE THE HOUSE WITH IT. The rate is the
-       measurement's own: 7 raisings across 4 parties in 960 driven sessions,
-       held on 11.1% of them, never more than 3 at once, and a formateur left
-       with a mean of 5.43 parties to ask -- against the first build's 66%,
-       seven at once and 1.93. */
+    /* IT FIRES, AND IT DOES NOT TAKE THE HOUSE WITH IT -- AND THE FIRST HALF IS
+       A TRIPWIRE, NOT A RATE, WHICH TOOK MEASURING TO SEE. This gate read
+       `raised > 2` and four distinct parties, off the twelve seeds below, which
+       gave 7 raisings when the slice was written. S21t's endorsement clock fix
+       moved every election downstream of it and the same twelve seeds then gave
+       ONE. Neither number is the mechanism.
+       MEASURED OVER THIRTY-SIX SEEDS on this build: 11 raisings, a mean of
+       0.306 a seed with a standard deviation of 0.624, and NINE of the
+       thirty-six carrying any at all. Taken as three twelve-seed blocks the
+       same build reads 1, 4 and 6 raisings across 1, 4 and 4 parties -- so the
+       old bar passes on two blocks of three and fails on the other, and the
+       seven this slice was written against is +1.5 standard errors while the
+       one is -1.25. Both are ordinary draws.
+       A cordon is a THRESHOLD CROSSING on a long-tailed ledger, which is the
+       caretaker's shape from S21r wearing another coat: the deepest hostile
+       coalition any party faces averages 561 seats against the 653 a majority
+       needs (sd 180), so the House is usually just short of one and crosses on
+       about a quarter of republics. That is the mechanic, and a count of
+       crossings cannot be gated inside its own spread.
+       SO THE DRIVEN LEG IS A TRIPWIRE -- the path fires in play at all -- and
+       what it CANNOT take is asserted beside it, where the numbers are steady:
+       the House is never mostly under cordon, and a formateur is always left
+       with somebody to ask. The correctness is proved WITHOUT DICE in the five
+       constructed legs above, every one of them exact and poisoned. The rate,
+       the party count and the depth distribution are reported. */
     /* the two depths, carried out of the page: the say text runs in node */
     R.deep = V21_CORDON_DEEP; R.lift = V21_CORDON_LIFT;
-    R.fires = R.play.raised > 2 && Object.keys(R.play.byParty).length > 1 &&
-      R.play.heldShare > .02 && R.play.heldShare < .30 &&
+    R.fires = R.play.raised > 0 &&
+      R.play.heldShare < .30 &&
       R.play.meanEligibleWhenHeld > 3.5 &&
       /* AND THE PLAYER IS TOLD THAT ONE HAS BEEN AGREED. A cordon the country
          never hears about is a mechanism happening where nobody can see it,
@@ -12360,7 +12380,17 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${Object.keys(cord.play.byParty).length} different parties, holds on ${cord.play.heldShare} of ` +
     `sessions, reaches ${cord.play.maxAtOnce} at once at most and leaves a formateur ` +
     `${cord.play.meanEligibleWhenHeld} parties to ask, and the country is TOLD of every one ` +
-    `(${cord.play.newsRaised} agreed, ${cord.play.newsLapsed} lapsed) ` +
+    `(${cord.play.newsRaised} agreed, ${cord.play.newsLapsed} lapsed) · THAT COUNT IS A TRIPWIRE AND NOT A ` +
+    'RATE, which took measuring to see: the gate read `raised > 2` off these twelve seeds, which gave SEVEN ' +
+    'when the slice was written and ONE after S21t\'s endorsement clock fix moved every election downstream ' +
+    'of it. Over THIRTY-SIX seeds the same build gives 11 raisings, a mean of 0.306 a seed with a standard ' +
+    'deviation of 0.624, and nine of the thirty-six carrying any -- as three twelve-seed blocks, 1, 4 and 6 ' +
+    'across 1, 4 and 4 parties, so the old bar passed on two blocks of three and failed on the other. A ' +
+    'cordon is a THRESHOLD CROSSING on a long-tailed ledger: the deepest hostile coalition any party faces ' +
+    'averages 561 seats against the 653 a majority needs (sd 180), so the House is usually just short of one ' +
+    'and crosses on about a quarter of republics. What is gated beside the tripwire is what it must NOT do, ' +
+    'where the numbers are steady, and the correctness is proved without dice in the five constructed legs ' +
+    'above ' +
     `(${cord.fires}) · AND THE THREE GUARDS PLAY CANNOT REACH ARE ASKED BY HAND, because their poisons came ` +
     `back green: a party is not counted among those refusing to sit with ITSELF ` +
     `(${cord.guards.notAgainstItself}), asked on a board where counting it WOULD have tipped the bar -- ` +

@@ -1296,6 +1296,25 @@ authored already and eaten by a wrapper.
   measured its way off, where the code asks `v21CordonHolds` for a majority of
   the Assembly's seats.
 
+  **AND THE DRIVEN COUNT WAS A RATE WHERE IT SHOULD HAVE BEEN A TRIPWIRE, which
+  took measuring to see.** The gate read `raised > 2` and four distinct parties
+  off twelve seeds — 7 raisings when the slice was written, and **one** after
+  S21t's endorsement clock fix moved every election downstream of it. Neither is
+  the mechanism. Over **thirty-six seeds** the same build gives **11 raisings, a
+  mean of 0.306 a seed with a standard deviation of 0.624**, and nine of the
+  thirty-six carrying any; as three twelve-seed blocks it reads **1, 4 and 6**
+  across 1, 4 and 4 parties, so the old bar passes on two blocks of three and
+  fails on the other, and the seven the slice was written against is +1.5
+  standard errors while the one is −1.25. A cordon is a **threshold crossing on
+  a long-tailed ledger** — the caretaker's shape from S21r wearing another coat:
+  the deepest hostile coalition any party faces averages **561 seats against the
+  653 a majority needs** (sd 180), so the House is usually just short of one and
+  crosses on about a quarter of republics. The driven leg is a tripwire now —
+  the path fires in play at all — with what it must NOT do asserted beside it
+  where the numbers are steady (never mostly under cordon, a formateur always
+  left somebody to ask), and the correctness proved without dice in the five
+  constructed legs, every one exact and **all eighteen poisons red**.
+
 - **S21t — an organisation endorses somebody other than you.** `q.endorsement`
   is a BOOLEAN and has meant "endorses the player" since v5, and
   `endorsedTurnout` — the only way an endorsement reaches the ballot — was
