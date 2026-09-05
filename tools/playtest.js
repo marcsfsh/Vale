@@ -1577,6 +1577,144 @@ async function run() {
       `(${cs.keptBack}) and clearing puts it all back (${cs.cleared})` +
       (cs.built ? '' : ' -- THIS BUILD HAS NO CUSTOM START'));
 
+    /* S22g: THE PASTE BOX, DRIVEN BY THE BUTTONS BESIDE IT. The arm above walks
+       every control it can find by `data-cs`. The box that holds a start as
+       text is `data-cs-text`, so nothing in this harness had ever pressed the
+       two buttons under it with a start in the box -- and both threw it away in
+       silence. Measured on the shipped build: 378 pasted fields left the sheet
+       as 0, with `lost` at 0, which is the reading that says nothing was
+       dropped.
+
+       Every way out of the sheet is asked here, and the two that must NOT leave
+       are asked too, because a refusal that silently leaves is the same defect
+       read backwards. `want` is what the cleaner makes of the same blob asked
+       directly, which is the path that was right all along; the arm asks
+       whether the BUTTON agrees with it. */
+    const csp = await page.evaluate(() => {
+      const out = { built:typeof v16CustomPasted === 'function' };
+      const keepSetup = UI.setup ? JSON.parse(JSON.stringify(UI.setup)) : null;
+      const blob = { v:1, form:'federal', articles:['artFreeSpeech', 'artHabeas'],
+        pol:{ universalHealthcare:3, borderSecurity:2 },
+        seats:{ fp:400, lp:300, sd:200, cup:150, tvc:120, pnl:85, rsf:50 },
+        exec:{ pres:'fp', vpres:'pnl', chan:'fp', vchan:'fp' },
+        money:{ capital:180, unrest:56 }, ind:{ economy:54, liberties:74 },
+        machine:{ fp:.55 }, purse:{ fp:480 }, partyRel:{ pnl:22 },
+        governors:{ somnium:'fp' }, upperVeto:2 };
+      const text = JSON.stringify(blob);
+      out.want = v16CustomCount(v16CustomClean(blob).blob);
+      const sheetUp = () => !!document.querySelector('#sheet [data-cs-body]');
+      const held = () => (UI.setup.custom ? v16CustomCount(UI.setup.custom) : 0);
+      const openSheet = () => {
+        UI.setup.custom = null; UI.csLost = 0;
+        startScreen();
+        const o = document.querySelector('#sheet [data-cs-open]');
+        if (o) o.click();
+        const box = document.querySelector('#sheet [data-cs-text]');
+        if (box) { const d = box.closest('details'); if (d) d.open = true; }
+        return box;
+      };
+      /* GUARDED, because a probe that throws aborts the harness instead of
+         failing one assertion. A build that discards a paste silently leaves
+         the sheet where this arm expects it open, and the next `put` then reads
+         `.value` off nothing -- which is how the first poison run of this step
+         reported a crash where it should have reported a red leg. */
+      out.missing = [];
+      const put = (t) => { const b = document.querySelector('#sheet [data-cs-text]');
+        if (!b) { out.missing.push('box'); return; }
+        b.value = t; b.dispatchEvent(new Event('input', { bubbles:true })); };
+      const press = (sel) => { const b = document.querySelector('#sheet ' + sel);
+        if (!b) { out.missing.push(sel); return; } b.click(); };
+      if (!out.built || !openSheet()) { if (typeof hideSheet === 'function') hideSheet();
+        UI.setup = keepSetup; render(); return out; }
+
+      /* THE DEFECT: paste, then the gold button under it */
+      put(text); press('[data-cs-apply]');
+      out.keep = held(); out.keepLeft = !sheetUp();
+      /* and the grey one beside it */
+      openSheet(); put(text); press('[data-cs-back]');
+      out.back = held();
+      /* and it survives a redraw, because a section tab re-reads the sheet */
+      openSheet(); put(text); press('[data-cs-tab="ind"]');
+      out.afterTab = held(); press('[data-cs-apply]'); out.tabKept = held();
+      /* text that cannot be read refuses, on the sheet, changes nothing, AND
+         still holds the text it is complaining about -- a message about a paste
+         that arrives with the paste deleted is the discard done loudly */
+      openSheet(); put('{not a start'); press('[data-cs-apply]');
+      out.badStays = sheetUp(); out.badHeld = held();
+      out.badSays = /could not be read as a start/.test(
+        ((document.querySelector('#sheet .cs-warn') || {}).textContent || ''));
+      out.badTextSurvives = (document.querySelector('#sheet [data-cs-text]') || {}).value === '{not a start';
+      /* an emptied box is how a player abandons a bad paste: it must not trap */
+      put(''); press('[data-cs-apply]'); out.emptiedLeft = !sheetUp();
+      /* and Return is the way OUT, so it leaves on text it cannot read */
+      openSheet(); put('{not a start'); press('[data-cs-back]');
+      out.badLeavesOnBack = !sheetUp();
+      /* JSON that parses to something that is not a start is not a start. A
+         bare `0` parses, and a reader that only asks whether the parse was
+         truthy reads it as an empty box and discards it in silence -- the very
+         thing this step exists to catch, through the one input that gets past
+         a truthiness test. */
+      openSheet(); put('0'); press('[data-cs-apply]');
+      out.scalarStays = sheetUp(); out.scalarHeld = held();
+      put(''); press('[data-cs-apply]');
+      /* AND THE PASTE GOES THROUGH THE CLEANER, which is the validation layer in
+         this file -- the UI never is. Two ids this build does not carry: an
+         uncleaned path keeps both and counts them, the cleaner drops them and
+         says how many. */
+      const dirty = JSON.parse(JSON.stringify(blob));
+      dirty.pol.notAStatuteAtAll = 3;
+      dirty.articles = dirty.articles.concat(['artNotAnArticle']);
+      out.dirtyRaw = v16CustomCount(dirty);
+      out.dirtyWant = v16CustomCount(v16CustomClean(dirty).blob);
+      openSheet(); put(JSON.stringify(dirty)); press('[data-cs-apply]');
+      out.dirtyHeld = held();
+      /* and the box untouched, the pre-existing path, is unchanged: a moved
+         slider is still what the sheet reads */
+      openSheet(); UI.csOpen = 'ind'; v16CustomSheet();
+      const cap = document.querySelector('#sheet [data-cs="money.capital"]');
+      if (!cap) out.missing.push('money.capital');
+      else {
+        /* read back what the CONTROL took, not what was asked of it: capital
+           steps in fives, so 118 lands on 120 and comparing against the request
+           measures the step rather than the read */
+        cap.value = String(Number(cap.getAttribute('data-cs-open')) + 100);
+        cap.dispatchEvent(new Event('input', { bubbles:true }));
+        out.sliderTo = Number(cap.value);
+        press('[data-cs-apply]');
+        out.sliderKept = (UI.setup.custom || {}).money ? UI.setup.custom.money.capital : null;
+      }
+
+      if (typeof hideSheet === 'function') hideSheet();
+      UI.setup = keepSetup; UI.csLost = 0; render();
+      return out;
+    });
+    step('custom-start-paste',
+      csp.built && csp.want > 10 &&
+      csp.keep === csp.want && csp.keepLeft && csp.back === csp.want &&
+      csp.afterTab === csp.want && csp.tabKept === csp.want &&
+      csp.badStays && csp.badHeld === 0 && csp.badSays && csp.badTextSurvives &&
+      csp.badLeavesOnBack && csp.emptiedLeft && csp.sliderKept === csp.sliderTo &&
+      csp.scalarStays && csp.scalarHeld === 0 &&
+      csp.dirtyRaw > csp.dirtyWant && csp.dirtyHeld === csp.dirtyWant &&
+      (csp.missing || ['never ran']).length === 0,
+      `a start pasted into the box and carried out by "Keep this start" arrives with ${csp.keep} of ` +
+      `${csp.want} fields (sheet closed: ${csp.keepLeft}) and by "Return" with ${csp.back} -- on the build ` +
+      `before this step both were 0 with \`lost\` at 0, because \`v16CustomRead\` walks [data-cs] and the ` +
+      `box is [data-cs-text] · it survives a section tab, which re-reads the sheet (${csp.afterTab} across ` +
+      `the redraw, ${csp.tabKept} kept) · text that cannot be read holds the sheet on "Keep this start" ` +
+      `(${csp.badStays}), says so (${csp.badSays}), changes nothing (${csp.badHeld}) and STILL HOLDS THE ` +
+      `TEXT it is complaining about (${csp.badTextSurvives}) -- the first build of the fix redrew the box ` +
+      `from the draft, so the message arrived with its own subject deleted · "Return" is the way out, so ` +
+      `it leaves on unreadable text and toasts instead (${csp.badLeavesOnBack}) · an emptied box is how a ` +
+      `bad paste is abandoned, so it leaves (${csp.emptiedLeft}) · a bare "0" parses and is not a start, so ` +
+      `it refuses too (${csp.scalarStays}, held ${csp.scalarHeld}) -- a reader that only asked whether the ` +
+      `parse was truthy read it as an empty box · the paste goes through the cleaner, so a blob carrying ` +
+      `two ids this build does not have arrives as ${csp.dirtyHeld} of the ${csp.dirtyRaw} it was written ` +
+      `with, which is the ${csp.dirtyWant} the cleaner allows · and with the box untouched the sheet is read as it ` +
+      `always was: a slider moved to ${csp.sliderTo} keeps ${csp.sliderKept}` +
+      ((csp.missing && csp.missing.length) ? ` · CONTROLS THIS ARM NEEDED AND COULD NOT FIND: ${csp.missing.join(', ')}` : '') +
+      (csp.built ? '' : ' -- THIS BUILD HAS NO v16CustomPasted'));
+
     /* S16e: the six on the page. A posture the player cannot see is not in the
        game, so the model side in roads.js is only half of it. */
     const sixp = await page.evaluate(() => {

@@ -41698,6 +41698,20 @@ function v16CustomSheet() {
   }).join('') + '</div>';
   var sec = secs.filter(function (s) { return s.id === openId; })[0];
   var total = v16CustomCount(d);
+  /* S22g: WHAT WAS PUT IN THE BOX, so a later read can tell a paste from the
+     text this render wrote there. Every number on this sheet is compared
+     against `data-cs-open` to decide whether the player touched it; the paste
+     box had no such baseline, and so no way to be read at all. */
+  var csText = JSON.stringify(d);
+  UI.csTextWas = csText;
+  /* AND A REFUSAL PUTS THE PLAYER'S OWN TEXT BACK. The first build of this fix
+     re-rendered the sheet to show "that could not be read as a start", and the
+     re-render drew the box from the draft -- so the message arrived with the
+     text it was about already deleted, which is the discard this slice exists
+     to stop, done loudly. `UI.csTextWas` stays the draft's, so the restored
+     text still reads as an edit and the box still refuses until it is fixed or
+     emptied. */
+  if (UI.csTextKeep) { csText = UI.csTextKeep; UI.csTextKeep = null; }
 
   showSheet('<div class="cs-sheet-head"><div class="kicker">A Start of Your Own</div>' +
     '<h2 id="sheetTitle">Design the Republic</h2>' +
@@ -41719,7 +41733,7 @@ function v16CustomSheet() {
       (counts[sec.id] ? 'Clear this section &middot; ' + counts[sec.id] : 'Back to the opening') + '</button>' +
     '</div>' + v16SectionBody(sec, d, st) + '</div>' +
     '<details class="cs-keep"><summary>Keep this start as text, or read one somebody kept</summary>' +
-    '<textarea data-cs-text="1" rows="3" spellcheck="false" aria-label="The start, as text">' + esc(JSON.stringify(d)) + '</textarea>' +
+    '<textarea data-cs-text="1" rows="3" spellcheck="false" aria-label="The start, as text">' + esc(csText) + '</textarea>' +
     '<div class="btnrow"><button type="button" class="btn ghost" data-cs-import="1">Read the text above</button></div></details>' +
     '<div class="cs-foot"><span data-cs-total>' + esc(total ? v8Plural(total, 'field') + ' set' : 'Nothing set yet') + '</span>' +
     '<span class="btnrow"><button type="button" class="btn ghost" data-cs-clear="1">Clear it all</button>' +
@@ -41752,7 +41766,47 @@ function v16CustomSheet() {
    value read here is a value the control could not have made illegal -- there
    is no parse that can fail and no range that can be exceeded. A row counts as
    SET only when it differs from the opening it was drawn with. */
+/* ============================================================
+   S22g - THE PASTE BOX IS A CONTROL, AND ITS ONLY READER WAS ITS OWN BUTTON
+   ============================================================
+   `v16CustomRead` walks `[data-cs]`. The box that holds a start as text is
+   `[data-cs-text]`, which matches nothing it looks at, so a start pasted in and
+   then carried out of the sheet by "Keep this start" or by "Return" was thrown
+   away IN SILENCE. Driven by real clicks: 378 pasted fields left the sheet as
+   **0**, with `UI.csLost` still 0, which is the reading that says nothing was
+   dropped. The owner pasted a start, pressed the two buttons under it, and the
+   game did nothing and said nothing.
+
+   The `custom-start` playtest arm drove every control on this sheet and never
+   this one, because it drove the controls it could find by `data-cs`. That is
+   this file's oldest lesson wearing a new coat: EVERY GATE CALLS A FUNCTION AND
+   A PLAYER PRESSES A BUTTON, and here the function was right -- `v16CustomClean`
+   read the same blob with `lost` at 0 every time it was asked directly.
+
+   ONE READER. `v16CustomPasted` is the only place in the file that reads or
+   parses that box, and `v16CustomRead` asks it first, so every path out of the
+   sheet gets the answer: the two exits, the section tabs, the per-section
+   clear, and the read-before-redraw inside `v16CustomSheet`. `null` is a box
+   nobody typed into, told from the text this render wrote there; `false` is a
+   box that was typed into and cannot be read, which is a refusal with a
+   sentence rather than a silent discard. */
+function v16CustomPasted(node, force) {
+  var box = node && node.querySelector('[data-cs-text]');
+  if (!box) return null;
+  var v = (box.value || '').trim();
+  /* an emptied box is not an edit to honour -- it is how a player abandons a
+     bad paste and leaves, so it must not trap them in the sheet */
+  if (!v) return force ? false : null;
+  if (!force && v === (UI.csTextWas || '')) return null;
+  var o = null;
+  try { o = JSON.parse(v); } catch (e) { return false; }
+  return (o && typeof o === 'object') ? o : false;
+}
 function v16CustomRead(node, d) {
+  /* S22g: the box first. A paste is a replacement for the whole document, so it
+     wins over controls this render drew before the player typed. */
+  var pasted = v16CustomPasted(node);
+  if (pasted) return v16CustomClean(pasted).blob;
   var next = v16CustomBlank();
   node.querySelectorAll('[data-cs]').forEach(function (el) {
     var k = el.getAttribute('data-cs'), seg = k.split('.');
@@ -42025,13 +42079,38 @@ function v16CustomWire(node, d, st, openId) {
   });
   var apply = node.querySelector('[data-cs-apply]');
   if (apply) apply.addEventListener('click', function () {
+    /* S22g: ASK THE BOX FIRST, AND WRITE THE FLAG ON EVERY BRANCH. `UI.csLost`
+       is what the sheet's warning line reads, and the first build of this fix
+       took `-1` as the refusal signal WITHOUT clearing it on the paths that do
+       not refuse -- so a bad paste, corrected by emptying the box, was refused
+       a second time on a flag left over from the first. Two clocks for one
+       fact. The flag is written here, once per click, from this click's own
+       reading of the box. */
+    var p = v16CustomPasted(node);
+    UI.csLost = p === false ? -1 : (p ? v16CustomClean(p).lost : 0);
+    if (UI.csLost === -1) {
+      var bad = node.querySelector('[data-cs-text]');
+      UI.csTextKeep = bad ? bad.value : null;
+      UI.csScroll = 0; UI.csSkipRead = 1; v16CustomSheet(); return;
+    }
+    var pastedLost = UI.csLost;
     UI.setup.custom = v16CustomRead(node, d); UI.csLost = 0; UI.csScroll = 0;
     hideSheet(); startScreen();
-    toast(v16CustomCount(UI.setup.custom) ? 'The start is kept. Begin the government to play it.' : 'Nothing is set, so the opening stands.');
+    toast(v16CustomCount(UI.setup.custom)
+      ? 'The start is kept' + (pastedLost > 0 ? ', ' + v8Plural(pastedLost, 'field') + ' dropped' : '') +
+        '. Begin the government to play it.'
+      : 'Nothing is set, so the opening stands.');
   });
   var back = node.querySelector('[data-cs-back]');
   if (back) back.addEventListener('click', function () {
+    /* Return is the way out, so it LEAVES on text it cannot read. It says so
+       instead: a refusal that traps the player in the sheet is a worse answer
+       than the discard, and the one place to fix a bad paste is the gold button
+       that asked to keep it. */
+    var pb = v16CustomPasted(node);
+    UI.csLost = pb === false ? -1 : (pb ? v16CustomClean(pb).lost : 0);
     UI.setup.custom = v16CustomRead(node, d); UI.csScroll = 0; hideSheet(); startScreen();
+    if (pb === false) toast('That text could not be read as a start, so nothing from the box was taken.');
   });
   var clear = node.querySelector('[data-cs-clear]');
   if (clear) clear.addEventListener('click', function () {
@@ -42040,11 +42119,14 @@ function v16CustomWire(node, d, st, openId) {
   });
   var imp = node.querySelector('[data-cs-import]');
   if (imp) imp.addEventListener('click', function () {
-    var box = node.querySelector('[data-cs-text]'), raw = null;
-    try { raw = JSON.parse(box.value); } catch (e) { raw = null; }
-    var r = v16CustomClean(raw);
-    UI.csLost = raw === null ? -1 : r.lost;
-    if (raw !== null) UI.setup.custom = r.blob;
+    /* S22g: through the same reader as every other way out of this sheet, so
+       the button and the buttons beside it cannot answer differently. `force`
+       because pressing it is an instruction to read the box whether or not it
+       differs from what this render wrote there. */
+    var raw = v16CustomPasted(node, 1);
+    var r = raw === false ? null : v16CustomClean(raw);
+    UI.csLost = r ? r.lost : -1;
+    if (r) UI.setup.custom = r.blob;
     UI.csScroll = 0; UI.csSkipRead = 1; v16CustomSheet();
   });
 }
