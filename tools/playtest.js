@@ -1636,6 +1636,20 @@ async function run() {
       /* and it survives a redraw, because a section tab re-reads the sheet */
       openSheet(); put(text); press('[data-cs-tab="ind"]');
       out.afterTab = held(); press('[data-cs-apply]'); out.tabKept = held();
+      /* THE BUTTON THAT WAS ALREADY THERE, which this arm has to press too or
+         moving it onto the shared reader is unasserted. Pressing it is an
+         instruction to read the box whether or not it differs from what the
+         render wrote there, so a second press with nothing changed is a no-op.
+         Without that, the reader answers "nobody typed here" and the cleaner
+         reads THAT as a start it could not read: the button would wipe the
+         start it had just imported and put a false error over it. */
+      openSheet(); put(text); press('[data-cs-import]');
+      out.importTook = held();
+      press('[data-cs-import]');
+      out.importAgain = held();
+      out.importQuiet = !/could not be read as a start/.test(
+        ((document.querySelector('#sheet .cs-warn') || {}).textContent || ''));
+      press('[data-cs-apply]'); out.importKept = held();
       /* text that cannot be read refuses, on the sheet, changes nothing, AND
          still holds the text it is complaining about -- a message about a paste
          that arrives with the paste deleted is the discard done loudly */
@@ -1692,6 +1706,8 @@ async function run() {
       csp.built && csp.want > 10 &&
       csp.keep === csp.want && csp.keepLeft && csp.back === csp.want &&
       csp.afterTab === csp.want && csp.tabKept === csp.want &&
+      csp.importTook === csp.want && csp.importAgain === csp.want &&
+      csp.importQuiet && csp.importKept === csp.want &&
       csp.badStays && csp.badHeld === 0 && csp.badSays && csp.badTextSurvives &&
       csp.badLeavesOnBack && csp.emptiedLeft && csp.sliderKept === csp.sliderTo &&
       csp.scalarStays && csp.scalarHeld === 0 &&
@@ -1701,7 +1717,9 @@ async function run() {
       `${csp.want} fields (sheet closed: ${csp.keepLeft}) and by "Return" with ${csp.back} -- on the build ` +
       `before this step both were 0 with \`lost\` at 0, because \`v16CustomRead\` walks [data-cs] and the ` +
       `box is [data-cs-text] · it survives a section tab, which re-reads the sheet (${csp.afterTab} across ` +
-      `the redraw, ${csp.tabKept} kept) · text that cannot be read holds the sheet on "Keep this start" ` +
+      `the redraw, ${csp.tabKept} kept) · "Read the text above" takes it (${csp.importTook}) and pressing ` +
+      `it again with nothing changed is a no-op rather than a wipe (${csp.importAgain}, quiet: ` +
+      `${csp.importQuiet}, kept ${csp.importKept}) · text that cannot be read holds the sheet on "Keep this start" ` +
       `(${csp.badStays}), says so (${csp.badSays}), changes nothing (${csp.badHeld}) and STILL HOLDS THE ` +
       `TEXT it is complaining about (${csp.badTextSurvives}) -- the first build of the fix redrew the box ` +
       `from the draft, so the message arrived with its own subject deleted · "Return" is the way out, so ` +

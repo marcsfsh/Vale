@@ -49,14 +49,23 @@ draft, **so the message arrived with its own subject already deleted**. That is
 the discard this slice exists to stop, done loudly. `UI.csTextKeep` puts the
 player's own text back, and the arm asserts it is still there.
 
-**And the poison run found two more legs the arm did not have.** A bare `0`
-parses, so a reader that asks only whether the parse was truthy reads it as an
-empty box and discards it in silence; and a paste that skipped `v16CustomClean`
-— the validation layer in this file, since the UI never is — could not be told
-from one that went through it until the arm pasted two ids this build does not
-carry. Eighteen poisons from the diff. One of them crashed the harness instead
-of reddening a leg, which is its own rule here, so every lookup the arm makes is
-guarded and a control it needed and could not find is named in the failure.
+**And the poison run found three more legs the arm did not have**, from eighteen
+poisons written off the diff. A bare `0` parses, so a reader that asks only
+whether the parse was truthy reads it as an empty box and discards it in
+silence. A paste that skipped `v16CustomClean` — the validation layer in this
+file, since the UI never is — could not be told from one that went through it
+until the arm pasted two ids this build does not carry. And **the arm never
+pressed the button that was already there**: dropping `force` from the import
+call makes "Read the text above" answer *"nobody typed here"* on an unedited
+box, which the cleaner reads as a start it could not read, so the button would
+wipe the start it had just imported and put a false error over it. Moving that
+button onto the shared reader was the part of the change with no assertion in
+front of it, which is this repo's own rule about where poisons come from: the
+diff, never the arm's own words.
+
+One poison crashed the harness instead of reddening a leg, which is its own rule
+here, so every lookup the arm makes is guarded and a control it needed and could
+not find is named in the failure.
 
 **S22 — What decides an election** is **COMPLETE**, at six slices. It opened
 with the one piece of debt S21 left, the party dossier. `docs/PLAN-S22.md` is
