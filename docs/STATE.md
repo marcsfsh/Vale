@@ -14,6 +14,59 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
+**S22g — the paste box is a control.** Reported by the owner, who pasted a start
+into the box under *"Keep this start as text, or read one somebody kept"*,
+pressed the two buttons under it, and got nothing. **They were right and it was
+silent.** `v16CustomRead` walks `[data-cs]`; the box is `[data-cs-text]`, which
+matches nothing it looks at, so a start carried out of the sheet by **"Keep this
+start"** or by **"Return"** was discarded. Driven by real clicks on the shipped
+build: **378 pasted fields left the sheet as 0**, with `UI.csLost` still 0,
+which is the reading that says nothing was dropped. Only *"Read the text above"*
+ever read the box, and it was the one button of the three that no arm pressed
+with a start in it.
+
+**The `custom-start` playtest arm drove every control on that sheet and never
+this one**, because it found its controls by `data-cs`. This file's oldest
+lesson wearing a new coat: EVERY GATE CALLS A FUNCTION AND A PLAYER PRESSES A
+BUTTON. The function was right throughout — `v16CustomClean` read the owner's
+blob with `lost` at 0 every time it was asked directly, which is exactly how it
+was validated before it was handed over, and the validation never pressed the
+button.
+
+**One reader.** `v16CustomPasted` is the only place in the file that reads or
+parses that box, and `v16CustomRead` asks it first, so every path out of the
+sheet gets the same answer: the two exits, the section tabs, the per-section
+clear, and the read-before-redraw inside `v16CustomSheet`.
+
+**Two defects in the fix itself, both found by driving it rather than reading
+it.** The first build took `UI.csLost === -1` as the refusal signal and did not
+write the flag on the paths that do not refuse, so a bad paste, corrected by
+emptying the box, was refused a second time **on a flag left over from the
+first** — two clocks for one fact, in a slice whose whole subject is one reader.
+The second was worse in kind: the refusal re-rendered the sheet to say *"that
+text could not be read as a start"*, and the re-render drew the box from the
+draft, **so the message arrived with its own subject already deleted**. That is
+the discard this slice exists to stop, done loudly. `UI.csTextKeep` puts the
+player's own text back, and the arm asserts it is still there.
+
+**And the poison run found three more legs the arm did not have**, from eighteen
+poisons written off the diff. A bare `0` parses, so a reader that asks only
+whether the parse was truthy reads it as an empty box and discards it in
+silence. A paste that skipped `v16CustomClean` — the validation layer in this
+file, since the UI never is — could not be told from one that went through it
+until the arm pasted two ids this build does not carry. And **the arm never
+pressed the button that was already there**: dropping `force` from the import
+call makes "Read the text above" answer *"nobody typed here"* on an unedited
+box, which the cleaner reads as a start it could not read, so the button would
+wipe the start it had just imported and put a false error over it. Moving that
+button onto the shared reader was the part of the change with no assertion in
+front of it, which is this repo's own rule about where poisons come from: the
+diff, never the arm's own words.
+
+One poison crashed the harness instead of reddening a leg, which is its own rule
+here, so every lookup the arm makes is guarded and a control it needed and could
+not find is named in the failure.
+
 **S22 — What decides an election** is **COMPLETE**, at six slices. It opened
 with the one piece of debt S21 left, the party dossier. `docs/PLAN-S22.md` is
 the programme, and the owner commissioned it in the exchange that produced
