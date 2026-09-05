@@ -50,13 +50,30 @@ The election is no exception:
 | term | site | who gets it |
 |---|---|---|
 | campaign `field` / `data` → turnout | `partyTurnout` | `pid === playParty(st)` |
-| party `unity` → turnout | `partyTurnout` | `pid === playParty(st)` |
+| ~~party `unity` → turnout~~ | `partyTurnout` | *see below* |
 | organiser dots in a region | `regionPartyFactor` | `pid === me` |
 | an organisation's endorsement | `endorsedTurnout` | the player's branch (S21t opens this) |
 
 So "target a region" is a lever no engine can pull, and the player's turnout is
 the only turnout the campaign moves. A battleground with only one side
 campaigning in it is not a battleground.
+
+**The unity row of that table is wrong, and S22c is where it was found.**
+`st.unity` is a single scalar, and `factionTick` moves it toward
+`factionAverage(st, playParty(st))` every session — so it is a lagged mirror of
+the term on the line *above* it in `partyTurnout`, which every party already
+gets. There is no per-party unity to open the branch to, and inventing one would
+be a second name for a number the function already reads. It stays player-only,
+and the projection panel's breakdown names it on the player's row and on nobody
+else's so the asymmetry is visible rather than hidden. **The owner's to
+overturn.**
+
+**And S22c's own open question was settled by the file rather than by taste.**
+It asked whether engines should get a campaign state at all. They already had
+one: `V16_AI_DECK`'s `campaign` card spends `V16_AI_COST.campaign` of the party
+purse — 252 plays over 360 driven sessions on six seeds — and moved nothing in
+the model. The slice joined the payment to the model instead of inventing a
+second channel beside it.
 
 ### 3. The Target button is one number, three times
 
