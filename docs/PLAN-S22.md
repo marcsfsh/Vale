@@ -1,11 +1,11 @@
 # S22 — What decides an election
 
-**Status: IN PROGRESS. S22a has shipped.** The three questions this plan left
-open for the owner are answered inside the slice that reaches each of them,
-from a measurement rather than by preference, and each is flagged in
-`docs/STATE.md` as theirs to overturn. Commissioned by the owner in
-the same exchange that produced S21v, immediately after they ruled that the
-chair has no bearing on election performance:
+**Status: COMPLETE, at six slices.** S22a (#128), S22b (#129), S22c (#130),
+S22d (#131), S22e (#132), S22f (#133). Every question this plan left open for
+the owner is answered in the section that reached it, from a measurement, and
+each answer is flagged in `docs/STATE.md` as theirs to overturn. Commissioned
+by the owner in the same exchange that produced S21v, immediately after they
+ruled that the chair has no bearing on election performance:
 
 > Ask more questions about how elections swing / are decided. Since incumbency
 > & mood no longer apply, something has to add some variance, and it needs to be
@@ -158,6 +158,10 @@ here rather than in S21 because S21 is closed and the surface is a slice rather
 than a paragraph. The campaign programme the owner commissioned is the other
 five, renumbered by one so the sequence reads straight.
 
+Each is independently shippable and each is measured the way S21's were: a
+driven distribution first, a threshold read off it second, and a poison per
+changed line.
+
 ### S22a — A party has a record you can read
 
 `a.why` is one slot per party, overwritten the next time that party acts, and
@@ -165,10 +169,6 @@ five, renumbered by one so the sequence reads straight.
 the Parties page"*. Measured over 720 driven sessions on twelve seeds: 1,161
 initiatives, 4.1% of them recoverable afterwards. `v22Emit` files every one, the
 Parties card prints the record, and the verbs are covered from the deck.
-
-Five slices. Each is independently shippable and each is measured the way S21's
-were: a driven distribution first, a threshold read off it second, and a poison
-per changed line.
 
 ### S22b — An issue is a thing the model has
 
@@ -189,19 +189,53 @@ a hand-kept list can never have.
 *Open for the owner:* whether an issue's weight in a region is uniform across
 its three, or ranked.
 
+**RANKED, AND THE FILE HAD ALREADY SAID SO.** The Campaign page has printed
+`r.issues[0]` as a region's subtitle since v9, so the array is authored as a
+ranking and the model reads it as one instead of inventing a second field to
+say the same thing. `V22_ISSUE_RANK` is `[1, .66, .4]`, applied in
+`v22RegionIssueLift` against the national salience that `issueTick` already
+moves every session.
+
 ### S22c — Turnout is everybody's, and it is legible
 
 Take the `pid === playParty(st)` branch off `partyTurnout` so every party's
-organisation, unity and endorsements reach the count — which is the S21 brief
-applied to the one system that decides who governs. Then **print it**: the
-projection panel shows each party's turnout multiplier against the field, in the
-units `V15_TURNOUT_SPAN` already defines, so a player can see that they are
-polling level and being out-voted.
+organisation and endorsements reach the count, which is the S21 brief applied
+to the one system that decides who governs. Then **print it**: the projection
+panel shows each party's turnout multiplier against the field, in the units
+`V15_TURNOUT_SPAN` already defines, so a player can see that they are polling
+level and being out-voted.
 
 *Open for the owner:* engines currently have no `campaign` state at all. Either
 they get one (a purse-priced field operation, which S21j's courting already
 prices) or their turnout reads only from factions and endorsements. The first is
 more work and a fairer election; the second is a smaller slice.
+
+**SETTLED BY THE FILE: THEY ALREADY HAD ONE.** `V16_AI_DECK` carries a card
+called `campaign` whose `run` spent `V16_AI_COST.campaign` of the party purse,
+added the money to the ledger line the Parties page prints, and touched nothing
+else. Driven over 360 sessions on six seeds it plays **252 times**, so about ten
+thousand of party money a campaign went on a sentence. The slice joined that
+payment to the model instead of inventing a second channel beside it:
+`v22FieldTerm` is the whole of what a field operation is worth to turnout,
+`partyTurnout` calls it once for every party, and `V22_FIELD_DECAY` is applied
+to the player's store and to every engine's at the same site in `runElection`,
+so the two cannot drift.
+
+**Sized at the count, not at an average session.** The store halves at every
+ballot and a ballot falls every other session, so what decides the constant is
+what a party is carrying when the writ is answered. Over 181 elections and 1,086
+party-ballots a party arrives with a campaign on **21%** of them; at the shipped
+`V22_AI_FIELD` of **40** that is worth **.057**, against an endorsement's .064
+and the player fully built at .139.
+
+**AND THIS SECTION USED TO NAME UNITY, WHICH DID NOT OPEN.** Its first sentence
+asked for organisation, unity and endorsements, and only two of the three moved.
+`st.unity` is a lagged mirror of the term on the line above it in
+`partyTurnout`, so there was nothing to open it to; the reading is at *The unity
+row of that table is wrong* above, the table's row is struck to match, and the
+ruling is **the owner's to overturn.** It stays in the branch, and the
+projection panel's breakdown names it on the player's row and on nobody else's
+so the asymmetry is on the screen.
 
 ### S22d — A battleground is a choice, not a dot
 

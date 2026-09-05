@@ -44,6 +44,19 @@ upper rungs no session could reach, a phase label printed 0 times in 720 driven
 sessions, a four-session card gate true on every session, and a poll-error cap
 that needed a ballot six sessions away.
 
+**And the plan itself was four claims out of date once the programme closed.**
+`docs/PLAN-S22.md` still read *"IN PROGRESS. S22a has shipped"*; it still posed
+S22b's ranking question and S22c's engine-campaign question as open when both
+had shipped answered; and S22c's own opening sentence still promised that party
+unity would reach every party's count, which is the one thing that slice ruled
+against. Its header claims that every open question is answered in the section
+that reached it, and S22d, S22e and S22f carry theirs while S22b and S22c did
+not. **A plan that describes shipped work wrongly is `st.court.size` in a
+document**, and it is the document a later slice reads first, so the answers are
+written into the sections they belong to and the status line says what shipped.
+Corrected after the fact rather than in the slices themselves, which is the
+smaller version of the same defect and worth the note.
+
 - **S22a — a party has a record you can read.** `v16AiTurn` posts three lines a
   session to the Gazette under a comment reading *"the rest is on the Parties
   page"*, and the rest was on no page: `a.why` is **one slot per party**,
