@@ -78,7 +78,7 @@ const PICK = `window.pick = function (list, id, pred, what) {
    keeping (a deck that changes should say so) but it belongs in one place;
    what CATCHES an unpriced or unweighted card is derived from the deck and
    sits in the arms themselves. */
-const DECK = 20;
+const DECK = 21;   /* S22d added `target`, the twenty-first */
 let fail = 0;
 const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label.padEnd(34) + detail); };
 
@@ -4394,8 +4394,29 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
           { satisfaction:25, councils:0, portfolios:0 };
         S.coalitionDeals[partner].satisfaction = 25;
       }
+      /* S22d: the twenty-first card needs somewhere to fight, which is what
+         "a state where it can play" means for a card that picks its ground.
+         Its `can` asks `v19Thinks` like S21g's two, and it asks
+         `v22AiBattleground` -- a region where this party's standing on one of
+         the three issues that region is authored with is POSITIVE, because a
+         card that spent the purse to make its own party weaker would be the
+         thing this file calls a card that lies. Measured over 720
+         party-sessions, 18 per cent of parties have nowhere at all, so the
+         party is CHOSEN rather than assumed: the positional pick above is fine
+         for a card whose gate does not read the board and wrong for one that
+         does. */
+      if (c.id === 'target') {
+        S.aiLevel = 'ruthless';
+        const withGround = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id] &&
+          v22AiBattleground(S, p.id))[0];
+        if (!withGround) { cardFails.push('target: no party had anywhere to fight'); return; }
+        pid = withGround.id;
+      }
       const before = {
         machine:S.machine[pid] || 0, targetMachine:S.machine[S.ruling] || 0,
+        /* S22d: what the twenty-first card moves is the ground this party
+           holds, summed across the map because the card picks the region. */
+        dots:REGIONS.reduce(function (n, r) { return n + v22TargetDots(S, pid, r.id); }, 0),
         blocs:JSON.stringify(S.blocs), push:JSON.stringify(S.push || {}),
         purse:partyPurse(S, pid), funding:(S.funding || {})[pid] || 0,
         inbox:S.inbox.length, pacts:Object.keys(S.aiPacts || {}).length,
@@ -4429,6 +4450,10 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         c.id === 'keep' ? (S.coalition || []).filter(x => x !== pid)
           .some(x => ((S.coalitionDeals || {})[x] || {}).satisfaction > 25) :
         c.id === 'organise' ? (S.machine[pid] || 0) > before.machine
+        /* S22d: the twenty-first. Moving into a region is dots on the map
+           with this party's name on them. */
+        : c.id === 'target' ? REGIONS.reduce(function (n, r) {
+            return n + v22TargetDots(S, pid, r.id); }, 0) > before.dots
         : c.id === 'campaign' ? ((S.funding || {})[pid] || 0) > before.funding
         : c.id === 'court' ? JSON.stringify(S.blocs) !== before.blocs
         : c.id === 'attack' ? (S.machine[S.ruling] || 0) < before.targetMachine
