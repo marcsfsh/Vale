@@ -25422,6 +25422,257 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `${writ22.card.quiet} of field bought in a quiet session against ${writ22.card.writ} in a writ one, a ` +
     `ratio of ${writ22.card.ratio}, which is one rule and both chairs`);
 
+  /* ==========================================================
+     S22f -- THE RANGE BEFORE THE COUNT
+
+     The Parties page has printed "a modelled vote intention with a +-N point
+     planning range" since v5 and N is authored. Nothing ever asked what
+     `ballot(st, true)` does.                                                 */
+  const band22 = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) A FORECAST MUST NOT SPEND THE CAMPAIGN'S DICE. `rand()` rides `S`,
+       so a band sampled on the live state would re-phase every seeded game. */
+    R.dice = (() => {
+      fresh(4242);
+      for (let t = 0; t < 6; t++) step();
+      const before = S.rngState;
+      UI.bandKey = null; UI.band = null;
+      const b1 = v22Band(S);
+      const mid = S.rngState;
+      UI.bandKey = null; UI.band = null;
+      const b2 = v22Band(S);
+      const after = S.rngState;
+      /* AND TWO UNCACHED DRAWS OF ONE BOARD ARE THE SAME BAND, which is the
+         opposite of what the first version of this leg asserted. `v6Sandbox`
+         clones `S` including its `rngState`, so every sampling of a given
+         board runs the same twenty draws -- and that is the behaviour this
+         game is built on: a band that flickered between renders of an
+         unchanged board would be the determinism harness's own complaint. The
+         draws differ from EACH OTHER, which is what makes it a band, and that
+         is asked separately. */
+      const spread = (() => {
+        if (!b1) return null;
+        let all = true, any = false;
+        PARTIES.forEach(p => {
+          if (S.banned[p.id]) return;
+          const v = b1.vote[p.id];
+          if (!v) { all = false; return; }
+          if (v.hi > v.lo) any = true; else all = false;
+        });
+        return { all:all, any:any };
+      })();
+      return { ran:true, held:before === mid && mid === after, before:before,
+        sameBoardSameBand:!!(b1 && b2) && JSON.stringify(b1.seats) === JSON.stringify(b2.seats),
+        everyPartySpreads:!!(spread && spread.all) };
+    })();
+
+    /* (b) THE BAND IS THE NIGHT'S, measured against the authored figure it
+       replaces. `pollError` was 2.55 on one side, a 5.1-point window; the same
+       boards' own draws are read here through `v22Band` rather than
+       recomputed. */
+    R.size = (() => {
+      const votePts = [], seatPts = [], mids = [];
+      let inside = 0, n = 0;
+      [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+        fresh(sd);
+        for (let t = 0; t < 24; t++) {
+          step();
+          if (t % 6) continue;
+          UI.bandKey = null; UI.band = null;
+          const res = ballot(S, false);
+          const b = v22Band(S, res);
+          if (!b) continue;
+          PARTIES.forEach(p => {
+            if (S.banned[p.id]) return;
+            const v = b.vote[p.id], s = b.seats[p.id];
+            if (!v || !s) return;
+            n++;
+            votePts.push(v.hi - v.lo);
+            seatPts.push(s.hi - s.lo);
+            mids.push(v.mid);
+            /* THE POINT ESTIMATE SITS INSIDE ITS OWN BAND. A band that does
+               not contain the number printed beside it is two clocks. */
+            const pt = (res[p.id] || 0) * 100;
+            if (pt >= v.lo - 1e-6 && pt <= v.hi + 1e-6) inside++;
+          });
+        }
+      });
+      const q = (xs, p) => { const s = xs.slice().sort((a, b) => a - b);
+        return s.length ? +s[Math.min(s.length - 1, Math.floor(s.length * p))].toFixed(3) : 0; };
+      return { ran:true, n:n,
+        voteP50:q(votePts, .5), voteP90:q(votePts, .9), voteMax:q(votePts, 1),
+        seatP50:q(seatPts, .5), seatP90:q(seatPts, .9),
+        inside:inside, insideShare:+(100 * inside / Math.max(1, n)).toFixed(1),
+        authored:2.55 * 2 };
+    })();
+
+    /* (b2) AND THE SPAN DOES NOT GROW WITH THE SAMPLE. That is the whole
+       reason it is a tenth-to-ninetieth rather than the lowest draw to the
+       highest: a min-to-max range widens with every extra draw, so it would
+       report the sample size as much as the night. Nothing in the arm could
+       tell the two apart until this leg -- the poison that swapped the
+       percentiles for the ends came back GREEN, because a wider band is still
+       a band and still narrower than the authored window it replaced. */
+    R.stable = (() => {
+      fresh(1234);
+      for (let t = 0; t < 6; t++) step();
+      const keepN = V22_BAND_N;
+      const span = n => {
+        V22_BAND_N = n;
+        UI.bandKey = null; UI.band = null;
+        const b = v22Band(S);
+        if (!b) return null;
+        let tot = 0, k = 0;
+        PARTIES.forEach(p => {
+          if (S.banned[p.id] || !b.vote[p.id]) return;
+          tot += b.vote[p.id].hi - b.vote[p.id].lo; k++;
+        });
+        return k ? tot / k : null;
+      };
+      let at20, at60, at120;
+      try { at20 = span(20); at60 = span(60); at120 = span(120); }
+      finally { V22_BAND_N = keepN; UI.bandKey = null; UI.band = null; }
+      if (at20 === null || at120 === null) return { ran:false };
+      return { ran:true, at20:+at20.toFixed(3), at60:+at60.toFixed(3), at120:+at120.toFixed(3),
+        growth:+(at120 / at20).toFixed(3),
+        /* six times the draws must not widen the band by a quarter */
+        steady:at120 / at20 < 1.25 && at120 / at20 > .8 };
+    })();
+
+    /* (c) THE CACHE IS EXACT, not a second clock: it is keyed on the noiseless
+       result, which is a deterministic function of every input the noisy draw
+       reads. So an unchanged board reuses it and a moved one does not. */
+    R.cache = (() => {
+      fresh(90210);
+      for (let t = 0; t < 6; t++) step();
+      let calls = 0;
+      const base = v6Sandbox;
+      let k1, k2, k3, coldCalls, warmCalls, movedCalls;
+      try {
+        v6Sandbox = function () { calls++; return base.apply(this, arguments); };
+        UI.bandKey = null; UI.band = null;
+        calls = 0; v22Band(S); coldCalls = calls; k1 = UI.bandKey;
+        calls = 0; v22Band(S); v22Band(S); warmCalls = calls; k2 = UI.bandKey;
+        S.campaign.field = (S.campaign.field || 0) + 55;
+        calls = 0; v22Band(S); movedCalls = calls; k3 = UI.bandKey;
+      } finally { v6Sandbox = base; }
+      return { ran:true, coldCalls:coldCalls, warmCalls:warmCalls, movedCalls:movedCalls,
+        holds:k1 === k2 && warmCalls === 0 && coldCalls === 1,
+        moves:k3 !== k2 && movedCalls === 1 };
+    })();
+
+    /* (d) THE PAGE. Both of them: the Campaign page's new Range column and the
+       Parties page's range, which was the authored one. */
+    R.page = (() => {
+      fresh(555);
+      for (let t = 0; t < 6; t++) step();
+      const keep = UI.tab;
+      let camp = '', parties = '', threw = null;
+      UI.tab = 'campaign';
+      try { render(); camp = document.getElementById('view').innerHTML; } catch (e) { threw = e.message; }
+      UI.tab = 'parties';
+      try { render(); parties = document.getElementById('view').innerHTML; } catch (e) { threw = threw || e.message; }
+      UI.tab = keep; try { render(); } catch (e) {}
+      const cells = camp.match(/<td class="num" title="\d+ sampled counts of this same board[^"]*">([^<]*)<\/td>/g) || [];
+      const values = cells.map(c => (c.match(/>([^<]*)<\/td>/) || [0, ''])[1]);
+      /* AND THE PARTIES PAGE'S OWN CELLS, not only its note. The poison that
+         put the authored `pollError` back left the note untouched and came
+         back GREEN: the sentence said the range was sampled while the numbers
+         beside it were 2.55 either side of the point, which is the card
+         lying in the one place this slice exists to stop it. The authored
+         range is SYMMETRIC about the point by construction and the night's is
+         not, so that is what is asked, along with the numbers themselves. */
+      const band = v22Band(S);
+      const pr = parties.match(/<td class="num">(\d+\.\d)–(\d+\.\d)%<\/td>/g) || [];
+      let matched = 0, symmetric = 0;
+      pr.forEach(c => {
+        const m = c.match(/(\d+\.\d)–(\d+\.\d)/);
+        if (!m) return;
+        const lo = +m[1], hi = +m[2];
+        if (Math.abs((hi - lo) - 5.1) < .05) symmetric++;
+        if (band && PARTIES.some(p => band.vote[p.id] &&
+          Math.abs(band.vote[p.id].lo - lo) < .06 && Math.abs(band.vote[p.id].hi - hi) < .06)) matched++;
+      });
+      return { ran:true, threw:threw,
+        header:/<th class="num">Range<\/th>/.test(camp),
+        cells:cells.length, parties:PARTIES.length,
+        /* AND EVERY CELL CARRIES A RANGE rather than an em dash. `var` hoists,
+           and the first build of this declared the band BELOW the row that
+           reads it -- so the column printed a dash for every party while its
+           own title, which falls back to asking again, printed the numbers. */
+        allRanges:cells.length > 0 && values.every(v => /^\d+–\d+$/.test(v)),
+        sample:values[0] || '',
+        note:/what the night itself did across \d+ sampled counts/.test(camp),
+        partiesNote:/sampled counts of this same board actually produced/.test(parties),
+        partyCells:pr.length, partyMatched:matched, partySymmetric:symmetric,
+        partiesAreTheBand:pr.length > 0 && matched === pr.length && symmetric === 0,
+        authoredGone:!/point planning range/.test(parties) };
+    })();
+    runQueue = rq;
+    return R;
+  });
+
+  const bandOk =
+    band22.dice.ran && band22.dice.held && band22.dice.sameBoardSameBand &&
+    band22.dice.everyPartySpreads &&
+    band22.size.ran && band22.size.n > 100 &&
+    band22.size.voteP50 > 0 && band22.size.voteP90 < band22.size.authored &&
+    band22.size.seatP50 > 0 && band22.size.insideShare > 95 &&
+    band22.stable.ran && band22.stable.steady &&
+    band22.cache.ran && band22.cache.holds && band22.cache.moves &&
+    band22.page.ran && !band22.page.threw && band22.page.header &&
+    band22.page.cells === band22.page.parties && band22.page.allRanges &&
+    band22.page.note && band22.page.partiesNote && band22.page.partiesAreTheBand &&
+    band22.page.authoredGone;
+  say(bandOk, 'the range before the count',
+    `THE RANGE THIS GAME PRINTED WAS AUTHORED AND THE NIGHT WAS NEVER ASKED. The Parties page has said "a ` +
+    `modelled vote intention with a ±N point planning range" since v5, and N is ` +
+    `\`2.1 + min(2.4, max(0, nextBallot - turn) * .45)\` -- 2.55 or 3.0, with an unreachable rung inside it ` +
+    `for the same reason S22e's three were · MEASURED THROUGH THE GAME'S OWN DRAW over ${band22.size.n} ` +
+    `party-boards: the night moves a share by ${band22.size.voteP50} points between its tenth and its ` +
+    `ninetieth at the median and ${band22.size.voteP90} at the ninetieth, against the ` +
+    `${band22.size.authored}-point window the card printed -- so it was overstating the night by about nine ` +
+    `tenths of itself · AND IN SEATS, WHICH IS WHAT A PLAYER READS, nothing printed it at all: the same ` +
+    `draws move a party by ${band22.size.seatP50} seats of a 1,305-seat chamber at the median and ` +
+    `${band22.size.seatP90} at the ninetieth · THE POINT ESTIMATE SITS INSIDE ITS OWN BAND on ` +
+    `${band22.size.insideShare} per cent of them, because a band that does not contain the number beside it ` +
+    `is two clocks for one fact · AND THE SPAN DOES NOT GROW WITH THE SAMPLE, which is the whole reason it is ` +
+    `a tenth-to-ninetieth rather than the lowest draw to the highest: at twenty draws it is ` +
+    `${band22.stable.at20} points, at sixty ${band22.stable.at60} and at a hundred and twenty ` +
+    `${band22.stable.at120}, a growth of ${band22.stable.growth} across six times the sample. The poison ` +
+    `that swapped the percentiles for the ends came back GREEN before this leg, because a wider band is ` +
+    `still a band and still narrower than the authored window it replaced · A FORECAST DOES NOT SPEND THE CAMPAIGN'S DICE (${band22.dice.held}): ` +
+    `\`rand()\` rides \`S\` and \`v6Sandbox\` swaps \`S\` for a clone, so the draws advance the clone's stream ` +
+    `and leave the campaign's at ${band22.dice.before}. AND TWO UNCACHED SAMPLINGS OF ONE BOARD ARE THE SAME ` +
+    `BAND (${band22.dice.sameBoardSameBand}), which is the opposite of what the first version of this leg ` +
+    `asserted: the sandbox clones the stream with the state, so a board's band is fixed, and a band that ` +
+    `flickered between renders of an unchanged board would be the determinism harness's own complaint. What ` +
+    `differs is the twenty draws from EACH OTHER, and every party's band is wider than a point ` +
+    `(${band22.dice.everyPartySpreads}) · THE CACHE IS ONE CLOCK, keyed on the noiseless result, which is a ` +
+    `deterministic function of every input the noisy draw reads: a cold board samples once ` +
+    `(${band22.cache.coldCalls}), two re-reads of it sample ${band22.cache.warmCalls} times, and a board ` +
+    `whose campaign moved samples again (${band22.cache.movedCalls}) · AND THE PAGE CARRIES IT: ` +
+    `${band22.page.cells} Range cells for ${band22.page.parties} parties, every one a range rather than an ` +
+    `em dash (${band22.page.allRanges}, "${band22.page.sample}") -- the first build declared the band BELOW ` +
+    `the row that reads it and \`var\` hoists, so the column printed a dash for every party while its own ` +
+    `title, which falls back to asking again, printed the numbers · AND THE PARTIES PAGE'S OWN CELLS ARE THE ` +
+    `BAND, not only its sentence: ${band22.page.partyMatched} of ${band22.page.partyCells} match it and ` +
+    `${band22.page.partySymmetric} are the authored ±2.55 window, which is SYMMETRIC about the point by ` +
+    `construction where the night's is not -- the poison that restored \`pollError\` left the sentence ` +
+    `untouched and came back GREEN, a card saying the range was sampled above numbers that were not · and ` +
+    `the authored sentence is gone (${band22.page.authoredGone})`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

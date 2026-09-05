@@ -12652,6 +12652,82 @@ function ballot(st, noise) {
   return res;
 }
 
+/* ============================================================
+   S22f - THE RANGE BEFORE THE COUNT
+   ============================================================
+   THE RANGE THIS GAME PRINTS IS AUTHORED AND THE NIGHT WAS NEVER ASKED. The
+   Parties page has said "a modelled vote intention with a +-N point planning
+   range" since v5, and N is
+     `2.1 + min(2.4, max(0, nextBallot - turn) * .45)`
+   -- so it is 2.55 or 3.0, its `min(2.4, ...)` rung is unreachable for the same
+   reason S22e's three were, and nothing ever checked it against what
+   `ballot(st, true)` actually does.
+
+   MEASURED, over 30 boards on six seeds at 200 draws each: the night moves a
+   party's share by 2.73 points from its lowest draw to its highest at the
+   median and 4.05 at the ninetieth, with a standard deviation of .62. The
+   printed +-2.55 is a 5.1-point window around a night that produces 2.7, so the
+   card has been overstating the uncertainty by about nine tenths of itself.
+
+   AND IN SEATS, WHICH IS WHAT A PLAYER READS, nothing printed it at all: the
+   same draws move a party by a median of 37 seats of a 1,305-seat chamber and
+   53 at the ninetieth. That is the number this slice puts on the page.
+
+   SAMPLED THROUGH `v6Sandbox`, WHICH IS WHY THE CAMPAIGN'S DICE SURVIVE IT.
+   `rand()` rides `S`, and the sandbox swaps `S` for a clone, so the draws
+   advance the clone's `rngState` and leave the campaign's where it was --
+   asserted, because a forecast that spends the dice re-phases every seeded
+   game. One clone, N draws inside it, because the clone is four megabytes.
+
+   AND CACHED ON THE NOISELESS RESULT. `ballot(st, true)` costs about five
+   milliseconds a call on a page that takes forty to build, so twenty draws
+   would treble it on every click. The point estimate is a deterministic
+   function of every input the noisy draw reads, so when it has not moved
+   neither has the band: one clock, and a re-render that changed nothing costs
+   nothing. */
+var V22_BAND_N = 20;
+function v22BandKey(res) {
+  var k = [];
+  PARTIES.forEach(function (p) { k.push(Math.round((res[p.id] || 0) * 1e5)); });
+  return k.join(',');
+}
+function v22Band(st, res) {
+  var key = v22BandKey(res || ballot(st, false));
+  if (UI.bandKey === key && UI.band) return UI.band;
+  var out = null;
+  try {
+    var box = v6Sandbox(function (clone) {
+      var vote = {}, seats = {};
+      PARTIES.forEach(function (p) { vote[p.id] = []; seats[p.id] = []; });
+      for (var i = 0; i < V22_BAND_N; i++) {
+        var r = ballot(clone, true), a = null;
+        try { a = allocateSeats(clone, r, CFG.seats); } catch (e) { a = null; }
+        PARTIES.forEach(function (p) {
+          vote[p.id].push((r[p.id] || 0) * 100);
+          seats[p.id].push(a ? ((a.seats || {})[p.id] || 0) : 0);
+        });
+      }
+      clone.v22band = { vote:vote, seats:seats };
+    });
+    out = (box && box.st) ? box.st.v22band : null;
+  } catch (e) { out = null; }
+  if (!out) return null;
+  var band = { n:V22_BAND_N, vote:{}, seats:{} };
+  var span = function (xs) {
+    var s = xs.slice().sort(function (a, b) { return a - b; });
+    /* THE TENTH TO THE NINETIETH, not the lowest draw to the highest: a range
+       taken as min-to-max grows with the number of draws, so it would report
+       the sample size as much as the night. */
+    return { lo:s[Math.floor(s.length * .1)], hi:s[Math.min(s.length - 1, Math.floor(s.length * .9))],
+      mid:s[Math.floor(s.length / 2)] };
+  };
+  PARTIES.forEach(function (p) {
+    band.vote[p.id] = span(out.vote[p.id]);
+    band.seats[p.id] = span(out.seats[p.id]);
+  });
+  UI.bandKey = key; UI.band = band;
+  return band;
+}
 function projection(st) {
   var res = ballot(st, false);
   var a = allocateSeats(st, res, CFG.seats);
@@ -16688,11 +16764,18 @@ function viewParties() {
       '</div>';
   }).join('');
 
-  var pollError = 2.1 + (electionsOn(S) ? Math.min(2.4, Math.max(0, nextBallot(S.turn) - S.turn) * .45) : 0);
+  /* S22f: THE RANGE IS THE NIGHT'S OWN NOW. This was
+     `2.1 + min(2.4, max(0, nextBallot - turn) * .45)`, an authored 2.55 against
+     a night that moves a share by 2.7 points end to end -- a window nearly
+     twice what the game produces, with an unreachable rung inside it. */
+  var band22 = v22Band(S, proj.res);
+  var pollError = band22 ? null : 2.1;
   var projRows = PARTIES.slice().sort(function (a, b) { return proj.res[b.id] - proj.res[a.id]; }).map(function (p) {
     var pct = proj.res[p.id] * 100;
     return '<tr><td><span class="dot" style="background:' + p.color + '"></span> ' + esc(p.short) + '</td>' +
-      '<td class="num">' + pct.toFixed(1) + '%</td><td class="num">' + Math.max(0,pct-pollError).toFixed(1) + '–' + Math.min(100,pct+pollError).toFixed(1) + '%</td>' +
+      '<td class="num">' + pct.toFixed(1) + '%</td><td class="num">' +
+      (band22 ? Math.max(0, band22.vote[p.id].lo).toFixed(1) + '–' + Math.min(100, band22.vote[p.id].hi).toFixed(1)
+        : Math.max(0,pct-pollError).toFixed(1) + '–' + Math.min(100,pct+pollError).toFixed(1)) + '%</td>' +
       '<td class="num">' + proj.seats[p.id] + '</td>' +
       '<td class="num">' + ((proj.seats[p.id] - (S.seats[p.id] || 0)) >= 0 ? '+' : '') + (proj.seats[p.id] - (S.seats[p.id] || 0)) + '</td>' +
       '<td class="num">' + (upperOn(S) && S.upper.elected ? proj.senate[p.id] : '-') + '</td></tr>';
@@ -16728,7 +16811,7 @@ function viewParties() {
   }
 
   var projPanel = '<div class="panel"><h2>If the Country Voted Today</h2>' +
-    '<p class="note">A modelled vote intention with a ±' + pollError.toFixed(1) + ' point planning range. The seat estimate is the centre of that range, not a guarantee.</p>' +
+    '<p class="note">A modelled vote intention. The range is what ' + (band22 ? band22.n : 0) + ' sampled counts of this same board actually produced, between their tenth and ninetieth, so it is the night\'s own spread rather than a planning figure. The seat estimate is the centre of it.</p>' +
     '<table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Range</th><th class="num">Members</th><th class="num">Change</th><th class="num">Senators</th></tr></thead><tbody>' +
     projRows + '</tbody></table>' +
     '<div class="tagline" style="margin-top:10px">' +
@@ -18829,6 +18912,19 @@ function pv5PollChart(){
     value:function(v){return (v*max*100).toFixed(1)+'%';}
   })+'</div>';
 }
+/* S22f: what the range is made of, in the reader's own units. */
+/* THE BAND IS HANDED IN, not asked for again. Called without it this reads
+   `v22Band(st)`, which computes its own cache key with `ballot(st, false)` --
+   five milliseconds a party, seven parties, thirty-five milliseconds of a
+   page that takes forty to build, for a key the caller already had. */
+function v22BandWhy(st, pid, band) {
+  var b = band || v22Band(st);
+  if (!b || !b.seats[pid]) return 'The night was not sampled for this board.';
+  var s = b.seats[pid], v = b.vote[pid];
+  return b.n + ' sampled counts of this same board returned ' + s.lo + ' to ' + s.hi +
+    ' seats between the tenth and the ninetieth, on ' + v.lo.toFixed(1) + ' to ' + v.hi.toFixed(1) +
+    ' per cent of the vote. The point estimate is the middle of it, not a promise.';
+}
 /* S22c: what the turnout column is made of, in the reader's own units, named in
    the order `partyTurnout` reads them. EVERY term it reads is named, including
    the one the player alone has -- a breakdown that leaves a term out is a card
@@ -18850,12 +18946,22 @@ function viewCampaign(){
      needed a ballot more than four sessions away and the republic votes every
      second session, so it was printed 0 times in 720 driven sessions. */
   var proj=projection(S),next=pv5SessionsToBallot(S),phase=next===null?'Elections suspended':(v22Writ(S)?'The writ session':'The quiet session');
+  /* S22f: THE BAND IS TAKEN BEFORE THE ROWS THAT READ IT. `var` hoists to the
+     top of the function, so declaring it below the row builder left it
+     `undefined` where the Range cell reads it -- the column printed an em dash
+     for every party while its own title, which falls back to asking for the
+     band again, printed the numbers. Seven fallback calls at five milliseconds
+     each were also the whole of the page's thirty-five millisecond regression.
+     This file has been bitten by `var` hoisting before: a local named `seed`
+     inside `newGame` shadowed the campaign seed and the state literal was
+     built with `seed: undefined`. */
+  var band22f=v22Band(S,proj.res);
   /* S22c: AND HOW MANY OF THEM COME. `partyTurnout` has multiplied every
      party's vote since v5 and no screen in the game printed it, so a player
      polling level and being out-voted had nothing to read. The title says
      which of the three terms is doing it, because a bare multiplier is a
      number rather than a reason. */
-  var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td><td class="num" title="'+esc(v22TurnoutWhy(S,p.id))+'">'+partyTurnout(S,p.id).toFixed(2)+'</td></tr>';}).join('');
+  var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td><td class="num" title="'+esc(v22BandWhy(S,p.id,band22f))+'">'+(band22f&&band22f.seats[p.id]?(band22f.seats[p.id].lo+'\u2013'+band22f.seats[p.id].hi):'\u2014')+'</td><td class="num" title="'+esc(v22TurnoutWhy(S,p.id))+'">'+partyTurnout(S,p.id).toFixed(2)+'</td></tr>';}).join('');
   /* S22d: AND WHAT YOU ARE SAYING THERE. The row printed `r.issues[0]` and the
      player's standing on it whatever they were actually running on, which is a
      subtitle rather than a control. The select is the choice, the dots are the
@@ -18874,7 +18980,7 @@ function viewCampaign(){
       '</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+
       '>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
   var messages=topIssues(S,6).map(function(i){return '<button class="strategy-choice" data-campaign-action="message" data-campaign-id="'+i.id+'" aria-pressed="'+(S.campaign.message===i.id)+'"><b>'+esc(i.name)+'</b><small>Salience '+Math.round(S.salience[i.id])+' · '+esc(i.source)+'</small></button>';}).join('');
-  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p><p class="note">'+(next===null?'No ballot is scheduled, so the campaign is worth less than half of what it would be.':(v22Writ(S)?'The writ falls when you end this session. The country is listening, so the campaign you have counts for everything it is worth \u2014 and anything you build now buys less than it would have.':'The country is not listening yet, so what you build this session goes '+Math.round((V22_QUIET_BUILD-1)*100)+' per cent further, and the campaign score is worth '+Math.round(V22_QUIET_POWER*100)+' per cent of what it will be when the writ falls.'))+'</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise. Turnout multiplies a party\'s vote before the count is shared out, so the gap between two parties is what decides anything and the level is not.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th><th class="num">Turnout</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority, and a campaign there runs on one of the region\'s own three issues. Targets persist through the ballot but draw organisers away from an untargeted national campaign. Running on an issue a region ranks first is worth more than running on the one it ranks third, whatever your record on either.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p><p class="note">'+(next===null?'No ballot is scheduled, so the campaign is worth less than half of what it would be.':(v22Writ(S)?'The writ falls when you end this session. The country is listening, so the campaign you have counts for everything it is worth \u2014 and anything you build now buys less than it would have.':'The country is not listening yet, so what you build this session goes '+Math.round((V22_QUIET_BUILD-1)*100)+' per cent further, and the campaign score is worth '+Math.round(V22_QUIET_POWER*100)+' per cent of what it will be when the writ falls.'))+'</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The Range column is what the night itself did across '+(band22f?band22f.n:0)+' sampled counts of this board, between their tenth and ninetieth. Turnout multiplies a party\'s vote before the count is shared out, so the gap between two parties is what decides anything and the level is not.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th><th class="num">Range</th><th class="num">Turnout</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority, and a campaign there runs on one of the region\'s own three issues. Targets persist through the ballot but draw organisers away from an untargeted national campaign. Running on an issue a region ranks first is worth more than running on the one it ranks third, whatever your record on either.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
 }
 function pv5FiscalPanel(){
   var f=S.fiscal,b=budget(S);function options(kind){return Object.keys(PV5_FISCAL[kind]).map(function(id){var q=PV5_FISCAL[kind][id];return '<button class="strategy-choice" data-fiscal-kind="'+kind+'" data-fiscal-id="'+id+'" aria-pressed="'+(f[kind]===id)+'"><b>'+esc(q.name)+'</b><small>'+esc(q.note)+'</small></button>';}).join('');}
