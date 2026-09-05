@@ -25160,6 +25160,268 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `ceiling computed from the constant under test agrees with any value it holds, which is how the poison ` +
     `at five times the block came back green`);
 
+  /* ==========================================================
+     S22e -- THE WRIT SESSION, AND THE QUIET ONE
+
+     The plan asked for a window of the last N sessions before a ballot and the
+     calendar has no room for one: the republic votes every second session, so
+     every session is inside any such window. What it has is two states, and
+     nothing in the game read them -- while three pieces of arithmetic assumed
+     a calendar it does not have.                                             */
+  const writ22 = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    function fresh(seed, level) {
+      SEED_OVERRIDE = seed;
+      S = enrichState(v6NewGame('normal', 'v6default', 'epic', 'lp'), false);
+      S.aiLevel = level || 'ruthless'; S.rngState = seed; return S;
+    }
+    function step() {
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      UI.busy = false; try { endTurn(); } catch (e) {} runQueue = rq;
+      UI.queue = []; UI.busy = false;
+    }
+
+    /* (a) WHICH SESSION HOLDS THE BALLOT, measured rather than reasoned.
+       `endTurn` does `S.turn += 1` and THEN asks `isBallotTurn(S.turn)`, which
+       is the countdown mistake this file has made six times, so the reading is
+       taken BEFORE the tick and `runElection` is watched. */
+    R.writ = (() => {
+      const be = runElection;
+      let fired = false;
+      runElection = function (st, early) { fired = true; return be.call(this, st, early); };
+      const tally = { writ:{ n:0, elections:0 }, quiet:{ n:0, elections:0 },
+        terms:{}, phases:{}, sessions:0 };
+      try {
+        [4242, 90210, 7, 31337, 555, 8080].forEach(sd => {
+          fresh(sd);
+          for (let i = 0; i < 40; i++) {
+            const w = v22Writ(S);
+            const term = (typeof v11TermYears === 'function') ? v11TermYears(S) : 2;
+            tally.terms[term] = (tally.terms[term] || 0) + 1;
+            let html = '';
+            if (i < 4) { const k = UI.tab; UI.tab = 'campaign';
+              try { html = viewCampaign(); } catch (e) {} UI.tab = k; }
+            if (/Between elections/.test(html)) tally.phases.between = (tally.phases.between || 0) + 1;
+            if (/The writ session/.test(html)) tally.phases.writ = (tally.phases.writ || 0) + 1;
+            if (/The quiet session/.test(html)) tally.phases.quiet = (tally.phases.quiet || 0) + 1;
+            fired = false;
+            step(); tally.sessions++;
+            const k = w ? 'writ' : 'quiet';
+            tally[k].n++;
+            if (fired) tally[k].elections++;
+          }
+        });
+      } finally { runElection = be; }
+      return { ran:true, sessions:tally.sessions,
+        writN:tally.writ.n, writE:tally.writ.elections,
+        quietN:tally.quiet.n, quietE:tally.quiet.elections,
+        allWrit:tally.writ.n > 100 && tally.writ.elections === tally.writ.n,
+        noneQuiet:tally.quiet.elections === 0,
+        terms:tally.terms, onlyTwo:Object.keys(tally.terms).join(',') === '2',
+        between:tally.phases.between || 0, phaseWrit:tally.phases.writ || 0,
+        phaseQuiet:tally.phases.quiet || 0 };
+    })();
+
+    /* (b) THE TWO CONSTANTS ARE ONE FACT. The quiet session's score keeps the
+       dead ladder's own authored .82 and the build multiplier is its
+       reciprocal, so neither is a knob picked by eye. */
+    R.pair = { power:V22_QUIET_POWER, build:+V22_QUIET_BUILD.toFixed(6),
+      reciprocal:Math.abs(V22_QUIET_BUILD * V22_QUIET_POWER - 1) < 1e-9 };
+
+    /* (c) THE BUTTONS, PRESSED FOR REAL, in both sessions. Every gate in this
+       harness calls a function and a player presses a control. */
+    R.buttons = (() => {
+      fresh(90210);
+      const me = playParty(S);
+      const seat = () => {
+        S.capital = 90; S.purse = S.purse || {}; S.purse[me] = 4000;
+        S.campaign.field = 0; S.campaign.media = 0; S.campaign.data = 0; S.campaign.debate = 0;
+      };
+      const drive = want => {
+        /* walk to a session of the kind asked for */
+        for (let i = 0; i < 8 && v22Writ(S) !== want; i++) step();
+        if (v22Writ(S) !== want) return null;
+        const k = UI.tab; UI.tab = 'campaign';
+        try { render(); } catch (e) { UI.tab = k; return null; }
+        const out = {};
+        [['field', 'field'], ['media', 'media'], ['data', 'data'], ['debate', 'debate']].forEach(([act, key]) => {
+          seat();
+          const b = document.querySelector('#view [data-campaign-action="' + act + '"]');
+          if (!b) { out[key] = null; return; }
+          b.click();
+          out[key] = +(S.campaign[key] || 0).toFixed(4);
+          UI.tab = 'campaign'; try { render(); } catch (e) {}
+        });
+        UI.tab = k; try { render(); } catch (e) {}
+        return out;
+      };
+      const quiet = drive(false);
+      const writ = drive(true);
+      if (!quiet || !writ) return { ran:false };
+      const keys = ['field', 'media', 'data', 'debate'];
+      return { ran:true, quiet:quiet, writ:writ,
+        allMoreQuiet:keys.every(k => quiet[k] !== null && writ[k] !== null && quiet[k] > writ[k]),
+        ratio:keys.map(k => +(quiet[k] / writ[k]).toFixed(4)),
+        matchesConstant:keys.every(k => Math.abs(quiet[k] / writ[k] - V22_QUIET_BUILD) < .002) };
+    })();
+
+    /* (d) AND THE SCORE, on the SAME assets: the quiet session is worth the
+       authored fraction of the writ session, which is what the dead ladder was
+       reaching for. */
+    R.score = (() => {
+      fresh(7);
+      for (let i = 0; i < 8 && !v22Writ(S); i++) step();
+      if (!v22Writ(S)) return { ran:false };
+      S.campaign.field = 60; S.campaign.media = 40; S.campaign.data = 30; S.campaign.debate = 20;
+      /* THE CALENDAR MOVES AND NOTHING ELSE DOES. Reading the two sessions by
+         DRIVING between them puts a whole session's worth of purse, salience
+         and interests between the numerator and the denominator: the ratio
+         came back .823 against a constant of .82 and the leg failed on the
+         three thousandths that a session had moved. `pv5CampaignRaw` reads the
+         turn only through `pv5SessionsToBallot`, so stepping the turn number
+         by one changes the calendar and leaves everything else where it is --
+         and it is still the game's own path rather than a stub on `v22Writ`,
+         which would test the predicate instead of its reader. */
+      const keepTurn = S.turn;
+      let onWrit, onQuiet, flipped;
+      try {
+        onWrit = +pv5CampaignRaw(S).toFixed(5);
+        S.turn += 1;
+        flipped = !v22Writ(S);
+        onQuiet = +pv5CampaignRaw(S).toFixed(5);
+      } finally { S.turn = keepTurn; }
+      if (!flipped) return { ran:false, why:'the calendar did not change state' };
+      return { ran:true, onWrit:onWrit, onQuiet:onQuiet,
+        ratio:+(onQuiet / onWrit).toFixed(5),
+        isTheConstant:Math.abs(onQuiet / onWrit - V22_QUIET_POWER) < 1e-6 };
+    })();
+
+    /* (e2) AND THE PAGE SAYS WHICH SESSION IT IS AND WHAT IT COSTS. The phase
+       label alone is a name; the note is the sentence a reader acts on, and
+       its poison came back green because nothing asked for it. */
+    R.note = (() => {
+      fresh(2024);
+      const seen = { writ:'', quiet:'' };
+      let shown = null;
+      for (let i = 0; i < 10; i++) {
+        const k = UI.tab; UI.tab = 'campaign';
+        let txt = '', vis = false;
+        try {
+          render();
+          /* MEASURED WITH A RECT, NOT WITH `textContent`. Hidden text is still
+             in `textContent`, so the poison that drew the note `hidden` came
+             back GREEN against a string test -- the sentence was in the DOM
+             and on no screen. This file's own rule: measure visibility with a
+             rect, not with `offsetParent`. */
+          const el = [...document.querySelectorAll('#view p.note')].filter(x =>
+            /writ falls when you end this session|not listening yet|No ballot is scheduled/.test(x.textContent))[0];
+          if (el) {
+            const r = el.getBoundingClientRect();
+            vis = r.height > 0 && r.width > 0;
+            txt = el.textContent || '';
+          }
+        } catch (e) {}
+        UI.tab = k;
+        const slot = v22Writ(S) ? 'writ' : 'quiet';
+        if (!seen[slot]) { seen[slot] = txt; if (shown === null) shown = vis; else shown = shown && vis; }
+        if (seen.writ && seen.quiet) break;
+        step();
+      }
+      try { render(); } catch (e) {}
+      const w = seen.writ, q = seen.quiet;
+      return { ran:!!(w && q), visible:shown === true,
+        writSays:/writ falls when you end this session/.test(w),
+        quietSays:/not listening yet/.test(q) && /per cent further/.test(q),
+        crossed:!/writ falls when you end this session/.test(q) &&
+          !/not listening yet/.test(w),
+        sample:(q.match(/The country is not listening yet[^]{0,90}/) || [''])[0] };
+    })();
+
+    /* (e) THE ENGINE READS THE SAME RULE. Driven through the card's own run
+       rather than by re-deriving the picker. */
+    R.card = (() => {
+      const card = V16_AI_DECK.filter(c => c.id === 'campaign')[0];
+      if (!card) return { ran:false };
+      fresh(31337);
+      const eng = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      const buy = want => {
+        for (let i = 0; i < 8 && v22Writ(S) !== want; i++) step();
+        if (v22Writ(S) !== want) return null;
+        S.purse = S.purse || {}; S.purse[eng] = 5000;
+        v22FieldAdd(S, eng, -999);
+        card.run(S, eng);
+        return +v22FieldOf(S, eng).toFixed(4);
+      };
+      const quiet = buy(false), writ = buy(true);
+      /* and the gate: the four-session window was true on every session, so
+         what it now asks is whether there is a ballot to campaign for at all */
+      const on = card.can(S, eng);
+      const keepForm = S.form;
+      let off = null;
+      try {
+        Object.keys(FORMS).forEach(f => { if (!FORMS[f].elections && off === null) { S.form = f; off = card.can(S, eng); } });
+      } finally { S.form = keepForm; }
+      return { ran:true, quiet:quiet, writ:writ,
+        moreQuiet:quiet !== null && writ !== null && quiet > writ,
+        ratio:quiet !== null && writ !== null ? +(quiet / writ).toFixed(4) : null,
+        matchesConstant:quiet !== null && writ !== null &&
+          Math.abs(quiet / writ - V22_QUIET_BUILD) < .002,
+        openWithABallot:on === true, shutWithout:off === false };
+    })();
+    runQueue = rq;
+    return R;
+  });
+
+  const writOk =
+    writ22.writ.ran && writ22.writ.allWrit && writ22.writ.noneQuiet &&
+    writ22.writ.onlyTwo && writ22.writ.between === 0 &&
+    writ22.writ.phaseWrit > 0 && writ22.writ.phaseQuiet > 0 &&
+    writ22.pair.reciprocal && writ22.pair.power > 0 && writ22.pair.power < 1 &&
+    writ22.buttons.ran && writ22.buttons.allMoreQuiet && writ22.buttons.matchesConstant &&
+    writ22.score.ran && writ22.score.isTheConstant &&
+    writ22.note.ran && writ22.note.visible && writ22.note.writSays && writ22.note.quietSays && writ22.note.crossed &&
+    writ22.card.ran && writ22.card.moreQuiet && writ22.card.matchesConstant &&
+    writ22.card.openWithABallot && writ22.card.shutWithout;
+  /* NO LOOKUP THE SAY MAKES CAN BE EMPTY. A poison that leaves a leg unable
+     to run -- "every session is the writ session" gives the button leg no
+     quiet session to press in -- made this read `buttons.quiet.field` off an
+     absent object and THREW, which aborts the harness instead of failing one
+     assertion. */
+  const wq = (o, k, d) => (o && o[k] !== undefined && o[k] !== null ? o[k] : (d === undefined ? '\u2014' : d));
+  const wb = k => wq(writ22.buttons.quiet, k), wv = k => wq(writ22.buttons.writ, k);
+  say(writOk, 'the writ session, and the quiet one',
+    `PLAN-S22 ASKED FOR A WINDOW OF THE LAST N SESSIONS BEFORE A BALLOT AND THE CALENDAR HAS NO ROOM FOR ` +
+    `ONE. \`isBallotTurn(t)\` is \`t > 1 && t % 2 === 1\` and the only thing that lengthens it is a ` +
+    `constitutional article moving the term: over ${writ22.writ.sessions} driven sessions the term is ` +
+    `${Object.keys(writ22.writ.terms).join(' and ')} on every one (${writ22.writ.onlyTwo}), so a window of ` +
+    `the last N sessions is EVERY session for any N · WHICH SESSION HOLDS THE BALLOT IS MEASURED, NOT ` +
+    `REASONED, because \`endTurn\` does \`S.turn += 1\` and THEN asks \`isBallotTurn(S.turn)\` -- the ` +
+    `countdown mistake this file has made six times: the writ session held ${writ22.writ.writE} elections ` +
+    `out of ${writ22.writ.writN} and the quiet one ${writ22.writ.quietE} out of ${writ22.writ.quietN} · ` +
+    `THREE PIECES OF ARITHMETIC ASSUMED A CALENDAR THIS GAME DOES NOT HAVE and all three are replaced by ` +
+    `the two states it does: \`pv5CampaignRaw\`'s decay ladder, which answered 1 on every session ever ` +
+    `produced with two of its three rungs unreachable; the "Between elections" phase, printed ` +
+    `${writ22.writ.between} times against ${writ22.writ.phaseWrit} writ sessions and ` +
+    `${writ22.writ.phaseQuiet} quiet ones; and the \`campaign\` card's four-session gate, true on every ` +
+    `session -- it asks whether there is a ballot to campaign for at all now (open ` +
+    `${writ22.card.openWithABallot}, shut under a form with no elections ${writ22.card.shutWithout}) · ` +
+    `AND NEITHER CONSTANT IS PICKED BY EYE: the quiet session's score keeps the dead ladder's own authored ` +
+    `${writ22.pair.power} and the build multiplier is its RECIPROCAL (${writ22.pair.build}, ` +
+    `${writ22.pair.reciprocal}), so what you build while nobody is listening goes exactly as much further ` +
+    `as the quiet session is worth less -- one fact rather than two knobs · THE BUTTONS ARE PRESSED FOR ` +
+    `REAL in both sessions and every one of the four puts more in when the country is not listening ` +
+    `(${writ22.buttons.allMoreQuiet}), at the constant to three places (${writ22.buttons.matchesConstant}): ` +
+    `field ${wb('field')} against ${wv('field')}, media ` +
+    `${wb('media')} against ${wv('media')} · AND THE PAGE SAYS WHICH SESSION IT IS AND WHAT IT COSTS ` +
+    `(${writ22.note.writSays}/${writ22.note.quietSays}), on a screen rather than only in the document ` +
+    `(${writ22.note.visible}, measured with a rect because hidden text is still in \`textContent\` and the ` +
+    `poison that drew it \`hidden\` came back green against a string test), on the right session and not the other one ` +
+    `(${writ22.note.crossed}): "${writ22.note.sample}" · AND THE SCORE ON THE SAME ASSETS ` +
+    `goes ${writ22.score.onWrit} in the writ session to ${writ22.score.onQuiet} in the quiet one, a ratio ` +
+    `of ${writ22.score.ratio} · THE ENGINE READS THE SAME RULE through its own card: ` +
+    `${writ22.card.quiet} of field bought in a quiet session against ${writ22.card.writ} in a writ one, a ` +
+    `ratio of ${writ22.card.ratio}, which is one rule and both chairs`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads
