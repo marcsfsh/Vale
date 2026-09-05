@@ -217,6 +217,20 @@ distribution rather than picked by eye. S17q's bar sat above its own ceiling;
 S21v's `V21_GOV_GAP` was set at a quartile that moved. This one gets its
 distribution printed in the assertion's own words.
 
+**Measured, and the reward is set against it.** The regional factor's spread
+between parties sits at **.092** in play. The pitch's own reading, at gain 1 over
+14,400 party-region readings on six seeds: the best issue a party has in a region
+is **.268** at its ninetieth percentile and **0 at its median**, and the worst is
+**−.553** at its tenth. At a gain of **.21** a full three-dot target pitched well
+is worth the three dots it rides on (.057) and pitched badly cancels them.
+
+**And two things about the engine's side had to be measured rather than assumed.**
+A card that bought one dot at a time held **nothing at all** over 300 driven
+sessions, because the ballot halves what a party holds with `Math.floor` and a
+count falls every other session; it buys the full commitment now. And it was
+**rehearsed 137 times and chosen 0** until it was registered in every per-card
+table a new deck card has to join.
+
 ### S22e — The late campaign
 
 A window of the last N sessions before a ballot in which the campaign is what

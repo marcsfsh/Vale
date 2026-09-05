@@ -719,6 +719,9 @@ var BILL_STAGES = ['committee','assembly','senate','assent'];
 var V19_TEMPER_AXIS = {
   attack:'combative', article:'combative', bill:'combative', topple:'combative',
   organise:'organiser', campaign:'organiser', court:'organiser', platform:'organiser',
+  /* S22d: moving into a region and pitching a campaign there is `campaign` and
+     `organise`'s appetite aimed at one region, which is the organiser's axis. */
+  target:'organiser',
   pact:'dealer', demand:'dealer', order:'dealer', floor:'dealer', bargain:'dealer',
   /* S21n: calling your partners in and reopening the agreement with them is
      the dealer's move, which is what every other card about talking to another
@@ -17508,6 +17511,13 @@ logIt(S, 'A Labor government takes office at the head of the Popular Front, faci
     label the chart colours by attribute. Axis furniture takes its fill from .ax */
   .region-target{display:flex;align-items:center;gap:8px;justify-content:space-between;border-bottom:1px solid rgba(191,161,78,.12);padding:7px 0}
   .region-target:last-child{border-bottom:0}
+  /* S22d: the issue chooser. `.select` carries `min-width:150px`, which in an
+     eight-pixel flex row on a 390px phone pushes the dots and the button off
+     the end -- so this is scoped two classes deep, which beats it at every
+     source position rather than only at the end of the file, and the row is
+     allowed to wrap under it. */
+  .region-target{flex-wrap:wrap;row-gap:6px}
+  .region-target .select{min-width:0;flex:1 1 130px;min-height:44px}
   .target-dots{display:flex;gap:3px}.target-dots i{width:14px;height:6px;border:1px solid rgba(191,161,78,.25);background:rgba(255,255,255,.06)}
   .target-dots i.on{background:var(--party)}
   .strategy-choice{display:block;width:100%;text-align:left;border:1px solid rgba(191,161,78,.2);background:rgba(0,0,0,.18);color:var(--ivory);padding:9px;margin:6px 0}
@@ -18029,6 +18039,11 @@ runElection=function(st,early){
      place in the game where a ballot spends a campaign. */
   PARTIES.forEach(function(p){var a=(st.ai||{})[p.id];if(a&&a.field)a.field*=V22_FIELD_DECAY;});
   REGIONS.forEach(function(reg){st.campaign.targets[reg.id]=Math.max(0,Math.floor((st.campaign.targets[reg.id]||0)/2));});
+  /* S22d: AND EVERY OTHER PARTY'S, at the same site and by the same rule. The
+     issue a party ran on is KEPT -- what a ballot spends is the organisation,
+     not the party's mind about a region. */
+  PARTIES.forEach(function(p){var a=(st.ai||{})[p.id];if(!a||!a.targets)return;
+    REGIONS.forEach(function(reg){a.targets[reg.id]=Math.max(0,Math.floor((a.targets[reg.id]||0)/2));});});
   /* S21t: THROUGH THE ONE WRITER, AND IT IS THE PLAYER'S CLOCK. This wrote
      `q.endorsement=false` directly. Since `endorsedBy` owns the fact, that
      left the field standing while the mirror went false, so the player's
@@ -18501,12 +18516,29 @@ function pv5CoalitionAction(pid,action){
   }
   render();
 }
+/* S22d: WHAT THE CAMPAIGN IN A REGION IS ABOUT. Free, because the dots are the
+   purchase and this is the pitch -- and it is a real choice without a price,
+   because a region ranks its own three issues and running on the one it cares
+   least about is worth two fifths of running on the one it cares most about. */
+function v22SetTargetIssue(rid,iid){
+  var r=REGION[rid];
+  if(!r||!ISSUE[iid])return;
+  if(r.issues.map(v22IssueOf).indexOf(iid)<0)return;
+  v22TargetSet(S,playParty(S),rid,null,iid);
+  logIt(S,'The campaign in '+r.name+' was pitched on '+ISSUE[iid].name.toLowerCase()+'.');
+  render();
+}
 function pv5CampaignAction(action,id){
   var c=S.campaign;
   if(action==='message'){
     if(!ISSUE[id]||!pv5Spend(1,0,'Set campaign message',myPurse()))return;c.message=id;logIt(S,'The campaign message was set around '+ISSUE[id].name.toLowerCase()+'.');
   }else if(action==='target'){
-    if(!REGION[id]||!pv5Spend(2,2,'Target '+REGION[id].name,myPurse()))return;c.targets[id]=Math.min(3,(c.targets[id]||0)+1);c.field+=3;logIt(S,'Organisers were moved into '+REGION[id].name+'.');
+    if(!REGION[id]||!pv5Spend(2,2,'Target '+REGION[id].name,myPurse()))return;
+    /* S22d: THROUGH THE ONE WRITER, and the first dot settles what you are
+       running on there if nothing has: the region's own first issue, which is
+       what the row printed before this slice. */
+    v22TargetSet(S,playParty(S),id,v22TargetDots(S,playParty(S),id)+1,v22TargetIssue(S,playParty(S),id));
+    c.field+=3;logIt(S,'Organisers were moved into '+REGION[id].name+'.');
   }else if(action==='fundraise'){
     /* S15f: the drive raises money, and the money is the party's. warChest
        was a party purse that nothing ever paid a party action out of; this is
@@ -18774,9 +18806,25 @@ function viewCampaign(){
      which of the three terms is doing it, because a bare multiplier is a
      number rather than a reason. */
   var rows=PARTIES.slice().sort(function(a,b){return proj.res[b.id]-proj.res[a.id];}).map(function(p){return '<tr><td><span class="dot" style="background:'+p.color+'"></span> '+esc(p.name)+'</td><td class="num">'+(proj.res[p.id]*100).toFixed(1)+'%</td><td class="num">'+proj.seats[p.id]+'</td><td class="num">'+((proj.seats[p.id]||0)-(S.seats[p.id]||0)>=0?'+':'')+((proj.seats[p.id]||0)-(S.seats[p.id]||0))+'</td><td class="num" title="'+esc(v22TurnoutWhy(S,p.id))+'">'+partyTurnout(S,p.id).toFixed(2)+'</td></tr>';}).join('');
-  var regionRows=REGIONS.map(function(r){var n=S.campaign.targets[r.id]||0;return '<div class="region-target"><div><b>'+esc(r.name)+'</b><div class="small muted">'+r.pop+'% of Vale · '+esc(r.issues[0])+' · '+esc(v22IssueSay(v22Standing(S,playParty(S),v22IssueOf(r.issues[0])||'jobs')))+'</div></div><div class="target-dots">'+[0,1,2].map(function(i){return '<i class="'+(i<n?'on':'')+'"></i>';}).join('')+'</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+'>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
+  /* S22d: AND WHAT YOU ARE SAYING THERE. The row printed `r.issues[0]` and the
+     player's standing on it whatever they were actually running on, which is a
+     subtitle rather than a control. The select is the choice, the dots are the
+     purchase, and the subtitle reads the issue that is chosen. */
+  var me22=playParty(S);
+  var regionRows=REGIONS.map(function(r){
+    var n=v22TargetDots(S,me22,r.id);
+    var pick=v22TargetIssue(S,me22,r.id);
+    var opts=r.issues.map(function(nm,ix){var id=v22IssueOf(nm);
+      return id?'<option value="'+esc(id)+'"'+(id===pick?' selected':'')+'>'+esc(nm)+'</option>':'';}).join('');
+    return '<div class="region-target"><div><b>'+esc(r.name)+'</b><div class="small muted">'+r.pop+'% of Vale · '+
+      esc(pick&&ISSUE[pick]?ISSUE[pick].name:r.issues[0])+' · '+esc(v22IssueSay(v22Standing(S,me22,pick||'jobs')))+
+      '</div></div><select class="select region-issue" aria-label="What the '+esc(PARTY[me22].short)+
+      ' is running on in '+esc(r.name)+'" data-campaign-issue="'+r.id+'">'+opts+'</select>'+
+      '<div class="target-dots">'+[0,1,2].map(function(i){return '<i class="'+(i<n?'on':'')+'"></i>';}).join('')+
+      '</div><button class="btn ghost" data-campaign-action="target" data-campaign-id="'+r.id+'"'+(n>=3?' disabled':'')+
+      '>Target <span class="c">'+cst(2)+', '+fmc(2)+'</span></button></div>';}).join('');
   var messages=topIssues(S,6).map(function(i){return '<button class="strategy-choice" data-campaign-action="message" data-campaign-id="'+i.id+'" aria-pressed="'+(S.campaign.message===i.id)+'"><b>'+esc(i.name)+'</b><small>Salience '+Math.round(S.salience[i.id])+' · '+esc(i.source)+'</small></button>';}).join('');
-  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise. Turnout multiplies a party\'s vote before the count is shared out, so the gap between two parties is what decides anything and the level is not.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th><th class="num">Turnout</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority. Targets persist through the ballot but draw organisers away from an untargeted national campaign.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
+  return '<div class="command-deck"><div class="eyebrow">Electoral directorate · '+esc(phase)+'</div><div class="brief-head"><div><h2>Build the Majority Before the Writ Is Issued.</h2><p>Campaign assets persist and decay at different rates. Field organisation and voter data reward patient construction; media and debate preparation peak close to the ballot.</p></div><div class="headline"><div class="eyebrow">Campaign power</div><b>'+pv5CampaignPower(S).toFixed(1)+' point potential</b><span>'+(next===null?'No election is scheduled.':next+' session'+(next===1?'':'s')+' to the federal ballot.')+'</span></div></div><div class="forecast-band"><div><b>Party funds</b><strong>'+fmc(partyPurse(S,playParty(S)))+'</strong></div><div><b>A session</b><strong>'+fmc(partyIncome(S,playParty(S)).total)+'</strong></div><div><b>Field</b><strong>'+Math.round(S.campaign.field)+'</strong></div><div><b>Media</b><strong>'+Math.round(S.campaign.media)+'</strong></div><div><b>Voter data</b><strong>'+Math.round(S.campaign.data)+'</strong></div></div><div class="section-actions"><button class="btn gold" data-campaign-action="fundraise">Fundraise <span class="c">'+cst(2)+'</span></button><button class="btn ghost" data-campaign-action="field">Build field <span class="c">'+cst(3)+', '+fmc(5)+'</span></button><button class="btn ghost" data-campaign-action="media">Buy media <span class="c">'+cst(3)+', '+fmc(7)+'</span></button><button class="btn ghost" data-campaign-action="data">Build data <span class="c">'+cst(3)+', '+fmc(6)+'</span></button><button class="btn ghost" data-campaign-action="debate">Debate school <span class="c">'+cst(3)+', '+fmc(1)+'</span></button></div></div><div class="grid"><div><div class="panel"><h2>Poll and Seat Projection</h2><p class="note">Projection includes party position, bloc opinion, regions, organisation, the electoral system and the campaign you have built. The final ballot adds noise. Turnout multiplies a party\'s vote before the count is shared out, so the gap between two parties is what decides anything and the level is not.</p><table><thead><tr><th>Party</th><th class="num">Vote</th><th class="num">Seats</th><th class="num">Change</th><th class="num">Turnout</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="panel"><h2>Polling Trend</h2>'+pv5PollChart()+'</div><div class="panel"><h2>Regional Targeting</h2><p class="note">A region can receive three levels of field priority, and a campaign there runs on one of the region\'s own three issues. Targets persist through the ballot but draw organisers away from an untargeted national campaign. Running on an issue a region ranks first is worth more than running on the one it ranks third, whatever your record on either.</p>'+regionRows+'</div></div><div><div class="panel"><h2>National Message</h2><p class="note">A message is most valuable when the issue is salient and the party has a credible position on it.</p>'+messages+'</div>'+manifestoPanel()+'</div></div>';
 }
 function pv5FiscalPanel(){
   var f=S.fiscal,b=budget(S);function options(kind){return Object.keys(PV5_FISCAL[kind]).map(function(id){var q=PV5_FISCAL[kind][id];return '<button class="strategy-choice" data-fiscal-kind="'+kind+'" data-fiscal-id="'+id+'" aria-pressed="'+(f[kind]===id)+'"><b>'+esc(q.name)+'</b><small>'+esc(q.note)+'</small></button>';}).join('');}
@@ -18804,6 +18852,9 @@ wire=function(root){
   root.querySelectorAll('[data-interest]').forEach(function(b){b.addEventListener('click',function(){pv5InterestAction(b.getAttribute('data-interest'),b.getAttribute('data-interest-action'));});});
   root.querySelectorAll('[data-coalition]').forEach(function(b){b.addEventListener('click',function(){pv5CoalitionAction(b.getAttribute('data-coalition'),b.getAttribute('data-coalition-action'));});});
   root.querySelectorAll('[data-campaign-action]').forEach(function(b){b.addEventListener('click',function(){pv5CampaignAction(b.getAttribute('data-campaign-action'),b.getAttribute('data-campaign-id'));});});
+  /* S22d: a select is not a button, so it is wired on `change` beside them --
+     the pattern `#policyView` already uses. */
+  root.querySelectorAll('select[data-campaign-issue]').forEach(function(sel){sel.addEventListener('change',function(){v22SetTargetIssue(sel.getAttribute('data-campaign-issue'),sel.value);});});
   root.querySelectorAll('[data-fiscal-kind]').forEach(function(b){b.addEventListener('click',function(){pv5FiscalAction(b.getAttribute('data-fiscal-kind'),b.getAttribute('data-fiscal-id'));});});
 };
 
@@ -32785,6 +32836,102 @@ function v22RegionIssueLift(st, r, pid) {
   });
   return w ? (v / w) * V22_ISSUE_GAIN : 0;
 }
+/* ============================================================
+   S22d - A BATTLEGROUND IS A CHOICE, NOT A DOT
+   ============================================================
+   `st.campaign.targets[r.id]` IS ONE NUMBER, BOUGHT THREE TIMES. It is worth
+   .019 of a region's factor per dot, it is halved at every ballot, and its
+   whole content is WHERE and HOW MANY -- nothing about what you are saying
+   there, and no way for a region to want something you are not offering. And
+   it is read behind `if (pid === me)`, so targeting a region is a lever no
+   engine can pull: a battleground with one side campaigning in it is not a
+   battleground.
+
+   S22b GAVE EVERY REGION ITS THREE ISSUES AND EVERY PARTY A STANDING ON THEM.
+   This is the lever that uses them: a target now names the issue you are
+   running on there, and the region rewards a party running on something it
+   cares about and has a record on, and punishes one running on an issue it is
+   on the wrong side of. That is `v22Standing` read through the region's own
+   ranking and the country's own salience -- the same three readings the S22b
+   term already sums, aimed at one issue instead of averaged over three.
+
+   ONE ANSWER, BOTH CHAIRS, as in S22c: `v22TargetDots` and `v22TargetIssue`
+   answer for the player out of `st.campaign` and for an engine out of its own
+   record, and `regionPartyFactor` asks them once. */
+/* WHAT THE PITCH IS WORTH, SIZED AGAINST THE DEVIATIONS IT RIDES ON. The block
+   sums every regional term as a deviation from 1 and scales the sum by one
+   constant, so the question is how big a deviation, and the rulers are in the
+   sum already: three organiser dots at .057 -- which is the thing this term
+   rides on and therefore the one that matters -- a governor of your own colour
+   at .055, an opposition governorship at .085 and the federal term at about
+   .08.
+
+   Measured at gain 1 over 3,360 party-region readings on six seeds: the BEST
+   issue a party has in a region reads .271 at its ninetieth percentile and 0 at
+   its median -- half of all party-region pairs give a party nothing positive to
+   run on at all -- and the WORST reads -.549 at its tenth. At .21 a full
+   three-dot target pitched on a p90 issue is worth .057, which is the three
+   dots themselves: pitch it well and the battleground is worth double, pitch it
+   badly and it cancels. */
+var V22_TARGET_GAIN = 0.21;
+function v22TargetDots(st, pid, rid) {
+  if (pid === playParty(st)) {
+    var t = (st.campaign || {}).targets || {};
+    return Math.min(3, t[rid] || 0);
+  }
+  var a = (st && st.ai) ? st.ai[pid] : null;
+  return a && a.targets ? Math.min(3, a.targets[rid] || 0) : 0;
+}
+/* AND THE DEFAULT IS THE REGION'S OWN FIRST ISSUE, which is what the Campaign
+   page has printed as a region's subtitle since v9. A default of `null` would
+   let the row show a chosen issue while the model scored nought for it -- the
+   page and the model reading two different things about one region, which is
+   this file's oldest defect wearing a select. It also means a save from before
+   this slice campaigns on the headline issue rather than on nothing. */
+function v22TargetIssue(st, pid, rid) {
+  var set = null;
+  if (pid === playParty(st)) set = ((st.campaign || {}).issues || {})[rid] || null;
+  else { var a = (st && st.ai) ? st.ai[pid] : null; set = (a && a.issues) ? (a.issues[rid] || null) : null; }
+  if (set) return set;
+  var r = REGION[rid];
+  return (r && r.issues && r.issues.length) ? v22IssueOf(r.issues[0]) : null;
+}
+/* AND THE WRITING DOOR, which is the only thing that moves either. */
+function v22TargetSet(st, pid, rid, dots, iid) {
+  var r = REGION[rid];
+  if (!r) return null;
+  /* an issue a region does not name is not a battleground in that region */
+  if (iid && (r.issues || []).map(v22IssueOf).indexOf(iid) < 0) iid = null;
+  if (pid === playParty(st)) {
+    st.campaign = st.campaign || {};
+    st.campaign.targets = st.campaign.targets || {};
+    st.campaign.issues = st.campaign.issues || {};
+    if (dots !== null) st.campaign.targets[rid] = clamp(dots, 0, 3);
+    if (iid) st.campaign.issues[rid] = iid;
+    return st.campaign.targets[rid];
+  }
+  var a = (typeof v16Ai === 'function') ? v16Ai(st)[pid] : null;
+  if (!a) return null;
+  a.targets = a.targets || {}; a.issues = a.issues || {};
+  if (dots !== null) a.targets[rid] = clamp(dots, 0, 3);
+  if (iid) a.issues[rid] = iid;
+  return a.targets[rid];
+}
+/* WHAT RUNNING ON AN ISSUE IN A REGION IS WORTH. The three readings S22b
+   already joined -- the region's own ranking, the country's salience and the
+   party's standing -- aimed at the one issue rather than averaged over three,
+   and scaled by how many organisers are actually there. */
+function v22TargetLift(st, r, pid) {
+  var n = v22TargetDots(st, pid, r.id);
+  if (!n) return 0;
+  var iid = v22TargetIssue(st, pid, r.id);
+  if (!iid) return 0;
+  var ix = (r.issues || []).map(v22IssueOf).indexOf(iid);
+  if (ix < 0) return 0;
+  var rank = V22_ISSUE_RANK[ix] === undefined ? V22_ISSUE_RANK[V22_ISSUE_RANK.length - 1] : V22_ISSUE_RANK[ix];
+  var sal = ((st.salience || {})[iid] === undefined ? 40 : st.salience[iid]) / 100;
+  return rank * sal * v22Standing(st, pid, iid) * (n / 3) * V22_TARGET_GAIN;
+}
 var V11_REGION_GAIN = 0.23;
 var V11_REGION_SPAN = [.80, 1.22];
 var v11RegionFactorBase = regionPartyFactor;
@@ -32816,7 +32963,12 @@ regionPartyFactor = function (st, pid) {
     /* the machine on the ground: organiser dots bought on the Campaign page,
        which until now collapsed into one national scalar and never reached a
        region's own vote */
-    if (pid === me) bonus += Math.min(3, targets[r.id] || 0) * .019;
+    /* S22d: AND IT IS EVERY PARTY'S. This read `pid === me`, so the one
+       lever in the game that says "fight for this region" belonged to the
+       human alone. The dot is worth what it has always been worth; what is new
+       is who may buy one and what they are saying when they do. */
+    bonus += v22TargetDots(st, pid, r.id) * .019;
+    bonus += v22TargetLift(st, r, pid);
     /* how the region is actually governed. The owner's complaint in one line:
        these three numbers moved nine of the fifteen buttons on the page and
        reached nothing at all. */
@@ -36057,6 +36209,15 @@ viewWorld = function () {
    buys a party a slow advantage and this ends somebody else's government. */
 var V16_AI_COST = { organise:42, campaign:40, court:36, attack:26, platform:22,
   pact:34, demand:16, bill:38, article:34, order:22, floor:12,
+  /* S22d: MOVING INTO A REGION, and it buys the whole commitment rather than one
+     dot of it. A dot is worth .019 and the ballot halves what a party holds with
+     `Math.floor`, so a single dot is gone at the next count -- and a count falls
+     every other session while the deck offers this card about once in nine. Sold
+     one dot at a time the card was measured holding NOTHING: 352 plays over 300
+     driven sessions and not one party-region reading above nought. It is priced
+     beside `organise` at 42 because it is the same kind of purchase: the country
+     in one case, one region in the other. */
+  target:44,
   topple:48, bargain:30,
   /* S21o: signing an extraordinary measure is the heaviest single act of
      government short of legislating, so it is priced at `bill`. Under
@@ -36806,6 +36967,32 @@ function v19BillFor(st, pid) {
   });
   return best || top[0];
 }
+/* S22d: WHERE THIS PARTY WOULD FIGHT, AND ON WHAT. The engine reads exactly
+   what the player reads off the Campaign page -- the region's own ranking of
+   its three issues, what the country is thinking about each, where this party
+   stands on it, and how many people live there -- and picks the best of the
+   eight it is not already holding at three. A positive standing is required
+   because running on an issue you are on the wrong side of is a term this slice
+   makes NEGATIVE, and a card that spends the purse to make a party weaker is
+   the card that lies wearing its own hat. */
+function v22AiBattleground(st, pid) {
+  if (typeof v22Standing !== 'function' || typeof v22IssueOf !== 'function') return null;
+  var best = null;
+  REGIONS.forEach(function (r) {
+    if (v22TargetDots(st, pid, r.id) >= 3) return;
+    (r.issues || []).forEach(function (nm, ix) {
+      var iid = v22IssueOf(nm);
+      if (!iid) return;
+      var rank = V22_ISSUE_RANK[ix] === undefined ? V22_ISSUE_RANK[V22_ISSUE_RANK.length - 1] : V22_ISSUE_RANK[ix];
+      var sal = ((st.salience || {})[iid] === undefined ? 40 : st.salience[iid]) / 100;
+      var v = v22Standing(st, pid, iid);
+      if (v <= 0) return;
+      var w = rank * sal * v * (r.pop || 10);
+      if (!best || w > best.w) best = { rid:r.id, iid:iid, w:w };
+    });
+  });
+  return best;
+}
 var V16_AI_DECK = [
   /* S21m: a government builds its organisation like anybody else -- this is
      the card that takes `govern`'s open set off the floor, because its `can` is
@@ -36817,6 +37004,25 @@ var V16_AI_DECK = [
       v16AiPay(st, pid, V16_AI_COST.organise);
       st.machine[pid] = clamp((st.machine[pid] || 0) + V16_AI_ORGANISE, -.8, 1);
       return 'The ' + PARTY[pid].short + ' opened agents and halls in eleven more counties.';
+    } },
+  /* S22d - A BATTLEGROUND HAS TWO SIDES. Gated on `v19Thinks` per R2: at
+     `instinct` a party campaigns nationally and does not pick its ground. */
+  { id:'target', post:['organise', 'consolidate', 'hold', 'partner', 'exposed'],
+    post2:['govern'],
+    can:function (st, pid) {
+      if (typeof v19Thinks !== 'function' || !v19Thinks(st)) return false;
+      if (partyPurse(st, pid) < V16_AI_COST.target) return false;
+      return !!v22AiBattleground(st, pid);
+    },
+    run:function (st, pid) {
+      var b = v22AiBattleground(st, pid);
+      if (!b) return null;
+      v16AiPay(st, pid, V16_AI_COST.target);
+      /* the full three, for the reason in `V16_AI_COST.target` above: one dot
+         does not survive to the count the card is bought for */
+      v22TargetSet(st, pid, b.rid, 3, b.iid);
+      return 'The ' + PARTY[pid].short + ' moved organisers into ' + REGION[b.rid].name +
+        ' and pitched the campaign there on ' + ISSUE[b.iid].name.toLowerCase() + '.';
     } },
   { id:'campaign', post:['consolidate', 'moderate', 'attack', 'govern', 'exposed'],
     can:function (st, pid) { return partyPurse(st, pid) >= V16_AI_COST.campaign && pv5SessionsToBallot(st) !== null && pv5SessionsToBallot(st) <= 4; },
@@ -37535,6 +37741,7 @@ var V22_FILE_MAX = 60;
 var V22_VERB = {
   organise: { one:'organising drive',     many:'organising drives' },
   campaign: { one:'campaign swing',       many:'campaign swings' },
+  target:   { one:'battleground',         many:'battlegrounds' },
   court:    { one:'courtship',            many:'courtships' },
   attack:   { one:'attack',               many:'attacks' },
   platform: { one:'platform move',        many:'platform moves' },
@@ -37778,7 +37985,7 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return (g.dir > 0 ? 'Carrying ' : 'Repealing ') + (POL[g.ref] ? POL[g.ref].name : g.ref);
     },
-    worth:{ bill:1, demand:.9, floor:.8, article:.2, campaign:.35, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2,
+    worth:{ bill:1, demand:.9, floor:.8, article:.2, campaign:.35, target:.28, court:.3, organise:.25, attack:.3, platform:.2, order:.4, pact:.2,
       /* S21g: supply is BOUGHT with a statute, so it is the second-best road to one; ending the government is a long way round to it */
       bargain:.55, topple:.2,
       /* S21o: a measure is not a statute, but impoundment and selective
@@ -37825,7 +38032,7 @@ var V19_GOALS = [
     dead:function (st, pid, g) { return !DEPTS[g.ref]; },
     progress:function (st, pid, g) { return clamp(v17Share(st, pid) * 2, 0, .95); },
     say:function (st, pid, g) { return 'Taking the ' + (DEPTS[g.ref] ? DEPTS[g.ref].name : g.ref); },
-    worth:{ campaign:1, organise:.85, court:.7, platform:.5, attack:.45, bill:.15, article:.2, demand:.25, floor:.2, order:.3, pact:.6,
+    worth:{ campaign:1, target:.8, organise:.85, court:.7, platform:.5, attack:.45, bill:.15, article:.2, demand:.25, floor:.2, order:.3, pact:.6,
       /* a government that falls is a cabinet re-formed, which is where offices come from */
       topple:.6, bargain:.35,
       /* S21o: the mass recess appointment is in this book, but a great office
@@ -37844,7 +38051,7 @@ var V19_GOALS = [
     dead:function (st, pid) { return false; },
     progress:function (st, pid) { return clamp(v17Share(st, pid) * 2.4, 0, .95); },
     say:function (st, pid) { return 'Getting into the government'; },
-    worth:{ organise:1, campaign:.9, court:.75, platform:.8, pact:.7, demand:.5, bill:.2, floor:.35, article:.2, attack:.15, order:.2,
+    worth:{ organise:1, campaign:.9, target:.9, court:.75, platform:.8, pact:.7, demand:.5, bill:.2, floor:.35, article:.2, attack:.15, order:.2,
       /* both are roads INTO a government: one re-forms it, the other buys a foot in the door without a cabinet seat */
       bargain:.9, topple:.8 }
       /* S21o DELIBERATELY HAS NO ROW HERE. A party aiming to ENTER a
@@ -37911,7 +38118,7 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return 'Bringing down the ' + (PARTY[g.ref] ? PARTY[g.ref].short : g.ref);
     },
-    worth:{ attack:1, floor:.8, campaign:.7, pact:.65, bill:.25, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2,
+    worth:{ attack:1, floor:.8, campaign:.7, target:.56, pact:.65, bill:.25, platform:.4, organise:.45, demand:.3, court:.4, article:.3, order:.2,
       /* the goal is to bring a party in the government DOWN, and this is the instrument that does it rather than one that harms them */
       topple:1, bargain:0,
       /* S21o: investigating the opposition and wrecking its machine is what
@@ -37966,7 +38173,7 @@ var V19_GOALS = [
       var b = BLOCS.filter(function (x) { return x.id === g.ref; })[0];
       return 'Winning over ' + (b ? b.name.toLowerCase() : g.ref);
     },
-    worth:{ court:1, platform:.75, campaign:.6, organise:.5, bill:.2, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2,
+    worth:{ court:1, platform:.75, campaign:.6, target:.48, organise:.5, bill:.2, demand:.4, floor:.3, article:.2, attack:.2, order:.25, pact:.2,
       topple:.25, bargain:.15,
       /* S21o: a measure LOSES blocs -- every one in the book carries a mood
          penalty and none carries a gain -- so it is the wrong instrument for
@@ -38002,7 +38209,7 @@ var V19_GOALS = [
       return clamp((have - from) / span, 0, 1);
     },
     say:function (st, pid) { return 'Building the party organisation'; },
-    worth:{ organise:1, campaign:.5, court:.45, platform:.3, demand:.25, bill:.12, floor:.2, article:.15, attack:.2, order:.2, pact:.3,
+    worth:{ organise:1, campaign:.5, target:.5, court:.45, platform:.3, demand:.25, bill:.12, floor:.2, article:.15, attack:.2, order:.2, pact:.3,
       topple:.2, bargain:.2,
       /* S21o: `wreck` lowers every rival's machine, which raises this party's
          standing against them without building anything of its own. */
@@ -38052,7 +38259,7 @@ var V19_GOALS = [
     say:function (st, pid, g) {
       return 'Carrying the ' + (V11_ART[g.ref] ? V11_ART[g.ref].name.replace(/^Article of the /, 'Article of the ') : g.ref);
     },
-    worth:{ article:1, floor:.5, campaign:.4, organise:.4, court:.35, bill:.2, demand:.3, platform:.3, attack:.2, order:.25, pact:.3,
+    worth:{ article:1, floor:.5, campaign:.4, target:.32, organise:.4, court:.35, bill:.2, demand:.3, platform:.3, attack:.2, order:.25, pact:.3,
       /* an article needs a chamber that will carry it, which is a government question */
       topple:.3, bargain:.35,
       /* S21o: THE AIM IT SERVES SQUAREST. An extraordinary measure is the
@@ -38438,6 +38645,15 @@ var V19_RIVAL_WORTH = {
   /* S21q: a trade is made WITH a party, not against one -- the same reading as
      `pact` and `bargain`, which are the file's other two agreements. */
   trade:    0,
+  /* S22d: a battleground is a REGION and a constituency, not a party. The
+     picker reads the region's own ranking, the country's salience and this
+     party's record, and consults no rival at any point -- so like `crowd`,
+     `street` and `platform` the entry is written down at nought rather than
+     left out, and the coverage guard can tell asked-and-answered from
+     never-asked. Taking ground a rival holds is the SAME purchase as taking
+     empty ground, and the region's factor is a share of a fixed chamber, so a
+     party that fights for one is already fighting somebody by arithmetic. */
+  target:   0,
   /* S21t: an endorsement is a CONSTITUENCY, not a party -- the same reading as
      `crowd` and `street`, which take the leadership of a movement and are
      nought for the same reason. The switching path exists (`v21EndorseSet`

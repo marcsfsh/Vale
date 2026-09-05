@@ -133,6 +133,56 @@ their own party."*
   level and being out-voted had nothing to read. The column carries the number
   the model reads, for every party, with the three terms named behind it.
 
+- **S22d — a battleground is a choice, not a dot.** `st.campaign.targets[r.id]`
+  was one number bought three times, worth .019 of a region's factor per dot,
+  halved at every ballot, and read behind `if (pid === me)`. Its whole content
+  was **where** and **how many** — nothing about what you were saying there, and
+  the one lever in the game that says *fight for this region* belonged to the
+  human alone.
+
+  **A target names the issue now**, chosen from the region's own three, and the
+  region rewards a party running on something it cares about and has a record on
+  and punishes one on the wrong side of it. That is S22b's `v22Standing` read
+  through the region's own ranking and the country's own salience, aimed at one
+  issue instead of averaged over three. The choice is **free** — the dots are
+  the purchase and the pitch is a choice — and it still bites, because a region
+  ranks its own three issues and running on the one you are strongest on can
+  mean running on the one that region cares least about.
+
+  **The default is the region's own first issue**, which is what the Campaign
+  page has printed as a region's subtitle since v9, so the page and the model
+  read one thing rather than two. Measured, it is negative on **39.6%** of
+  party-region readings, and the row prints the standing beside it, so a player
+  can see what they are buying before they buy it.
+
+  **Engines get the same lever**, through a deck card gated on `v19Thinks` per
+  R2. Two things had to be measured rather than assumed. Sold one dot at a time
+  the card held **nothing at all** across 300 driven sessions: the ballot halves
+  what a party holds with `Math.floor` and a count falls every other session, so
+  a single dot is gone before the count the card is bought for. It buys the full
+  three now, priced at 44 beside `organise`. And it was **rehearsed 137 times
+  and chosen 0** until it was registered in every per-card table a new deck card
+  has to join — `V22_VERB`, `V19_TEMPER_AXIS`, `V19_RIVAL_WORTH` and the seven
+  goal worth lists, where it is worth four fifths of `campaign` because it is
+  `campaign` aimed at one region, and the same as `campaign` for the two goals a
+  region **is**.
+
+  **`V22_TARGET_GAIN` is a division rather than a guess.** At gain 1 over 14,400
+  party-region readings on six seeds, the best issue a party has in a region
+  reads **.268** at its ninetieth percentile and **0 at its median** — half of
+  all party-region pairs give a party nothing positive to run on at all — and the
+  worst reads **−.553** at its tenth. At **.21** a well-pitched full target is
+  worth the three dots it rides on and a badly pitched one cancels them.
+
+  **Twenty-eight poisons from the diff, and three came back green**, each one a
+  leg the arm did not have. The size bar compared the term against a ceiling
+  computed **from the constant under test**, so it agreed with any value the gain
+  held and passed at five times the whole regional block — the caretaker's clock
+  reading `V17_CARETAKER_MAX` in a second place. The dots leg read the factor
+  with both terms live and could not tell the dot from the pitch. And the
+  one-writer poison was equivalent in effect, so the arm presses the real Target
+  button with `v22TargetSet` stubbed instead.
+
 **S21 — All-out AI** is **COMPLETE**. The owner's brief: *"an all-out focus on AI
 behavior, AI logic, and AI improvements… at least 4 improvements to existing AI
 behaviors and logic, and at least 8 new behaviors/logic — each being
