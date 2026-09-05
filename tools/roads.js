@@ -24669,9 +24669,26 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         v22TargetSet(S, eng, r.id, 0, null);
         back = factor(S, eng);
       } finally { V22_TARGET_GAIN = keepGain; }
+      /* AND THE CEILING IS ASKED THE WAY A SAVE ASKS IT. Both writers already
+         respect it -- the button is drawn shut at three and the card passes a
+         literal three -- so no play can trip the cap and its poison came back
+         GREEN. What CAN carry a hundred is a blob, which is why the cap is
+         there at all, so the store is written raw and the reader is asked. */
+      const bad = {};
+      S.ai[eng].targets = S.ai[eng].targets || {}; S.ai[eng].targets[r.id] = 99;
+      S.campaign.targets = S.campaign.targets || {}; S.campaign.targets[r.id] = 99;
+      bad.engine = v22TargetDots(S, eng, r.id);
+      bad.mine = v22TargetDots(S, me, r.id);
+      v22TargetSet(S, eng, r.id, 99, null);
+      bad.writtenEngine = (S.ai[eng].targets || {})[r.id];
+      v22TargetSet(S, me, r.id, 99, null);
+      bad.writtenMine = (S.campaign.targets || {})[r.id];
+      v22TargetSet(S, eng, r.id, 0, null); v22TargetSet(S, me, r.id, 0, null);
       return { ran:true, bare:bare, one:one, three:three, back:back,
         engineIsRead:three !== bare, scales:Math.abs(three - bare) > Math.abs(one - bare),
-        reversible:back === bare, neighbourStill:mineBare === mineAfter };
+        reversible:back === bare, neighbourStill:mineBare === mineAfter,
+        blob:bad, capped:bad.engine === 3 && bad.mine === 3 &&
+          bad.writtenEngine === 3 && bad.writtenMine === 3 };
     })();
 
     /* (c) AND WHAT THEY ARE SAYING THERE. Held at the same dots, the same
@@ -25033,7 +25050,7 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     target22.deflt.ran && target22.deflt.allFirst && target22.deflt.allReal &&
     target22.deflt.n === 8 &&
     target22.dots.ran && target22.dots.engineIsRead && target22.dots.scales &&
-    target22.dots.reversible && target22.dots.neighbourStill &&
+    target22.dots.reversible && target22.dots.neighbourStill && target22.dots.capped &&
     target22.lift.ran && target22.lift.rightIsBetter && target22.lift.wrongIsWorseThanNothing &&
     target22.ranked.ran && target22.ranked.firstCountsMore && target22.ranked.bothPositive &&
     target22.salient.ran && target22.salient.loudCountsMore &&
@@ -25070,7 +25087,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `engine's factor goes ${target22.dots.bare} bare to ${target22.dots.one} at one dot and ` +
     `${target22.dots.three} at three (${target22.dots.scales}), back to ${target22.dots.back} when the ` +
     `dots go (${target22.dots.reversible}), and the player's own number does not move for it ` +
-    `(${target22.dots.neighbourStill}) · AND WHAT YOU ARE SAYING THERE: with the dots, the region and the ` +
+    `(${target22.dots.neighbourStill}). THE CEILING IS ASKED THE WAY A SAVE ASKS IT, because both writers ` +
+    `already respect it -- the button is drawn shut at three and the card passes a literal three -- so no ` +
+    `play can trip the cap and its poison came back GREEN: a store written raw at 99 reads back as ` +
+    `${target22.dots.blob.engine} for an engine and ${target22.dots.blob.mine} for the player, and 99 ` +
+    `offered to the writer is stored as ${target22.dots.blob.writtenEngine} and ` +
+    `${target22.dots.blob.writtenMine} · AND WHAT YOU ARE SAYING THERE: with the dots, the region and the ` +
     `party held, the ${target22.lift.pid} running on an issue it stands ${target22.lift.standingUp} on ` +
     `reads ${target22.lift.good} against ${target22.lift.bad} on one it stands ${target22.lift.standingDown} ` +
     `on, and the WRONG side is worse than not fighting there at all (${target22.lift.none} untargeted, ` +
@@ -25249,6 +25271,47 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         isTheConstant:Math.abs(onQuiet / onWrit - V22_QUIET_POWER) < 1e-6 };
     })();
 
+    /* (e2) AND THE PAGE SAYS WHICH SESSION IT IS AND WHAT IT COSTS. The phase
+       label alone is a name; the note is the sentence a reader acts on, and
+       its poison came back green because nothing asked for it. */
+    R.note = (() => {
+      fresh(2024);
+      const seen = { writ:'', quiet:'' };
+      let shown = null;
+      for (let i = 0; i < 10; i++) {
+        const k = UI.tab; UI.tab = 'campaign';
+        let txt = '', vis = false;
+        try {
+          render();
+          /* MEASURED WITH A RECT, NOT WITH `textContent`. Hidden text is still
+             in `textContent`, so the poison that drew the note `hidden` came
+             back GREEN against a string test -- the sentence was in the DOM
+             and on no screen. This file's own rule: measure visibility with a
+             rect, not with `offsetParent`. */
+          const el = [...document.querySelectorAll('#view p.note')].filter(x =>
+            /writ falls when you end this session|not listening yet|No ballot is scheduled/.test(x.textContent))[0];
+          if (el) {
+            const r = el.getBoundingClientRect();
+            vis = r.height > 0 && r.width > 0;
+            txt = el.textContent || '';
+          }
+        } catch (e) {}
+        UI.tab = k;
+        const slot = v22Writ(S) ? 'writ' : 'quiet';
+        if (!seen[slot]) { seen[slot] = txt; if (shown === null) shown = vis; else shown = shown && vis; }
+        if (seen.writ && seen.quiet) break;
+        step();
+      }
+      try { render(); } catch (e) {}
+      const w = seen.writ, q = seen.quiet;
+      return { ran:!!(w && q), visible:shown === true,
+        writSays:/writ falls when you end this session/.test(w),
+        quietSays:/not listening yet/.test(q) && /per cent further/.test(q),
+        crossed:!/writ falls when you end this session/.test(q) &&
+          !/not listening yet/.test(w),
+        sample:(q.match(/The country is not listening yet[^]{0,90}/) || [''])[0] };
+    })();
+
     /* (e) THE ENGINE READS THE SAME RULE. Driven through the card's own run
        rather than by re-deriving the picker. */
     R.card = (() => {
@@ -25291,8 +25354,16 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     writ22.pair.reciprocal && writ22.pair.power > 0 && writ22.pair.power < 1 &&
     writ22.buttons.ran && writ22.buttons.allMoreQuiet && writ22.buttons.matchesConstant &&
     writ22.score.ran && writ22.score.isTheConstant &&
+    writ22.note.ran && writ22.note.visible && writ22.note.writSays && writ22.note.quietSays && writ22.note.crossed &&
     writ22.card.ran && writ22.card.moreQuiet && writ22.card.matchesConstant &&
     writ22.card.openWithABallot && writ22.card.shutWithout;
+  /* NO LOOKUP THE SAY MAKES CAN BE EMPTY. A poison that leaves a leg unable
+     to run -- "every session is the writ session" gives the button leg no
+     quiet session to press in -- made this read `buttons.quiet.field` off an
+     absent object and THREW, which aborts the harness instead of failing one
+     assertion. */
+  const wq = (o, k, d) => (o && o[k] !== undefined && o[k] !== null ? o[k] : (d === undefined ? '\u2014' : d));
+  const wb = k => wq(writ22.buttons.quiet, k), wv = k => wq(writ22.buttons.writ, k);
   say(writOk, 'the writ session, and the quiet one',
     `PLAN-S22 ASKED FOR A WINDOW OF THE LAST N SESSIONS BEFORE A BALLOT AND THE CALENDAR HAS NO ROOM FOR ` +
     `ONE. \`isBallotTurn(t)\` is \`t > 1 && t % 2 === 1\` and the only thing that lengthens it is a ` +
@@ -25315,8 +25386,12 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `as the quiet session is worth less -- one fact rather than two knobs · THE BUTTONS ARE PRESSED FOR ` +
     `REAL in both sessions and every one of the four puts more in when the country is not listening ` +
     `(${writ22.buttons.allMoreQuiet}), at the constant to three places (${writ22.buttons.matchesConstant}): ` +
-    `field ${writ22.buttons.quiet.field} against ${writ22.buttons.writ.field}, media ` +
-    `${writ22.buttons.quiet.media} against ${writ22.buttons.writ.media} · AND THE SCORE ON THE SAME ASSETS ` +
+    `field ${wb('field')} against ${wv('field')}, media ` +
+    `${wb('media')} against ${wv('media')} · AND THE PAGE SAYS WHICH SESSION IT IS AND WHAT IT COSTS ` +
+    `(${writ22.note.writSays}/${writ22.note.quietSays}), on a screen rather than only in the document ` +
+    `(${writ22.note.visible}, measured with a rect because hidden text is still in \`textContent\` and the ` +
+    `poison that drew it \`hidden\` came back green against a string test), on the right session and not the other one ` +
+    `(${writ22.note.crossed}): "${writ22.note.sample}" · AND THE SCORE ON THE SAME ASSETS ` +
     `goes ${writ22.score.onWrit} in the writ session to ${writ22.score.onQuiet} in the quiet one, a ratio ` +
     `of ${writ22.score.ratio} · THE ENGINE READS THE SAME RULE through its own card: ` +
     `${writ22.card.quiet} of field bought in a quiet session against ${writ22.card.writ} in a writ one, a ` +

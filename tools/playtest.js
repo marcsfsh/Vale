@@ -1642,7 +1642,17 @@ async function run() {
         try { endTurn(); } catch (e) { break; }
         UI.queue = []; UI.busy = false;
         out.sessions = i + 1;
-        out.onRecord = PARTIES.filter(p => ((v16Ai(S)[p.id] || {}).why || {}).foe).length;
+        /* S22a: THROUGH THE FILE'S HEAD. `a.why` was one slot with one writer
+           and one reader; the dossier made the head of `v22File` the same fact
+           and deleted the slot, so a probe still reading it counts nought for
+           three hundred sessions, never renders the page, and reports a working
+           record as dead. The roads arm read the same slot -- one change, two
+           call sites, and this is the second. */
+        out.onRecord = PARTIES.filter(p => {
+          const w = (typeof v22File === 'function')
+            ? v22File(S, p.id)[0] : (v16Ai(S)[p.id] || {}).why;
+          return w && w.foe;
+        }).length;
         if (!out.onRecord) continue;
         UI.tab = 'parties'; render();
         const panel = [...document.querySelectorAll('#view .panel')]
