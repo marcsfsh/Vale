@@ -1750,6 +1750,11 @@ async function run() {
       o.click();
       UI.csOpen = 'party'; v16CustomSheet();
       const boxes = () => [...document.querySelectorAll('#sheet [data-cs="banned"]')];
+      /* guarded, because a probe that throws aborts the harness instead of
+         failing one leg -- and a poisoned build is exactly where a control
+         this arm reaches for stops existing */
+      const press = (sel) => { const b = document.querySelector('#sheet ' + sel);
+        if (!b) { out.missing.push(sel); return; } b.click(); };
       out.offered = boxes().length;
       out.parties = PARTIES.length;
       out.floor = PARTIES.length - V22_MIN_LIVE;
@@ -1770,9 +1775,25 @@ async function run() {
          an absolute would be asserting the rest of the section. */
       const bare = JSON.parse(JSON.stringify(read)); bare.banned = [];
       out.badge = v16CustomCounts(read).party - v16CustomCounts(bare).party;
-      /* and the sheet redraws with the heir named beside each one */
+      /* AND IT SURVIVES A TAB, which is the carry-over line's whole job.
+         `v16CustomRead` rebuilds the blob from what is ON SCREEN and carries
+         what is not; with the parties section shut, nothing on the sheet
+         carries a `banned` box, so a build that forgot to carry the list drops
+         every tick the moment the player looks at another section. */
       UI.setup.custom = read; UI.csSkipRead = 1; v16CustomSheet();
+      press('[data-cs-tab="ind"]');
+      press('[data-cs-tab="law"]');
+      out.afterTabs = ((UI.setup.custom || {}).banned || []).slice().sort().join(',');
+      UI.setup.custom = read; UI.csSkipRead = 1; UI.csOpen = 'party'; v16CustomSheet();
       out.heirShown = document.querySelectorAll('#sheet .cs-heir').length;
+      /* AND THE NAME IS A LIVE PARTY. Counting the labels cannot see one that
+         names a party this very sheet has dissolved, which is what a preview
+         reading the wrong ban list produces. */
+      const shorts = {}; PARTIES.forEach(q => { shorts[q.short] = q.id; });
+      out.heirNames = [...document.querySelectorAll('#sheet .cs-heir')]
+        .map(e => shorts[e.textContent.replace(/[^A-Za-z]/g, '')] || null);
+      out.heirsLive = out.heirNames.length > 0 &&
+        out.heirNames.every(id => id && pick.indexOf(id) < 0);
       out.dimmed = document.querySelectorAll('#sheet .cs-party.is-gone').length;
       /* at the floor the remaining boxes shut rather than refusing after a click */
       const all = PARTIES.map(p => p.id).filter(x => x !== me).slice(0, PARTIES.length - V22_MIN_LIVE);
@@ -1789,15 +1810,19 @@ async function run() {
     step('custom-start-dissolve',
       dis.built && dis.missing.length === 0 &&
       dis.offered === dis.parties - 1 && !dis.mineOffered &&
-      dis.readBack === dis.picked && dis.badge === 2 &&
-      dis.heirShown === 2 && dis.dimmed === 2 &&
+      dis.readBack === dis.picked && dis.badge === 2 && dis.afterTabs === dis.picked &&
+      dis.heirShown === 2 && dis.heirsLive && dis.dimmed === 2 &&
       dis.atFloorTicked === dis.floor && dis.atFloorOpen === 0 && dis.atFloorShut > 0,
       `the parties section offers a dissolution box on ${dis.offered} of ${dis.parties} parties and not on ` +
       `the player's own (${!dis.mineOffered}), because a control that always refuses is worse than no ` +
       `control · two ticked come back through \`v16CustomRead\` as "${dis.readBack}" against the ` +
       `"${dis.picked}" that were pressed -- the same checkbox branch the article boxes use, which a build ` +
       `that forgot to name \`banned\` in would have dropped silently -- and the tab badge counts them ` +
-      `(${dis.badge}) · the redraw names the heir beside each (${dis.heirShown}) and dims the row ` +
+      `(${dis.badge}) · and they survive two tab changes with the parties section SHUT ` +
+      `("${dis.afterTabs}"), which is the carry-over line's whole job: \`v16CustomRead\` rebuilds the blob ` +
+      `from what is on screen, and with no \`banned\` box rendered a build that forgot to carry the list ` +
+      `drops every tick the moment the player looks elsewhere · the redraw names the heir beside each ` +
+      `(${dis.heirShown}, every one a party still standing: ${dis.heirsLive}) and dims the row ` +
       `(${dis.dimmed}) · and at the floor (${dis.atFloorTicked} of ${dis.floor} ticked) the remaining ` +
       `boxes are SHUT (${dis.atFloorShut} shut, ${dis.atFloorOpen} still open) rather than refusing ` +
       `after the click` +

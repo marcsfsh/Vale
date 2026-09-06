@@ -14614,9 +14614,10 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
            governorships -- and `holdsDept` asks whether the office-holder is in
            the coalition, which a banned party never is, so the government
            silently lost the department to a party that no longer existed.
-           `false` because the seats are settled above, by this card's own
-           authored split rather than by the heir. */
-        var sw = v22BanSweep(S, false);
+           The lower seats are settled above by this card's own authored split
+           and are nought by the time this runs, so the sweep finds nothing to
+           move there -- the SENATORS it never zeroed are a different story. */
+        var sw = v22BanSweep(S);
         if (sw.exec.length || sw.bench || sw.states.length) {
           logIt(S, 'What the ' + p.short + ' held went to the nearest party still standing: ' +
             [sw.exec.length ? v8Plural(sw.exec.length, 'great office') : '',
@@ -41238,36 +41239,38 @@ function v22Heir(st, pid) {
 /* WHAT A DISSOLVED PARTY LEAVES BEHIND, through ONE function, so a surface
    added later cannot be moved in one place and forgotten in another.
 
-   The seats are the argument rather than a fixed answer, and both callers pass
-   it deliberately. A start-time ban hands the benches to the heir, which is
-   what the owner asked for. The Ban the Party measure splits them evenly
-   between everyone still standing, which is its own authored behaviour, priced
-   and balanced since S15g, and not this slice's to re-tune.
+   THE SEATS WERE AN ARGUMENT AND THE POISON RUN TOOK IT AWAY. The first build
+   passed `false` from the Ban the Party measure, so its own authored even split
+   of the benches would stand -- and the measure zeroes the lower seats BEFORE
+   sweeping, so the branch is a no-op there and the two values could not be told
+   apart. What the argument was really doing was leaving the dissolved party its
+   SENATORS, which the measure never zeroed: the same defect as the Presidency,
+   one house down. One behaviour now, and the measure's split still stands
+   because there is nothing left in the lower house to move by the time this
+   runs.
 
-   THE OTHER FIVE ARE A DEFECT THE MEASURE HAS ALWAYS HAD. It zeroes the seats
+   THE FIVE BELOW ARE A DEFECT THE MEASURE HAS ALWAYS HAD. It zeroes the seats
    and clears the partner and stops there, so a party dissolved by decree went
    on holding the Presidency, its seats on the bench and its governorships --
    and `holdsDept` asks whether the office-holder is in the coalition, which a
    banned party never is, so the government silently lost the department to a
    party that no longer existed. Both callers sweep them now. */
-function v22BanSweep(st, moveSeats) {
+function v22BanSweep(st) {
   var out = { seats:0, upper:0, exec:[], bench:0, states:[], gov:null };
   if (!st || !st.banned) return out;
   PARTIES.forEach(function (p) {
     if (!st.banned[p.id]) return;
     var heir = v22Heir(st, p.id);
     if (!heir) return;
-    if (moveSeats) {
-      var n = st.seats[p.id] || 0;
-      if (n) { st.seats[heir] = (st.seats[heir] || 0) + n; st.seats[p.id] = 0; out.seats += n; }
-      if (st.upper && st.upper.seats) {
-        var u = st.upper.seats[p.id] || 0;
-        if (u) { st.upper.seats[heir] = (st.upper.seats[heir] || 0) + u; st.upper.seats[p.id] = 0; out.upper += u; }
-      }
-      if (st.psupport && st.psupport[p.id]) {
-        st.psupport[heir] = (st.psupport[heir] || 0) + st.psupport[p.id];
-        st.psupport[p.id] = 0;
-      }
+    var n = st.seats[p.id] || 0;
+    if (n) { st.seats[heir] = (st.seats[heir] || 0) + n; st.seats[p.id] = 0; out.seats += n; }
+    if (st.upper && st.upper.seats) {
+      var u = st.upper.seats[p.id] || 0;
+      if (u) { st.upper.seats[heir] = (st.upper.seats[heir] || 0) + u; st.upper.seats[p.id] = 0; out.upper += u; }
+    }
+    if (st.psupport && st.psupport[p.id]) {
+      st.psupport[heir] = (st.psupport[heir] || 0) + st.psupport[p.id];
+      st.psupport[p.id] = 0;
     }
     ['pres', 'vpres', 'chan', 'vchan'].forEach(function (o) {
       if (st.exec && st.exec[o] === p.id) { st.exec[o] = heir; out.exec.push(o); }
@@ -41445,7 +41448,7 @@ function v16CustomApply(st, blob) {
       if (pid === mine) { logIt(st, 'A start asked for the ' + PARTY[pid].short + ' to be dissolved, and they are the party being played, so they stand.'); return; }
       st.banned[pid] = true;
     });
-    var sw = v22BanSweep(st, true);
+    var sw = v22BanSweep(st);
     var gone = PARTIES.filter(function (p) { return st.banned[p.id]; });
     if (gone.length) {
       logIt(st, gone.map(function (p) { return 'The ' + p.short; }).join(' and ') +
