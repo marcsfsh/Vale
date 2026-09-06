@@ -46,14 +46,38 @@ the LP already dissolved the RSF's skips past it to the SD.
 
 **ONE SWEEP, AND IT FOUND A SHIPPED DEFECT.** `v22BanSweep` moves the seats, the
 Senate, the four great offices, the bench, the governorships and the government
-itself. The Ban the Party measure zeroed the seats, cleared the partner and
-stopped — so a party dissolved by decree **went on holding the Presidency**, its
-seats on the bench and its governorships, and `holdsDept` asks whether the
+itself, and it runs LAST in `v16CustomApply` so it moves what everything above
+just handed out. The Ban the Party measure zeroed the seats, cleared the partner
+and stopped — so a party dissolved by decree **went on holding the Presidency**,
+its seats on the bench and its governorships, and `holdsDept` asks whether the
 office-holder is in the coalition, which a banned party never is, so the
 government silently lost the department to a party that no longer existed. Both
-callers sweep now; the measure keeps its own authored even split of the seats
-and the start hands them to the heir, which is the one argument the function
-takes and both call sites pass deliberately.
+callers sweep now.
+
+**The sweep took a `moveSeats` flag and the poison run took it away.** It was
+there so the measure could keep its own authored even split of the benches — and
+the measure zeroes the LOWER seats *before* sweeping, so the branch was a no-op
+at that call site and the two values could not be told apart. What the flag was
+really doing was leaving the dissolved party its **senators**, which the measure
+never zeroed: the same defect as the Presidency, one house down. One behaviour
+now, and the split still stands because there is nothing left below to move by
+the time the sweep runs.
+
+**Twenty-nine poisons from the diff and eleven came back green**, every one a leg
+the arm did not have. The floor bar read `V22_MIN_LIVE`, the constant under test,
+so at 1 the cap and the floor were both 6 and it agreed — a literal five now,
+with the claim the floor is *for* driven rather than counted. The last tie-break
+was decoration, because `Array.sort` is stable and `PARTIES` is declared in
+`order`, so the leg reverses the literal and asks again. **Four poisons about the
+government came back green because the Unity Front board cannot ask the
+question**: none of the four parties dissolved there was ever in the coalition,
+and the line that seats the new leader in its own coalition needs the WHOLE
+government dissolved at once before it has anything to do. An inherited justice
+is moved and not relabelled, which two builds of that leg could not tell apart
+because every bench this game builds already seats a justice exactly on its
+party's home. And the sheet's heir label was checked for count and not for name:
+two parties picked off the ends of the table are each other's heir to nobody, so
+the leg ticks two ADJACENT parties, where each is the other's nearest.
 
 **And `one-coalition-exit` failed the first build of the sweep**, for filtering
 `st.coalition` in a second place. That is exactly what the check is for, and the
