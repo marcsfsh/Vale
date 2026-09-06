@@ -1763,7 +1763,15 @@ async function run() {
       const me = playParty(v16CustomPreview() || S);
       out.mineOffered = boxes().some(b => b.value === me);
       /* tick two, and read them back through the sheet's own reader */
-      const pick = boxes().filter(b => b.value !== me).slice(0, 2).map(b => b.value);
+      /* TWO ADJACENT PARTIES, deliberately, because each is then the other's
+         nearest -- so a preview that ignores the ban list names a party this
+         very sheet has dissolved. Two parties picked off the ends of the table
+         are each other's heir to nobody and the leg cannot see it. */
+      const order = PARTIES.slice().sort((a, b) => a.order - b.order).filter(q => q.id !== me);
+      let pick = order.slice(0, 2).map(q => q.id);
+      for (let i = 0; i + 1 < order.length; i++) {
+        if (Math.abs(order[i].order - order[i + 1].order) === 1) { pick = [order[i].id, order[i + 1].id]; break; }
+      }
       pick.forEach(v => { const b = boxes().filter(x => x.value === v)[0];
         if (!b) { out.missing.push(v); return; } b.checked = true;
         b.dispatchEvent(new Event('change', { bubbles:true })); });

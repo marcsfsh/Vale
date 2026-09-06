@@ -25814,7 +25814,31 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
         heir:heir, wasOnBench:wasBench,
         noneLeft:js.filter(j => j.party === victim).length,
         posParty:moved.party, posE:+moved.e.toFixed(4), posA:+moved.a.toFixed(4),
-        posWantE:+want.e.toFixed(4), posWantA:+want.a.toFixed(4) };
+        posWantE:+want.e.toFixed(4), posWantA:+want.a.toFixed(4),
+        /* AND THE WHOLE GOVERNMENT DISSOLVED AT ONCE, which is the only case
+           that can see the line seating the new leader in its own coalition:
+           with one partner gone the heir is usually still in the room, so the
+           poison removing that line came back green on the case above. */
+        whole:(() => {
+          SEED_OVERRIDE = 404;
+          UI.setup = { custom:null, aiLevel:'ruthless', party:'fp' };
+          S = v6NewGame('easy', 'popularFront', 'epic', 'fp');
+          const co0 = (S.coalition || []).slice(), mine = playParty(S);
+          const kill = co0.filter(x => x !== mine).slice(0, 5);
+          if (!kill.length) return { ran:false };
+          SEED_OVERRIDE = 404;
+          UI.setup = { custom:v16CustomClean({ v:1, banned:kill }).blob, aiLevel:'ruthless', party:'fp' };
+          S = v6NewGame('easy', 'popularFront', 'epic', 'fp');
+          const co1 = (S.coalition || []).slice();
+          return { ran:true, killed:kill.length, was:co0.length,
+            leaderLive:!S.banned[S.ruling], seated:co1.indexOf(S.ruling) >= 0,
+            noneLeft:kill.every(k => co1.indexOf(k) < 0), size:co1.length };
+        })(),
+        /* AND THE VOTE SHARE GOES WITH THE SEATS. `psupport` is what the next
+           ballot is built from, so a dissolved party holding one is a share the
+           chamber cannot elect anybody with. */
+        psupZero:PARTIES.filter(q => S.banned[q.id]).every(q => (S.psupport[q.id] || 0) === 0),
+        psupSum:+PARTIES.reduce((n, q) => n + (S.psupport[q.id] || 0), 0).toFixed(4) };
     })();
 
     /* (d) THE CONTROL, AND IT IS WHAT MAKES THIS A MECHANISM. The same four
@@ -25912,6 +25936,9 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     gone22.gov.posParty === 'sd' &&
     gone22.gov.posE === gone22.gov.posWantE && gone22.gov.posA === gone22.gov.posWantA &&
     gone22.gov.posE !== -0.91 && gone22.gov.posA !== 0.77 &&
+    gone22.gov.psupZero && Math.abs(gone22.gov.psupSum - 1) < .02 &&
+    gone22.gov.whole.ran && gone22.gov.whole.killed >= 1 &&
+    gone22.gov.whole.leaderLive && gone22.gov.whole.seated && gone22.gov.whole.noneLeft &&
     !gone22.gov.stillLeads && !gone22.gov.stillIn &&
     gone22.gov.leaderSeated && gone22.gov.leaderLive && gone22.gov.partnerLive &&
     gone22.play.seated === 0 && gone22.play.ruled === 0 &&
@@ -25959,7 +25986,14 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `game builds already seats a justice exactly on its party's home -- so "is it on the heir's home" is ` +
     `true of a relabelled seat, which is what two builds of this leg asked. A justice put at (-0.91, 0.77), ` +
     `where no party sits, comes back as the ${gone22.gov.posParty.toUpperCase()} at (${gone22.gov.posE}, ` +
-    `${gone22.gov.posA}), that party's home to four places · AND IT HOLDS IN PLAY: over thirty driven sessions a dissolved party is seated ` +
+    `${gone22.gov.posA}), that party's home to four places · THE VOTE SHARE GOES WITH THE SEATS ` +
+    `(${gone22.gov.psupZero}, the rest summing to ${gone22.gov.psupSum}), because \`psupport\` is what the ` +
+    `next ballot is built from · AND WITH THE WHOLE GOVERNMENT DISSOLVED AT ONCE ` +
+    `(${gone22.gov.whole.killed} of a ${gone22.gov.whole.was}-party coalition) the party that takes over is ` +
+    `itself standing (${gone22.gov.whole.leaderLive}) and is seated in its own coalition ` +
+    `(${gone22.gov.whole.seated}) with none of the dissolved left in it (${gone22.gov.whole.noneLeft}) -- ` +
+    `the only case that can see that line, because with one partner gone the heir is usually still in the ` +
+    `room, and the poison removing it came back green on the case above · AND IT HOLDS IN PLAY: over thirty driven sessions a dissolved party is seated ` +
     `${gone22.play.seated} times, governs ${gone22.play.ruled} times, and the ballot's own projection gives ` +
     `the four of them ${gone22.play.proj} of the vote · THE CONTROL IS WHAT MAKES THIS A MECHANISM: the ` +
     `same four given nought SEATS and no ban open at ${gone22.control.open} and reach ` +
