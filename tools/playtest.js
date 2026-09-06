@@ -1733,6 +1733,76 @@ async function run() {
       ((csp.missing && csp.missing.length) ? ` · CONTROLS THIS ARM NEEDED AND COULD NOT FIND: ${csp.missing.join(', ')}` : '') +
       (csp.built ? '' : ' -- THIS BUILD HAS NO v16CustomPasted'));
 
+    /* S22h: THE DISSOLUTION BOX, PRESSED. The model side is in roads.js; what
+       this asks is whether a player can reach it without pasting JSON, whether
+       the sheet refuses the two things the rule refuses, and whether the box
+       survives the round trip through `v16CustomRead` -- which reads it through
+       the SAME checkbox branch the article boxes use, so a build that forgot to
+       name it there would drop every tick silently. */
+    const dis = await page.evaluate(() => {
+      const out = { built:typeof v22Heir === 'function', missing:[] };
+      const keepSetup = UI.setup ? JSON.parse(JSON.stringify(UI.setup)) : null;
+      UI.setup = UI.setup || {}; UI.setup.custom = null; UI.csLost = 0;
+      startScreen();
+      const o = document.querySelector('#sheet [data-cs-open]');
+      if (!out.built || !o) { if (typeof hideSheet === 'function') hideSheet();
+        UI.setup = keepSetup; render(); return out; }
+      o.click();
+      UI.csOpen = 'party'; v16CustomSheet();
+      const boxes = () => [...document.querySelectorAll('#sheet [data-cs="banned"]')];
+      out.offered = boxes().length;
+      out.parties = PARTIES.length;
+      out.floor = PARTIES.length - V22_MIN_LIVE;
+      /* the player's own party is not offered at all, because a control that
+         always refuses is worse than no control */
+      const me = playParty(v16CustomPreview() || S);
+      out.mineOffered = boxes().some(b => b.value === me);
+      /* tick two, and read them back through the sheet's own reader */
+      const pick = boxes().filter(b => b.value !== me).slice(0, 2).map(b => b.value);
+      pick.forEach(v => { const b = boxes().filter(x => x.value === v)[0];
+        if (!b) { out.missing.push(v); return; } b.checked = true;
+        b.dispatchEvent(new Event('change', { bubbles:true })); });
+      const read = v16CustomRead(document.getElementById('sheet'), v16CustomDraft());
+      out.readBack = (read.banned || []).slice().sort().join(',');
+      out.picked = pick.slice().sort().join(',');
+      /* the badge counts them. As a DELTA, because the same read also picks up
+         every slider on the sheet that differs from its opening, and asserting
+         an absolute would be asserting the rest of the section. */
+      const bare = JSON.parse(JSON.stringify(read)); bare.banned = [];
+      out.badge = v16CustomCounts(read).party - v16CustomCounts(bare).party;
+      /* and the sheet redraws with the heir named beside each one */
+      UI.setup.custom = read; UI.csSkipRead = 1; v16CustomSheet();
+      out.heirShown = document.querySelectorAll('#sheet .cs-heir').length;
+      out.dimmed = document.querySelectorAll('#sheet .cs-party.is-gone').length;
+      /* at the floor the remaining boxes shut rather than refusing after a click */
+      const all = PARTIES.map(p => p.id).filter(x => x !== me).slice(0, PARTIES.length - V22_MIN_LIVE);
+      UI.setup.custom = v16CustomClean({ v:1, banned:all }).blob;
+      UI.csSkipRead = 1; UI.csOpen = 'party'; v16CustomSheet();
+      const now = boxes();
+      out.atFloorTicked = now.filter(b => b.checked).length;
+      out.atFloorShut = now.filter(b => !b.checked && b.disabled).length;
+      out.atFloorOpen = now.filter(b => !b.checked && !b.disabled).length;
+      if (typeof hideSheet === 'function') hideSheet();
+      UI.setup = keepSetup; UI.csLost = 0; render();
+      return out;
+    });
+    step('custom-start-dissolve',
+      dis.built && dis.missing.length === 0 &&
+      dis.offered === dis.parties - 1 && !dis.mineOffered &&
+      dis.readBack === dis.picked && dis.badge === 2 &&
+      dis.heirShown === 2 && dis.dimmed === 2 &&
+      dis.atFloorTicked === dis.floor && dis.atFloorOpen === 0 && dis.atFloorShut > 0,
+      `the parties section offers a dissolution box on ${dis.offered} of ${dis.parties} parties and not on ` +
+      `the player's own (${!dis.mineOffered}), because a control that always refuses is worse than no ` +
+      `control · two ticked come back through \`v16CustomRead\` as "${dis.readBack}" against the ` +
+      `"${dis.picked}" that were pressed -- the same checkbox branch the article boxes use, which a build ` +
+      `that forgot to name \`banned\` in would have dropped silently -- and the tab badge counts them ` +
+      `(${dis.badge}) · the redraw names the heir beside each (${dis.heirShown}) and dims the row ` +
+      `(${dis.dimmed}) · and at the floor (${dis.atFloorTicked} of ${dis.floor} ticked) the remaining ` +
+      `boxes are SHUT (${dis.atFloorShut} shut, ${dis.atFloorOpen} still open) rather than refusing ` +
+      `after the click` +
+      (dis.built ? '' : ' -- THIS BUILD HAS NO v22Heir'));
+
     /* S16e: the six on the page. A posture the player cannot see is not in the
        game, so the model side in roads.js is only half of it. */
     const sixp = await page.evaluate(() => {

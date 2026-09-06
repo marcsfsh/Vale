@@ -25673,6 +25673,214 @@ const say = (ok, label, detail) => { if (!ok) fail++; console.log((ok ? 'ok  ' :
     `untouched and came back GREEN, a card saying the range was sampled above numbers that were not · and ` +
     `the authored sentence is gone (${band22.page.authoredGone})`);
 
+  /* ==========================================================
+     S22h -- A PARTY THAT IS NOT THERE
+
+     The owner asked for parties that can be dissolved before the campaign
+     opens, with anything exclusive to a dissolved party passing to the next
+     closest one, so a two- or three-party republic can be played.
+
+     `st.banned[pid]` already existed and is already honoured in about a hundred
+     and ten places. What it had no way to be was a STARTING condition. And the
+     control leg here is the one that makes this a mechanism rather than a
+     convenience: ZEROING A PARTY'S SEATS DOES NOT REMOVE IT, because
+     `psupport` converges on `supportTargets`, which is computed from blocs and
+     positions and has never read the seat count.                              */
+  const gone22 = await page.evaluate(() => {
+    const R = {}, rq = runQueue;
+    const GONE = ['rsf', 'lp', 'tvc', 'pnl'];
+    function step() {
+      runQueue = function (done) { UI.queue = []; rq(done); };
+      try { endTurn(); } finally { runQueue = rq; }
+    }
+    const heirOf = (banned, pid) => {
+      const m = {}; banned.forEach(x => { m[x] = true; }); return v22Heir({ banned:m }, pid);
+    };
+
+    /* (a) THE HEIR IS ONE ANSWER. Named, including both ties and a chain: with
+       the LP already gone the RSF's estate skips past it to the SD, and the
+       two parties whose neighbours are equidistant both go to the centre. */
+    R.heir = { built:typeof v22Heir === 'function',
+      rsf:heirOf([], 'rsf'), pnl:heirOf([], 'pnl'), tvc:heirOf([], 'tvc'),
+      chained:heirOf(['lp'], 'rsf'), chained2:heirOf(['tvc'], 'pnl'),
+      tieSd:heirOf([], 'sd'), tieCup:heirOf([], 'cup'), tieFp:heirOf([], 'fp'),
+      /* and it never returns a party that is itself dissolved */
+      neverBanned:[['rsf'], ['rsf', 'lp'], ['rsf', 'lp', 'tvc']].every(b =>
+        PARTIES.filter(p => b.indexOf(p.id) < 0).length > 0 &&
+        b.every(x => b.indexOf(heirOf(b, x)) < 0)) };
+
+    /* (b) A THREE-PARTY REPUBLIC, THROUGH THE CLEANER AND THE REAL START, with
+       every dissolved party holding something the blob handed it. */
+    const blob = { v:1, banned:GONE.slice(),
+      seats:{ rsf:150, lp:200, sd:250, fp:300, cup:205, tvc:100, pnl:100 },
+      upperSeats:{ rsf:30, lp:45, sd:60, fp:70, cup:50, tvc:25, pnl:20 },
+      exec:{ pres:'pnl', vpres:'rsf', chan:'fp', vchan:'lp' },
+      governors:{ somnium:'rsf', thaxia:'fp', tenebris:'lp', meridian:'cup',
+        district:'fp', rigel:'tvc', cassian:'pnl', marches:'sd' },
+      judges:['rsf', 'rsf', 'lp', 'tvc', 'pnl', 'fp', 'fp', 'fp', 'sd', 'sd',
+        'cup', 'cup', 'fp', 'fp', 'sd', 'cup'] };
+    const cleaned = v16CustomClean(blob);
+    R.open = (() => {
+      SEED_OVERRIDE = 707;
+      UI.setup = { custom:cleaned.blob, aiLevel:'ruthless', party:'fp' };
+      S = v6NewGame('easy', 'unityFront', 'epic', 'fp');
+      const bench = (S.court.justices || []).reduce((a, j) => { a[j.party] = (a[j.party] || 0) + 1; return a; }, {});
+      const govs = Object.keys(S.v6.governors).map(r => S.v6.governors[r].party);
+      return { lost:cleaned.lost, kept:cleaned.blob.banned.length,
+        flagged:GONE.every(g => S.banned[g] === true),
+        seats:GONE.reduce((n, g) => n + (S.seats[g] || 0), 0),
+        upper:GONE.reduce((n, g) => n + ((S.upper.seats || {})[g] || 0), 0),
+        total:PARTIES.reduce((n, p) => n + (S.seats[p.id] || 0), 0),
+        upperTotal:PARTIES.reduce((n, p) => n + ((S.upper.seats || {})[p.id] || 0), 0),
+        chamber:CFG.seats,
+        execHeld:['pres', 'vpres', 'chan', 'vchan'].filter(o => GONE.indexOf(S.exec[o]) >= 0).length,
+        benchHeld:GONE.reduce((n, g) => n + (bench[g] || 0), 0),
+        benchSeats:(S.court.justices || []).length,
+        statesHeld:govs.filter(x => GONE.indexOf(x) >= 0).length,
+        /* the estates landed on the RIGHT heirs, by count rather than by
+           re-deriving the rule the code just applied */
+        benchSd:bench.sd || 0, benchCup:bench.cup || 0, benchFp:bench.fp || 0,
+        seatSd:S.seats.sd, seatFp:S.seats.fp, seatCup:S.seats.cup,
+        governing:GONE.indexOf(S.ruling) < 0 && GONE.every(g => (S.coalition || []).indexOf(g) < 0) };
+    })();
+
+    /* (c) AND IT HOLDS IN PLAY. Thirty driven sessions: a dissolved party is
+       never seated, never governs, and the ballot's own answer for it is 0. */
+    R.play = (() => {
+      let seated = 0, ruled = 0; const totals = {};
+      for (let n = 0; n < 30; n++) {
+        step();
+        GONE.forEach(g => { if ((S.seats[g] || 0) > 0) seated++; });
+        if (GONE.indexOf(S.ruling) >= 0) ruled++;
+        totals[PARTIES.reduce((a, p) => a + (S.seats[p.id] || 0), 0)] = 1;
+      }
+      let proj = null;
+      try { const pj = projection(S); proj = GONE.reduce((n, g) => n + (pj.res[g] || 0), 0); } catch (e) {}
+      return { seated:seated, ruled:ruled, totals:Object.keys(totals).map(Number), proj:proj };
+    })();
+
+    /* (d) THE CONTROL, AND IT IS WHAT MAKES THIS A MECHANISM. The same four
+       parties given nought SEATS and no ban: `supportTargets` never reads the
+       seat count, so they are back within a handful of sessions. */
+    R.control = (() => {
+      SEED_OVERRIDE = 707;
+      UI.setup = { custom:v16CustomClean({ v:1,
+        seats:{ rsf:0, lp:0, sd:250, fp:300, cup:205, tvc:0, pnl:0 } }).blob,
+        aiLevel:'ruthless', party:'fp' };
+      S = v6NewGame('easy', 'unityFront', 'epic', 'fp');
+      const open = GONE.reduce((n, g) => n + (S.seats[g] || 0), 0);
+      let peak = 0;
+      for (let n = 0; n < 30; n++) { step(); peak = Math.max(peak, GONE.reduce((a, g) => a + (S.seats[g] || 0), 0)); }
+      return { open:open, peak:peak };
+    })();
+
+    /* (e) YOU CANNOT DISSOLVE YOURSELF, and the floor holds. The cleaner takes
+       the ids; apply refuses the player's own, where the player is known. */
+    R.limits = (() => {
+      const all = PARTIES.map(p => p.id);
+      const over = v16CustomClean({ v:1, banned:all });
+      const junk = v16CustomClean({ v:1, banned:['rsf', 'notAParty', 'rsf'] });
+      SEED_OVERRIDE = 21;
+      UI.setup = { custom:v16CustomClean({ v:1, banned:['fp', 'rsf'] }).blob,
+        aiLevel:'ruthless', party:'fp' };
+      S = v6NewGame('easy', 'unityFront', 'epic', 'fp');
+      return { cap:over.blob.banned.length, floor:PARTIES.length - V22_MIN_LIVE,
+        capLost:over.lost > 0, junkLost:junk.lost, junkKept:junk.blob.banned.length,
+        selfStands:!S.banned.fp, otherWent:S.banned.rsf === true,
+        stillPlayable:(S.seats.fp || 0) > 0 };
+    })();
+
+    /* (f) AND THE MEASURE'S OWN LEAK, which is a defect this slice found rather
+       than made: Ban the Party zeroed the seats and cleared the partner and
+       stopped, so a party dissolved by decree went on holding the Presidency,
+       its seats on the bench and its governorships. Driven through the card's
+       own `run`. */
+    R.measure = (() => {
+      SEED_OVERRIDE = 99;
+      UI.setup = { custom:null, aiLevel:'ruthless', party:'fp' };
+      S = enrichState(v6NewGame('easy', 'unityFront', 'epic', 'fp'), false);
+      S.form = 'oneparty'; S.lower.suspended = true;
+      const victim = PARTIES.filter(p => p.id !== playParty(S) && !S.banned[p.id])[0].id;
+      S.exec.pres = victim; S.exec.vpres = victim;
+      (S.court.justices || []).slice(0, 3).forEach(j => { j.party = victim; });
+      const firstRegion = Object.keys(S.v6.governors)[0];
+      S.v6.governors[firstRegion].party = victim;
+      const before = { exec:['pres', 'vpres'].filter(o => S.exec[o] === victim).length,
+        bench:(S.court.justices || []).filter(j => j.party === victim).length,
+        states:Object.keys(S.v6.governors).filter(r => S.v6.governors[r].party === victim).length };
+      let ran = false;
+      const list = (typeof partyActions === 'function') ? partyActions(victim) : [];
+      const card = list.filter(a => a.id === 'ban')[0];
+      if (card && card.can && card.can()) { S.capital = 400; card.run(); ran = true; }
+      const after = { exec:['pres', 'vpres'].filter(o => S.exec[o] === victim).length,
+        bench:(S.court.justices || []).filter(j => j.party === victim).length,
+        states:Object.keys(S.v6.governors).filter(r => S.v6.governors[r].party === victim).length };
+      return { ran:ran, victim:victim, before:before, after:after,
+        banned:!!S.banned[victim],
+        total:PARTIES.reduce((n, p) => n + (S.seats[p.id] || 0), 0) };
+    })();
+    return R;
+  });
+  const goneOk = gone22.heir.built &&
+    gone22.heir.rsf === 'lp' && gone22.heir.pnl === 'tvc' && gone22.heir.tvc === 'cup' &&
+    gone22.heir.chained === 'sd' && gone22.heir.chained2 === 'cup' &&
+    gone22.heir.tieSd === 'fp' && gone22.heir.tieCup === 'fp' && gone22.heir.tieFp === 'sd' &&
+    gone22.heir.neverBanned &&
+    gone22.open.lost === 0 && gone22.open.kept === 4 && gone22.open.flagged &&
+    gone22.open.seats === 0 && gone22.open.upper === 0 &&
+    gone22.open.total === gone22.open.chamber && gone22.open.upperTotal === 300 &&
+    gone22.open.execHeld === 0 && gone22.open.benchHeld === 0 && gone22.open.statesHeld === 0 &&
+    gone22.open.benchSeats === 16 &&
+    gone22.open.benchSd === 6 && gone22.open.benchCup === 5 && gone22.open.benchFp === 5 &&
+    gone22.open.seatSd === 600 && gone22.open.seatFp === 300 && gone22.open.seatCup === 405 &&
+    gone22.open.governing &&
+    gone22.play.seated === 0 && gone22.play.ruled === 0 &&
+    gone22.play.totals.length === 1 && gone22.play.totals[0] === gone22.open.chamber &&
+    gone22.play.proj === 0 &&
+    gone22.control.open === 0 && gone22.control.peak > 100 &&
+    gone22.limits.cap === gone22.limits.floor && gone22.limits.capLost &&
+    gone22.limits.junkLost === 2 && gone22.limits.junkKept === 1 &&
+    gone22.limits.selfStands && gone22.limits.otherWent && gone22.limits.stillPlayable &&
+    gone22.measure.ran && gone22.measure.banned &&
+    gone22.measure.before.exec === 2 && gone22.measure.after.exec === 0 &&
+    gone22.measure.before.bench === 3 && gone22.measure.after.bench === 0 &&
+    gone22.measure.before.states === 1 && gone22.measure.after.states === 0 &&
+    gone22.measure.total === gone22.open.chamber;
+  say(goneOk, 'a party that is not there',
+    `A REPUBLIC CAN OPEN WITH PARTIES ALREADY DISSOLVED, and what they were holding passes to the nearest ` +
+    `one still standing. \`st.banned\` was read in about a hundred and ten places and written in exactly ` +
+    `ONE -- a measure needing a terminal form or a suspended house -- so it could never be a starting ` +
+    `condition · THE HEIR IS ONE ANSWER, by \`p.order\`, the ordering \`p.home.e\` is already derived from: ` +
+    `the RSF's estate goes to the ${gone22.heir.rsf.toUpperCase()}, the PNL's to the ` +
+    `${gone22.heir.pnl.toUpperCase()}, and with the LP already gone the RSF's skips to the ` +
+    `${gone22.heir.chained.toUpperCase()} rather than to a party that is itself dissolved ` +
+    `(${gone22.heir.neverBanned}); the two whose neighbours are equidistant both go to the centre ` +
+    `(SD to ${gone22.heir.tieSd.toUpperCase()}, CUP to ${gone22.heir.tieCup.toUpperCase()}) · A ` +
+    `THREE-PARTY REPUBLIC, driven from the real start with all four dissolved parties holding something: ` +
+    `${gone22.open.seats} seats and ${gone22.open.upper} senators between them, ` +
+    `${gone22.open.execHeld} of the four great offices, ${gone22.open.benchHeld} of ` +
+    `${gone22.open.benchSeats} on the bench and ${gone22.open.statesHeld} governorships, with the chamber ` +
+    `conserved at ${gone22.open.total} and the Senate at ${gone22.open.upperTotal} · the estates landed ` +
+    `where the rule says: SD ${gone22.open.seatSd} seats and ${gone22.open.benchSd} justices, CUP ` +
+    `${gone22.open.seatCup} and ${gone22.open.benchCup}, FP untouched at ${gone22.open.seatFp} and ` +
+    `${gone22.open.benchFp} · AND IT HOLDS IN PLAY: over thirty driven sessions a dissolved party is seated ` +
+    `${gone22.play.seated} times, governs ${gone22.play.ruled} times, and the ballot's own projection gives ` +
+    `the four of them ${gone22.play.proj} of the vote · THE CONTROL IS WHAT MAKES THIS A MECHANISM: the ` +
+    `same four given nought SEATS and no ban open at ${gone22.control.open} and reach ` +
+    `${gone22.control.peak} within the same thirty sessions, because \`supportTargets\` is computed from ` +
+    `blocs and positions and has never read a seat count -- a party with no seats is a party having a quiet ` +
+    `decade · YOU CANNOT DISSOLVE YOURSELF (${gone22.limits.selfStands}, and the other one asked for still ` +
+    `went: ${gone22.limits.otherWent}), the floor holds at ${gone22.limits.cap} of the seven so there is ` +
+    `always somebody to lose to, and an unknown id is dropped and counted like every other ` +
+    `(${gone22.limits.junkLost} dropped, ${gone22.limits.junkKept} kept) · AND THE MEASURE'S OWN LEAK IS ` +
+    `CLOSED, which this slice found rather than made: Ban the Party zeroed the seats, cleared the partner ` +
+    `and stopped, so a party dissolved by decree went on holding ${gone22.measure.before.exec} great ` +
+    `offices, ${gone22.measure.before.bench} seats on the bench and ${gone22.measure.before.states} ` +
+    `governorship -- and \`holdsDept\` asks whether the holder is in the coalition, which a banned party ` +
+    `never is, so the government silently lost the department to a party that no longer existed. Through ` +
+    `the card's own run it now holds ${gone22.measure.after.exec}, ${gone22.measure.after.bench} and ` +
+    `${gone22.measure.after.states}`);
+
   /* S14: and after all of it, ask the page whether any number went bad. The
      whole harness runs on one page, so V14_FAULTS holds every unorderable
      value and every pair of bounds the wrong way round that any of the roads

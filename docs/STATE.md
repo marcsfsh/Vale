@@ -14,6 +14,53 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
+**S22h — a party that is not there.** The owner: *"I want there to be ways of
+disabling other parties as a custom start. Anything that would be only
+exclusively available to a party that has been disabled prior to the start, if
+instead made available to the next closest party. This enables the player to
+play a 2-party state, 3-party, etc."*
+
+**`st.banned` already existed, honoured in about a hundred and ten places and
+written in exactly one.** `ballot`, `projection` and the first count all zero the
+party's vote; `v17Rotation` and `formCoalition` leave it out of every
+combination; the AI deck skips it; every party-scoped action refuses on it. The
+single writer is the Ban the Party measure, which needs a terminal form or a
+suspended house, so the flag could never be a STARTING condition. The custom
+start carries `banned` now, as a list of ids beside `articles` and `judges`.
+
+**AND ZEROING SEATS IS NOT DISSOLVING A PARTY**, which is the measurement that
+makes this a mechanism rather than a convenience, and it came out of building
+the owner's growth start. Driven thirty sessions from a start that gives four
+parties nought seats, they are back to **734 seats between them**; the same four
+dissolved hold **0**, are seated 0 times, govern 0 times and are given 0 of the
+vote by the game's own projection. `psupport` converges on `supportTargets`,
+which is computed from blocs and positions and **has never read a seat count**,
+so a party with no seats is a party having a quiet decade.
+
+**THE HEIR IS ONE ANSWER.** `v22Heir` reads `p.order`, the ordering `p.home.e`
+is already derived from at load, so the distance is the file's own rather than a
+second one invented beside it. Ties go to the party nearer the centre and then
+to the lower order, so it is one answer and not whichever `filter` returned
+first. Driven: the RSF's estate goes to the LP, the PNL's to the TVC, and with
+the LP already dissolved the RSF's skips past it to the SD.
+
+**ONE SWEEP, AND IT FOUND A SHIPPED DEFECT.** `v22BanSweep` moves the seats, the
+Senate, the four great offices, the bench, the governorships and the government
+itself. The Ban the Party measure zeroed the seats, cleared the partner and
+stopped — so a party dissolved by decree **went on holding the Presidency**, its
+seats on the bench and its governorships, and `holdsDept` asks whether the
+office-holder is in the coalition, which a banned party never is, so the
+government silently lost the department to a party that no longer existed. Both
+callers sweep now; the measure keeps its own authored even split of the seats
+and the start hands them to the heir, which is the one argument the function
+takes and both call sites pass deliberately.
+
+**And `one-coalition-exit` failed the first build of the sweep**, for filtering
+`st.coalition` in a second place. That is exactly what the check is for, and the
+fix is `v21Leave`: a dissolved party did not walk out in a huff, and the ledger
+entry it books is beside the point, but a second door that agreed with the first
+today is the one that would not still agree in S24.
+
 **S22g — the paste box is a control.** Reported by the owner, who pasted a start
 into the box under *"Keep this start as text, or read one somebody kept"*,
 pressed the two buttons under it, and got nothing. **They were right and it was
