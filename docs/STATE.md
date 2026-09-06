@@ -14,6 +14,77 @@ survive ordinary play. **Do not start new S18 work without reading it.**
 
 ## Current slice
 
+**S22h — a party that is not there.** The owner: *"I want there to be ways of
+disabling other parties as a custom start. Anything that would be only
+exclusively available to a party that has been disabled prior to the start, if
+instead made available to the next closest party. This enables the player to
+play a 2-party state, 3-party, etc."*
+
+**`st.banned` already existed, honoured in about a hundred and ten places and
+written in exactly one.** `ballot`, `projection` and the first count all zero the
+party's vote; `v17Rotation` and `formCoalition` leave it out of every
+combination; the AI deck skips it; every party-scoped action refuses on it. The
+single writer is the Ban the Party measure, which needs a terminal form or a
+suspended house, so the flag could never be a STARTING condition. The custom
+start carries `banned` now, as a list of ids beside `articles` and `judges`.
+
+**AND ZEROING SEATS IS NOT DISSOLVING A PARTY**, which is the measurement that
+makes this a mechanism rather than a convenience, and it came out of building
+the owner's growth start. Driven thirty sessions from a start that gives four
+parties nought seats, they are back to **734 seats between them**; the same four
+dissolved hold **0**, are seated 0 times, govern 0 times and are given 0 of the
+vote by the game's own projection. `psupport` converges on `supportTargets`,
+which is computed from blocs and positions and **has never read a seat count**,
+so a party with no seats is a party having a quiet decade.
+
+**THE HEIR IS ONE ANSWER.** `v22Heir` reads `p.order`, the ordering `p.home.e`
+is already derived from at load, so the distance is the file's own rather than a
+second one invented beside it. Ties go to the party nearer the centre and then
+to the lower order, so it is one answer and not whichever `filter` returned
+first. Driven: the RSF's estate goes to the LP, the PNL's to the TVC, and with
+the LP already dissolved the RSF's skips past it to the SD.
+
+**ONE SWEEP, AND IT FOUND A SHIPPED DEFECT.** `v22BanSweep` moves the seats, the
+Senate, the four great offices, the bench, the governorships and the government
+itself, and it runs LAST in `v16CustomApply` so it moves what everything above
+just handed out. The Ban the Party measure zeroed the seats, cleared the partner
+and stopped — so a party dissolved by decree **went on holding the Presidency**,
+its seats on the bench and its governorships, and `holdsDept` asks whether the
+office-holder is in the coalition, which a banned party never is, so the
+government silently lost the department to a party that no longer existed. Both
+callers sweep now.
+
+**The sweep took a `moveSeats` flag and the poison run took it away.** It was
+there so the measure could keep its own authored even split of the benches — and
+the measure zeroes the LOWER seats *before* sweeping, so the branch was a no-op
+at that call site and the two values could not be told apart. What the flag was
+really doing was leaving the dissolved party its **senators**, which the measure
+never zeroed: the same defect as the Presidency, one house down. One behaviour
+now, and the split still stands because there is nothing left below to move by
+the time the sweep runs.
+
+**Twenty-nine poisons from the diff and eleven came back green**, every one a leg
+the arm did not have. The floor bar read `V22_MIN_LIVE`, the constant under test,
+so at 1 the cap and the floor were both 6 and it agreed — a literal five now,
+with the claim the floor is *for* driven rather than counted. The last tie-break
+was decoration, because `Array.sort` is stable and `PARTIES` is declared in
+`order`, so the leg reverses the literal and asks again. **Four poisons about the
+government came back green because the Unity Front board cannot ask the
+question**: none of the four parties dissolved there was ever in the coalition,
+and the line that seats the new leader in its own coalition needs the WHOLE
+government dissolved at once before it has anything to do. An inherited justice
+is moved and not relabelled, which two builds of that leg could not tell apart
+because every bench this game builds already seats a justice exactly on its
+party's home. And the sheet's heir label was checked for count and not for name:
+two parties picked off the ends of the table are each other's heir to nobody, so
+the leg ticks two ADJACENT parties, where each is the other's nearest.
+
+**And `one-coalition-exit` failed the first build of the sweep**, for filtering
+`st.coalition` in a second place. That is exactly what the check is for, and the
+fix is `v21Leave`: a dissolved party did not walk out in a huff, and the ledger
+entry it books is beside the point, but a second door that agreed with the first
+today is the one that would not still agree in S24.
+
 **S22g — the paste box is a control.** Reported by the owner, who pasted a start
 into the box under *"Keep this start as text, or read one somebody kept"*,
 pressed the two buttons under it, and got nothing. **They were right and it was

@@ -14608,6 +14608,23 @@ list.push({ id:'confidence', need:'leading', name:'Confidence and supply', cost:
         others.forEach(function (q) { S.seats[q.id] += each; });
         var total = 0; PARTIES.forEach(function (q) { total += S.seats[q.id] || 0; });
         if (others.length) S.seats[others[0].id] += CFG.seats - total;
+        /* S22h: AND EVERYTHING ELSE IT WAS HOLDING. This zeroed the seats and
+           cleared the partner and stopped, so a party dissolved by decree went
+           on holding the Presidency, its seats on the bench and its
+           governorships -- and `holdsDept` asks whether the office-holder is in
+           the coalition, which a banned party never is, so the government
+           silently lost the department to a party that no longer existed.
+           The lower seats are settled above by this card's own authored split
+           and are nought by the time this runs, so the sweep finds nothing to
+           move there -- the SENATORS it never zeroed are a different story. */
+        var sw = v22BanSweep(S);
+        if (sw.exec.length || sw.bench || sw.states.length) {
+          logIt(S, 'What the ' + p.short + ' held went to the nearest party still standing: ' +
+            [sw.exec.length ? v8Plural(sw.exec.length, 'great office') : '',
+             sw.bench ? v8Plural(sw.bench, 'seat') + ' on the bench' : '',
+             sw.states.length ? v8Plural(sw.states.length, 'governorship') : ''
+            ].filter(function (x) { return x; }).join(', ') + '.');
+        }
         logIt(S, 'The ' + p.short + ' was dissolved by decree.');
       } });
   } else {
@@ -27510,7 +27527,17 @@ render = function () {
 .cs-c em{font-style:normal;color:var(--slate);font-family:var(--font-u);font-size:11px}
 .cs-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
 .cs-power,.cs-party{border-bottom:1px solid rgba(191,161,78,.14);padding-bottom:6px;margin-bottom:6px}
-.cs-partyhead{display:flex;align-items:center;gap:7px;margin-top:8px}
+.cs-partyhead{display:flex;align-items:center;gap:7px;margin-top:8px;flex-wrap:wrap}
+/* S22h: the dissolution box. A 44px target on the phone like every other
+   pressable thing here, and the row it sits on dims so a republic of three is
+   readable at a glance rather than by reading seven checkboxes. */
+.cs-ban{display:inline-flex;align-items:center;gap:6px;margin-left:auto;min-height:44px;
+  font-family:var(--font-u);font-size:11px;letter-spacing:.05em;color:var(--slate);cursor:pointer}
+.cs-ban input{width:18px;height:18px;accent-color:var(--brass);cursor:pointer}
+.cs-ban input:disabled{cursor:not-allowed;opacity:.45}
+.cs-heir{color:var(--brass)}
+.cs-party.is-gone{opacity:.55}
+.cs-party.is-gone .cs-ban{opacity:1;color:var(--brass)}
 .cs-treaties>summary{font-family:var(--font-u);font-size:11px;letter-spacing:.05em;color:var(--slate);cursor:pointer;padding:3px 0}
 .cs-keep{margin-top:14px;border-top:1px solid rgba(191,161,78,.16);padding-top:8px}
 .cs-keep>summary{font-family:var(--font-u);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);cursor:pointer}
@@ -41001,7 +41028,7 @@ function v16CustomBlank() {
   return { v:V16_CUSTOM_VERSION, form:null, articles:[], pol:{}, seats:{}, upperSeats:{},
     upperState:null, upperVeto:null, lowerState:null, exec:{}, courtLean:null,
     cabinetDepth:null, governors:{}, powers:{}, treaties:{}, partyRel:{},
-    machine:{}, ind:{}, purse:{}, money:{}, judges:[] };
+    machine:{}, ind:{}, purse:{}, money:{}, judges:[], banned:[] };
 }
 /* Everything the editor may write, in one table: what it is called, where it
    lives, and what it will accept. The renderer and the reader both walk this,
@@ -41132,6 +41159,20 @@ function v16CustomClean(raw) {
   (raw.judges || []).slice(0, 24).forEach(function (pid) {
     if (PARTY[pid]) out.judges.push(pid); else lost++;
   });
+  /* S22h: THE PARTIES THAT ARE NOT THERE. An array like `articles` and
+     `judges`, because the sheet writes it with checkboxes and `v16CustomRead`
+     reads a checkbox group as one. Unknown ids are dropped and counted like
+     every other id here, and so is a ban past the floor: a republic with one
+     party in it has nobody to lose to, and `v17Rotation` would be choosing
+     between one combination for the rest of the campaign. The PLAYER's own
+     party is not refused here, because the cleaner is pure and does not know
+     who is playing -- `v16CustomApply` refuses that, where it does. */
+  var banSeen = {};
+  (raw.banned || []).forEach(function (pid) {
+    if (!PARTY[pid] || banSeen[pid]) { lost++; return; }
+    if (out.banned.length >= PARTIES.length - V22_MIN_LIVE) { lost++; return; }
+    banSeen[pid] = 1; out.banned.push(pid);
+  });
   /* S16f2: checked against the vocabulary, not against `typeof`. These were the
      only two fields taken on the word of the blob, and the failure was silent
      in the worst way: an unknown string is not 'abolished' and not 'suspended',
@@ -41148,6 +41189,129 @@ function v16CustomClean(raw) {
   if (raw.cabinetDepth !== undefined && raw.cabinetDepth !== null) out.cabinetDepth = clamp(Math.round(raw.cabinetDepth), 0, 24);
   return { blob:out, lost:lost };
 }
+/* ============================================================
+   S22h - A PARTY THAT IS NOT THERE
+   ============================================================
+   The owner: *"I want there to be ways of disabling other parties as a custom
+   start. Anything that would be only exclusively available to a party that has
+   been disabled prior to the start, if instead made available to the next
+   closest party. This enables the player to play a 2-party state, 3-party,
+   etc."*
+
+   `st.banned[pid]` already exists and is already honoured in about a hundred
+   and ten places: `ballot` and `projection` and the first count all zero the
+   party's vote, `v17Rotation` and `formCoalition` leave it out of every
+   combination, the AI deck skips it, and every party-scoped action refuses on
+   it. What it had no way to be was a STARTING condition, because the custom
+   start carried no field for it and the only writer in three megabytes is the
+   Ban the Party measure, which needs a terminal form or a suspended house.
+
+   AND ZEROING SEATS IS NOT DISSOLVING A PARTY, which is the measurement that
+   makes this a mechanism rather than a convenience. Driven forty sessions on a
+   start that gives four parties nought seats: the RSF holds 195 by session 41
+   and the TVC forms a government. `psupport` converges on `supportTargets`,
+   which is computed from blocs and positions and has never read the seat count
+   -- so a party with no seats is a party having a quiet decade, not a party
+   that is gone. */
+var V22_MIN_LIVE = 2;   /* the player, and somebody to lose to */
+
+/* THE HEIR, AND IT IS ONE ANSWER RATHER THAN WHICHEVER FILTER RETURNED FIRST.
+   `p.order` runs 0 (RSF) to 6 (PNL) and `p.home.e` is DERIVED from it at load,
+   so the distance here is the ordering the file already carries rather than a
+   second one invented beside it. Ties go to the party nearer the centre and
+   then to the lower order, because a dissolved wing's estate falling to the
+   moderates is the reading the owner's own sentence carries. */
+function v22Heir(st, pid) {
+  var me = PARTY[pid]; if (!me) return null;
+  var ban = (st && st.banned) || {};
+  var live = PARTIES.filter(function (q) { return q.id !== pid && !ban[q.id]; });
+  if (!live.length) return null;
+  live.sort(function (a, b) {
+    var da = Math.abs(a.order - me.order), db = Math.abs(b.order - me.order);
+    if (da !== db) return da - db;
+    var ca = Math.abs(a.order - 3), cb = Math.abs(b.order - 3);
+    if (ca !== cb) return ca - cb;
+    return a.order - b.order;
+  });
+  return live[0].id;
+}
+
+/* WHAT A DISSOLVED PARTY LEAVES BEHIND, through ONE function, so a surface
+   added later cannot be moved in one place and forgotten in another.
+
+   THE SEATS WERE AN ARGUMENT AND THE POISON RUN TOOK IT AWAY. The first build
+   passed `false` from the Ban the Party measure, so its own authored even split
+   of the benches would stand -- and the measure zeroes the lower seats BEFORE
+   sweeping, so the branch is a no-op there and the two values could not be told
+   apart. What the argument was really doing was leaving the dissolved party its
+   SENATORS, which the measure never zeroed: the same defect as the Presidency,
+   one house down. One behaviour now, and the measure's split still stands
+   because there is nothing left in the lower house to move by the time this
+   runs.
+
+   THE FIVE BELOW ARE A DEFECT THE MEASURE HAS ALWAYS HAD. It zeroes the seats
+   and clears the partner and stops there, so a party dissolved by decree went
+   on holding the Presidency, its seats on the bench and its governorships --
+   and `holdsDept` asks whether the office-holder is in the coalition, which a
+   banned party never is, so the government silently lost the department to a
+   party that no longer existed. Both callers sweep them now. */
+function v22BanSweep(st) {
+  var out = { seats:0, upper:0, exec:[], bench:0, states:[], gov:null };
+  if (!st || !st.banned) return out;
+  PARTIES.forEach(function (p) {
+    if (!st.banned[p.id]) return;
+    var heir = v22Heir(st, p.id);
+    if (!heir) return;
+    var n = st.seats[p.id] || 0;
+    if (n) { st.seats[heir] = (st.seats[heir] || 0) + n; st.seats[p.id] = 0; out.seats += n; }
+    if (st.upper && st.upper.seats) {
+      var u = st.upper.seats[p.id] || 0;
+      if (u) { st.upper.seats[heir] = (st.upper.seats[heir] || 0) + u; st.upper.seats[p.id] = 0; out.upper += u; }
+    }
+    if (st.psupport && st.psupport[p.id]) {
+      st.psupport[heir] = (st.psupport[heir] || 0) + st.psupport[p.id];
+      st.psupport[p.id] = 0;
+    }
+    ['pres', 'vpres', 'chan', 'vchan'].forEach(function (o) {
+      if (st.exec && st.exec[o] === p.id) { st.exec[o] = heir; out.exec.push(o); }
+    });
+    if (st.court && st.court.justices) {
+      var home = PARTY[heir].home;
+      st.court.justices.forEach(function (j) {
+        if (j.party !== p.id) return;
+        j.party = heir; j.e = home.e; j.a = home.a; out.bench++;
+      });
+    }
+    if (st.v6 && st.v6.governors) {
+      for (var r in st.v6.governors) {
+        if (st.v6.governors[r].party === p.id) { st.v6.governors[r].party = heir; out.states.push(r); }
+      }
+    }
+    /* THE GOVERNMENT ITSELF, and out of the coalition THROUGH THE ONE DOOR.
+       `one-coalition-exit` failed the first build of this sweep for filtering
+       `st.coalition` here, which is exactly what that check is for: S21f found
+       five ways out doing half the job each. A dissolved party did not walk out
+       in a huff, so the ledger entry and the ten points of relations `v21Leave`
+       books against it are beside the point -- and nothing reads either for a
+       party the other hundred and ten sites skip. A second door that agreed
+       with this one today is the thing that would not still agree in S24. */
+    if (typeof v21Leave === 'function') v21Leave(st, p.id, 'the party was dissolved');
+    if (st.ruling === p.id) { st.ruling = heir; out.gov = heir; }
+    if (st.coalition && st.coalition.indexOf(st.ruling) < 0) st.coalition.unshift(st.ruling);
+    if (st.pact === p.id) st.pact = null;
+  });
+  return out;
+}
+
+/* The sheet needs the heir before a republic exists to compute it against, so
+   it asks the SAME function through a state shaped like the blob. Two readings
+   of one rule rather than a second rule that agrees with it today. */
+function v22HeirPreview(blob, pid) {
+  var map = {};
+  ((blob && blob.banned) || []).forEach(function (x) { map[x] = true; });
+  return v22Heir({ banned:map }, pid);
+}
+
 /* The apply. Runs between `v6NewGame` and `enrichState`, so everything the
    ensure chain builds is built over what the player asked for. No dice are
    spent here: the whole thing is assignment and arithmetic. */
@@ -41272,6 +41436,27 @@ function v16CustomApply(st, blob) {
   for (var pu in b.purse) { st.purse = st.purse || {}; st.purse[pu] = clamp(b.purse[pu], -20, 2000); }
   for (var ik in b.ind) st.ind[ik] = b.ind[ik];
   V16_CUSTOM_MONEY.forEach(function (m) { if (b.money[m.k] !== undefined) st[m.k] = b.money[m.k]; });
+  /* S22h: LAST, because the sweep moves what everything above just handed out.
+     Seats are apportioned, offices filled, the bench seated and the states
+     given before this runs, so a dissolved party's estate is moved once, from
+     wherever it ended up, rather than guarded in eight places. */
+  if (b.banned.length) {
+    st.banned = st.banned || {};
+    var mine = (typeof playParty === 'function') ? playParty(st) : null;
+    b.banned.forEach(function (pid) {
+      /* you cannot dissolve yourself out of your own campaign */
+      if (pid === mine) { logIt(st, 'A start asked for the ' + PARTY[pid].short + ' to be dissolved, and they are the party being played, so they stand.'); return; }
+      st.banned[pid] = true;
+    });
+    var sw = v22BanSweep(st);
+    var gone = PARTIES.filter(function (p) { return st.banned[p.id]; });
+    if (gone.length) {
+      logIt(st, gone.map(function (p) { return 'The ' + p.short; }).join(' and ') +
+        (gone.length > 1 ? ' were' : ' was') + ' dissolved before the campaign opened. ' +
+        (sw.seats ? sw.seats + ' seats, ' : '') + (sw.exec.length ? sw.exec.length + ' of the great offices, ' : '') +
+        (sw.bench ? sw.bench + ' seats on the bench ' : '') + 'passed to the nearest party still standing.');
+    }
+  }
   st.v6 = st.v6 || {}; st.v6.scenario = 'custom';
   st.customStart = true;
   return st;
@@ -41633,10 +41818,24 @@ function v16SectionBody(sec, d, st) {
     }).join('');
   }
   if (sec.id === 'party') {
-    return PARTIES.map(function (p) {
+    /* S22h: the dissolution box, drawn from the same list the cleaner accepts
+       from, and shut at the floor rather than left to be refused after the
+       click. A player cannot dissolve their own party, so that box is not
+       offered at all -- an offered control that always refuses is the defect
+       this file names most often. */
+    var banned = (d.banned || []), atFloor = banned.length >= PARTIES.length - V22_MIN_LIVE;
+    return '<p class="cs-say">Dissolving a party takes it out of the republic before the campaign opens: it wins no votes, forms no government, and its seats, offices, bench and states pass to the nearest party still standing. Up to ' +
+      (PARTIES.length - V22_MIN_LIVE) + ' of the seven, so there is always somebody to lose to.</p>' +
+      PARTIES.map(function (p) {
       var me = st ? playParty(st) : null;
-      return '<div class="cs-party"><div class="cs-partyhead"><span class="dot" style="background:' + p.color + '"></span>' +
-        '<b>' + esc(p.name) + '</b>' + (p.id === me ? '<span class="tag">yours</span>' : '') + '</div>' +
+      var off = banned.indexOf(p.id) >= 0;
+      return '<div class="cs-party' + (off ? ' is-gone' : '') + '"><div class="cs-partyhead"><span class="dot" style="background:' + p.color + '"></span>' +
+        '<b>' + esc(p.name) + '</b>' + (p.id === me ? '<span class="tag">yours</span>' : '') +
+        (p.id === me ? '' :
+          '<label class="cs-ban"><input type="checkbox" data-cs="banned" value="' + esc(p.id) + '"' +
+          (off ? ' checked' : '') + ((!off && atFloor) ? ' disabled' : '') + '> Dissolved' +
+          (off ? '<span class="cs-heir"> &rarr; ' + esc(PARTY[v22HeirPreview(d, p.id)] ? PARTY[v22HeirPreview(d, p.id)].short : '—') + '</span>' : '') +
+          '</label>') + '</div>' +
         V16_PARTY_FIELDS.map(function (f) {
           var says = { partyRel:p.id === me
               ? 'Your own party always reads high; it is what the others think of you that decides a coalition.'
@@ -41812,7 +42011,10 @@ function v16CustomRead(node, d) {
     var k = el.getAttribute('data-cs'), seg = k.split('.');
     if (el.type === 'checkbox') {
       if (!el.checked) return;
-      if (k === 'articles') next.articles.push(el.value);
+      /* S22h: `banned` is a flat list of party ids, the same shape the article
+         boxes write, so it reads through the same branch rather than a second
+         one that would have to agree with this one. */
+      if (k === 'articles' || k === 'banned') next[k].push(el.value);
       else { next[seg[0]][seg[1]] = next[seg[0]][seg[1]] || []; next[seg[0]][seg[1]].push(el.value); }
       return;
     }
@@ -41842,6 +42044,7 @@ function v16CustomRead(node, d) {
   for (var t in d.treaties) if (!next.treaties[t] && !seen['treaties.' + t]) next.treaties[t] = d.treaties[t];
   if (!jsel.length && d.judges && d.judges.length) next.judges = d.judges;
   if (!seen.articles && d.articles.length) next.articles = d.articles.slice();
+  if (!seen.banned && d.banned && d.banned.length) next.banned = d.banned.slice();
   ['form', 'upperState', 'lowerState', 'upperVeto', 'cabinetDepth'].forEach(function (k) {
     if (next[k] === null && !seen[k] && d[k] !== null && d[k] !== undefined) next[k] = d[k];
   });
@@ -41860,7 +42063,8 @@ function v16CustomCounts(b) {
   c.gov = Object.keys(b.governors || {}).length;
   c.world = Object.keys(b.powers || {}).length;
   for (var t in (b.treaties || {})) c.world += b.treaties[t].length;
-  c.party = Object.keys(b.partyRel || {}).length + Object.keys(b.machine || {}).length + Object.keys(b.purse || {}).length;
+  c.party = Object.keys(b.partyRel || {}).length + Object.keys(b.machine || {}).length +
+    Object.keys(b.purse || {}).length + (b.banned || []).length;
   c.ind = Object.keys(b.ind || {}).length + Object.keys(b.money || {}).length;
   return c;
 }
